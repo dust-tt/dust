@@ -156,7 +156,7 @@ function generateLayout(
         children
     }
 
-    tab name="shell" focus=true {
+    tab name="${kdlEscape(envName)}" focus=true {
         pane {
             cwd "${kdlEscape(worktreePath)}"
             command "sh"
@@ -192,15 +192,8 @@ interface OpenOptions {
   noAttach?: boolean;
 }
 
-export const openCommand = withEnvironment("open", async (env, options: OpenOptions = {}) => {
-  const worktreePath = getWorktreeDir(env.name);
-  const envShPath = getEnvFilePath(env.name);
-  const sessionName = `dust-hive-${env.name}`;
-
-  // Ensure watch script exists
-  const watchScriptPath = await ensureWatchScript();
-
-  // Check if session already exists
+// Check if a zellij session exists
+async function checkSessionExists(sessionName: string): Promise<boolean> {
   const checkProc = Bun.spawn(["zellij", "list-sessions"], {
     stdout: "pipe",
     stderr: "pipe",
@@ -211,12 +204,94 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
   // Strip ANSI codes for comparison
   // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional for ANSI escape code stripping
   const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, "");
-  const sessionExists = sessions
+  return sessions
     .split("\n")
     .map((line) => stripAnsi(line).trim())
     .filter((line) => line.length > 0)
     .map((line) => line.split(/\s+/)[0])
     .some((name) => name === sessionName);
+}
+
+// Create a zellij session in background (does not attach)
+async function createSessionInBackground(sessionName: string, layoutPath: string): Promise<void> {
+  logger.info(`Creating zellij session '${sessionName}' in background...`);
+
+  const proc = Bun.spawn(
+    [
+      "zellij",
+      "attach",
+      sessionName,
+      "--create-background",
+      "options",
+      "--default-layout",
+      layoutPath,
+    ],
+    {
+      stdin: "ignore",
+      stdout: "ignore",
+      stderr: "pipe",
+    }
+  );
+  await proc.exited;
+
+  logger.success(`Session '${sessionName}' created successfully.`);
+}
+
+export const openCommand = withEnvironment("open", async (env, options: OpenOptions = {}) => {
+  const worktreePath = getWorktreeDir(env.name);
+  const envShPath = getEnvFilePath(env.name);
+  const sessionName = `dust-hive-${env.name}`;
+
+  // Detect if running inside zellij to avoid nesting
+  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
+  const inZellij = process.env["ZELLIJ"] !== undefined;
+  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
+  const currentSession = process.env["ZELLIJ_SESSION_NAME"];
+
+  // If inside zellij and trying to attach, use session manager instead
+  if (inZellij && !options.noAttach) {
+    // If already in the target session, nothing to do
+    if (currentSession === sessionName) {
+      logger.info(`Already in session '${sessionName}'`);
+      return Ok(undefined);
+    }
+
+    // Ensure session exists (create in background if needed)
+    const sessionExists = await checkSessionExists(sessionName);
+    if (!sessionExists) {
+      const watchScriptPath = await ensureWatchScript();
+      const layoutPath = await writeLayout(
+        env.name,
+        worktreePath,
+        envShPath,
+        watchScriptPath,
+        options.warmCommand
+      );
+      await createSessionInBackground(sessionName, layoutPath);
+    }
+
+    // Switch to target session using zellij-switch plugin (fire-and-forget)
+    logger.info(`Switching to session '${sessionName}'...`);
+    Bun.spawn(
+      [
+        "zellij",
+        "pipe",
+        "--plugin",
+        "https://github.com/mostafaqanbaryan/zellij-switch/releases/download/0.2.1/zellij-switch.wasm",
+        "--",
+        `--session ${sessionName}`,
+      ],
+      { stdin: "ignore", stdout: "ignore", stderr: "ignore" }
+    );
+
+    return Ok(undefined);
+  }
+
+  // Ensure watch script exists
+  const watchScriptPath = await ensureWatchScript();
+
+  // Check if session already exists
+  const sessionExists = await checkSessionExists(sessionName);
 
   if (sessionExists) {
     if (options.noAttach) {
@@ -246,30 +321,8 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     );
 
     if (options.noAttach) {
-      // Create session in background with our layout using zellij's native options
-      logger.info(`Creating zellij session '${sessionName}' in background...`);
-
-      const proc = Bun.spawn(
-        [
-          "zellij",
-          "attach",
-          sessionName,
-          "--create-background",
-          "options",
-          "--default-layout",
-          layoutPath,
-        ],
-        {
-          stdin: "ignore",
-          stdout: "ignore",
-          stderr: "pipe",
-        }
-      );
-      await proc.exited;
-
-      logger.success(`Session '${sessionName}' created successfully.`);
+      await createSessionInBackground(sessionName, layoutPath);
       logger.info(`Use 'dust-hive open ${env.name}' to attach.`);
-
       return Ok(undefined);
     }
 
