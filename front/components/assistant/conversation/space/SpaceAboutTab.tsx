@@ -6,7 +6,6 @@ import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type {
   GroupType,
   LightWorkspaceType,
-  PlanType,
   SpaceType,
   UserType,
 } from "@app/types";
@@ -14,19 +13,19 @@ import type {
 interface SpaceAboutTabProps {
   owner: LightWorkspaceType;
   space: SpaceType;
-  plan: PlanType;
   initialMembers: UserType[];
   initialGroups: GroupType[];
   initialManagementMode: "manual" | "group";
+  planAllowsSCIM: boolean;
 }
 
 export function SpaceAboutTab({
   owner,
   space,
-  plan,
   initialMembers,
   initialGroups,
   initialManagementMode,
+  planAllowsSCIM,
 }: SpaceAboutTabProps) {
   const [managementType, setManagementType] = useState<"manual" | "group">(
     initialManagementMode
@@ -38,7 +37,6 @@ export function SpaceAboutTab({
   const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const planAllowsSCIM = plan.limits.users.isSCIMAllowed;
   const isManual = !planAllowsSCIM || managementType === "manual";
   const doUpdate = useUpdateSpace({ owner });
 

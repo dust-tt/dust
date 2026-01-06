@@ -20,10 +20,10 @@ import Link from "next/link";
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import { ConversationLayout } from "@app/components/assistant/conversation/ConversationLayout";
-import { SpaceAboutTab } from "@app/components/assistant/conversation/SpaceAboutTab";
-import { SpaceConversationsTab } from "@app/components/assistant/conversation/SpaceConversationsTab";
-import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/SpaceKnowledgeTab";
-import { SpaceToolsTab } from "@app/components/assistant/conversation/SpaceToolsTab";
+import { SpaceAboutTab } from "@app/components/assistant/conversation/space/SpaceAboutTab";
+import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/SpaceConversationsTab";
+import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
+import { SpaceToolsTab } from "@app/components/assistant/conversation/space/SpaceToolsTab";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
@@ -319,8 +319,8 @@ export default function SpaceConversations({
               <SpaceAboutTab
                 owner={owner}
                 space={spaceInfo}
-                plan={subscription.plan}
                 initialMembers={spaceInfo.members || []}
+                planAllowsSCIM={planAllowsSCIM}
                 initialGroups={
                   planAllowsSCIM &&
                   spaceInfo.groupIds &&
