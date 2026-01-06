@@ -119,6 +119,12 @@ export async function allocatePAYGCreditsOnCycleRenewal({
           { workspaceId: workspace.sId, error: error_message, panic: true },
           "[Credit PAYG] Failed to create PAYG credit for this period. Potentially blocking customer's automations"
         );
+        statsDClient.increment("credits.top_up.error", 1, [
+          `workspace_id:${workspace.sId}`,
+          "type:payg",
+          "customer:enterprise",
+        ]);
+
         return;
       default:
         assertNever(error_type);
@@ -133,6 +139,11 @@ export async function allocatePAYGCreditsOnCycleRenewal({
     },
     "[Credit PAYG] Allocated new PAYG credit for billing cycle"
   );
+  statsDClient.increment("credits.top_up.success", 1, [
+    `workspace_id:${workspace.sId}`,
+    "type:payg",
+    "customer:enterprise",
+  ]);
 }
 
 export async function isPAYGEnabled(auth: Authenticator): Promise<boolean> {
@@ -225,7 +236,12 @@ export async function startOrResumeEnterprisePAYG({
             { workspaceId: workspace.sId, error: error_message, panic: true },
             "[Credit PAYG] Failed to create PAYG credit for current period. Potentially blocking customer's automations."
           );
-          break;
+          statsDClient.increment("credits.top_up.error", 1, [
+            `workspace_id:${workspace.sId}`,
+            "type:payg",
+            "customer:enterprise",
+          ]);
+          return new Err(new Error(error_message));
         default:
           assertNever(error_type);
       }
