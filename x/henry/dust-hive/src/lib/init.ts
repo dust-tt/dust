@@ -1,7 +1,7 @@
 // Data-driven database initialization with binary caching
 
 import { type InitBinary, binaryExists, getBinaryPath, getCacheSource } from "./cache";
-import { loadEnvVars } from "./env-utils";
+import { buildPostgresUri, loadEnvVars } from "./env-utils";
 import type { Environment } from "./environment";
 import { logger } from "./logger";
 import { SEED_USER_PATH, getEnvFilePath, getWorktreeDir } from "./paths";
@@ -63,11 +63,7 @@ async function runBinary(
 
 // Initialize PostgreSQL databases
 async function initPostgres(envVars: Record<string, string>): Promise<void> {
-  // biome-ignore lint/complexity/useLiteralKeys: must use bracket notation for Record type
-  const host = envVars["POSTGRES_HOST"] ?? "localhost";
-  // biome-ignore lint/complexity/useLiteralKeys: must use bracket notation for Record type
-  const port = envVars["POSTGRES_PORT"] ?? "5432";
-  const uri = `postgres://dev:dev@${host}:${port}/`;
+  const uri = buildPostgresUri(envVars);
 
   const databases = [
     "dust_api",
@@ -179,7 +175,6 @@ async function initElasticsearchTS(
     { name: "user_search", version: "1" },
   ];
 
-  // biome-ignore lint/complexity/useLiteralKeys: must use bracket notation for Record type
   const envShPath = envVars["__ENV_SH_PATH__"] ?? "";
   const frontDir = `${worktreePath}/front`;
 
@@ -281,7 +276,6 @@ async function initAllElasticsearch(env: Environment): Promise<void> {
   const envShPath = getEnvFilePath(env.name);
   const worktreePath = getWorktreeDir(env.name);
   const envVars = await loadEnvVars(envShPath);
-  // biome-ignore lint/complexity/useLiteralKeys: must use bracket notation for Record type
   envVars["__ENV_SH_PATH__"] = envShPath;
 
   // Run Rust and TS ES inits in parallel

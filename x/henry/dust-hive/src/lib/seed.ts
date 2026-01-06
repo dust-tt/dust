@@ -7,7 +7,7 @@
 // The SQL is defined in front/lib/dev/dust_hive_seed.sql
 // This file only handles sId generation and parameter passing.
 
-import { loadEnvVars } from "./env-utils";
+import { buildPostgresUri, loadEnvVars } from "./env-utils";
 import type { Environment } from "./environment";
 import { logger } from "./logger";
 import { SEED_USER_PATH, getEnvFilePath, getWorktreeDir } from "./paths";
@@ -47,11 +47,7 @@ async function loadSeedConfig(): Promise<SeedConfig | null> {
 }
 
 function buildDatabaseUri(envVars: Record<string, string>): string {
-  // biome-ignore lint/complexity/useLiteralKeys: must use bracket notation for Record type
-  const host = envVars["POSTGRES_HOST"] ?? "localhost";
-  // biome-ignore lint/complexity/useLiteralKeys: must use bracket notation for Record type
-  const port = envVars["POSTGRES_PORT"] ?? "5432";
-  return `postgres://dev:dev@${host}:${port}/dust_front`;
+  return buildPostgresUri(envVars, "dust_front");
 }
 
 export async function runSqlSeed(env: Environment): Promise<boolean> {

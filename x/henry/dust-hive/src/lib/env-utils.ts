@@ -32,3 +32,14 @@ export async function loadEnvVars(envShPath: string): Promise<Record<string, str
   }
   return env;
 }
+
+/**
+ * Build a PostgreSQL connection URI from environment variables.
+ * Uses POSTGRES_HOST and POSTGRES_PORT with defaults for local dev.
+ */
+export function buildPostgresUri(envVars: Record<string, string>, database?: string): string {
+  const host = envVars["POSTGRES_HOST"] ?? "localhost";
+  const port = envVars["POSTGRES_PORT"] ?? "5432";
+  const db = database ? `/${database}` : "/";
+  return `postgres://dev:dev@${host}:${port}${db}`;
+}

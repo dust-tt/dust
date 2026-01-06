@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdir, open, readdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { isErrnoException } from "./errors";
+import { createTypeGuard, isErrnoException } from "./errors";
 import { directoryExists } from "./fs";
 import { DUST_HIVE_ENVS, DUST_HIVE_HOME, getPortsPath } from "./paths";
 import { isProcessRunning, killProcess } from "./process";
@@ -48,10 +48,7 @@ const PortAllocationSchema = PortAllocationFields.passthrough();
 
 export type PortAllocation = z.infer<typeof PortAllocationFields>;
 
-// Type guard for PortAllocation
-function isPortAllocation(data: unknown): data is PortAllocation {
-  return PortAllocationSchema.safeParse(data).success;
-}
+const isPortAllocation = createTypeGuard<PortAllocation>(PortAllocationSchema);
 
 // Calculate ports from a base port
 export function calculatePorts(base: number): PortAllocation {

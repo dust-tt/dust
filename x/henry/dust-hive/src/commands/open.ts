@@ -40,7 +40,6 @@ function kdlEscape(value: string): string {
 }
 
 function getUserShell(): string {
-  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
   return process.env["SHELL"] ?? "zsh";
 }
 
@@ -241,9 +240,7 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
   const sessionName = `dust-hive-${env.name}`;
 
   // Detect if running inside zellij to avoid nesting
-  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
   const inZellij = process.env["ZELLIJ"] !== undefined;
-  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
   const currentSession = process.env["ZELLIJ_SESSION_NAME"];
 
   // If inside zellij and trying to attach, use session manager instead
