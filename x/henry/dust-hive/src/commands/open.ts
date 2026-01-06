@@ -271,9 +271,9 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
       await createSessionInBackground(sessionName, layoutPath);
     }
 
-    // Switch to target session using zellij-switch plugin (fire-and-forget)
+    // Switch to target session using zellij-switch plugin
     logger.info(`Switching to session '${sessionName}'...`);
-    Bun.spawn(
+    const switchProc = Bun.spawn(
       [
         "zellij",
         "pipe",
@@ -284,6 +284,7 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
       ],
       { stdin: "ignore", stdout: "ignore", stderr: "ignore" }
     );
+    await switchProc.exited;
 
     return Ok(undefined);
   }
