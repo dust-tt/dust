@@ -116,7 +116,7 @@
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
     "@headlessui/react": "^1.7.19",
-    "allotment": "^1.2.0",
+    "allotment": "^1.20.0",
     "@radix-ui/react-aspect-ratio": "^1.1.0",
     "@radix-ui/react-checkbox": "^1.1.2",
     "@radix-ui/react-collapsible": "^1.1.3",

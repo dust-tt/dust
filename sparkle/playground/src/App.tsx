@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { Button } from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
 
 // Automatically discover all story files
 // @ts-expect-error - import.meta.glob is a Vite feature
@@ -7,7 +7,7 @@ const storyModules = import.meta.glob("./stories/*.tsx", { eager: true });
 
 // Extract story names and components
 const stories = Object.entries(storyModules).map(
-  ([path, module]: [string, any]) => {
+  ([path, module]: [string, unknown]) => {
     const name = path.split("/").pop()?.replace(".tsx", "") || "";
     return {
       name,

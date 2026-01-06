@@ -35,7 +35,11 @@ export default [
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ["eslint.config.mjs"],
+          allowDefaultProject: [
+            "eslint.config.mjs",
+            "playground/postcss.config.cjs",
+            "playground/tailwind.config.cjs",
+          ],
         },
         tsconfigRootDir: import.meta.dirname,
       },
