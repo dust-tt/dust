@@ -110,8 +110,8 @@ async function main() {
     logger: logger,
   });
   await UserModel.sync({ alter: true });
-  await UserMetadataModel.sync({ alter: true });
   await WorkspaceModel.sync({ alter: true });
+  await UserMetadataModel.sync({ alter: true });
   await WorkspaceHasDomainModel.sync({ alter: true });
   await MembershipModel.sync({ alter: true });
   await MembershipInvitationModel.sync({ alter: true });

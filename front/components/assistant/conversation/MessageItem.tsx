@@ -19,6 +19,7 @@ import {
 } from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
+import { useReaction } from "@app/hooks/useReaction";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
 import type { UserType } from "@app/types";
@@ -70,6 +71,12 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           });
         }
       );
+
+    const { onReactionToggle } = useReaction({
+      owner: context.owner,
+      conversationId: context.conversationId,
+      message: data,
+    });
 
     const messageFeedback = context.feedbacksByMessageId[sId];
 
@@ -143,6 +150,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               isLastMessage={!nextData}
               message={data}
               owner={context.owner}
+              onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
             />
           )}
           {isMessageTemporayState(data) && (
@@ -155,6 +163,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
               handleSubmit={context.handleSubmit}
+              onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
             />
           )}
           {data.visibility !== "deleted" &&

@@ -1,16 +1,17 @@
 // Data-driven database initialization with binary caching
 
-import { join } from "node:path";
 import { type InitBinary, binaryExists, getBinaryPath, getCacheSource } from "./cache";
 import type { Environment } from "./environment";
 import { logger } from "./logger";
-import { DUST_HIVE_HOME, getEnvFilePath, getWorktreeDir } from "./paths";
+import { getEnvFilePath, getWorktreeDir, SEED_USER_PATH } from "./paths";
 import { buildShell } from "./shell";
-import { getTemporalNamespaces } from "./temporal";
+import { runSqlSeed } from "./seed";
+import { SEARCH_ATTRIBUTES, TEMPORAL_NAMESPACE_CONFIG, getTemporalNamespaces } from "./temporal";
 
 export { getTemporalNamespaces } from "./temporal";
 
-export const SEED_USER_PATH = join(DUST_HIVE_HOME, "seed-user.json");
+// Re-export from paths.ts for backwards compatibility
+export { SEED_USER_PATH } from "./paths";
 
 // Load environment variables from env.sh
 async function loadEnvVars(envShPath: string): Promise<Record<string, string>> {
@@ -149,12 +150,16 @@ async function initQdrant(
     }
   );
 
-  if (!result.success) {
+  // Treat "already exists" as success (idempotent)
+  const alreadyExists =
+    result.stderr.includes("already exists") || result.stdout.includes("already exists");
+
+  if (!result.success && !alreadyExists) {
     console.log(result.stdout);
     console.error(result.stderr);
   }
 
-  return { success: result.success, usedCache: result.usedCache };
+  return { success: result.success || alreadyExists, usedCache: result.usedCache };
 }
 
 // Initialize Elasticsearch indices (Rust binaries)
@@ -178,7 +183,11 @@ async function initElasticsearchRust(
       }
     );
 
-    if (!result.success) {
+    // Treat "already exists" as success (idempotent)
+    const alreadyExists =
+      result.stderr.includes("already exists") || result.stdout.includes("already exists");
+
+    if (!result.success && !alreadyExists) {
       console.log(result.stdout);
       console.error(result.stderr);
       return { success: false, usedCache };
@@ -222,7 +231,10 @@ async function initElasticsearchTS(
     const stderr = await new Response(proc.stderr).text();
     await proc.exited;
 
-    if (proc.exitCode !== 0) {
+    // Treat "already exists" as success (idempotent)
+    const alreadyExists = stderr.includes("already exists") || stdout.includes("already exists");
+
+    if (proc.exitCode !== 0 && !alreadyExists) {
       console.log(stdout);
       console.error(stderr);
       return false;
@@ -323,10 +335,16 @@ async function runCoreDbInit(env: Environment): Promise<{ success: boolean; used
   const worktreePath = getWorktreeDir(env.name);
   const envVars = await loadEnvVars(envShPath);
 
-  return await runBinary("init_db", [], {
+  const result = await runBinary("init_db", [], {
     cwd: `${worktreePath}/core`,
     env: envVars,
   });
+
+  // Treat "already exists" as success (idempotent)
+  const alreadyExists =
+    result.stderr.includes("already exists") || result.stdout.includes("already exists");
+
+  return { success: result.success || alreadyExists, usedCache: result.usedCache };
 }
 
 // Run front database init
@@ -349,8 +367,19 @@ async function runFrontDbInit(env: Environment): Promise<boolean> {
       stderr: "pipe",
     });
 
+    const stdout = await new Response(proc.stdout).text();
+    const stderr = await new Response(proc.stderr).text();
     await proc.exited;
-    if (proc.exitCode !== 0) {
+
+    // Treat "already exists" or "No migrations" as success (idempotent)
+    const alreadyExists =
+      stderr.includes("already exists") ||
+      stdout.includes("already exists") ||
+      stdout.includes("No migrations");
+
+    if (proc.exitCode !== 0 && !alreadyExists) {
+      console.log(stdout);
+      console.error(stderr);
       return false;
     }
   }
@@ -375,8 +404,24 @@ async function runConnectorsDbInit(env: Environment): Promise<boolean> {
     stderr: "pipe",
   });
 
+  const stdout = await new Response(proc.stdout).text();
+  const stderr = await new Response(proc.stderr).text();
   await proc.exited;
-  return proc.exitCode === 0;
+
+  // Treat "already exists" or "relation already exists" as success (idempotent)
+  const alreadyExists =
+    stderr.includes("already exists") ||
+    stdout.includes("already exists") ||
+    stderr.includes("relation") ||
+    stdout.includes("No migrations");
+
+  if (proc.exitCode !== 0 && !alreadyExists) {
+    console.log(stdout);
+    console.error(stderr);
+    return false;
+  }
+
+  return true;
 }
 
 // Run all DB initialization steps in parallel
@@ -395,6 +440,39 @@ export async function runAllDbInits(env: Environment, projectName: string): Prom
   ]);
 
   logger.success("All databases initialized");
+}
+
+// Create a search attribute on a namespace (idempotent - ignores "already exists")
+async function createSearchAttribute(namespace: string, name: string, type: string): Promise<void> {
+  const proc = Bun.spawn(
+    [
+      "temporal",
+      "operator",
+      "search-attribute",
+      "create",
+      "--name",
+      name,
+      "--type",
+      type,
+      "--namespace",
+      namespace,
+    ],
+    {
+      stdout: "pipe",
+      stderr: "pipe",
+    }
+  );
+  const stderr = await new Response(proc.stderr).text();
+  await proc.exited;
+  if (proc.exitCode !== 0) {
+    const message = stderr.trim();
+    // Ignore if attribute already exists
+    if (!message.toLowerCase().includes("already exists")) {
+      throw new Error(
+        `Failed to create search attribute ${name} on ${namespace}: ${message || "unknown error"}`
+      );
+    }
+  }
 }
 
 // Create Temporal namespaces for an environment
@@ -420,6 +498,19 @@ export async function createTemporalNamespaces(env: Environment): Promise<void> 
   }
 
   logger.success("Temporal namespaces created");
+
+  // Add search attributes to each namespace
+  logger.step("Creating Temporal search attributes...");
+
+  for (const config of TEMPORAL_NAMESPACE_CONFIG) {
+    const namespace = `dust-hive-${env.name}${config.suffix}`;
+    for (const attrName of config.searchAttributes) {
+      const attrType = SEARCH_ATTRIBUTES[attrName];
+      await createSearchAttribute(namespace, attrName, attrType);
+    }
+  }
+
+  logger.success("Temporal search attributes created");
 }
 
 export async function hasSeedConfig(): Promise<boolean> {
@@ -428,48 +519,5 @@ export async function hasSeedConfig(): Promise<boolean> {
 }
 
 export async function runSeedScript(env: Environment): Promise<boolean> {
-  const configExists = await hasSeedConfig();
-  if (!configExists) {
-    return false;
-  }
-
-  logger.step("Seeding database with dev user...");
-
-  const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name);
-  const frontDir = `${worktreePath}/front`;
-
-  // Use tsx directly from node_modules to avoid npx overhead
-  const command = buildShell({
-    sourceEnv: envShPath,
-    sourceNvm: true,
-    run: `./node_modules/.bin/tsx admin/seed_dev_user.ts "${SEED_USER_PATH}"`,
-  });
-
-  const proc = Bun.spawn(["bash", "-c", command], {
-    cwd: frontDir,
-    stdout: "pipe",
-    stderr: "pipe",
-    env: { ...process.env, NODE_ENV: "development" },
-  });
-
-  const stdout = await new Response(proc.stdout).text();
-  const stderr = await new Response(proc.stderr).text();
-  await proc.exited;
-
-  if (proc.exitCode !== 0) {
-    logger.warn("Seed script failed (non-fatal):");
-    if (stdout.trim()) console.log(stdout);
-    if (stderr.trim()) console.error(stderr);
-    return false;
-  }
-
-  if (stdout.trim()) {
-    for (const line of stdout.trim().split("\n")) {
-      console.log(`  ${line}`);
-    }
-  }
-
-  logger.success("Database seeded with dev user");
-  return true;
+  return runSqlSeed(env);
 }

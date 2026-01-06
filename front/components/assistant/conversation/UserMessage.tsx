@@ -11,7 +11,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
-  Markdown,
   MoreIcon,
   PencilSquareIcon,
   Tooltip,
@@ -22,12 +21,12 @@ import { EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import React, { useCallback, useContext, useMemo, useState } from "react";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
+import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
+import { MessageReactions } from "@app/components/assistant/conversation/MessageReactions";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import {
   hasHumansInteracting,
@@ -35,30 +34,14 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { UserHandle } from "@app/components/assistant/conversation/UserHandle";
+import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdown";
 import { ConfirmContext } from "@app/components/Confirm";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
-import {
-  CiteBlock,
-  getCiteDirective,
-} from "@app/components/markdown/CiteBlock";
-import {
-  ContentNodeMentionBlock,
-  contentNodeMentionDirective,
-} from "@app/components/markdown/ContentNodeMentionBlock";
-import {
-  PastedAttachmentBlock,
-  pastedAttachmentDirective,
-} from "@app/components/markdown/PastedAttachmentBlock";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useHover } from "@app/hooks/useHover";
-import {
-  agentMentionDirective,
-  getAgentMentionPlugin,
-  getUserMentionPlugin,
-  userMentionDirective,
-} from "@app/lib/mentions/markdown/plugin";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   UserMessageType,
@@ -124,38 +107,6 @@ function UserMessageEditor({
   );
 }
 
-interface UserMessageContentProps {
-  message: UserMessageType;
-  isDeleted: boolean;
-  isLastMessage: boolean;
-  additionalMarkdownComponents: Components;
-  additionalMarkdownPlugins: PluggableList;
-}
-
-function UserMessageContent({
-  message,
-  isDeleted,
-  isLastMessage,
-  additionalMarkdownComponents,
-  additionalMarkdownPlugins,
-}: UserMessageContentProps) {
-  if (isDeleted) {
-    return <DeletedMessage />;
-  }
-
-  return (
-    <Markdown
-      content={message.content}
-      isStreaming={false}
-      isLastMessage={isLastMessage}
-      additionalMarkdownComponents={additionalMarkdownComponents}
-      additionalMarkdownPlugins={additionalMarkdownPlugins}
-      compactSpacing
-      canCopyQuotes={false}
-    />
-  );
-}
-
 interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
@@ -163,6 +114,7 @@ interface UserMessageProps {
   isLastMessage: boolean;
   message: UserMessageTypeWithContentFragments;
   owner: WorkspaceType;
+  onReactionToggle: (emoji: string) => void;
 }
 
 export function UserMessage({
@@ -172,6 +124,7 @@ export function UserMessage({
   isLastMessage,
   message,
   owner,
+  onReactionToggle,
 }: UserMessageProps) {
   const [shouldShowEditor, setShouldShowEditor] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -187,6 +140,9 @@ export function UserMessage({
     conversationId,
   });
   const confirm = useContext(ConfirmContext);
+
+  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
+  const reactionsEnabled = featureFlags.hasFeature("reactions");
 
   const handleSave = async () => {
     const { markdown, mentions } = editorService.getMarkdownAndMentions();
@@ -206,29 +162,6 @@ export function UserMessage({
     onEnterKeyDown: handleSave,
     disableAutoFocus: false,
   });
-
-  const additionalMarkdownComponents: Components = useMemo(
-    () => ({
-      sup: CiteBlock,
-      // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
-      mention: getAgentMentionPlugin(owner),
-      mention_user: getUserMentionPlugin(owner),
-      content_node_mention: ContentNodeMentionBlock,
-      pasted_attachment: PastedAttachmentBlock,
-    }),
-    [owner]
-  );
-
-  const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [
-      getCiteDirective(),
-      agentMentionDirective,
-      userMentionDirective,
-      contentNodeMentionDirective,
-      pastedAttachmentDirective,
-    ],
-    []
-  );
 
   const renderName = useCallback(
     (name: string | null) => {
@@ -418,17 +351,32 @@ export function UserMessage({
               type="user"
               className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
             >
-              <UserMessageContent
-                message={message}
-                isDeleted={isDeleted}
-                isLastMessage={isLastMessage}
-                additionalMarkdownComponents={additionalMarkdownComponents}
-                additionalMarkdownPlugins={additionalMarkdownPlugins}
-              />
+              {isDeleted ? (
+                <DeletedMessage />
+              ) : (
+                <UserMessageMarkdown
+                  owner={owner}
+                  message={message}
+                  isLastMessage={isLastMessage}
+                />
+              )}
+              {!isDeleted && reactionsEnabled && (
+                <>
+                  <MessageEmojiPicker
+                    key="emoji-picker"
+                    onEmojiSelect={onReactionToggle}
+                  />
+                  <MessageReactions
+                    reactions={message.reactions ?? []}
+                    onReactionClick={onReactionToggle}
+                  />
+                </>
+              )}
             </ConversationMessageContent>
           </div>
         </ConversationMessageContainer>
       )}
+
       {showAgentSuggestions && (
         <AgentSuggestion
           conversationId={conversationId}

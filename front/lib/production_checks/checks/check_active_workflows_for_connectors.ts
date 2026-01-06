@@ -90,13 +90,14 @@ async function listAllConnectorsForProvider(provider: ConnectorProvider) {
   return connectors;
 }
 
-async function areTemporalEntitiesActive(
+async function getMissingTemporalEntitiesActive(
   client: Client,
   connector: ConnectorBlob,
   info: ProviderCheck
 ) {
   const ids = info.makeIdsFn(connector);
 
+  const missingEntities = [];
   switch (info.type) {
     case "workflow": {
       for (const workflowId of ids) {
@@ -107,11 +108,11 @@ async function areTemporalEntitiesActive(
           const descriptions = await Promise.all([workflowHandle.describe()]);
 
           if (descriptions.some(({ status: { name } }) => name !== "RUNNING")) {
-            return false;
+            missingEntities.push(workflowId);
           }
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (err) {
-          return false;
+          missingEntities.push(workflowId);
         }
       }
       break;
@@ -125,17 +126,17 @@ async function areTemporalEntitiesActive(
           const description = await scheduleHandle.describe();
 
           if (description.state.paused) {
-            return false;
+            missingEntities.push(scheduleId);
           }
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (err) {
-          return false;
+          missingEntities.push(scheduleId);
         }
       }
     }
   }
 
-  return true;
+  return missingEntities;
 }
 
 export const checkActiveWorkflows: CheckFunction = async (
@@ -161,13 +162,18 @@ export const checkActiveWorkflows: CheckFunction = async (
       }
       heartbeat();
 
-      const isActive = await areTemporalEntitiesActive(client, connector, info);
+      const missingEntities = await getMissingTemporalEntitiesActive(
+        client,
+        connector,
+        info
+      );
 
-      if (!isActive) {
+      if (missingEntities.length > 0) {
         missingActiveWorkflows.push({
           connectorId: connector.id,
           workspaceId: connector.workspaceId,
           dataSourceId: connector.dataSourceId,
+          missingEntities,
         });
       }
     }

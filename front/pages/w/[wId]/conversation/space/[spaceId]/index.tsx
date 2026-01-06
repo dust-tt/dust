@@ -6,19 +6,21 @@ import {
   NavigationList,
   NavigationListLabel,
 } from "@dust-tt/sparkle";
+import uniqBy from "lodash/uniqBy";
 import moment from "moment";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
+import React from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
 
-import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import { ConversationLayout } from "@app/components/assistant/conversation/ConversationLayout";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
+import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdown";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
@@ -74,22 +76,26 @@ function SpaceConversationListItem({
     .map((m) => m[m.length - 1])
     .find(isUserMessageType);
 
-  const iconsUrls = useMemo(() => {
-    const urls = new Set<string>();
+  const avatars = useMemo(() => {
+    const avatars: Parameters<typeof Avatar.Stack>[0]["avatars"] = [];
     // Lookup the messages in reverse order and collect the users and agents icons
     for (const versions of conversation.content) {
       const message = versions[versions.length - 1];
       if (isUserMessageType(message)) {
-        urls.add(message.user?.image ?? "");
+        avatars.push({
+          isRounded: true,
+          name: message.user?.fullName ?? "",
+          visual: message.user?.image ?? "",
+        });
       } else if (isAgentMessageType(message)) {
-        urls.add(message.configuration.pictureUrl ?? "");
-      }
-
-      if (urls.size === 4) {
-        break;
+        avatars.push({
+          isRounded: false,
+          name: "@" + (message.configuration.name ?? ""),
+          visual: message.configuration.pictureUrl ?? "",
+        });
       }
     }
-    return Array.from(urls);
+    return uniqBy(avatars, "visual");
   }, [conversation.content]);
 
   // TODO(conversations-groups) Are we sure we want to require a user message?
@@ -144,24 +150,12 @@ function SpaceConversationListItem({
         variant="secondary"
         children={
           <div className="flex w-full flex-row items-center gap-2">
-            <div
-              className="relative"
-              style={{ top: -((iconsUrls.length - 1) * 5) / 2 + "px", left: 0 }}
-            >
-              {iconsUrls.map((url, index) => (
-                <div
-                  className={classNames(index > 0 && "absolute")}
-                  style={{
-                    top: index * 5 + "px",
-                    left: 0,
-                    zIndex: index,
-                  }}
-                  key={`avatar-stack-${index}`}
-                >
-                  <Avatar visual={url} size="sm" />
-                </div>
-              ))}
-            </div>
+            <Avatar.Stack
+              avatars={avatars}
+              size="sm"
+              orientation="vertical"
+              nbVisibleItems={5}
+            />
             <div className="flex w-full flex-col gap-2">
               <div className="flex flex-row items-center gap-2">
                 {shouldShowStatusDot && (
@@ -178,15 +172,11 @@ function SpaceConversationListItem({
                   {messageCount} {messageCount === 1 ? "message" : "messages"}
                 </div>
               </div>
-              <AgentMessageMarkdown
+
+              <UserMessageMarkdown
                 owner={owner}
-                content={firstUserMessage?.content}
+                message={firstUserMessage}
                 isLastMessage={false}
-                isStreaming={false}
-                compactSpacing
-                canCopyQuotes={false}
-                forcedTextSize="text-sm"
-                textColor="text-muted-foreground dark:text-muted-foreground-night"
               />
             </div>
           </div>
@@ -393,7 +383,7 @@ export default function SpaceConversations({
       title="Attach files to the conversation"
     >
       <div className="flex w-full items-center justify-center overflow-auto">
-        <div className="max-h-dvh flex w-full flex-col gap-8 pb-2 pt-4 sm:w-full sm:max-w-3xl sm:pb-4">
+        <div className="flex max-h-dvh w-full flex-col gap-8 pb-2 pt-4 sm:w-full sm:max-w-3xl sm:pb-4">
           <div className="flex w-full flex-col gap-4">
             <ContentMessage
               title="Experimental feature"

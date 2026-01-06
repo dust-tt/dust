@@ -106,6 +106,11 @@ ConversationSkillModel.init(SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES, {
       where: { globalSkillId: { [Op.ne]: null } },
       name: "idx_conversation_skills_workspace_conv_agent_global_skill",
     },
+    {
+      fields: ["conversationId"],
+      name: "idx_conversation_skills_conversation_id",
+      concurrently: true,
+    },
   ],
   validate: {
     eitherGlobalOrCustomSkill: eitherGlobalOrCustomSkillValidation,
@@ -165,6 +170,16 @@ AgentMessageSkillModel.init(
       {
         fields: ["workspaceId", "agentMessageId"],
         name: "idx_agent_message_skills_workspace_message",
+      },
+      {
+        fields: ["conversationId"],
+        name: "idx_agent_message_skills_conversation_id",
+        concurrently: true,
+      },
+      {
+        fields: ["agentMessageId"],
+        name: "idx_agent_message_skills_agent_message_id",
+        concurrently: true,
       },
     ],
     validate: {

@@ -1,6 +1,7 @@
 import {
   listWorkOSOrganizationsWithDomain,
   removeWorkOSOrganizationDomain,
+  removeWorkOSOrganizationDomainFromOrganization,
 } from "@app/lib/api/workos/organization";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
@@ -76,12 +77,30 @@ export async function upsertWorkspaceDomain(
 
     const [otherOrganizationWithDomain] = otherOrganizationsWithDomain;
     if (otherOrganizationWithDomain) {
-      return new Err(
-        new Error(
-          `Domain ${domain} already associated with organization ` +
-            `${otherOrganizationWithDomain.id} - ${otherOrganizationWithDomain.metadata.region}`
-        )
-      );
+      if (dropExistingDomain) {
+        logger.info(
+          {
+            domain,
+            organizationId: otherOrganizationWithDomain.id,
+          },
+          "Dropping existing domain"
+        );
+
+        // Delete the domain from WorkOS.
+        await removeWorkOSOrganizationDomainFromOrganization(
+          otherOrganizationWithDomain,
+          {
+            domain,
+          }
+        );
+      } else {
+        return new Err(
+          new Error(
+            `Domain ${domain} already associated with organization ` +
+              `${otherOrganizationWithDomain.id} - ${otherOrganizationWithDomain.metadata.region}`
+          )
+        );
+      }
     }
   }
 

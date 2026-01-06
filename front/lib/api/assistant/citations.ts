@@ -176,5 +176,6 @@ export function getLightAgentMessageFromAgentMessage(
       })),
     richMentions: agentMessage.richMentions,
     completionDurationMs: agentMessage.completionDurationMs,
+    reactions: agentMessage.reactions,
   };
 }

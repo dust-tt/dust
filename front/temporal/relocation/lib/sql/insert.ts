@@ -12,6 +12,15 @@ const JSONB_COLUMNS = [
     tableName: "agent_mcp_actions",
     columns: ["augmentedInputs", "toolConfiguration"],
   },
+  // Following columns should be arrays of objects, but we store them as JSONB
+  {
+    tableName: "remote_mcp_servers",
+    columns: ["cachedTools"],
+  },
+  {
+    tableName: "zendesk_configurations",
+    columns: ["customFieldsConfig"],
+  },
 ];
 
 export function generateParameterizedInsertStatements(
@@ -54,8 +63,7 @@ export function generateParameterizedInsertStatements(
           JSONB_COLUMNS.some(
             (c) => c.tableName === tableName && c.columns.includes(col)
           ) &&
-          (typeof row[col] === "string" ||
-            (Array.isArray(row[col]) && row[col].length > 0))
+          (typeof row[col] === "string" || Array.isArray(row[col]))
         ) {
           params.push(JSON.stringify(row[col]));
           continue;

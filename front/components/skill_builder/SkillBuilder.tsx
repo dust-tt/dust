@@ -139,7 +139,7 @@ export default function SkillBuilder({
       <FormProvider form={form} asForm={false}>
         <div
           className={cn(
-            "h-dvh flex flex-row",
+            "flex h-dvh flex-row",
             "bg-background text-foreground",
             "dark:bg-background-night dark:text-foreground-night"
           )}

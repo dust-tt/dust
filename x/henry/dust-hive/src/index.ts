@@ -43,14 +43,21 @@ cli
   .option("--name <name>", "Environment name")
   .option("--base <branch>", "Base branch")
   .option("--no-open", "Do not open zellij session after spawn")
+  .option("--no-attach", "Create zellij session but don't attach to it")
   .option("--warm", "Open zellij with a warm tab running dust-hive warm")
   .action(
     async (
       name: string | undefined,
-      options: { name?: string; base?: string; open?: boolean; warm?: boolean }
+      options: { name?: string; base?: string; open?: boolean; attach?: boolean; warm?: boolean }
     ) => {
       const resolvedName = name ?? options.name;
-      const spawnOptions: { name?: string; base?: string; noOpen?: boolean; warm?: boolean } = {};
+      const spawnOptions: {
+        name?: string;
+        base?: string;
+        noOpen?: boolean;
+        noAttach?: boolean;
+        warm?: boolean;
+      } = {};
       if (resolvedName !== undefined) {
         spawnOptions.name = resolvedName;
       }
@@ -59,6 +66,9 @@ cli
       }
       if (options.open === false) {
         spawnOptions.noOpen = true;
+      }
+      if (options.attach === false) {
+        spawnOptions.noAttach = true;
       }
       if (options.warm) {
         spawnOptions.warm = true;
@@ -189,8 +199,15 @@ cli
 
 cli
   .command("sync [branch]", "Rebase on branch (default: main), rebuild binaries, refresh deps")
-  .action(async (branch: string | undefined) => {
-    await prepareAndRun(syncCommand(branch));
+  .option("--switch", "Switch to target branch instead of rebasing onto it")
+  .action(async (branch: string | undefined, options: { switch?: boolean }) => {
+    const syncOptions: { targetBranch?: string; switch?: boolean } = {
+      switch: Boolean(options.switch),
+    };
+    if (branch !== undefined) {
+      syncOptions.targetBranch = branch;
+    }
+    await prepareAndRun(syncCommand(syncOptions));
   });
 
 cli

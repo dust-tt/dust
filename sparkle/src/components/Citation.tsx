@@ -53,7 +53,7 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
         variant={variant}
         size="sm"
         className={cn(
-          "s-min-w-24 s-relative s-flex s-flex-none s-flex-col s-overflow-hidden",
+          "s-relative s-flex s-min-w-24 s-flex-none s-flex-col s-overflow-hidden",
           // Use min() to maintain aspect ratio in grid mode (8% of width) while capping
           // padding at 3 (0.75rem) for list mode to prevent excessive top padding on wide items.
           "s-pt-[min(8%,theme(spacing.3))]",

@@ -23,6 +23,9 @@ export const FORWARDER_STATE_PATH = join(DUST_HIVE_HOME, "forward.json");
 // Activity tracking (last-interacted environment)
 export const ACTIVITY_PATH = join(DUST_HIVE_HOME, "activity.json");
 
+// Seed user configuration
+export const SEED_USER_PATH = join(DUST_HIVE_HOME, "seed-user.json");
+
 // Per-environment paths
 export function getEnvDir(name: string): string {
   return join(DUST_HIVE_ENVS, name);

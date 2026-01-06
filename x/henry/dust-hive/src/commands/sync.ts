@@ -4,6 +4,13 @@ import { ALL_BINARIES, buildBinaries, getCacheSource, setCacheSource } from "../
 import { logger } from "../lib/logger";
 import { findRepoRoot } from "../lib/paths";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
+import { runNpmInstall } from "../lib/setup";
+import { getCurrentBranch } from "../lib/worktree";
+
+export interface SyncOptions {
+  targetBranch?: string;
+  switch?: boolean;
+}
 
 // Check if repo has uncommitted changes (ignores untracked files)
 async function hasUncommittedChanges(repoRoot: string): Promise<boolean> {
@@ -23,21 +30,6 @@ async function hasUncommittedChanges(repoRoot: string): Promise<boolean> {
   return lines.length > 0;
 }
 
-// Get current branch name
-async function getCurrentBranch(repoRoot: string): Promise<string | null> {
-  const proc = Bun.spawn(["git", "rev-parse", "--abbrev-ref", "HEAD"], {
-    cwd: repoRoot,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const output = await new Response(proc.stdout).text();
-  await proc.exited;
-  if (proc.exitCode !== 0) {
-    return null;
-  }
-  return output.trim();
-}
-
 // Run git fetch
 async function gitFetch(repoRoot: string): Promise<boolean> {
   const proc = Bun.spawn(["git", "fetch", "origin"], {
@@ -50,6 +42,40 @@ async function gitFetch(repoRoot: string): Promise<boolean> {
 }
 
 type RebaseResult = { success: true } | { success: false; conflict: boolean; error: string };
+
+// Checkout a branch and pull latest
+async function checkoutAndPull(
+  repoRoot: string,
+  branch: string
+): Promise<{ success: boolean; error?: string }> {
+  // Checkout the branch
+  const checkoutProc = Bun.spawn(["git", "checkout", branch], {
+    cwd: repoRoot,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const checkoutStderr = await new Response(checkoutProc.stderr).text();
+  await checkoutProc.exited;
+
+  if (checkoutProc.exitCode !== 0) {
+    return { success: false, error: checkoutStderr };
+  }
+
+  // Pull latest
+  const pullProc = Bun.spawn(["git", "pull", "--rebase"], {
+    cwd: repoRoot,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const pullStderr = await new Response(pullProc.stderr).text();
+  await pullProc.exited;
+
+  if (pullProc.exitCode !== 0) {
+    return { success: false, error: pullStderr };
+  }
+
+  return { success: true };
+}
 
 // Rebase current branch on origin/<branch>
 async function rebaseOnBranch(repoRoot: string, branch: string): Promise<RebaseResult> {
@@ -74,9 +100,9 @@ async function rebaseOnBranch(repoRoot: string, branch: string): Promise<RebaseR
   return { success: false, conflict: isConflict, error: stderr };
 }
 
-// Run npm install in a directory
-async function runNpmInstall(dir: string): Promise<boolean> {
-  const proc = Bun.spawn(["npm", "install", "--prefer-offline"], {
+// Run bun install in a directory
+async function runBunInstall(dir: string): Promise<boolean> {
+  const proc = Bun.spawn(["bun", "install"], {
     cwd: dir,
     stdout: "pipe",
     stderr: "pipe",
@@ -85,9 +111,20 @@ async function runNpmInstall(dir: string): Promise<boolean> {
   return proc.exitCode === 0;
 }
 
-export async function syncCommand(targetBranch?: string): Promise<Result<void>> {
-  const startTime = Date.now();
-  const branch = targetBranch ?? "main";
+// Run bun link in a directory
+async function runBunLink(dir: string): Promise<boolean> {
+  const proc = Bun.spawn(["bun", "link"], {
+    cwd: dir,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await proc.exited;
+  return proc.exitCode === 0;
+}
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: orchestration function with multiple steps
+export async function syncCommand(options: SyncOptions = {}): Promise<Result<void>> {
+  const startTimeMs = Date.now();
 
   // Find repo root (or use existing cache source)
   let repoRoot = await getCacheSource();
@@ -117,10 +154,15 @@ export async function syncCommand(targetBranch?: string): Promise<Result<void>> 
   logger.success("Working directory clean");
 
   // Get current branch for reporting
-  const currentBranch = await getCurrentBranch(repoRoot);
-  if (!currentBranch) {
+  let currentBranch: string;
+  try {
+    currentBranch = await getCurrentBranch(repoRoot);
+  } catch {
     return Err(new CommandError("Could not determine current branch"));
   }
+
+  // Determine target branch (default to main)
+  const targetBranch = options.targetBranch ?? "main";
 
   // Fetch from origin
   logger.step("Fetching from origin...");
@@ -130,26 +172,37 @@ export async function syncCommand(targetBranch?: string): Promise<Result<void>> 
   }
   logger.success("Fetched latest changes");
 
-  // Rebase current branch on origin/<branch>
-  logger.step(`Rebasing '${currentBranch}' on origin/${branch}...`);
-  const rebaseResult = await rebaseOnBranch(repoRoot, branch);
-  if (!rebaseResult.success) {
-    if (rebaseResult.conflict) {
-      console.log();
-      logger.error("Rebase failed due to conflicts.");
-      console.log();
-      console.log("To resolve:");
-      console.log("  1. Fix the conflicts in the listed files");
-      console.log("  2. Stage your changes: git add <files>");
-      console.log("  3. Continue the rebase: git rebase --continue");
-      console.log("  4. Run dust-hive sync again");
-      console.log();
-      console.log("Or abort the rebase: git rebase --abort");
-      return Err(new CommandError("Rebase conflicts - resolve and run sync again"));
+  // Sync to target branch
+  if (options.switch) {
+    // --switch: checkout target branch and pull
+    logger.step(`Switching to '${targetBranch}' and pulling latest...`);
+    const switchResult = await checkoutAndPull(repoRoot, targetBranch);
+    if (!switchResult.success) {
+      return Err(new CommandError(`Failed to switch to ${targetBranch}: ${switchResult.error}`));
     }
-    return Err(new CommandError(`Rebase failed: ${rebaseResult.error}`));
+    logger.success(`Switched to '${targetBranch}' with latest changes`);
+  } else {
+    // Rebase current branch on origin/<targetBranch>
+    logger.step(`Rebasing '${currentBranch}' on origin/${targetBranch}...`);
+    const rebaseResult = await rebaseOnBranch(repoRoot, targetBranch);
+    if (!rebaseResult.success) {
+      if (rebaseResult.conflict) {
+        console.log();
+        logger.error("Rebase failed due to conflicts.");
+        console.log();
+        console.log("To resolve:");
+        console.log("  1. Fix the conflicts in the listed files");
+        console.log("  2. Stage your changes: git add <files>");
+        console.log("  3. Continue the rebase: git rebase --continue");
+        console.log("  4. Run dust-hive sync again");
+        console.log();
+        console.log("Or abort the rebase: git rebase --abort");
+        return Err(new CommandError("Rebase conflicts - resolve and run sync again"));
+      }
+      return Err(new CommandError(`Rebase failed: ${rebaseResult.error}`));
+    }
+    logger.success(`Rebased '${currentBranch}' on latest ${targetBranch}`);
   }
-  logger.success(`Rebased '${currentBranch}' on latest ${branch}`);
 
   // Update cache source
   await setCacheSource(repoRoot);
@@ -158,14 +211,15 @@ export async function syncCommand(targetBranch?: string): Promise<Result<void>> 
   logger.step("Updating node dependencies...");
   console.log();
 
-  const dirs = [
+  const npmDirs = [
     { name: "sdks/js", path: `${repoRoot}/sdks/js` },
     { name: "front", path: `${repoRoot}/front` },
     { name: "connectors", path: `${repoRoot}/connectors` },
   ];
+  const dustHiveDir = { name: "x/henry/dust-hive", path: `${repoRoot}/x/henry/dust-hive` };
 
   const results = await Promise.all(
-    dirs.map(async ({ name, path }) => {
+    npmDirs.map(async ({ name, path }) => {
       logger.step(`  ${name}...`);
       const success = await runNpmInstall(path);
       if (success) {
@@ -192,11 +246,38 @@ export async function syncCommand(targetBranch?: string): Promise<Result<void>> 
   }
   logger.success(`Built ${buildResult.built.length} binaries`);
 
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+  // Install and link dust-hive globally (only on main)
+  logger.step(`Installing ${dustHiveDir.name} dependencies...`);
+  const installSuccess = await runBunInstall(dustHiveDir.path);
+  if (!installSuccess) {
+    return Err(new CommandError("Failed to run bun install for dust-hive"));
+  }
+  logger.success(`${dustHiveDir.name} dependencies installed`);
+
+  // Only bun link when we're actually on main's code
+  // With --switch: we end up on targetBranch
+  // Without --switch: we stay on currentBranch (just rebased)
+  const finalBranch = options.switch ? targetBranch : currentBranch;
+  if (finalBranch === "main") {
+    logger.step(`Linking ${dustHiveDir.name}...`);
+    const linkSuccess = await runBunLink(dustHiveDir.path);
+    if (!linkSuccess) {
+      return Err(new CommandError("Failed to run bun link for dust-hive"));
+    }
+    logger.success("dust-hive linked globally");
+  } else {
+    logger.info("Skipping bun link (only done when on main branch)");
+  }
+
+  const elapsed = ((Date.now() - startTimeMs) / 1000).toFixed(1);
   console.log();
   logger.success(`Sync complete! (${elapsed}s)`);
   console.log();
-  console.log(`Branch '${currentBranch}' is now rebased on latest ${branch}.`);
+  if (options.switch) {
+    console.log(`Now on '${targetBranch}' with latest changes.`);
+  } else {
+    console.log(`Branch '${currentBranch}' is now rebased on latest ${targetBranch}.`);
+  }
   console.log("Dependencies and binaries are up to date.");
   console.log();
 

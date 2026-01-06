@@ -1,3 +1,3 @@
 #!/bin/sh
-npx tsx admin/init_plans.ts
+npx tsx admin/init_plans.ts "$@"
 

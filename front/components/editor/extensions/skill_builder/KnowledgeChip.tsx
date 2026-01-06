@@ -44,6 +44,7 @@ export function KnowledgeChip({ node, title, onRemove }: KnowledgeChipProps) {
       color="highlight"
       onRemove={onRemove}
       className="align-middle"
+      href=""
     />
   );
 }
@@ -66,6 +67,7 @@ export function KnowledgeErrorChip({
       color="warning"
       onRemove={onRemove}
       className="align-middle"
+      href=""
     />
   );
 }

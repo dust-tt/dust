@@ -257,7 +257,6 @@ export const AvatarStackExample: Story = {
         <Avatar.Stack
           size="xs"
           nbVisibleItems={3}
-          isRounded
           avatars={[
             {
               name: "Isabelle Doe",
@@ -321,7 +320,6 @@ export const AvatarStackExample: Story = {
         <Avatar.Stack
           size="sm"
           nbVisibleItems={4}
-          isRounded
           avatars={[
             {
               name: "Isabelle Doe",
@@ -433,16 +431,17 @@ export const AvatarStackExample: Story = {
         <Avatar.Stack
           size="xs"
           nbVisibleItems={3}
-          isRounded
           orientation="vertical"
           avatars={[
             {
               name: "Isabelle Doe",
               visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+              isRounded: true,
             },
             {
               name: "Rafael Doe",
               visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+              isRounded: true,
             },
             {
               name: "Aria Doe",
@@ -458,7 +457,6 @@ export const AvatarStackExample: Story = {
         <Avatar.Stack
           size="sm"
           nbVisibleItems={4}
-          isRounded
           orientation="vertical"
           avatars={[
             {
@@ -468,6 +466,7 @@ export const AvatarStackExample: Story = {
             {
               name: "Rafael Doe",
               visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+              isRounded: true,
             },
             {
               name: "Aria Doe",
@@ -476,6 +475,7 @@ export const AvatarStackExample: Story = {
             {
               name: "Omar Doe",
               visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+              isRounded: true,
             },
           ]}
         />
@@ -488,6 +488,7 @@ export const AvatarStackExample: Story = {
             {
               name: "Isabelle Doe",
               visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+              isRounded: true,
             },
             {
               name: "Rafael Doe",
@@ -500,6 +501,7 @@ export const AvatarStackExample: Story = {
             {
               name: "Omar Doe",
               visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+              isRounded: true,
             },
           ]}
         />

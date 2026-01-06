@@ -184,10 +184,15 @@ async function handler(
 
       // Workspace-scoped metadata (requires workspaceId).
       if (workspaceId && favoritePlatforms !== undefined) {
-        await u.setMetadata(
-          `workspace:${workspaceId}:favorite_platforms`,
-          JSON.stringify(favoritePlatforms)
-        );
+        // Find the workspace by sId to get its id
+        const workspace = user.workspaces.find((w) => w.sId === workspaceId);
+        if (workspace) {
+          await u.setMetadata(
+            "favorite_platforms",
+            JSON.stringify(favoritePlatforms),
+            workspace.id
+          );
+        }
       }
 
       await ServerSideTracking.trackUpdateUser({
