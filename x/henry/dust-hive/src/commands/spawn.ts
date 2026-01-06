@@ -25,6 +25,7 @@ interface SpawnOptions {
   noOpen?: boolean;
   noAttach?: boolean;
   warm?: boolean;
+  wait?: boolean;
 }
 
 async function promptForName(): Promise<string> {
@@ -124,14 +125,17 @@ async function setupWorktree(
 // Phase 3: Start SDK
 async function startSdk(
   env: Environment,
-  worktreePath: string
+  worktreePath: string,
+  waitForReady: boolean
 ): Promise<Result<void, CommandError>> {
   const { repoRoot } = env.metadata;
   const workspaceBranch = env.metadata.workspaceBranch;
 
   try {
     await startService(env, "sdk");
-    await waitForServiceReady(env, "sdk");
+    if (waitForReady) {
+      await waitForServiceReady(env, "sdk");
+    }
   } catch (error) {
     logger.error("Spawn failed during SDK startup, cleaning up...");
     await cleanupPartialEnvironment(repoRoot, worktreePath, workspaceBranch).catch((e) =>
@@ -213,7 +217,12 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
     initialized: false,
   };
 
-  const sdkResult = await startSdk(env, worktreePath);
+  // Wait for SDK build if:
+  // - --no-open is passed (forced, no UI to show progress)
+  // - --wait is explicitly passed
+  // Otherwise, let the watch process run and show progress in zellij
+  const shouldWaitForSdk = options.noOpen || options.wait;
+  const sdkResult = await startSdk(env, worktreePath, Boolean(shouldWaitForSdk));
   if (!sdkResult.ok) return sdkResult;
 
   logger.success(`Environment '${name}' created successfully!`);
