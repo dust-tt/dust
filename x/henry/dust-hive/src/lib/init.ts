@@ -320,7 +320,7 @@ async function runFrontDbInit(env: Environment): Promise<boolean> {
   // Both init_db.sh and init_plans.sh print "Done" when they complete successfully
   const commands = [
     { cmd: "./admin/init_db.sh --unsafe", name: "init_db", expectDone: true },
-    { cmd: "./admin/init_plans.sh --unsafe", name: "init_plans", expectDone: true },
+    { cmd: "./admin/init_plans.sh", name: "init_plans", expectDone: true },
   ];
 
   for (const { cmd, name, expectDone } of commands) {
