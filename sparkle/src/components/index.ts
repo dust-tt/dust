@@ -168,9 +168,9 @@ export {
 export { ScrollArea, ScrollBar } from "./ScrollArea";
 export { SearchDropdownMenu } from "./SearchDropdownMenu";
 export { SearchInput, SearchInputWithPopover } from "./SearchInput";
+export { Separator } from "./Separator";
 export type { SidebarLayoutProps, SidebarLayoutRef } from "./SidebarLayout";
 export { SidebarLayout } from "./SidebarLayout";
-export { Separator } from "./Separator";
 export {
   Sheet,
   SheetClose,
