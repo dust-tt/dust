@@ -19,7 +19,7 @@ export const DUST_MARKUP_PERCENT = 30;
 // A discount above this threshold would result in selling below cost.
 // Formula: (1 - 1 / (1 + MARKUP/100)) * 100
 // With 30% markup: (1 - 1/1.30) * 100 ≈ 23.08%
-export const MAX_DISCOUNT_PERCENT = Math.floor(
+export const MAX_DISCOUNT_PERCENT = Math.ceil(
   (1 - 1 / (1 + DUST_MARKUP_PERCENT / 100)) * 100
 );
 
