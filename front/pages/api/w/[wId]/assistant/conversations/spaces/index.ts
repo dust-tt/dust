@@ -27,7 +27,7 @@ async function handler(
     case "GET":
       const workspace = auth.getNonNullableWorkspace();
 
-      // Filter out non-regular groups as we only want to allow conversations in regular spaces (that are linked to regular groups)
+      // Filter out non-regular groups as we only want to allow conversations in project spaces (that are linked to regular groups)
       const allGroups = auth
         .groups()
         .filter((g) => g.kind === "regular" && g.workspaceId === workspace.id);
@@ -66,7 +66,7 @@ async function handler(
         summary: spaces
           .filter(
             (space) =>
-              space.conversationsEnabled || conversationsBySpace.has(space.id)
+              space.kind === "project" || conversationsBySpace.has(space.id)
           )
           .map((space) => ({
             space: space.toJSON(),

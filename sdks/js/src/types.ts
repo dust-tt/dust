@@ -1768,7 +1768,7 @@ export type DustAPICredentials = {
 };
 
 const SpaceKindSchema = FlexibleEnumSchema<
-  "regular" | "global" | "system" | "public" | "conversations"
+  "regular" | "global" | "system" | "public" | "conversations" | "project"
 >();
 
 const SpaceTypeSchema = z.object({

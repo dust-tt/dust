@@ -86,24 +86,24 @@ inserted_global_group AS (
 
 -- Step 4a: Create system space
 inserted_system_space AS (
-  INSERT INTO vaults ("workspaceId", name, kind, "managementMode", "conversationsEnabled", "createdAt", "updatedAt")
-  SELECT id, 'System', 'system', 'manual', false, NOW(), NOW()
+  INSERT INTO vaults ("workspaceId", name, kind, "managementMode", "createdAt", "updatedAt")
+  SELECT id, 'System', 'system', 'manual',NOW(), NOW()
   FROM inserted_workspace
   RETURNING id, "workspaceId"
 ),
 
 -- Step 4b: Create global space
 inserted_global_space AS (
-  INSERT INTO vaults ("workspaceId", name, kind, "managementMode", "conversationsEnabled", "createdAt", "updatedAt")
-  SELECT id, 'Company Data', 'global', 'manual', false, NOW(), NOW()
+  INSERT INTO vaults ("workspaceId", name, kind, "managementMode", "createdAt", "updatedAt")
+  SELECT id, 'Company Data', 'global', 'manual', NOW(), NOW()
   FROM inserted_workspace
   RETURNING id, "workspaceId"
 ),
 
 -- Step 4c: Create conversations space
 inserted_conversations_space AS (
-  INSERT INTO vaults ("workspaceId", name, kind, "managementMode", "conversationsEnabled", "createdAt", "updatedAt")
-  SELECT id, 'Conversations', 'conversations', 'manual', false, NOW(), NOW()
+  INSERT INTO vaults ("workspaceId", name, kind, "managementMode", "createdAt", "updatedAt")
+  SELECT id, 'Conversations', 'conversations', 'manual', NOW(), NOW()
   FROM inserted_workspace
   RETURNING id, "workspaceId"
 ),

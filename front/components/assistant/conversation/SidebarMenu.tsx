@@ -56,7 +56,7 @@ import { CreateProjectModal } from "@app/components/assistant/conversation/Creat
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { SpacesList } from "@app/components/assistant/conversation/sidebar/SpacesList";
+import { ProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
 import {
   getGroupConversationsByDate,
   getGroupConversationsByUnreadAndActionRequired,
@@ -568,7 +568,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                       ) : null
                     }
                   >
-                    <SpacesList owner={owner} summary={summary} />
+                    <ProjectsList owner={owner} summary={summary} />
                   </NavigationListCollapsibleSection>
 
                   <NavigationListCollapsibleSection

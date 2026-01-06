@@ -7,14 +7,13 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import { useCreateSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 
 interface CreateProjectModalProps {
@@ -36,14 +35,9 @@ export function CreateProjectModal({
 
   const sendNotification = useSendNotification();
 
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const hasSpaceConversations = hasFeature("projects");
-
   const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,
-    options: { disabled: !hasSpaceConversations },
+    options: { disabled: true },
   });
 
   useEffect(() => {
@@ -74,7 +68,7 @@ export function CreateProjectModal({
       isRestricted: false,
       managementMode: "manual",
       memberIds: user?.sId ? [user.sId] : [],
-      conversationsEnabled: true,
+      spaceKind: "project",
     });
 
     setIsSaving(false);

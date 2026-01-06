@@ -81,6 +81,7 @@ export const groupSpacesForDisplay = (spaces: SpaceType[]) => {
 
         case "global":
         case "regular":
+        case "project":
           return space.isRestricted ? "restricted" : "shared";
 
         default:

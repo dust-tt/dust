@@ -20,7 +20,6 @@ const PatchSpaceMembersRequestBodySchema = t.intersection([
   t.type({
     isRestricted: t.boolean,
     name: t.string,
-    conversationsEnabled: t.boolean,
   }),
   t.union([
     t.type({

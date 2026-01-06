@@ -1,6 +1,5 @@
 import {
   Button,
-  ContentMessage,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
@@ -44,7 +43,6 @@ import {
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type {
   GroupType,
@@ -84,13 +82,7 @@ export function CreateOrEditSpaceModal({
   plan,
 }: CreateOrEditSpaceModalProps) {
   const confirm = React.useContext(ConfirmContext);
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
   const [spaceName, setSpaceName] = useState<string>(space?.name ?? "");
-  const [conversationsEnabled, setConversationsEnabled] = useState<boolean>(
-    space?.conversationsEnabled ?? false
-  );
   const [selectedMembers, setSelectedMembers] = useState<UserType[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<GroupType[]>([]);
 
@@ -233,7 +225,6 @@ export function CreateOrEditSpaceModal({
       if (planAllowsSCIM && managementType === "group") {
         await doUpdate(space, {
           isRestricted,
-          conversationsEnabled,
           groupIds: selectedGroups.map((group) => group.sId),
           managementMode: "group",
           name: trimmedName,
@@ -241,7 +232,6 @@ export function CreateOrEditSpaceModal({
       } else {
         await doUpdate(space, {
           isRestricted,
-          conversationsEnabled,
           memberIds: selectedMembers.map((vm) => vm.sId),
           managementMode: "manual",
           name: trimmedName,
@@ -259,6 +249,7 @@ export function CreateOrEditSpaceModal({
           isRestricted,
           groupIds: selectedGroups.map((group) => group.sId),
           managementMode: "group",
+          spaceKind: "regular",
         });
       } else {
         createdSpace = await doCreate({
@@ -266,6 +257,7 @@ export function CreateOrEditSpaceModal({
           isRestricted,
           memberIds: selectedMembers.map((vm) => vm.sId),
           managementMode: "manual",
+          spaceKind: "regular",
         });
       }
 
@@ -291,7 +283,6 @@ export function CreateOrEditSpaceModal({
     managementType,
     selectedGroups,
     planAllowsSCIM,
-    conversationsEnabled,
   ]);
 
   const onDelete = useCallback(async () => {
@@ -399,11 +390,6 @@ export function CreateOrEditSpaceModal({
     setIsDirty(true);
   }, []);
 
-  const handleConversationsEnabledChange = useCallback((value: boolean) => {
-    setConversationsEnabled(value);
-    setIsDirty(true);
-  }, []);
-
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
       <SheetContent trapFocusScope={false} size="lg">
@@ -442,42 +428,10 @@ export function CreateOrEditSpaceModal({
                 }
               }}
             />
-            {hasFeature("projects") && space?.kind === "regular" && (
-              <div>
-                <ContentMessage
-                  title="Alpha: Use as Project"
-                  variant="info"
-                  action={
-                    <SliderToggle
-                      selected={conversationsEnabled}
-                      onClick={() => {
-                        handleConversationsEnabledChange(!conversationsEnabled);
-                      }}
-                    />
-                  }
-                >
-                  <p>
-                    This feature is currently in internal testing. It is only
-                    available in the Dust workspace ("projects" feature flag
-                    enabled).
-                    <br />
-                    Enabling this feature will make the space show in the "Chat"
-                    sidebar for all members of the space.
-                    {!isRestricted && (
-                      <>
-                        <br />
-                        Since this space is not restricted, you can pick which
-                        members will see the chat sidebar.
-                      </>
-                    )}
-                  </p>
-                </ContentMessage>
-              </div>
-            )}
+
             <RestrictedAccessBody
               isRestricted={isRestricted}
               isManual={isManual}
-              areConversationsEnabled={conversationsEnabled}
               planAllowsSCIM={planAllowsSCIM}
               managementType={managementType}
               owner={owner}
@@ -601,7 +555,6 @@ function RestrictedAccessHeader({
 interface RestrictedAccessBodyProps {
   isRestricted: boolean;
   isManual: boolean;
-  areConversationsEnabled: boolean;
   planAllowsSCIM: boolean;
   managementType: MembersManagementType;
   owner: LightWorkspaceType;
@@ -617,7 +570,6 @@ interface RestrictedAccessBodyProps {
 function RestrictedAccessBody({
   isRestricted,
   isManual,
-  areConversationsEnabled,
   planAllowsSCIM,
   managementType,
   owner,
@@ -629,10 +581,7 @@ function RestrictedAccessBody({
   onMembersUpdated,
   onGroupsUpdated,
 }: RestrictedAccessBodyProps) {
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  if (isRestricted || (hasFeature("projects") && areConversationsEnabled)) {
+  if (isRestricted) {
     return (
       <>
         {planAllowsSCIM ? (

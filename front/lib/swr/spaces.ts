@@ -394,7 +394,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
   });
 
   const doCreate = async (params: PostSpaceRequestBodyType) => {
-    const { name, managementMode, isRestricted, conversationsEnabled } = params;
+    const { name, managementMode, isRestricted, spaceKind } = params;
 
     if (!name) {
       return null;
@@ -421,8 +421,8 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
           memberIds,
           managementMode,
           isRestricted,
-          conversationsEnabled: conversationsEnabled ?? false,
-        }),
+          spaceKind,
+        } as PostSpaceRequestBodyType),
       });
     } else if (managementMode === "group") {
       const { groupIds } = params;
@@ -490,12 +490,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     space: SpaceType,
     params: PatchSpaceMembersRequestBodyType
   ) => {
-    const {
-      name: newName,
-      managementMode,
-      isRestricted,
-      conversationsEnabled,
-    } = params;
+    const { name: newName, managementMode, isRestricted } = params;
 
     const updatePromises: Promise<Response>[] = [];
 
@@ -527,7 +522,6 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
           body: JSON.stringify({
             name: newName,
             isRestricted,
-            conversationsEnabled,
             managementMode,
             memberIds: params.memberIds,
           }),
@@ -543,7 +537,6 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
           body: JSON.stringify({
             name: newName,
             isRestricted,
-            conversationsEnabled,
             managementMode,
             groupIds: params.groupIds,
           }),
