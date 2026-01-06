@@ -1,0 +1,94 @@
+HubSpot is a CRM (Customer Relationship Management) platform that helps companies manage sales, marketing, and customer service activities.
+It tracks deals, contacts, companies, and interactions throughout the customer lifecycle.
+
+Your task is to generate a single skill about how to use HubSpot in a company based on all the prompts of their agents.
+Some agents will actually use HubSpot, some are not.
+Read all the prompts of all the agents and extract relevant information related to interacting with HubSpot in this company.
+
+Information that fits inside a skill can be about:
+ - How to search for and retrieve deal, contact, or company information
+ - Pipeline stages and how to update deal stages
+ - Custom properties and fields used by the company
+ - Best practices for updating CRM records after calls or meetings
+ - How to log activities and notes
+ - Integration with other tools (call transcripts, emails, calendar)
+ - Rules for data validation and attribution
+ - How to handle deal intelligence and enrichment
+ - Contact and company association rules
+ - Reporting and analytics queries
+
+This is not an exhaustive list and not all companies will have all these.
+
+Extract these info from all the prompts and put them in a structured way, focusing on the HOW (specific SQL patterns, table names, project structures) rather than just the WHAT. The structure will depends on the data you find.
+
+
+### Examples
+
+#### Non valuable sections
+
+Here are some good examples of sections which can be included in a HubspotManagement skill.
+These examples come from other companies so do not copy them as is, it should be used to give you an idea of what is useful in a skill and what to search for in the agent prompts. 
+
+CRITICAL: These examples come from other companies so do not copy them as is: ALWAYS GENERATE SKILL CONTENT BASED ON PROMPT CONTENT.
+
+This example gives context to the agent so it knows how deals work in this example company:
+<SkillSectionExample1>
+### Deal Pipeline Stages at AcmeCompany
+- Prospecting → Initial contact, qualifying interest
+        Exit criteria: Budget confirmed, decision maker identified
+        Typical duration: 1-2 weeks
+- Discovery Call → Understanding needs, presenting solution
+        Exit criteria: Demo scheduled or proposal requested
+        Typical duration: 1 week, auto-creates task "Prepare demo"
+- Proposal Sent → Quote delivered, negotiations ongoing
+        Exit criteria: Verbal commitment received or rejected
+        Typical duration: 2-3 weeks, requires proposal attachment
+- Closed Won / Closed Lost → Final outcomes
+        Closed Won: Auto-creates onboarding ticket, notifies CS team
+        Closed Lost: Requires "Lost Reason" property completion
+</SkillSectionExample1>
+
+This example give a clear process to create new deals:
+<SkillSectionExample2>
+## Creating a New Deal from Inbound Lead
+When a qualified inbound lead requests demo or pricing:
+ * Search HubSpot for existing contact by email; create new contact if not found
+ * Associate contact with company record (create company if needed using domain)
+ * Create deal in "Prospecting" stage with title format: "[Company Name] - [Product]"
+ * Set required properties: Deal Owner (assign to lead owner), Expected Close Date (30 days out), Lead Source (Inbound)
+ * Add deal to appropriate pipeline: "New Business" for new customers, "Upsell" for existing
+ * Create task for deal owner: "Initial discovery call - [contact name]" due in 2 business days
+ * Log note on deal with lead context: source, pages visited, forms submitted
+ * If deal value >$50k, add tag requires-manager-approval and notify sales manager
+</SkillSectionExample2>
+
+Here is example of how the skill can explain how to enrich a deal with a fictive process: 
+<SkillSectionExample3>
+### Enriching Contact Records from Discovery Calls at AcmeCompany
+After completing a discovery or demo call:
+- Log call outcome as note on contact record with key discussion points
+- Update contact properties: Last Meaningful Interaction (today), Buying Committee Role, Pain Points (multi-select custom field)
+- Update company properties: Number of Employees (if different), Tech Stack (multi-select), Current Solution (competitor)
+- If multiple contacts from same company, associate all to same deal
+- Create follow-up task based on call outcome: "Send proposal" or "Schedule decision maker call"
+- Set deal stage based on next steps: move to "Discovery Call" if completed, "Proposal Sent" if sending quote
+- Log meeting link (Zoom, Google Meet) in note for reference
+- If they mentioned specific features, add to deal property Features of Interest for product team visibility
+</SkillSectionExample3>
+
+Here is a an example of a fictive process which helps the agent creating a deal.
+This is not the process in the company for which you create the skill so DO NOT COPY PASTE THIS EXAMPLE:
+<SkillSectionExample4>
+### Creating a Deal with Contact and Company (Using HubSpot Tools) in Acme's Hubspot account
+When asked to create a new sales opportunity:
+1. Use `hubspot__get_object_by_email` to check if contact exists, if not use `hubspot__create_contact`
+2. Use `hubspot__search_crm_objects` to find company by domain, if not found use `hubspot__create_company`
+3. Use `hubspot__get_object_properties` with objectType="deals" to see valid dealstage and pipeline values
+4. Use `hubspot__create_deal` with properties: `dealname`, `dealstage`, pipeline, amount, closedate
+5. Include associations in same call: associations: [{ toObjectId: contactId, toObjectType: "contacts" }, { toObjectId: companyId, toObjectType: "companies" }]
+6. Generate HubSpot link with `hubspot__get_hubspot_portal_id` and `hubspot__get_hubspot_link` for user access
+
+Important: Always check valid property values with `get_object_properties` first - don't guess internal values for dropdowns.
+</SkillSectionExample4>
+
+CRITICAL: NEVER copy these examples but try to identify similar information in agent prompts. If you don't find anything similar just don't include such sections. 

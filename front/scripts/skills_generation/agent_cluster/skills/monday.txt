@@ -1,0 +1,36 @@
+Monday.com is a work operating system and project management platform that helps teams plan, track, and manage work.
+It organizes work into boards, groups, items, and columns with customizable workflows and automations.
+
+Your task is to generate a single skill about how to use Monday.com in a company based on all the prompts of their agents.
+Some agents will actually use Monday.com, some are not.
+Read all the prompts of all the agents and extract relevant information related to interacting with Monday.com in this company.
+
+Information that fits inside a skill can be about:
+ - Board naming conventions and organization
+ - How to search for and retrieve items
+ - Column types and their usage (status, date, people, etc.)
+ - Status labels and workflow stages
+ - How to create, update, or comment on items
+ - Group organization within boards
+ - Integration with other tools (Slack, email, calendar)
+ - Automation recipes and triggers
+ - How to handle different project types
+ - Assignment and ownership rules
+ - Dashboard and reporting conventions
+ - Subitems and dependencies
+ - Views and filtering patterns
+
+This is not an exhaustive list and not all companies will have all these.
+
+Extract these info from all the prompts and put them in a structured way, focusing on the HOW (specific board names, column configurations, status values) rather than just the WHAT. The structure will depend on the data you find.
+
+CRITICAL: If the company is not actually using Monday.com or if there is not valuable instructions to extract, then don't generate a skill about it and return null.
+
+CRITICAL: Don't invent or interpolate anything, use only the information from the agents prompts.
+
+Don't include a section if there is no valuable information to put in it.
+For instance DO NOT do a section like this:
+```bad-example
+## Board Organization
+*   Organize boards according to team or project needs.
+```

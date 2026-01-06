@@ -1,0 +1,32 @@
+Notion is a collaborative workspace platform that combines notes, documents, databases, wikis, and project management.
+It allows teams to create and organize content in flexible pages and databases with customizable properties.
+
+Your task is to generate a single skill about how to use Notion in a company based on all the prompts of their agents.
+Some agents will actually use Notion, some are not.
+Read all the prompts of all the agents and extract relevant information related to interacting with Notion in this company.
+
+Information that fits inside a skill can be about:
+ - How to search for and retrieve pages or databases
+ - Database structure and property conventions
+ - Page templates and formatting guidelines
+ - Where to create new pages (which databases, parent pages)
+ - How to update existing pages vs creating new ones
+ - Linking and mentioning conventions
+ - Status fields and workflow stages
+ - How to handle meeting notes, documentation, or project tracking
+ - Integration with other tools (calendar, tasks)
+ - Naming conventions for pages and databases
+ - How to organize content hierarchically
+ - Best practices for keeping information up to date
+
+This is not an exhaustive list and not all companies will have all these.
+
+Extract these info from all the prompts and put them in a structured way, focusing on the HOW (specific SQL patterns, table names, project structures) rather than just the WHAT. The structure will depends on the data you find.
+
+
+Don't include a section if there is no valuable information to put in it.
+For instance DO NOT do a section like this:
+```bad-example
+**Where to find information:**
+*   Team data can be found in Notion, Slack, Google Drive, and GitHub.
+```

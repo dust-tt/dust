@@ -1,0 +1,124 @@
+Snowflake is a cloud-based data warehouse platform that enables data storage, processing, and analytics.
+It allows companies to run SQL queries, build data pipelines, and analyze large datasets.
+
+Your task is to generate a single skill about how to use Snowflake in a company based on all the prompts of their agents.
+Some agents will actually use Snowflake, some are not.
+Read all the prompts of all the agents and extract relevant information related to interacting with Snowflake in this company.
+
+Information that fits inside a skill can be about:
+ - Database and schema naming conventions
+ - Key tables and views to query
+ - Common SQL patterns and query templates
+ - Data models and relationships between tables
+ - Performance optimization tips (warehouses, caching, query structure)
+ - How to handle date ranges and time zones
+ - Metric definitions and calculations
+ - Access patterns and role-based access
+ - How to join different data sources
+ - Error handling and data quality checks
+ - Dashboard and reporting queries
+ - ETL and data pipeline conventions
+
+This is not an exhaustive list and not all companies will have all these.
+
+Extract these info from all the prompts and put them in a structured way, focusing on the HOW (specific SQL patterns, table names, project structures) rather than just the WHAT. The structure will depends on the data you find.
+
+### Examples
+
+Here are some good examples of sections which can be included in the skill.
+These examples come from other companies so do not copy them as is, it should be used to give you an idea of what is useful in a skill and what to search for in the agent prompts. 
+CRITICAL: These examples come from other companies so do not copy them as is: ALWAYS GENERATE SKILL CONTENT BASED ON PROMPT CONTENT.
+
+This example show information about the schema and how to use it 
+<SkillSectionExample1>
+## Table Selection Hierarchy
+
+Always select tables in this exact order from smallest to largest. Always use the smallest table that can satisfy the query requirements:
+
+1.  `inquiries_summary_production` / `txns_summary_production` (SMALLEST - use first when possible)
+2.  `verifications_summary_production`
+3.  `verification_checks_summary_production_last_3_full_months` (DEFAULT for verification check queries)
+4.  `verification_check_components_summary_production_last_3_full_months` (DEFAULT for verification check component queries)
+5.  `verification_checks_summary_production` (ONLY if data > 3 months old needed)
+6.  `verification_check_components_summary_production` (LARGEST - use only if data > 3 months old needed)
+
+**SELECTION RULES:**
+
+*   For inquiry/transaction data: START with `inquiries_summary_production`/`txns_summary_production`
+*   For verification data: Use `verifications_summary_production`
+*   For verification check data: DEFAULT to `verification_checks_summary_production_last_3_full_months`
+*   For verification check component data: DEFAULT to `verification_check_components_summary_production_last_3_full_months`
+*   ONLY move to larger tables (#5, #6) when:
+    *   User explicitly requests "full historical data" or "all time data"
+    *   Query date range extends beyond 3 months from current date
+    *   User specifically mentions needing data older than 3 months
+
+**VIOLATION CHECK:** If you select a larger table when a smaller one could work, STOP and reconsider your selection.
+</SkillSectionExample1>
+
+
+This example gives the structure of the main table which is very useful:
+<SkillSectionExample2>
+### Key Tables and Views
+
+*   `DUST.KPIS.QONTO_KPI_TREE`
+    *   Model compiling all company KPIs and targets used to build the KPI tree.
+    *   Key columns: `KPI_ID`, `KPI_DATE`, `KPI_NAME`, `KPI_NUMBER_VALUE`, `KPI_NUMERATOR`, `KPI_DENOMINATOR`, `PERIODICITY`, `LEGAL_COUNTRY`, `PRICE_PLAN_SUBGROUP`, `COMPANY_SIZE_SEGMENT`, `ACQUISITION_CHANNEL_LEVEL_1`, `ACQUISITION_CHANNEL_LEVEL_2`, `REVENUE_TYPE`, `REVENUE_SUB_TYPE`.
+*   `SANDBOX.JUAN_RIOS_GALLEGO.ANALYTICS__DASHBOARDS__FULL_FUNNEL_ACQUISITION_COCKPIT`
+    *   Model for the calculation of the full funnel conversion from Has Entered Website to Activation.
+    *   Key columns: `USER_ID`, `COUNTRY`, `PRICE_PLAN_GROUP`, `ACQ_DETAILED_CHANNEL`, `CAMPAIGN_NAME`, `MAX_STEP_ACHIEVED`, `SESSION_STARTED_TIMESTAMP`, `CONTRACT_SIGNED_GROSS_TIMESTAMP`, `KYB_VALIDATED_TIMESTAMP`, `LIFETIME_VALUE_KYB_EUROS_60_MONTHS_AT_TIME`.
+*   `SANDBOX.JUAN_RIOS_GALLEGO.ANALYTICS__GROWTH__ACQUISITION_COSTS_ALL_CHANNELS_DAILY`
+    *   Daily marketing spends per acquisition channels.
+    *   Key columns: `DAY_DATE`, `COUNTRY`, `ACQ_DETAILED_CHANNEL`, `CAMPAIGN_NAME`, `SPEND_EUROS`.
+</SkillSectionExample2>
+
+
+This section example gives instructions on how to generate good SQL:
+<SkillSectionExample3>
+### SQL Coding Standards
+
+*   **Formatting:**
+    *   Use leading commas for column lists.
+    *   Use explicit column aliases with the `AS` keyword.
+    *   Place each column on a new line.
+    *   Use 4 spaces for indentation.
+    *   Use snake_case for all variables.
+*   **Functions and Keywords:**
+    *   Use uppercase for all SQL functions and keywords (e.g., `SELECT`, `FROM`, `WHERE`, `CASE`, `WHEN`, `COALESCE`, `IFF`, `LOWER`).
+*   **Joins:**
+    *   Always use explicit `JOIN` syntax (e.g., `LEFT JOIN`, `INNER JOIN`).
+    *   Place each `JOIN` clause on a new line.
+    *   Place the `ON` condition on the line following the `JOIN`.
+    *   Use 4 spaces indentation for `JOIN` conditions.
+*   **CTEs (Common Table Expressions):**
+    *   Format: `cte_name AS (`
+    *   Place a comma at the end of each CTE definition.
+    *   Use proper indentation (4 spaces) for CTE content.
+*   **dbt Specific:**
+    *   Use proper dbt source and ref syntax: `{{ source('schema','table') }}` and `{{ ref('model') }}`
+    *   Maintain dbt Jinja templating as-is
+*   **Semicolons:** Never add a semicolon (`;`) at the end of SQL code, as this can cause dbt failures.
+</SkillSectionExample3>
+
+
+This section example gives some example SQL queries
+<SkillSectionExample4>
+### Dashboard and Reporting Queries
+
+*   **Monthly Trend Analysis:**
+    ```sql
+    SELECT
+        DATE_TRUNC('month', claim_occurrence_datetime) AS month,
+        COUNT(*) AS claim_count,
+        SUM(claim_incurred_amount) AS total_incurred
+    FROM
+        PRD_DPF_DB.CORE.CLAIM
+    GROUP BY
+        month
+    ORDER BY
+        month;
+    ```
+</SkillSectionExample4>
+
+Do not copy these example but try to identify similar information in agent prompts.
+CRITICAL: ALWAYS GENERATE SKILL CONTENT BASED ON PROMPT CONTENT. NEVER COPY THE CONTENT OF THE EXAMPLES.

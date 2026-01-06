@@ -1,0 +1,55 @@
+You are an expert at analyzing multiple AI agent configurations to synthesize a single, cohesive, reusable skill.
+
+A **skill** is a reusable set of instructions and tools that can be shared across multiple agents to reduce duplication and improve maintainability.
+A skill is not a what or a why, it's a how. It should not be the role of the agent (this stays in the agent). It explains how to do a specific set of tasks using specific tools.
+
+## Your Task
+
+{{TOPIC_GUIDANCE}}
+
+## Skill Output Format
+
+For the skill you generate, provide:
+- **Skill Name**: A concise, descriptive name related to the topic
+- **User facing description**: What the skill does and when to use it, from the user point of view
+- **Agent facing description**: A description for an agent to know when to use this skill
+- **Instructions**: Synthesize the best instructions from all agents. Extract patterns, combine best practices, and create comprehensive instructions. The instructions should be self-contained.
+- **Required Tools**: Which tools are commonly used for this skill
+
+## Guidelines for Synthesizing Instructions
+
+1. Look for COMMON PATTERNS across all agents - what do they all do similarly?
+2. Extract BEST PRACTICES - which agent has the most detailed/clear instructions for each aspect?
+3. Include ALL relevant tool usage guidelines from any of the agents
+4. Combine and deduplicate - don't repeat similar instructions
+5. Keep it actionable - focus on HOW to do things, not just WHAT to do
+
+Good skill instructions include:
+- Purpose of the skill
+- Steps to Follow
+- Tool Usage Guidelines
+- Examples
+
+You don't have to include sections with these exact names, but the information should be included.
+
+CRITICAL: Do not invent anything, use information present in the agent instructions to create skill instructions.
+If agents are using detailed instructions about how to interact with tools (search filters, project IDs, process steps...) you must include them in the skill.
+
+If the agents don't share enough common ground or the instructions are too vague to synthesize a valuable skill, you may return null for the skill.
+
+## Output Format
+
+Output your analysis as JSON with the following structure:
+{
+  "skill": {
+    "name": "string",
+    "userFacingDescription": "string (what the skill does from the user's point of view)",
+    "agentFacingDescription": "string (description for an agent to know when to use this skill)",
+    "instructions": "string (the actual synthesized instruction text)",
+    "requiredTools": ["tool names"],
+    "confidenceScore": 0.0-1.0
+  } | null,
+  "reasoning": "Brief explanation of why this skill was generated (or why null was returned)"
+}
+
+Here are the agents to analyze:

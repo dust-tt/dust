@@ -1,0 +1,87 @@
+Confluence is Atlassian's collaborative wiki and documentation platform used for creating, organizing, and sharing knowledge.
+It manages pages, spaces, templates, and documentation across teams and projects.
+
+Your task is to generate a single skill about how to use Confluence in a company based on all the prompts of their agents.
+Some agents will actually use Confluence, some are not.
+Read all the prompts of all the agents and extract relevant information related to interacting with Confluence in this company.
+
+Information that fits inside a skill can be about:
+ - Space naming conventions and organization
+ - How to search for pages and content
+ - Page templates used for specific purposes (meeting notes, RFCs, runbooks, etc.)
+ - How to create, update, or comment on pages
+ - Label and tagging conventions
+ - Page hierarchy and parent-child relationships
+ - Integration with Jira (linking issues to documentation)
+ - How to handle versioning and page history
+ - Permissions and access patterns for spaces
+ - Best practices for formatting and structuring content
+ - Macro usage for specific use cases
+ - How to handle attachments and embedded content
+ - Review and approval workflows for documentation
+ - Naming conventions for pages and titles
+
+This is not an exhaustive list and not all companies will have all these.
+
+Extract these info from all the prompts and put them in a structured way, focusing on the HOW (specific space keys, page templates, label conventions, CQL queries) rather than just the WHAT. The structure will depend on the data you find.
+
+Don't include a section if there is no valuable information to put in it.
+For instance DO NOT do a section like this:
+```bad-example
+## Templates
+*   Use appropriate templates for different types of documentation.
+```
+
+### Examples
+
+Here are some good examples of sections which can be included in a ConfluenceEdition skill.
+These examples come from other companies so do not copy them as is, it should be used to give you an idea of what is useful in a skill and what to search for in the agent prompts. 
+
+CRITICAL: These examples come from other companies so do not copy them as is: ALWAYS GENERATE SKILL CONTENT BASED ON PROMPT CONTENT.
+
+This example shows the structure of the confluence spaces in the company to help the agent know what space to use
+<SkillSectionExample1>
+### Space Structure at AcmeCompany
+
+    ENG - Engineering Documentation
+        Contains: Architecture decisions, API docs, deployment guides, runbooks
+        Template: Use "Technical Design Document" for new architecture pages
+        Permissions: All engineers can edit, read-only for other departments
+    PRODUCT - Product Knowledge Base
+        Contains: Feature specs, roadmap, user research, release notes
+        Template: Use "Feature Specification" for new features
+        Permissions: Product team edits, company-wide read access
+    HANDBOOK - Company Handbook
+        Contains: Policies, benefits, processes, culture docs
+        Template: Use "Policy Page" for new company policies
+        Permissions: HR edits, company-wide read, requires approval workflow
+</SkillSectionExample1>
+
+This example show an example protocol for 
+<SkillSectionExample2>
+### Creating New Technical Documentation
+When asked to document a technical feature or system:
+
+- Create page in the appropriate space (ENG for backend, PRODUCT for features)
+- Use the "Technical Design Document" template from space templates
+- Add labels: architecture, team name, and relevant technology tags
+- Include required sections: Overview, Architecture Diagram, API Endpoints, Dependencies
+- Link to related JIRA epics using the JIRA Issues macro
+- Add page to relevant parent page in the space hierarchy
+- Tag relevant engineers using @mentions for review before publishing
+</SkillSectionExample2>
+
+<SkillSectionExample3>
+### Setting Up Meeting Notes for Recurring Meetings
+When asked to create or organize recurring meeting documentation:
+
+* Create parent page titled "[Team Name] - [Meeting Type] Notes" (e.g., "Engineering - Sprint Planning Notes")
+* Under parent page, create child pages for each meeting using format "YYYY-MM-DD - [Meeting Name]"
+* Use "Meeting Notes" template with sections: Attendees, Agenda, Discussion, Decisions, Action Items
+* Add labels: meeting-notes, team name, meeting type (e.g., sprint-planning, retrospective, 1-on-1)
+* Use Table of Contents macro on parent page to auto-list all child meeting pages
+* For action items, create task list with @mentions and due dates
+* Link to related JIRA tickets or Confluence pages mentioned in discussion
+</SkillSectionExample3>
+
+CRITICAL: Do not copy these examples but try to identify similar information in agent prompts.

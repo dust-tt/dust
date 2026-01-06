@@ -1,0 +1,101 @@
+Salesforce is a leading CRM (Customer Relationship Management) platform used for sales, marketing, service, and analytics.
+It manages accounts, contacts, opportunities, leads, cases, and custom objects throughout the customer lifecycle.
+
+Your task is to generate a single skill about how to use Salesforce in a company based on all the prompts of their agents.
+Some agents will actually use Salesforce, some are not.
+Read all the prompts of all the agents and extract relevant information related to interacting with Salesforce in this company.
+
+Information that fits inside a skill can be about:
+ - How to search for and retrieve accounts, contacts, opportunities, or leads
+ - Opportunity stages and how to update deal progression
+ - Custom objects and fields used by the company
+ - SOQL query patterns and filters commonly used
+ - Best practices for updating records after calls, meetings, or events
+ - How to log activities, tasks, and notes
+ - Account and contact ownership rules
+ - Integration with other tools (Gong, Outreach, marketing automation)
+ - Rules for data validation and record attribution
+ - How to handle lead conversion and opportunity creation
+ - Territory and assignment rules
+ - Reporting and dashboard conventions
+ - Record types and picklist values specific to the company
+
+This is not an exhaustive list and not all companies will have all these.
+
+Extract these info from all the prompts and put them in a structured way, focusing on the HOW (specific SQL patterns, table names, project structures) rather than just the WHAT. The structure will depends on the data you find.
+
+CRITICAL: If the company is not actually using Github or if there is not valuable instructions to extract, then don't generate a skill about it and return null.
+
+
+### Examples
+
+Here are some good examples of sections which can be included in a ConfluenceEdition skill.
+These examples come from other companies so do not copy them as is, it should be used to give you an idea of what is useful in a skill and what to search for in the agent prompts. 
+CRITICAL: These examples come from other companies so do not copy them as is: ALWAYS GENERATE SKILL CONTENT BASED ON PROMPT CONTENT.
+
+<SkillSectionExample1>
+### Opportunity Stages and Win Probability in our saleforce account
+
+    Prospecting (10%) → Initial contact, needs identification
+        Exit criteria: Budget and timeline discussed
+    Qualification (25%) → BANT qualified, demo scheduled
+        Exit criteria: Decision makers identified, proposal requested
+    Proposal/Price Quote (50%) → Formal proposal delivered
+        Exit criteria: Pricing accepted, contract negotiation started
+    Negotiation/Review (75%) → Legal and procurement review
+        Exit criteria: All objections resolved, verbal commitment received
+    Closed Won (100%) / Closed Lost (0%) → Final outcomes
+        Closed Won: Auto-creates account onboarding case
+        Closed Lost: Requires Loss_Reason__c custom field completion
+
+</SkillSectionExample1>
+
+
+<SkillSectionExample2>
+### Required Custom Fields by Object for Acme
+Lead Custom Fields:
+- Lead_Score__c (Number) - Marketing automation score, 0-100
+- Product_Interest__c (Picklist) - Product A, Product B, Product C, Multiple
+- Budget_Confirmed__c (Checkbox) - Required before conversion
+
+Opportunity Custom Fields:
+- Competitor__c (Multi-select Picklist) - CompetitorX, CompetitorY, None, Unknown
+- Decision_Criteria__c (Text Area) - Key factors in vendor selection
+- Next_Step__c (Text) - Required for all non-closed opportunities, or if the client want a demo of Google Drive integration
+- Expected_Contract_Start_Date__c (Date) - For forecasting and capacity planning
+
+Account Custom Fields:
+- Customer_Tier__c (Picklist) - Enterprise, Mid-Market, SMB, GOG
+- Health_Score__c (Number) - 1-10, updated by CS team quarterly
+- CSM_Assigned__c (Lookup to User) - Customer success manager
+</SkillSectionExample2>
+
+
+<SkillSectionExample3>
+### Querying Salesforce Data (Using Salesforce Tools) at Acme
+When asked to find or analyze Salesforce records:
+* Use salesforce__describe_object first to understand available fields: salesforce__describe_object(objectName='Opportunity')
+* For simple queries, use salesforce__execute_read_query with SOQL:
+    * Example: SELECT Id, Name, StageName, Amount, CloseDate FROM Opportunity WHERE StageName = 'Proposal/Price Quote' AND Amount > 50000
+* For custom fields, append __c: SELECT Account.Name, Custom_Field__c FROM Opportunity (remember we have Competitor and Next_step as a custom field)
+* For related objects (parent-to-child), use dot notation: SELECT Account.Name, Owner.Email FROM Opportunity
+* For child relationships (subqueries): SELECT Name, (SELECT FirstName, LastName FROM Contacts) FROM Account
+* Always include LIMIT clause for large queries: LIMIT 200 to avoid timeouts
+* Use WHERE CloseDate >= 01-31-2026 for date filtering, we always american date format at Acme 
+</SkillSectionExample3>
+
+
+<SkillSectionExample4>
+**SOQL Query Patterns and Filters:**
+
+When querying Salesforce, use SOQL to retrieve data from PersonAccount objects.
+Example queries include:
+    *   Retrieving tickets in progress: `Report "00OJ8000000ZZNtMAO"`
+    *   Fetching NPS/OSAT data: `Report "00OTn000003qYtVMAU"`
+    *   Listing reducted opportunities: `Report "00OJ8000000ZYiSMAW"`
+    *   Getting APAC data: `Report "00O09000009zjpIEAQ"`
+    *   Finding quotes in AZFFA in pending: `Report "00OJ8000000ZZMRMA4"`
+<SkillSectionExample5>
+
+
+CRITICAL: Do not copy these examples but try to identify similar information in agent prompts.

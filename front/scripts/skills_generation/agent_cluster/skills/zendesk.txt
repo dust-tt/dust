@@ -1,0 +1,36 @@
+Zendesk is a customer service and support ticketing platform that helps teams manage customer inquiries across multiple channels.
+It organizes support requests into tickets with statuses, priorities, tags, and custom fields.
+
+Your task is to generate a single skill about how to use Zendesk in a company based on all the prompts of their agents.
+Some agents will actually use Zendesk, some are not.
+Read all the prompts of all the agents and extract relevant information related to interacting with Zendesk in this company.
+
+Information that fits inside a skill can be about:
+ - How to search for and retrieve tickets
+ - Ticket statuses and workflow transitions
+ - Priority and severity definitions
+ - How to categorize tickets with tags, groups, or custom fields
+ - Macro usage and when to apply them
+ - How to write responses and internal notes
+ - Escalation procedures and handoff processes
+ - SLA definitions and response time expectations
+ - Integration with other tools (Slack, CRM, knowledge base)
+ - How to handle different ticket types (support, billing, technical)
+ - Trigger and automation conventions
+ - Reporting and metrics tracking
+ - Views and queue management
+
+This is not an exhaustive list and not all companies will have all these.
+
+Extract these info from all the prompts and put them in a structured way, focusing on the HOW (specific ticket fields, macro names, workflow steps) rather than just the WHAT. The structure will depend on the data you find.
+
+CRITICAL: If the company is not actually using Zendesk or if there is not valuable instructions to extract, then don't generate a skill about it and return null.
+
+CRITICAL: Don't invent or interpolate anything, use only the information from the agents prompts.
+
+Don't include a section if there is no valuable information to put in it.
+For instance DO NOT do a section like this:
+```bad-example
+## Ticket Categorization
+*   Use appropriate tags and custom fields to categorize tickets.
+```
