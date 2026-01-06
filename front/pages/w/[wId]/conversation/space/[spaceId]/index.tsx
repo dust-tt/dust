@@ -1,6 +1,6 @@
 import {
   BookOpenIcon,
-  ChatBubbleLeftRightIcon,
+  ChatBubbleBottomCenterTextIcon,
   ContentMessage,
   InformationCircleIcon,
   Tabs,
@@ -280,7 +280,7 @@ export default function SpaceConversations({
             <TabsTrigger
               value="conversations"
               label="Conversations"
-              icon={ChatBubbleLeftRightIcon}
+              icon={ChatBubbleBottomCenterTextIcon}
             />
             <TabsTrigger
               value="knowledge"
