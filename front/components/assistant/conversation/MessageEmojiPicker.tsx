@@ -1,5 +1,6 @@
 import {
   Button,
+  cn,
   EmojiPicker,
   EmotionLaughIcon,
   PopoverContent,
@@ -12,23 +13,29 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 
 interface MessageEmojiPickerProps {
   onEmojiSelect: (emoji: string) => void;
+  className?: string;
 }
 
-export function MessageEmojiPicker({ onEmojiSelect }: MessageEmojiPickerProps) {
+export function MessageEmojiPicker({
+  onEmojiSelect,
+  className,
+}: MessageEmojiPickerProps) {
   const handleSelect = (emoji: string) => {
     onEmojiSelect(emoji);
   };
   const theme = useTheme();
 
   return (
-    <PopoverRoot>
+    <PopoverRoot modal={false}>
       <PopoverTrigger asChild>
         <Button
           key="emoji-picker-button"
           tooltip="Add reaction"
-          variant="ghost-secondary"
+          variant="outline"
           size="xs"
           icon={EmotionLaughIcon}
+          isSelect={true}
+          className={cn("text-muted-foreground", className)}
         />
       </PopoverTrigger>
       <PopoverContent fullWidth>

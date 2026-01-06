@@ -1,6 +1,4 @@
-import { Tooltip } from "@dust-tt/sparkle";
-
-import { classNames } from "@app/lib/utils";
+import { Chip, Tooltip } from "@dust-tt/sparkle";
 
 interface ReactionPillProps {
   emoji: string;
@@ -36,22 +34,14 @@ export function ReactionPill({
       label={tooltipLabel}
       side="top"
       trigger={
-        <button
+        <Chip
+          size="xs"
+          color={hasCurrentUserReacted ? "highlight" : "primary"}
           onClick={onClick}
-          className={classNames(
-            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-sm transition-colors",
-            "border-structure-200 dark:border-structure-200-dark border",
-            "hover:bg-structure-100 dark:hover:bg-structure-100-dark",
-            hasCurrentUserReacted
-              ? "bg-action-200 border-action-300 dark:bg-action-200-dark dark:border-action-300-dark"
-              : "bg-structure-50 dark:bg-structure-50-dark"
-          )}
         >
           <span>{emoji}</span>
-          <span className="text-element-700 dark:text-element-700-dark text-xs font-medium">
-            {count}
-          </span>
-        </button>
+          <span className="text-xs font-medium">{count}</span>
+        </Chip>
       }
     />
   );

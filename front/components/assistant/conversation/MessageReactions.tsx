@@ -19,7 +19,7 @@ export function MessageReactions({
   }
 
   return (
-    <div className="mt-2 flex flex-wrap gap-1">
+    <>
       {reactions.map((reaction) => {
         const isCurrentUserReacted = reaction.users.some(
           (u) => u.userId === user?.sId
@@ -36,6 +36,6 @@ export function MessageReactions({
           />
         );
       })}
-    </div>
+    </>
   );
 }
