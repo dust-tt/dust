@@ -33,7 +33,6 @@ front/
 
 ## Development setup
 
-- Assume a dev-server is hot-reloaded and running at http://localhost:3000
 - You can use `./admin/check.ts` to run all checks (lint, type-check, format) concurrently.
   - Use `npx prettier --check/--write` to check or format code based on our local configuration.
   - Use `npx tsgo --noEmit` to type-check the front project.
