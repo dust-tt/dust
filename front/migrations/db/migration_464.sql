@@ -4,3 +4,4 @@ CREATE TABLE IF NOT EXISTS "skill_data_source_configurations" ("createdAt" TIMES
 CREATE INDEX "idx_skill_data_source_config_workspace_skill_config" ON "skill_data_source_configurations" ("workspaceId", "skillConfigurationId");
 CREATE INDEX "idx_skill_data_source_config_workspace_data_source" ON "skill_data_source_configurations" ("workspaceId", "dataSourceId");
 CREATE INDEX "idx_skill_data_source_config_workspace_data_source_view" ON "skill_data_source_configurations" ("workspaceId", "dataSourceViewId");
+CREATE INDEX "idx_skill_data_source_config_workspace_skill_data_source_view" ON "skill_data_source_configurations" ("workspaceId", "skillConfigurationId", "dataSourceViewId");

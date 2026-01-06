@@ -1114,7 +1114,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
     const mcpServerViewIds = new Set(mcpServerViews.map((msv) => msv.id));
 
-    // Delete removed tools
+    // Delete removed tools.
     const idsToDelete = existingConfigs
       .filter((config) => !mcpServerViewIds.has(config.mcpServerViewId))
       .map((config) => config.id);
@@ -1127,7 +1127,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
     }
 
-    // Create new tools
+    // Create new tools.
     const toCreate = mcpServerViews.filter(
       (msv) => !existingMcpServerViewIds.has(msv.id)
     );
@@ -1188,53 +1188,47 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return acc;
     }, {});
 
-    const desiredDataSourceViewIds = new Set(
-      Object.keys(desiredConfigsByDataSourceViewId).map(Number)
-    );
-
-    // Find configurations to delete (exist but not desired).
-    const toDelete = existingConfigurations.filter(
-      (config) => !desiredDataSourceViewIds.has(config.dataSourceViewId)
-    );
-
-    // Create a map of existing configurations by data source view ID.
-    const existingConfigsByDataSourceViewId = new Map(
-      existingConfigurations.map((config) => [config.dataSourceViewId, config])
-    );
-
-    // Find configurations to upsert (new or changed).
+    const toDelete: SkillDataSourceConfigurationModel[] = [];
     const toUpsert: Array<
       CreationAttributes<SkillDataSourceConfigurationModel>
     > = [];
 
-    for (const [dataSourceViewId, desiredConfig] of Object.entries(
+    // Track which dataSourceViewIds need to be recreated.
+    const toRecreate = new Set<ModelId>();
+
+    // Process existing configurations.
+    for (const existingConfig of existingConfigurations) {
+      const desiredConfig =
+        desiredConfigsByDataSourceViewId[existingConfig.dataSourceViewId];
+
+      if (!desiredConfig) {
+        toDelete.push(existingConfig);
+      } else {
+        const desiredParentsIn = [...desiredConfig.parentsIn].sort();
+        const existingParentsInSorted = [...existingConfig.parentsIn].sort();
+
+        if (!isEqual(desiredParentsIn, existingParentsInSorted)) {
+          toDelete.push(existingConfig);
+          toRecreate.add(existingConfig.dataSourceViewId);
+        }
+      }
+    }
+
+    // Create new or changed configurations.
+    for (const desiredConfig of Object.values(
       desiredConfigsByDataSourceViewId
     )) {
-      const dataSourceViewIdNum = Number(dataSourceViewId);
-      const existingConfig =
-        existingConfigsByDataSourceViewId.get(dataSourceViewIdNum);
+      const hasExisting = existingConfigurations.some(
+        (existing) =>
+          existing.dataSourceViewId === desiredConfig.dataSourceViewId
+      );
 
-      if (!existingConfig) {
-        // New configuration.
+      if (!hasExisting || toRecreate.has(desiredConfig.dataSourceViewId)) {
         toUpsert.push({
           ...desiredConfig,
           skillConfigurationId,
           workspaceId: owner.id,
         });
-      } else {
-        // Check if parentsIn has changed.
-        const desiredParentsIn = [...desiredConfig.parentsIn].sort();
-        const existingParentsInSorted = [...existingConfig.parentsIn].sort();
-
-        const hasChanged = !isEqual(desiredParentsIn, existingParentsInSorted);
-
-        if (hasChanged) {
-          toUpsert.push({
-            ...desiredConfig,
-            skillConfigurationId,
-            workspaceId: owner.id,
-          });
-        }
       }
     }
 
@@ -1279,11 +1273,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await config.destroy({ transaction });
     }
 
-    // Create or update configurations. Since computeDataSourceConfigurationChanges
-    // already handles the diff logic, we can use upsert for the remaining items.
+    // Create new configurations. The diff logic already handles deleting changed ones.
     if (toUpsert.length > 0) {
       await SkillDataSourceConfigurationModel.bulkCreate(toUpsert, {
-        updateOnDuplicate: ["parentsIn"],
         transaction,
       });
     }
@@ -1315,6 +1307,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     try {
       const workspace = auth.getNonNullableWorkspace();
+
+      await SkillDataSourceConfigurationModel.destroy({
+        where: {
+          skillConfigurationId: this.id,
+          workspaceId: workspace.id,
+        },
+        transaction,
+      });
 
       const affectedCount = await this.model.destroy({
         where: {

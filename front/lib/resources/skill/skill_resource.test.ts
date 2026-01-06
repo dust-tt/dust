@@ -245,7 +245,9 @@ describe("SkillResource", () => {
           }
         );
 
-      expect(toDelete).toHaveLength(0);
+      // Should delete the old configuration and upsert the new one.
+      expect(toDelete).toHaveLength(1);
+      expect(toDelete[0].dataSourceViewId).toBe(dataSourceView1.id);
       expect(toUpsert).toHaveLength(1);
       expect(toUpsert[0].parentsIn).toEqual(["node1", "node3"]);
     });
@@ -340,9 +342,10 @@ describe("SkillResource", () => {
           }
         );
 
-      // Should delete dataSourceView2.
-      expect(toDelete).toHaveLength(1);
-      expect(toDelete[0].dataSourceViewId).toBe(dataSourceView2.id);
+      // Should delete dataSourceView1 and dataSourceView2.
+      expect(toDelete).toHaveLength(2);
+      expect(toDelete[0].dataSourceViewId).toBe(dataSourceView1.id);
+      expect(toDelete[1].dataSourceViewId).toBe(dataSourceView2.id);
 
       // Should upsert dataSourceView1 (updated) and dataSourceView3 (new).
       expect(toUpsert).toHaveLength(2);
@@ -390,6 +393,63 @@ describe("SkillResource", () => {
       expect(toDelete).toHaveLength(0);
       expect(toUpsert).toHaveLength(1);
       expect(toUpsert[0].parentsIn).toEqual(["node1", "node2"]); // No duplicates.
+    });
+
+    it("should create unique configurations and handle updates properly", async () => {
+      const skillResource = await SkillConfigurationFactory.create(
+        testContext.authenticator,
+        {}
+      );
+
+      // Initial creation - add two nodes to same data source view
+      const initialConfigurations = [
+        await createDataSourceConfiguration({
+          dataSourceView: dataSourceView1,
+          parentsIn: ["node1", "node2"],
+          skillId: skillResource.id,
+        }),
+      ];
+
+      // Update - add another node to the same data source view
+      const attachedKnowledge: SkillAttachedKnowledge[] = [
+        {
+          dataSourceView: dataSourceView1,
+          nodeId: "node1",
+          nodeType: "document",
+        },
+        {
+          dataSourceView: dataSourceView1,
+          nodeId: "node2",
+          nodeType: "document",
+        },
+        {
+          dataSourceView: dataSourceView1,
+          nodeId: "node3", // Adding new node
+          nodeType: "document",
+        },
+      ];
+
+      const { toDelete, toUpsert } =
+        SkillResource.computeDataSourceConfigurationChanges(
+          testContext.workspace,
+          {
+            attachedKnowledge,
+            existingConfigurations: initialConfigurations,
+            skillConfigurationId: skillResource.id,
+          }
+        );
+
+      // Should delete the old configuration
+      expect(toDelete).toHaveLength(1);
+      expect(toDelete[0].dataSourceViewId).toBe(dataSourceView1.id);
+
+      // Should create one new configuration with all three nodes
+      expect(toUpsert).toHaveLength(1);
+      expect(toUpsert[0].parentsIn).toEqual(["node1", "node2", "node3"]);
+
+      // Verify only one configuration per skill+dataSourceView combination
+      expect(toUpsert[0].dataSourceViewId).toBe(dataSourceView1.dataSource.id);
+      expect(toUpsert[0].skillConfigurationId).toBe(skillResource.id);
     });
   });
 });

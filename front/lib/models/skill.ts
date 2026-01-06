@@ -291,6 +291,11 @@ SkillDataSourceConfigurationModel.init(
         fields: ["workspaceId", "dataSourceViewId"],
         name: "idx_skill_data_source_config_workspace_data_source_view",
       },
+      {
+        fields: ["workspaceId", "skillConfigurationId", "dataSourceViewId"],
+        name: "idx_skill_data_source_config_workspace_skill_data_source_view",
+        unique: true,
+      },
     ],
   }
 );
