@@ -995,39 +995,31 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  async archive(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<{ affectedCount: number }> {
+  async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
+    assert(this.canWrite(auth), "User is not authorized to archive this skill");
+
     const workspace = auth.getNonNullableWorkspace();
+    let affectedCount = 0;
 
-    // Remove all agent skill links before archiving.
-    await AgentSkillModel.destroy({
-      where: {
-        customSkillId: this.id,
-        workspaceId: workspace.id,
-      },
-      transaction,
+    await withTransaction(async (transaction) => {
+      [affectedCount] = await this.update({ status: "archived" }, transaction);
+
+      await AgentSkillModel.destroy({
+        where: {
+          customSkillId: this.id,
+          workspaceId: workspace.id,
+        },
+        transaction,
+      });
     });
-
-    const affectedCount = await this.updateWithAuthorization(
-      auth,
-      { status: "archived" },
-      { transaction }
-    );
 
     return { affectedCount };
   }
 
-  async restore(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<{ affectedCount: number }> {
-    const affectedCount = await this.updateWithAuthorization(
-      auth,
-      { status: "active" },
-      { transaction }
-    );
+  async restore(auth: Authenticator): Promise<{ affectedCount: number }> {
+    assert(this.canWrite(auth), "User is not authorized to restore this skill");
+
+    const [affectedCount] = await this.update({ status: "active" });
 
     return { affectedCount };
   }
@@ -1054,14 +1046,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       userFacingDescription: string;
     }
   ): Promise<void> {
+    assert(this.canWrite(auth), "User is not authorized to update this skill");
+
     await withTransaction(async (transaction) => {
       // Save the current version before updating.
       await this.saveVersion(auth, { transaction });
 
       const authorId = auth.user()?.id;
 
-      await this.updateWithAuthorization(
-        auth,
+      await this.update(
         {
           name,
           agentFacingDescription,
@@ -1071,7 +1064,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           requestedSpaceIds,
           authorId,
         },
-        { transaction }
+        transaction
       );
 
       await this.updateMCPServerViews(auth, mcpServerViews, { transaction });
@@ -1277,31 +1270,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
   }
 
-  private async updateWithAuthorization(
-    auth: Authenticator,
-    blob: Partial<Attributes<SkillConfigurationModel>>,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<number> {
-    // TODO(SKILLS 2025-12-12): Refactor BaseResource.update to accept auth.
-    if (!this.canWrite(auth)) {
-      throw new Error("User does not have permission to update this skill.");
-    }
-
-    const [affectedCount] = await this.update(blob, transaction);
-    return affectedCount;
-  }
-
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<number, Error>> {
-    if (!this.canWrite(auth)) {
-      return new Err(
-        new Error("User does not have permission to delete this skill.")
-      );
-    }
-
     try {
+      assert(
+        this.canWrite(auth),
+        "User does not have permission to delete this skill."
+      );
+
       const workspace = auth.getNonNullableWorkspace();
 
       await SkillDataSourceConfigurationModel.destroy({
