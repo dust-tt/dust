@@ -23,7 +23,7 @@ export function MessageEmojiPicker({ onEmojiSelect }: MessageEmojiPickerProps) {
   const theme = useTheme();
 
   return (
-    <PopoverRoot open={isOpen}>
+    <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
           key="emoji-picker-button"
