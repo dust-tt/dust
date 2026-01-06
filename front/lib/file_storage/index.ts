@@ -2,13 +2,13 @@ import type { Bucket } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
 import type formidable from "formidable";
 import fs from "fs";
+import isNumber from "lodash/isNumber";
 import { pipeline } from "stream/promises";
 
 import config from "@app/lib/file_storage/config";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import type { AllSupportedFileContentType } from "@app/types";
 import { frameContentType, stripNullBytes } from "@app/types";
-import isNumber from "lodash/isNumber";
 
 const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
 

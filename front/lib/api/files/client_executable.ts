@@ -112,7 +112,7 @@ export async function createClientExecutableFile(
       fileName,
       contentType: mimeType,
       fileSize: 0, // Will be updated in uploadContent.
-      hasPreviousVersion: false, // New file has no previous version.
+      version: 0, // New file starts at version 0.
       // Attach the conversation id so we can use it to control access to the file.
       useCase: "conversation",
       useCaseMetadata: {
@@ -195,7 +195,7 @@ export async function editClientExecutableFile(
     });
   }
 
-  // Update metadata to track the editing agent and set hasPreviousVersion flag
+  // Update metadata to track the editing agent
   if (editedByAgentConfigurationId) {
     const needsMetadataUpdate =
       fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
@@ -209,11 +209,8 @@ export async function editClientExecutableFile(
     }
   }
 
-  // Set hasPreviousVersion flag since we're creating a new version
-  // Only update if it's not already true (covers both false and null cases)
-  if (fileResource.hasPreviousVersion !== true) {
-    await fileResource.setHasPreviousVersion(true);
-  }
+  // Increment version since we're creating a new version
+  await fileResource.incrementVersion();
 
   // Validate the Tailwind classes in the resulting code.
   const tailwindValidation = validateTailwindCode(updatedContent);
@@ -424,9 +421,8 @@ export async function revertClientExecutableFileChanges(
     lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
   });
 
-  // Update hasPreviousVersion flag based on remaining versions
-  const stillHasPreviousVersion = versions.length > MIN_VERSIONS_FOR_REVERT;
-  await fileResource.setHasPreviousVersion(stillHasPreviousVersion);
+  // Decrement version since we're reverting to a previous version
+  await fileResource.decrementVersion();
 
   // Upload the reverted content
   await fileResource.uploadContent(auth, revertedContent);

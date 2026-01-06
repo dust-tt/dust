@@ -314,7 +314,7 @@ export function FrameRenderer({
               lastEditedByAgentConfigurationId={
                 lastEditedByAgentConfigurationId
               }
-              hasPreviousVersion={fileMetadata?.hasPreviousVersion ?? false}
+              hasPreviousVersion={(fileMetadata?.version ?? 0) > 0}
               onRevert={onRevert}
               isFullScreen={isFullScreen}
               exitFullScreen={exitFullScreen}
@@ -364,7 +364,7 @@ function PreviewActionButtons({
           />
         }
       />
-      {lastEditedByAgentConfigurationId && hasPreviousVersion && (
+      {lastEditedByAgentConfigurationId && (
         <Tooltip
           label="Revert the last change"
           side="left"
@@ -372,6 +372,7 @@ function PreviewActionButtons({
           trigger={
             <Button
               variant="ghost"
+              disabled={!hasPreviousVersion}
               size="xs"
               icon={ArrowGoBackIcon}
               onClick={onRevert}

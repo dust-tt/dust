@@ -52,7 +52,7 @@ export interface FileType {
   version: number;
   fileName: string;
   fileSize: number;
-  hasPreviousVersion: boolean | null;
+  version: number;
   sId: string;
   // TODO(spolu): move this to being the ModelId
   id: string;
