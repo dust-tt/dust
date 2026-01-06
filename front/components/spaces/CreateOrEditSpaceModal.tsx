@@ -1,15 +1,6 @@
 import {
-  Button,
-  DataTable,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyCTA,
   Input,
   Page,
-  ScrollArea,
-  SearchInput,
   Separator,
   Sheet,
   SheetContainer,
@@ -18,23 +9,15 @@ import {
   SheetHeader,
   SheetTitle,
   SliderToggle,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  CellContext,
-  PaginationState,
-  SortingState,
-} from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import * as React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
-import { GroupsList } from "@app/components/groups/GroupsList";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
-import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
-import { SearchMembersDropdown } from "@app/components/spaces/SearchMembersDropdown";
-import { useSendNotification } from "@app/hooks/useNotification";
+import type { MembersManagementType } from "@app/components/spaces/RestrictedAccessBody";
+import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { useGroups } from "@app/lib/swr/groups";
 import {
   useCreateSpace,
@@ -51,14 +34,6 @@ import type {
   SpaceType,
   UserType,
 } from "@app/types";
-
-type MembersManagementType = "manual" | "group";
-
-function isMembersManagementType(
-  value: string
-): value is MembersManagementType {
-  return value === "manual" || value === "group";
-}
 
 interface CreateOrEditSpaceModalProps {
   defaultRestricted?: boolean;
@@ -83,24 +58,113 @@ export function CreateOrEditSpaceModal({
 }: CreateOrEditSpaceModalProps) {
   const confirm = React.useContext(ConfirmContext);
   const [spaceName, setSpaceName] = useState<string>(space?.name ?? "");
-  const [selectedMembers, setSelectedMembers] = useState<UserType[]>([]);
-  const [selectedGroups, setSelectedGroups] = useState<GroupType[]>([]);
+  const [currentMembers, setCurrentMembers] = useState<UserType[]>([]);
+  const [currentGroups, setCurrentGroups] = useState<GroupType[]>([]);
+  const [currentManagementType, setCurrentManagementType] =
+    useState<MembersManagementType>("manual");
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestricted, setIsRestricted] = useState(false);
-  const [searchSelectedMembers, setSearchSelectedMembers] =
-    useState<string>("");
-  const [managementType, setManagementType] =
-    useState<MembersManagementType>("manual");
   const [isDirty, setIsDirty] = useState(false);
+
+  // Used to track initial members/groups for the RestrictedAccessBody
+  const [initialMembers, setInitialMembers] = useState<UserType[]>([]);
+  const [initialGroups, setInitialGroups] = useState<GroupType[]>([]);
+  const [initialManagementType, setInitialManagementType] =
+    useState<MembersManagementType>("manual");
+
+  const onChangeRef = useRef<
+    | ((data: {
+        groups: GroupType[];
+        managementType: MembersManagementType;
+        members: UserType[];
+      }) => void)
+    | null
+  >(null);
 
   const planAllowsSCIM = plan.limits.users.isSCIMAllowed;
   const { user } = useUser();
 
+  // Handle changes from RestrictedAccessBody
+  const handleChange = useCallback(
+    async (data: {
+      groups: GroupType[];
+      managementType: MembersManagementType;
+      members: UserType[];
+    }) => {
+      // Check if management type changed
+      if (data.managementType !== currentManagementType) {
+        if (!planAllowsSCIM) {
+          return;
+        }
+
+        // If switching from manual to group mode with manually added members
+        if (
+          currentManagementType === "manual" &&
+          data.managementType === "group" &&
+          currentMembers.length > 0
+        ) {
+          const confirmed = await confirm({
+            title: "Switch to groups",
+            message:
+              "This switches from manual member to group-based access. " +
+              "Your current member list will be saved but no longer active.",
+            validateLabel: "Confirm",
+            validateVariant: "primary",
+          });
+
+          if (!confirmed) {
+            // Reset to previous type
+            setInitialManagementType(currentManagementType);
+            return;
+          }
+        }
+        // If switching from group to manual mode with selected groups
+        else if (
+          currentManagementType === "group" &&
+          data.managementType === "manual" &&
+          currentGroups.length > 0
+        ) {
+          const confirmed = await confirm({
+            title: "Switch to members",
+            message:
+              "This switches from group-based access to manual member management. " +
+              "Your current group settings will be saved but no longer active.",
+            validateLabel: "Confirm",
+            validateVariant: "primary",
+          });
+
+          if (!confirmed) {
+            // Reset to previous type
+            setInitialManagementType(currentManagementType);
+            return;
+          }
+        }
+      }
+
+      setCurrentMembers(data.members);
+      setCurrentGroups(data.groups);
+      setCurrentManagementType(data.managementType);
+      setIsDirty(true);
+    },
+    [
+      confirm,
+      currentGroups.length,
+      currentManagementType,
+      currentMembers.length,
+      planAllowsSCIM,
+    ]
+  );
+
+  useEffect(() => {
+    onChangeRef.current = handleChange;
+  }, [handleChange]);
+
   useEffect(() => {
     if (!planAllowsSCIM) {
-      setManagementType("manual");
+      setCurrentManagementType("manual");
+      setInitialManagementType("manual");
     }
   }, [planAllowsSCIM]);
 
@@ -127,26 +191,24 @@ export function CreateOrEditSpaceModal({
       const spaceMembers = spaceInfo?.members ?? null;
 
       // Initialize management type from space data (if editing) or default to manual for new spaces
-      if (spaceInfo?.managementMode !== undefined) {
-        setManagementType(spaceInfo.managementMode);
-      } else {
-        setManagementType("manual");
-      }
+      const mgmtType = spaceInfo?.managementMode ?? "manual";
+      setCurrentManagementType(mgmtType);
+      setInitialManagementType(mgmtType);
 
       // Initialize selected groups based on space's groupIds (only if workos feature is enabled)
+      let initialGroupsList: GroupType[] = [];
       if (
         planAllowsSCIM &&
         spaceInfo?.groupIds &&
         spaceInfo.groupIds.length > 0 &&
         groups
       ) {
-        const spaceGroups = groups.filter((group) =>
+        initialGroupsList = groups.filter((group) =>
           spaceInfo.groupIds.includes(group.sId)
         );
-        setSelectedGroups(spaceGroups);
-      } else {
-        setSelectedGroups([]);
       }
+      setCurrentGroups(initialGroupsList);
+      setInitialGroups(initialGroupsList);
 
       setSpaceName(spaceInfo?.name ?? "");
 
@@ -155,19 +217,20 @@ export function CreateOrEditSpaceModal({
         : (defaultRestricted ?? false);
       setIsRestricted(isRestricted);
 
-      let initialMembers: UserType[] = [];
+      let initialMembersList: UserType[] = [];
       if (spaceMembers && space) {
-        initialMembers = spaceMembers;
+        initialMembersList = spaceMembers;
       } else if (!space) {
-        initialMembers = [];
+        initialMembersList = [];
       }
 
       // Auto-add current user when opening with restricted access for new spaces
-      if (isRestricted && !space && user && initialMembers.length === 0) {
-        initialMembers = [user];
+      if (isRestricted && !space && user && initialMembersList.length === 0) {
+        initialMembersList = [user];
       }
 
-      setSelectedMembers(initialMembers);
+      setCurrentMembers(initialMembersList);
+      setInitialMembers(initialMembersList);
     }
   }, [
     defaultRestricted,
@@ -188,9 +251,12 @@ export function CreateOrEditSpaceModal({
       // Reset state.
       setSpaceName("");
       setIsRestricted(false);
-      setSelectedMembers([]);
-      setSelectedGroups([]);
-      setManagementType("manual");
+      setCurrentMembers([]);
+      setCurrentGroups([]);
+      setCurrentManagementType("manual");
+      setInitialMembers([]);
+      setInitialGroups([]);
+      setInitialManagementType("manual");
       setIsDeleting(false);
       setIsSaving(false);
       setIsDirty(false);
@@ -222,17 +288,17 @@ export function CreateOrEditSpaceModal({
     setIsSaving(true);
 
     if (space) {
-      if (planAllowsSCIM && managementType === "group") {
+      if (planAllowsSCIM && currentManagementType === "group") {
         await doUpdate(space, {
           isRestricted,
-          groupIds: selectedGroups.map((group) => group.sId),
+          groupIds: currentGroups.map((group) => group.sId),
           managementMode: "group",
           name: trimmedName,
         });
       } else {
         await doUpdate(space, {
           isRestricted,
-          memberIds: selectedMembers.map((vm) => vm.sId),
+          memberIds: currentMembers.map((vm) => vm.sId),
           managementMode: "manual",
           name: trimmedName,
         });
@@ -243,11 +309,11 @@ export function CreateOrEditSpaceModal({
     } else if (!space) {
       let createdSpace;
 
-      if (planAllowsSCIM && managementType === "group") {
+      if (planAllowsSCIM && currentManagementType === "group") {
         createdSpace = await doCreate({
           name: trimmedName,
           isRestricted,
-          groupIds: selectedGroups.map((group) => group.sId),
+          groupIds: currentGroups.map((group) => group.sId),
           managementMode: "group",
           spaceKind: "regular",
         });
@@ -255,7 +321,7 @@ export function CreateOrEditSpaceModal({
         createdSpace = await doCreate({
           name: trimmedName,
           isRestricted,
-          memberIds: selectedMembers.map((vm) => vm.sId),
+          memberIds: currentMembers.map((vm) => vm.sId),
           managementMode: "manual",
           spaceKind: "regular",
         });
@@ -270,19 +336,19 @@ export function CreateOrEditSpaceModal({
     handleClose();
   }, [
     confirm,
+    currentGroups,
+    currentManagementType,
+    currentMembers,
     doCreate,
     doUpdate,
     handleClose,
     isRestricted,
     mutateSpaceInfo,
     onCreated,
+    planAllowsSCIM,
     space,
     spaceInfo,
-    selectedMembers,
     spaceName,
-    managementType,
-    selectedGroups,
-    planAllowsSCIM,
   ]);
 
   const onDelete = useCallback(async () => {
@@ -301,73 +367,13 @@ export function CreateOrEditSpaceModal({
     }
   }, [doDelete, handleClose, owner.sId, router, space]);
 
-  const handleManagementTypeChange = useCallback(
-    async (value: string) => {
-      if (!isMembersManagementType(value) || !planAllowsSCIM) {
-        return;
-      }
-
-      // If switching from manual to group mode with manually added members.
-      if (
-        managementType === "manual" &&
-        value === "group" &&
-        selectedMembers.length > 0
-      ) {
-        const confirmed = await confirm({
-          title: "Switch to groups",
-          message:
-            "This switches from manual member to group-based access. " +
-            "Your current member list will be saved but no longer active.",
-          validateLabel: "Confirm",
-          validateVariant: "primary",
-        });
-
-        if (confirmed) {
-          setManagementType("group");
-          setIsDirty(true);
-        }
-      }
-      // If switching from group to manual mode with selected groups.
-      else if (
-        managementType === "group" &&
-        value === "manual" &&
-        selectedGroups.length > 0
-      ) {
-        const confirmed = await confirm({
-          title: "Switch to members",
-          message:
-            "This switches from group-based access to manual member management. " +
-            "Your current group settings will be saved but no longer active.",
-          validateLabel: "Confirm",
-          validateVariant: "primary",
-        });
-
-        if (confirmed) {
-          setManagementType("manual");
-          setIsDirty(true);
-        }
-      } else {
-        // For direct switches without selections, clear everything and let the user start fresh.
-        setManagementType(value);
-        setIsDirty(true);
-      }
-    },
-    [
-      confirm,
-      managementType,
-      selectedMembers.length,
-      selectedGroups.length,
-      planAllowsSCIM,
-    ]
-  );
-
   const disabled = useMemo(() => {
     const hasName = spaceName.trim().length > 0;
 
     const canSave =
       !isRestricted ||
-      (managementType === "manual" && selectedMembers.length > 0) ||
-      (managementType === "group" && selectedGroups.length > 0);
+      (currentManagementType === "manual" && currentMembers.length > 0) ||
+      (currentManagementType === "group" && currentGroups.length > 0);
 
     if (!spaceInfo) {
       return !canSave || !hasName;
@@ -375,15 +381,14 @@ export function CreateOrEditSpaceModal({
 
     return !isDirty || !canSave || !hasName;
   }, [
-    isRestricted,
-    managementType,
-    selectedMembers.length,
-    selectedGroups.length,
-    spaceInfo,
+    currentGroups.length,
+    currentManagementType,
+    currentMembers.length,
     isDirty,
+    isRestricted,
+    spaceInfo,
     spaceName,
   ]);
-  const isManual = !planAllowsSCIM || managementType === "manual";
 
   const handleNameChange = useCallback((value: string) => {
     setSpaceName(value);
@@ -422,33 +427,25 @@ export function CreateOrEditSpaceModal({
                   newRestricted &&
                   !space &&
                   user &&
-                  selectedMembers.length === 0
+                  currentMembers.length === 0
                 ) {
-                  setSelectedMembers([user, ...selectedMembers]);
+                  const newMembers = [user];
+                  setCurrentMembers(newMembers);
+                  setInitialMembers(newMembers);
                 }
               }}
             />
-
             <RestrictedAccessBody
               isRestricted={isRestricted}
-              isManual={isManual}
               planAllowsSCIM={planAllowsSCIM}
-              managementType={managementType}
               owner={owner}
-              selectedMembers={selectedMembers}
-              selectedGroups={selectedGroups}
-              searchSelectedMembers={searchSelectedMembers}
-              onSearchChange={setSearchSelectedMembers}
-              onManagementTypeChange={(value) => {
-                void handleManagementTypeChange(value);
-              }}
-              onMembersUpdated={(members) => {
-                setSelectedMembers(members);
-                setIsDirty(true);
-              }}
-              onGroupsUpdated={(groups) => {
-                setSelectedGroups(groups);
-                setIsDirty(true);
+              initialMembers={initialMembers}
+              initialGroups={initialGroups}
+              initialManagementType={initialManagementType}
+              onChange={(data) => {
+                if (onChangeRef.current) {
+                  void onChangeRef.current(data);
+                }
               }}
             />
           </div>
@@ -549,335 +546,5 @@ function RestrictedAccessHeader({
         </span>
       )}
     </>
-  );
-}
-
-interface RestrictedAccessBodyProps {
-  isRestricted: boolean;
-  isManual: boolean;
-  planAllowsSCIM: boolean;
-  managementType: MembersManagementType;
-  owner: LightWorkspaceType;
-  selectedMembers: UserType[];
-  selectedGroups: GroupType[];
-  searchSelectedMembers: string;
-  onSearchChange: (value: string) => void;
-  onManagementTypeChange: (value: string) => void;
-  onMembersUpdated: (members: UserType[]) => void;
-  onGroupsUpdated: (groups: GroupType[]) => void;
-}
-
-function RestrictedAccessBody({
-  isRestricted,
-  isManual,
-  planAllowsSCIM,
-  managementType,
-  owner,
-  selectedMembers,
-  selectedGroups,
-  searchSelectedMembers,
-  onSearchChange,
-  onManagementTypeChange,
-  onMembersUpdated,
-  onGroupsUpdated,
-}: RestrictedAccessBodyProps) {
-  if (isRestricted) {
-    return (
-      <>
-        {planAllowsSCIM ? (
-          <div className="flex flex-row items-center justify-between">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  isSelect
-                  label={
-                    managementType === "manual"
-                      ? "Manual access"
-                      : "Provisioned group access"
-                  }
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  label="Manual access"
-                  onClick={() => {
-                    if (isMembersManagementType("manual")) {
-                      onManagementTypeChange("manual");
-                    }
-                  }}
-                />
-                <DropdownMenuItem
-                  label="Provisioned group access"
-                  onClick={() => {
-                    if (isMembersManagementType("group")) {
-                      onManagementTypeChange("group");
-                    }
-                  }}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {isManual && selectedMembers.length > 0 && (
-              <SearchMembersDropdown
-                owner={owner}
-                selectedMembers={selectedMembers}
-                onMembersUpdated={onMembersUpdated}
-              />
-            )}
-            {!isManual && selectedGroups.length > 0 && (
-              <SearchGroupsDropdown
-                owner={owner}
-                selectedGroups={selectedGroups}
-                onGroupsUpdated={onGroupsUpdated}
-              />
-            )}
-          </div>
-        ) : (
-          isManual &&
-          selectedMembers.length > 0 && (
-            <div className="flex w-full justify-end">
-              <SearchMembersDropdown
-                owner={owner}
-                selectedMembers={selectedMembers}
-                onMembersUpdated={onMembersUpdated}
-              />
-            </div>
-          )
-        )}
-
-        {isManual && selectedMembers.length === 0 && (
-          <EmptyCTA
-            action={
-              <SearchMembersDropdown
-                owner={owner}
-                selectedMembers={selectedMembers}
-                onMembersUpdated={onMembersUpdated}
-              />
-            }
-            message="Add members to the space"
-          />
-        )}
-        {!isManual && selectedGroups.length === 0 && (
-          <EmptyCTA
-            action={
-              <SearchGroupsDropdown
-                owner={owner}
-                selectedGroups={selectedGroups}
-                onGroupsUpdated={onGroupsUpdated}
-              />
-            }
-            message="Add groups to the space"
-          />
-        )}
-
-        {isManual && selectedMembers.length > 0 && (
-          <>
-            <SearchInput
-              name="search"
-              placeholder="Search (email)"
-              value={searchSelectedMembers}
-              onChange={onSearchChange}
-            />
-            <ScrollArea className="h-full">
-              <MembersTable
-                onMembersUpdated={onMembersUpdated}
-                selectedMembers={selectedMembers}
-                searchSelectedMembers={searchSelectedMembers}
-              />
-            </ScrollArea>
-          </>
-        )}
-        {!isManual && selectedGroups.length > 0 && (
-          <>
-            <SearchInput
-              name="search"
-              placeholder={"Search groups"}
-              value={searchSelectedMembers}
-              onChange={onSearchChange}
-            />
-            <ScrollArea className="h-full">
-              <GroupsTable
-                onGroupsUpdated={onGroupsUpdated}
-                selectedGroups={selectedGroups}
-                searchSelectedGroups={searchSelectedMembers}
-              />
-            </ScrollArea>
-          </>
-        )}
-      </>
-    );
-  }
-
-  return null;
-}
-
-type MemberRowData = {
-  icon: string;
-  name: string;
-  userId: string;
-  email: string;
-  onClick?: () => void;
-};
-
-type MemberInfo = CellContext<MemberRowData, unknown>;
-
-function getMemberTableRows(allUsers: UserType[]): MemberRowData[] {
-  return allUsers.map((user) => ({
-    icon: user.image ?? "",
-    name: user.fullName,
-    userId: user.sId,
-    email: user.email ?? "",
-  }));
-}
-
-interface MembersTableProps {
-  onMembersUpdated: (members: UserType[]) => void;
-  selectedMembers: UserType[];
-  searchSelectedMembers: string;
-}
-
-function MembersTable({
-  onMembersUpdated,
-  selectedMembers,
-  searchSelectedMembers,
-}: MembersTableProps) {
-  const sendNotifications = useSendNotification();
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 50,
-  });
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "email", desc: false },
-  ]);
-
-  const getTableColumns = useCallback(() => {
-    const removeMember = (userId: string) => {
-      if (selectedMembers.length === 1) {
-        sendNotifications({
-          title: "Cannot remove last member.",
-          description: "You cannot remove the last group member.",
-          type: "error",
-        });
-        return;
-      }
-      onMembersUpdated(selectedMembers.filter((m) => m.sId !== userId));
-    };
-    return [
-      {
-        id: "name",
-        accessorKey: "name",
-        cell: (info: MemberInfo) => (
-          <>
-            <DataTable.CellContent
-              avatarUrl={info.row.original.icon}
-              className="hidden md:flex"
-            >
-              {info.row.original.name}
-            </DataTable.CellContent>
-            <DataTable.CellContent
-              avatarUrl={info.row.original.icon}
-              className="flex md:hidden"
-              description={info.row.original.email}
-            >
-              {info.row.original.name}
-            </DataTable.CellContent>
-          </>
-        ),
-        enableSorting: true,
-      },
-      {
-        id: "email",
-        accessorKey: "email",
-        cell: (info: MemberInfo) => (
-          <DataTable.BasicCellContent label={info.row.original.email} />
-        ),
-        enableSorting: true,
-      },
-      {
-        id: "action",
-        meta: {
-          className: "w-12",
-        },
-        cell: (info: MemberInfo) => {
-          return (
-            <DataTable.CellContent>
-              <Button
-                icon={XMarkIcon}
-                size="xs"
-                variant="ghost-secondary"
-                onClick={() => removeMember(info.row.original.userId)}
-              />
-            </DataTable.CellContent>
-          );
-        },
-      },
-    ];
-  }, [onMembersUpdated, selectedMembers, sendNotifications]);
-
-  const rows = useMemo(
-    () => getMemberTableRows(selectedMembers),
-    [selectedMembers]
-  );
-  const columns = useMemo(() => getTableColumns(), [getTableColumns]);
-
-  return (
-    <DataTable
-      data={rows}
-      columns={columns}
-      columnsBreakpoints={{
-        name: "md",
-      }}
-      pagination={pagination}
-      setPagination={setPagination}
-      sorting={sorting}
-      setSorting={setSorting}
-      totalRowCount={rows.length}
-      filter={searchSelectedMembers}
-      filterColumn="email"
-    />
-  );
-}
-
-interface GroupsTableProps {
-  onGroupsUpdated: (groups: GroupType[]) => void;
-  selectedGroups: GroupType[];
-  searchSelectedGroups: string;
-}
-
-function GroupsTable({
-  onGroupsUpdated,
-  selectedGroups,
-  searchSelectedGroups,
-}: GroupsTableProps) {
-  const sendNotifications = useSendNotification();
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 50,
-  });
-
-  const removeGroup = useCallback(
-    (group: GroupType) => {
-      if (selectedGroups.length === 1) {
-        sendNotifications({
-          title: "Cannot remove last group.",
-          description: "You cannot remove the last group.",
-          type: "error",
-        });
-        return;
-      }
-      onGroupsUpdated(selectedGroups.filter((g) => g.sId !== group.sId));
-    },
-    [onGroupsUpdated, selectedGroups, sendNotifications]
-  );
-
-  return (
-    <GroupsList
-      groups={selectedGroups}
-      searchTerm={searchSelectedGroups}
-      showColumns={["name", "memberCount", "action"]}
-      onRemoveGroupClick={removeGroup}
-      pagination={pagination}
-      setPagination={setPagination}
-    />
   );
 }

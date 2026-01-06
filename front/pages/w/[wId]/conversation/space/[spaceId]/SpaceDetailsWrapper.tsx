@@ -13,9 +13,9 @@ import { useRouter } from "next/router";
 import type { ReactNode } from "react";
 import React, { useMemo } from "react";
 
+import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import type { WorkspaceType } from "@app/types";
-import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 
 interface SpaceTabConfig {
   id: string;
