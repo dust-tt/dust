@@ -60,6 +60,7 @@ cli
     "Wait for SDK to build before opening zellij (cannot be used with --no-open)"
   )
   .option("-c, --command <cmd>", "Run command in shell tab after opening (drops to shell on exit)")
+  .option("-C, --compact", "Use compact zellij layout (no tab bar)")
   .action(
     async (
       name: string | undefined,
@@ -70,6 +71,7 @@ cli
         warm?: boolean;
         wait?: boolean;
         command?: string;
+        compact?: boolean;
       }
     ) => {
       // Validate --wait cannot be used with --no-open
@@ -86,6 +88,7 @@ cli
         warm?: boolean;
         wait?: boolean;
         command?: string;
+        compact?: boolean;
       } = {};
       if (resolvedName !== undefined) {
         spawnOptions.name = resolvedName;
@@ -105,6 +108,9 @@ cli
       if (options.command) {
         spawnOptions.command = options.command;
       }
+      if (options.compact) {
+        spawnOptions.compact = true;
+      }
       await prepareAndRun(spawnCommand(spawnOptions));
     }
   );
@@ -112,7 +118,7 @@ cli
 cli
   .command("open [name]", "Open environment's zellij session")
   .alias("o")
-  .option("-c, --compact", "Use compact zellij layout (no tab bar)")
+  .option("-C, --compact", "Use compact zellij layout (no tab bar)")
   .action(async (name: string | undefined, options: { compact?: boolean }) => {
     await prepareAndRun(openCommand(name, { compact: options.compact }));
   });
