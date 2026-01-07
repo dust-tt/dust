@@ -128,6 +128,7 @@ export function _getHelperGlobalAgent({
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      secretHash: null,
     });
   }
 

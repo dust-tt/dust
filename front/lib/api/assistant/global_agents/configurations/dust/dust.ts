@@ -491,6 +491,7 @@ function _getDustLikeGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      secretHash: null,
     });
   }
 
@@ -511,6 +512,7 @@ function _getDustLikeGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      secretHash: null,
     });
   }
 

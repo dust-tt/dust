@@ -358,6 +358,7 @@ export class AgentYAMLConverter {
             : {},
         dustAppConfiguration: null,
         secretName: null,
+        secretHash: null,
         timeFrame:
           "time_frame" in action.configuration &&
           action.configuration.time_frame

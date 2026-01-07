@@ -102,5 +102,7 @@ export function buildServerSideMCPServerConfiguration({
     dustAppConfiguration: null,
     jsonSchema: null,
     secretName: null,
+    // Use the view-level encrypted secret. Tools will decrypt this at runtime.
+    secretHash: mcpServerView.secretHash,
   };
 }

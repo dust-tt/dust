@@ -10,6 +10,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceKind, WithAPIErrorResponse } from "@app/types";
+import { encrypt } from "@app/types";
 
 export type GetMCPServerViewsResponseBody = {
   success: boolean;
@@ -31,9 +32,14 @@ const GetQueryParamsSchema = t.type({
   ]),
 });
 
-const PostQueryParamsSchema = t.type({
-  mcpServerId: t.string,
-});
+const PostQueryParamsSchema = t.intersection([
+  t.type({
+    mcpServerId: t.string,
+  }),
+  t.partial({
+    apiKey: t.string,
+  }),
+]);
 
 export type PostMCPServersQueryParams = t.TypeOf<typeof PostQueryParamsSchema>;
 
@@ -130,9 +136,16 @@ async function handler(
         });
       }
 
+      const { apiKey } = r.right;
+      const owner = auth.getNonNullableWorkspace();
+
+      // If apiKey is provided, encrypt and store directly on the view.
+      const secretHash = apiKey ? encrypt(apiKey, owner.sId) : undefined;
+
       const mcpServerView = await MCPServerViewResource.create(auth, {
         systemView,
         space,
+        secretHash,
       });
 
       const serverView = mcpServerView.toJSON();

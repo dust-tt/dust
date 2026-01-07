@@ -4,14 +4,16 @@ import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  getToolSecret,
+  makeInternalMCPServer,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
-import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
-import { decrypt, Err, normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 const FRONT_API_BASE_URL = "https://api2.frontapp.com";
 
@@ -137,30 +139,16 @@ async function getFrontAPIToken(
   agentLoopContext?: AgentLoopContextType
 ): Promise<string> {
   const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-  if (
-    !toolConfig ||
-    !isLightServerSideMCPToolConfiguration(toolConfig) ||
-    !toolConfig.secretName
-  ) {
+  if (!toolConfig || !isLightServerSideMCPToolConfiguration(toolConfig)) {
     throw new MCPError(
       "Front API token not configured. Please configure a secret containing your Front API token in the agent settings."
     );
   }
 
-  const secret = await DustAppSecretModel.findOne({
-    where: {
-      name: toolConfig.secretName,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
-
-  const apiToken = secret
-    ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
-    : null;
-
+  const apiToken = await getToolSecret(auth, toolConfig);
   if (!apiToken) {
     throw new MCPError(
-      "Front API token not found in workspace secrets. Please check the secret configuration."
+      "Front API token not found. Please check the secret configuration."
     );
   }
 

@@ -6,6 +6,7 @@ import {
 } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AGENT_MEMORY_SERVER_NAME,
@@ -27,6 +28,7 @@ import type {
   ConversationWithoutContentType,
   OAuthProvider,
 } from "@app/types";
+import { decrypt } from "@app/types";
 
 export function makeInternalMCPServer(
   serverName: InternalMCPServerNameType,
@@ -339,4 +341,23 @@ export function jsonToMarkdown<T = unknown>(
 
   visited.delete(data);
   return hasPrimaryKey ? headerLine + result : result;
+}
+
+/**
+ * Retrieves the decrypted API key from tool configuration.
+ *
+ * Checks in order:
+ * 1. View-level secret (secretHash) - encrypted value stored directly on the view
+ * 2. Agent-level secret (secretName) - reference to DustAppSecretModel
+ *
+ * @returns The decrypted API key, or null if not configured
+ */
+export async function getToolSecret(
+  auth: Authenticator,
+  toolConfig: LightServerSideMCPToolConfigurationType
+): Promise<string | null> {
+  if (toolConfig.secretHash) {
+    return decrypt(toolConfig.secretHash, auth.getNonNullableWorkspace().sId);
+  }
+  return null;
 }

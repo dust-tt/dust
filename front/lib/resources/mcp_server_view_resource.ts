@@ -170,9 +170,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     {
       systemView,
       space,
+      secretHash,
     }: {
       systemView: MCPServerViewResource;
       space: SpaceResource;
+      secretHash?: string;
     }
   ) {
     if (systemView.space.kind !== "system") {
@@ -204,6 +206,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         oAuthUseCase: systemView.oAuthUseCase,
         name: systemView.name,
         description: systemView.description,
+        secretHash: secretHash ?? null,
       },
       space,
       auth.user() ?? undefined
@@ -537,6 +540,24 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return new Ok(affectedCount);
   }
 
+  public async updateSecretHash(
+    auth: Authenticator,
+    secretHash: string | null
+  ): Promise<Result<number, DustError<"unauthorized">>> {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError("unauthorized", "Not allowed to update secret.")
+      );
+    }
+
+    const [affectedCount] = await this.update({
+      secretHash,
+      editedAt: new Date(),
+      editedByUserId: auth.getNonNullableUser().id,
+    });
+    return new Ok(affectedCount);
+  }
+
   // Deletion.
 
   protected async softDelete(
@@ -820,6 +841,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           enabled: t.enabled,
         })),
       ],
+      hasApiKey: !!this.secretHash,
     };
   }
 }

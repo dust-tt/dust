@@ -37,6 +37,9 @@ export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServ
   declare remoteToolsMetadata: NonAttribute<RemoteMCPServerToolMetadataModel[]>;
 
   declare oAuthUseCase: MCPOAuthUseCase | null;
+
+  // Encrypted API key for tools requiring API keys (e.g., Ashby, Valtown).
+  declare secretHash: string | null;
 }
 MCPServerViewModel.init(
   {
@@ -91,6 +94,10 @@ MCPServerViewModel.init(
       validate: {
         isIn: [["platform_actions", "personal_actions"]],
       },
+    },
+    secretHash: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
   },
   {

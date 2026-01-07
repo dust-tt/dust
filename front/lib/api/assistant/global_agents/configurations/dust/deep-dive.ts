@@ -535,6 +535,7 @@ export function _getDeepDiveGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      secretHash: null,
     });
   }
 
@@ -556,6 +557,7 @@ export function _getDeepDiveGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      secretHash: null,
     });
     actions.push({
       id: -1,
@@ -574,6 +576,7 @@ export function _getDeepDiveGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      secretHash: null,
     });
   }
 
@@ -595,6 +598,7 @@ export function _getDeepDiveGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      secretHash: null,
     });
   }
 
@@ -712,6 +716,7 @@ export function _getDustTaskGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      secretHash: null,
     });
   }
 

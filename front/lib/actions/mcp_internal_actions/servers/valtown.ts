@@ -3,14 +3,16 @@ import ValTown from "@valtown/sdk";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  getToolSecret,
+  makeInternalMCPServer,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
-import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
-import { decrypt, Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const VALTOWN_TOOL_NAME = "val_town";
@@ -33,25 +35,11 @@ async function getValTownClient(
   agentLoopContext?: AgentLoopContextType
 ): Promise<ValTown | null> {
   const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-  if (
-    !toolConfig ||
-    !isLightServerSideMCPToolConfiguration(toolConfig) ||
-    !toolConfig.secretName
-  ) {
+  if (!toolConfig || !isLightServerSideMCPToolConfiguration(toolConfig)) {
     return null;
   }
 
-  const secret = await DustAppSecretModel.findOne({
-    where: {
-      name: toolConfig.secretName,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
-
-  const apiKey = secret
-    ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
-    : null;
-
+  const apiKey = await getToolSecret(auth, toolConfig);
   if (!apiKey) {
     return null;
   }

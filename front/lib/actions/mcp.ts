@@ -66,7 +66,10 @@ export type ServerSideMCPServerConfigurationType =
     additionalConfiguration: AdditionalConfigurationType;
     mcpServerViewId: string;
     dustAppConfiguration: DustAppRunConfigurationType | null;
+    // Agent-level secret reference (DustAppSecretModel name).
     secretName: string | null;
+    // View-level encrypted secret (stored directly on the view).
+    secretHash: string | null;
     // Out of convenience, we hold the sId of the internal server if it is an internal server.
     internalMCPServerId: string | null;
   };

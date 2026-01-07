@@ -14,13 +14,13 @@ import {
   AshbyCandidateSearchResponseSchema,
   AshbyReportSynchronousResponseSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
+import { getToolSecret } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
-import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { decrypt, Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
 
@@ -29,11 +29,7 @@ export async function getAshbyClient(
   agentLoopContext?: AgentLoopContextType
 ): Promise<Result<AshbyClient, MCPError>> {
   const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-  if (
-    !toolConfig ||
-    !isLightServerSideMCPToolConfiguration(toolConfig) ||
-    !toolConfig.secretName
-  ) {
+  if (!toolConfig || !isLightServerSideMCPToolConfiguration(toolConfig)) {
     return new Err(
       new MCPError(
         "Ashby API key not configured. Please configure a secret containing your Ashby API key in the agent settings.",
@@ -44,20 +40,11 @@ export async function getAshbyClient(
     );
   }
 
-  const secret = await DustAppSecretModel.findOne({
-    where: {
-      name: toolConfig.secretName,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
-
-  const apiKey = secret
-    ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
-    : null;
+  const apiKey = await getToolSecret(auth, toolConfig);
   if (!apiKey) {
     return new Err(
       new MCPError(
-        "Ashby API key not found in workspace secrets. Please check the secret configuration.",
+        "Ashby API key not found. Please check the secret configuration.",
         {
           tracked: false,
         }

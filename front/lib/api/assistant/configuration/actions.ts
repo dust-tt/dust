@@ -111,6 +111,8 @@ export async function createAgentActionConfiguration(
       additionalConfiguration: action.additionalConfiguration,
       dustAppConfiguration: action.dustAppConfiguration,
       secretName: action.secretName,
+      // secretHash is only stored on the view, not on the agent configuration.
+      secretHash: null,
       jsonSchema: action.jsonSchema,
     });
   });

@@ -717,6 +717,7 @@ export async function runModelActivity(
         timeFrame: null,
         jsonSchema: null,
         secretName: null,
+        secretHash: null,
         additionalConfiguration: {},
         mcpServerViewId: mcpServerView.sId,
         dustAppConfiguration: null,
