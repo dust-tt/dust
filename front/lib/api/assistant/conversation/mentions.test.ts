@@ -541,12 +541,8 @@ describe("createAgentMessages", () => {
       },
     });
     expect(updatedAgentConfig).not.toBeNull();
-    expect(updatedAgentConfig?.requestedSpaceIds).toContain(
-      space1ModelId?.toString()
-    );
-    expect(updatedAgentConfig?.requestedSpaceIds).toContain(
-      space2ModelId?.toString()
-    );
+    expect(updatedAgentConfig?.requestedSpaceIds).toContain(space1ModelId);
+    expect(updatedAgentConfig?.requestedSpaceIds).toContain(space2ModelId);
 
     // Create conversation
     const testConversation = await ConversationFactory.create(auth, {

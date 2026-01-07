@@ -629,9 +629,7 @@ describe("POST /api/w/[wId]/skills", () => {
       },
     });
     expect(skillConfiguration).not.toBeNull();
-    expect(skillConfiguration!.requestedSpaceIds).toEqual([
-      String(regularSpace.id), // BigInt array returned as string
-    ]);
+    expect(skillConfiguration!.requestedSpaceIds).toEqual([regularSpace.id]);
   });
 
   it("creates a skill with attached knowledge", async () => {
