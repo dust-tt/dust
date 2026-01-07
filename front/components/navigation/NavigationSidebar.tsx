@@ -445,7 +445,7 @@ function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
       className={cn(
         "mx-3 mb-3 rounded-lg border p-3",
         "border-border dark:border-border-night",
-        "bg-white dark:bg-background-night"
+        "bg-background dark:bg-background-night"
       )}
     >
       <div className="mb-2 flex items-center justify-between text-sm">
