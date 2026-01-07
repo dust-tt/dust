@@ -109,13 +109,9 @@ export const AgentInputBar = ({
 
   // Keep blockedActionIndex in sync when blockedActions array changes
   useEffect(() => {
-    if (
-      blockedActionIndex >= blockedActions.length &&
-      blockedActions.length > 0
-    ) {
-      setBlockedActionIndex(blockedActions.length - 1);
-    } else if (blockedActions.length === 0) {
-      setBlockedActionIndex(0);
+    // Clamp index to valid range: [0, length-1] when non-empty, or 0 when empty
+    if (blockedActionIndex >= blockedActions.length) {
+      setBlockedActionIndex(Math.max(0, blockedActions.length - 1));
     }
   }, [blockedActionIndex, blockedActions.length]);
 
