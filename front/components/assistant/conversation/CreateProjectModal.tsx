@@ -93,6 +93,8 @@ export function CreateProjectModal({
     sendNotification,
     mutateSpaceSummary,
     user,
+    router,
+    owner.sId,
   ]);
 
   const handleKeyPress = useCallback(

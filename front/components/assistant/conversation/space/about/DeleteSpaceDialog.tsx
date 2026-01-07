@@ -41,7 +41,7 @@ export function DeleteSpaceDialog({ owner, space }: DeleteSpaceDialogProps) {
       void mutateSpaceSummary();
     }
     setIsDeleting(false);
-  }, [doDelete, space, mutateSpaceSummary, owner.sId]);
+  }, [doDelete, space, mutateSpaceSummary, owner.sId, router]);
 
   return (
     <Dialog>
