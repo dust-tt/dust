@@ -101,8 +101,6 @@ export const AgentInputBar = ({
   }, [draftAgent, lastUserMessage]);
 
   const { bottomOffset, listOffset } = useVirtuosoLocation();
-  const distanceUntilButtonVisible = 100;
-  const showNavigationButtons = bottomOffset >= distanceUntilButtonVisible;
   const showClearButton =
     context.agentBuilderContext?.resetConversation &&
     generatingMessages.length > 0;
@@ -110,6 +108,7 @@ export const AgentInputBar = ({
   const blockedActions = getBlockedActions(context.user.sId);
 
   // Track current user message index for navigation
+  // null means "at the bottom" (past the last user message)
   const [currentUserMessageIndex, setCurrentUserMessageIndex] = useState<
     number | null
   >(null);
@@ -126,15 +125,16 @@ export const AgentInputBar = ({
     return indices;
   }, [methods.data]);
 
+  // When at bottom (null), up is active if there are user messages, down is disabled
+  // When navigating, disable appropriately based on position
   const isAtFirstUserMessage =
-    currentUserMessageIndex === null ||
-    currentUserMessageIndex <= 0 ||
-    userMessageIndices.length === 0;
+    currentUserMessageIndex !== null &&
+    (currentUserMessageIndex <= 0 || userMessageIndices.length === 0);
 
   const isAtLastUserMessage =
-    currentUserMessageIndex === null ||
-    currentUserMessageIndex >= userMessageIndices.length - 1 ||
-    userMessageIndices.length === 0;
+    currentUserMessageIndex === null || userMessageIndices.length === 0;
+
+  const canNavigateUp = userMessageIndices.length > 0 && !isAtFirstUserMessage;
 
   const scrollToPreviousUserMessage = useCallback(() => {
     if (userMessageIndices.length === 0) {
@@ -188,9 +188,10 @@ export const AgentInputBar = ({
     setCurrentUserMessageIndex(targetIndex);
   }, [userMessageIndices, currentUserMessageIndex, listOffset, methods]);
 
-  // Reset navigation state when scrolling to bottom
+  // Reset navigation state when scrolling back to bottom
+  const BOTTOM_THRESHOLD = 100;
   useEffect(() => {
-    if (bottomOffset < distanceUntilButtonVisible) {
+    if (bottomOffset < BOTTOM_THRESHOLD) {
       setCurrentUserMessageIndex(null);
     }
   }, [bottomOffset]);
@@ -246,34 +247,30 @@ export const AgentInputBar = ({
           top: "-2em",
         }}
       >
-        {showNavigationButtons && (
-          <>
-            <Tooltip
-              label="Go to previous message"
-              side="top"
-              trigger={
-                <Button
-                  icon={ArrowUpIcon}
-                  variant="outline"
-                  onClick={scrollToPreviousUserMessage}
-                  disabled={isAtFirstUserMessage}
-                />
-              }
+        <Tooltip
+          label="Go to previous message"
+          side="top"
+          trigger={
+            <Button
+              icon={ArrowUpIcon}
+              variant="outline"
+              onClick={scrollToPreviousUserMessage}
+              disabled={!canNavigateUp}
             />
-            <Tooltip
-              label="Go to next message"
-              side="top"
-              trigger={
-                <Button
-                  icon={ArrowDownIcon}
-                  variant="outline"
-                  onClick={scrollToNextUserMessage}
-                  disabled={isAtLastUserMessage}
-                />
-              }
+          }
+        />
+        <Tooltip
+          label="Go to next message"
+          side="top"
+          trigger={
+            <Button
+              icon={ArrowDownIcon}
+              variant="outline"
+              onClick={scrollToNextUserMessage}
+              disabled={isAtLastUserMessage}
             />
-          </>
-        )}
+          }
+        />
 
         {showClearButton && (
           <Button
