@@ -15,6 +15,7 @@ import type { PortAllocation } from "../lib/ports";
 import { allocateNextPort, calculatePorts, savePortAllocation } from "../lib/ports";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
+import { getBranchName, loadSettings } from "../lib/settings";
 import { installAllDependencies } from "../lib/setup";
 import { cleanupPartialEnvironment, createWorktree, getMainRepoPath } from "../lib/worktree";
 import { openCommand } from "./open";
@@ -181,9 +182,12 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
     return Err(new CommandError(`Environment '${name}' already exists`));
   }
 
+  // Load settings for branch prefix
+  const settings = await loadSettings();
+
   // Always base on main branch
   const baseBranch = "main";
-  const workspaceBranch = `${name}-workspace`;
+  const workspaceBranch = getBranchName(name, settings);
   const worktreePath = getWorktreeDir(name);
 
   logger.info(`Creating environment '${name}' from branch '${baseBranch}'`);
