@@ -26,6 +26,7 @@ interface SpawnOptions {
   noAttach?: boolean;
   warm?: boolean;
   wait?: boolean;
+  command?: string;
 }
 
 async function promptForName(): Promise<string> {
@@ -238,16 +239,20 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
 
   // Open zellij unless --no-open
   if (!options.noOpen) {
-    const openOpts: { warmCommand?: string; noAttach?: boolean } = {};
-    if (options.warm) openOpts.warmCommand = `dust-hive warm ${name}`;
-    if (options.noAttach) openOpts.noAttach = true;
-    return openCommand(name, openOpts);
+    return openCommand(name, buildOpenOptions(name, options));
   }
 
   // If --no-open and --warm, run warm command directly in current terminal
-  if (options.warm) {
-    return warmCommand(name, {});
-  }
+  return options.warm ? warmCommand(name, {}) : Ok(undefined);
+}
 
-  return Ok(undefined);
+function buildOpenOptions(
+  name: string,
+  options: SpawnOptions
+): { warmCommand?: string; noAttach?: boolean; initialCommand?: string } {
+  const openOpts: { warmCommand?: string; noAttach?: boolean; initialCommand?: string } = {};
+  if (options.warm) openOpts.warmCommand = `dust-hive warm ${name}`;
+  if (options.noAttach) openOpts.noAttach = true;
+  if (options.command) openOpts.initialCommand = options.command;
+  return openOpts;
 }

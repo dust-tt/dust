@@ -59,10 +59,18 @@ cli
     "-W, --wait",
     "Wait for SDK to build before opening zellij (cannot be used with --no-open)"
   )
+  .option("-c, --command <cmd>", "Run command in shell tab after opening (drops to shell on exit)")
   .action(
     async (
       name: string | undefined,
-      options: { name?: string; open?: boolean; attach?: boolean; warm?: boolean; wait?: boolean }
+      options: {
+        name?: string;
+        open?: boolean;
+        attach?: boolean;
+        warm?: boolean;
+        wait?: boolean;
+        command?: string;
+      }
     ) => {
       // Validate --wait cannot be used with --no-open
       if (options.wait && options.open === false) {
@@ -77,6 +85,7 @@ cli
         noAttach?: boolean;
         warm?: boolean;
         wait?: boolean;
+        command?: string;
       } = {};
       if (resolvedName !== undefined) {
         spawnOptions.name = resolvedName;
@@ -92,6 +101,9 @@ cli
       }
       if (options.wait) {
         spawnOptions.wait = true;
+      }
+      if (options.command) {
+        spawnOptions.command = options.command;
       }
       await prepareAndRun(spawnCommand(spawnOptions));
     }
