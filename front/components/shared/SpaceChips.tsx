@@ -13,6 +13,7 @@ export function SpaceChips({ spaces, onRemoveSpace }: SpaceChipsProps) {
     <div className="flex flex-wrap gap-2">
       {spaces.map((space) => (
         <Chip
+          size="xs"
           key={space.sId}
           label={getSpaceName(space)}
           icon={getSpaceIcon(space)}
