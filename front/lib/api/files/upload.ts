@@ -3,6 +3,7 @@ import { isDustMimeType } from "@dust-tt/client";
 import ConvertAPI from "convertapi";
 import fs from "fs";
 import type { IncomingMessage } from "http";
+import probeImageSize from "probe-image-size";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { fileSync } from "tmp";
@@ -140,6 +141,77 @@ const resizeAndUploadToFileStorage = async (
   });
   */
 
+  const maxSizePixels = parseInt(resizeParams.ImageWidth);
+
+  // Check image dimensions before calling ConvertAPI
+  try {
+    const readStreamForProbe = file.getReadStream({
+      auth,
+      version: "original",
+    });
+
+    const dimensions = await probeImageSize(readStreamForProbe);
+
+    // Destroy the stream after probing (it's consumed)
+    readStreamForProbe.destroy();
+
+    logger.info(
+      {
+        fileModelId: file.id,
+        workspaceId: auth.workspace()?.sId,
+        dimensions: { width: dimensions.width, height: dimensions.height },
+        maxSize: maxSizePixels,
+      },
+      "Image dimensions detected"
+    );
+
+    // Check if both dimensions are within limits
+    if (dimensions.width <= maxSizePixels && dimensions.height <= maxSizePixels) {
+      logger.info(
+        {
+          fileModelId: file.id,
+          workspaceId: auth.workspace()?.sId,
+          dimensions: { width: dimensions.width, height: dimensions.height },
+          maxSize: maxSizePixels,
+        },
+        "Image already within size limits, skipping ConvertAPI"
+      );
+
+      // Copy original to processed without resizing
+      const originalStream = file.getReadStream({ auth, version: "original" });
+      const processedStream = file.getWriteStream({
+        auth,
+        version: "processed",
+      });
+
+      await pipeline(originalStream, processedStream);
+
+      return new Ok(undefined);
+    }
+
+    // Image exceeds limits, fall through to ConvertAPI
+    logger.info(
+      {
+        fileModelId: file.id,
+        workspaceId: auth.workspace()?.sId,
+        dimensions: { width: dimensions.width, height: dimensions.height },
+        maxSize: maxSizePixels,
+      },
+      "Image exceeds size limits, using ConvertAPI"
+    );
+  } catch (err) {
+    // If dimension check fails, fall back to ConvertAPI for safety
+    logger.warn(
+      {
+        fileModelId: file.id,
+        workspaceId: auth.workspace()?.sId,
+        error: err,
+      },
+      "Failed to check image dimensions, falling back to ConvertAPI"
+    );
+  }
+
+  // Existing ConvertAPI flow (unchanged)
   if (!process.env.CONVERTAPI_API_KEY) {
     throw new Error("CONVERTAPI_API_KEY is not set");
   }
