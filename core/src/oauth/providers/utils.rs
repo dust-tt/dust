@@ -8,7 +8,7 @@ use reqwest::RequestBuilder;
 use std::io::prelude::*;
 use std::time::Duration;
 use tokio::time::timeout;
-use tracing::{error, info};
+use tracing::error;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderHttpRequestError {
