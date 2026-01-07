@@ -4,6 +4,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -21,6 +22,7 @@ type BlockedActionQueueItem = {
 };
 
 const EMPTY_BLOCKED_ACTIONS_QUEUE: BlockedActionQueueItem[] = [];
+const PULSE_DURATION_MS = 3000;
 
 type BlockedActionsContextType = {
   enqueueBlockedAction: (params: {
@@ -37,6 +39,9 @@ type BlockedActionsContextType = {
   getFirstBlockedActionForMessage: (
     messageId: string
   ) => BlockedToolExecution | undefined;
+  startPulsingAction: (actionId: string) => void;
+  stopPulsingAction: (actionId: string) => void;
+  isActionPulsing: (actionId: string) => boolean;
 };
 
 const BlockedActionsContext = createContext<
@@ -78,6 +83,12 @@ export function BlockedActionsProvider({
   const [blockedActionsQueue, setBlockedActionsQueue] = useState<
     BlockedActionQueueItem[]
   >([]);
+
+  // State for tracking pulsing state of user manual required actions
+  const [pulsingActionIds, setPulsingActionIds] = useState<Set<string>>(
+    new Set()
+  );
+  const pulseTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   useEffect(() => {
     if (conversationId) {
@@ -123,11 +134,56 @@ export function BlockedActionsProvider({
     []
   );
 
-  const removeCompletedAction = useCallback((actionId: string) => {
-    setBlockedActionsQueue((prevQueue) =>
-      prevQueue.filter((item) => item.blockedAction.actionId !== actionId)
-    );
+  const startPulsingAction = useCallback((actionId: string) => {
+    // Clear any existing timer for this action
+    const existingTimer = pulseTimersRef.current.get(actionId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    setPulsingActionIds((prev) => new Set(prev).add(actionId));
+
+    const timer = setTimeout(() => {
+      setPulsingActionIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(actionId);
+        return newSet;
+      });
+      pulseTimersRef.current.delete(actionId);
+    }, PULSE_DURATION_MS);
+
+    pulseTimersRef.current.set(actionId, timer);
   }, []);
+
+  const stopPulsingAction = useCallback((actionId: string) => {
+    const timer = pulseTimersRef.current.get(actionId);
+    if (timer) {
+      clearTimeout(timer);
+      pulseTimersRef.current.delete(actionId);
+    }
+
+    setPulsingActionIds((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(actionId);
+      return newSet;
+    });
+  }, []);
+
+  const isActionPulsing = useCallback(
+    (actionId: string) => pulsingActionIds.has(actionId),
+    [pulsingActionIds]
+  );
+
+  const removeCompletedAction = useCallback(
+    (actionId: string) => {
+      stopPulsingAction(actionId);
+
+      setBlockedActionsQueue((prevQueue) =>
+        prevQueue.filter((item) => item.blockedAction.actionId !== actionId)
+      );
+    },
+    [stopPulsingAction]
+  );
 
   const hasPendingValidations = useCallback(
     (userId: string) => {
@@ -207,6 +263,14 @@ export function BlockedActionsProvider({
     [blockedActionsQueue]
   );
 
+  // Cleanup all timers on unmount
+  useEffect(() => {
+    return () => {
+      pulseTimersRef.current.forEach((timer) => clearTimeout(timer));
+      pulseTimersRef.current.clear();
+    };
+  }, []);
+
   return (
     <BlockedActionsContext.Provider
       value={{
@@ -216,6 +280,9 @@ export function BlockedActionsProvider({
         hasPendingValidations,
         getBlockedActions,
         getFirstBlockedActionForMessage,
+        startPulsingAction,
+        stopPulsingAction,
+        isActionPulsing,
       }}
     >
       {children}

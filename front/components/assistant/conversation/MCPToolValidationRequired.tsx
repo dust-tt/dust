@@ -38,7 +38,8 @@ export function MCPToolValidationRequired({
   const [neverAskAgain, setNeverAskAgain] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { removeCompletedAction } = useBlockedActionsContext();
+  const { removeCompletedAction, isActionPulsing, stopPulsingAction } =
+    useBlockedActionsContext();
   const { validateAction, isValidating } = useValidateAction({
     owner,
     conversationId,
@@ -50,6 +51,8 @@ export function MCPToolValidationRequired({
     [blockedAction.userId, user?.sId]
   );
 
+  const isPulsing = isActionPulsing(blockedAction.actionId);
+
   const icon = blockedAction.metadata.icon
     ? getIcon(blockedAction.metadata.icon)
     : undefined;
@@ -58,6 +61,9 @@ export function MCPToolValidationRequired({
     blockedAction?.inputs && Object.keys(blockedAction.inputs).length > 0;
 
   const handleValidation = async (approved: MCPValidationOutputType) => {
+    // Stop pulsing immediately when user takes action
+    stopPulsingAction(blockedAction.actionId);
+
     setErrorMessage(null);
 
     const result = await validateAction({
@@ -136,6 +142,7 @@ export function MCPToolValidationRequired({
               size="xs"
               icon={XMarkIcon}
               disabled={isValidating}
+              isPulsing={isPulsing}
               onClick={() => void handleValidation("rejected")}
             />
             <Button
@@ -144,6 +151,7 @@ export function MCPToolValidationRequired({
               size="xs"
               icon={CheckIcon}
               disabled={isValidating}
+              isPulsing={isPulsing}
               onClick={() => void handleValidation("approved")}
             />
           </div>

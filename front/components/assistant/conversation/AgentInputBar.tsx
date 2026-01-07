@@ -42,7 +42,7 @@ export const AgentInputBar = ({
 }) => {
   const [blockedActionIndex, setBlockedActionIndex] = useState<number>(0);
   const generationContext = useContext(GenerationContext);
-  const { getBlockedActions, hasPendingValidations } =
+  const { getBlockedActions, hasPendingValidations, startPulsingAction } =
     useBlockedActionsContext();
 
   if (!generationContext) {
@@ -212,8 +212,10 @@ export const AgentInputBar = ({
               variant="outline"
               size="xs"
               onClick={() => {
-                const blockedActionTargetMessageId =
-                  blockedActions[blockedActionIndex].messageId;
+                const blockedAction = blockedActions[blockedActionIndex];
+                const blockedActionTargetMessageId = blockedAction.messageId;
+
+                startPulsingAction(blockedAction.actionId);
 
                 const blockedActionMessageIndex = methods.data.findIndex(
                   (m) =>
