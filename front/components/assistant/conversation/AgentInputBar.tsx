@@ -1,11 +1,13 @@
 import {
-  ArrowDownDashIcon,
+  ArrowDownIcon,
   ArrowPathIcon,
+  ArrowUpIcon,
   Button,
   ContentMessageAction,
   ContentMessageInline,
   InformationCircleIcon,
   StopIcon,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import {
   useVirtuosoLocation,
@@ -98,23 +100,100 @@ export const AgentInputBar = ({
     return lastUserMessage.richMentions;
   }, [draftAgent, lastUserMessage]);
 
-  const { bottomOffset } = useVirtuosoLocation();
+  const { bottomOffset, listOffset } = useVirtuosoLocation();
   const distanceUntilButtonVisible = 100;
-  const showScrollToBottomButton = bottomOffset >= distanceUntilButtonVisible;
+  const showNavigationButtons = bottomOffset >= distanceUntilButtonVisible;
   const showClearButton =
     context.agentBuilderContext?.resetConversation &&
     generatingMessages.length > 0;
   const showStopButton = generatingMessages.length > 0;
   const blockedActions = getBlockedActions(context.user.sId);
 
-  const scrollToBottom = useCallback(() => {
-    methods.scrollToItem({
-      index: "LAST",
-      align: "end",
-      behavior:
-        bottomOffset < MAX_DISTANCE_FOR_SMOOTH_SCROLL ? "smooth" : "instant",
+  // Track current user message index for navigation
+  const [currentUserMessageIndex, setCurrentUserMessageIndex] = useState<
+    number | null
+  >(null);
+
+  // Get all user message indices
+  const userMessageIndices = useMemo(() => {
+    const messages = methods.data.get();
+    const indices: number[] = [];
+    messages.forEach((m, index) => {
+      if (isUserMessage(m)) {
+        indices.push(index);
+      }
     });
-  }, [bottomOffset, methods]);
+    return indices;
+  }, [methods.data]);
+
+  const isAtFirstUserMessage =
+    currentUserMessageIndex === null ||
+    currentUserMessageIndex <= 0 ||
+    userMessageIndices.length === 0;
+
+  const isAtLastUserMessage =
+    currentUserMessageIndex === null ||
+    currentUserMessageIndex >= userMessageIndices.length - 1 ||
+    userMessageIndices.length === 0;
+
+  const scrollToPreviousUserMessage = useCallback(() => {
+    if (userMessageIndices.length === 0) {
+      return;
+    }
+
+    let targetIndex: number;
+    if (currentUserMessageIndex === null) {
+      // Start from the last user message
+      targetIndex = userMessageIndices.length - 1;
+    } else if (currentUserMessageIndex > 0) {
+      targetIndex = currentUserMessageIndex - 1;
+    } else {
+      return; // Already at first
+    }
+
+    const messageIndex = userMessageIndices[targetIndex];
+    const distance = Math.abs(listOffset);
+    methods.scrollToItem({
+      index: messageIndex,
+      align: "start",
+      behavior:
+        distance < MAX_DISTANCE_FOR_SMOOTH_SCROLL ? "smooth" : "instant",
+    });
+    setCurrentUserMessageIndex(targetIndex);
+  }, [userMessageIndices, currentUserMessageIndex, listOffset, methods]);
+
+  const scrollToNextUserMessage = useCallback(() => {
+    if (userMessageIndices.length === 0) {
+      return;
+    }
+
+    let targetIndex: number;
+    if (currentUserMessageIndex === null) {
+      // Start from the first user message
+      targetIndex = 0;
+    } else if (currentUserMessageIndex < userMessageIndices.length - 1) {
+      targetIndex = currentUserMessageIndex + 1;
+    } else {
+      return; // Already at last
+    }
+
+    const messageIndex = userMessageIndices[targetIndex];
+    const distance = Math.abs(listOffset);
+    methods.scrollToItem({
+      index: messageIndex,
+      align: "start",
+      behavior:
+        distance < MAX_DISTANCE_FOR_SMOOTH_SCROLL ? "smooth" : "instant",
+    });
+    setCurrentUserMessageIndex(targetIndex);
+  }, [userMessageIndices, currentUserMessageIndex, listOffset, methods]);
+
+  // Reset navigation state when scrolling to bottom
+  useEffect(() => {
+    if (bottomOffset < distanceUntilButtonVisible) {
+      setCurrentUserMessageIndex(null);
+    }
+  }, [bottomOffset]);
 
   const [isStopping, setIsStopping] = useState<boolean>(false);
 
@@ -167,12 +246,33 @@ export const AgentInputBar = ({
           top: "-2em",
         }}
       >
-        {showScrollToBottomButton && (
-          <Button
-            icon={ArrowDownDashIcon}
-            variant="outline"
-            onClick={scrollToBottom}
-          />
+        {showNavigationButtons && (
+          <>
+            <Tooltip
+              label="Go to previous message"
+              side="top"
+              trigger={
+                <Button
+                  icon={ArrowUpIcon}
+                  variant="outline"
+                  onClick={scrollToPreviousUserMessage}
+                  disabled={isAtFirstUserMessage}
+                />
+              }
+            />
+            <Tooltip
+              label="Go to next message"
+              side="top"
+              trigger={
+                <Button
+                  icon={ArrowDownIcon}
+                  variant="outline"
+                  onClick={scrollToNextUserMessage}
+                  disabled={isAtLastUserMessage}
+                />
+              }
+            />
+          </>
         )}
 
         {showClearButton && (
