@@ -58,7 +58,7 @@ makeScript({}, async ({ execute }, logger) => {
 
     if (parsed.isOk() && parsed.value.name === INTERNAL_MCP_SERVER_NAME) {
       const key = `${conn.workspaceId}:${conn.internalMCPServerId}`;
-      // Keep the earliest connection for each workspace+server combination
+      // Keep the earliest connection for each workspace+server combination.
       const existing = uniqueInstancesMap.get(key);
       if (!existing || conn.createdAt < existing.createdAt) {
         uniqueInstancesMap.set(key, {
@@ -92,7 +92,7 @@ makeScript({}, async ({ execute }, logger) => {
 
   for (const instance of existingInstances) {
     if (execute) {
-      // EXÉCUTION RÉELLE - upsert to force enabled: false
+      // Upsert to force enabled: false.
       await RemoteMCPServerToolMetadataModel.upsert(
         {
           workspaceId: instance.workspaceId,
@@ -121,7 +121,7 @@ makeScript({}, async ({ execute }, logger) => {
         "Forced send_mail disabled for existing Gmail instance."
       );
     } else {
-      // DRY-RUN
+      // DRY-RUN.
       processedCount++;
 
       logger.info(

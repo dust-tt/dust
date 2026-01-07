@@ -69,6 +69,20 @@ function isGmailMessage(data: unknown): data is GmailMessage {
   return typeof obj.id === "string";
 }
 
+// Helper function to encode email subject with UTF-8 support.
+function encodeEmailSubject(subject: string): string {
+  return `=?UTF-8?B?${Buffer.from(subject, "utf-8").toString("base64")}?=`;
+}
+
+// Helper function to encode email message for Gmail API.
+function encodeEmailMessage(message: string): string {
+  return Buffer.from(message)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -189,8 +203,8 @@ function createServer(
           return new Err(new MCPError("Authentication required"));
         }
 
-        // Always encode subject line using RFC 2047 to handle any special characters
-        const encodedSubject = `=?UTF-8?B?${Buffer.from(subject, "utf-8").toString("base64")}?=`;
+        // Always encode subject line using RFC 2047 to handle any special characters.
+        const encodedSubject = encodeEmailSubject(subject);
 
         // Create the email message with proper headers and content.
         const message = [
@@ -207,11 +221,7 @@ function createServer(
           .join("\n");
 
         // Encode the message in base64 as required by the Gmail API.
-        const encodedMessage = Buffer.from(message)
-          .toString("base64")
-          .replace(/\+/g, "-")
-          .replace(/\//g, "_")
-          .replace(/=+$/, "");
+        const encodedMessage = encodeEmailMessage(message);
 
         // Make the API call to create the draft in Gmail.
         const response = await fetchFromGmail(
@@ -660,8 +670,8 @@ function createServer(
           return new Err(new MCPError("Authentication required"));
         }
 
-        // Reuse the message creation logic from create_draft
-        const encodedSubject = `=?UTF-8?B?${Buffer.from(subject, "utf-8").toString("base64")}?=`;
+        // Create the email message with proper headers and content.
+        const encodedSubject = encodeEmailSubject(subject);
 
         const message = [
           `To: ${to.join(", ")}`,
@@ -676,14 +686,9 @@ function createServer(
           .filter((line) => line !== null)
           .join("\n");
 
-        // Encode the message in base64 as required by the Gmail API
-        const encodedMessage = Buffer.from(message)
-          .toString("base64")
-          .replace(/\+/g, "-")
-          .replace(/\//g, "_")
-          .replace(/=+$/, "");
+        // Encode the message in base64 as required by the Gmail API.
+        const encodedMessage = encodeEmailMessage(message);
 
-        // Use the send endpoint instead of drafts
         const response = await fetchFromGmail(
           "/gmail/v1/users/me/messages/send",
           accessToken,
