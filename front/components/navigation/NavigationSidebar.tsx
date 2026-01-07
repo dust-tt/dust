@@ -1,4 +1,5 @@
 import {
+  Button,
   classNames,
   cn,
   CollapseButton,
@@ -385,9 +386,7 @@ function SubscriptionEndBanner({
       footer={
         isFreePlan && (
           <Link href={`/w/${workspaceId}/subscribe`} className="no-underline">
-            <button className="rounded bg-foreground px-3 py-1.5 text-xs font-medium text-background">
-              Subscribe to Dust
-            </button>
+            <Button label="Subscribe to Dust" variant="primary" />
           </Link>
         )
       }
@@ -463,7 +462,7 @@ function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
       <div
         className={cn(
           "h-2 w-full overflow-hidden rounded-full",
-          "bg-structure-200 dark:bg-structure-200-night"
+          "bg-gray-100 dark:bg-gray-700"
         )}
       >
         <div
@@ -479,9 +478,7 @@ function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
       {isAtLimit && (
         <div className="mt-3">
           <Link href={`/w/${workspaceId}/subscribe`} className="no-underline">
-            <button className="rounded bg-foreground px-3 py-1.5 text-xs font-medium text-background dark:bg-foreground-night dark:text-background-night">
-              Subscribe to Dust
-            </button>
+            <Button label="Subscribe to Dust" variant="primary" />
           </Link>
         </div>
       )}
