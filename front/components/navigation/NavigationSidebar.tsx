@@ -316,16 +316,16 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
 }
 
 function getTrialDaysRemainingVariant(
-  startDate: number | null,
-  endDate: number
+  startDateMs: number | null,
+  endDateMs: number
 ): "success" | "warning" | "danger" {
-  if (!startDate) {
+  if (!startDateMs) {
     // If no start date, default to warning (should not happen)
     return "warning";
   }
 
-  const totalDurationMs = endDate - startDate;
-  const remainingMs = endDate - Date.now();
+  const totalDurationMs = endDateMs - startDateMs;
+  const remainingMs = endDateMs - Date.now();
   const remainingPercentage = remainingMs / totalDurationMs;
 
   if (remainingPercentage > 0.4) {
