@@ -94,8 +94,8 @@ export function SkillInfoTab({
                 key={view.title}
                 label={view.description ?? view.title}
                 trigger={
-                  <div className="flex min-w-0 flex-row items-center gap-2">
-                    <div className="flex-shrink-0">{view.avatar}</div>
+                  <div className="flex flex-row items-center gap-2">
+                    {view.avatar}
                     <div className="truncate">{view.title}</div>
                   </div>
                 }
