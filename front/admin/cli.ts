@@ -13,7 +13,6 @@ import {
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { Authenticator } from "@app/lib/auth";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { getDustProdActionRegistry } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -550,19 +549,6 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
-const registry = async (command: string) => {
-  switch (command) {
-    case "dump": {
-      console.log(JSON.stringify(getDustProdActionRegistry()));
-      return;
-    }
-
-    default:
-      console.log(`Unknown registry command: ${command}`);
-      console.log("Possible values: `dump`");
-  }
-};
-
 const productionCheck = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
     case "run": {
@@ -744,7 +730,6 @@ export const CLI_OBJECT_TYPES = [
   "data-source",
   "conversation",
   "transcripts",
-  "registry",
   "production-check",
   "api-key",
   "trigger",
@@ -789,8 +774,6 @@ const main = async () => {
       return conversation(command, argv);
     case "transcripts":
       return transcripts(command, argv);
-    case "registry":
-      return registry(command);
     case "production-check":
       return productionCheck(command, argv);
     case "api-key":
