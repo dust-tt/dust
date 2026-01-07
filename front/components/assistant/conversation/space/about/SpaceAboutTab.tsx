@@ -1,7 +1,8 @@
 import { Button, ContentMessage } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
+import { ConfirmContext } from "@app/components/Confirm";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type {
@@ -40,13 +41,7 @@ export function SpaceAboutTab({
 
   const isManual = !planAllowsSCIM || managementType === "manual";
   const doUpdate = useUpdateSpace({ owner });
-
-  // Update state when initial values change
-  useEffect(() => {
-    setManagementType(initialManagementMode);
-    setSelectedMembers(initialMembers);
-    setSelectedGroups(initialGroups);
-  }, [initialManagementMode, initialMembers, initialGroups]);
+  const confirm = React.useContext(ConfirmContext);
 
   const hasChanges = useMemo(() => {
     if (managementType !== initialManagementMode) {
@@ -74,6 +69,63 @@ export function SpaceAboutTab({
     selectedGroups,
     initialGroups,
   ]);
+
+  const handleManagementTypeChange = useCallback(
+    async (value: string) => {
+      if ((value !== "manual" && value !== "group") || !planAllowsSCIM) {
+        return;
+      }
+
+      // If switching from manual to group mode with manually added members.
+      if (
+        managementType === "manual" &&
+        value === "group" &&
+        selectedMembers.length > 0
+      ) {
+        const confirmed = await confirm({
+          title: "Switch to groups",
+          message:
+            "This switches from manual member to group-based access. " +
+            "Your current member list will be saved but no longer active.",
+          validateLabel: "Confirm",
+          validateVariant: "primary",
+        });
+
+        if (confirmed) {
+          setManagementType("group");
+        }
+      }
+      // If switching from group to manual mode with selected groups.
+      else if (
+        managementType === "group" &&
+        value === "manual" &&
+        selectedGroups.length > 0
+      ) {
+        const confirmed = await confirm({
+          title: "Switch to members",
+          message:
+            "This switches from group-based access to manual member management. " +
+            "Your current group settings will be saved but no longer active.",
+          validateLabel: "Confirm",
+          validateVariant: "primary",
+        });
+
+        if (confirmed) {
+          setManagementType("manual");
+        }
+      } else {
+        // For direct switches without selections, clear everything and let the user start fresh.
+        setManagementType(value);
+      }
+    },
+    [
+      confirm,
+      managementType,
+      selectedMembers.length,
+      selectedGroups.length,
+      planAllowsSCIM,
+    ]
+  );
 
   const canSave = useMemo(() => {
     if (!hasChanges) {
@@ -133,11 +185,7 @@ export function SpaceAboutTab({
         selectedGroups={selectedGroups}
         searchSelectedMembers={searchSelectedMembers}
         onSearchChange={setSearchSelectedMembers}
-        onManagementTypeChange={(value) => {
-          if (value === "manual" || value === "group") {
-            setManagementType(value);
-          }
-        }}
+        onManagementTypeChange={handleManagementTypeChange}
         onMembersUpdated={setSelectedMembers}
         onGroupsUpdated={setSelectedGroups}
       />
