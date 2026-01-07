@@ -8,12 +8,14 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import { useCreateSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
+import { getSpaceConversationsRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types";
 
 interface CreateProjectModalProps {
@@ -32,6 +34,7 @@ export function CreateProjectModal({
 
   const doCreate = useCreateSpace({ owner });
   const { user } = useUser();
+  const router = useRouter();
 
   const sendNotification = useSendNotification();
 
@@ -81,6 +84,7 @@ export function CreateProjectModal({
         description: `Project "${trimmedName}" has been created.`,
       });
       handleClose();
+      void router.push(getSpaceConversationsRoute(owner.sId, createdSpace.sId));
     }
   }, [
     projectName,
@@ -89,6 +93,8 @@ export function CreateProjectModal({
     sendNotification,
     mutateSpaceSummary,
     user,
+    router,
+    owner.sId,
   ]);
 
   const handleKeyPress = useCallback(

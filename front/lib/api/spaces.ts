@@ -34,7 +34,10 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
   force?: boolean
 ) {
   assert(auth.isAdmin(), "Only admins can delete spaces.");
-  assert(space.isRegular(), "Cannot delete non regular spaces.");
+  assert(
+    space.isRegular() || space.isProject(),
+    "Cannot delete spaces that are not regular or project."
+  );
 
   const usages: AgentsUsageType[] = [];
 

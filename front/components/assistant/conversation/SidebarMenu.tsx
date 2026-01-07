@@ -568,7 +568,17 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                       ) : null
                     }
                   >
-                    <ProjectsList owner={owner} summary={summary} />
+                    <div className="mt-0.5 px-3 sm:flex sm:flex-col sm:gap-0.5">
+                      {summary.length > 0 ? (
+                        <ProjectsList owner={owner} summary={summary} />
+                      ) : (
+                        <NavigationListItem
+                          label="Create a Project"
+                          icon={PlusIcon}
+                          onClick={() => setIsCreateProjectModalOpen(true)}
+                        />
+                      )}
+                    </div>
                   </NavigationListCollapsibleSection>
 
                   <NavigationListCollapsibleSection

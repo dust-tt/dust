@@ -72,5 +72,5 @@ export const getSpaceConversationsRoute = (
   workspaceId: string,
   spaceId: string
 ) => {
-  return `/w/${workspaceId}/conversation/space/${spaceId}`;
+  return `/w/${workspaceId}/conversation/space/${spaceId}#conversations`;
 };
