@@ -1,5 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
-import { expireRateLimiterKey } from "@app/lib/utils/rate_limiter";
+import {
+  expireRateLimiterKey,
+  getRateLimiterCount,
+  getTimeframeSecondsFromLiteral,
+} from "@app/lib/utils/rate_limiter";
 import type { LightWorkspaceType, MaxMessagesTimeframeType } from "@app/types";
 
 export const makeMessageRateLimitKeyForWorkspace = (
@@ -35,4 +39,33 @@ export async function resetMessageRateLimitForWorkspace(auth: Authenticator) {
       plan.limits.assistant.maxMessagesTimeframe
     ),
   });
+}
+
+export async function getMessageUsageCount(auth: Authenticator): Promise<{
+  count: number;
+  limit: number;
+}> {
+  const workspace = auth.getNonNullableWorkspace();
+  const plan = auth.getNonNullablePlan();
+  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
+
+  if (maxMessages === -1) {
+    // Unlimited messages
+    return { count: 0, limit: -1 };
+  }
+
+  const result = await getRateLimiterCount({
+    key: makeAgentMentionsRateLimitKeyForWorkspace(
+      workspace,
+      maxMessagesTimeframe
+    ),
+    timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
+  });
+
+  if (result.isErr()) {
+    // Return 0 on error to avoid blocking the UI
+    return { count: 0, limit: maxMessages };
+  }
+
+  return { count: result.value, limit: maxMessages };
 }

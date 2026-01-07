@@ -6,17 +6,24 @@ Follow all rules in **CODING_RULES.md** before making changes.
 
 **CRITICAL**: Always run `bun run check` before committing. This runs typecheck, lint, and tests. Never commit code that fails these checks.
 
+**IMPORTANT**: Always use `bun run` commands from within the `x/henry/dust-hive` directory. Do NOT run `tsc`, `biome`, or other tools directly - use the npm scripts which ensure correct configuration.
+
 ```bash
 # Before committing - run ALL checks (MANDATORY)
-bun run check
+bun run check        # Runs: typecheck → lint → test
 
-# Individual checks
-bun run typecheck    # TypeScript strict checks
-bun run lint         # Biome linting
-bun run lint:fix     # Auto-fix lint issues
-bun run format       # Code formatting
-bun run test         # All tests
+# Individual checks (use these, not direct tool invocations)
+bun run typecheck    # tsc --noEmit
+bun run lint         # biome check . (includes formatting + import sorting)
+bun run lint:fix     # biome check --write . (auto-fix issues)
+bun run format       # biome format --write .
+bun run test         # bun test
 ```
+
+**Why use `bun run` instead of direct commands?**
+- `bun run lint` runs `biome check` which enforces formatting, import sorting, AND linting
+- Running `biome lint` directly misses formatting and import organization errors
+- The scripts ensure you're using the project's biome/typescript config
 
 **Always fix lint/type errors immediately** - don't accumulate them.
 

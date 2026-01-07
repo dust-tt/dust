@@ -1,0 +1,68 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/main/.schema/devbox.schema.json",
+  "packages": {
+    "nodejs@20.19.2": {},
+    "rustup@latest": {},
+    "cargo@latest": {},
+    "cargo-watch@latest": {},
+    "postgresql@14": {},
+    "redis@8": {},
+    "qdrant@1.15": {},
+    "temporal-cli@latest": {},
+    "docker@latest": {},
+    "docker-compose@latest": {}
+  },
+  "env": {
+    "PROJECT_ROOT": "$PWD",
+    "NODE_OPTIONS": "--max-old-space-size=8192",
+    "IS_LOCAL_DEV": "1",
+    "ELASTICSEARCH_URL": "http://localhost:9200",
+    "ELASTICSEARCH_USERNAME": "elastic",
+    "ELASTICSEARCH_PASSWORD": "changeme"
+  },
+  "shell": {
+    "init_hook": [
+      "echo '🚀 Dust development environment loaded'",
+      "echo '📦 Databases: PostgreSQL (5432), Redis (6379)'",
+      "echo '🔍 Search: Elasticsearch (9200), Qdrant (6333)'",
+      "echo '⏱️  Temporal: Server (7233), UI (8233)'",
+      "echo ''",
+      "echo '▶️  Start all services: devbox services up'",
+      "echo '▶️  Stop all services: devbox services stop'"
+    ],
+    "scripts": {
+      "setup": [
+        "echo 'Running setup script...'",
+        "rustup default stable",
+        "(cd core && cargo run --bin qdrant_create_collection -- --cluster cluster-0 --provider openai --model text-embedding-3-large-1536)",
+        "(cd core && cargo run --bin elasticsearch_create_index -- --index-name data_sources_nodes --index-version 4 --skip-confirmation)",
+        "(cd core && cargo run --bin elasticsearch_create_index -- --index-name data_sources --index-version 1 --skip-confirmation)",
+        "(cd front && npm install)",
+        "(cd front && npx tsx ./scripts/create_elasticsearch_index.ts --index-name agent_message_analytics --index-version 2 --skip-confirmation)",
+        "(cd front && npx tsx ./scripts/create_elasticsearch_index.ts --index-name user_search --index-version 1 --skip-confirmation)",
+        "echo 'Setting up front database...'",
+        "(./scripts/init-postgres.sh)",
+        "(cd front && ./admin/init_db.sh --unsafe)",
+        "(cd front && ./admin/init_plans.sh --unsafe)",
+        "echo 'Setting up connector database...'",
+        "(cd connectors && ./admin/init_db.sh --unsafe)",
+        "echo 'Setting up core database...'",
+        "(cd core && cargo run --bin init_db)",
+        "echo 'Installing npm dependencies...'",
+        "(cd sdks/js && npm install)",
+        "(cd front && npm install)",
+        "(cd connectors && npm install)",
+        "(cd sparkle && npm install)",
+        "(cd viz && npm install)",
+        "(cd extension && npm install)",
+        "echo '✅ Setup complete!'"
+      ],
+      "dev": [
+        "devbox services up"
+      ],
+      "stop": [
+        "devbox services stop"
+      ]
+    }
+  }
+}

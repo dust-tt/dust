@@ -155,8 +155,11 @@ cli
 cli
   .command("up", "Start managed services (temporal + main session)")
   .option("-a, --attach", "Attach to main zellij session")
-  .action(async (options: { attach?: boolean }) => {
-    await prepareAndRun(upCommand({ attach: Boolean(options.attach) }));
+  .option("-f, --force", "Force rebuild even if no changes detected")
+  .action(async (options: { attach?: boolean; force?: boolean }) => {
+    await prepareAndRun(
+      upCommand({ attach: Boolean(options.attach), force: Boolean(options.force) })
+    );
   });
 
 cli
@@ -208,7 +211,7 @@ cli.command("url [name]", "Print front URL").action(async (name: string | undefi
 });
 
 cli
-  .command("setup", "Interactive setup wizard for prerequisites")
+  .command("setup", "Check and install prerequisites (run this first!)")
   .option("-y, --non-interactive", "Run in non-interactive mode (same as doctor)")
   .action(async (options: { nonInteractive?: boolean }) => {
     await prepareAndRun(setupCommand({ nonInteractive: Boolean(options.nonInteractive) }));
@@ -228,9 +231,12 @@ cli
     await prepareAndRun(forwardCommand(target));
   });
 
-cli.command("sync", "Pull latest main, rebuild binaries, refresh deps").action(async () => {
-  await prepareAndRun(syncCommand());
-});
+cli
+  .command("sync", "Pull latest main, rebuild binaries, refresh deps")
+  .option("-f, --force", "Force rebuild even if no changes detected")
+  .action(async (options: { force?: boolean }) => {
+    await prepareAndRun(syncCommand({ force: Boolean(options.force) }));
+  });
 
 // Temporal subcommands
 cli.command("temporal start", "Start Temporal server").action(async () => {

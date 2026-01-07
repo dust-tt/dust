@@ -22,3 +22,14 @@ mprocs.log
 front/.npm-cache
 AGENTS.local.md
 CLAUDE.local.md
+
+# Direnv
+.direnv/
+.envrc.local
+
+# Devbox
+.devbox/
+devbox.lock
+.env.secrets
+.qdrant-initialized
+
