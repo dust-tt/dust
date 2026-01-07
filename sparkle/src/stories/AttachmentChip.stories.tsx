@@ -106,6 +106,7 @@ export const WithDoubleIconAndLink: Story = {
     },
     href: "https://notion.so",
     target: "_blank",
+    onRemove: () => console.log("Ciao"),
   },
   decorators: [
     (Story) => (
