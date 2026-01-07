@@ -155,11 +155,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
       if (activeSubscription) {
         // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
-        // But don't do this for the new FREE_TRIAL_PHONE_PLAN_CODE plan.
-        if (
-          isTrial(activeSubscription) &&
-          activeSubscription.plan?.code !== FREE_TRIAL_PHONE_PLAN_CODE
-        ) {
+        if (isTrial(activeSubscription)) {
           plan = getTrialVersionForPlan(activeSubscription.plan);
         } else if (activeSubscription.plan) {
           plan = activeSubscription.plan;
@@ -321,13 +317,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     planCode,
     stripeSubscriptionId,
     endDate,
-    trialing,
   }: {
     workspaceId: string;
     planCode: string;
     stripeSubscriptionId?: string;
     endDate: Date | null;
-    trialing?: boolean;
   }): Promise<SubscriptionResource> {
     const workspace = await this.findWorkspaceOrThrow(workspaceId);
     const newPlan = await this.findPlanOrThrow(planCode);
@@ -377,7 +371,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           workspaceId: workspace.id,
           planId: newPlan.id,
           status: "active",
-          trialing: trialing ?? false,
           startDate: now,
           stripeSubscriptionId: stripeSubscriptionId ?? null,
           endDate: endDate,
