@@ -193,7 +193,7 @@ const resizeAndUploadToFileStorage = async (
       {
         fileModelId: file.id,
         workspaceId: auth.workspace()?.sId,
-        error: err,
+        err: normalizeError(err),
       },
       "Failed to check image dimensions, falling back to ConvertAPI"
     );
