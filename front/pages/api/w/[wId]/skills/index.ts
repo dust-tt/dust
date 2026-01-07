@@ -189,7 +189,7 @@ async function handler(
       }
 
       // Validate all MCP server views exist before creating anything
-      const mcpServerViewIds = body.tools.map((t) => t.mcpServerViewId);
+      const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
       const mcpServerViews = await MCPServerViewResource.fetchByIds(
         auth,
         mcpServerViewIds

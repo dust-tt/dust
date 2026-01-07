@@ -206,7 +206,7 @@ async function handler(
       }
 
       // Fetch MCP server views first to compute requestedSpaceIds.
-      const mcpServerViewIds = body.tools.map((t) => t.mcpServerViewId);
+      const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
       const mcpServerViews = await MCPServerViewResource.fetchByIds(
         auth,
         mcpServerViewIds

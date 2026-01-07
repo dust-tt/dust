@@ -448,28 +448,28 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     mcpServerViewIds: string[]
   ): Promise<ModelId[]> {
-    const mcpServerViews = await MCPServerViewResource.fetchByIds(
-      auth,
-      mcpServerViewIds
-    );
+    const mcpServerViews = await this.fetchByIds(auth, mcpServerViewIds);
 
     const spaceRequirements = mcpServerViews
       .filter((view) => {
-        if (view.serverType === "internal") {
-          const availability = getAvailabilityOfInternalMCPServerById(
-            view.mcpServerId
-          );
-          // We skip the permissions for auto internal tools as they are automatically available to all users.
-          // This mimic the previous behavior of generic internal tools (search etc..).
-          if (
-            availability === "auto" ||
-            availability === "auto_hidden_builder"
-          ) {
-            return false;
-          }
+        if (view.serverType !== "internal") {
+          return true;
         }
 
-        return true;
+        // We skip the permissions for auto internal tools as they are automatically available to all users.
+        // This mimic the previous behavior of generic internal tools (search etc..).
+        const availability = getAvailabilityOfInternalMCPServerById(
+          view.mcpServerId
+        );
+        switch (availability) {
+          case "auto":
+          case "auto_hidden_builder":
+            return false;
+          case "manual":
+            return true;
+          default:
+            assertNever(availability);
+        }
       })
       .map((view) => view.space.id);
 
