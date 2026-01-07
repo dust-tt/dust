@@ -17,21 +17,16 @@ import {
   RESEND_COOLDOWN_SECONDS,
 } from "@app/lib/plans/trial/phone";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types";
 import type { WorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 type Step = "phone" | "code";
 
 async function detectCountryFromIP(
   ip: string | undefined
 ): Promise<Country | undefined> {
-  if (!ip) {
+  if (!ip || ip === "::1" || ip === "127.0.0.1" || ip.startsWith("192.168.")) {
     return "US";
-  }
-
-  // Handle localhost IPs in development
-  if (ip === "::1" || ip === "127.0.0.1" || ip.startsWith("192.168.")) {
-    return "FR";
   }
 
   try {
@@ -274,7 +269,7 @@ export default function Verify({
 
 interface PhoneInputStepProps {
   phoneNumber: string;
-  countryCode?: Country;
+  countryCode: Country;
   error: string | null;
   onPhoneNumberChange: (phone: string) => void;
   onCountryCodeChange: (countryCode?: Country) => void;
