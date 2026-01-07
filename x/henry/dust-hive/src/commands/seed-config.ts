@@ -59,7 +59,9 @@ async function extractUser(postgresUri: string): Promise<Result<string[], Comman
   }
 
   const fields = result.value.split("\t");
-  if (fields.length < 10) {
+  // Require at least 7 fields (sId through workOSUserId). The last 3 fields (provider,
+  // providerId, imageUrl) may be trimmed when NULL due to psql output + .trim() behavior.
+  if (fields.length < 7) {
     return Err(new CommandError(`Unexpected user data format: ${result.value}`));
   }
 
