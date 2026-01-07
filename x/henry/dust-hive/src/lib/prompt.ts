@@ -137,3 +137,70 @@ export async function selectEnvironment(
 
   return selectedName;
 }
+
+export interface SelectMultipleEnvironmentsOptions {
+  message?: string;
+  /** If provided, shows a confirmation prompt after selection with this message template.
+   * Use {names} as placeholder for the selected environment names (comma-separated).
+   * Use {count} as placeholder for the number of selected environments.
+   * Returns empty array if user declines confirmation. */
+  confirmMessage?: string;
+}
+
+// Interactively select one or more environments using arrow keys and space bar
+export async function selectMultipleEnvironments(
+  options?: SelectMultipleEnvironmentsOptions
+): Promise<string[]> {
+  const envs = await listEnvironments();
+  if (envs.length === 0) {
+    return [];
+  }
+
+  const currentEnv = detectEnvFromCwd();
+  const lastActiveEnv = await getLastActiveEnv();
+  const sortedEnvs = sortEnvs(envs, currentEnv, lastActiveEnv);
+  const initialValues: string[] = [];
+
+  const result = await p.multiselect({
+    message: options?.message ?? "Select environments (space to select, enter to confirm)",
+    initialValues,
+    required: true,
+    options: sortedEnvs.map((name) => {
+      if (name === currentEnv) {
+        return { value: name, label: name, hint: "current" };
+      }
+      if (name === lastActiveEnv) {
+        return { value: name, label: name, hint: "last" };
+      }
+      return { value: name, label: name };
+    }),
+  });
+
+  if (p.isCancel(result)) {
+    return [];
+  }
+
+  const selectedNames = result as string[];
+
+  if (selectedNames.length === 0) {
+    return [];
+  }
+
+  // If confirmation requested, ask before returning
+  if (options?.confirmMessage) {
+    const namesStr = selectedNames.join(", ");
+    const confirmMsg = options.confirmMessage
+      .replace("{names}", namesStr)
+      .replace("{count}", String(selectedNames.length));
+    const confirmed = await p.confirm({
+      message: confirmMsg,
+      initialValue: false,
+    });
+
+    if (p.isCancel(confirmed) || !confirmed) {
+      return [];
+    }
+  }
+
+  return selectedNames;
+}
