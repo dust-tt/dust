@@ -25,7 +25,6 @@ import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/
 import { SpaceToolsTab } from "@app/components/assistant/conversation/space/SpaceToolsTab";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
@@ -36,52 +35,90 @@ import { useSpaceConversations } from "@app/lib/swr/conversations";
 import { useGroups } from "@app/lib/swr/groups";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { ContentFragmentsType, Result, RichMention } from "@app/types";
+import type {
+  ContentFragmentsType,
+  PlanType,
+  Result,
+  RichMention,
+  SpaceType,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
 import { Err, Ok, toMentionType } from "@app/types";
 
+export interface ProjectLayoutProps {
+  baseUrl: string;
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+  user: UserType;
+  isAdmin: boolean;
+
+  canReadInSpace: boolean;
+  canWriteInSpace: boolean;
+  plan: PlanType;
+  space: SpaceType;
+  systemSpace: SpaceType;
+}
+
 export const getServerSideProps =
-  withDefaultUserAuthRequirements<ConversationLayoutProps>(
-    async (context, auth) => {
-      const owner = auth.workspace();
-      const user = auth.user()?.toJSON();
-      const subscription = auth.subscription();
-      const isAdmin = auth.isAdmin();
+  withDefaultUserAuthRequirements<ProjectLayoutProps>(async (context, auth) => {
+    const owner = auth.workspace();
+    const user = auth.user()?.toJSON();
+    const subscription = auth.subscription();
+    const isAdmin = auth.isAdmin();
+    const plan = auth.plan();
 
-      if (!owner || !user || !auth.isUser() || !subscription) {
-        return {
-          redirect: {
-            destination: "/",
-            permanent: false,
-          },
-        };
-      }
-
-      const { spaceId } = context.params;
-      if (typeof spaceId !== "string") {
-        return {
-          notFound: true,
-        };
-      }
-
-      const space = await SpaceResource.fetchById(auth, spaceId);
-      if (!space || !space.canReadOrAdministrate(auth)) {
-        return {
-          notFound: true,
-        };
-      }
-
+    if (!owner || !user || !auth.isUser() || !subscription) {
       return {
-        props: {
-          user,
-          owner,
-          isAdmin,
-          subscription,
-          baseUrl: config.getClientFacingUrl(),
-          conversationId: null,
+        redirect: {
+          destination: "/",
+          permanent: false,
         },
       };
     }
-  );
+
+    const { spaceId } = context.params;
+    if (typeof spaceId !== "string") {
+      return {
+        notFound: true,
+      };
+    }
+
+    const space = await SpaceResource.fetchById(auth, spaceId);
+    if (!space || !space.canReadOrAdministrate(auth)) {
+      return {
+        notFound: true,
+      };
+    }
+
+    if (!plan) {
+      return {
+        notFound: true,
+      };
+    }
+
+    const systemSpace = (
+      await SpaceResource.fetchWorkspaceSystemSpace(auth)
+    ).toJSON();
+    const canWriteInSpace = space.canWrite(auth);
+    const canReadInSpace = space.canRead(auth);
+
+    return {
+      props: {
+        user,
+        owner,
+        isAdmin,
+        subscription,
+        systemSpace,
+        plan,
+        space: space.toJSON(),
+        canWriteInSpace,
+        canReadInSpace,
+        baseUrl: config.getClientFacingUrl(),
+      },
+    };
+  });
 
 type SpaceTab = "conversations" | "knowledge" | "tools" | "about";
 
@@ -89,8 +126,13 @@ export default function SpaceConversations({
   owner,
   subscription,
   user,
+  isAdmin,
+  systemSpace,
+  plan,
+  canWriteInSpace,
+  canReadInSpace,
+  space,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const spaceId = useActiveSpaceId();
   const createConversationWithMessage = useCreateConversationWithMessage({
     owner,
     user,
@@ -100,12 +142,12 @@ export default function SpaceConversations({
   const sendNotification = useSendNotification();
   const { spaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
-    spaceId,
+    spaceId: space.sId,
   });
 
   const { conversations, mutateConversations } = useSpaceConversations({
     workspaceId: owner.sId,
-    spaceId,
+    spaceId: space.sId,
   });
 
   const planAllowsSCIM = subscription.plan.limits.users.isSCIMAllowed;
@@ -179,7 +221,7 @@ export default function SpaceConversations({
           contentFragments,
           selectedMCPServerViewIds,
         },
-        spaceId,
+        spaceId: space.sId,
       });
 
       setIsSubmitting(false);
@@ -228,7 +270,7 @@ export default function SpaceConversations({
     [
       isSubmitting,
       owner,
-      spaceId,
+      space.sId,
       setPlanLimitReached,
       sendNotification,
       router,
@@ -270,7 +312,7 @@ export default function SpaceConversations({
           </ContentMessage>
         </div>
 
-        <div className="heading-xl text-xl">{spaceInfo?.name}</div>
+        <div className="heading-xl text-xl">{space.name}</div>
 
         <Tabs
           value={currentTab}
@@ -300,13 +342,21 @@ export default function SpaceConversations({
               owner={owner}
               user={user}
               conversations={conversations}
-              spaceInfo={spaceInfo}
+              spaceInfo={space}
               onSubmit={handleConversationCreation}
             />
           </TabsContent>
 
           <TabsContent value="knowledge">
-            <SpaceKnowledgeTab />
+            <SpaceKnowledgeTab
+              owner={owner}
+              space={space}
+              systemSpace={systemSpace}
+              plan={plan}
+              isAdmin={isAdmin}
+              canReadInSpace={canReadInSpace}
+              canWriteInSpace={canWriteInSpace}
+            />
           </TabsContent>
 
           <TabsContent value="tools">
@@ -314,25 +364,21 @@ export default function SpaceConversations({
           </TabsContent>
 
           <TabsContent value="about">
-            {spaceInfo && (
-              <SpaceAboutTab
-                owner={owner}
-                space={spaceInfo}
-                initialMembers={spaceInfo.members || []}
-                planAllowsSCIM={planAllowsSCIM}
-                initialGroups={
-                  planAllowsSCIM &&
-                  spaceInfo.groupIds &&
-                  spaceInfo.groupIds.length > 0 &&
-                  groups
-                    ? groups.filter((group) =>
-                        spaceInfo.groupIds.includes(group.sId)
-                      )
-                    : []
-                }
-                initialManagementMode={spaceInfo.managementMode || "manual"}
-              />
-            )}
+            <SpaceAboutTab
+              owner={owner}
+              space={space}
+              initialMembers={spaceInfo?.members ?? []}
+              planAllowsSCIM={planAllowsSCIM}
+              initialGroups={
+                planAllowsSCIM &&
+                space.groupIds &&
+                space.groupIds.length > 0 &&
+                groups
+                  ? groups.filter((group) => space.groupIds.includes(group.sId))
+                  : []
+              }
+              initialManagementMode={space.managementMode || "manual"}
+            />
           </TabsContent>
         </Tabs>
       </div>
