@@ -12,7 +12,6 @@ import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial/index";
 import {
   CODE_LENGTH,
   isValidPhoneNumber,
-  maskPhoneNumber,
   RESEND_COOLDOWN_SECONDS,
 } from "@app/lib/plans/trial/phone";
 import type { WorkspaceType } from "@app/types";
@@ -41,7 +40,6 @@ export default function Verify({
   const router = useRouter();
   const [step, setStep] = useState<Step>("phone");
 
-  const [countryCode, setCountryCode] = useState("+33");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
@@ -78,9 +76,7 @@ export default function Verify({
     }
 
     if (!isValidPhoneNumber(phoneNumber)) {
-      setPhoneError(
-        "Please enter a valid phone number (digits only, 6-15 digits)."
-      );
+      setPhoneError("Please enter a valid phone number.");
       return;
     }
 
@@ -188,7 +184,7 @@ export default function Verify({
   if (step === "code") {
     return (
       <CodeVerificationStep
-        maskedPhone={maskPhoneNumber(countryCode, phoneNumber)}
+        maskedPhone={phoneNumber}
         code={code}
         error={codeError}
         resendCooldown={resendCooldown}
@@ -205,10 +201,8 @@ export default function Verify({
 
   return (
     <PhoneInputStep
-      countryCode={countryCode}
       phoneNumber={phoneNumber}
       error={phoneError}
-      onCountryCodeChange={setCountryCode}
       onPhoneNumberChange={handlePhoneNumberChange}
       onSubmit={handleSendCode}
     />
@@ -216,19 +210,15 @@ export default function Verify({
 }
 
 interface PhoneInputStepProps {
-  countryCode: string;
   phoneNumber: string;
   error: string | null;
-  onCountryCodeChange: (code: string) => void;
   onPhoneNumberChange: (phone: string) => void;
   onSubmit: () => void;
 }
 
 function PhoneInputStep({
-  countryCode,
   phoneNumber,
   error,
-  onCountryCodeChange,
   onPhoneNumberChange,
   onSubmit,
 }: PhoneInputStepProps) {
@@ -254,9 +244,7 @@ function PhoneInputStep({
                     Phone number
                   </label>
                   <PhoneNumberInput
-                    countryCode={countryCode}
                     phoneNumber={phoneNumber}
-                    onCountryCodeChange={onCountryCodeChange}
                     onPhoneNumberChange={onPhoneNumberChange}
                   />
                   <p className="min-h-5 text-sm text-red-500">{error}</p>
