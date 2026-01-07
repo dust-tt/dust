@@ -12,6 +12,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent";
 import { hasSharedMembership } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -881,7 +882,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.globalSId !== null;
   }
 
-  async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
+  private async listActiveAgents(
+    auth: Authenticator
+  ): Promise<AgentConfigurationModel[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const agentSkills = await AgentSkillModel.findAll({
@@ -892,19 +895,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     if (agentSkills.length === 0) {
-      return { count: 0, agents: [] };
+      return [];
     }
 
     const agentConfigIds = agentSkills.map((as) => as.agentConfigurationId);
 
-    // Fetch related active agent configurations
-    const agents = await AgentConfigurationModel.findAll({
+    return AgentConfigurationModel.findAll({
       where: {
         id: { [Op.in]: agentConfigIds },
         workspaceId: workspace.id,
         status: "active",
       },
     });
+  }
+
+  async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
+    const agents = await this.listActiveAgents(auth);
 
     const sortedAgents = agents
       .map((agent) => ({ sId: agent.sId, name: agent.name }))
@@ -914,6 +920,40 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       count: sortedAgents.length,
       agents: sortedAgents,
     };
+  }
+
+  private async updateActiveAgentsRequirements(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction }
+  ): Promise<void> {
+    const agents = await this.listActiveAgents(auth);
+
+    if (agents.length === 0) {
+      return;
+    }
+
+    const skillSpaceIds = this.requestedSpaceIds.map((id) => Number(id));
+
+    await concurrentExecutor(
+      agents,
+      async (agent) => {
+        const currentSpaceIds = agent.requestedSpaceIds.map((id) => Number(id));
+        const newSpaceIds = uniq([...currentSpaceIds, ...skillSpaceIds]);
+
+        // Only update if there are new spaces to add.
+        if (newSpaceIds.length > currentSpaceIds.length) {
+          await updateAgentRequirements(
+            auth,
+            {
+              agentId: agent.sId,
+              newSpaceIds,
+            },
+            { transaction }
+          );
+        }
+      },
+      { concurrency: 5 }
+    );
   }
 
   async listVersions(
@@ -1105,6 +1145,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         },
         { transaction }
       );
+
+      await this.updateActiveAgentsRequirements(auth, { transaction });
     });
   }
 
