@@ -256,7 +256,7 @@ function AgentActionsPanelContent({
       </div>
       {skills.length > 0 && (
         <div className="flex flex-col gap-4 border-t border-separator bg-background p-4 dark:border-separator-night dark:bg-background-night">
-          <span className="text-sm">Enabled skills</span>
+          <span className="text-sm">Skills used</span>
           <div className="flex flex-wrap items-center gap-1">
             {skills.map((skill) => (
               <Chip

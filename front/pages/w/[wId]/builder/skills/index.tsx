@@ -242,7 +242,11 @@ export default function WorkspaceSkills({
           <title>Dust - Manage Skills</title>
         </Head>
         <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
-          <Page.Header title="Manage Skills" icon={SKILL_ICON} />
+          <Page.Header
+            title="Manage Skills"
+            icon={SKILL_ICON}
+            description="Reusable packages of instructions, tools and knowledge that agents can share."
+          />
           <Page.Vertical gap="md" align="stretch">
             <div className="flex flex-row gap-2">
               <SearchInput

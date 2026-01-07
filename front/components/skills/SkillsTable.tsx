@@ -225,7 +225,7 @@ export function SkillsTable({
                   kind: "item" as const,
                 },
                 {
-                  label: "Extend (New)",
+                  label: "Customize (New)",
                   icon: ClipboardIcon,
                   disabled: !skill.isExtendable,
                   onClick: (e: React.MouseEvent) => {

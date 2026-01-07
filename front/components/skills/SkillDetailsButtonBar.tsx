@@ -63,7 +63,7 @@ export function SkillDetailsButtonBar({
           <DropdownMenuContent>
             {skill.isExtendable && (
               <DropdownMenuItem
-                label="Extend (New)"
+                label="Customize (New)"
                 icon={ClipboardIcon}
                 onClick={async (e) => {
                   e.stopPropagation();

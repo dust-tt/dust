@@ -127,7 +127,13 @@ export function CapabilitiesSelectionPageContent({
         <>
           {showSkillsSection && hasSkills && (
             <>
-              <span className="text-lg font-semibold">Skills</span>
+              <div>
+                <span className="text-lg font-semibold">Skills</span>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Reusable packages of instructions, tools and knowledge that
+                  agents can share.
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 {filteredSkills.map((skill) => (
                   <SkillCard
@@ -144,7 +150,12 @@ export function CapabilitiesSelectionPageContent({
 
           {showToolsSection && hasTools && (
             <>
-              <span className="text-lg font-semibold">Tools</span>
+              <div>
+                <span className="text-lg font-semibold">Tools</span>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Capabilities that allow agents to take actions.
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 {sortedMCPServerViews.map((view) => (
                   <MCPServerCard
