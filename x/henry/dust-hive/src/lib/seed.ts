@@ -64,7 +64,7 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
 
   // Generate sIds - workspace uses static ID for consistency across warm cycles
   const userSid = config.sId ?? generateRandomModelSId();
-  const workspaceSid = "dev-workspace";
+  const workspaceSid = "DevWkSpace";
   const subscriptionSid = generateRandomModelSId();
   const username = config.username ?? config.email.split("@")[0];
 
