@@ -9,6 +9,7 @@ import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
 import config from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
+import { untrustedFetch } from "@app/lib/egress/server";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial/index";
 import {
@@ -31,8 +32,8 @@ async function detectCountryFromIP(
 
   try {
     const token = config.getIPInfoApiToken();
-    // eslint-disable-next-line no-restricted-globals
-    const response = await fetch(
+
+    const response = await untrustedFetch(
       `https://api.ipinfo.io/lite/${ip}?token=${token}`
     );
 
@@ -48,10 +49,8 @@ async function detectCountryFromIP(
       return "US";
     }
 
-    const data = await response.json();
-    const countryCode = data.country_code;
-
-    return countryCode as Country;
+    const data = (await response.json()) as { country_code: Country };
+    return data.country_code;
   } catch (error) {
     logger.error({ error }, "Error detecting country from IP");
     return "US";
