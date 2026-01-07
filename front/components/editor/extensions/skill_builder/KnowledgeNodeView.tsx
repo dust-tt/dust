@@ -67,7 +67,7 @@ function KnowledgeDisplayComponent({
     useDataSourceViewContentNodes({
       owner,
       dataSourceView: needsFetch && dataSourceView ? dataSourceView : undefined,
-      internalIds: needsFetch ? [item.id] : undefined,
+      internalIds: needsFetch ? [item.nodeId] : undefined,
       viewType: "all",
       disabled: !needsFetch || !dataSourceView,
     });
@@ -234,18 +234,20 @@ function KnowledgeSearchComponent({
 
   const knowledgeItems: (FullKnowledgeItem & { description: string })[] =
     useMemo(() => {
-      return dataSourceNodes.map((node) => ({
-        dataSourceViewId: node.dataSourceView.sId,
-        description: getLocationForDataSourceViewContentNodeWithSpace(
-          node,
-          spacesMap
-        ),
-        id: node.internalId,
-        label: node.title,
-        node, // Store the original node for chip display.
-        spaceId: node.dataSourceView.spaceId,
-        nodeType: node.type,
-      }));
+      return dataSourceNodes.map((node) => {
+        return {
+          dataSourceViewId: node.dataSourceView.sId,
+          description: getLocationForDataSourceViewContentNodeWithSpace(
+            node,
+            spacesMap
+          ),
+          nodeId: node.internalId,
+          label: node.title,
+          node, // Store the original node for chip display.
+          spaceId: node.dataSourceView.spaceId,
+          nodeType: node.type,
+        };
+      });
     }, [dataSourceNodes, spacesMap]);
 
   const handleItemSelect = useCallback(
@@ -263,7 +265,7 @@ function KnowledgeSearchComponent({
 
   const handleItemClick = useCallback(
     (item: KnowledgeItem) => {
-      const index = knowledgeItems.findIndex((i) => i.id === item.id);
+      const index = knowledgeItems.findIndex((i) => i.nodeId === item.nodeId);
       if (index !== -1) {
         handleItemSelect(index);
       }
@@ -360,7 +362,8 @@ function KnowledgeSearchComponent({
         className={cn(
           "inline-block h-7 cursor-text rounded-md bg-gray-100 px-3 py-1 text-sm italic",
           "text-gray-600 empty:before:text-gray-400",
-          "empty:before:content-[attr(data-placeholder)] focus:outline-none"
+          "empty:before:content-[attr(data-placeholder)] focus:outline-none",
+          "min-w-36 text-left"
         )}
         contentEditable
         suppressContentEditableWarning
@@ -369,33 +372,30 @@ function KnowledgeSearchComponent({
         onInput={handleInput}
         onBlur={handleBlur}
         data-placeholder="Search for knowledge..."
-        style={{
-          minWidth: searchQuery ? "auto" : "150px",
-          textAlign: "left",
-        }}
       />
 
-      {isOpen && knowledgeItems.length > 0 && (
+      {isOpen && (
         <DropdownMenu open={true}>
           <DropdownMenuTrigger asChild>
             <div ref={triggerRef} style={virtualTriggerStyle} />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-96"
+            align="start"
             avoidCollisions
             onInteractOutside={handleInteractOutside}
             onOpenAutoFocus={(e) => e.preventDefault()}
             onCloseAutoFocus={(e) => e.preventDefault()}
           >
             {isSearchLoading ? (
-              <div className="flex items-center justify-center px-4 py-8">
+              <div className="flex h-14 items-center justify-center">
                 <Spinner size="sm" />
                 <span className="ml-2 text-sm text-gray-500">
                   Searching knowledge...
                 </span>
               </div>
             ) : knowledgeItems.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-gray-500">
+              <div className="flex h-14 items-center justify-center text-center text-sm text-gray-500">
                 {searchQuery.length < 2
                   ? "Type at least 2 characters to search"
                   : "No knowledge found"}
@@ -407,7 +407,7 @@ function KnowledgeSearchComponent({
                 }
                 return (
                   <DropdownMenuItem
-                    key={item.id}
+                    key={item.nodeId}
                     icon={
                       isWebsite(item.node.dataSourceView.dataSource) ||
                       isFolder(item.node.dataSourceView.dataSource) ? (

@@ -16,15 +16,15 @@ async function cleanupZellijSession(envName: string): Promise<void> {
 
   // Kill session first (stops it)
   const killProc = Bun.spawn(["zellij", "kill-session", sessionName], {
-    stdout: "pipe",
-    stderr: "pipe",
+    stdout: "ignore",
+    stderr: "ignore",
   });
   await killProc.exited;
 
   // Then delete it (removes from list)
   const deleteProc = Bun.spawn(["zellij", "delete-session", sessionName], {
-    stdout: "pipe",
-    stderr: "pipe",
+    stdout: "ignore",
+    stderr: "ignore",
   });
   await deleteProc.exited;
 }
@@ -56,7 +56,10 @@ export async function destroyCommand(
 ): Promise<Result<void>> {
   const resolvedOptions: DestroyOptions = { force: false, ...options };
 
-  const envResult = await requireEnvironment(name, "destroy");
+  // When using interactive selection, ask for confirmation before proceeding
+  const envResult = await requireEnvironment(name, "destroy", {
+    confirmMessage: "Destroy environment '{name}'?",
+  });
   if (!envResult.ok) return envResult;
   const env = envResult.value;
 

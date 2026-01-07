@@ -1,47 +1,18 @@
 // Data-driven database initialization with binary caching
 
-import { join } from "node:path";
 import { type InitBinary, binaryExists, getBinaryPath, getCacheSource } from "./cache";
+import { buildPostgresUri, loadEnvVars } from "./env-utils";
 import type { Environment } from "./environment";
 import { logger } from "./logger";
-import { DUST_HIVE_HOME, getEnvFilePath, getWorktreeDir } from "./paths";
+import { SEED_USER_PATH, getEnvFilePath, getWorktreeDir } from "./paths";
+import { runSqlSeed } from "./seed";
 import { buildShell } from "./shell";
 import { SEARCH_ATTRIBUTES, TEMPORAL_NAMESPACE_CONFIG, getTemporalNamespaces } from "./temporal";
 
 export { getTemporalNamespaces } from "./temporal";
 
-export const SEED_USER_PATH = join(DUST_HIVE_HOME, "seed-user.json");
-
-// Load environment variables from env.sh
-async function loadEnvVars(envShPath: string): Promise<Record<string, string>> {
-  // Source the env.sh and export all vars
-  const command = `source "${envShPath}" && env`;
-  const proc = Bun.spawn(["bash", "-c", command], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  const stdoutPromise = new Response(proc.stdout).text();
-  const stderrPromise = new Response(proc.stderr).text();
-  await proc.exited;
-  const output = await stdoutPromise;
-  const stderr = await stderrPromise;
-
-  if (proc.exitCode !== 0) {
-    throw new Error(`Failed to load env vars: ${stderr.trim() || "unknown error"}`);
-  }
-
-  const env: Record<string, string> = {};
-  for (const line of output.split("\n")) {
-    const idx = line.indexOf("=");
-    if (idx > 0) {
-      const key = line.substring(0, idx);
-      const value = line.substring(idx + 1);
-      env[key] = value;
-    }
-  }
-  return env;
-}
+// Re-export from paths.ts for backwards compatibility
+export { SEED_USER_PATH } from "./paths";
 
 // Run a binary directly or fall back to cargo run
 async function runBinary(
@@ -92,11 +63,7 @@ async function runBinary(
 
 // Initialize PostgreSQL databases
 async function initPostgres(envVars: Record<string, string>): Promise<void> {
-  // biome-ignore lint/complexity/useLiteralKeys: must use bracket notation for Record type
-  const host = envVars["POSTGRES_HOST"] ?? "localhost";
-  // biome-ignore lint/complexity/useLiteralKeys: must use bracket notation for Record type
-  const port = envVars["POSTGRES_PORT"] ?? "5432";
-  const uri = `postgres://dev:dev@${host}:${port}/`;
+  const uri = buildPostgresUri(envVars);
 
   const databases = [
     "dust_api",
@@ -149,12 +116,16 @@ async function initQdrant(
     }
   );
 
-  if (!result.success) {
+  // Treat "already exists" as success (idempotent)
+  const alreadyExists =
+    result.stderr.includes("already exists") || result.stdout.includes("already exists");
+
+  if (!(result.success || alreadyExists)) {
     console.log(result.stdout);
     console.error(result.stderr);
   }
 
-  return { success: result.success, usedCache: result.usedCache };
+  return { success: result.success || alreadyExists, usedCache: result.usedCache };
 }
 
 // Initialize Elasticsearch indices (Rust binaries)
@@ -178,7 +149,11 @@ async function initElasticsearchRust(
       }
     );
 
-    if (!result.success) {
+    // Treat "already exists" as success (idempotent)
+    const alreadyExists =
+      result.stderr.includes("already exists") || result.stdout.includes("already exists");
+
+    if (!(result.success || alreadyExists)) {
       console.log(result.stdout);
       console.error(result.stderr);
       return { success: false, usedCache };
@@ -200,7 +175,6 @@ async function initElasticsearchTS(
     { name: "user_search", version: "1" },
   ];
 
-  // biome-ignore lint/complexity/useLiteralKeys: must use bracket notation for Record type
   const envShPath = envVars["__ENV_SH_PATH__"] ?? "";
   const frontDir = `${worktreePath}/front`;
 
@@ -222,7 +196,10 @@ async function initElasticsearchTS(
     const stderr = await new Response(proc.stderr).text();
     await proc.exited;
 
-    if (proc.exitCode !== 0) {
+    // Treat "already exists" as success (idempotent)
+    const alreadyExists = stderr.includes("already exists") || stdout.includes("already exists");
+
+    if (proc.exitCode !== 0 && !alreadyExists) {
       console.log(stdout);
       console.error(stderr);
       return false;
@@ -299,7 +276,6 @@ async function initAllElasticsearch(env: Environment): Promise<void> {
   const envShPath = getEnvFilePath(env.name);
   const worktreePath = getWorktreeDir(env.name);
   const envVars = await loadEnvVars(envShPath);
-  // biome-ignore lint/complexity/useLiteralKeys: must use bracket notation for Record type
   envVars["__ENV_SH_PATH__"] = envShPath;
 
   // Run Rust and TS ES inits in parallel
@@ -323,10 +299,16 @@ async function runCoreDbInit(env: Environment): Promise<{ success: boolean; used
   const worktreePath = getWorktreeDir(env.name);
   const envVars = await loadEnvVars(envShPath);
 
-  return await runBinary("init_db", [], {
+  const result = await runBinary("init_db", [], {
     cwd: `${worktreePath}/core`,
     env: envVars,
   });
+
+  // Treat "already exists" as success (idempotent)
+  const alreadyExists =
+    result.stderr.includes("already exists") || result.stdout.includes("already exists");
+
+  return { success: result.success || alreadyExists, usedCache: result.usedCache };
 }
 
 // Run front database init
@@ -334,9 +316,14 @@ async function runFrontDbInit(env: Environment): Promise<boolean> {
   const envShPath = getEnvFilePath(env.name);
   const worktreePath = getWorktreeDir(env.name);
 
-  const commands = ["./admin/init_db.sh --unsafe", "./admin/init_plans.sh --unsafe"];
+  // Commands and their expected completion markers
+  // Both init_db.sh and init_plans.sh print "Done" when they complete successfully
+  const commands = [
+    { cmd: "./admin/init_db.sh --unsafe", name: "init_db", expectDone: true },
+    { cmd: "./admin/init_plans.sh", name: "init_plans", expectDone: true },
+  ];
 
-  for (const cmd of commands) {
+  for (const { cmd, name, expectDone } of commands) {
     const command = buildShell({
       sourceEnv: envShPath,
       sourceNvm: true,
@@ -349,8 +336,28 @@ async function runFrontDbInit(env: Environment): Promise<boolean> {
       stderr: "pipe",
     });
 
+    const stdout = await new Response(proc.stdout).text();
+    const stderr = await new Response(proc.stderr).text();
     await proc.exited;
-    if (proc.exitCode !== 0) {
+
+    // Treat "already exists" or "No migrations" as success (idempotent)
+    const alreadyExists =
+      stderr.includes("already exists") ||
+      stdout.includes("already exists") ||
+      stdout.includes("No migrations");
+
+    if (proc.exitCode !== 0 && !alreadyExists) {
+      console.log(stdout);
+      console.error(stderr);
+      return false;
+    }
+
+    // Verify script completed successfully by checking for "Done" marker
+    // This catches cases where script exits 0 but didn't actually complete
+    if (expectDone && !stdout.includes("Done")) {
+      logger.error(`${name} did not complete successfully (missing "Done" in output)`);
+      console.log(stdout);
+      console.error(stderr);
       return false;
     }
   }
@@ -375,8 +382,24 @@ async function runConnectorsDbInit(env: Environment): Promise<boolean> {
     stderr: "pipe",
   });
 
+  const stdout = await new Response(proc.stdout).text();
+  const stderr = await new Response(proc.stderr).text();
   await proc.exited;
-  return proc.exitCode === 0;
+
+  // Treat "already exists" or "relation already exists" as success (idempotent)
+  const alreadyExists =
+    stderr.includes("already exists") ||
+    stdout.includes("already exists") ||
+    stderr.includes("relation") ||
+    stdout.includes("No migrations");
+
+  if (proc.exitCode !== 0 && !alreadyExists) {
+    console.log(stdout);
+    console.error(stderr);
+    return false;
+  }
+
+  return true;
 }
 
 // Run all DB initialization steps in parallel
@@ -474,48 +497,5 @@ export async function hasSeedConfig(): Promise<boolean> {
 }
 
 export async function runSeedScript(env: Environment): Promise<boolean> {
-  const configExists = await hasSeedConfig();
-  if (!configExists) {
-    return false;
-  }
-
-  logger.step("Seeding database with dev user...");
-
-  const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name);
-  const frontDir = `${worktreePath}/front`;
-
-  // Use tsx directly from node_modules to avoid npx overhead
-  const command = buildShell({
-    sourceEnv: envShPath,
-    sourceNvm: true,
-    run: `./node_modules/.bin/tsx admin/seed_dev_user.ts "${SEED_USER_PATH}"`,
-  });
-
-  const proc = Bun.spawn(["bash", "-c", command], {
-    cwd: frontDir,
-    stdout: "pipe",
-    stderr: "pipe",
-    env: { ...process.env, NODE_ENV: "development" },
-  });
-
-  const stdout = await new Response(proc.stdout).text();
-  const stderr = await new Response(proc.stderr).text();
-  await proc.exited;
-
-  if (proc.exitCode !== 0) {
-    logger.warn("Seed script failed (non-fatal):");
-    if (stdout.trim()) console.log(stdout);
-    if (stderr.trim()) console.error(stderr);
-    return false;
-  }
-
-  if (stdout.trim()) {
-    for (const line of stdout.trim().split("\n")) {
-      console.log(`  ${line}`);
-    }
-  }
-
-  logger.success("Database seeded with dev user");
-  return true;
+  return runSqlSeed(env);
 }

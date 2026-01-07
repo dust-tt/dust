@@ -44,7 +44,7 @@ function AgentActionsPanelContent({
 }: AgentActionsPanelContentProps) {
   const [currentStreamingStep, setCurrentStreamingStep] = useState(1);
 
-  const { skills } = useAgentMessageSkills({
+  const { skills, mutateSkills } = useAgentMessageSkills({
     conversation,
     owner,
     messageId,
@@ -72,14 +72,19 @@ function AgentActionsPanelContent({
 
   useEffect(() => {
     if (
-      fullAgentMessage?.type === "agent_message" &&
-      fullAgentMessage?.status === "created" &&
-      !!fullAgentMessage.chainOfThought
+      fullAgentMessage.type !== "agent_message" ||
+      !fullAgentMessage.chainOfThought
     ) {
+      return;
+    }
+
+    if (fullAgentMessage.status === "created") {
       // eslint-disable-next-line react-hooks/immutability
       isFreshMountWithContent.current = true;
+    } else if (fullAgentMessage.status === "succeeded") {
+      void mutateSkills();
     }
-  }, [fullAgentMessage, isFreshMountWithContent]);
+  }, [fullAgentMessage, isFreshMountWithContent, mutateSkills]);
 
   const steps =
     fullAgentMessage?.type === "agent_message"

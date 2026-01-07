@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -47,6 +46,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - Skills with 
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });
     const skill = await SkillConfigurationFactory.create(authenticator, {
       name: "Skill with restricted space",
     });
@@ -55,12 +55,6 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - Skills with 
       { requestedSpaceIds: [restrictedSpace.id] },
       { where: { id: skill.id } }
     );
-
-    const skillResource = await SkillResource.fetchByModelIdWithAuth(
-      authenticator,
-      skill.id
-    );
-    expect(skillResource).not.toBeNull();
 
     req.query = { ...req.query, wId: workspace.sId, aId: agent.sId };
     req.body = {
@@ -80,7 +74,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - Skills with 
         templateId: null,
         tags: [],
         editors: [{ sId: user.sId }],
-        skills: [{ sId: skillResource!.sId }],
+        skills: [{ sId: skill.sId }],
         additionalRequestedSpaceIds: [],
       },
     };

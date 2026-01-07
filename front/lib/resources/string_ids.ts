@@ -156,6 +156,10 @@ export function getIdsFromSId(sId: string): Result<
   const [resourcePrefix, sIdWithoutPrefix] = sId.split("_");
 
   if (!ALL_RESOURCES_PREFIXES.includes(resourcePrefix)) {
+    logger.error(
+      { sId, resourcePrefix },
+      "Invalid resource prefix in string Id (log with prefix)"
+    );
     return new Err(new Error("Invalid resource prefix in string Id"));
   }
 

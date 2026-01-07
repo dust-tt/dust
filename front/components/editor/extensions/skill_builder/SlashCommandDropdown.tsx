@@ -4,7 +4,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { DocumentIcon } from "@dust-tt/sparkle";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import React, {
   forwardRef,
@@ -18,6 +17,7 @@ import React, {
 export interface SlashCommand {
   action: string;
   description: string;
+  icon: React.ComponentType<any>;
   id: string;
   label: string;
 }
@@ -123,7 +123,7 @@ export const SlashCommandDropdown = forwardRef<
           items.map((item, index) => (
             <DropdownMenuItem
               key={item.id}
-              icon={DocumentIcon}
+              icon={item.icon}
               label={item.label}
               description={item.description}
               truncateText

@@ -87,7 +87,27 @@ export function makeColumnsForAssistants(
     },
     {
       id: "author",
-      header: "Author",
+      accessorFn: (row) => {
+        const author = row.versionAuthor;
+        if (author) {
+          return author.email;
+        }
+        return row.versionAuthorId?.toString() ?? "";
+      },
+      header: ({ column }) => {
+        return (
+          <div className="flex space-x-2">
+            <p>Author</p>
+            <IconButton
+              variant="outline"
+              icon={ArrowsUpDownIcon}
+              onClick={() =>
+                column.toggleSorting(column.getIsSorted() === "asc")
+              }
+            />
+          </div>
+        );
+      },
       cell: ({ row }) => {
         const author = row.original.versionAuthor;
         if (author) {

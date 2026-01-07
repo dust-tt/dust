@@ -239,6 +239,9 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - Skills with restric
 
     await SpaceFactory.defaults(authenticator);
     const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });
+    await authenticator.refresh();
+
     const skill = await SkillConfigurationFactory.create(authenticator, {
       name: "Skill with restricted space",
     });

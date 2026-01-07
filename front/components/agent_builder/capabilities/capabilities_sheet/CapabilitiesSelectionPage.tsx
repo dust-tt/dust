@@ -75,7 +75,14 @@ export function CapabilitiesSelectionPageContent({
     (showSkillsSection && hasSkills) || (showToolsSection && hasTools);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 pt-1">
+      <SearchInput
+        placeholder="Search capabilities..."
+        value={searchQuery}
+        onChange={setSearchQuery}
+        name="capability-search"
+      />
+
       <div className="flex gap-2">
         <Button
           label="All"
@@ -96,13 +103,6 @@ export function CapabilitiesSelectionPageContent({
           onClick={() => setFilter("tools")}
         />
       </div>
-
-      <SearchInput
-        placeholder="Search capabilities..."
-        value={searchQuery}
-        onChange={setSearchQuery}
-        name="capability-search"
-      />
 
       {isCapabilitiesLoading ? (
         <div className="flex h-40 items-center justify-center">

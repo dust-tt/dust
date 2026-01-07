@@ -1,9 +1,6 @@
-import { join } from "node:path";
 import { logger } from "../lib/logger";
-import { DUST_HIVE_HOME } from "../lib/paths";
+import { SEED_USER_PATH } from "../lib/paths";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
-
-export const SEED_USER_PATH = join(DUST_HIVE_HOME, "seed-user.json");
 
 export interface SeedUserConfig {
   sId: string;

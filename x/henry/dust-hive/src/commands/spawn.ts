@@ -16,15 +16,16 @@ import { allocateNextPort, calculatePorts, savePortAllocation } from "../lib/por
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { installAllDependencies } from "../lib/setup";
-import { cleanupPartialEnvironment, createWorktree, getCurrentBranch } from "../lib/worktree";
+import { cleanupPartialEnvironment, createWorktree, getMainRepoPath } from "../lib/worktree";
 import { openCommand } from "./open";
 import { warmCommand } from "./warm";
 
 interface SpawnOptions {
   name?: string;
-  base?: string;
   noOpen?: boolean;
+  noAttach?: boolean;
   warm?: boolean;
+  wait?: boolean;
 }
 
 async function promptForName(): Promise<string> {
@@ -124,14 +125,17 @@ async function setupWorktree(
 // Phase 3: Start SDK
 async function startSdk(
   env: Environment,
-  worktreePath: string
+  worktreePath: string,
+  waitForReady: boolean
 ): Promise<Result<void, CommandError>> {
   const { repoRoot } = env.metadata;
   const workspaceBranch = env.metadata.workspaceBranch;
 
   try {
     await startService(env, "sdk");
-    await waitForServiceReady(env, "sdk");
+    if (waitForReady) {
+      await waitForServiceReady(env, "sdk");
+    }
   } catch (error) {
     logger.error("Spawn failed during SDK startup, cleaning up...");
     await cleanupPartialEnvironment(repoRoot, worktreePath, workspaceBranch).catch((e) =>
@@ -147,14 +151,17 @@ async function startSdk(
 }
 
 export async function spawnCommand(options: SpawnOptions): Promise<Result<void>> {
-  // Find repo root
-  const repoRoot = await findRepoRoot();
-  if (!repoRoot) {
+  // Find repo root (could be main repo or worktree)
+  const currentRepoRoot = await findRepoRoot();
+  if (!currentRepoRoot) {
     return Err(new CommandError("Not in a git repository. Please run from within the Dust repo."));
   }
 
+  // Always use the main repo for cache and worktree creation
+  const mainRepoRoot = await getMainRepoPath(currentRepoRoot);
+
   // Set cache source to use binaries from main repo
-  await setCacheSource(repoRoot);
+  await setCacheSource(mainRepoRoot);
 
   // Get or prompt for name
   let name = options.name;
@@ -173,8 +180,8 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
     return Err(new CommandError(`Environment '${name}' already exists`));
   }
 
-  // Get base branch
-  const baseBranch = options.base ?? (await getCurrentBranch(repoRoot));
+  // Always base on main branch
+  const baseBranch = "main";
   const workspaceBranch = `${name}-workspace`;
   const worktreePath = getWorktreeDir(name);
 
@@ -191,7 +198,7 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
     baseBranch,
     workspaceBranch,
     createdAt: new Date().toISOString(),
-    repoRoot,
+    repoRoot: mainRepoRoot,
   };
 
   // Phase 1: Setup environment files
@@ -210,7 +217,12 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
     initialized: false,
   };
 
-  const sdkResult = await startSdk(env, worktreePath);
+  // Wait for SDK build if:
+  // - --no-open is passed (forced, no UI to show progress)
+  // - --wait is explicitly passed
+  // Otherwise, let the watch process run and show progress in zellij
+  const shouldWaitForSdk = options.noOpen || options.wait;
+  const sdkResult = await startSdk(env, worktreePath, Boolean(shouldWaitForSdk));
   if (!sdkResult.ok) return sdkResult;
 
   logger.success(`Environment '${name}' created successfully!`);
@@ -226,10 +238,10 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
 
   // Open zellij unless --no-open
   if (!options.noOpen) {
-    if (options.warm) {
-      return openCommand(name, { warmCommand: `dust-hive warm ${name}` });
-    }
-    return openCommand(name);
+    const openOpts: { warmCommand?: string; noAttach?: boolean } = {};
+    if (options.warm) openOpts.warmCommand = `dust-hive warm ${name}`;
+    if (options.noAttach) openOpts.noAttach = true;
+    return openCommand(name, openOpts);
   }
 
   // If --no-open and --warm, run warm command directly in current terminal

@@ -9,6 +9,7 @@ import {
   fetchIntercomTeams,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import type { IntercomConversationType } from "@connectors/connectors/intercom/lib/types";
+import { launchIntercomFullSyncWorkflow } from "@connectors/connectors/intercom/temporal/client";
 import {
   IntercomArticleModel,
   IntercomConversationModel,
@@ -25,6 +26,7 @@ import type {
   IntercomCommandType,
   IntercomFetchArticlesResponseType,
   IntercomFetchConversationResponseType,
+  IntercomForceResyncAllConversationsResponseType,
   IntercomForceResyncArticlesResponseType,
   IntercomGetConversationsSlidingWindowResponseType,
   IntercomSearchConversationsResponseType,
@@ -36,6 +38,7 @@ type IntercomResponse =
   | IntercomCheckTeamsResponseType
   | IntercomCheckMissingConversationsResponseType
   | IntercomForceResyncArticlesResponseType
+  | IntercomForceResyncAllConversationsResponseType
   | IntercomFetchArticlesResponseType
   | IntercomGetConversationsSlidingWindowResponseType
   | IntercomSearchConversationsResponseType;
@@ -70,6 +73,34 @@ export const intercom = async ({
       return {
         affectedCount: updated[0],
       };
+    }
+
+    case "force-resync-all-conversations": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+
+      const workspace = await IntercomWorkspaceModel.findOne({
+        where: { connectorId: connector.id },
+      });
+      if (!workspace) {
+        throw new Error(`No workspace found for connector ${connector.id}`);
+      }
+
+      logger.info("[Admin] Forcing resync of all conversations");
+
+      await workspace.update({ syncAllConversations: "scheduled_activate" });
+
+      const result = await launchIntercomFullSyncWorkflow({
+        connectorId: connector.id,
+        hasUpdatedSelectAllConversations: true,
+      });
+
+      if (result.isErr()) {
+        throw result.error;
+      }
+
+      return { workflowId: result.value };
     }
 
     case "check-conversation": {
@@ -267,6 +298,7 @@ export const intercom = async ({
       while (hasMore && totalCount < MAX_CONVERSATIONS_COUNT) {
         const response = await fetchIntercomConversations({
           accessToken,
+          teamId: args.teamId,
           slidingWindow: workspace.conversationsSlidingWindow,
           cursor,
           pageSize: 50,
@@ -287,10 +319,11 @@ export const intercom = async ({
       return {
         conversations: conversations.map((conv) => ({
           id: conv.id.toString(),
+          team_assignee_id: conv.team_assignee_id?.toString() ?? null,
           open: conv.open,
           state: conv.state,
           created_at: conv.created_at,
-          last_closed_at: conv.statistics?.last_close_at || null,
+          last_closed_at: conv.statistics?.last_close_at ?? null,
         })),
         totalCount,
       };

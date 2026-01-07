@@ -54,7 +54,7 @@ export function AgentBuilderLayout({
   };
 
   return (
-    <div className="h-dvh flex flex-row">
+    <div className="flex h-dvh flex-row">
       <div
         className={cn(
           "relative h-full w-full flex-1 flex-col overflow-hidden",

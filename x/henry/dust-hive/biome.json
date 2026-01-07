@@ -10,6 +10,7 @@
       "complexity": {
         "noExcessiveCognitiveComplexity": "error",
         "noForEach": "warn",
+        "useLiteralKeys": "off",
         "useSimplifiedLogicExpression": "error"
       },
       "correctness": {

@@ -6,7 +6,6 @@ import { Ok } from "../lib/result";
 import { getStateInfo } from "../lib/state";
 
 export const startCommand = withEnvironment("start", async (env) => {
-  // Check state
   const stateInfo = await getStateInfo(env);
   if (stateInfo.state !== "stopped") {
     if (stateInfo.state === "cold") {

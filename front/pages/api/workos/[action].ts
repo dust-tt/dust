@@ -191,6 +191,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 
     const sealedCookie = await sealData(sessionCookie, {
       password: config.getWorkOSCookiePassword(),
+      ttl: 0,
     });
 
     const currentRegion = multiRegionsConfig.getCurrentRegion();

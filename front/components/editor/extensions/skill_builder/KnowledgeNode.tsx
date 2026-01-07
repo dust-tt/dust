@@ -2,14 +2,15 @@ import { mergeAttributes, Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
 import { KnowledgeNodeView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
+import type { ContentNodeType } from "@app/types";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 
 // Minimal data from serialization.
 export interface BaseKnowledgeItem {
   dataSourceViewId: string;
-  id: string;
   label: string;
-  nodeType: string;
+  nodeId: string;
+  nodeType: ContentNodeType;
   spaceId: string;
 }
 
@@ -38,8 +39,10 @@ declare module "@tiptap/core" {
   }
 }
 
+export const KNOWLEDGE_NODE_TYPE = "knowledgeNode";
+
 export const KnowledgeNode = Node.create<{}>({
-  name: "knowledgeNode",
+  name: KNOWLEDGE_NODE_TYPE,
 
   group: "inline",
   inline: true,
@@ -151,18 +154,10 @@ export const KnowledgeNode = Node.create<{}>({
       node.attrs.selectedItems &&
       node.attrs.selectedItems.length > 0
     ) {
-      const [item] = node.attrs.selectedItems;
+      const [item] = node.attrs.selectedItems as FullKnowledgeItem[];
 
       // Serialize essential data for model understanding and API fetching.
-      let nodeParams = "";
-      if (item.node?.dataSourceView) {
-        const dsv = item.node.dataSourceView;
-        const spaceId = dsv.spaceId ?? "";
-        const dsvId = dsv.sId ?? "";
-        const nodeType = item.node.type ?? "";
-        nodeParams = ` space="${spaceId}" dsv="${dsvId}" type="${nodeType}"`;
-      }
-      return `<knowledge id="${item.id}" title="${item.label}"${nodeParams} />`;
+      return `<knowledge id="${item.nodeId}" title="${item.label}" space="${item.spaceId}" dsv="${item.dataSourceViewId}" type="${item.nodeType}" />`;
     }
 
     // Don't serialize search state, empty nodes shouldn't be saved.
@@ -171,11 +166,11 @@ export const KnowledgeNode = Node.create<{}>({
 
   parseMarkdown: (token) => {
     const selectedItem: BaseKnowledgeItem = {
-      id: token.knowledgeId,
-      label: token.knowledgeTitle,
-      spaceId: token.spaceId,
       dataSourceViewId: token.dataSourceViewId,
+      label: token.knowledgeTitle,
+      nodeId: token.knowledgeId,
       nodeType: token.nodeType,
+      spaceId: token.spaceId,
     };
 
     return {

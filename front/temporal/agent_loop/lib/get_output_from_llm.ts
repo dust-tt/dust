@@ -12,7 +12,6 @@ import type {
 import { Err, Ok } from "@app/types";
 
 const LLM_HEARTBEAT_INTERVAL_MS = 10_000;
-const LLM_HEARTBEAT = "LLM_HEARTBEAT";
 
 // Wraps an async iterator and ensures heartbeat() is called at regular intervals
 // even when the source is slow to yield values.
@@ -24,24 +23,37 @@ async function* withPeriodicHeartbeat<T>(
 
   while (!streamExhausted) {
     const result = await Promise.race([
-      nextPromise,
-      new Promise<typeof LLM_HEARTBEAT>((resolve) =>
-        setTimeout(() => resolve(LLM_HEARTBEAT), LLM_HEARTBEAT_INTERVAL_MS)
+      nextPromise
+        .then((value) => ({ type: "stream" as const, value }))
+        .catch((error) => {
+          // Rethrow to ensure errors are not swallowed
+          throw error;
+        }),
+      new Promise<{ type: "heartbeat" }>((resolve) =>
+        setTimeout(
+          () => resolve({ type: "heartbeat" }),
+          LLM_HEARTBEAT_INTERVAL_MS
+        )
       ),
     ]);
 
     heartbeat();
 
-    if (result === LLM_HEARTBEAT) {
+    if (result.type === "heartbeat") {
+      // Heartbeat won the race, but nextPromise is still pending
+      // Continue racing with the same nextPromise
       continue;
     }
 
-    if (result.done) {
+    // Stream value arrived
+    const streamResult = result.value;
+
+    if (streamResult.done) {
       streamExhausted = true;
-      continue;
+      break;
     }
 
-    yield result.value;
+    yield streamResult.value;
     nextPromise = stream.next();
   }
 }

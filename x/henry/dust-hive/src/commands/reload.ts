@@ -1,12 +1,9 @@
 import { unlink } from "node:fs/promises";
 import { withEnvironment } from "../lib/commands";
+import { isErrnoException } from "../lib/errors";
 import { logger } from "../lib/logger";
 import { getZellijLayoutPath } from "../lib/paths";
 import { openCommand } from "./open";
-
-function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
-  return typeof error === "object" && error !== null && "code" in error;
-}
 
 export const reloadCommand = withEnvironment("reload", async (env) => {
   const sessionName = `dust-hive-${env.name}`;
@@ -15,15 +12,15 @@ export const reloadCommand = withEnvironment("reload", async (env) => {
 
   // Kill session first (stops it)
   const killProc = Bun.spawn(["zellij", "kill-session", sessionName], {
-    stdout: "pipe",
-    stderr: "pipe",
+    stdout: "ignore",
+    stderr: "ignore",
   });
   await killProc.exited;
 
   // Then delete it (removes from list)
   const deleteProc = Bun.spawn(["zellij", "delete-session", sessionName], {
-    stdout: "pipe",
-    stderr: "pipe",
+    stdout: "ignore",
+    stderr: "ignore",
   });
   await deleteProc.exited;
 

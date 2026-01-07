@@ -6,7 +6,6 @@ import { Ok } from "../lib/result";
 import { getStateInfo, isDockerRunning } from "../lib/state";
 
 export const stopCommand = withEnvironment("stop", async (env) => {
-  // Check state
   const stateInfo = await getStateInfo(env);
   if (stateInfo.state === "stopped") {
     logger.info("Environment is already stopped.");

@@ -694,6 +694,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "vanta_tool"
   | "web_summarization"
   | "xai_feature"
+  | "reactions"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1767,7 +1768,7 @@ export type DustAPICredentials = {
 };
 
 const SpaceKindSchema = FlexibleEnumSchema<
-  "regular" | "global" | "system" | "public" | "conversations"
+  "regular" | "global" | "system" | "public" | "conversations" | "project"
 >();
 
 const SpaceTypeSchema = z.object({
@@ -2689,6 +2690,7 @@ const FileTypeUseCaseSchema = FlexibleEnumSchema<
   | "upsert_table"
   // See also front/types/files.ts.
   | "folders_document"
+  | "project_context"
 >();
 
 export const FileTypeSchema = z.object({

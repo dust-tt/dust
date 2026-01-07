@@ -4,6 +4,7 @@
 import { unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
+import { createTypeGuard, isErrnoException } from "./errors";
 import { FORWARDER_PORTS } from "./forwarderConfig";
 import { fileExists } from "./fs";
 import { logger } from "./logger";
@@ -21,14 +22,7 @@ const ForwarderStateSchema = ForwarderStateFields.passthrough();
 
 export type ForwarderState = z.infer<typeof ForwarderStateFields>;
 
-function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
-  return typeof error === "object" && error !== null && "code" in error;
-}
-
-// Type guard for ForwarderState
-function isForwarderState(data: unknown): data is ForwarderState {
-  return ForwarderStateSchema.safeParse(data).success;
-}
+const isForwarderState = createTypeGuard<ForwarderState>(ForwarderStateSchema);
 
 // Read forwarder PID, returns null if not running
 export async function readForwarderPid(): Promise<number | null> {

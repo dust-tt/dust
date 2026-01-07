@@ -49,7 +49,7 @@ export OAUTH_DATABASE_URI=postgres://dev:dev@localhost:${ports.postgres}/dust_oa
 # === Service URIs ===
 export REDIS_URI=redis://localhost:${ports.redis}
 export REDIS_CACHE_URI=redis://localhost:${ports.redis}
-export QDRANT_CLUSTER_0_URL=http://127.0.0.1:${ports.qdrantHttp}
+export QDRANT_CLUSTER_0_URL=http://127.0.0.1:${ports.qdrantGrpc}
 export ELASTICSEARCH_URL=http://localhost:${ports.elasticsearch}
 export TEXT_EXTRACTION_URL=http://localhost:${ports.apacheTika}
 `;

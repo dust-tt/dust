@@ -178,6 +178,15 @@ export async function removeWorkOSOrganizationDomain(
     );
   }
 
+  return removeWorkOSOrganizationDomainFromOrganization(organization, {
+    domain,
+  });
+}
+
+export async function removeWorkOSOrganizationDomainFromOrganization(
+  organization: Organization,
+  { domain }: { domain: string }
+): Promise<Result<void, Error>> {
   await getWorkOS().organizations.updateOrganization({
     organization: organization.id,
     domainData: organization.domains

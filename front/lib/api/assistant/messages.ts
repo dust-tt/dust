@@ -7,6 +7,7 @@ import {
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
@@ -248,6 +249,10 @@ async function batchRenderUserMessages(
     agentConfigurations.map((a) => [a.sId, a])
   );
 
+  const reactionsByMessageId = await getMessagesReactions(auth, {
+    messageIds: userMessages.map((m) => m.id),
+  });
+
   return userMessages.map((message) => {
     if (!message.userMessage) {
       throw new Error(
@@ -319,6 +324,7 @@ async function batchRenderUserMessages(
               originMessageId: userMessage.agenticOriginMessageId,
             }
           : undefined,
+      reactions: reactionsByMessageId[message.id] ?? [],
     } satisfies UserMessageType;
   });
 }
@@ -419,6 +425,10 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   // Create maps for efficient lookups
   const messagesBySId = new Map(messages.map((m) => [m.sId, m]));
   const messagesById = new Map(messages.map((m) => [m.id, m]));
+
+  const reactionsByMessageId = await getMessagesReactions(auth, {
+    messageIds: agentMessages.map((m) => m.id),
+  });
 
   // The only async part here is the content parsing, but it's "fake async" as the content parsing is not doing
   // any IO or network. We need it to be async as we want to re-use the async generators for the content parsing.
@@ -628,7 +638,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           completedTs,
           actions
         ),
-      };
+        reactions: reactionsByMessageId[message.id] ?? [],
+      } satisfies AgentMessageType;
 
       if (viewType === "full") {
         return new Ok(m);

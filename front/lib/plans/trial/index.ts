@@ -1,7 +1,15 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { isOldFreePlan } from "@app/lib/plans/plan_codes";
+import {
+  FREE_TRIAL_PHONE_PLAN_CODE,
+  isOldFreePlan,
+} from "@app/lib/plans/plan_codes";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+
+const TRIAL_DURATION_DAYS = 30;
+
+// TODO: Replace with actual verification service.
+const VALID_TEST_CODE = "424242";
 
 /**
  * Checks if a workspace is eligible for the trial page.
@@ -39,4 +47,28 @@ export async function isWorkspaceEligibleForTrial(
   }
 
   return true;
+}
+
+/**
+ * Verifies the phone verification code.
+ * TODO: Replace with actual SMS verification service.
+ */
+export function isValidVerificationCode(code: string): boolean {
+  return code === VALID_TEST_CODE;
+}
+
+/**
+ * Activates the phone trial subscription for a workspace.
+ * Creates a subscription with FREE_TRIAL_PHONE_PLAN_CODE and a 30-day end date.
+ */
+export async function activatePhoneTrial(auth: Authenticator): Promise<void> {
+  const owner = auth.getNonNullableWorkspace();
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() + TRIAL_DURATION_DAYS);
+
+  await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
+    workspaceId: owner.sId,
+    planCode: FREE_TRIAL_PHONE_PLAN_CODE,
+    endDate,
+  });
 }

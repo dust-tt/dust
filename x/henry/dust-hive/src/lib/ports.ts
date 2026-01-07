@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdir, open, readdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
+import { createTypeGuard, isErrnoException } from "./errors";
 import { directoryExists } from "./fs";
 import { DUST_HIVE_ENVS, DUST_HIVE_HOME, getPortsPath } from "./paths";
 import { isProcessRunning, killProcess } from "./process";
@@ -9,7 +10,7 @@ import { isProcessRunning, killProcess } from "./process";
 // Port offsets from base (spec-defined).
 // Offsets chosen so base_port + offset resembles standard ports:
 // postgres: 432 -> 10432 (resembles 5432), redis: 379 -> 10379 (resembles 6379),
-// qdrant: 334 -> 10334 (resembles 6334), elasticsearch: 200 -> 10200 (resembles 9200)
+// qdrant: 333 -> 10333 (resembles 6333 HTTP), elasticsearch: 200 -> 10200 (resembles 9200)
 export const PORT_OFFSETS = {
   front: 0,
   core: 1,
@@ -17,8 +18,8 @@ export const PORT_OFFSETS = {
   oauth: 6,
   postgres: 432,
   redis: 379,
-  qdrantHttp: 334,
-  qdrantGrpc: 333,
+  qdrantHttp: 333,
+  qdrantGrpc: 334,
   elasticsearch: 200,
   apacheTika: 998,
 } as const;
@@ -47,14 +48,7 @@ const PortAllocationSchema = PortAllocationFields.passthrough();
 
 export type PortAllocation = z.infer<typeof PortAllocationFields>;
 
-function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
-  return typeof error === "object" && error !== null && "code" in error;
-}
-
-// Type guard for PortAllocation
-function isPortAllocation(data: unknown): data is PortAllocation {
-  return PortAllocationSchema.safeParse(data).success;
-}
+const isPortAllocation = createTypeGuard<PortAllocation>(PortAllocationSchema);
 
 // Calculate ports from a base port
 export function calculatePorts(base: number): PortAllocation {

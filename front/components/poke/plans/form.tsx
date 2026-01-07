@@ -40,6 +40,7 @@ export type EditingPlanType = {
   maxImagesPerWeek: string | number;
   maxMessages: string | number;
   maxMessagesTimeframe: string;
+  isDeepDiveAllowed: boolean;
   maxUsers: string | number;
   maxVaults: string | number;
   name: string;
@@ -63,6 +64,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isSCIMAllowed: plan.limits.users.isSCIMAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
     maxMessagesTimeframe: plan.limits.assistant.maxMessagesTimeframe,
+    isDeepDiveAllowed: plan.limits.assistant.isDeepDiveAllowed,
     dataSourcesCount: plan.limits.dataSources.count,
     dataSourcesDocumentsCount: plan.limits.dataSources.documents.count,
     dataSourcesDocumentsSizeMb: plan.limits.dataSources.documents.sizeMb,
@@ -92,6 +94,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         isSlackBotAllowed: editingPlan.isSlackBotAllowed,
         maxMessages: parseMaybeNumber(editingPlan.maxMessages),
         maxMessagesTimeframe: editingPlan.maxMessagesTimeframe,
+        isDeepDiveAllowed: editingPlan.isDeepDiveAllowed,
       },
       connections: {
         isConfluenceAllowed: editingPlan.isConfluenceAllowed,
@@ -149,6 +152,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   maxImagesPerWeek: "",
   maxMessages: "",
   maxMessagesTimeframe: "day",
+  isDeepDiveAllowed: true,
   maxUsers: "",
   maxVaults: "",
   name: "",
@@ -257,6 +261,11 @@ export const PLAN_FIELDS = {
     title: "/ Timeframe / Seat",
     error: (plan: EditingPlanType) =>
       errorCheckMaxMessageTimeframe(plan.maxMessagesTimeframe),
+  },
+  isDeepDiveAllowed: {
+    type: "boolean",
+    width: "tiny",
+    title: "Deep",
   },
   dataSourcesCount: {
     type: "number",

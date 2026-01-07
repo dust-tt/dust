@@ -14,9 +14,9 @@ import {
   fetchUserFromSession,
   maybeUpdateFromExternalUser,
 } from "@app/lib/iam/users";
+import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
-import { isWorkspaceEligibleForTrial } from "@app/pages/api/auth/trial";
 import type { UserTypeWithWorkspaces } from "@app/types";
 import { isString } from "@app/types";
 

@@ -1,5 +1,6 @@
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { z } from "zod";
+import { createTypeGuard } from "./errors";
 import { directoryExists } from "./fs";
 import { DUST_HIVE_ENVS, getEnvDir, getInitializedMarkerPath, getMetadataPath } from "./paths";
 import type { PortAllocation } from "./ports";
@@ -17,10 +18,8 @@ export const EnvironmentMetadataSchema = EnvironmentMetadataFields.passthrough()
 
 export type EnvironmentMetadata = z.infer<typeof EnvironmentMetadataFields>;
 
-// Type guard for EnvironmentMetadata
-export function isEnvironmentMetadata(data: unknown): data is EnvironmentMetadata {
-  return EnvironmentMetadataSchema.safeParse(data).success;
-}
+export const isEnvironmentMetadata =
+  createTypeGuard<EnvironmentMetadata>(EnvironmentMetadataSchema);
 
 export interface Environment {
   name: string;

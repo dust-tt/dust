@@ -1,6 +1,7 @@
 import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { isErrnoException } from "./errors";
 
 // dust-hive project root (where this package lives)
 export const DUST_HIVE_ROOT = resolve(dirname(import.meta.path), "../..");
@@ -22,6 +23,17 @@ export const FORWARDER_STATE_PATH = join(DUST_HIVE_HOME, "forward.json");
 
 // Activity tracking (last-interacted environment)
 export const ACTIVITY_PATH = join(DUST_HIVE_HOME, "activity.json");
+
+// Temporal server paths (global, not per-env)
+export const TEMPORAL_PID_PATH = join(DUST_HIVE_HOME, "temporal.pid");
+export const TEMPORAL_LOG_PATH = join(DUST_HIVE_HOME, "temporal.log");
+export const TEMPORAL_PORT = 7233;
+
+// Main zellij session
+export const MAIN_SESSION_NAME = "dust-hive-main";
+
+// Seed user configuration
+export const SEED_USER_PATH = join(DUST_HIVE_HOME, "seed-user.json");
 
 // Per-environment paths
 export function getEnvDir(name: string): string {
@@ -72,10 +84,6 @@ export function getZellijLayoutPath(): string {
 // Scripts
 export function getWatchScriptPath(): string {
   return join(DUST_HIVE_SCRIPTS, "watch-logs.sh");
-}
-
-function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
-  return typeof error === "object" && error !== null && "code" in error;
 }
 
 // Find repo root by looking for .git directory

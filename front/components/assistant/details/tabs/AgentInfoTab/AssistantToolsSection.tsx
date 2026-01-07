@@ -107,8 +107,8 @@ export function AssistantToolsSection({
                   key={action.title}
                   label={action.description ?? action.title}
                   trigger={
-                    <div className="flex min-w-0 flex-row items-center gap-2">
-                      <div className="flex-shrink-0">{action.avatar}</div>
+                    <div className="flex flex-row items-center gap-2">
+                      {action.avatar}
                       <div className="truncate">{action.title}</div>
                     </div>
                   }
@@ -125,8 +125,8 @@ export function AssistantToolsSection({
                   key={view.sId}
                   label={description ?? displayName}
                   trigger={
-                    <div className="flex min-w-0 flex-row items-center gap-2">
-                      <div className="flex-shrink-0">{avatar}</div>
+                    <div className="flex flex-row items-center gap-2">
+                      {avatar}
                       <div className="truncate">{displayName}</div>
                     </div>
                   }

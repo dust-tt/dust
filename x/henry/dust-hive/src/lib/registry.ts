@@ -283,12 +283,3 @@ export function getHealthChecks(
 
   return checks;
 }
-
-// Get the port for a service (for display purposes)
-export function getServicePort(service: ServiceName, ports: PortAllocation): number | undefined {
-  const config = SERVICE_REGISTRY[service];
-  if (!config.portKey) {
-    return undefined;
-  }
-  return ports[config.portKey];
-}
