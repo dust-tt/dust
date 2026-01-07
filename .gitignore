@@ -12,6 +12,7 @@ core-api-keys.json
 oauth-api-keys.json
 /extension/build/
 **/.claude
+**/.codex
 **/.yalc
 yalc.lock
 front/public/sitemap.xml
