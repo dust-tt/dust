@@ -2,10 +2,12 @@ import { Button, DustLogoSquare, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import type { Country } from "react-phone-number-input";
 
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput";
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
+import config from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial/index";
@@ -14,12 +16,56 @@ import {
   isValidPhoneNumber,
   RESEND_COOLDOWN_SECONDS,
 } from "@app/lib/plans/trial/phone";
+import logger from "@app/logger/logger";
+import { isString } from "@app/types";
 import type { WorkspaceType } from "@app/types";
 
 type Step = "phone" | "code";
 
+async function detectCountryFromIP(
+  ip: string | undefined
+): Promise<Country | undefined> {
+  if (!ip) {
+    return "US";
+  }
+
+  // Handle localhost IPs in development
+  if (ip === "::1" || ip === "127.0.0.1" || ip.startsWith("192.168.")) {
+    return "FR";
+  }
+
+  try {
+    const token = config.getIPInfoApiToken();
+    // eslint-disable-next-line no-restricted-globals
+    const response = await fetch(
+      `https://api.ipinfo.io/lite/${ip}?token=${token}`
+    );
+
+    if (!response.ok) {
+      logger.error(
+        {
+          status: response.status,
+          statusText: response.statusText,
+          ip,
+        },
+        "Failed to fetch geolocation data from IPinfo"
+      );
+      return "US";
+    }
+
+    const data = await response.json();
+    const countryCode = data.country_code;
+
+    return countryCode as Country;
+  } catch (error) {
+    logger.error({ error }, "Error detecting country from IP");
+    return "US";
+  }
+}
+
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   owner: WorkspaceType;
+  initialCountryCode: Country;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   if (!owner || !auth.isAdmin()) {
@@ -31,16 +77,25 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     return { notFound: true };
   }
 
-  return { props: { owner } };
+  // Detect country from IP
+  const { "x-forwarded-for": forwarded } = context.req.headers;
+  const ip = isString(forwarded)
+    ? forwarded.split(",")[0].trim()
+    : context.req.socket.remoteAddress;
+
+  const initialCountryCode = (await detectCountryFromIP(ip)) ?? "US";
+  return { props: { owner, initialCountryCode } };
 });
 
 export default function Verify({
   owner,
+  initialCountryCode,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("phone");
 
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [countryCode, setCountryCode] = useState<Country>(initialCountryCode);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(""));
@@ -175,6 +230,12 @@ export default function Verify({
     setPhoneError(null);
   };
 
+  const handleCountryCodeChange = (value?: Country) => {
+    if (value) {
+      setCountryCode(value);
+    }
+  };
+
   const handleBack = () => {
     setStep("phone");
     setCode(Array(CODE_LENGTH).fill(""));
@@ -202,8 +263,10 @@ export default function Verify({
   return (
     <PhoneInputStep
       phoneNumber={phoneNumber}
+      countryCode={countryCode}
       error={phoneError}
       onPhoneNumberChange={handlePhoneNumberChange}
+      onCountryCodeChange={handleCountryCodeChange}
       onSubmit={handleSendCode}
     />
   );
@@ -211,15 +274,19 @@ export default function Verify({
 
 interface PhoneInputStepProps {
   phoneNumber: string;
+  countryCode?: Country;
   error: string | null;
   onPhoneNumberChange: (phone: string) => void;
+  onCountryCodeChange: (countryCode?: Country) => void;
   onSubmit: () => void;
 }
 
 function PhoneInputStep({
   phoneNumber,
+  countryCode,
   error,
   onPhoneNumberChange,
+  onCountryCodeChange,
   onSubmit,
 }: PhoneInputStepProps) {
   return (
@@ -245,7 +312,9 @@ function PhoneInputStep({
                   </label>
                   <PhoneNumberInput
                     phoneNumber={phoneNumber}
+                    countryCode={countryCode}
                     onPhoneNumberChange={onPhoneNumberChange}
+                    onCountryCodeChange={onCountryCodeChange}
                   />
                   <p className="min-h-5 text-sm text-red-500">{error}</p>
                 </div>

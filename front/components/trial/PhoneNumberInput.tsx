@@ -12,8 +12,6 @@ import type { Country } from "react-phone-number-input";
 import PhoneInput from "react-phone-number-input";
 import flags from "react-phone-number-input/flags";
 
-import { useGeolocation } from "@app/lib/swr/geo";
-
 interface CountrySelectComponentProps {
   value?: string;
   onChange: (value?: string) => void;
@@ -32,7 +30,7 @@ const CountrySelectComponent = ({
   readOnly,
 }: CountrySelectComponentProps) => {
   const selectedOption = options.find((opt) => opt.value === value);
-  console.log(selectedOption);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild disabled={disabled ?? readOnly}>
@@ -109,23 +107,26 @@ const InputComponent = React.forwardRef<HTMLInputElement, InputComponentProps>(
 InputComponent.displayName = "InputComponent";
 
 interface PhoneNumberInputProps {
+  countryCode: Country;
   phoneNumber: string;
+  onCountryCodeChange: (country?: Country) => void;
   onPhoneNumberChange: (phone: string) => void;
 }
 
 export function PhoneNumberInput({
+  countryCode,
   phoneNumber,
+  onCountryCodeChange,
   onPhoneNumberChange,
 }: PhoneNumberInputProps) {
-  const { geoData } = useGeolocation();
-  const defaultCountry = (geoData?.countryCode ?? "US") as Country;
-
   return (
     <PhoneInput
       className="flex w-full flex-row items-stretch"
       value={phoneNumber}
       onChange={(value) => onPhoneNumberChange(value?.toString() ?? "")}
-      defaultCountry={defaultCountry}
+      defaultCountry={countryCode}
+      country={countryCode}
+      onCountryChange={onCountryCodeChange}
       flags={flags}
       countrySelectComponent={CountrySelectComponent}
       inputComponent={InputComponent}
