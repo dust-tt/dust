@@ -59,6 +59,24 @@ export async function syncCommand(): Promise<Result<void>> {
     return Err(new CommandError("Not in a git repository. Run from within the Dust repo."));
   }
 
+  // Change to repo root if in a subdirectory
+  const originalCwd = process.cwd();
+  if (originalCwd !== repoRoot) {
+    process.chdir(repoRoot);
+  }
+
+  // Wrap the rest in try/finally to ensure we restore cwd
+  try {
+    return await doSync(repoRoot, startTimeMs);
+  } finally {
+    // Restore original working directory
+    if (originalCwd !== repoRoot) {
+      process.chdir(originalCwd);
+    }
+  }
+}
+
+async function doSync(repoRoot: string, startTimeMs: number): Promise<Result<void>> {
   // Precondition: Must be run from main repo, not a worktree
   const inWorktree = await isWorktree(repoRoot);
   if (inWorktree) {
