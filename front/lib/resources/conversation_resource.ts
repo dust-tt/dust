@@ -918,14 +918,23 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     }
 
-    // Filter participants: include if preference is "all_messages" (or unset) OR if they were mentioned.
+    // Count total participants in the conversation (to check for single-participant exception).
+    const totalParticipantCount = await ConversationParticipantModel.count({
+      where: {
+        conversationId: conversation.id,
+        workspaceId,
+      },
+    });
+
+    // Filter participants: include if preference is "all_messages" (or unset),
+    // if they were mentioned, or if they are the only human participant.
     const eligibleUserIds = userIds.filter((userId) => {
       const trigger = preferenceMap.get(userId) ?? "all_messages";
       if (trigger === "all_messages") {
         return true;
       }
-      // trigger === "only_mentions"
-      return mentionedUserIds.has(userId);
+      // trigger === "only_mentions": include if mentioned OR if only human participant.
+      return mentionedUserIds.has(userId) || totalParticipantCount === 1;
     });
 
     if (eligibleUserIds.length === 0) {

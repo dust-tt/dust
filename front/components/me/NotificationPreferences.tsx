@@ -5,8 +5,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  InformationCircleIcon,
   Label,
   Spinner,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { ChannelPreference, Preference } from "@novu/js";
 import { PreferenceLevel } from "@novu/js";
@@ -337,6 +339,14 @@ export const NotificationPreferences = forwardRef<
             />
           </DropdownMenuContent>
         </DropdownMenu>
+        {unreadTrigger === "only_mentions" && (
+          <Tooltip
+            label="Conversations where you're the only participant will still be marked as unread."
+            trigger={
+              <InformationCircleIcon className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
+            }
+          />
+        )}
       </div>
 
       {/* Notify preference */}
@@ -364,12 +374,20 @@ export const NotificationPreferences = forwardRef<
             />
           </DropdownMenuContent>
         </DropdownMenu>
+        {notifyTrigger === "only_mentions" && (
+          <Tooltip
+            label="You'll still be notified if you're the only participant in a conversation."
+            trigger={
+              <InformationCircleIcon className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
+            }
+          />
+        )}
       </div>
 
       {/* Notification channels */}
       <div className="flex flex-wrap items-center gap-1.5">
         <Label className="text-foreground dark:text-foreground-night">
-          Notify me by:
+          Notify me with
         </Label>
         <div className="flex items-center gap-4">
           {globalPreferences.channels.in_app !== undefined && (
