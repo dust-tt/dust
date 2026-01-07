@@ -113,6 +113,9 @@ export const AgentInputBar = ({
     number | null
   >(null);
 
+  // Track previous listOffset to detect manual scrolling
+  const [prevListOffset, setPrevListOffset] = useState<number>(listOffset);
+
   // Helper to get user message indices (called when needed, not memoized on methods.data)
   const getUserMessageIndices = useCallback(() => {
     const messages = methods.data.get();
@@ -125,12 +128,45 @@ export const AgentInputBar = ({
     return indices;
   }, [methods]);
 
+  // Detect manual scrolling and update navigation state accordingly
+  const SCROLL_CHANGE_THRESHOLD = 50;
+  useEffect(() => {
+    const scrollDelta = Math.abs(listOffset - prevListOffset);
+
+    // If significant scroll happened (likely manual), update position estimate
+    if (scrollDelta > SCROLL_CHANGE_THRESHOLD && currentUserMessageIndex !== null) {
+      const indices = getUserMessageIndices();
+      if (indices.length > 0) {
+        // Estimate which user message we're near based on scroll direction
+        if (listOffset > prevListOffset) {
+          // Scrolled up - might need to adjust current index down
+          const newIndex = Math.max(0, currentUserMessageIndex - 1);
+          setCurrentUserMessageIndex(newIndex);
+        } else {
+          // Scrolled down - might need to adjust current index up
+          const newIndex = Math.min(indices.length - 1, currentUserMessageIndex + 1);
+          setCurrentUserMessageIndex(newIndex);
+        }
+      }
+    }
+    setPrevListOffset(listOffset);
+  }, [listOffset, prevListOffset, currentUserMessageIndex, getUserMessageIndices]);
+
+  // Reset to bottom state when near bottom
+  const BOTTOM_THRESHOLD = 100;
+  useEffect(() => {
+    if (bottomOffset < BOTTOM_THRESHOLD) {
+      setCurrentUserMessageIndex(null);
+    }
+  }, [bottomOffset]);
+
   // Compute disabled states based on current position
   const getNavigationState = useCallback(() => {
     const indices = getUserMessageIndices();
     const hasUserMessages = indices.length > 0;
 
-    // When at bottom (null), up is active if there are user messages, down is disabled
+    // When at bottom (null), up is active if there are 2+ messages (can go to second-to-last)
+    // or 1 message (can go to it), down is disabled
     if (currentUserMessageIndex === null) {
       return {
         canGoUp: hasUserMessages,
@@ -140,7 +176,8 @@ export const AgentInputBar = ({
 
     return {
       canGoUp: currentUserMessageIndex > 0,
-      canGoDown: currentUserMessageIndex < indices.length - 1,
+      // Can go down if not at last, OR can go to bottom if at last
+      canGoDown: true,
     };
   }, [getUserMessageIndices, currentUserMessageIndex]);
 
@@ -154,8 +191,9 @@ export const AgentInputBar = ({
 
     let targetIndex: number;
     if (currentUserMessageIndex === null) {
-      // Start from the last user message
-      targetIndex = indices.length - 1;
+      // At bottom - go to second-to-last if exists (last is likely visible)
+      // If only one message, go to it
+      targetIndex = indices.length >= 2 ? indices.length - 2 : indices.length - 1;
     } else if (currentUserMessageIndex > 0) {
       targetIndex = currentUserMessageIndex - 1;
     } else {
@@ -179,34 +217,38 @@ export const AgentInputBar = ({
       return;
     }
 
-    let targetIndex: number;
+    // At bottom - nothing to do
     if (currentUserMessageIndex === null) {
-      // Start from the first user message
-      targetIndex = 0;
-    } else if (currentUserMessageIndex < indices.length - 1) {
-      targetIndex = currentUserMessageIndex + 1;
-    } else {
-      return; // Already at last
+      return;
     }
 
+    // At or past last user message - scroll to bottom
+    if (currentUserMessageIndex >= indices.length - 1) {
+      const distance = Math.abs(listOffset);
+      methods.scrollToItem({
+        index: "LAST",
+        align: "end",
+        behavior:
+          distance < MAX_DISTANCE_FOR_SMOOTH_SCROLL ? "smooth" : "instant",
+      });
+      setCurrentUserMessageIndex(null);
+      return;
+    }
+
+    // Go to next user message
+    const targetIndex = currentUserMessageIndex + 1;
     const messageIndex = indices[targetIndex];
+    const isLastUserMessage = targetIndex === indices.length - 1;
     const distance = Math.abs(listOffset);
+
     methods.scrollToItem({
-      index: messageIndex,
-      align: "start",
+      index: isLastUserMessage ? "LAST" : messageIndex,
+      align: isLastUserMessage ? "end" : "start",
       behavior:
         distance < MAX_DISTANCE_FOR_SMOOTH_SCROLL ? "smooth" : "instant",
     });
     setCurrentUserMessageIndex(targetIndex);
   }, [getUserMessageIndices, currentUserMessageIndex, listOffset, methods]);
-
-  // Reset navigation state when scrolling back to bottom
-  const BOTTOM_THRESHOLD = 100;
-  useEffect(() => {
-    if (bottomOffset < BOTTOM_THRESHOLD) {
-      setCurrentUserMessageIndex(null);
-    }
-  }, [bottomOffset]);
 
   const [isStopping, setIsStopping] = useState<boolean>(false);
 
