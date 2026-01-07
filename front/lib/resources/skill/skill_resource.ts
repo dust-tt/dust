@@ -51,7 +51,6 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   AgentConfigurationType,
   AgentsUsageType,
-  ContentNodeType,
   ConversationType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
