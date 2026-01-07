@@ -154,10 +154,14 @@ function generateLayout(
   worktreePath: string,
   envShPath: string,
   watchScriptPath: string,
-  warmCommand?: string
+  warmCommand?: string,
+  initialCommand?: string
 ): string {
   const shellPath = getUserShell();
-  const shellCommand = `source ${shellQuote(envShPath)} && exec ${shellQuote(shellPath)}`;
+  // If initialCommand is provided, run it first then drop to shell on exit
+  const shellCommand = initialCommand
+    ? `source ${shellQuote(envShPath)} && ${initialCommand}; exec ${shellQuote(shellPath)}`
+    : `source ${shellQuote(envShPath)} && exec ${shellQuote(shellPath)}`;
   const warmTab = warmCommand
     ? `    tab name="warm" {
         pane {
@@ -195,12 +199,20 @@ async function writeLayout(
   worktreePath: string,
   envShPath: string,
   watchScriptPath: string,
-  warmCommand?: string
+  warmCommand?: string,
+  initialCommand?: string
 ): Promise<string> {
   await mkdir(DUST_HIVE_ZELLIJ, { recursive: true });
 
   const layoutPath = getZellijLayoutPath();
-  const content = generateLayout(envName, worktreePath, envShPath, watchScriptPath, warmCommand);
+  const content = generateLayout(
+    envName,
+    worktreePath,
+    envShPath,
+    watchScriptPath,
+    warmCommand,
+    initialCommand
+  );
   await Bun.write(layoutPath, content);
 
   return layoutPath;
@@ -209,6 +221,7 @@ async function writeLayout(
 interface OpenOptions {
   warmCommand?: string;
   noAttach?: boolean;
+  initialCommand?: string;
 }
 
 // Check if a zellij session exists
@@ -282,7 +295,8 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
         worktreePath,
         envShPath,
         watchScriptPath,
-        options.warmCommand
+        options.warmCommand,
+        options.initialCommand
       );
       await createSessionInBackground(sessionName, layoutPath);
     }
@@ -338,7 +352,8 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
       worktreePath,
       envShPath,
       watchScriptPath,
-      options.warmCommand
+      options.warmCommand,
+      options.initialCommand
     );
 
     if (options.noAttach) {
