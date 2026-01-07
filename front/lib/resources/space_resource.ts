@@ -884,6 +884,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   isRegular() {
     return this.kind === "regular";
   }
+  isProject() {
+    return this.kind === "project";
+  }
 
   isRegularAndRestricted() {
     return this.isRegular() && !this.groups.some((group) => group.isGlobal());

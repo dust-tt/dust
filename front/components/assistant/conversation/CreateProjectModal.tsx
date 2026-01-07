@@ -15,6 +15,8 @@ import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import { useCreateSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
 import type { LightWorkspaceType } from "@app/types";
+import { getSpaceConversationsRoute } from "@app/lib/utils/router";
+import { useRouter } from "next/router";
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -32,6 +34,7 @@ export function CreateProjectModal({
 
   const doCreate = useCreateSpace({ owner });
   const { user } = useUser();
+  const router = useRouter();
 
   const sendNotification = useSendNotification();
 
@@ -81,6 +84,7 @@ export function CreateProjectModal({
         description: `Project "${trimmedName}" has been created.`,
       });
       handleClose();
+      void router.push(getSpaceConversationsRoute(owner.sId, createdSpace.sId));
     }
   }, [
     projectName,
