@@ -153,7 +153,7 @@ const resizeAndUploadToFileStorage = async (
     // Read first 32KB (sufficient for all image format headers)
     const chunks: Buffer[] = [];
     let totalSize = 0;
-    const maxBufferSize = 32 * 1024; // 32KB
+    const maxBufferSize = 32 * 1024;
 
     for await (const chunk of readStreamForProbe) {
       chunks.push(chunk);
@@ -163,7 +163,6 @@ const resizeAndUploadToFileStorage = async (
       }
     }
 
-    // Destroy the stream after reading header
     readStreamForProbe.destroy();
 
     const buffer = Buffer.concat(chunks);
@@ -173,53 +172,21 @@ const resizeAndUploadToFileStorage = async (
       throw new Error("Could not determine image dimensions");
     }
 
-    logger.info(
-      {
-        fileModelId: file.id,
-        workspaceId: auth.workspace()?.sId,
-        dimensions: { width: dimensions.width, height: dimensions.height },
-        maxSize: maxSizePixels,
-      },
-      "Image dimensions detected"
-    );
-
-    // Check if both dimensions are within limits
     if (
       dimensions.width <= maxSizePixels &&
       dimensions.height <= maxSizePixels
     ) {
-      logger.info(
-        {
-          fileModelId: file.id,
-          workspaceId: auth.workspace()?.sId,
-          dimensions: { width: dimensions.width, height: dimensions.height },
-          maxSize: maxSizePixels,
-        },
-        "Image already within size limits, skipping ConvertAPI"
-      );
-
-      // Copy original to processed without resizing
-      const originalStream = file.getReadStream({ auth, version: "original" });
-      const processedStream = file.getWriteStream({
+      // Upload without resizing
+      const readStream = file.getReadStream({ auth, version: "original" });
+      const writeStream = file.getWriteStream({
         auth,
         version: "processed",
       });
 
-      await pipeline(originalStream, processedStream);
+      await pipeline(readStream, writeStream);
 
       return new Ok(undefined);
     }
-
-    // Image exceeds limits, fall through to ConvertAPI
-    logger.info(
-      {
-        fileModelId: file.id,
-        workspaceId: auth.workspace()?.sId,
-        dimensions: { width: dimensions.width, height: dimensions.height },
-        maxSize: maxSizePixels,
-      },
-      "Image exceeds size limits, using ConvertAPI"
-    );
   } catch (err) {
     // If dimension check fails, fall back to ConvertAPI for safety
     logger.warn(
@@ -232,7 +199,7 @@ const resizeAndUploadToFileStorage = async (
     );
   }
 
-  // Existing ConvertAPI flow (unchanged)
+  // ConvertAPI flow
   if (!process.env.CONVERTAPI_API_KEY) {
     throw new Error("CONVERTAPI_API_KEY is not set");
   }
