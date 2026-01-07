@@ -62,7 +62,7 @@ export async function runSqlSeed(env: Environment): Promise<boolean> {
   const envVars = await loadEnvVars(envShPath);
   const dbUri = buildDatabaseUri(envVars);
 
-  // Generate sIds - workspace uses static ID for consistency across warm cycles
+  // Generate sIds - workspace uses static ID for consistency across environments
   const userSid = config.sId ?? generateRandomModelSId();
   const workspaceSid = "DevWkSpace";
   const subscriptionSid = generateRandomModelSId();
