@@ -9,7 +9,7 @@ import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput";
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
 import { clientFetch } from "@app/lib/egress/client";
-import { resolveCountryCode } from "@app/lib/geo/eu-detection";
+import { resolveCountryCode } from "@app/lib/geo/country-detection";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial/index";
 import {
