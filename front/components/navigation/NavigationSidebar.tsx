@@ -111,6 +111,7 @@ export const NavigationSidebar = React.forwardRef<
             endDate={endDate}
             startDate={subscription.startDate}
             isFreePlan={isFreePlan(subscription.plan.code)}
+            workspaceId={owner.sId}
           />
         )}
         {subscription.paymentFailingSince && isAdmin(owner) && (
@@ -341,10 +342,12 @@ function SubscriptionEndBanner({
   endDate,
   startDate,
   isFreePlan,
+  workspaceId,
 }: {
   endDate: number;
   startDate: number | null;
   isFreePlan: boolean;
+  workspaceId: string;
 }) {
   const formattedEndDate = new Date(endDate).toLocaleDateString("en-US", {
     year: "numeric",
@@ -382,7 +385,7 @@ function SubscriptionEndBanner({
       }
       footer={
         isFreePlan && (
-          <Link href="/subscribe" className="no-underline">
+          <Link href={`/w/${workspaceId}/subscribe`} className="no-underline">
             <button className="rounded bg-foreground px-3 py-1.5 text-xs font-medium text-background">
               Subscribe to Dust
             </button>
@@ -476,7 +479,7 @@ function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
       </div>
       {isAtLimit && (
         <div className="mt-3">
-          <Link href="/subscribe" className="no-underline">
+          <Link href={`/w/${workspaceId}/subscribe`} className="no-underline">
             <button className="w-full rounded bg-foreground px-3 py-1.5 text-xs font-medium text-background dark:bg-foreground-night dark:text-background-night">
               Subscribe to Dust
             </button>
