@@ -113,8 +113,8 @@ export const AgentInputBar = ({
     number | null
   >(null);
 
-  // Get all user message indices
-  const userMessageIndices = useMemo(() => {
+  // Helper to get user message indices (called when needed, not memoized on methods.data)
+  const getUserMessageIndices = useCallback(() => {
     const messages = methods.data.get();
     const indices: number[] = [];
     messages.forEach((m, index) => {
@@ -123,35 +123,46 @@ export const AgentInputBar = ({
       }
     });
     return indices;
-  }, [methods.data]);
+  }, [methods]);
 
-  // When at bottom (null), up is active if there are user messages, down is disabled
-  // When navigating, disable appropriately based on position
-  const isAtFirstUserMessage =
-    currentUserMessageIndex !== null &&
-    (currentUserMessageIndex <= 0 || userMessageIndices.length === 0);
+  // Compute disabled states based on current position
+  const getNavigationState = useCallback(() => {
+    const indices = getUserMessageIndices();
+    const hasUserMessages = indices.length > 0;
 
-  const isAtLastUserMessage =
-    currentUserMessageIndex === null || userMessageIndices.length === 0;
+    // When at bottom (null), up is active if there are user messages, down is disabled
+    if (currentUserMessageIndex === null) {
+      return {
+        canGoUp: hasUserMessages,
+        canGoDown: false,
+      };
+    }
 
-  const canNavigateUp = userMessageIndices.length > 0 && !isAtFirstUserMessage;
+    return {
+      canGoUp: currentUserMessageIndex > 0,
+      canGoDown: currentUserMessageIndex < indices.length - 1,
+    };
+  }, [getUserMessageIndices, currentUserMessageIndex]);
+
+  const { canGoUp, canGoDown } = getNavigationState();
 
   const scrollToPreviousUserMessage = useCallback(() => {
-    if (userMessageIndices.length === 0) {
+    const indices = getUserMessageIndices();
+    if (indices.length === 0) {
       return;
     }
 
     let targetIndex: number;
     if (currentUserMessageIndex === null) {
       // Start from the last user message
-      targetIndex = userMessageIndices.length - 1;
+      targetIndex = indices.length - 1;
     } else if (currentUserMessageIndex > 0) {
       targetIndex = currentUserMessageIndex - 1;
     } else {
       return; // Already at first
     }
 
-    const messageIndex = userMessageIndices[targetIndex];
+    const messageIndex = indices[targetIndex];
     const distance = Math.abs(listOffset);
     methods.scrollToItem({
       index: messageIndex,
@@ -160,10 +171,11 @@ export const AgentInputBar = ({
         distance < MAX_DISTANCE_FOR_SMOOTH_SCROLL ? "smooth" : "instant",
     });
     setCurrentUserMessageIndex(targetIndex);
-  }, [userMessageIndices, currentUserMessageIndex, listOffset, methods]);
+  }, [getUserMessageIndices, currentUserMessageIndex, listOffset, methods]);
 
   const scrollToNextUserMessage = useCallback(() => {
-    if (userMessageIndices.length === 0) {
+    const indices = getUserMessageIndices();
+    if (indices.length === 0) {
       return;
     }
 
@@ -171,13 +183,13 @@ export const AgentInputBar = ({
     if (currentUserMessageIndex === null) {
       // Start from the first user message
       targetIndex = 0;
-    } else if (currentUserMessageIndex < userMessageIndices.length - 1) {
+    } else if (currentUserMessageIndex < indices.length - 1) {
       targetIndex = currentUserMessageIndex + 1;
     } else {
       return; // Already at last
     }
 
-    const messageIndex = userMessageIndices[targetIndex];
+    const messageIndex = indices[targetIndex];
     const distance = Math.abs(listOffset);
     methods.scrollToItem({
       index: messageIndex,
@@ -186,7 +198,7 @@ export const AgentInputBar = ({
         distance < MAX_DISTANCE_FOR_SMOOTH_SCROLL ? "smooth" : "instant",
     });
     setCurrentUserMessageIndex(targetIndex);
-  }, [userMessageIndices, currentUserMessageIndex, listOffset, methods]);
+  }, [getUserMessageIndices, currentUserMessageIndex, listOffset, methods]);
 
   // Reset navigation state when scrolling back to bottom
   const BOTTOM_THRESHOLD = 100;
@@ -247,30 +259,32 @@ export const AgentInputBar = ({
           top: "-2em",
         }}
       >
-        <Tooltip
-          label="Go to previous message"
-          side="top"
-          trigger={
-            <Button
-              icon={ArrowUpIcon}
-              variant="outline"
-              onClick={scrollToPreviousUserMessage}
-              disabled={!canNavigateUp}
-            />
-          }
-        />
-        <Tooltip
-          label="Go to next message"
-          side="top"
-          trigger={
-            <Button
-              icon={ArrowDownIcon}
-              variant="outline"
-              onClick={scrollToNextUserMessage}
-              disabled={isAtLastUserMessage}
-            />
-          }
-        />
+        <div className="flex rounded-xl border border-border bg-white dark:bg-muted-background-night">
+          <Tooltip
+            label="Go to previous message"
+            side="top"
+            trigger={
+              <Button
+                icon={ArrowUpIcon}
+                variant="ghost"
+                onClick={scrollToPreviousUserMessage}
+                disabled={!canGoUp}
+              />
+            }
+          />
+          <Tooltip
+            label="Go to next message"
+            side="top"
+            trigger={
+              <Button
+                icon={ArrowDownIcon}
+                variant="ghost"
+                onClick={scrollToNextUserMessage}
+                disabled={!canGoDown}
+              />
+            }
+          />
+        </div>
 
         {showClearButton && (
           <Button
