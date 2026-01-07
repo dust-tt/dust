@@ -21,6 +21,7 @@ export { default as BarChartIcon } from "./BarChart";
 export { default as BellIcon } from "./Bell";
 export { default as BoldIcon } from "./Bold";
 export { default as BoltIcon } from "./Bolt";
+export { default as BoltOffIcon } from "./BoltOff";
 export { default as BookOpenIcon } from "./BookOpen";
 export { default as BracesIcon } from "./Braces";
 export { default as BrainIcon } from "./Brain";

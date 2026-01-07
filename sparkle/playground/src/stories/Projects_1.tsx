@@ -1,6 +1,7 @@
 import {
   AtomIcon,
   Avatar,
+  BoltOffIcon,
   Button,
   Card,
   ChatBubbleLeftRightIcon,
@@ -473,23 +474,32 @@ function DustMain() {
             placeholder="Search"
             className="s-flex-1"
           />
-          <Button
-            label="New"
+          {/* <Button
             variant="primary"
+            tooltip="New Conversation"
             size="sm"
             icon={ChatBubbleLeftRightIcon}
-          />
+          /> */}
         </div>
         {/* Collapsible Sections */}
         <NavigationList className="s-px-2">
           {!searchText.trim() ? (
-            <NavigationListItem
-              label="Inbox"
-              icon={InboxIcon}
-              onClick={() => {
-                console.log("Selected Inbox");
-              }}
-            />
+            <>
+              <NavigationListItem
+                label="Inbox"
+                icon={InboxIcon}
+                onClick={() => {
+                  console.log("Selected Inbox");
+                }}
+              />
+              <NavigationListItem
+                label="New Conversation"
+                icon={ChatBubbleLeftRightIcon}
+                onClick={() => {
+                  console.log("Selected Inbox");
+                }}
+              />
+            </>
           ) : (
             <>
               <NavigationListItem
@@ -895,6 +905,16 @@ function DustMain() {
                       />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
+                      <DropdownMenuLabel label="Conversations" />
+                      <DropdownMenuItem
+                        label="Hide triggered"
+                        icon={BoltOffIcon}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log("Edit Conversations");
+                        }}
+                      />
                       <DropdownMenuItem
                         label="Edit history"
                         icon={ListSelectIcon}
@@ -906,6 +926,7 @@ function DustMain() {
                       />
                       <DropdownMenuItem
                         label="Clear history"
+                        variant="warning"
                         icon={TrashIcon}
                         onClick={(e) => {
                           e.preventDefault();
