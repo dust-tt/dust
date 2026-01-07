@@ -4,26 +4,39 @@ import { z } from "zod";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { SalesloftActionWithDetails } from "@app/lib/actions/mcp_internal_actions/servers/salesloft/salesloft_api_helper";
 import { getActionsWithDetails } from "@app/lib/actions/mcp_internal_actions/servers/salesloft/salesloft_api_helper";
-import {
-  getToolSecret,
-  makeInternalMCPServer,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
+import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
+import { decrypt, Err, Ok } from "@app/types";
 
 async function getBearerToken(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): Promise<string | null> {
   const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-  if (!toolConfig || !isLightServerSideMCPToolConfiguration(toolConfig)) {
+  if (
+    !toolConfig ||
+    !isLightServerSideMCPToolConfiguration(toolConfig) ||
+    !toolConfig.secretName
+  ) {
     return null;
   }
 
-  return getToolSecret(auth, toolConfig);
+  const secret = await DustAppSecretModel.findOne({
+    where: {
+      name: toolConfig.secretName,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+  });
+
+  const bearerToken = secret
+    ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
+    : null;
+
+  return bearerToken;
 }
 
 function formatActionAsString(action: SalesloftActionWithDetails): string {

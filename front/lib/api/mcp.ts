@@ -111,8 +111,6 @@ export interface MCPServerViewType {
     permission: MCPToolStakeLevelType;
     enabled: boolean;
   }[];
-  // True if the view has an API key configured.
-  hasApiKey?: boolean;
 }
 
 export type MCPServerDefinitionType = Omit<

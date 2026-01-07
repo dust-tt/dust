@@ -184,10 +184,7 @@ export async function fetchMCPServerActionConfigurations(
         additionalConfiguration: config.additionalConfiguration,
         timeFrame: config.timeFrame,
         jsonSchema: config.jsonSchema,
-        // Agent-level secret (DustAppSecretModel reference).
-        secretName: config.secretName ?? null,
-        // View-level encrypted secret (stored directly on the view).
-        secretHash: mcpServerView?.secretHash ?? null,
+        secretName: config.secretName,
       });
     }
   }

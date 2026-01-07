@@ -59,7 +59,6 @@ function createBasicMCPConfiguration(
     originalName: "test_tool",
     mcpServerName: "test_server",
     secretName: null,
-    secretHash: null,
     ...overrides,
   };
 }

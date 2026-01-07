@@ -62,7 +62,6 @@ export function _getDefaultWebActionsForGlobalAgent({
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
-      secretHash: null,
     },
   ];
 }
@@ -96,7 +95,6 @@ export function _getToolsetsToolsConfiguration({
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
-      secretHash: null,
     },
   ];
 }
@@ -126,7 +124,6 @@ export function _getAgentRouterToolsConfiguration(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
-      secretHash: null,
     },
   ];
 }
@@ -159,7 +156,6 @@ export function _getInteractiveContentToolConfiguration({
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
-      secretHash: null,
     },
   ];
 }
@@ -208,7 +204,6 @@ export function _getFeedbackAnalyzerIncludeDataToolConfiguration({
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
-      secretHash: null,
     },
   ];
 }

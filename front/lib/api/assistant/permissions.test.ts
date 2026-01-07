@@ -69,7 +69,6 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
         mcpServerViewId: "server1",
         dustAppConfiguration: null,
         secretName: null,
-        secretHash: null,
         internalMCPServerId: null,
       },
       {
@@ -93,7 +92,6 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
         mcpServerViewId: "server2",
         dustAppConfiguration: null,
         secretName: null,
-        secretHash: null,
         internalMCPServerId: null,
       },
     ];
@@ -148,7 +146,6 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
         mcpServerViewId: globalMCPServerView.sId,
         dustAppConfiguration: null,
         secretName: null,
-        secretHash: null,
         internalMCPServerId: null,
       },
       {
@@ -166,7 +163,6 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
         mcpServerViewId: restrictedMCPServerView.sId,
         dustAppConfiguration: null,
         secretName: null,
-        secretHash: null,
         internalMCPServerId: null,
       },
     ];
@@ -222,7 +218,6 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
         mcpServerViewId: "server1",
         dustAppConfiguration: null,
         secretName: null,
-        secretHash: null,
         internalMCPServerId: null,
       },
       {
@@ -246,7 +241,6 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
         mcpServerViewId: "server2",
         dustAppConfiguration: null,
         secretName: null,
-        secretHash: null,
         internalMCPServerId: null,
       },
     ];
@@ -321,7 +315,6 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
         mcpServerViewId: mcpServerView.sId,
         dustAppConfiguration: null,
         secretName: null,
-        secretHash: null,
         internalMCPServerId: null,
       },
     ];
@@ -387,7 +380,6 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
         mcpServerViewId: autoMCPServerView.sId,
         dustAppConfiguration: null,
         secretName: null,
-        secretHash: null,
         internalMCPServerId: internalAutoServer.id,
       },
     ];
@@ -419,7 +411,6 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
         mcpServerViewId: autoMCPServerView.sId,
         dustAppConfiguration: null,
         secretName: null,
-        secretHash: null,
         internalMCPServerId: internalAutoServer.id,
       },
       {
@@ -437,7 +428,6 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
         mcpServerViewId: regularMCPServerView.sId,
         dustAppConfiguration: null,
         secretName: null,
-        secretHash: null,
         internalMCPServerId: null,
       },
     ];

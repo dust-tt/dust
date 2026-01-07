@@ -1087,11 +1087,7 @@ export function useAddMCPServerToSpace(
   });
 
   const createView = useCallback(
-    async (
-      server: MCPServerType,
-      space: SpaceType,
-      secretConfig?: { apiKey: string }
-    ): Promise<void> => {
+    async (server: MCPServerType, space: SpaceType): Promise<void> => {
       await mutateMCPServers(
         async (data) => {
           const response = await clientFetch(
@@ -1099,10 +1095,7 @@ export function useAddMCPServerToSpace(
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                mcpServerId: server.sId,
-                ...(secretConfig && { apiKey: secretConfig.apiKey }),
-              }),
+              body: JSON.stringify({ mcpServerId: server.sId }),
             }
           );
 

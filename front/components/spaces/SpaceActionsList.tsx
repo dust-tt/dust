@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import type { ParsedUrlQuery } from "querystring";
 import * as React from "react";
 
-import { MCPServerSetupDialog } from "@app/components/spaces/MCPServerSetupDialog";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
@@ -70,9 +69,6 @@ export const SpaceActionsList = ({
   });
 
   const [shouldOpenToolsMenu, setShouldOpenToolsMenu] = React.useState(false);
-  const [serverToSetup, setServerToSetup] = React.useState<MCPServerType | null>(
-    null
-  );
   React.useEffect(() => {
     if (!router.isReady || !isAdmin) {
       return;
@@ -90,24 +86,9 @@ export const SpaceActionsList = ({
   });
 
   const onAddServer = async (server: MCPServerType) => {
-    // If the server requires an API key, show the setup dialog.
-    if (server.developerSecretSelection) {
-      setServerToSetup(server);
-      return;
-    }
     await addToSpace(server, space);
     await mutateMCPServerViews();
     await mutateAvailableMCPServers();
-  };
-
-  const onSetupConfirm = async (apiKey: string) => {
-    if (!serverToSetup) {
-      return;
-    }
-    await addToSpace(serverToSetup, space, { apiKey });
-    await mutateMCPServerViews();
-    await mutateAvailableMCPServers();
-    setServerToSetup(null);
   };
 
   const onRemoveServer = async (sId: string) => {
@@ -235,14 +216,6 @@ export const SpaceActionsList = ({
           filterColumn="name"
           pagination={pagination}
           setPagination={setPagination}
-        />
-      )}
-      {serverToSetup && (
-        <MCPServerSetupDialog
-          server={serverToSetup}
-          isOpen={!!serverToSetup}
-          onClose={() => setServerToSetup(null)}
-          onConfirm={onSetupConfirm}
         />
       )}
     </>

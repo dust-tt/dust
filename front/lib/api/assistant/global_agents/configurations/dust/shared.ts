@@ -50,7 +50,6 @@ export function getCompanyDataAction(
     dustAppConfiguration: null,
     jsonSchema: null,
     secretName: null,
-    secretHash: null,
   };
 }
 
@@ -93,6 +92,5 @@ export function getCompanyDataWarehousesAction(
     dustAppConfiguration: null,
     jsonSchema: null,
     secretName: null,
-    secretHash: null,
   };
 }

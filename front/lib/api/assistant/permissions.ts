@@ -171,7 +171,6 @@ export async function getRequestedSpaceIdsFromMCPServerViewIds(
       additionalConfiguration: {},
       dustAppConfiguration: null,
       secretName: null,
-      secretHash: null,
     }));
   const { requestedSpaceIds } =
     await getAgentConfigurationRequirementsFromActions(auth, { actions });

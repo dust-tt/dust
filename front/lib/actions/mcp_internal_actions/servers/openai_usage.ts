@@ -2,15 +2,13 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  getToolSecret,
-  makeInternalMCPServer,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
+import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
+import { decrypt, Err, Ok } from "@app/types";
 
 function createServer(
   auth: Authenticator,
@@ -143,7 +141,11 @@ function createServer(
       { toolNameForMonitoring: "openai_usage", agentLoopContext },
       async (params) => {
         const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-        if (!toolConfig || !isLightServerSideMCPToolConfiguration(toolConfig)) {
+        if (
+          !toolConfig ||
+          !isLightServerSideMCPToolConfiguration(toolConfig) ||
+          !toolConfig.secretName
+        ) {
           return new Err(
             new MCPError(
               "OpenAI Admin API key not configured. Please configure a secret containing an admin key in the agent settings.",
@@ -154,11 +156,20 @@ function createServer(
           );
         }
 
-        const adminApiKey = await getToolSecret(auth, toolConfig);
+        const secret = await DustAppSecretModel.findOne({
+          where: {
+            name: toolConfig.secretName,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
+        });
+
+        const adminApiKey = secret
+          ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
+          : null;
         if (!adminApiKey) {
           return new Err(
             new MCPError(
-              "OpenAI Admin API key not found. Please check the secret configuration.",
+              "OpenAI Admin API key not found in workspace secrets. Please check the secret configuration.",
               {
                 tracked: false,
               }
@@ -291,7 +302,11 @@ function createServer(
       { toolNameForMonitoring: "openai_usage", agentLoopContext },
       async (params) => {
         const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-        if (!toolConfig || !isLightServerSideMCPToolConfiguration(toolConfig)) {
+        if (
+          !toolConfig ||
+          !isLightServerSideMCPToolConfiguration(toolConfig) ||
+          !toolConfig.secretName
+        ) {
           return new Err(
             new MCPError(
               "OpenAI Admin API key not configured. Please configure a secret containing an admin key in the agent settings.",
@@ -302,11 +317,20 @@ function createServer(
           );
         }
 
-        const adminApiKey = await getToolSecret(auth, toolConfig);
+        const secret = await DustAppSecretModel.findOne({
+          where: {
+            name: toolConfig.secretName,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
+        });
+
+        const adminApiKey = secret
+          ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
+          : null;
         if (!adminApiKey) {
           return new Err(
             new MCPError(
-              "OpenAI Admin API key not found. Please check the secret configuration.",
+              "OpenAI Admin API key not found in workspace secrets. Please check the secret configuration.",
               {
                 tracked: false,
               }
