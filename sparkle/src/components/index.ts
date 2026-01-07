@@ -79,8 +79,8 @@ export {
 export type {
   DropdownMenuFilterOption,
   DropdownMenuItemProps,
-  DropdownTooltipTriggerProps,
   DropdownTooltipProps,
+  DropdownTooltipTriggerProps,
 } from "./Dropdown";
 export {
   DropdownMenu,
