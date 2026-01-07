@@ -6,7 +6,7 @@ import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_reso
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 
 describe("SkillResource", () => {
   let testContext: Awaited<ReturnType<typeof createResourceTest>>;
@@ -163,7 +163,7 @@ describe("SkillResource", () => {
     });
 
     it("should detect configurations that need deletion", async () => {
-      const skillResource = await SkillConfigurationFactory.create(
+      const skillResource = await SkillFactory.create(
         testContext.authenticator,
         {}
       );
@@ -208,7 +208,7 @@ describe("SkillResource", () => {
     });
 
     it("should detect when parentsIn has changed", async () => {
-      const skillResource = await SkillConfigurationFactory.create(
+      const skillResource = await SkillFactory.create(
         testContext.authenticator,
         {}
       );
@@ -253,7 +253,7 @@ describe("SkillResource", () => {
     });
 
     it("should not include unchanged configurations in toUpsert", async () => {
-      const skillResource = await SkillConfigurationFactory.create(
+      const skillResource = await SkillFactory.create(
         testContext.authenticator,
         {}
       );
@@ -295,7 +295,7 @@ describe("SkillResource", () => {
     });
 
     it("should handle mixed scenarios: add, update, delete", async () => {
-      const skillResource = await SkillConfigurationFactory.create(
+      const skillResource = await SkillFactory.create(
         testContext.authenticator,
         {}
       );
@@ -396,7 +396,7 @@ describe("SkillResource", () => {
     });
 
     it("should create unique configurations and handle updates properly", async () => {
-      const skillResource = await SkillConfigurationFactory.create(
+      const skillResource = await SkillFactory.create(
         testContext.authenticator,
         {}
       );
