@@ -4,7 +4,6 @@ import * as reporter from "io-ts-reporters";
 import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getRequestedSpaceIdsFromMCPServerViewIds } from "@app/lib/api/assistant/permissions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -191,22 +190,19 @@ async function handler(
 
       // Validate all MCP server views exist before creating anything
       const mcpServerViewIds = body.tools.map((t) => t.mcpServerViewId);
-      const mcpServerViews: MCPServerViewResource[] = [];
-      for (const mcpServerViewId of mcpServerViewIds) {
-        const mcpServerView = await MCPServerViewResource.fetchById(
-          auth,
-          mcpServerViewId
-        );
-        if (!mcpServerView) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "invalid_request_error",
-              message: `MCP server view not found ${mcpServerViewId}`,
-            },
-          });
-        }
-        mcpServerViews.push(mcpServerView);
+      const mcpServerViews = await MCPServerViewResource.fetchByIds(
+        auth,
+        mcpServerViewIds
+      );
+
+      if (mcpServerViewIds.length !== mcpServerViews.length) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "invalid_request_error",
+            message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
+          },
+        });
       }
 
       // Validate all data source views from attached knowledge exist and user has access.
@@ -241,10 +237,11 @@ async function handler(
         })
       );
 
-      const requestedSpaceIds = await getRequestedSpaceIdsFromMCPServerViewIds(
-        auth,
-        mcpServerViewIds
-      );
+      const requestedSpaceIds =
+        await MCPServerViewResource.listSpaceRequirementsByIds(
+          auth,
+          mcpServerViewIds
+        );
 
       const extendedSkill = body.extendedSkillId
         ? await SkillResource.fetchById(auth, body.extendedSkillId)
