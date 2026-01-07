@@ -9,6 +9,8 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 
+import { FREE_TRIAL_PHONE_PLAN_CODE } from "../plans/plan_codes";
+
 let sgMailClient: typeof sgMail | null = null;
 
 export function getSgMailClient(): any {
@@ -118,11 +120,13 @@ export async function sendAdminDataDeletionEmail({
   email,
   workspaceName,
   remainingDays,
+  planCode,
   isLast,
 }: {
   email: string;
   workspaceName: string;
   remainingDays: number;
+  planCode: string | undefined;
   isLast: boolean;
 }): Promise<void> {
   await sendEmailWithTemplate({
@@ -131,7 +135,15 @@ export async function sendAdminDataDeletionEmail({
     subject: `${
       isLast ? "Last Reminder: " : ""
     }Your Dust data will be deleted in ${remainingDays} days`,
-    body: `
+    body:
+      planCode === FREE_TRIAL_PHONE_PLAN_CODE
+        ? `
+      <p>You're receiving this as Admin of the Dust workspace ${workspaceName}. Your trial period has ended.</p>
+      <p>To continue using Dust and avoid losing your data, please subscribe within the next ${remainingDays} days. After this period, your data will be permanently deleted and you will no longer be able to access your workspace.</p>
+      <p>Subscribe now to keep all your conversations, custom agents, data sources, and continue using Dust without interruption.</p>
+      <p>If you have any question about Dust, simply reply to this email.</p>
+      ${isLast ? "<p>This is our last message before data deletion.</p>" : ""}`
+        : `
       <p>You're receiving this as Admin of the Dust workspace ${workspaceName}. You recently canceled your Dust subscription.</p>
       <p>To protect your privacy and maintain the highest security standards, your data will be permanently deleted in ${remainingDays} days.</p>
       <p>To keep your data, please resubscribe within the next ${remainingDays} days to recover your account. After this period, data recovery will not be possible.</p>
