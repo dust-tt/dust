@@ -16,6 +16,7 @@ export class SkillFactory {
       instructions: string;
       status: SkillStatus;
       version: number;
+      requestedSpaceIds: ModelId[];
     }> = {}
   ): Promise<SkillResource> {
     const user = auth.user();
@@ -29,6 +30,7 @@ export class SkillFactory {
     const instructions = overrides.instructions ?? "Test skill instructions";
     const status = overrides.status ?? "active";
     const authorId = overrides.status === "suggested" ? null : user.id;
+    const requestedSpaceIds = overrides.requestedSpaceIds ?? [];
 
     return SkillResource.makeNew(
       auth,
@@ -38,7 +40,7 @@ export class SkillFactory {
         userFacingDescription,
         instructions,
         name,
-        requestedSpaceIds: [],
+        requestedSpaceIds,
         status,
       },
       {

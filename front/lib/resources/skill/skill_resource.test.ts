@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 describe("SkillResource", () => {
   let testContext: Awaited<ReturnType<typeof createResourceTest>>;
@@ -450,6 +453,101 @@ describe("SkillResource", () => {
       // Verify only one configuration per skill+dataSourceView combination
       expect(toUpsert[0].dataSourceViewId).toBe(dataSourceView1.dataSource.id);
       expect(toUpsert[0].skillConfigurationId).toBe(skillResource.id);
+    });
+  });
+
+  describe("updateSkill", () => {
+    it("should propagate skill requestedSpaceIds to agents using the skill", async () => {
+      // Create a restricted space.
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+
+      // Create a skill without space restrictions.
+      const skillResource = await SkillConfigurationFactory.create(
+        testContext.authenticator,
+        { name: "Test Skill For Update" }
+      );
+
+      // Create an agent and link the skill to it.
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Test Agent With Skill" }
+      );
+      await SkillConfigurationFactory.linkToAgent(testContext.authenticator, {
+        skillId: skillResource.id,
+        agentConfigurationId: agent.id,
+      });
+
+      // Verify agent has no requestedSpaceIds initially.
+      const agentBefore = await AgentConfigurationModel.findByPk(agent.id);
+      expect(agentBefore?.requestedSpaceIds).toEqual([]);
+
+      // Update the skill with new requestedSpaceIds.
+      await skillResource.updateSkill(testContext.authenticator, {
+        name: skillResource.name,
+        agentFacingDescription: skillResource.agentFacingDescription,
+        userFacingDescription: skillResource.userFacingDescription,
+        instructions: skillResource.instructions,
+        icon: skillResource.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+
+      // Verify agent now has the skill's requestedSpaceIds.
+      const agentAfter = await AgentConfigurationModel.findByPk(agent.id);
+      expect(agentAfter?.requestedSpaceIds.map((id) => Number(id))).toContain(
+        restrictedSpace.id
+      );
+    });
+
+    it("should not duplicate requestedSpaceIds if already present on agent", async () => {
+      // Create a restricted space.
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+
+      // Create a skill with the space restriction.
+      const skillResource = await SkillFactory.create(
+        testContext.authenticator,
+        {
+          name: "Test Skill With Space",
+          requestedSpaceIds: [restrictedSpace.id],
+        }
+      );
+
+      // Create an agent that already has the space in its requestedSpaceIds.
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Test Agent With Space" }
+      );
+
+      // Manually set the agent's requestedSpaceIds.
+      await AgentConfigurationModel.update(
+        { requestedSpaceIds: [restrictedSpace.id] },
+        { where: { id: agent.id } }
+      );
+
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skillResource.id,
+        agentConfigurationId: agent.id,
+      });
+
+      // Update the skill (no change to requestedSpaceIds).
+      await skillResource.updateSkill(testContext.authenticator, {
+        name: skillResource.name,
+        agentFacingDescription: skillResource.agentFacingDescription,
+        userFacingDescription: skillResource.userFacingDescription,
+        instructions: "Updated instructions",
+        icon: skillResource.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+
+      // Verify agent still has only one instance of the space ID.
+      const agentAfter = await AgentConfigurationModel.findByPk(agent.id);
+      const spaceIds = agentAfter?.requestedSpaceIds.map((id) => Number(id));
+      expect(spaceIds?.filter((id) => id === restrictedSpace.id)).toHaveLength(
+        1
+      );
     });
   });
 });
