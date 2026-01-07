@@ -298,6 +298,7 @@ export const intercom = async ({
       while (hasMore && totalCount < MAX_CONVERSATIONS_COUNT) {
         const response = await fetchIntercomConversations({
           accessToken,
+          teamId: args.teamId,
           slidingWindow: workspace.conversationsSlidingWindow,
           cursor,
           pageSize: 50,
@@ -318,10 +319,11 @@ export const intercom = async ({
       return {
         conversations: conversations.map((conv) => ({
           id: conv.id.toString(),
+          team_assignee_id: conv.team_assignee_id?.toString() ?? null,
           open: conv.open,
           state: conv.state,
           created_at: conv.created_at,
-          last_closed_at: conv.statistics?.last_close_at || null,
+          last_closed_at: conv.statistics?.last_close_at ?? null,
         })),
         totalCount,
       };
