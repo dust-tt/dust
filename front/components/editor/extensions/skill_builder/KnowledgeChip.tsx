@@ -36,16 +36,12 @@ export function KnowledgeChip({ node, title, onRemove }: KnowledgeChipProps) {
         );
 
   return (
-    // TODO(2026-01-02 SKILL): Add support truncate + elipsis if title is too long.
     <AttachmentChip
       label={title}
       icon={{ visual: icon }}
       target="_blank"
       color="white"
-      // TODO(2026-01-02 SKILL): Stop propagating event so it does not open the link.
       onRemove={onRemove}
-      // TODO(2026-01-02 SKILL): Make href optional in AttachmentChip.
-      href={""}
       size="xs"
     />
   );
@@ -69,7 +65,6 @@ export function KnowledgeErrorChip({
       color="white"
       onRemove={onRemove}
       size="xs"
-      href=""
     />
   );
 }
