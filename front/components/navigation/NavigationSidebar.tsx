@@ -451,7 +451,7 @@ function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
     >
       <div className="mb-2 flex items-center justify-between text-sm">
         <span className="font-semibold text-foreground dark:text-foreground-night">
-          Trial message used
+          Trial messages used
         </span>
         <span className="font-medium text-foreground dark:text-foreground-night">
           <span className={cn(isCritical && "text-red-600 dark:text-red-400")}>
