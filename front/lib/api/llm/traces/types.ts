@@ -20,7 +20,6 @@ interface LLMTraceContextBase {
     | "agent_observability_summary"
     | "agent_suggestion"
     | "conversation_title_suggestion"
-    | "file_snippet_generator"
     | "process_data_sources"
     | "process_schema_generator"
     | "skill_builder_description_suggestion"
