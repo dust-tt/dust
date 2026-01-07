@@ -12,6 +12,7 @@ import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
+  FREE_TRIAL_PHONE_PLAN_CODE,
   isEntreprisePlanPrefix,
   isFreePlan,
   isProPlanPrefix,
@@ -154,7 +155,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
       if (activeSubscription) {
         // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
-        if (isTrial(activeSubscription)) {
+        // But don't do this for the new FREE_TRIAL_PHONE_PLAN_CODE plan.
+        if (
+          isTrial(activeSubscription) &&
+          activeSubscription.plan?.code !== FREE_TRIAL_PHONE_PLAN_CODE
+        ) {
           plan = getTrialVersionForPlan(activeSubscription.plan);
         } else if (activeSubscription.plan) {
           plan = activeSubscription.plan;
