@@ -546,7 +546,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
               </Label>
             )}
             <>
-              {hasSpaceConversations && summary.length > 0 ? (
+              {hasSpaceConversations ? (
                 <div className="overflow-y-auto">
                   <NavigationListCollapsibleSection
                     label="Projects"
