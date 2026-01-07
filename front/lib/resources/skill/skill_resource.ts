@@ -12,9 +12,14 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent";
+import {
+  getAgentConfiguration,
+  updateAgentRequirements,
+} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { hasSharedMembership } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
+import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import {
@@ -924,33 +929,81 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   private async updateActiveAgentsRequirements(
     auth: Authenticator,
+    { previousRequestedSpaceIds }: { previousRequestedSpaceIds: ModelId[] },
     { transaction }: { transaction?: Transaction }
   ): Promise<void> {
+    if (
+      previousRequestedSpaceIds.length === this.requestedSpaceIds.length &&
+      hasAll(previousRequestedSpaceIds, this.requestedSpaceIds)
+    ) {
+      // Requested spaces didn't change, skip.
+      return;
+    }
+
     const agents = await this.listActiveAgents(auth);
 
     if (agents.length === 0) {
+      // No agents are using this skill, skip.
       return;
     }
+
+    const spaceIdsRemovedFromThisSkill = previousRequestedSpaceIds.filter(
+      (spaceId) => !this.requestedSpaceIds.includes(spaceId)
+    );
 
     await concurrentExecutor(
       agents,
       async (agent) => {
-        const newSpaceIds = uniq([
-          ...agent.requestedSpaceIds,
-          ...this.requestedSpaceIds,
-        ]);
+        const spaceIdsToRemoveFromAgent = new Set<ModelId>();
 
-        // Only update if there are new spaces to add.
-        if (newSpaceIds.length > agent.requestedSpaceIds.length) {
-          await updateAgentRequirements(
+        // Some spaces were removed from the skill: we must check if they need to be removed from the agent. In order to achieve this, we check if the agent has any other capabilities that require the removed spaces.
+        if (spaceIdsRemovedFromThisSkill.length > 0) {
+          const agentConfig = await getAgentConfiguration(auth, {
+            agentId: agent.sId,
+            variant: "full",
+          });
+          assert(agentConfig, "Agent configuration not found");
+
+          const agentSkills = await SkillResource.listByAgentConfiguration(
             auth,
-            {
-              agentId: agent.sId,
-              newSpaceIds,
-            },
-            { transaction }
+            agentConfig
           );
+          const otherAgentSkills = agentSkills.filter(
+            (skill) => skill.sId !== this.sId
+          );
+
+          const agentOtherCapabilitiesRequirements =
+            await getAgentConfigurationRequirementsFromCapabilities(auth, {
+              actions: agentConfig.actions,
+              skills: otherAgentSkills,
+            });
+
+          const otherCapabilitiesRequestedSpaceIds = new Set(
+            agentOtherCapabilitiesRequirements.requestedSpaceIds
+          );
+
+          for (const spaceId of spaceIdsRemovedFromThisSkill) {
+            if (!otherCapabilitiesRequestedSpaceIds.has(spaceId)) {
+              // This space is not required by any other capabilities of the agent, so we must remove it from the config.
+              spaceIdsToRemoveFromAgent.add(spaceId);
+            }
+          }
         }
+
+        const newSpaceIds = uniq(
+          agent.requestedSpaceIds
+            .filter((id) => !spaceIdsToRemoveFromAgent.has(id))
+            .concat(this.requestedSpaceIds)
+        );
+
+        await updateAgentRequirements(
+          auth,
+          {
+            agentId: agent.sId,
+            newSpaceIds,
+          },
+          { transaction }
+        );
       },
       { concurrency: 5 }
     );
@@ -1121,6 +1174,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       // Save the current version before updating.
       await this.saveVersion(auth, { transaction });
 
+      // Snapshot the previous requested space IDs before updating.
+      const previousRequestedSpaceIds = [...this.requestedSpaceIds];
+
       const authorId = auth.user()?.id;
 
       await this.update(
@@ -1146,7 +1202,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { transaction }
       );
 
-      await this.updateActiveAgentsRequirements(auth, { transaction });
+      await this.updateActiveAgentsRequirements(
+        auth,
+        { previousRequestedSpaceIds },
+        { transaction }
+      );
     });
   }
 
