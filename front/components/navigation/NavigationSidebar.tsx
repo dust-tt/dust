@@ -462,14 +462,14 @@ function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
       <div
         className={cn(
           "h-2 w-full overflow-hidden rounded-full",
-          "bg-gray-100 dark:bg-gray-800"
+          "bg-gray-100 dark:bg-gray-100-night"
         )}
       >
         <div
           className={cn(
             "h-full rounded-full transition-all",
             isCritical
-              ? "bg-red-700 dark:bg-red-600"
+              ? "bg-red-700 dark:bg-red-700-night"
               : "bg-foreground dark:bg-foreground-night"
           )}
           style={{ width: `${Math.min(percentage * 100, 100)}%` }}
