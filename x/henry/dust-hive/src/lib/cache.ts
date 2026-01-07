@@ -3,6 +3,7 @@
 
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { z } from "zod";
 import { directoryExists, fileExists } from "./fs";
 import { logger } from "./logger";
 import { DUST_HIVE_HOME } from "./paths";
@@ -11,6 +12,79 @@ import { buildShell } from "./shell";
 // Cache directory structure
 export const CACHE_DIR = join(DUST_HIVE_HOME, "cache");
 export const CACHE_SOURCE_PATH = join(CACHE_DIR, "source.path");
+export const SYNC_STATE_PATH = join(CACHE_DIR, "sync-state.json");
+
+// Sync state schema for validation
+const SyncStateSchema = z.object({
+  npm: z.object({
+    "sdks/js": z.string().optional(),
+    front: z.string().optional(),
+    connectors: z.string().optional(),
+  }),
+  bun: z.string().optional(),
+  lastCommit: z.string().optional(),
+});
+
+// Sync state tracks what was last synced to detect changes
+export type SyncState = z.infer<typeof SyncStateSchema>;
+
+// Get current sync state from disk (returns null if missing or invalid)
+export async function getSyncState(): Promise<SyncState | null> {
+  if (!(await fileExists(SYNC_STATE_PATH))) {
+    return null;
+  }
+  const content = await Bun.file(SYNC_STATE_PATH).text();
+  const parseResult = SyncStateSchema.safeParse(JSON.parse(content));
+  return parseResult.success ? parseResult.data : null;
+}
+
+// Save sync state to disk
+export async function saveSyncState(state: SyncState): Promise<void> {
+  await ensureCacheDir();
+  await Bun.write(SYNC_STATE_PATH, JSON.stringify(state, null, 2));
+}
+
+// Compute SHA256 hash of a file (returns null if file doesn't exist)
+export async function hashFile(path: string): Promise<string | null> {
+  const file = Bun.file(path);
+  if (!(await file.exists())) {
+    return null;
+  }
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(await file.arrayBuffer());
+  return hasher.digest("hex");
+}
+
+// Check if core/ directory changed between two commits
+export async function coreChangedBetweenCommits(
+  repoRoot: string,
+  oldCommit: string,
+  newCommit: string
+): Promise<boolean> {
+  const proc = Bun.spawn(["git", "diff", "--quiet", oldCommit, newCommit, "--", "core/"], {
+    cwd: repoRoot,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await proc.exited;
+  // Exit code 0 = no diff, 1 = has diff
+  return proc.exitCode !== 0;
+}
+
+// Get current HEAD commit SHA
+export async function getHeadCommit(repoRoot: string): Promise<string | null> {
+  const proc = Bun.spawn(["git", "rev-parse", "HEAD"], {
+    cwd: repoRoot,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const stdout = await new Response(proc.stdout).text();
+  await proc.exited;
+  if (proc.exitCode !== 0) {
+    return null;
+  }
+  return stdout.trim();
+}
 
 // Binaries needed for initialization
 export const INIT_BINARIES = [
