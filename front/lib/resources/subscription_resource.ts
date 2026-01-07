@@ -12,7 +12,6 @@ import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
-  FREE_TRIAL_PHONE_PLAN_CODE,
   isEntreprisePlanPrefix,
   isFreePlan,
   isProPlanPrefix,
