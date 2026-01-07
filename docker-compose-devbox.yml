@@ -1,0 +1,38 @@
+services:
+  elasticsearch:
+    build:
+      context: .
+      dockerfile: elasticsearch.Dockerfile
+      network: host
+      args:
+        ES_VERSION: ${ES_LOCAL_VERSION:-8.15.3}
+    container_name: ${ES_LOCAL_CONTAINER_NAME:-dust-elasticsearch}
+    volumes:
+      - dev-elasticsearch:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD:-changeme}
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.license.self_generated.type=basic
+      - xpack.ml.use_auto_machine_memory_percent=true
+      - ES_JAVA_OPTS=-Xms${ES_LOCAL_HEAP_INIT:-1g} -Xmx${ES_LOCAL_HEAP_MAX:-2g}
+      - action.auto_create_index=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl --output /dev/null --silent --head --fail -u elastic:${ELASTICSEARCH_PASSWORD:-changeme} http://localhost:9200",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  dev-elasticsearch:

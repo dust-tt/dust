@@ -1,5 +1,6 @@
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { z } from "zod";
+import { createTypeGuard } from "./errors";
 import { directoryExists } from "./fs";
 import { DUST_HIVE_ENVS, getEnvDir, getInitializedMarkerPath, getMetadataPath } from "./paths";
 import type { PortAllocation } from "./ports";
@@ -17,10 +18,8 @@ export const EnvironmentMetadataSchema = EnvironmentMetadataFields.passthrough()
 
 export type EnvironmentMetadata = z.infer<typeof EnvironmentMetadataFields>;
 
-// Type guard for EnvironmentMetadata
-export function isEnvironmentMetadata(data: unknown): data is EnvironmentMetadata {
-  return EnvironmentMetadataSchema.safeParse(data).success;
-}
+export const isEnvironmentMetadata =
+  createTypeGuard<EnvironmentMetadata>(EnvironmentMetadataSchema);
 
 export interface Environment {
   name: string;
@@ -43,8 +42,10 @@ export function validateEnvName(name: string): { valid: boolean; error?: string 
     };
   }
 
-  if (name.length > 32) {
-    return { valid: false, error: "Name must be 32 characters or less" };
+  // Zellij has a 36-character session name limit. Since session names are
+  // formatted as "dust-hive-{name}" (10-char prefix), env names must be ≤26 chars.
+  if (name.length > 26) {
+    return { valid: false, error: "Name must be 26 characters or less" };
   }
 
   return { valid: true };

@@ -17,6 +17,11 @@
 --   :workOSUserId, :provider, :providerId, :imageUrl
 
 WITH
+-- Step 0: Get the required plan (fails gracefully if missing, detected by seed.ts)
+required_plan AS (
+  SELECT id FROM plans WHERE code = 'FREE_UPGRADED_PLAN'
+),
+
 -- Step 1: Upsert user
 inserted_user AS (
   INSERT INTO users (
@@ -86,24 +91,24 @@ inserted_global_group AS (
 
 -- Step 4a: Create system space
 inserted_system_space AS (
-  INSERT INTO vaults ("workspaceId", name, kind, "managementMode", "conversationsEnabled", "createdAt", "updatedAt")
-  SELECT id, 'System', 'system', 'manual', false, NOW(), NOW()
+  INSERT INTO vaults ("workspaceId", name, kind, "managementMode", "createdAt", "updatedAt")
+  SELECT id, 'System', 'system', 'manual',NOW(), NOW()
   FROM inserted_workspace
   RETURNING id, "workspaceId"
 ),
 
 -- Step 4b: Create global space
 inserted_global_space AS (
-  INSERT INTO vaults ("workspaceId", name, kind, "managementMode", "conversationsEnabled", "createdAt", "updatedAt")
-  SELECT id, 'Company Data', 'global', 'manual', false, NOW(), NOW()
+  INSERT INTO vaults ("workspaceId", name, kind, "managementMode", "createdAt", "updatedAt")
+  SELECT id, 'Company Data', 'global', 'manual', NOW(), NOW()
   FROM inserted_workspace
   RETURNING id, "workspaceId"
 ),
 
 -- Step 4c: Create conversations space
 inserted_conversations_space AS (
-  INSERT INTO vaults ("workspaceId", name, kind, "managementMode", "conversationsEnabled", "createdAt", "updatedAt")
-  SELECT id, 'Conversations', 'conversations', 'manual', false, NOW(), NOW()
+  INSERT INTO vaults ("workspaceId", name, kind, "managementMode", "createdAt", "updatedAt")
+  SELECT id, 'Conversations', 'conversations', 'manual', NOW(), NOW()
   FROM inserted_workspace
   RETURNING id, "workspaceId"
 ),
@@ -144,7 +149,7 @@ inserted_membership AS (
   RETURNING id
 ),
 
--- Step 7: Create subscription
+-- Step 7: Create subscription (uses required_plan from Step 0)
 inserted_subscription AS (
   INSERT INTO subscriptions (
     "workspaceId", "sId", status, trialing, "paymentFailingSince",
@@ -163,12 +168,12 @@ inserted_subscription AS (
     NOW(),
     NOW()
   FROM inserted_workspace w
-  CROSS JOIN plans p
-  WHERE p.code = 'FREE_UPGRADED_PLAN'
+  CROSS JOIN required_plan p
   RETURNING id
 )
 
--- Return summary
+-- Return summary (subscription_id will be NULL if FREE_UPGRADED_PLAN doesn't exist)
 SELECT
   (SELECT id FROM inserted_user) AS user_id,
-  (SELECT id FROM inserted_workspace) AS workspace_id;
+  (SELECT id FROM inserted_workspace) AS workspace_id,
+  (SELECT id FROM inserted_subscription) AS subscription_id;

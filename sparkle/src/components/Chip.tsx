@@ -25,6 +25,7 @@ export const CHIP_COLORS = [
   "blue",
   "rose",
   "golden",
+  "white",
 ] as const;
 
 type ChipColorType = (typeof CHIP_COLORS)[number];
@@ -91,6 +92,12 @@ const chipVariants = cva("s-inline-flex s-box-border s-items-center", {
         "dark:s-bg-golden-100-night dark:s-border-golden-200-night",
         "dark:s-text-golden-900-night"
       ),
+      white: cn(
+        "s-border s-bg-white s-border-border",
+        "s-text-primary-900",
+        "dark:s-bg-background-night dark:s-border-border-night",
+        "dark:s-text-primary-900-night"
+      ),
     },
   },
   defaultVariants: {
@@ -136,7 +143,39 @@ const closeIconVariants: Record<ChipColorType, string> = {
     "s-text-golden-900 hover:s-text-golden-700 active:s-text-golden-950",
     "dark:s-text-golden-900-night dark:hover:s-text-golden-700-night dark:active:s-text-golden-950-night"
   ),
+  white: cn(
+    "s-text-primary-700 hover:s-text-primary-500 active:s-text-primary-950",
+    "dark:s-text-primary-700-night dark:hover:s-text-primary-500-night dark:active:s-text-primary-950-night"
+  ),
 };
+
+interface ChipInternalButtonProps {
+  icon: ComponentType;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
+  className?: string;
+  size?: "xs" | "sm";
+  "aria-label"?: string;
+}
+
+const ChipButton = React.forwardRef<HTMLButtonElement, ChipInternalButtonProps>(
+  ({ icon, onClick, className, size = "xs", "aria-label": ariaLabel }, ref) => (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className={cn(
+        "s-rounded-md s-p-0.5",
+        "s-transition-colors s-duration-200",
+        "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring",
+        className
+      )}
+    >
+      <Icon visual={icon} size={size} />
+    </button>
+  )
+);
+ChipButton.displayName = "ChipButton";
 
 type ChipBaseProps = {
   size?: ChipSizeType;
@@ -225,21 +264,16 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
           </span>
         )}
         {onRemove && (
-          <button
+          <ChipButton
+            icon={XMarkIcon}
+            size={size === "mini" ? "xs" : "sm"}
+            className={cn("-s-mr-1", closeIconVariants[color || "primary"])}
+            aria-label="Remove"
             onClick={(e) => {
               e.stopPropagation();
               onRemove();
             }}
-          >
-            <Icon
-              visual={XMarkIcon}
-              size={size === "mini" ? "xs" : (size as IconProps["size"])}
-              className={cn(
-                "s-transition-color -s-mr-1 s-duration-200",
-                closeIconVariants[color || "primary"]
-              )}
-            />
-          </button>
+          />
         )}
       </div>
     );

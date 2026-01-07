@@ -98,7 +98,12 @@ SkillConfigurationModel.init(SKILL_MODEL_ATTRIBUTES, {
   indexes: [
     {
       fields: ["workspaceId", "status"],
-      name: "idx_skill_configuration_workspace_status",
+      concurrently: true,
+    },
+    {
+      unique: true,
+      fields: ["workspaceId", "name", "status"],
+      concurrently: true,
     },
   ],
 });
@@ -130,9 +135,13 @@ SkillVersionModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
+        fields: ["workspaceId", "skillConfigurationId"],
+        concurrently: true,
+      },
+      {
         unique: true,
         fields: ["workspaceId", "skillConfigurationId", "version"],
-        name: "idx_skill_versions_workspace_configuration_id_version",
+        concurrently: true,
       },
     ],
   }

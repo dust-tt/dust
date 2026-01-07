@@ -1,10 +1,7 @@
 import { open, rename, unlink } from "node:fs/promises";
+import { isErrnoException } from "./errors";
 import { getLogPath, getPidPath } from "./paths";
 import { ALL_SERVICES, type ServiceName } from "./services";
-
-function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
-  return typeof error === "object" && error !== null && "code" in error;
-}
 
 // Check if a process is running by PID
 export function isProcessRunning(pid: number): boolean {

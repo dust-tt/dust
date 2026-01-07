@@ -8,12 +8,13 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getSpaceConversationsRoute } from "@app/lib/utils/router";
 import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
 import type { SpaceType, WorkspaceType } from "@app/types";
-interface SpacesListProps {
+
+interface ProjectsListProps {
   owner: WorkspaceType;
   summary: GetBySpacesSummaryResponseBody["summary"];
 }
 
-const SpaceListItem = memo(
+const ProjectListItem = memo(
   ({
     space,
     unreadCount,
@@ -51,9 +52,9 @@ const SpaceListItem = memo(
   }
 );
 
-SpaceListItem.displayName = "SpaceListItem";
+ProjectListItem.displayName = "ProjectListItem";
 
-export function SpacesList({ owner, summary }: SpacesListProps) {
+export function ProjectsList({ owner, summary }: ProjectsListProps) {
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -69,7 +70,7 @@ export function SpacesList({ owner, summary }: SpacesListProps) {
   return (
     <div className="mt-0.5 px-3 sm:flex sm:flex-col sm:gap-0.5">
       {summary.map(({ space, unreadConversations }) => (
-        <SpaceListItem
+        <ProjectListItem
           key={space.sId}
           space={space}
           unreadCount={unreadConversations.length}

@@ -3,6 +3,7 @@
 
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { z } from "zod";
 import { directoryExists, fileExists } from "./fs";
 import { logger } from "./logger";
 import { DUST_HIVE_HOME } from "./paths";
@@ -11,6 +12,79 @@ import { buildShell } from "./shell";
 // Cache directory structure
 export const CACHE_DIR = join(DUST_HIVE_HOME, "cache");
 export const CACHE_SOURCE_PATH = join(CACHE_DIR, "source.path");
+export const SYNC_STATE_PATH = join(CACHE_DIR, "sync-state.json");
+
+// Sync state schema for validation
+const SyncStateSchema = z.object({
+  npm: z.object({
+    "sdks/js": z.string().optional(),
+    front: z.string().optional(),
+    connectors: z.string().optional(),
+  }),
+  bun: z.string().optional(),
+  lastCommit: z.string().optional(),
+});
+
+// Sync state tracks what was last synced to detect changes
+export type SyncState = z.infer<typeof SyncStateSchema>;
+
+// Get current sync state from disk (returns null if missing or invalid)
+export async function getSyncState(): Promise<SyncState | null> {
+  if (!(await fileExists(SYNC_STATE_PATH))) {
+    return null;
+  }
+  const content = await Bun.file(SYNC_STATE_PATH).text();
+  const parseResult = SyncStateSchema.safeParse(JSON.parse(content));
+  return parseResult.success ? parseResult.data : null;
+}
+
+// Save sync state to disk
+export async function saveSyncState(state: SyncState): Promise<void> {
+  await ensureCacheDir();
+  await Bun.write(SYNC_STATE_PATH, JSON.stringify(state, null, 2));
+}
+
+// Compute SHA256 hash of a file (returns null if file doesn't exist)
+export async function hashFile(path: string): Promise<string | null> {
+  const file = Bun.file(path);
+  if (!(await file.exists())) {
+    return null;
+  }
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(await file.arrayBuffer());
+  return hasher.digest("hex");
+}
+
+// Check if core/ directory changed between two commits
+export async function coreChangedBetweenCommits(
+  repoRoot: string,
+  oldCommit: string,
+  newCommit: string
+): Promise<boolean> {
+  const proc = Bun.spawn(["git", "diff", "--quiet", oldCommit, newCommit, "--", "core/"], {
+    cwd: repoRoot,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await proc.exited;
+  // Exit code 0 = no diff, 1 = has diff
+  return proc.exitCode !== 0;
+}
+
+// Get current HEAD commit SHA
+export async function getHeadCommit(repoRoot: string): Promise<string | null> {
+  const proc = Bun.spawn(["git", "rev-parse", "HEAD"], {
+    cwd: repoRoot,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const stdout = await new Response(proc.stdout).text();
+  await proc.exited;
+  if (proc.exitCode !== 0) {
+    return null;
+  }
+  return stdout.trim();
+}
 
 // Binaries needed for initialization
 export const INIT_BINARIES = [
@@ -136,78 +210,4 @@ export async function buildBinaries(
   }
 
   return { success: failed.length === 0, built, failed };
-}
-
-// Initialize cache from a repo (auto-set source, optionally build missing)
-export async function initializeCache(
-  repoRoot: string,
-  options?: { rebuild?: boolean }
-): Promise<{
-  source: string;
-  available: Binary[];
-  missing: Binary[];
-}> {
-  await setCacheSource(repoRoot);
-
-  if (options?.rebuild) {
-    // Rebuild all binaries
-    logger.step("Rebuilding all binaries...");
-    const result = await buildBinaries(repoRoot, [...ALL_BINARIES]);
-    return {
-      source: repoRoot,
-      available: result.built,
-      missing: result.failed,
-    };
-  }
-
-  const available = await getAvailableBinaries(repoRoot);
-  const missing = await getMissingBinaries(repoRoot);
-
-  return { source: repoRoot, available, missing };
-}
-
-// Run a cached binary (with fallback to cargo run)
-export async function runCachedBinary(
-  cacheSource: string,
-  binary: Binary,
-  args: string[],
-  options: {
-    cwd: string;
-    env?: Record<string, string>;
-    fallbackToCargo?: boolean;
-  }
-): Promise<{ success: boolean; usedCache: boolean }> {
-  const binaryPath = getBinaryPath(cacheSource, binary);
-  const hasBinary = await binaryExists(cacheSource, binary);
-
-  if (hasBinary) {
-    // Run the cached binary directly
-    const proc = Bun.spawn([binaryPath, ...args], {
-      cwd: options.cwd,
-      env: { ...process.env, ...options.env },
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-
-    await proc.exited;
-    return { success: proc.exitCode === 0, usedCache: true };
-  }
-
-  if (options.fallbackToCargo !== false) {
-    // Fall back to cargo run
-    const cargoArgs = ["cargo", "run", "--bin", binary, "--", ...args].join(" ");
-    const command = buildShell({ run: cargoArgs });
-
-    const proc = Bun.spawn(["bash", "-c", command], {
-      cwd: options.cwd,
-      env: { ...process.env, ...options.env },
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-
-    await proc.exited;
-    return { success: proc.exitCode === 0, usedCache: false };
-  }
-
-  return { success: false, usedCache: false };
 }

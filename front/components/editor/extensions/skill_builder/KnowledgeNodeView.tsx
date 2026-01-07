@@ -362,7 +362,8 @@ function KnowledgeSearchComponent({
         className={cn(
           "inline-block h-7 cursor-text rounded-md bg-gray-100 px-3 py-1 text-sm italic",
           "text-gray-600 empty:before:text-gray-400",
-          "empty:before:content-[attr(data-placeholder)] focus:outline-none"
+          "empty:before:content-[attr(data-placeholder)] focus:outline-none",
+          "min-w-36 text-left"
         )}
         contentEditable
         suppressContentEditableWarning
@@ -371,33 +372,30 @@ function KnowledgeSearchComponent({
         onInput={handleInput}
         onBlur={handleBlur}
         data-placeholder="Search for knowledge..."
-        style={{
-          minWidth: searchQuery ? "auto" : "150px",
-          textAlign: "left",
-        }}
       />
 
-      {isOpen && knowledgeItems.length > 0 && (
+      {isOpen && (
         <DropdownMenu open={true}>
           <DropdownMenuTrigger asChild>
             <div ref={triggerRef} style={virtualTriggerStyle} />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-96"
+            align="start"
             avoidCollisions
             onInteractOutside={handleInteractOutside}
             onOpenAutoFocus={(e) => e.preventDefault()}
             onCloseAutoFocus={(e) => e.preventDefault()}
           >
             {isSearchLoading ? (
-              <div className="flex items-center justify-center px-4 py-8">
+              <div className="flex h-14 items-center justify-center">
                 <Spinner size="sm" />
                 <span className="ml-2 text-sm text-gray-500">
                   Searching knowledge...
                 </span>
               </div>
             ) : knowledgeItems.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-gray-500">
+              <div className="flex h-14 items-center justify-center text-center text-sm text-gray-500">
                 {searchQuery.length < 2
                   ? "Type at least 2 characters to search"
                   : "No knowledge found"}

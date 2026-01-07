@@ -1,0 +1,207 @@
+version: "0.5"
+
+log_level: info
+log_location: .devbox/process-compose.log
+
+processes:
+  # Front (Next.js)
+  front:
+    namespace: dust
+    working_dir: front
+    command: |
+      npm install && npm run dev
+    depends_on:
+      redis:
+        condition: process_started
+      sdks-js:
+        condition: process_started
+    log_location: $PWD/.devbox/logs/front.log
+    availability:
+      restart: on_failure
+
+  # Front Workers (Temporal)
+  front-workers:
+    namespace: dust
+    working_dir: front
+    command: |
+      npm install && npm run dev:worker
+    depends_on:
+      front:
+        condition: process_started
+      temporal:
+        condition: process_started
+    log_location: $PWD/.devbox/logs/front-workers.log
+    availability:
+      restart: on_failure
+
+  # Connectors (Node)
+  connectors:
+    namespace: dust
+    working_dir: connectors
+    command: |
+      npm install && npm run start
+    depends_on:
+      temporal:
+        condition: process_started
+      sdks-js:
+        condition: process_started
+    log_location: $PWD/.devbox/logs/connectors.log
+    availability:
+      restart: on_failure
+
+  # Core API (Rust)
+  core:
+    namespace: dust
+    working_dir: core
+    command: |
+      cargo watch -x 'run --bin core-api'
+    depends_on:
+      elasticsearch:
+        condition: process_started
+      qdrant:
+        condition: process_started
+    log_location: $PWD/.devbox/logs/core.log
+    availability:
+      restart: on_failure
+
+  # SQLite Workers (Rust)
+  sqlite-workers:
+    namespace: dust
+    working_dir: core
+    command: |
+      cargo watch -x 'run --bin sqlite-worker'
+    depends_on:
+      core:
+        condition: process_started
+    log_location: $PWD/.devbox/logs/sqlite-workers.log
+    availability:
+      restart: on_failure
+
+  # OAuth Service (Rust)
+  oauth:
+    namespace: dust
+    working_dir: core
+    command: |
+      cargo watch -x 'run --bin oauth'
+    log_location: $PWD/.devbox/logs/oauth.log
+    availability:
+      restart: on_failure
+
+  # SDK JS Build (Node)
+  sdks-js:
+    namespace: dust
+    working_dir: sdks/js
+    command: |
+      npm install && ./admin/dev.sh
+    log_location: $PWD/.devbox/logs/sdks-js.log
+    readiness_probe:
+      file_exists:
+        path: dist/client.esm.js.map
+    availability:
+      restart: on_failure
+
+  # Elasticsearch (via Docker Compose)
+  elasticsearch:
+    namespace: services
+    command: |
+      echo "Starting elasticsearch..."
+      docker compose -f docker-compose-devbox.yml up -d elasticsearch
+      echo "Container started, monitoring logs..."
+      # Monitor docker logs to keep service alive
+      docker compose -f docker-compose-devbox.yml logs -f elasticsearch
+    is_daemon: true
+    availability:
+      restart: always
+    readiness_probe:
+      exec:
+        command: "docker compose -f docker-compose-devbox.yml ps elasticsearch | grep -q 'healthy'"
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 10
+      success_threshold: 1
+    liveness_probe:
+      exec:
+        command: "docker compose -f docker-compose-devbox.yml ps elasticsearch | grep -q 'healthy'"
+      initial_delay_seconds: 30
+      period_seconds: 30
+      timeout_seconds: 10
+      failure_threshold: 3
+    shutdown:
+      command: "docker compose -f docker-compose-devbox.yml down"
+    log_location: $PWD/.devbox/logs/elasticsearch.log
+
+  # Qdrant Vector Database
+  qdrant:
+    namespace: services
+    command: |
+      mkdir -p .devbox/data/qdrant
+      qdrant --uri http://127.0.0.1:6335
+    environment:
+      - QDRANT__STORAGE__STORAGE_PATH=.devbox/data/qdrant
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    is_daemon: true
+    availability:
+      restart: always
+    readiness_probe:
+      http_get:
+        host: 127.0.0.1
+        port: 6333
+        path: /healthz
+      initial_delay_seconds: 2
+      period_seconds: 1
+      timeout_seconds: 5
+      success_threshold: 1
+    liveness_probe:
+      http_get:
+        host: 127.0.0.1
+        port: 6333
+        path: /healthz
+      initial_delay_seconds: 10
+      period_seconds: 30
+      timeout_seconds: 5
+      failure_threshold: 3
+    shutdown:
+      command: "pkill -SIGTERM qdrant"
+      timeout_seconds: 10
+      signal: 15
+
+  # Temporal Development Server
+  temporal:
+    namespace: services
+    command: |
+      mkdir -p .devbox/data/temporal
+      temporal operator search-attribute create --name connectorId --type Int --name conversationId --type Text --name workspaceId --type Text
+      temporal server start-dev \
+        --db-filename .devbox/data/temporal/temporal.db \
+        --namespace default \
+        --namespace agent \
+        --namespace connectors \
+        --namespace relocation \
+        --log-level warn
+    is_daemon: true
+    availability:
+      restart: always
+    readiness_probe:
+      http_get:
+        host: 127.0.0.1
+        port: 8233
+        path: /
+      initial_delay_seconds: 10
+      period_seconds: 5
+      timeout_seconds: 5
+      success_threshold: 1
+    liveness_probe:
+      http_get:
+        host: 127.0.0.1
+        port: 8233
+        path: /
+      initial_delay_seconds: 30
+      period_seconds: 30
+      timeout_seconds: 5
+      failure_threshold: 3
+    shutdown:
+      command: "pkill -SIGTERM temporal"
+      timeout_seconds: 10
+      signal: 15
+    log_location: $PWD/.devbox/logs/temporal.log

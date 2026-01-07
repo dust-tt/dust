@@ -1,9 +1,12 @@
 import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import { withEnvironment } from "../lib/commands";
 import { logger } from "../lib/logger";
 import {
   DUST_HIVE_SCRIPTS,
   DUST_HIVE_ZELLIJ,
+  MAIN_SESSION_NAME,
+  TEMPORAL_LOG_PATH,
   getEnvFilePath,
   getWatchScriptPath,
   getWorktreeDir,
@@ -12,6 +15,7 @@ import {
 import { restoreTerminal } from "../lib/prompt";
 import { Ok } from "../lib/result";
 import { ALL_SERVICES, type ServiceName } from "../lib/services";
+import { shellQuote } from "../lib/shell";
 
 // Tab display names (shorter names for better zellij tab bar)
 const TAB_NAMES: Record<ServiceName, string> = {
@@ -34,33 +38,51 @@ if (missingTabs.length > 0 || extraTabs.length > 0) {
   );
 }
 
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\\''`)}'`;
-}
-
 function kdlEscape(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 function getUserShell(): string {
-  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
   return process.env["SHELL"] ?? "zsh";
 }
 
-// Watch script content - written to ~/.dust-hive/scripts/watch-logs.sh
-const WATCH_SCRIPT_CONTENT = `#!/bin/bash
+// Shared tab template for all zellij layouts (ensures consistent tab bar)
+const TAB_TEMPLATE = `    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:compact-bar"
+        }
+        children
+    }`;
+
+// Unified watch script content - handles both env services and temporal
+// Usage: watch-logs.sh --temporal
+//        watch-logs.sh <env-name> <service>
+function getWatchScriptContent(): string {
+  return `#!/bin/bash
 # Log watcher with Ctrl+C menu for restart/clear/quit
-# Usage: watch-logs.sh <env-name> <service>
+# Usage: watch-logs.sh --temporal
+#        watch-logs.sh <env-name> <service>
 
-ENV_NAME="\$1"
-SERVICE="\$2"
+if [[ "\$1" == "--temporal" ]]; then
+  # Temporal mode
+  LABEL="temporal"
+  LOG_FILE="${TEMPORAL_LOG_PATH}"
+  RESTART_CMD="dust-hive temporal restart"
+else
+  # Environment service mode
+  ENV_NAME="\$1"
+  SERVICE="\$2"
 
-if [[ -z "\$ENV_NAME" || -z "\$SERVICE" ]]; then
-  echo "Usage: watch-logs.sh <env-name> <service>"
-  exit 1
+  if [[ -z "\$ENV_NAME" || -z "\$SERVICE" ]]; then
+    echo "Usage: watch-logs.sh --temporal"
+    echo "       watch-logs.sh <env-name> <service>"
+    exit 1
+  fi
+
+  LABEL="\$SERVICE"
+  LOG_FILE="\$HOME/.dust-hive/envs/\$ENV_NAME/\$SERVICE.log"
+  RESTART_CMD="dust-hive restart \\"\$ENV_NAME\\" \\"\$SERVICE\\""
 fi
-
-LOG_FILE="\$HOME/.dust-hive/envs/\$ENV_NAME/\$SERVICE.log"
 
 mkdir -p "\$(dirname "\$LOG_FILE")"
 touch "\$LOG_FILE"
@@ -70,15 +92,15 @@ trap '' SIGINT
 
 show_menu() {
   echo ""
-  echo -e "\\033[100m [\$SERVICE] r=restart | c=clear | q=quit | Enter=resume \\033[0m"
+  echo -e "\\033[100m [\$LABEL] r=restart | c=clear | q=quit | Enter=resume \\033[0m"
   read -r -n 1 cmd
   echo ""
 
   case "\$cmd" in
     r|R)
-      echo -e "\\033[33m[Restarting \$SERVICE...]\\033[0m"
-      dust-hive restart "\$ENV_NAME" "\$SERVICE"
-      echo -e "\\033[32m[\$SERVICE restarted]\\033[0m"
+      echo -e "\\033[33m[Restarting \$LABEL...]\\033[0m"
+      eval "\$RESTART_CMD"
+      echo -e "\\033[32m[\$LABEL restarted]\\033[0m"
       sleep 1
       ;;
     c|C)
@@ -91,18 +113,19 @@ show_menu() {
 }
 
 while true; do
-  echo -e "\\033[100m [\$SERVICE] Ctrl+C for menu \\033[0m"
+  echo -e "\\033[100m [\$LABEL] Ctrl+C for menu \\033[0m"
   echo ""
   # Run tail in a subshell that doesn't ignore SIGINT
   (trap - SIGINT; exec tail -n 500 -F "\$LOG_FILE") || true
   show_menu
 done
 `;
+}
 
 async function ensureWatchScript(): Promise<string> {
   await mkdir(DUST_HIVE_SCRIPTS, { recursive: true });
   const scriptPath = getWatchScriptPath();
-  await Bun.write(scriptPath, WATCH_SCRIPT_CONTENT);
+  await Bun.write(scriptPath, getWatchScriptContent());
   // Make executable
   const proc = Bun.spawn(["chmod", "+x", scriptPath], { stdout: "ignore", stderr: "ignore" });
   await proc.exited;
@@ -150,12 +173,7 @@ function generateLayout(
   ).join("\n\n");
 
   return `layout {
-    default_tab_template {
-        pane size=1 borderless=true {
-            plugin location="zellij:compact-bar"
-        }
-        children
-    }
+${TAB_TEMPLATE}
 
     tab name="${kdlEscape(envName)}" focus=true {
         pane {
@@ -244,9 +262,7 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
   const sessionName = `dust-hive-${env.name}`;
 
   // Detect if running inside zellij to avoid nesting
-  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
   const inZellij = process.env["ZELLIJ"] !== undefined;
-  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for index signatures
   const currentSession = process.env["ZELLIJ_SESSION_NAME"];
 
   // If inside zellij and trying to attach, use session manager instead
@@ -350,3 +366,122 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
 
   return Ok(undefined);
 });
+
+// Generate layout for main session (repo root + temporal logs)
+function generateMainLayout(repoRoot: string, watchScriptPath: string): string {
+  const shellPath = getUserShell();
+
+  return `layout {
+${TAB_TEMPLATE}
+
+    tab name="main" focus=true {
+        pane {
+            cwd "${kdlEscape(repoRoot)}"
+            command "${kdlEscape(shellPath)}"
+            start_suspended false
+        }
+    }
+
+    tab name="temporal" {
+        pane {
+            command "${kdlEscape(watchScriptPath)}"
+            args "--temporal"
+            start_suspended false
+        }
+    }
+}
+`;
+}
+
+async function writeMainLayout(repoRoot: string, watchScriptPath: string): Promise<string> {
+  await mkdir(DUST_HIVE_ZELLIJ, { recursive: true });
+  const layoutPath = join(DUST_HIVE_ZELLIJ, "main-layout.kdl");
+  const content = generateMainLayout(repoRoot, watchScriptPath);
+  await Bun.write(layoutPath, content);
+  return layoutPath;
+}
+
+interface MainSessionOptions {
+  attach?: boolean;
+}
+
+// Open the main session (for managed services mode)
+export async function openMainSession(
+  repoRoot: string,
+  options: MainSessionOptions = {}
+): Promise<void> {
+  const sessionName = MAIN_SESSION_NAME;
+
+  const inZellij = process.env["ZELLIJ"] !== undefined;
+  const currentSession = process.env["ZELLIJ_SESSION_NAME"];
+
+  // Ensure watch script exists (same script, will be called with --temporal)
+  const watchScriptPath = await ensureWatchScript();
+
+  // Check if session exists
+  const sessionExists = await checkSessionExists(sessionName);
+
+  if (inZellij && options.attach) {
+    if (currentSession === sessionName) {
+      logger.info(`Already in session '${sessionName}'`);
+      return;
+    }
+
+    if (!sessionExists) {
+      const layoutPath = await writeMainLayout(repoRoot, watchScriptPath);
+      await createSessionInBackground(sessionName, layoutPath);
+    }
+
+    // Switch to session
+    logger.info(`Switching to session '${sessionName}'...`);
+    const switchProc = Bun.spawn(
+      [
+        "zellij",
+        "pipe",
+        "--plugin",
+        "https://github.com/mostafaqanbaryan/zellij-switch/releases/download/0.2.1/zellij-switch.wasm",
+        "--",
+        `--session ${sessionName}`,
+      ],
+      { stdin: "ignore", stdout: "ignore", stderr: "ignore" }
+    );
+    await switchProc.exited;
+    return;
+  }
+
+  if (sessionExists) {
+    if (!options.attach) {
+      logger.info(`Main session '${sessionName}' already exists.`);
+      return;
+    }
+
+    logger.info(`Attaching to main session '${sessionName}'...`);
+    restoreTerminal();
+    const proc = Bun.spawn(["zellij", "attach", sessionName], {
+      stdin: "inherit",
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+    await proc.exited;
+  } else {
+    const layoutPath = await writeMainLayout(repoRoot, watchScriptPath);
+
+    if (!options.attach) {
+      await createSessionInBackground(sessionName, layoutPath);
+      logger.info(`Main session '${sessionName}' created.`);
+      return;
+    }
+
+    logger.info(`Creating main session '${sessionName}'...`);
+    restoreTerminal();
+    const proc = Bun.spawn(
+      ["zellij", "--session", sessionName, "--new-session-with-layout", layoutPath],
+      {
+        stdin: "inherit",
+        stdout: "inherit",
+        stderr: "inherit",
+      }
+    );
+    await proc.exited;
+  }
+}

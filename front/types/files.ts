@@ -22,7 +22,10 @@ export type FileUseCase =
   // via the UI in a Folder). In that case, it will be stored permanently as a file
   // resource even for the upsert (no need to transit via upsert queue).
   | "folders_document"
-  | "upsert_table";
+  | "upsert_table"
+  // Project context: case in which a file is uploaded to a project's shared
+  // context datasource. Accessible to all conversations within the project.
+  | "project_context";
 
 export type FileUseCaseMetadata = {
   conversationId?: string;

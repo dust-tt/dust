@@ -1,8 +1,5 @@
 import { stat } from "node:fs/promises";
-
-function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
-  return typeof error === "object" && error !== null && "code" in error;
-}
+import { isErrnoException } from "./errors";
 
 async function statPath(path: string): Promise<Awaited<ReturnType<typeof stat>> | null> {
   try {

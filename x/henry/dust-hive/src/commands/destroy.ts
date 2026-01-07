@@ -16,15 +16,15 @@ async function cleanupZellijSession(envName: string): Promise<void> {
 
   // Kill session first (stops it)
   const killProc = Bun.spawn(["zellij", "kill-session", sessionName], {
-    stdout: "pipe",
-    stderr: "pipe",
+    stdout: "ignore",
+    stderr: "ignore",
   });
   await killProc.exited;
 
   // Then delete it (removes from list)
   const deleteProc = Bun.spawn(["zellij", "delete-session", sessionName], {
-    stdout: "pipe",
-    stderr: "pipe",
+    stdout: "ignore",
+    stderr: "ignore",
   });
   await deleteProc.exited;
 }

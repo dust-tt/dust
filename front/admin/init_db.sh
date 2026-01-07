@@ -52,3 +52,5 @@ echo "Running initdb"
 
 npx tsx admin/db.ts
 
+echo "Done"
+

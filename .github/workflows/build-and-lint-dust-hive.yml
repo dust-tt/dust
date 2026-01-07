@@ -1,0 +1,51 @@
+name: Build and lint dust-hive
+
+on:
+  pull_request:
+    paths:
+      - x/henry/dust-hive/**
+      - .github/workflows/build-and-lint-dust-hive.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        working-directory: x/henry/dust-hive
+        run: bun install --frozen-lockfile
+      - name: Typecheck
+        working-directory: x/henry/dust-hive
+        run: bun run typecheck
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        working-directory: x/henry/dust-hive
+        run: bun install --frozen-lockfile
+      - name: Lint
+        working-directory: x/henry/dust-hive
+        run: bun run lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        working-directory: x/henry/dust-hive
+        run: bun install --frozen-lockfile
+      - name: Test
+        working-directory: x/henry/dust-hive
+        run: bun run test

@@ -6,7 +6,11 @@ export interface ShellConfig {
   run: string | string[]; // command(s) to run
 }
 
-function shellQuote(value: string): string {
+/**
+ * Safely quote a string for use in shell commands.
+ * Uses single quotes and escapes any embedded single quotes.
+ */
+export function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 

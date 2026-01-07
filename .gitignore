@@ -12,6 +12,7 @@ core-api-keys.json
 oauth-api-keys.json
 /extension/build/
 **/.claude
+**/.codex
 **/.yalc
 yalc.lock
 front/public/sitemap.xml
@@ -19,5 +20,16 @@ front/public/robots.txt
 mprocs.log
 **/tsconfig.tsbuildinfo
 front/.npm-cache
-CLAUDE.md
-AGENTS.md
+AGENTS.local.md
+CLAUDE.local.md
+
+# Direnv
+.direnv/
+.envrc.local
+
+# Devbox
+.devbox/
+devbox.lock
+.env.secrets
+.qdrant-initialized
+

@@ -124,10 +124,10 @@ runs:
           while IFS= read -r line; do
             if [ -n "$line" ]; then
               COMMIT_HASH=$(echo "$line" | cut -d' ' -f1)
-              AUTHOR=$(echo "$line" | sed 's/^[^ ]* //')
+              COMMIT_MESSAGE_WITH_AUTHORS=$(echo "$line" | awk -F ' ' '{ for (i = 2; i <= NF; i++) { printf "%s ", $i };}')
               # Slack format: <url|text>
               LINK="<${{ github.server_url }}/${{ github.repository }}/commit/${COMMIT_HASH}|${COMMIT_HASH}>"
-              CHANGELOG_TEXT="${CHANGELOG_TEXT}• ${LINK} ${AUTHOR}
+              CHANGELOG_TEXT="${CHANGELOG_TEXT}• ${LINK} - ${COMMIT_MESSAGE_WITH_AUTHORS}
         "
             fi
           done <<< "${{ inputs.commit_diff }}"

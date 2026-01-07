@@ -6,6 +6,7 @@ import {
   filterAndSortEditorSuggestionAgents,
   sortEditorSuggestionUsers,
   SUGGESTION_DISPLAY_LIMIT,
+  SUGGESTION_PRIORITY,
 } from "@app/lib/mentions/editor/suggestion";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -58,20 +59,29 @@ export function interleaveMentionsPreservingAgentOrder(
       continue;
     }
 
-    // Prioritize users/agents who start with the query
-    if (
+    // If no more participants, prioritize users/agents who start with the query
+    const nextUserStartsWithQuery =
       lowerCaseQuery &&
-      nextUser?.label?.toLowerCase().startsWith(lowerCaseQuery)
+      nextUser?.label?.toLowerCase().startsWith(lowerCaseQuery);
+    const nextAgentStartsWithQuery =
+      lowerCaseQuery &&
+      nextAgent?.label?.toLowerCase().startsWith(lowerCaseQuery);
+
+    // Our high priority agents first, then users, then other agents
+    if (
+      nextAgentStartsWithQuery &&
+      SUGGESTION_PRIORITY[nextAgent.id] !== undefined
     ) {
+      result.push(nextAgent);
+      agentIndex += 1;
+      continue;
+    }
+    if (nextUserStartsWithQuery) {
       result.push(nextUser);
       userIndex += 1;
       continue;
     }
-
-    if (
-      lowerCaseQuery &&
-      nextAgent?.label?.toLowerCase().startsWith(lowerCaseQuery)
-    ) {
+    if (nextAgentStartsWithQuery) {
       result.push(nextAgent);
       agentIndex += 1;
       continue;

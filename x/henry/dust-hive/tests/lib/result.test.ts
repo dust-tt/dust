@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { CommandError, Err, Ok, envNotFoundError, usageError } from "../../src/lib/result";
+import { CommandError, Err, Ok, envNotFoundError } from "../../src/lib/result";
 
 describe("result", () => {
   describe("Ok", () => {
@@ -71,20 +71,6 @@ describe("result", () => {
     it("preserves error message", () => {
       const error = new CommandError("specific message");
       expect(error.message).toBe("specific message");
-    });
-  });
-
-  describe("usageError", () => {
-    it("creates CommandError with correct format", () => {
-      const error = usageError("spawn");
-      expect(error).toBeInstanceOf(CommandError);
-      expect(error.message).toBe("Usage: dust-hive spawn NAME");
-    });
-
-    it("works with different command names", () => {
-      expect(usageError("destroy").message).toBe("Usage: dust-hive destroy NAME");
-      expect(usageError("warm").message).toBe("Usage: dust-hive warm NAME");
-      expect(usageError("status").message).toBe("Usage: dust-hive status NAME");
     });
   });
 

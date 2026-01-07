@@ -60,22 +60,31 @@ cp /path/to/your/.env ~/.dust-hive/config.env
 
 The `config.env` must use `export` statements (e.g., `export API_KEY=xxx`). It contains all the environment variables from your local dev setup (API keys, OAuth secrets, etc.). See `local-dev-setup.md` for the full list.
 
-2. **Start Temporal server** (keep running in a separate terminal):
+2. **Start managed services** (temporal server + main zellij session):
 
 ```bash
-temporal server start-dev
+# From the main Dust repo (on main branch, clean working directory)
+dust-hive up
+
+# Or attach to the main zellij session immediately
+dust-hive up -a
 ```
+
+This runs `dust-hive sync` to update dependencies, starts the Temporal server as a managed daemon, and creates a main zellij session with tabs for the repo shell and temporal logs.
 
 ## Quick Start
 
 ```bash
+# Start managed services (temporal + main session)
+dust-hive up
+
 # Create a new environment
 dust-hive spawn myenv
 
 # Start all services (docker, front, core, connectors, etc.)
 dust-hive warm myenv
 
-# Open the terminal UI
+# Open the environment's terminal UI
 dust-hive open myenv
 
 # Get the app URL
@@ -84,17 +93,33 @@ dust-hive url myenv
 
 # Open in browser
 open $(dust-hive url myenv)
+
+# Stop everything when done
+dust-hive down
 ```
 
 ## Commands
 
+### Managed Services
+
 | Command | Description |
 |---------|-------------|
-| `spawn [--name NAME] [--base BRANCH] [--no-open] [--no-attach] [--warm]` | Create new environment |
+| `up [-a\|--attach]` | Start temporal + sync + create main session (from main repo) |
+| `down [-f\|--force]` | Stop all environments, temporal, and zellij sessions |
+| `temporal start` | Start Temporal server only |
+| `temporal stop` | Stop Temporal server only |
+| `temporal restart` | Restart Temporal server |
+| `temporal status` | Show Temporal server status |
+
+### Environment Commands
+
+| Command | Description |
+|---------|-------------|
+| `spawn [NAME] [--no-open] [--no-attach] [--warm] [--wait]` | Create new environment |
 | `warm [NAME] [--no-forward] [--force-ports]` | Start docker + all services |
 | `cool [NAME]` | Stop services, keep SDK watch |
-| `start [NAME]` | Resume stopped environment |
-| `stop [NAME]` | Full stop of all services |
+| `start [NAME]` | Resume stopped environment (when NAME provided) |
+| `stop [NAME]` | Full stop of environment (when NAME provided) |
 | `destroy NAME [--force]` | Remove environment completely |
 | `restart [NAME] SERVICE` | Restart a single service |
 | `open [NAME]` | Open zellij terminal session |
@@ -103,10 +128,16 @@ open $(dust-hive url myenv)
 | `status [NAME]` | Show service health |
 | `logs [NAME] [SERVICE] [-f]` | View service logs |
 | `url [NAME]` | Print front URL |
+
+### Utilities
+
+| Command | Description |
+|---------|-------------|
 | `doctor` | Check prerequisites |
-| `cache [status\|rebuild] [--status] [--rebuild]` | Show or rebuild binary cache |
+| `cache` | Show binary cache status |
 | `forward [NAME\|status\|stop]` | Manage OAuth port forwarding |
-| `sync [BRANCH]` | Rebase on branch (default: main), rebuild binaries, refresh deps |
+| `sync` | Pull latest main, rebuild binaries, refresh deps |
+| `seed-config <postgres-uri>` | Extract user data from existing DB for seeding |
 
 > **Tip**: When `NAME` is omitted, you'll get an interactive picker to select an environment.
 > It pre-selects the current environment (if you're in a worktree) or the last one you used.
@@ -176,7 +207,18 @@ dust-hive forward env-b     # Switch OAuth to env-b
 If the ports are already owned by another dust-hive forwarder, `dust-hive forward NAME` will switch it automatically.
 If those ports are owned by a different process, the command will fail with details so you can stop it.
 
-## Zellij Session
+## Zellij Sessions
+
+### Main Session
+
+When you run `dust-hive up`, a main session (`dust-hive-main`) is created with:
+
+- **main** - Shell at the repo root
+- **temporal** - Temporal server logs with Ctrl+C menu (r=restart, c=clear, q=quit)
+
+Attach to it with `dust-hive up -a` or by running zellij directly: `zellij attach dust-hive-main`.
+
+### Environment Sessions
 
 When you run `dust-hive open`, you get a terminal with tabs:
 
@@ -217,8 +259,8 @@ This creates the zellij session and starts services, but leaves you in your curr
 ### Working on a feature
 
 ```bash
-# Create environment from current branch
-dust-hive spawn --name my-feature
+# Create environment
+dust-hive spawn my-feature
 
 # Start everything
 dust-hive warm my-feature
@@ -232,21 +274,17 @@ dust-hive open my-feature
 dust-hive stop my-feature
 ```
 
-### Running two environments
+### Running multiple environments
 
 ```bash
-# First environment
-dust-hive spawn --name env-a --base main
-dust-hive warm env-a
-
-# Second environment
-dust-hive spawn --name env-b --base feature-branch
-dust-hive warm env-b
+# Create and warm two environments
+dust-hive spawn env-a --warm
+dust-hive spawn env-b --warm
 
 # Both running simultaneously
 dust-hive list
-# env-a    warm    10000-10999
-# env-b    warm    11000-11999
+# env-a    warm    http://localhost:10000
+# env-b    warm    http://localhost:11000
 
 # Access both
 open http://localhost:10000  # env-a
@@ -337,10 +375,7 @@ The cache uses your main Dust repo as source:
 # Check cache status
 dust-hive cache
 
-# Build missing binaries
-dust-hive cache --rebuild
-
-# Update main repo with latest and refresh everything
+# Update main repo with latest, rebuild binaries, refresh deps
 dust-hive sync
 ```
 
@@ -349,6 +384,8 @@ dust-hive sync
 ```
 ~/.dust-hive/
 ├── config.env                 # Your secrets (create this)
+├── temporal.pid               # Temporal server process ID
+├── temporal.log               # Temporal server logs
 ├── forward.pid                # Forwarder process ID
 ├── forward.log                # Forwarder logs
 ├── forward.json               # Forwarder state (target env)
@@ -361,8 +398,11 @@ dust-hive sync
 │       ├── metadata.json      # Environment info
 │       ├── *.pid              # Process IDs
 │       └── *.log              # Service logs
+├── scripts/
+│   └── watch-logs.sh          # Log watcher (supports --temporal flag)
 └── zellij/
-    └── layout.kdl             # Zellij layout
+    ├── layout.kdl             # Environment zellij layout
+    └── main-layout.kdl        # Main session layout
 
 ~/dust-hive/
 └── NAME/                      # Git worktree

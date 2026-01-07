@@ -11,7 +11,7 @@ import { NotFoundException } from "@workos-inc/node";
 import assert from "assert";
 
 import { createAndLogMembership } from "@app/lib/api/signup";
-import { createRegularSpaceAndGroup } from "@app/lib/api/spaces";
+import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { determineUserRoleFromGroups } from "@app/lib/api/user";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
@@ -440,13 +440,14 @@ async function autoCreateSpaceForProvisionedGroup(
   // Create restricted space with group-based management
   const spaceName = group.name;
 
-  const spaceResult = await createRegularSpaceAndGroup(
+  const spaceResult = await createSpaceAndGroup(
     auth,
     {
       name: spaceName,
       groupIds: [group.sId],
       isRestricted: true,
       managementMode: "group",
+      spaceKind: "regular",
     },
     { ignoreWorkspaceLimit: false }
   );
