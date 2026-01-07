@@ -50,12 +50,38 @@ async function symlinkCargoTarget(srcDir: string, destDir: string): Promise<void
   }
 }
 
-// Find all AGENTS.local.md files in the repo
+// Find all AGENTS.local.md files in the repo (excluding node_modules and other large dirs)
 async function findAgentsLocalFiles(srcDir: string): Promise<string[]> {
-  const proc = Bun.spawn(["find", srcDir, "-name", "AGENTS.local.md", "-type", "f"], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+  const proc = Bun.spawn(
+    [
+      "find",
+      srcDir,
+      "-name",
+      "AGENTS.local.md",
+      "-type",
+      "f",
+      // Exclude large directories that shouldn't contain user config files
+      "-not",
+      "-path",
+      "*/node_modules/*",
+      "-not",
+      "-path",
+      "*/.git/*",
+      "-not",
+      "-path",
+      "*/target/*",
+      "-not",
+      "-path",
+      "*/.next/*",
+      "-not",
+      "-path",
+      "*/.turbo/*",
+    ],
+    {
+      stdout: "pipe",
+      stderr: "pipe",
+    }
+  );
   const output = await new Response(proc.stdout).text();
   await proc.exited;
 
