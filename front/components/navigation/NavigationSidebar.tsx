@@ -446,11 +446,11 @@ function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
       className={cn(
         "mx-3 mb-3 rounded-lg border p-3",
         "border-border dark:border-border-night",
-        "bg-muted-background dark:bg-muted-background-night"
+        "bg-white dark:bg-background-night"
       )}
     >
       <div className="mb-2 flex items-center justify-between text-sm">
-        <span className="text-muted-foreground dark:text-muted-foreground-night">
+        <span className="font-semibold text-foreground dark:text-foreground-night">
           Trial message used
         </span>
         <span className="font-medium text-foreground dark:text-foreground-night">
@@ -479,7 +479,7 @@ function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
       {isAtLimit && (
         <div className="mt-3">
           <Link href={`/w/${workspaceId}/subscribe`} className="no-underline">
-            <button className="w-full rounded bg-foreground px-3 py-1.5 text-xs font-medium text-background dark:bg-foreground-night dark:text-background-night">
+            <button className="rounded bg-foreground px-3 py-1.5 text-xs font-medium text-background dark:bg-foreground-night dark:text-background-night">
               Subscribe to Dust
             </button>
           </Link>
