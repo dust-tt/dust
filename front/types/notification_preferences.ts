@@ -37,8 +37,7 @@ export const NOTIFICATION_TRIGGER_OPTIONS = [
   "only_mentions",
 ] as const;
 
-export type NotificationTrigger =
-  (typeof NOTIFICATION_TRIGGER_OPTIONS)[number];
+export type NotificationTrigger = (typeof NOTIFICATION_TRIGGER_OPTIONS)[number];
 
 export const isNotificationTrigger = (
   value: unknown

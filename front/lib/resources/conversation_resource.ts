@@ -30,6 +30,7 @@ import {
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -47,6 +48,11 @@ import type {
   UserType,
 } from "@app/types";
 import { ConversationError, Err, normalizeError, Ok } from "@app/types";
+import type { NotificationTrigger } from "@app/types/notification_preferences";
+import {
+  CONVERSATION_NOTIFICATION_METADATA_KEYS,
+  isNotificationTrigger,
+} from "@app/types/notification_preferences";
 
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
@@ -64,7 +70,8 @@ interface UserParticipation {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ConversationResource extends ReadonlyAttributesType<ConversationModel> {}
+export interface ConversationResource
+  extends ReadonlyAttributesType<ConversationModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ConversationResource extends BaseResource<ConversationModel> {
@@ -833,18 +840,105 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       conversation,
       excludedUser,
+      messageId,
     }: {
       conversation: ConversationWithoutContentType;
       excludedUser?: UserType;
+      messageId?: string;
     }
   ) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // If no messageId provided, use the original simple behavior (mark all participants).
+    // This is used for agent messages where mention-based filtering doesn't apply.
+    if (!messageId) {
+      const updated = await ConversationParticipantModel.update(
+        { unread: true },
+        {
+          where: {
+            conversationId: conversation.id,
+            workspaceId,
+            ...(excludedUser ? { userId: { [Op.ne]: excludedUser.id } } : {}),
+            unread: false,
+          },
+        }
+      );
+      return new Ok(updated);
+    }
+
+    // Get mentioned user IDs from the message.
+    let mentionedUserIds: Set<number> = new Set();
+    const message = await MessageModel.findOne({
+      where: { sId: messageId, workspaceId },
+      attributes: ["id"],
+    });
+    if (message) {
+      const mentions = await MentionModel.findAll({
+        where: {
+          messageId: message.id,
+          workspaceId,
+          userId: { [Op.ne]: null },
+        },
+        attributes: ["userId"],
+      });
+      mentionedUserIds = new Set(
+        mentions.map((m) => m.userId).filter((id): id is number => id !== null)
+      );
+    }
+
+    // Get all participants who currently have unread=false (excluding the sender).
+    const participants = await ConversationParticipantModel.findAll({
+      where: {
+        conversationId: conversation.id,
+        workspaceId,
+        ...(excludedUser ? { userId: { [Op.ne]: excludedUser.id } } : {}),
+        unread: false,
+      },
+      attributes: ["userId"],
+    });
+
+    if (participants.length === 0) {
+      return new Ok([0]);
+    }
+
+    // Get unread trigger preferences for all participants.
+    const userIds = participants.map((p) => p.userId);
+    const preferences = await UserMetadataModel.findAll({
+      where: {
+        userId: { [Op.in]: userIds },
+        key: CONVERSATION_NOTIFICATION_METADATA_KEYS.unreadTrigger,
+      },
+      attributes: ["userId", "value"],
+    });
+
+    const preferenceMap = new Map<number, NotificationTrigger>();
+    for (const pref of preferences) {
+      if (isNotificationTrigger(pref.value)) {
+        preferenceMap.set(pref.userId, pref.value);
+      }
+    }
+
+    // Filter participants: include if preference is "all_messages" (or unset) OR if they were mentioned.
+    const eligibleUserIds = userIds.filter((userId) => {
+      const trigger = preferenceMap.get(userId) ?? "all_messages";
+      if (trigger === "all_messages") {
+        return true;
+      }
+      // trigger === "only_mentions"
+      return mentionedUserIds.has(userId);
+    });
+
+    if (eligibleUserIds.length === 0) {
+      return new Ok([0]);
+    }
+
     const updated = await ConversationParticipantModel.update(
       { unread: true },
       {
         where: {
           conversationId: conversation.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          ...(excludedUser ? { userId: { [Op.ne]: excludedUser.id } } : {}),
+          workspaceId,
+          userId: { [Op.in]: eligibleUserIds },
           unread: false,
         },
       }

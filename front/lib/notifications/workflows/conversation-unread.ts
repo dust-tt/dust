@@ -7,6 +7,7 @@ import z from "zod";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
+import { MentionModel, MessageModel } from "@app/lib/models/agent/conversation";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import { getNovuClient } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/conversations-unread";
@@ -23,9 +24,14 @@ import {
   normalizeError,
   Ok,
 } from "@app/types";
-import type { NotificationPreferencesDelay } from "@app/types/notification_preferences";
+import type {
+  NotificationPreferencesDelay,
+  NotificationTrigger,
+} from "@app/types/notification_preferences";
 import {
+  CONVERSATION_NOTIFICATION_METADATA_KEYS,
   isNotificationPreferencesDelay,
+  isNotificationTrigger,
   makeNotificationPreferencesUserMetadata,
   NOTIFICATION_DELAY_OPTIONS,
 } from "@app/types/notification_preferences";
@@ -431,6 +437,99 @@ export const conversationUnreadWorkflow = workflow(
   }
 );
 
+const DEFAULT_NOTIFICATION_TRIGGER: NotificationTrigger = "all_messages";
+
+/**
+ * Returns a set of user IDs that are mentioned in the given message.
+ */
+const getMentionedUserIds = async ({
+  messageSId,
+  workspaceId,
+}: {
+  messageSId: string;
+  workspaceId: number;
+}): Promise<Set<number>> => {
+  const message = await MessageModel.findOne({
+    where: { sId: messageSId, workspaceId },
+    attributes: ["id"],
+  });
+
+  if (!message) {
+    return new Set();
+  }
+
+  const mentions = await MentionModel.findAll({
+    where: {
+      messageId: message.id,
+      workspaceId,
+      userId: { [Op.ne]: null },
+      status: "approved",
+    },
+    attributes: ["userId"],
+  });
+
+  return new Set(
+    mentions.map((m) => m.userId).filter((id): id is number => id !== null)
+  );
+};
+
+/**
+ * Filters participants based on their notification trigger preference.
+ * Returns only participants who should receive notifications.
+ * Note: If a user is the only human participant in the conversation, they are
+ * always notified regardless of their preference.
+ */
+const filterParticipantsByNotifyPreference = async ({
+  participants,
+  mentionedUserIds,
+  totalParticipantCount,
+}: {
+  participants: {
+    id: number;
+    sId: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    unread: boolean;
+  }[];
+  mentionedUserIds: Set<number>;
+  totalParticipantCount: number;
+}): Promise<typeof participants> => {
+  const userIds = participants.map((p) => p.id);
+
+  // Bulk query for all preferences.
+  const preferences = await UserMetadataModel.findAll({
+    where: {
+      userId: { [Op.in]: userIds },
+      key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyTrigger,
+    },
+    attributes: ["userId", "value"],
+  });
+
+  const preferenceMap = new Map<number, NotificationTrigger>();
+  for (const pref of preferences) {
+    if (isNotificationTrigger(pref.value)) {
+      preferenceMap.set(pref.userId, pref.value);
+    }
+  }
+
+  return participants.filter((participant) => {
+    const notifyTrigger =
+      preferenceMap.get(participant.id) ?? DEFAULT_NOTIFICATION_TRIGGER;
+    switch (notifyTrigger) {
+      case "all_messages":
+        return true;
+      case "only_mentions":
+        // Notify if mentioned OR if only human participant.
+        return (
+          mentionedUserIds.has(participant.id) || totalParticipantCount === 1
+        );
+      case "never":
+        return false;
+    }
+  });
+};
+
 export const triggerConversationUnreadNotifications = async (
   auth: Authenticator,
   {
@@ -450,46 +549,66 @@ export const triggerConversationUnreadNotifications = async (
     return new Ok(undefined);
   }
 
-  const participants = await conversation.listParticipants(auth, true);
+  // Get all participants to determine total count (for single-participant exception).
+  const totalParticipants = await conversation.listParticipants(auth, false);
+  const allParticipants = totalParticipants.filter((p) => p.unread);
 
-  if (participants.length !== 0) {
-    try {
-      const novuClient = await getNovuClient();
+  if (allParticipants.length === 0) {
+    return new Ok(undefined);
+  }
 
-      const r = await novuClient.bulkTrigger(
-        participants.map((p) => {
-          const payload: ConversationUnreadPayloadType = {
-            conversationId: conversation.sId,
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            messageId,
-          };
-          return {
-            name: CONVERSATION_UNREAD_TRIGGER_ID,
-            to: {
-              subscriberId: p.sId,
-              email: p.email,
-              firstName: p.firstName ?? undefined,
-              lastName: p.lastName ?? undefined,
-            },
-            payload,
-          };
-        })
-      );
-      if (r.status <= 200 && r.status >= 300) {
-        return new Err({
-          name: "dust_error",
-          code: "internal_server_error",
-          message: `Failed to trigger conversation unread notification due to network error: ${r.status} ${r.statusText}`,
-        });
-      }
-      return new Ok(undefined);
-    } catch (error) {
+  // Get mentioned user IDs from the triggering message.
+  const mentionedUserIds = await getMentionedUserIds({
+    messageSId: messageId,
+    workspaceId: auth.getNonNullableWorkspace().id,
+  });
+
+  // Filter participants based on their notification trigger preference.
+  const participants = await filterParticipantsByNotifyPreference({
+    participants: allParticipants,
+    mentionedUserIds,
+    totalParticipantCount: totalParticipants.length,
+  });
+
+  if (participants.length === 0) {
+    return new Ok(undefined);
+  }
+
+  try {
+    const novuClient = await getNovuClient();
+
+    const r = await novuClient.bulkTrigger(
+      participants.map((p) => {
+        const payload: ConversationUnreadPayloadType = {
+          conversationId: conversation.sId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          messageId,
+        };
+        return {
+          name: CONVERSATION_UNREAD_TRIGGER_ID,
+          to: {
+            subscriberId: p.sId,
+            email: p.email,
+            firstName: p.firstName ?? undefined,
+            lastName: p.lastName ?? undefined,
+          },
+          payload,
+        };
+      })
+    );
+    if (r.status !== 200) {
       return new Err({
         name: "dust_error",
         code: "internal_server_error",
-        message: `Failed to trigger conversation unread notification due to unknwon error: ${normalizeError(error).message}`,
+        message: `Failed to trigger conversation unread notification due to network error: ${r.statusText}`,
       });
     }
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: `Failed to trigger conversation unread notification: ${normalizeError(error).message}`,
+    });
   }
-  return new Ok(undefined);
 };
