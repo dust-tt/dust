@@ -211,7 +211,7 @@ cli.command("url [name]", "Print front URL").action(async (name: string | undefi
 });
 
 cli
-  .command("setup", "Interactive setup wizard for prerequisites")
+  .command("setup", "Check and install prerequisites (run this first!)")
   .option("-y, --non-interactive", "Run in non-interactive mode (same as doctor)")
   .action(async (options: { nonInteractive?: boolean }) => {
     await prepareAndRun(setupCommand({ nonInteractive: Boolean(options.nonInteractive) }));
