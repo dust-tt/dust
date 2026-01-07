@@ -111,7 +111,7 @@ export default function Verify({
 
     setIsLoading(true);
     try {
-      const e164Phone = `${countryCode}${phoneNumber.replace(/\D/g, "")}`;
+      const e164Phone = phoneNumber;
       const response = await clientFetch(
         `/api/w/${owner.sId}/verification/start`,
         {
@@ -156,7 +156,7 @@ export default function Verify({
     setIsLoading(true);
     setCodeError(null);
     try {
-      const e164Phone = `${countryCode}${phoneNumber.replace(/\D/g, "")}`;
+      const e164Phone = phoneNumber;
       const response = await clientFetch(
         `/api/w/${owner.sId}/verification/start`,
         {
@@ -204,7 +204,7 @@ export default function Verify({
     setIsLoading(true);
     setCodeError(null);
     try {
-      const e164Phone = `${countryCode}${phoneNumber.replace(/\D/g, "")}`;
+      const e164Phone = phoneNumber;
 
       const verifyResponse = await clientFetch(
         `/api/w/${owner.sId}/verification/validate`,
