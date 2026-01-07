@@ -70,5 +70,6 @@ export async function activatePhoneTrial(auth: Authenticator): Promise<void> {
     workspaceId: owner.sId,
     planCode: FREE_TRIAL_PHONE_PLAN_CODE,
     endDate,
+    trialing: true,
   });
 }

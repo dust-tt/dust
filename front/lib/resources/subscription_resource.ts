@@ -321,11 +321,13 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     planCode,
     stripeSubscriptionId,
     endDate,
+    trialing,
   }: {
     workspaceId: string;
     planCode: string;
     stripeSubscriptionId?: string;
     endDate: Date | null;
+    trialing?: boolean;
   }): Promise<SubscriptionResource> {
     const workspace = await this.findWorkspaceOrThrow(workspaceId);
     const newPlan = await this.findPlanOrThrow(planCode);
@@ -375,6 +377,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           workspaceId: workspace.id,
           planId: newPlan.id,
           status: "active",
+          trialing: trialing ?? false,
           startDate: now,
           stripeSubscriptionId: stripeSubscriptionId ?? null,
           endDate: endDate,
