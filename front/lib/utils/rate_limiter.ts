@@ -170,8 +170,7 @@ export async function getRateLimiterCount({
 
     // Get current server time and calculate the window
     const windowMs = timeframeSeconds * 1000;
-    const now = Date.now();
-    const trimBefore = now - windowMs;
+    const trimBefore = Date.now() - windowMs;
 
     // Count entries in the sorted set within the time window
     const count = await redis.zCount(redisKey, trimBefore, "+inf");
