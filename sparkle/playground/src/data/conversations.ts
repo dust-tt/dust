@@ -385,7 +385,6 @@ export function createConversationsWithMessages(
   const now = new Date();
   const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
 
   // Get some users and agents for the conversations
   const user1 = mockUsers.find((u) => u.id !== locutorId) || mockUsers[0];
