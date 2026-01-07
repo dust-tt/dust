@@ -8,15 +8,15 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import { useCreateSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
-import type { LightWorkspaceType } from "@app/types";
 import { getSpaceConversationsRoute } from "@app/lib/utils/router";
-import { useRouter } from "next/router";
+import type { LightWorkspaceType } from "@app/types";
 
 interface CreateProjectModalProps {
   isOpen: boolean;
