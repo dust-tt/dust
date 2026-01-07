@@ -462,7 +462,7 @@ function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
       <div
         className={cn(
           "h-2 w-full overflow-hidden rounded-full",
-          "bg-gray-100 dark:bg-gray-700"
+          "bg-gray-100 dark:bg-gray-800"
         )}
       >
         <div
