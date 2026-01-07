@@ -1,6 +1,9 @@
 // Sync command - pull latest main, rebuild binaries, refresh node_modules
 
+import { cp, mkdir, readdir, rm } from "node:fs/promises";
+import { join } from "node:path";
 import { ALL_BINARIES, buildBinaries, setCacheSource } from "../lib/cache";
+import { directoryExists } from "../lib/fs";
 import { logger } from "../lib/logger";
 import { findRepoRoot } from "../lib/paths";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
@@ -48,6 +51,48 @@ async function runBunLink(dir: string): Promise<boolean> {
   });
   await proc.exited;
   return proc.exitCode === 0;
+}
+
+// Copy directory recursively
+async function copyDir(src: string, dest: string): Promise<void> {
+  await mkdir(dest, { recursive: true });
+  const entries = await readdir(src, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const srcPath = join(src, entry.name);
+    const destPath = join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      await copyDir(srcPath, destPath);
+    } else {
+      await cp(srcPath, destPath);
+    }
+  }
+}
+
+// Install Claude Code skills to repo root
+async function installClaudeSkills(repoRoot: string): Promise<boolean> {
+  const dustHiveClaudeDir = join(repoRoot, "x/henry/dust-hive/.claude");
+  const repoClaudeDir = join(repoRoot, ".claude");
+
+  // Check if source .claude directory exists
+  if (!(await directoryExists(dustHiveClaudeDir))) {
+    return true; // Nothing to install
+  }
+
+  // Copy skills directory (fully replacing dust-hive skill if it exists)
+  const skillsSrc = join(dustHiveClaudeDir, "skills");
+  const skillsDest = join(repoClaudeDir, "skills");
+  if (await directoryExists(skillsSrc)) {
+    // Remove existing dust-hive skill to ensure clean replacement
+    const dustHiveSkillDest = join(skillsDest, "dust-hive");
+    if (await directoryExists(dustHiveSkillDest)) {
+      await rm(dustHiveSkillDest, { recursive: true });
+    }
+    await copyDir(skillsSrc, skillsDest);
+  }
+
+  return true;
 }
 
 export async function syncCommand(): Promise<Result<void>> {
@@ -155,6 +200,14 @@ export async function syncCommand(): Promise<Result<void>> {
     return Err(new CommandError("Failed to run bun link for dust-hive"));
   }
   logger.success("dust-hive linked globally");
+
+  // Install Claude Code skills and commands
+  logger.step("Installing Claude Code skills...");
+  const skillsInstalled = await installClaudeSkills(repoRoot);
+  if (!skillsInstalled) {
+    return Err(new CommandError("Failed to install Claude Code skills"));
+  }
+  logger.success("Claude Code skills installed");
 
   const elapsed = ((Date.now() - startTimeMs) / 1000).toFixed(1);
   console.log();
