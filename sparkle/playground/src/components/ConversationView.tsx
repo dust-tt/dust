@@ -7,8 +7,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 
-import { getAgentById } from "../data/agents";
 import type { Agent, Conversation, Message, User } from "../data/types";
+import { getAgentById } from "../data/agents";
 import { getUserById } from "../data/users";
 import { InputBar } from "./InputBar";
 
@@ -102,7 +102,7 @@ export function ConversationView({
     return sourceMessages.map((msg, index) => {
       // Create a deterministic mapping based on message index to ensure consistency
       let newOwnerId = msg.ownerId;
-      const newOwnerType = msg.ownerType;
+      let newOwnerType = msg.ownerType;
 
       if (msg.ownerType === "user") {
         // Alternate between locutor and other participants
