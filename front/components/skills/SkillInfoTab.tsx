@@ -1,8 +1,17 @@
-import { Chip, ReadOnlyTextArea, Separator, Spinner } from "@dust-tt/sparkle";
+import {
+  Chip,
+  ReadOnlyTextArea,
+  Separator,
+  Spinner,
+  Tooltip,
+} from "@dust-tt/sparkle";
 import sortBy from "lodash/sortBy";
 import { useMemo } from "react";
 
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
@@ -79,11 +88,19 @@ export function SkillInfoTab({
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Tools
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {sortedMCPServerViews.map((view) => (
-              <Chip key={view.title} label={view.title} size="sm">
-                {view.avatar}
-              </Chip>
+              <Tooltip
+                key={view.title}
+                label={view.description ?? view.title}
+                trigger={
+                  <div className="flex min-w-0 flex-row items-center gap-2">
+                    <div className="flex-shrink-0">{view.avatar}</div>
+                    <div className="truncate">{view.title}</div>
+                  </div>
+                }
+                tooltipTriggerAsChild
+              />
             ))}
           </div>
         </div>
@@ -115,5 +132,6 @@ export function SkillInfoTab({
 
 const renderMCPServerView = (view: MCPServerViewType) => ({
   title: getMcpServerViewDisplayName(view),
+  description: getMcpServerViewDescription(view),
   avatar: getAvatar(view.server, "xs"),
 });
