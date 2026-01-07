@@ -10,7 +10,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 
@@ -84,7 +84,7 @@ async function setupTest(
   }
 
   // Create skill owned by skillOwner
-  const skillModel = await SkillConfigurationFactory.create(skillOwnerAuth);
+  const skillModel = await SkillFactory.create(skillOwnerAuth);
   const skill = await SkillResource.fetchByModelIdWithAuth(
     skillOwnerAuth,
     skillModel.id
@@ -184,7 +184,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     });
 
     // Create another skill with a different name
-    await SkillConfigurationFactory.create(requestUserAuth, {
+    await SkillFactory.create(requestUserAuth, {
       name: "Other Skill",
     });
 

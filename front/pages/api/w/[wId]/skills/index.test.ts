@@ -14,7 +14,7 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types";
 import type {
@@ -47,11 +47,11 @@ describe("GET /api/w/[wId]/skills", () => {
       workspace.sId
     );
 
-    await SkillConfigurationFactory.create(auth, {
+    await SkillFactory.create(auth, {
       name: "Test Skill 1",
       agentFacingDescription: "First test skill",
     });
-    await SkillConfigurationFactory.create(auth, {
+    await SkillFactory.create(auth, {
       name: "Test Skill 2",
       agentFacingDescription: "Second test skill",
     });
@@ -77,15 +77,15 @@ describe("GET /api/w/[wId]/skills", () => {
       workspace.sId
     );
 
-    await SkillConfigurationFactory.create(auth, {
+    await SkillFactory.create(auth, {
       name: "Active Skill",
       status: "active",
     });
-    await SkillConfigurationFactory.create(auth, {
+    await SkillFactory.create(auth, {
       name: "Suggested Skill",
       status: "suggested",
     });
-    await SkillConfigurationFactory.create(auth, {
+    await SkillFactory.create(auth, {
       name: "Archived Skill",
       status: "archived",
     });
@@ -110,15 +110,15 @@ describe("GET /api/w/[wId]/skills", () => {
       workspace.sId
     );
 
-    await SkillConfigurationFactory.create(auth, {
+    await SkillFactory.create(auth, {
       name: "Active Skill",
       status: "active",
     });
-    await SkillConfigurationFactory.create(auth, {
+    await SkillFactory.create(auth, {
       name: "Suggested Skill",
       status: "suggested",
     });
-    await SkillConfigurationFactory.create(auth, {
+    await SkillFactory.create(auth, {
       name: "Archived Skill",
       status: "archived",
     });
@@ -180,7 +180,7 @@ describe("GET /api/w/[wId]/skills", () => {
         workspace.sId
       );
 
-      await SkillConfigurationFactory.create(auth, {
+      await SkillFactory.create(auth, {
         name: `Skill for ${role}`,
       });
 
@@ -200,7 +200,7 @@ describe("GET /api/w/[wId]/skills", () => {
     const { req, res, workspace, authenticator } = await setupTest();
 
     // Create a skill in global space (user has access)
-    await SkillConfigurationFactory.create(authenticator, {
+    await SkillFactory.create(authenticator, {
       name: "Accessible Skill",
     });
 
@@ -208,10 +208,9 @@ describe("GET /api/w/[wId]/skills", () => {
     const restrictedSpace = await SpaceFactory.regular(workspace);
 
     // Create a skill and manually set its requestedSpaceIds to the restricted space
-    const restrictedSkill = await SkillConfigurationFactory.create(
-      authenticator,
-      { name: "Restricted Skill" }
-    );
+    const restrictedSkill = await SkillFactory.create(authenticator, {
+      name: "Restricted Skill",
+    });
     await SkillConfigurationModel.update(
       { requestedSpaceIds: [restrictedSpace.id] },
       { where: { id: restrictedSkill.id } }
@@ -241,7 +240,7 @@ describe("GET /api/w/[wId]/skills", () => {
     await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });
 
     // Create a skill and set its requestedSpaceIds to the restricted space
-    const skill = await SkillConfigurationFactory.create(authenticator, {
+    const skill = await SkillFactory.create(authenticator, {
       name: "Skill In Restricted Space",
     });
     await SkillConfigurationModel.update(
@@ -268,7 +267,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       workspace.sId
     );
 
-    const skill = await SkillConfigurationFactory.create(auth, {
+    const skill = await SkillFactory.create(auth, {
       name: "Skill With Usage",
     });
 
@@ -276,7 +275,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       name: "Test Agent",
     });
 
-    await SkillConfigurationFactory.linkToAgent(auth, {
+    await SkillFactory.linkToAgent(auth, {
       skillId: skill.id,
       agentConfigurationId: agent.id,
     });
@@ -317,7 +316,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       name: "Agent With Frames",
     });
 
-    await SkillConfigurationFactory.linkGlobalSkillToAgent(auth, {
+    await SkillFactory.linkGlobalSkillToAgent(auth, {
       globalSkillId: "frames",
       agentConfigurationId: agent.id,
     });
@@ -350,7 +349,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       workspace.sId
     );
 
-    const skill = await SkillConfigurationFactory.create(auth, {
+    const skill = await SkillFactory.create(auth, {
       name: "Skill Without Agents",
     });
 
@@ -386,7 +385,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       workspace.sId
     );
 
-    const skill = await SkillConfigurationFactory.create(auth, {
+    const skill = await SkillFactory.create(auth, {
       name: "Skill Without Relations",
     });
 
@@ -416,7 +415,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       workspace.sId
     );
 
-    const skill = await SkillConfigurationFactory.create(auth, {
+    const skill = await SkillFactory.create(auth, {
       name: "Popular Skill",
     });
 
@@ -427,11 +426,11 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       name: "Agent Beta",
     });
 
-    await SkillConfigurationFactory.linkToAgent(auth, {
+    await SkillFactory.linkToAgent(auth, {
       skillId: skill.id,
       agentConfigurationId: agent1.id,
     });
-    await SkillConfigurationFactory.linkToAgent(auth, {
+    await SkillFactory.linkToAgent(auth, {
       skillId: skill.id,
       agentConfigurationId: agent2.id,
     });

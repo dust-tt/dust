@@ -8,7 +8,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
-import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 import handler from "./index";
@@ -47,7 +47,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - Skills with 
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const restrictedSpace = await SpaceFactory.regular(workspace);
     await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });
-    const skill = await SkillConfigurationFactory.create(authenticator, {
+    const skill = await SkillFactory.create(authenticator, {
       name: "Skill with restricted space",
     });
 
