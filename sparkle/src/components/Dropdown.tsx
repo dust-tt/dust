@@ -737,7 +737,7 @@ const DropdownTooltip = ({ description, media }: DropdownTooltipProps) => (
     {media && <div className="s-rounded-sm">{media}</div>}
 
     {/* Description */}
-    <p className="text-foreground dark:text-foreground-night s-text-xs s-font-normal">
+    <p className="text-foreground dark:text-foreground-night s-text-sm s-font-normal">
       {description}
     </p>
   </div>
@@ -781,7 +781,7 @@ const DropdownTooltipTrigger = React.forwardRef<
         sideOffset={sideOffset}
         className={cn(
           menuStyleClasses.container,
-          "s-w-80 s-max-w-sm s-p-3 s-shadow-lg"
+          "s-w-48 s-max-w-sm s-p-2 s-shadow-lg"
         )}
       >
         <DropdownTooltip description={description} media={media} />

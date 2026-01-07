@@ -946,12 +946,12 @@ export const WithTooltips: Story = {
             <DropdownMenuContent className="s-w-64">
               <DropdownMenuItem label="Configure Settings" />
               <DropdownTooltipTrigger
-                description="Attach company knowledge to provide context for your skill. This allows the skill to reference specific documents, folders, or data sources."
+                description="Use company knowledge for context."
                 media={
                   <img
-                    src="https://dust.tt/static/landing/frames/SalesROI.svg"
+                    src="/static/landing/product/Knowledge_Tooltips.jpg"
                     alt="Knowledge Search Interface"
-                    className="s-h-32 s-w-full s-rounded s-object-cover"
+                    className="s-aspect-[4/3] s-w-full s-rounded s-object-cover"
                   />
                 }
                 side="right"
