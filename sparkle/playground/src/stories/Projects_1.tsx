@@ -511,6 +511,7 @@ function DustMain() {
           {(filteredSpaces.length > 0 || !searchText.trim()) && (
             <NavigationListCollapsibleSection
               label="Spaces"
+              type="collapse"
               defaultOpen={true}
               action={
                 <>
@@ -609,6 +610,7 @@ function DustMain() {
           {(filteredCollaborators.length > 0 || !searchText.trim()) && (
             <NavigationListCollapsibleSection
               label="People & Agents"
+              type="collapse"
               defaultOpen={true}
               action={
                 <>
@@ -864,6 +866,7 @@ function DustMain() {
           {(filteredConversations.length > 0 || !searchText.trim()) && (
             <NavigationListCollapsibleSection
               label="Conversations"
+              type="collapse"
               defaultOpen={true}
               action={
                 <>
@@ -921,6 +924,7 @@ function DustMain() {
                     <NavigationListItem
                       key={conversation.id}
                       label={conversation.title}
+                      selected={conversation.id === selectedConversationId}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
                         setSelectedConversationId(conversation.id);
@@ -936,6 +940,7 @@ function DustMain() {
                     <NavigationListItem
                       key={conversation.id}
                       label={conversation.title}
+                      selected={conversation.id === selectedConversationId}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
                         setSelectedConversationId(conversation.id);
@@ -951,6 +956,7 @@ function DustMain() {
                     <NavigationListItem
                       key={conversation.id}
                       label={conversation.title}
+                      selected={conversation.id === selectedConversationId}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
                         setSelectedConversationId(conversation.id);
@@ -966,6 +972,7 @@ function DustMain() {
                     <NavigationListItem
                       key={conversation.id}
                       label={conversation.title}
+                      selected={conversation.id === selectedConversationId}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
                         setSelectedConversationId(conversation.id);

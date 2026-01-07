@@ -22,6 +22,9 @@ import {
   Collapsible,
   CollapsibleTrigger,
   PlusIcon,
+  NavigationListCompactLabel,
+  ChatBubbleLeftRightIcon,
+  CheckIcon,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -209,38 +212,23 @@ export const CollapsibleSection = () => {
   );
 
   return (
-    <div className="s-dark:bg-muted-background-night s-flex s-h-[800px] s-w-[240px] s-flex-row s-border-r s-border-border s-bg-muted-background">
-      <NavigationList className="s-relative s-h-full s-w-full s-px-2 s-py-2 dark:s-bg-muted-background-night">
-        <NavigationListItem
-          icon={InboxIcon}
-          label="Inbox"
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-          }}
-        />
-        <NavigationListLabel label="Hello" />
+    <div className="s-dark:bg-muted-background-night s-flex s-h-[800px] s-w-[240px] s-flex-col s-border-r s-border-border s-bg-muted-background">
+      <NavigationList className="s-relative s-h-full s-w-full s-py-2 dark:s-bg-muted-background-night">
         <NavigationListCollapsibleSection
-          label="Agents"
-          defaultOpen={true}
+          label="Inbox"
+          className="s-border-b s-border-t s-border-border s-bg-background s-px-2 s-pb-2 dark:s-bg-background-night"
+          actionOnHover={false}
           action={
             <>
+              {/* <div className="s-heading-xs s-h-5 s-cursor-pointer s-px-2 s-text-muted-foreground hover:s-text-foreground">
+                Mark as read
+              </div> */}
               <Button
                 size="xmini"
-                icon={PlusIcon}
+                icon={CheckIcon}
                 variant="ghost"
                 aria-label="Add new item"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // Add action logic here
-                }}
-              />
-              <Button
-                size="xmini"
-                icon={MoreIcon}
-                variant="ghost"
-                aria-label="Add new item"
+                tooltip="Mark all as read"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -250,103 +238,215 @@ export const CollapsibleSection = () => {
             </>
           }
         >
-          {[
-            {
-              handle: "alex",
-              name: "Alex",
-              emoji: "🤖",
-              color: "s-bg-blue-300",
-            },
-            {
-              handle: "sam",
-              name: "Sam",
-              emoji: "🎨",
-              color: "s-bg-violet-300",
-            },
-            {
-              handle: "taylor",
-              name: "Taylor",
-              emoji: "🚀",
-              color: "s-bg-pink-300",
-            },
-            {
-              handle: "jordan",
-              name: "Jordan",
-              emoji: "⚡",
-              color: "s-bg-orange-300",
-            },
-            {
-              handle: "riley",
-              name: "Riley",
-              emoji: "🌟",
-              color: "s-bg-golden-300",
-            },
-            {
-              handle: "casey",
-              name: "Casey",
-              emoji: "💡",
-              color: "s-bg-emerald-300",
-            },
-          ].map((agent, index) => (
+          {getRandomTitles(4).map((title, index) => (
             <NavigationListItem
-              key={agent.handle}
-              href="#"
-              selected={false}
+              key={index}
+              href={index % 2 === 0 ? "#" : undefined}
+              selected={index === selectedIndex}
               onClick={(e) => {
-                e.preventDefault();
+                if (!e.defaultPrevented) {
+                  e.preventDefault();
+                  setSelectedIndex(index);
+                }
               }}
-              label={agent.name}
-              avatar={
-                <Avatar
-                  size="xxs"
-                  name={agent.handle}
-                  emoji={agent.emoji}
-                  backgroundColor={agent.color}
-                />
-              }
+              label={title}
               className="s-w-full"
+              moreMenu={getMoreMenu(title)}
             />
           ))}
         </NavigationListCollapsibleSection>
-        {conversationTitles.map((section, sectionIndex) => (
-          <>
-            <NavigationListCollapsibleSection
-              key={sectionIndex}
-              label={section.label}
-              defaultOpen={sectionIndex === 0}
-            >
-              {section.items.map((title, index) => {
-                const itemIndex = allItems.indexOf(title);
-                const getStatus = (idx: number) => {
-                  if (idx % 5 === 0) {
-                    return "unread";
-                  }
-                  if (idx % 3 === 0) {
-                    return "blocked";
-                  }
-                  return "idle";
-                };
-                return (
-                  <NavigationListItem
-                    key={index}
-                    href={index % 2 === 0 ? "#" : undefined}
-                    selected={itemIndex === selectedIndex}
-                    onClick={(e) => {
-                      if (!e.defaultPrevented) {
-                        e.preventDefault();
-                        setSelectedIndex(itemIndex);
-                      }
-                    }}
-                    label={title}
-                    className="s-w-full"
-                    moreMenu={getMoreMenu(title)}
-                    status={getStatus(index)}
+        <div className="s-px-2">
+          <NavigationListCollapsibleSection
+            label="Projects"
+            type="collapse"
+            defaultOpen={true}
+            action={
+              <>
+                <Button
+                  size="xmini"
+                  icon={PlusIcon}
+                  variant="ghost"
+                  aria-label="Add new item"
+                  tooltip="New Conversation"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Add action logic here
+                  }}
+                />
+                <Button
+                  size="xmini"
+                  icon={MoreIcon}
+                  variant="ghost"
+                  aria-label="Add new item"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Add action logic here
+                  }}
+                />
+              </>
+            }
+          >
+            <NavigationListItem
+              icon={PlusIcon}
+              label="Create Project"
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+              }}
+            />
+          </NavigationListCollapsibleSection>
+          <NavigationListCollapsibleSection
+            label="Conversations"
+            type="collapse"
+            defaultOpen={true}
+            action={
+              <>
+                <Button
+                  size="xmini"
+                  icon={ChatBubbleLeftRightIcon}
+                  variant="ghost"
+                  aria-label="Add new item"
+                  tooltip="New Conversation"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Add action logic here
+                  }}
+                />
+                <Button
+                  size="xmini"
+                  icon={MoreIcon}
+                  variant="ghost"
+                  aria-label="Add new item"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Add action logic here
+                  }}
+                />
+              </>
+            }
+          >
+            {conversationTitles.map((section, sectionIndex) => (
+              <>
+                <NavigationListCompactLabel
+                  key={sectionIndex}
+                  label={section.label}
+                />
+                {section.items.map((title, index) => {
+                  const itemIndex = allItems.indexOf(title);
+                  return (
+                    <NavigationListItem
+                      key={index}
+                      href={index % 2 === 0 ? "#" : undefined}
+                      selected={itemIndex === selectedIndex}
+                      onClick={(e) => {
+                        if (!e.defaultPrevented) {
+                          e.preventDefault();
+                          setSelectedIndex(itemIndex);
+                        }
+                      }}
+                      label={title}
+                      className="s-w-full"
+                      moreMenu={getMoreMenu(title)}
+                    />
+                  );
+                })}
+              </>
+            ))}
+          </NavigationListCollapsibleSection>
+          <NavigationListCollapsibleSection
+            label="Agents"
+            type="collapse"
+            defaultOpen={true}
+            action={
+              <>
+                <Button
+                  size="xmini"
+                  icon={PlusIcon}
+                  variant="ghost"
+                  aria-label="Add new item"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Add action logic here
+                  }}
+                />
+                <Button
+                  size="xmini"
+                  icon={MoreIcon}
+                  variant="ghost"
+                  aria-label="Add new item"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Add action logic here
+                  }}
+                />
+              </>
+            }
+          >
+            {[
+              {
+                handle: "alex",
+                name: "Alex",
+                emoji: "🤖",
+                color: "s-bg-blue-300",
+              },
+              {
+                handle: "sam",
+                name: "Sam",
+                emoji: "🎨",
+                color: "s-bg-violet-300",
+              },
+              {
+                handle: "taylor",
+                name: "Taylor",
+                emoji: "🚀",
+                color: "s-bg-pink-300",
+              },
+              {
+                handle: "jordan",
+                name: "Jordan",
+                emoji: "⚡",
+                color: "s-bg-orange-300",
+              },
+              {
+                handle: "riley",
+                name: "Riley",
+                emoji: "🌟",
+                color: "s-bg-golden-300",
+              },
+              {
+                handle: "casey",
+                name: "Casey",
+                emoji: "💡",
+                color: "s-bg-emerald-300",
+              },
+            ].map((agent, index) => (
+              <NavigationListItem
+                key={agent.handle}
+                href="#"
+                selected={false}
+                onClick={(e) => {
+                  e.preventDefault();
+                }}
+                label={agent.name}
+                avatar={
+                  <Avatar
+                    size="xxs"
+                    name={agent.handle}
+                    emoji={agent.emoji}
+                    backgroundColor={agent.color}
                   />
-                );
-              })}
-            </NavigationListCollapsibleSection>
-          </>
-        ))}
+                }
+                className="s-w-full"
+              />
+            ))}
+          </NavigationListCollapsibleSection>
+        </div>
       </NavigationList>
     </div>
   );

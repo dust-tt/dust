@@ -273,7 +273,7 @@ const variantCompactStyles = cva("", {
 });
 
 const compactLabelStyles = cva(
-  "s-flex s-px-2 s-py-1 s-text-[10px] s-font-semibold s-text-foreground s-pt-4 s-uppercase s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
+  "s-flex s-px-2 s-py-1 s-text-[10px] s-font-semibold s-text-foreground s-pt-3 s-uppercase s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
 );
 
 interface NavigationListCompactLabelProps
@@ -308,40 +308,80 @@ NavigationListCompactLabel.displayName = "NavigationListCompactLabel";
 interface NavigationListCollapsibleSectionProps extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   action?: React.ReactNode;
+  actionOnHover?: boolean;
   defaultOpen?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  type?: "static" | "collapse" | "collapseAndScroll";
+  variant?: "primary" | "secondary";
   children: React.ReactNode;
 }
 
-const collapseableStyles = cn(
-  "s-py-2 s-mt-2 s-px-2.5",
-  "s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
-  "s-box-border s-flex s-items-center s-w-full s-gap-1.5",
-  "s-cursor-pointer s-select-none",
-  "s-outline-none s-rounded-xl s-transition-colors s-duration-300",
-  "s-text-foreground dark:s-text-foreground-night",
-  "data-[disabled]:s-pointer-events-none",
-  "data-[disabled]:s-text-muted-foreground dark:data-[disabled]:s-text-muted-foreground-night",
-  "hover:s-text-foreground dark:hover:s-text-foreground-night",
-  "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
+const collapseableStyles = cva(
+  cn(
+    "s-py-2 s-mt-2 s-px-2.5",
+    "s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
+    "s-box-border s-flex s-items-center s-w-full s-gap-1.5",
+    "s-select-none",
+    "s-outline-none s-rounded-xl s-transition-colors s-duration-300",
+    "data-[disabled]:s-pointer-events-none",
+    "data-[disabled]:s-text-muted-foreground dark:data-[disabled]:s-text-muted-foreground-night"
+  ),
+  {
+    variants: {
+      variant: {
+        primary: "s-text-foreground dark:s-text-foreground-night",
+        secondary: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+      },
+      isCollapsible: {
+        true: cn(
+          "s-cursor-pointer",
+          "hover:s-text-foreground dark:hover:s-text-foreground-night",
+          "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
+        ),
+        false: "",
+      },
+    },
+    defaultVariants: {
+      variant: "primary",
+      isCollapsible: false,
+    },
+  }
 );
 
 const NavigationListCollapsibleSection = React.forwardRef<
   React.ElementRef<typeof Collapsible>,
   NavigationListCollapsibleSectionProps
->(({ label, action, children, className, ...props }) => {
-  return (
-    <Collapsible className={className} {...props}>
+>(
+  (
+    {
+      label,
+      action,
+      actionOnHover = true,
+      children,
+      className,
+      type = "static",
+      variant = "primary",
+      defaultOpen,
+      open,
+      onOpenChange,
+      ...props
+    },
+    ref
+  ) => {
+    const isCollapsible = type !== "static";
+    const labelElement = (
       <div className="s-group/menu-item s-relative">
-        <CollapsibleTrigger>
-          <div className={collapseableStyles}>{label}</div>
-        </CollapsibleTrigger>
+        <div className={collapseableStyles({ variant, isCollapsible })}>
+          {label}
+        </div>
         {action && (
           <div
             className={cn(
-              "s-absolute s-bottom-1 s-right-1.5 s-flex s-gap-1 s-opacity-0 s-transition-opacity",
-              "hover:s-opacity-100 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
+              "s-absolute s-bottom-1 s-right-1.5 s-flex s-gap-1 s-transition-opacity",
+              actionOnHover
+                ? "s-opacity-0 hover:s-opacity-100 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
+                : "s-opacity-100"
             )}
             onClick={(e) => {
               e.stopPropagation();
@@ -351,12 +391,53 @@ const NavigationListCollapsibleSection = React.forwardRef<
           </div>
         )}
       </div>
-      <CollapsibleContent>
-        <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-});
+    );
+
+    if (type === "static") {
+      return (
+        <div
+          ref={ref as React.Ref<HTMLDivElement>}
+          className={className}
+          {...props}
+        >
+          {labelElement}
+          <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
+        </div>
+      );
+    }
+
+    const collapsibleProps = {
+      defaultOpen,
+      open,
+      onOpenChange,
+      ...props,
+    };
+
+    if (type === "collapseAndScroll") {
+      return (
+        <Collapsible ref={ref} className={className} {...collapsibleProps}>
+          <CollapsibleTrigger asChild>{labelElement}</CollapsibleTrigger>
+          <CollapsibleContent>
+            <ScrollArea>
+              <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
+              <ScrollBar />
+            </ScrollArea>
+          </CollapsibleContent>
+        </Collapsible>
+      );
+    }
+
+    // type === "collapse" (default collapsible behavior)
+    return (
+      <Collapsible ref={ref} className={className} {...collapsibleProps}>
+        <CollapsibleTrigger asChild>{labelElement}</CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  }
+);
 
 NavigationListCollapsibleSection.displayName =
   "NavigationListCollapsibleSection";
