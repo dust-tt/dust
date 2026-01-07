@@ -35,10 +35,28 @@ async function runPsqlQuery(uri: string, query: string): Promise<Result<string, 
   return Ok(stdout.trim());
 }
 
+// Sentinel value for NULL fields - ensures psql outputs all columns even when NULL.
+// Without this, trailing NULLs get trimmed and field count becomes unpredictable.
+const NULL_SENTINEL = "__NULL__";
+
+function nullableField(value: string | undefined): string | null {
+  if (!value || value === NULL_SENTINEL) {
+    return null;
+  }
+  return value;
+}
+
 async function extractUser(postgresUri: string): Promise<Result<string[], CommandError>> {
+  // Use COALESCE with sentinel value to ensure all 10 fields are always present.
+  // psql doesn't output trailing tabs for NULL columns, and .trim() removes any
+  // remaining trailing whitespace, making field count unreliable without this.
   const query = `
-    SELECT u."sId", u.username, u.email, u.name, u."firstName", u."lastName",
-           u."workOSUserId", u.provider, u."providerId", u."imageUrl"
+    SELECT u."sId", u.username, u.email, u.name, u."firstName",
+           COALESCE(u."lastName", '${NULL_SENTINEL}'),
+           COALESCE(u."workOSUserId", '${NULL_SENTINEL}'),
+           COALESCE(u.provider, '${NULL_SENTINEL}'),
+           COALESCE(u."providerId", '${NULL_SENTINEL}'),
+           COALESCE(u."imageUrl", '${NULL_SENTINEL}')
     FROM users u
     WHERE u."workOSUserId" IS NOT NULL
     ORDER BY u."lastLoginAt" DESC NULLS LAST, u."createdAt" DESC
@@ -59,7 +77,7 @@ async function extractUser(postgresUri: string): Promise<Result<string[], Comman
   }
 
   const fields = result.value.split("\t");
-  if (fields.length < 10) {
+  if (fields.length !== 10) {
     return Err(new CommandError(`Unexpected user data format: ${result.value}`));
   }
 
@@ -140,11 +158,11 @@ export async function seedConfigCommand(postgresUri?: string): Promise<Result<vo
     email: f[2] ?? "",
     name: f[3] ?? "",
     firstName,
-    lastName: f[5] || null,
-    workOSUserId: f[6] || null,
-    provider: f[7] || null,
-    providerId: f[8] || null,
-    imageUrl: f[9] || null,
+    lastName: nullableField(f[5]),
+    workOSUserId: nullableField(f[6]),
+    provider: nullableField(f[7]),
+    providerId: nullableField(f[8]),
+    imageUrl: nullableField(f[9]),
     workspaceSId: workspace.sId,
     workspaceName: workspace.name,
     extractedAt: new Date().toISOString(),
