@@ -4,7 +4,6 @@ import {
   Card,
   CardActionButton,
   CardGrid,
-  ContentMessage,
   EmptyCTA,
   Hoverable,
   Spinner,
@@ -39,7 +38,6 @@ import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picke
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
-import { pluralize } from "@app/types";
 
 interface SkillCardProps {
   skill: AgentBuilderSkillsType;
@@ -287,41 +285,26 @@ export function AgentBuilderSkillsBlock() {
             <Spinner />
           </div>
         ) : hasCapabilitiesConfigured ? (
-          <>
-            {nonGlobalSpacesUsedInActions.length > 0 && (
-              <div className="mb-4 w-full">
-                <ContentMessage variant="golden" size="lg">
-                  Based on your selection, this agent can only be used by users
-                  with access to space
-                  {pluralize(nonGlobalSpacesUsedInActions.length)} :{" "}
-                  <strong>
-                    {nonGlobalSpacesUsedInActions.map((v) => v.name).join(", ")}
-                  </strong>
-                  .
-                </ContentMessage>
-              </div>
-            )}
-            <CardGrid>
-              {skillFields.map((field, index) => (
-                <SkillCard
-                  key={field.id}
-                  skill={field}
-                  onRemove={() => removeSkill(index)}
-                  onClick={() => {
-                    void fetchSkillWithRelations(field.sId);
-                  }}
-                />
-              ))}
-              {actionFields.map((field, index) => (
-                <ActionCard
-                  key={field.id}
-                  action={field}
-                  onRemove={() => removeAction(index)}
-                  onClick={() => handleActionEdit(field, index)}
-                />
-              ))}
-            </CardGrid>
-          </>
+          <CardGrid>
+            {skillFields.map((field, index) => (
+              <SkillCard
+                key={field.id}
+                skill={field}
+                onRemove={() => removeSkill(index)}
+                onClick={() => {
+                  void fetchSkillWithRelations(field.sId);
+                }}
+              />
+            ))}
+            {actionFields.map((field, index) => (
+              <ActionCard
+                key={field.id}
+                action={field}
+                onRemove={() => removeAction(index)}
+                onClick={() => handleActionEdit(field, index)}
+              />
+            ))}
+          </CardGrid>
         ) : (
           <EmptyCTA
             action={
