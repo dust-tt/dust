@@ -10,14 +10,14 @@ import {
   Spinner,
   TrashIcon,
 } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 import React, { useCallback, useState } from "react";
 
 import { getSpaceName } from "@app/lib/spaces";
 import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import { useDeleteSpace } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
-import { useRouter } from "next/router";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 interface DeleteSpaceDialogProps {
   owner: LightWorkspaceType;
