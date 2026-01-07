@@ -41,14 +41,14 @@ describe("environment", () => {
       expect(validateEnvName("test/feature").valid).toBe(false);
     });
 
-    it("rejects names longer than 32 characters", () => {
-      const longName = "a".repeat(33);
+    it("rejects names longer than 26 characters", () => {
+      const longName = "a".repeat(27);
       const result = validateEnvName(longName);
       expect(result.valid).toBe(false);
     });
 
-    it("accepts names exactly 32 characters", () => {
-      const maxName = "a".repeat(32);
+    it("accepts names exactly 26 characters", () => {
+      const maxName = "a".repeat(26);
       expect(validateEnvName(maxName).valid).toBe(true);
     });
   });
