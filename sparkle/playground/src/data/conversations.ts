@@ -1,5 +1,5 @@
 import { mockAgents } from "./agents";
-import type { Conversation } from "./types";
+import type { Conversation, Message } from "./types";
 import { mockUsers } from "./users";
 
 // Helper function to get random user IDs
@@ -372,5 +372,178 @@ export function getConversationsByAgentId(agentId: string): Conversation[] {
   return mockConversations.filter((conv) =>
     conv.agentParticipants.includes(agentId)
   );
+}
+
+/**
+ * Create conversations with messages for demo purposes
+ * @param locutorId - The current user's ID (Locutor)
+ * @returns Array of conversations with messages
+ */
+export function createConversationsWithMessages(
+  locutorId: string
+): Conversation[] {
+  const now = new Date();
+  const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+
+  // Get some users and agents for the conversations
+  const user1 = mockUsers.find((u) => u.id !== locutorId) || mockUsers[0];
+  const user2 = mockUsers.find((u) => u.id !== locutorId && u.id !== user1.id) || mockUsers[1];
+  const user3 = mockUsers.find((u) => u.id !== locutorId && u.id !== user1.id && u.id !== user2.id) || mockUsers[2];
+  const agent1 = mockAgents[0];
+  const agent2 = mockAgents[1];
+
+  // Conversation 1: Q4 Planning Discussion
+  const conv1Start = new Date(twoHoursAgo.getTime() - 3 * 60 * 60 * 1000);
+  const conv1Messages: Message[] = [
+    {
+      id: "msg-1-1",
+      content: "Hey team, let's discuss our Q4 planning. I've been reviewing the numbers and we need to prioritize our roadmap.",
+      timestamp: new Date(conv1Start.getTime() + 5 * 60 * 1000),
+      ownerId: locutorId,
+      ownerType: "user",
+      type: "user",
+    },
+    {
+      id: "msg-1-2",
+      content: "I agree. Based on the data I've analyzed, we should focus on the three high-impact features that align with our strategic goals.",
+      timestamp: new Date(conv1Start.getTime() + 12 * 60 * 1000),
+      ownerId: agent1.id,
+      ownerType: "agent",
+      type: "agent",
+    },
+    {
+      id: "msg-1-3",
+      content: "That makes sense. What about the mobile app improvements? I think those are critical for user retention.",
+      timestamp: new Date(conv1Start.getTime() + 18 * 60 * 1000),
+      ownerId: user1.id,
+      ownerType: "user",
+      type: "user",
+    },
+    {
+      id: "msg-1-4",
+      content: "Good point. The mobile engagement metrics show a 40% increase when we improve the UX. I recommend prioritizing that.",
+      timestamp: new Date(conv1Start.getTime() + 25 * 60 * 1000),
+      ownerId: agent1.id,
+      ownerType: "agent",
+      type: "agent",
+    },
+    {
+      id: "msg-1-5",
+      content: "Perfect. Let's schedule a follow-up meeting to finalize the timeline. Can everyone make it Thursday at 2pm?",
+      timestamp: new Date(conv1Start.getTime() + 32 * 60 * 1000),
+      ownerId: locutorId,
+      ownerType: "user",
+      type: "user",
+    },
+    {
+      id: "msg-1-6",
+      content: "I'm available. Should I prepare a detailed breakdown of the mobile improvements?",
+      timestamp: new Date(conv1Start.getTime() + 38 * 60 * 1000),
+      ownerId: user2.id,
+      ownerType: "user",
+      type: "user",
+    },
+    {
+      id: "msg-1-7",
+      content: "Yes, that would be helpful. I can also generate a comparison matrix of all proposed features with their expected ROI.",
+      timestamp: new Date(conv1Start.getTime() + 45 * 60 * 1000),
+      ownerId: agent1.id,
+      ownerType: "agent",
+      type: "agent",
+    },
+  ];
+
+  const conversation1: Conversation = {
+    id: "conv-with-msgs-1",
+    title: "Q4 Planning Discussion",
+    createdAt: conv1Start,
+    updatedAt: conv1Messages[conv1Messages.length - 1].timestamp,
+    userParticipants: [locutorId, user1.id, user2.id],
+    agentParticipants: [agent1.id],
+    messages: conv1Messages,
+  };
+
+  // Conversation 2: Product Feature Review
+  const conv2Start = new Date(yesterday.getTime() + 10 * 60 * 60 * 1000);
+  const conv2Messages: Message[] = [
+    {
+      id: "msg-2-1",
+      content: "I've been getting feedback about the new search feature. Users find it confusing. What do you think?",
+      timestamp: new Date(conv2Start.getTime() + 3 * 60 * 1000),
+      ownerId: user3.id,
+      ownerType: "user",
+      type: "user",
+    },
+    {
+      id: "msg-2-2",
+      content: "I've analyzed the user feedback and session recordings. The main issue is the search bar placement and lack of autocomplete suggestions.",
+      timestamp: new Date(conv2Start.getTime() + 8 * 60 * 1000),
+      ownerId: agent2.id,
+      ownerType: "agent",
+      type: "agent",
+    },
+    {
+      id: "msg-2-3",
+      content: "That aligns with what I've heard. Should we move it to the top navigation and add those suggestions?",
+      timestamp: new Date(conv2Start.getTime() + 15 * 60 * 1000),
+      ownerId: locutorId,
+      ownerType: "user",
+      type: "user",
+    },
+    {
+      id: "msg-2-4",
+      content: "Based on UX best practices, moving it to the top navigation would improve discoverability by 60%. I can draft a design proposal.",
+      timestamp: new Date(conv2Start.getTime() + 22 * 60 * 1000),
+      ownerId: agent2.id,
+      ownerType: "agent",
+      type: "agent",
+    },
+    {
+      id: "msg-2-5",
+      content: "Great! Let's also consider adding keyboard shortcuts. Power users would love that.",
+      timestamp: new Date(conv2Start.getTime() + 28 * 60 * 1000),
+      ownerId: user3.id,
+      ownerType: "user",
+      type: "user",
+    },
+    {
+      id: "msg-2-6",
+      content: "Excellent idea. Keyboard shortcuts can increase productivity by 30% for frequent users. I'll include that in the proposal.",
+      timestamp: new Date(conv2Start.getTime() + 35 * 60 * 1000),
+      ownerId: agent2.id,
+      ownerType: "agent",
+      type: "agent",
+    },
+    {
+      id: "msg-2-7",
+      content: "Perfect. Let's aim to have this ready for next week's sprint planning.",
+      timestamp: new Date(conv2Start.getTime() + 42 * 60 * 1000),
+      ownerId: locutorId,
+      ownerType: "user",
+      type: "user",
+    },
+    {
+      id: "msg-2-8",
+      content: "I'll create a task breakdown and estimate the effort required.",
+      timestamp: new Date(conv2Start.getTime() + 48 * 60 * 1000),
+      ownerId: agent2.id,
+      ownerType: "agent",
+      type: "agent",
+    },
+  ];
+
+  const conversation2: Conversation = {
+    id: "conv-with-msgs-2",
+    title: "Product Feature Review",
+    createdAt: conv2Start,
+    updatedAt: conv2Messages[conv2Messages.length - 1].timestamp,
+    userParticipants: [locutorId, user3.id],
+    agentParticipants: [agent2.id],
+    messages: conv2Messages,
+  };
+
+  return [conversation1, conversation2];
 }
 

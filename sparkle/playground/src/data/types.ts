@@ -15,6 +15,15 @@ export interface Agent {
   description: string;
 }
 
+export interface Message {
+  id: string;
+  content: string;
+  timestamp: Date;
+  ownerId: string; // user ID or agent ID
+  ownerType: "user" | "agent";
+  type: "user" | "agent"; // for ConversationMessage component
+}
+
 export interface Conversation {
   id: string;
   title: string;
@@ -22,6 +31,7 @@ export interface Conversation {
   updatedAt: Date;
   userParticipants: string[];
   agentParticipants: string[];
+  messages?: Message[];
 }
 
 export interface Space {

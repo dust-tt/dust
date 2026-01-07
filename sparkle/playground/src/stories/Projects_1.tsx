@@ -45,9 +45,12 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { ConversationView } from "../components/ConversationView";
+import { InputBar } from "../components/InputBar";
 import {
   type Agent,
   type Conversation,
+  createConversationsWithMessages,
   getAgentById,
   getRandomAgents,
   getRandomSpaces,
@@ -106,6 +109,12 @@ function DustMain() {
   const [user, setUser] = useState<User | null>(null);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
+  const [selectedConversationId, setSelectedConversationId] = useState<
+    string | null
+  >(null);
+  const [conversationsWithMessages, setConversationsWithMessages] = useState<
+    Conversation[]
+  >([]);
 
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -140,17 +149,26 @@ function DustMain() {
     const spaceCount = Math.floor(Math.random() * (9 - 3 + 1)) + 3;
     const randomSpaces = getRandomSpaces(spaceCount);
     setSpaces(randomSpaces);
+
+    // Create conversations with messages
+    const convsWithMessages = createConversationsWithMessages(randomUser.id);
+    setConversationsWithMessages(convsWithMessages);
   }, []);
+
+  // Combine mock conversations with conversations that have messages
+  const allConversations = useMemo(() => {
+    return [...conversationsWithMessages, ...mockConversations];
+  }, [conversationsWithMessages]);
 
   const filteredConversations = useMemo(() => {
     if (!searchText.trim()) {
-      return mockConversations;
+      return allConversations;
     }
     const lowerSearch = searchText.toLowerCase();
-    return mockConversations.filter((conv) =>
+    return allConversations.filter((conv) =>
       conv.title.toLowerCase().includes(lowerSearch)
     );
-  }, [searchText]);
+  }, [searchText, allConversations]);
 
   const groupedConversations = useMemo(() => {
     const today = new Date();
@@ -267,6 +285,14 @@ function DustMain() {
         space.description.toLowerCase().includes(lowerSearch)
     );
   }, [searchText, sortedSpaces]);
+
+  // Find selected conversation from all conversations
+  const selectedConversation = useMemo(() => {
+    if (!selectedConversationId) return null;
+    return (
+      allConversations.find((c) => c.id === selectedConversationId) || null
+    );
+  }, [selectedConversationId, allConversations]);
 
   const getConversationMoreMenu = (conversation: Conversation) => {
     const participants = getRandomParticipants(conversation);
@@ -897,8 +923,7 @@ function DustMain() {
                       label={conversation.title}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
-                        // Handle conversation click
-                        console.log("Selected conversation:", conversation.id);
+                        setSelectedConversationId(conversation.id);
                       }}
                     />
                   ))}
@@ -913,8 +938,7 @@ function DustMain() {
                       label={conversation.title}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
-                        // Handle conversation click
-                        console.log("Selected conversation:", conversation.id);
+                        setSelectedConversationId(conversation.id);
                       }}
                     />
                   ))}
@@ -929,8 +953,7 @@ function DustMain() {
                       label={conversation.title}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
-                        // Handle conversation click
-                        console.log("Selected conversation:", conversation.id);
+                        setSelectedConversationId(conversation.id);
                       }}
                     />
                   ))}
@@ -945,8 +968,7 @@ function DustMain() {
                       label={conversation.title}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
-                        // Handle conversation click
-                        console.log("Selected conversation:", conversation.id);
+                        setSelectedConversationId(conversation.id);
                       }}
                     />
                   ))}
@@ -960,15 +982,22 @@ function DustMain() {
   );
 
   // Main content
-  const mainContent = (
-    <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
-      <div className="s-text-center">
-        <p className="s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">
-          Select a conversation to view
-        </p>
+  const mainContent =
+    selectedConversation && user ? (
+      <ConversationView
+        conversation={selectedConversation}
+        locutor={user}
+        users={mockUsers}
+        agents={mockAgents}
+        conversationsWithMessages={conversationsWithMessages}
+      />
+    ) : (
+      <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
+        <div className="s-flex s-w-full s-max-w-3xl s-flex-col s-gap-8 s-px-4 s-py-8">
+          <InputBar placeholder="Ask a question" />
+        </div>
       </div>
-    </div>
-  );
+    );
 
   return (
     <div className="s-flex s-h-screen s-w-full s-bg-background">
