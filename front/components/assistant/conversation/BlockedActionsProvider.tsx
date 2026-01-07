@@ -22,7 +22,7 @@ type BlockedActionQueueItem = {
 };
 
 const EMPTY_BLOCKED_ACTIONS_QUEUE: BlockedActionQueueItem[] = [];
-const PULSE_DURATION_MS = 3000;
+const pulseDurationMs = 3000;
 
 type BlockedActionsContextType = {
   enqueueBlockedAction: (params: {
@@ -150,7 +150,7 @@ export function BlockedActionsProvider({
         return newSet;
       });
       pulseTimersRef.current.delete(actionId);
-    }, PULSE_DURATION_MS);
+    }, pulseDurationMs);
 
     pulseTimersRef.current.set(actionId, timer);
   }, []);

@@ -107,6 +107,18 @@ export const AgentInputBar = ({
   const showStopButton = generatingMessages.length > 0;
   const blockedActions = getBlockedActions(context.user.sId);
 
+  // Keep blockedActionIndex in sync when blockedActions array changes
+  useEffect(() => {
+    if (
+      blockedActionIndex >= blockedActions.length &&
+      blockedActions.length > 0
+    ) {
+      setBlockedActionIndex(blockedActions.length - 1);
+    } else if (blockedActions.length === 0) {
+      setBlockedActionIndex(0);
+    }
+  }, [blockedActionIndex, blockedActions.length]);
+
   const scrollToBottom = useCallback(() => {
     methods.scrollToItem({
       index: "LAST",
