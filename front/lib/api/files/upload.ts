@@ -3,7 +3,7 @@ import { isDustMimeType } from "@dust-tt/client";
 import ConvertAPI from "convertapi";
 import fs from "fs";
 import type { IncomingMessage } from "http";
-import probeImageSize from "probe-image-size";
+import imageSize from "image-size";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { fileSync } from "tmp";
@@ -150,10 +150,28 @@ const resizeAndUploadToFileStorage = async (
       version: "original",
     });
 
-    const dimensions = await probeImageSize(readStreamForProbe);
+    // Read first 32KB (sufficient for all image format headers)
+    const chunks: Buffer[] = [];
+    let totalSize = 0;
+    const maxBufferSize = 32 * 1024; // 32KB
 
-    // Destroy the stream after probing (it's consumed)
+    for await (const chunk of readStreamForProbe) {
+      chunks.push(chunk);
+      totalSize += chunk.length;
+      if (totalSize >= maxBufferSize) {
+        break;
+      }
+    }
+
+    // Destroy the stream after reading header
     readStreamForProbe.destroy();
+
+    const buffer = Buffer.concat(chunks);
+    const dimensions = imageSize(buffer);
+
+    if (!dimensions.width || !dimensions.height) {
+      throw new Error("Could not determine image dimensions");
+    }
 
     logger.info(
       {
@@ -166,7 +184,10 @@ const resizeAndUploadToFileStorage = async (
     );
 
     // Check if both dimensions are within limits
-    if (dimensions.width <= maxSizePixels && dimensions.height <= maxSizePixels) {
+    if (
+      dimensions.width <= maxSizePixels &&
+      dimensions.height <= maxSizePixels
+    ) {
       logger.info(
         {
           fileModelId: file.id,

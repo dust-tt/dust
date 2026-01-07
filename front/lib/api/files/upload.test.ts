@@ -1,9 +1,8 @@
-import probeImageSize from "probe-image-size";
-import { Readable } from "stream";
+import imageSize from "image-size";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock probe-image-size
-vi.mock("probe-image-size", () => ({
+// Mock image-size
+vi.mock("image-size", () => ({
   default: vi.fn(),
 }));
 
@@ -21,33 +20,33 @@ describe("Image dimension checking logic", () => {
     vi.clearAllMocks();
   });
 
-  describe("probe-image-size integration", () => {
-    it("should successfully probe dimensions from a stream", async () => {
+  describe("image-size integration", () => {
+    it("should successfully get dimensions from a buffer", () => {
       const mockDimensions = {
         width: 1000,
         height: 800,
         type: "jpg",
       };
 
-      vi.mocked(probeImageSize).mockResolvedValue(mockDimensions as any);
+      vi.mocked(imageSize).mockReturnValue(mockDimensions as any);
 
-      const mockStream = Readable.from(Buffer.from("fake image data"));
-      const result = await probeImageSize(mockStream);
+      const mockBuffer = Buffer.from("fake image data");
+      const result = imageSize(mockBuffer);
 
       expect(result.width).toBe(1000);
       expect(result.height).toBe(800);
-      expect(probeImageSize).toHaveBeenCalledWith(mockStream);
+      expect(imageSize).toHaveBeenCalledWith(mockBuffer);
     });
 
-    it("should handle probe errors gracefully", async () => {
+    it("should handle errors gracefully", () => {
       const mockError = new Error("Invalid image format");
-      vi.mocked(probeImageSize).mockRejectedValue(mockError);
+      vi.mocked(imageSize).mockImplementation(() => {
+        throw mockError;
+      });
 
-      const mockStream = Readable.from(Buffer.from("invalid data"));
+      const mockBuffer = Buffer.from("invalid data");
 
-      await expect(probeImageSize(mockStream)).rejects.toThrow(
-        "Invalid image format"
-      );
+      expect(() => imageSize(mockBuffer)).toThrow("Invalid image format");
     });
   });
 
@@ -135,79 +134,79 @@ describe("Image dimension checking logic", () => {
   });
 
   describe("Image format support", () => {
-    it("should handle JPEG images", async () => {
+    it("should handle JPEG images", () => {
       const mockDimensions = {
         width: 1200,
         height: 900,
         type: "jpg",
       };
 
-      vi.mocked(probeImageSize).mockResolvedValue(mockDimensions as any);
+      vi.mocked(imageSize).mockReturnValue(mockDimensions as any);
 
-      const mockStream = Readable.from(Buffer.from("fake jpeg"));
-      const result = await probeImageSize(mockStream);
+      const mockBuffer = Buffer.from("fake jpeg");
+      const result = imageSize(mockBuffer);
 
       expect(result.type).toBe("jpg");
     });
 
-    it("should handle PNG images", async () => {
+    it("should handle PNG images", () => {
       const mockDimensions = {
         width: 800,
         height: 600,
         type: "png",
       };
 
-      vi.mocked(probeImageSize).mockResolvedValue(mockDimensions as any);
+      vi.mocked(imageSize).mockReturnValue(mockDimensions as any);
 
-      const mockStream = Readable.from(Buffer.from("fake png"));
-      const result = await probeImageSize(mockStream);
+      const mockBuffer = Buffer.from("fake png");
+      const result = imageSize(mockBuffer);
 
       expect(result.type).toBe("png");
     });
 
-    it("should handle WebP images", async () => {
+    it("should handle WebP images", () => {
       const mockDimensions = {
         width: 1000,
         height: 1000,
         type: "webp",
       };
 
-      vi.mocked(probeImageSize).mockResolvedValue(mockDimensions as any);
+      vi.mocked(imageSize).mockReturnValue(mockDimensions as any);
 
-      const mockStream = Readable.from(Buffer.from("fake webp"));
-      const result = await probeImageSize(mockStream);
+      const mockBuffer = Buffer.from("fake webp");
+      const result = imageSize(mockBuffer);
 
       expect(result.type).toBe("webp");
     });
 
-    it("should handle GIF images", async () => {
+    it("should handle GIF images", () => {
       const mockDimensions = {
         width: 500,
         height: 500,
         type: "gif",
       };
 
-      vi.mocked(probeImageSize).mockResolvedValue(mockDimensions as any);
+      vi.mocked(imageSize).mockReturnValue(mockDimensions as any);
 
-      const mockStream = Readable.from(Buffer.from("fake gif"));
-      const result = await probeImageSize(mockStream);
+      const mockBuffer = Buffer.from("fake gif");
+      const result = imageSize(mockBuffer);
 
       expect(result.type).toBe("gif");
     });
   });
 
   describe("Edge cases", () => {
-    it("should handle very large images", async () => {
+    it("should handle very large images", () => {
       const mockDimensions = {
         width: 4000,
         height: 3000,
         type: "jpg",
       };
 
-      vi.mocked(probeImageSize).mockResolvedValue(mockDimensions as any);
+      vi.mocked(imageSize).mockReturnValue(mockDimensions as any);
 
-      const mockStream = Readable.from(Buffer.from("large image"));
-      const result = await probeImageSize(mockStream);
+      const mockBuffer = Buffer.from("large image");
+      const result = imageSize(mockBuffer);
 
       const MAX_SIZE = 1538;
       const needsResize = result.width > MAX_SIZE || result.height > MAX_SIZE;
@@ -215,17 +214,17 @@ describe("Image dimension checking logic", () => {
       expect(needsResize).toBe(true);
     });
 
-    it("should handle very small images", async () => {
+    it("should handle very small images", () => {
       const mockDimensions = {
         width: 100,
         height: 100,
         type: "png",
       };
 
-      vi.mocked(probeImageSize).mockResolvedValue(mockDimensions as any);
+      vi.mocked(imageSize).mockReturnValue(mockDimensions as any);
 
-      const mockStream = Readable.from(Buffer.from("tiny image"));
-      const result = await probeImageSize(mockStream);
+      const mockBuffer = Buffer.from("tiny image");
+      const result = imageSize(mockBuffer);
 
       const MAX_SIZE = 1538;
       const needsResize = result.width > MAX_SIZE || result.height > MAX_SIZE;
@@ -233,56 +232,59 @@ describe("Image dimension checking logic", () => {
       expect(needsResize).toBe(false);
     });
 
-    it("should handle portrait orientation images", async () => {
+    it("should handle portrait orientation images", () => {
       const mockDimensions = {
         width: 800,
         height: 1200,
         type: "jpg",
       };
 
-      vi.mocked(probeImageSize).mockResolvedValue(mockDimensions as any);
+      vi.mocked(imageSize).mockReturnValue(mockDimensions as any);
 
-      const mockStream = Readable.from(Buffer.from("portrait image"));
-      const result = await probeImageSize(mockStream);
+      const mockBuffer = Buffer.from("portrait image");
+      const result = imageSize(mockBuffer);
 
       const MAX_SIZE = 1538;
-      const isWithinLimits = result.width <= MAX_SIZE && result.height <= MAX_SIZE;
+      const isWithinLimits =
+        result.width <= MAX_SIZE && result.height <= MAX_SIZE;
 
       expect(isWithinLimits).toBe(true);
     });
 
-    it("should handle landscape orientation images", async () => {
+    it("should handle landscape orientation images", () => {
       const mockDimensions = {
         width: 1200,
         height: 800,
         type: "jpg",
       };
 
-      vi.mocked(probeImageSize).mockResolvedValue(mockDimensions as any);
+      vi.mocked(imageSize).mockReturnValue(mockDimensions as any);
 
-      const mockStream = Readable.from(Buffer.from("landscape image"));
-      const result = await probeImageSize(mockStream);
+      const mockBuffer = Buffer.from("landscape image");
+      const result = imageSize(mockBuffer);
 
       const MAX_SIZE = 1538;
-      const isWithinLimits = result.width <= MAX_SIZE && result.height <= MAX_SIZE;
+      const isWithinLimits =
+        result.width <= MAX_SIZE && result.height <= MAX_SIZE;
 
       expect(isWithinLimits).toBe(true);
     });
 
-    it("should handle square images", async () => {
+    it("should handle square images", () => {
       const mockDimensions = {
         width: 1500,
         height: 1500,
         type: "jpg",
       };
 
-      vi.mocked(probeImageSize).mockResolvedValue(mockDimensions as any);
+      vi.mocked(imageSize).mockReturnValue(mockDimensions as any);
 
-      const mockStream = Readable.from(Buffer.from("square image"));
-      const result = await probeImageSize(mockStream);
+      const mockBuffer = Buffer.from("square image");
+      const result = imageSize(mockBuffer);
 
       const MAX_SIZE = 1538;
-      const isWithinLimits = result.width <= MAX_SIZE && result.height <= MAX_SIZE;
+      const isWithinLimits =
+        result.width <= MAX_SIZE && result.height <= MAX_SIZE;
 
       expect(isWithinLimits).toBe(true);
     });
