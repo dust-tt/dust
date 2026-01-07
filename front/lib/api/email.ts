@@ -5,11 +5,10 @@
 import sgMail from "@sendgrid/mail";
 
 import config from "@app/lib/api/config";
+import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
-
-import { FREE_TRIAL_PHONE_PLAN_CODE } from "../plans/plan_codes";
 
 let sgMailClient: typeof sgMail | null = null;
 
