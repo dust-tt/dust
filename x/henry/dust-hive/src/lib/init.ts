@@ -102,30 +102,55 @@ async function initPostgres(envVars: Record<string, string>): Promise<void> {
   }
 }
 
-// Initialize Qdrant collections
+// Initialize Qdrant collections with retry logic
+// The Rust binary creates 24 shard keys sequentially, which can timeout.
+// Retrying is safe because the binary is idempotent (skips existing shard keys).
 async function initQdrant(
   worktreePath: string,
   envVars: Record<string, string>
 ): Promise<{ success: boolean; usedCache: boolean }> {
-  const result = await runBinary(
-    "qdrant_create_collection",
-    ["--cluster", "cluster-0", "--provider", "openai", "--model", "text-embedding-3-large-1536"],
-    {
-      cwd: `${worktreePath}/core`,
-      env: envVars,
+  const maxRetries = 3;
+  const baseDelayMs = 2000;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const result = await runBinary(
+      "qdrant_create_collection",
+      ["--cluster", "cluster-0", "--provider", "openai", "--model", "text-embedding-3-large-1536"],
+      {
+        cwd: `${worktreePath}/core`,
+        env: envVars,
+      }
+    );
+
+    // Treat "already exists" as success (idempotent)
+    const alreadyExists =
+      result.stderr.includes("already exists") || result.stdout.includes("already exists");
+
+    if (result.success || alreadyExists) {
+      return { success: true, usedCache: result.usedCache };
     }
-  );
 
-  // Treat "already exists" as success (idempotent)
-  const alreadyExists =
-    result.stderr.includes("already exists") || result.stdout.includes("already exists");
+    // Check if it's a timeout error - worth retrying
+    const isTimeout =
+      result.stderr.includes("Timeout expired") ||
+      result.stderr.includes("operation was cancelled");
 
-  if (!(result.success || alreadyExists)) {
+    if (isTimeout && attempt < maxRetries) {
+      const delay = baseDelayMs * attempt;
+      logger.warn(
+        `Qdrant init timed out (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      continue;
+    }
+
+    // Non-timeout error or final attempt - fail
     console.log(result.stdout);
     console.error(result.stderr);
+    return { success: false, usedCache: result.usedCache };
   }
 
-  return { success: result.success || alreadyExists, usedCache: result.usedCache };
+  return { success: false, usedCache: false };
 }
 
 // Initialize Elasticsearch indices (Rust binaries)
