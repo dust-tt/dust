@@ -231,6 +231,30 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     expect(res._getJSONData().error.message).toContain("Invalid MCP server");
   });
 
+  it("should return 404 when MCP server views not found", async () => {
+    const { req, res } = await setupTest({
+      requestUserRole: "admin",
+      method: "PATCH",
+    });
+
+    req.body = {
+      name: "Updated Skill",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
+      instructions: "Instructions",
+      icon: null,
+      tools: [{ mcpServerViewId: "msv_nonexistent123456" }],
+      attachedKnowledge: [],
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData().error.type).toBe("invalid_request_error");
+    expect(res._getJSONData().error.message).toContain(
+      "MCP server views not all found"
+    );
+  });
+
   it("should return 400 for invalid request body", async () => {
     const { req, res } = await setupTest({
       requestUserRole: "admin",
