@@ -112,8 +112,9 @@ cli
 cli
   .command("open [name]", "Open environment's zellij session")
   .alias("o")
-  .action(async (name: string | undefined) => {
-    await prepareAndRun(openCommand(name));
+  .option("-c, --compact", "Use compact zellij layout (no tab bar)")
+  .action(async (name: string | undefined, options: { compact?: boolean }) => {
+    await prepareAndRun(openCommand(name, { compact: options.compact }));
   });
 
 cli
