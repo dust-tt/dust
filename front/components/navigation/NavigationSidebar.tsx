@@ -319,19 +319,13 @@ function getTrialDaysRemainingVariant(
   startDate: number | null,
   endDate: number
 ): "success" | "warning" | "danger" {
-  if (!startDate) {
-    // If no start date, default to warning
-    return "warning";
-  }
-
-  const now = Date.now();
   const totalDurationMs = endDate - startDate;
-  const remainingMs = endDate - now;
+  const remainingMs = endDate - Date.now();
   const remainingPercentage = remainingMs / totalDurationMs;
 
-  if (remainingPercentage > 0.5) {
+  if (remainingPercentage > 0.4) {
     return "success";
-  } else if (remainingPercentage > 0.2) {
+  } else if (remainingPercentage > 0.1) {
     return "warning";
   } else {
     return "danger";
