@@ -91,6 +91,7 @@ export const RemovableChip: Story = {
         size="mini"
         color="golden"
         label="Remove me"
+        href="https://notion.so"
         onRemove={() => alert("Removed")}
       />
       <Chip
