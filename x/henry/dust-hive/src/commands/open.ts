@@ -54,6 +54,14 @@ const TAB_TEMPLATE = `    default_tab_template {
         children
     }`;
 
+// Compact tab template: bar at bottom with session name, mode, and tabs
+const TAB_TEMPLATE_COMPACT = `    default_tab_template {
+        children
+        pane size=1 borderless=true {
+            plugin location="zellij:compact-bar"
+        }
+    }`;
+
 // Unified watch script content - handles both env services and temporal
 // Usage: watch-logs.sh --temporal
 //        watch-logs.sh <env-name> <service>
@@ -182,8 +190,8 @@ function generateLayout(
     generateServiceTab(envName, service, watchScriptPath)
   ).join("\n\n");
 
-  // When compact mode is enabled, skip the tab template (no tab bar)
-  const tabTemplate = compact ? "" : TAB_TEMPLATE;
+  // When compact mode is enabled, use bottom bar; otherwise use top bar
+  const tabTemplate = compact ? TAB_TEMPLATE_COMPACT : TAB_TEMPLATE;
 
   return `layout {
 ${tabTemplate}
