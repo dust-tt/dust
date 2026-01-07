@@ -3,9 +3,10 @@ import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 
-const OPERATIONS = ["stop", "refresh", "refresh-region"] as const;
+const OPERATIONS = ["stop", "refresh"] as const;
 type Operation = (typeof OPERATIONS)[number];
 
 function isOperation(value: string): value is Operation {
@@ -90,69 +91,72 @@ makeScript(
         continue;
       }
 
-      for (const trigger of triggersByWorkspace[workspace.id]) {
-        const triggerResource = new TriggerResource(
-          TriggerModel,
-          trigger.get()
-        );
-        const user = await UserResource.fetchByModelId(triggerResource.editor);
-
-        if (!user) {
-          logger.error(
-            {
-              triggerId: triggerResource.sId,
-              triggerName: triggerResource.name,
-            },
-            "Trigger editor user not found"
+      await concurrentExecutor(
+        triggersByWorkspace[workspace.id],
+        async (trigger) => {
+          const triggerResource = new TriggerResource(
+            TriggerModel,
+            trigger.get()
           );
-          continue;
-        }
+          const user = await UserResource.fetchByModelId(
+            triggerResource.editor
+          );
 
-        const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
-          user.sId,
-          workspace.sId
-        );
-
-        if (execute) {
-          switch (operation) {
-            case "stop":
-              await triggerResource.disable(editorAuth);
-              logger.info(
-                {
-                  triggerId: triggerResource.sId,
-                  triggerName: triggerResource.name,
-                },
-                "Trigger disabled"
-              );
-              break;
-
-            case "refresh":
-              // Disable then re-enable to refresh the temporal workflow.
-              await triggerResource.disable(editorAuth);
-              await triggerResource.enable(editorAuth);
-              logger.info(
-                {
-                  triggerId: triggerResource.sId,
-                  triggerName: triggerResource.name,
-                },
-                "Trigger refreshed"
-              );
-              logger.info(
-                "----------------------------------------------------------------------------------------"
-              );
-              break;
+          if (!user) {
+            logger.error(
+              {
+                triggerId: triggerResource.sId,
+                triggerName: triggerResource.name,
+              },
+              "Trigger editor user not found"
+            );
+            return;
           }
-        } else {
-          const action = operation === "stop" ? "disable" : "refresh";
-          logger.info(
-            {
-              triggerId: triggerResource.sId,
-              triggerName: triggerResource.name,
-            },
-            `Would ${action} trigger (dry run)`
+
+          const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+            user.sId,
+            workspace.sId
           );
-        }
-      }
+
+          if (execute) {
+            switch (operation) {
+              case "stop":
+                await triggerResource.disable(editorAuth);
+                logger.info(
+                  {
+                    triggerId: triggerResource.sId,
+                    triggerName: triggerResource.name,
+                  },
+                  "Trigger disabled"
+                );
+                break;
+
+              case "refresh":
+                // Disable then re-enable to refresh the temporal workflow.
+                await triggerResource.disable(editorAuth);
+                await triggerResource.enable(editorAuth);
+                logger.info(
+                  {
+                    triggerId: triggerResource.sId,
+                    triggerName: triggerResource.name,
+                  },
+                  "Trigger refreshed"
+                );
+                break;
+            }
+          } else {
+            const action = operation === "stop" ? "disable" : "refresh";
+            logger.info(
+              {
+                triggerId: triggerResource.sId,
+                triggerName: triggerResource.name,
+              },
+              `Would ${action} trigger (dry run)`
+            );
+          }
+        },
+        { concurrency: 10 }
+      );
     }
 
     logger.info({ operation, wid }, "Trigger maintenance completed");
