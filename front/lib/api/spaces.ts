@@ -6,15 +6,17 @@ import {
   getAgentConfigurations,
   updateAgentRequirements,
 } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
+import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -151,10 +153,22 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           });
           const [agentConfig] = agentConfigs;
 
+          let skills: SkillResource[] = [];
+          const featureFlags = await getFeatureFlags(
+            auth.getNonNullableWorkspace()
+          );
+          if (featureFlags.includes("skills")) {
+            skills = await SkillResource.listByAgentConfiguration(
+              auth,
+              agentConfig
+            );
+          }
+
           // Get the required group IDs from the agent's actions
           const requirements =
-            await getAgentConfigurationRequirementsFromActions(auth, {
+            await getAgentConfigurationRequirementsFromCapabilities(auth, {
               actions: agentConfig.actions,
+              skills,
               ignoreSpaces: [space],
             });
 

@@ -462,7 +462,7 @@ describe("SkillResource", () => {
       const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
 
       // Create a skill without space restrictions.
-      const skillResource = await SkillConfigurationFactory.create(
+      const skillResource = await SkillFactory.create(
         testContext.authenticator,
         { name: "Test Skill For Update" }
       );
@@ -472,7 +472,7 @@ describe("SkillResource", () => {
         testContext.authenticator,
         { name: "Test Agent With Skill" }
       );
-      await SkillConfigurationFactory.linkToAgent(testContext.authenticator, {
+      await SkillFactory.linkToAgent(testContext.authenticator, {
         skillId: skillResource.id,
         agentConfigurationId: agent.id,
       });

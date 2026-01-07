@@ -932,16 +932,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return;
     }
 
-    const skillSpaceIds = this.requestedSpaceIds.map((id) => Number(id));
-
     await concurrentExecutor(
       agents,
       async (agent) => {
-        const currentSpaceIds = agent.requestedSpaceIds.map((id) => Number(id));
-        const newSpaceIds = uniq([...currentSpaceIds, ...skillSpaceIds]);
+        const newSpaceIds = uniq([
+          ...agent.requestedSpaceIds,
+          ...this.requestedSpaceIds,
+        ]);
 
         // Only update if there are new spaces to add.
-        if (newSpaceIds.length > currentSpaceIds.length) {
+        if (newSpaceIds.length > agent.requestedSpaceIds.length) {
           await updateAgentRequirements(
             auth,
             {
