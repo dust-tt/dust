@@ -2,7 +2,19 @@
 
 import { cp, mkdir, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { ALL_BINARIES, buildBinaries, setCacheSource } from "../lib/cache";
+import {
+  ALL_BINARIES,
+  type Binary,
+  type SyncState,
+  binaryExists,
+  buildBinaries,
+  coreChangedBetweenCommits,
+  getHeadCommit,
+  getSyncState,
+  hashFile,
+  saveSyncState,
+  setCacheSource,
+} from "../lib/cache";
 import { directoryExists } from "../lib/fs";
 import { logger } from "../lib/logger";
 import { findRepoRoot } from "../lib/paths";
@@ -14,6 +26,12 @@ import {
   hasUncommittedChanges,
   isWorktree,
 } from "../lib/worktree";
+
+export interface SyncOptions {
+  force?: boolean;
+}
+
+type NpmDir = "sdks/js" | "front" | "connectors";
 
 // Pull latest from origin (with rebase)
 async function gitPull(repoRoot: string): Promise<{ success: boolean; error?: string }> {
@@ -95,16 +113,20 @@ async function installClaudeSkills(repoRoot: string): Promise<boolean> {
   return true;
 }
 
-export async function syncCommand(): Promise<Result<void>> {
-  const startTimeMs = Date.now();
-
-  // Find repo root
-  const repoRoot = await findRepoRoot();
-  if (!repoRoot) {
-    return Err(new CommandError("Not in a git repository. Run from within the Dust repo."));
+// Check if any binaries are missing
+async function checkMissingBinaries(repoRoot: string): Promise<Binary[]> {
+  const missing: Binary[] = [];
+  for (const binary of ALL_BINARIES) {
+    if (!(await binaryExists(repoRoot, binary))) {
+      missing.push(binary);
+    }
   }
+  return missing;
+}
 
-  // Precondition: Must be run from main repo, not a worktree
+// Check preconditions for sync command
+async function checkSyncPreconditions(repoRoot: string): Promise<Result<void>> {
+  // Must be run from main repo, not a worktree
   const inWorktree = await isWorktree(repoRoot);
   if (inWorktree) {
     const mainRepo = await getMainRepoPath(repoRoot);
@@ -113,7 +135,7 @@ export async function syncCommand(): Promise<Result<void>> {
     );
   }
 
-  // Precondition: Must be on main branch
+  // Must be on main branch
   const currentBranch = await getCurrentBranch(repoRoot);
   if (currentBranch !== "main") {
     return Err(
@@ -123,7 +145,7 @@ export async function syncCommand(): Promise<Result<void>> {
     );
   }
 
-  // Precondition: Must have clean working directory (ignoring untracked files)
+  // Must have clean working directory (ignoring untracked files)
   logger.step("Checking for uncommitted changes...");
   const hasChanges = await hasUncommittedChanges(repoRoot, { ignoreUntracked: true });
   if (hasChanges) {
@@ -133,33 +155,80 @@ export async function syncCommand(): Promise<Result<void>> {
   }
   logger.success("Working directory clean");
 
-  logger.info(`Syncing: ${repoRoot}`);
-  console.log();
+  return Ok(undefined);
+}
 
-  // Pull latest main
-  logger.step("Pulling latest main...");
-  const pullResult = await gitPull(repoRoot);
-  if (!pullResult.success) {
-    return Err(new CommandError(`Failed to pull: ${pullResult.error}`));
+// Determine which npm directories need updating based on lock file changes
+function getNpmDirsToUpdate(
+  npmDirs: { name: NpmDir; path: string }[],
+  npmHashes: { name: NpmDir; hash: string | null }[],
+  savedState: SyncState | null,
+  force: boolean
+): { name: NpmDir; path: string }[] {
+  if (force || !savedState) {
+    return [...npmDirs];
   }
-  logger.success("Pulled latest changes");
 
-  // Update cache source
-  await setCacheSource(repoRoot);
+  const dirsToUpdate: { name: NpmDir; path: string }[] = [];
+  for (const { name, hash } of npmHashes) {
+    const savedHash = savedState.npm[name];
+    if (hash !== savedHash) {
+      const dir = npmDirs.find((d) => d.name === name);
+      if (dir) {
+        dirsToUpdate.push(dir);
+      }
+    }
+  }
+  return dirsToUpdate;
+}
 
-  // Run npm install in all project directories (parallel)
+// Check if cargo build is needed
+async function checkNeedsCargoBuild(
+  repoRoot: string,
+  savedState: SyncState | null,
+  headAfterPull: string | null,
+  force: boolean
+): Promise<boolean> {
+  if (force || !savedState) {
+    return true;
+  }
+
+  // Check if core/ changed between last synced commit and current HEAD
+  if (headAfterPull && savedState.lastCommit) {
+    const coreChanged = await coreChangedBetweenCommits(
+      repoRoot,
+      savedState.lastCommit,
+      headAfterPull
+    );
+    if (coreChanged) {
+      return true;
+    }
+  }
+
+  // Check if any binaries are missing
+  const missingBinaries = await checkMissingBinaries(repoRoot);
+  if (missingBinaries.length > 0) {
+    logger.info(`Missing binaries: ${missingBinaries.join(", ")}`);
+    return true;
+  }
+
+  return false;
+}
+
+// Run npm install for directories and return error if any fail
+async function updateNpmDependencies(
+  npmDirsToUpdate: { name: NpmDir; path: string }[]
+): Promise<Result<void>> {
+  if (npmDirsToUpdate.length === 0) {
+    logger.info("Node dependencies up to date (no changes detected)");
+    return Ok(undefined);
+  }
+
   logger.step("Updating node dependencies...");
   console.log();
 
-  const npmDirs = [
-    { name: "sdks/js", path: `${repoRoot}/sdks/js` },
-    { name: "front", path: `${repoRoot}/front` },
-    { name: "connectors", path: `${repoRoot}/connectors` },
-  ];
-  const dustHiveDir = { name: "x/henry/dust-hive", path: `${repoRoot}/x/henry/dust-hive` };
-
   const results = await Promise.all(
-    npmDirs.map(async ({ name, path }) => {
+    npmDirsToUpdate.map(async ({ name, path }) => {
       logger.step(`  ${name}...`);
       const success = await runNpmInstall(path);
       if (success) {
@@ -176,30 +245,149 @@ export async function syncCommand(): Promise<Result<void>> {
     return Err(new CommandError(`npm install failed in: ${failed.map((r) => r.name).join(", ")}`));
   }
   console.log();
-  logger.success("All node dependencies installed");
+  logger.success(`Updated ${npmDirsToUpdate.length} node package(s)`);
+  return Ok(undefined);
+}
 
-  // Build all Rust binaries
+// Build Rust binaries if needed
+async function updateRustBinaries(repoRoot: string, needsBuild: boolean): Promise<Result<void>> {
+  if (!needsBuild) {
+    logger.info("Rust binaries up to date (no changes in core/)");
+    return Ok(undefined);
+  }
+
   logger.step("Building Rust binaries...");
   const buildResult = await buildBinaries(repoRoot, [...ALL_BINARIES]);
   if (!buildResult.success) {
     return Err(new CommandError(`Failed to build binaries: ${buildResult.failed.join(", ")}`));
   }
   logger.success(`Built ${buildResult.built.length} binaries`);
+  return Ok(undefined);
+}
 
-  // Install and link dust-hive globally
-  logger.step(`Installing ${dustHiveDir.name} dependencies...`);
-  const installSuccess = await runBunInstall(dustHiveDir.path);
+// Install and link dust-hive if needed
+async function updateDustHive(dustHivePath: string, needsInstall: boolean): Promise<Result<void>> {
+  if (!needsInstall) {
+    logger.info("dust-hive dependencies up to date (no changes detected)");
+    return Ok(undefined);
+  }
+
+  logger.step("Installing x/henry/dust-hive dependencies...");
+  const installSuccess = await runBunInstall(dustHivePath);
   if (!installSuccess) {
     return Err(new CommandError("Failed to run bun install for dust-hive"));
   }
-  logger.success(`${dustHiveDir.name} dependencies installed`);
+  logger.success("x/henry/dust-hive dependencies installed");
 
-  logger.step(`Linking ${dustHiveDir.name}...`);
-  const linkSuccess = await runBunLink(dustHiveDir.path);
+  logger.step("Linking x/henry/dust-hive...");
+  const linkSuccess = await runBunLink(dustHivePath);
   if (!linkSuccess) {
     return Err(new CommandError("Failed to run bun link for dust-hive"));
   }
   logger.success("dust-hive linked globally");
+  return Ok(undefined);
+}
+
+// Build new sync state from current hashes
+function buildSyncState(
+  npmHashes: { name: NpmDir; hash: string | null }[],
+  bunHash: string | null,
+  headAfterPull: string | null
+): SyncState {
+  const npmState: SyncState["npm"] = {};
+  for (const { name, hash } of npmHashes) {
+    if (hash) {
+      npmState[name] = hash;
+    }
+  }
+
+  const newState: SyncState = { npm: npmState };
+  if (bunHash) newState.bun = bunHash;
+  if (headAfterPull) newState.lastCommit = headAfterPull;
+  return newState;
+}
+
+export async function syncCommand(options: SyncOptions = {}): Promise<Result<void>> {
+  const startTimeMs = Date.now();
+  const force = options.force ?? false;
+
+  // Find repo root
+  const repoRoot = await findRepoRoot();
+  if (!repoRoot) {
+    return Err(new CommandError("Not in a git repository. Run from within the Dust repo."));
+  }
+
+  // Check preconditions
+  const preconditionResult = await checkSyncPreconditions(repoRoot);
+  if (!preconditionResult.ok) {
+    return preconditionResult;
+  }
+
+  logger.info(`Syncing: ${repoRoot}${force ? " (forced)" : ""}`);
+  console.log();
+
+  // Capture state before pull for change detection
+  const savedState = await getSyncState();
+
+  // Pull latest main
+  logger.step("Pulling latest main...");
+  const pullResult = await gitPull(repoRoot);
+  if (!pullResult.success) {
+    return Err(new CommandError(`Failed to pull: ${pullResult.error}`));
+  }
+  logger.success("Pulled latest changes");
+
+  // Update cache source
+  await setCacheSource(repoRoot);
+
+  // Get current commit after pull
+  const headAfterPull = await getHeadCommit(repoRoot);
+
+  // Define directories
+  const npmDirs: { name: NpmDir; path: string }[] = [
+    { name: "sdks/js", path: `${repoRoot}/sdks/js` },
+    { name: "front", path: `${repoRoot}/front` },
+    { name: "connectors", path: `${repoRoot}/connectors` },
+  ];
+  const dustHiveDir = `${repoRoot}/x/henry/dust-hive`;
+
+  // Hash all lock files in parallel
+  const [npmHashes, bunHash] = await Promise.all([
+    Promise.all(
+      npmDirs.map(async ({ name, path }) => ({
+        name,
+        hash: await hashFile(`${path}/package-lock.json`),
+      }))
+    ),
+    hashFile(`${dustHiveDir}/bun.lockb`),
+  ]);
+
+  // Determine what needs updating
+  const npmDirsToUpdate = getNpmDirsToUpdate(npmDirs, npmHashes, savedState, force);
+  const needsCargoBuild = await checkNeedsCargoBuild(repoRoot, savedState, headAfterPull, force);
+  const needsBunInstall = force || !savedState || bunHash !== savedState.bun;
+
+  // Run npm install for changed directories
+  const npmResult = await updateNpmDependencies(npmDirsToUpdate);
+  if (!npmResult.ok) {
+    return npmResult;
+  }
+
+  // Build Rust binaries if needed
+  const rustResult = await updateRustBinaries(repoRoot, needsCargoBuild);
+  if (!rustResult.ok) {
+    return rustResult;
+  }
+
+  // Install and link dust-hive if needed
+  const dustHiveResult = await updateDustHive(dustHiveDir, needsBunInstall);
+  if (!dustHiveResult.ok) {
+    return dustHiveResult;
+  }
+
+  // Save new sync state
+  const newState = buildSyncState(npmHashes, bunHash, headAfterPull);
+  await saveSyncState(newState);
 
   // Install Claude Code skills and commands
   logger.step("Installing Claude Code skills...");
@@ -209,9 +397,9 @@ export async function syncCommand(): Promise<Result<void>> {
   }
   logger.success("Claude Code skills installed");
 
-  const elapsed = ((Date.now() - startTimeMs) / 1000).toFixed(1);
+  const elapsedSec = ((Date.now() - startTimeMs) / 1000).toFixed(1);
   console.log();
-  logger.success(`Sync complete! (${elapsed}s)`);
+  logger.success(`Sync complete! (${elapsedSec}s)`);
   console.log();
   console.log("Dependencies and binaries are up to date.");
   console.log();

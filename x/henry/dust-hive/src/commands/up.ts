@@ -13,6 +13,7 @@ import { syncCommand } from "./sync";
 
 interface UpOptions {
   attach?: boolean;
+  force?: boolean;
 }
 
 // Check preconditions for managed services mode
@@ -69,7 +70,7 @@ export async function upCommand(options: UpOptions = {}): Promise<Result<void>> 
   // Run sync first
   logger.step("Running sync...");
   console.log();
-  const syncResult = await syncCommand();
+  const syncResult = await syncCommand(options.force ? { force: true } : {});
   if (!syncResult.ok) {
     return syncResult;
   }
