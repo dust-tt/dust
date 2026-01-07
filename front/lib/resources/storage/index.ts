@@ -42,7 +42,8 @@ types.setTypeParser(INT8_OID, parseBigIntToSafeNumber);
 
 // Override parser for BIGINT arrays.
 // By default, pg-types returns arrays of strings for BIGINT[].
-// We get the default array parser, then map each element through our safe number parser to ensure all values are validated and converted to JavaScript numbers.
+// We get the default array parser, then map each element through our safe
+// number parser to ensure all values are validated and converted to JavaScript numbers.
 const parseBigIntegerArray = types.getTypeParser(INT8_ARRAY_OID);
 types.setTypeParser(INT8_ARRAY_OID, (val: string) =>
   parseBigIntegerArray(val).map(parseBigIntToSafeNumber)
