@@ -148,15 +148,21 @@ function generateServiceTab(
     }`;
 }
 
+interface LayoutOptions {
+  warmCommand?: string | undefined;
+  initialCommand?: string | undefined;
+  compact?: boolean | undefined;
+}
+
 // Generate zellij layout for an environment
 function generateLayout(
   envName: string,
   worktreePath: string,
   envShPath: string,
   watchScriptPath: string,
-  warmCommand?: string,
-  initialCommand?: string
+  options: LayoutOptions = {}
 ): string {
+  const { warmCommand, initialCommand, compact } = options;
   const shellPath = getUserShell();
   // If initialCommand is provided, run it first then drop to shell on exit
   const shellCommand = initialCommand
@@ -176,8 +182,11 @@ function generateLayout(
     generateServiceTab(envName, service, watchScriptPath)
   ).join("\n\n");
 
+  // When compact mode is enabled, skip the tab template (no tab bar)
+  const tabTemplate = compact ? "" : TAB_TEMPLATE;
+
   return `layout {
-${TAB_TEMPLATE}
+${tabTemplate}
 
     tab name="${kdlEscape(envName)}" focus=true {
         pane {
@@ -199,29 +208,22 @@ async function writeLayout(
   worktreePath: string,
   envShPath: string,
   watchScriptPath: string,
-  warmCommand?: string,
-  initialCommand?: string
+  options: LayoutOptions = {}
 ): Promise<string> {
   await mkdir(DUST_HIVE_ZELLIJ, { recursive: true });
 
   const layoutPath = getZellijLayoutPath();
-  const content = generateLayout(
-    envName,
-    worktreePath,
-    envShPath,
-    watchScriptPath,
-    warmCommand,
-    initialCommand
-  );
+  const content = generateLayout(envName, worktreePath, envShPath, watchScriptPath, options);
   await Bun.write(layoutPath, content);
 
   return layoutPath;
 }
 
 interface OpenOptions {
-  warmCommand?: string;
-  noAttach?: boolean;
-  initialCommand?: string;
+  warmCommand?: string | undefined;
+  noAttach?: boolean | undefined;
+  initialCommand?: string | undefined;
+  compact?: boolean | undefined;
 }
 
 // Check if a zellij session exists
@@ -290,14 +292,11 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     const sessionExists = await checkSessionExists(sessionName);
     if (!sessionExists) {
       const watchScriptPath = await ensureWatchScript();
-      const layoutPath = await writeLayout(
-        env.name,
-        worktreePath,
-        envShPath,
-        watchScriptPath,
-        options.warmCommand,
-        options.initialCommand
-      );
+      const layoutPath = await writeLayout(env.name, worktreePath, envShPath, watchScriptPath, {
+        warmCommand: options.warmCommand,
+        initialCommand: options.initialCommand,
+        compact: options.compact,
+      });
       await createSessionInBackground(sessionName, layoutPath);
     }
 
@@ -347,14 +346,11 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     await proc.exited;
   } else {
     // Create new session with layout
-    const layoutPath = await writeLayout(
-      env.name,
-      worktreePath,
-      envShPath,
-      watchScriptPath,
-      options.warmCommand,
-      options.initialCommand
-    );
+    const layoutPath = await writeLayout(env.name, worktreePath, envShPath, watchScriptPath, {
+      warmCommand: options.warmCommand,
+      initialCommand: options.initialCommand,
+      compact: options.compact,
+    });
 
     if (options.noAttach) {
       await createSessionInBackground(sessionName, layoutPath);
