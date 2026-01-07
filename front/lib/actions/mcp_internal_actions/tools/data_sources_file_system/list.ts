@@ -1,3 +1,4 @@
+import { isDustMimeType } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -60,6 +61,15 @@ export function registerListTool(
         sortBy,
         nextPageCursor,
       }) => {
+        const invalidMimeTypes = mimeTypes?.filter((m) => !isDustMimeType(m));
+        if (invalidMimeTypes && invalidMimeTypes.length > 0) {
+          return new Err(
+            new MCPError(`Invalid mime types: ${invalidMimeTypes.join(", ")}`, {
+              tracked: false,
+            })
+          );
+        }
+
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const fetchResult = await getAgentDataSourceConfigurations(
           auth,
