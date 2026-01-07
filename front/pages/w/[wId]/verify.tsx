@@ -1,4 +1,5 @@
 import { Button, DustLogoSquare, Page } from "@dust-tt/sparkle";
+import type { IncomingMessage } from "http";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -7,9 +8,8 @@ import type { Country } from "react-phone-number-input";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput";
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
-import config from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
-import { untrustedFetch } from "@app/lib/egress/server";
+import { resolveCountryCode } from "@app/lib/geo/eu-detection";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial/index";
 import {
@@ -23,34 +23,18 @@ import { isString } from "@app/types";
 
 type Step = "phone" | "code";
 
-async function detectCountryFromIP(
-  ip: string | undefined
-): Promise<Country | undefined> {
-  if (!ip || ip === "::1" || ip === "127.0.0.1" || ip.startsWith("192.168.")) {
-    return "US";
-  }
-
+async function detectCountryFromIP(req: IncomingMessage): Promise<Country> {
   try {
-    const token = config.getIPInfoApiToken();
+    // Detect country from IP
+    const { "x-forwarded-for": forwarded } = req.headers;
+    const ip = isString(forwarded)
+      ? forwarded.split(",")[0].trim()
+      : req.socket.remoteAddress;
 
-    const response = await untrustedFetch(
-      `https://api.ipinfo.io/lite/${ip}?token=${token}`
-    );
-
-    if (!response.ok) {
-      logger.error(
-        {
-          status: response.status,
-          statusText: response.statusText,
-          ip,
-        },
-        "Failed to fetch geolocation data from IPinfo"
-      );
+    if (!ip) {
       return "US";
     }
-
-    const data = (await response.json()) as { country_code: Country };
-    return data.country_code;
+    return (await resolveCountryCode(ip)) as Country;
   } catch (error) {
     logger.error({ error }, "Error detecting country from IP");
     return "US";
@@ -71,13 +55,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     return { notFound: true };
   }
 
-  // Detect country from IP
-  const { "x-forwarded-for": forwarded } = context.req.headers;
-  const ip = isString(forwarded)
-    ? forwarded.split(",")[0].trim()
-    : context.req.socket.remoteAddress;
-
-  const initialCountryCode = (await detectCountryFromIP(ip)) ?? "US";
+  const initialCountryCode = await detectCountryFromIP(context.req);
   return { props: { owner, initialCountryCode } };
 });
 
@@ -301,9 +279,6 @@ function PhoneInputStep({
 
               <div className="flex w-full max-w-xl flex-col gap-4">
                 <div className="flex w-full flex-col gap-2">
-                  <label className="text-sm font-medium text-foreground dark:text-foreground-night">
-                    Phone number
-                  </label>
                   <PhoneNumberInput
                     phoneNumber={phoneNumber}
                     countryCode={countryCode}
