@@ -51,31 +51,39 @@ async function symlinkCargoTarget(srcDir: string, destDir: string): Promise<void
 }
 
 // Find all AGENTS.local.md files in the repo (excluding node_modules and other large dirs)
+// Uses -prune to skip entire directory trees rather than filtering after traversal
 async function findAgentsLocalFiles(srcDir: string): Promise<string[]> {
   const proc = Bun.spawn(
     [
       "find",
       srcDir,
+      // Prune large directories (skips traversal entirely, much faster than -not -path)
+      "-type",
+      "d",
+      "(",
+      "-name",
+      "node_modules",
+      "-o",
+      "-name",
+      ".git",
+      "-o",
+      "-name",
+      "target",
+      "-o",
+      "-name",
+      ".next",
+      "-o",
+      "-name",
+      ".turbo",
+      ")",
+      "-prune",
+      "-o",
+      // Find AGENTS.local.md files
       "-name",
       "AGENTS.local.md",
       "-type",
       "f",
-      // Exclude large directories that shouldn't contain user config files
-      "-not",
-      "-path",
-      "*/node_modules/*",
-      "-not",
-      "-path",
-      "*/.git/*",
-      "-not",
-      "-path",
-      "*/target/*",
-      "-not",
-      "-path",
-      "*/.next/*",
-      "-not",
-      "-path",
-      "*/.turbo/*",
+      "-print",
     ],
     {
       stdout: "pipe",
