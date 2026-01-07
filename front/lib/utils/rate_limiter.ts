@@ -155,6 +155,33 @@ export async function expireRateLimiterKey({
   }
 }
 
+export async function getRateLimiterCount({
+  key,
+  timeframeSeconds,
+  redisUri,
+}: {
+  timeframeSeconds: number;
+} & RateLimiterOptionsBase): Promise<Result<number, Error>> {
+  let redis: undefined | Awaited<ReturnType<typeof redisClient>> = undefined;
+
+  try {
+    redis = await getRedisClient({ origin: "rate_limiter", redisUri });
+    const redisKey = makeRateLimiterKey(key);
+
+    // Get current server time and calculate the window
+    const windowMs = timeframeSeconds * 1000;
+    const now = Date.now();
+    const trimBefore = now - windowMs;
+
+    // Count entries in the sorted set within the time window
+    const count = await redis.zCount(redisKey, trimBefore, "+inf");
+
+    return new Ok(count);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
 export function getTimeframeSecondsFromLiteral(
   timeframeLiteral: MaxMessagesTimeframeType
 ): number {

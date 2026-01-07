@@ -23,7 +23,11 @@ import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingC
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
 import type { AppStatus } from "@app/lib/api/status";
-import { isFreePlan } from "@app/lib/plans/plan_codes";
+import {
+  FREE_TRIAL_PHONE_PLAN_CODE,
+  isFreePlan,
+} from "@app/lib/plans/plan_codes";
+import { useTrialMessageUsage } from "@app/lib/swr/trial_message_usage";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -105,6 +109,7 @@ export const NavigationSidebar = React.forwardRef<
         {!hasIncidentBanner && endDate && endDate < in30Days && (
           <SubscriptionEndBanner
             endDate={endDate}
+            startDate={subscription.startDate}
             isFreePlan={isFreePlan(subscription.plan.code)}
           />
         )}
@@ -203,6 +208,9 @@ export const NavigationSidebar = React.forwardRef<
         )}
       </div>
       <div className="flex grow flex-col">{children}</div>
+      {subscription.plan.code === FREE_TRIAL_PHONE_PLAN_CODE && (
+        <TrialMessageUsage workspaceId={owner.sId} />
+      )}
       {user && (
         <div
           className={classNames(
@@ -221,7 +229,7 @@ export const NavigationSidebar = React.forwardRef<
 });
 
 interface StatusBannerProps {
-  variant?: "info" | "warning" | "success";
+  variant?: "info" | "warning" | "success" | "danger";
   title: string;
   description: React.ReactNode;
   footer?: React.ReactNode;
@@ -248,6 +256,11 @@ function StatusBanner({
       "border-success-200 dark:border-success-200-night",
       "bg-success-100 dark:bg-success-100-night",
       "text-success-900 dark:text-success-900-night"
+    ),
+    danger: cn(
+      "border-red-200 dark:border-red-200",
+      "bg-red-100 dark:bg-red-100",
+      "text-red-900 dark:text-red-900"
     ),
   };
 
@@ -301,11 +314,36 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   return null;
 }
 
+function getTrialDaysRemainingVariant(
+  startDate: number | null,
+  endDate: number
+): "success" | "warning" | "danger" {
+  if (!startDate) {
+    // If no start date, default to warning
+    return "warning";
+  }
+
+  const now = Date.now();
+  const totalDurationMs = endDate - startDate;
+  const remainingMs = endDate - now;
+  const remainingPercentage = remainingMs / totalDurationMs;
+
+  if (remainingPercentage > 0.5) {
+    return "success";
+  } else if (remainingPercentage > 0.2) {
+    return "warning";
+  } else {
+    return "danger";
+  }
+}
+
 function SubscriptionEndBanner({
   endDate,
+  startDate,
   isFreePlan,
 }: {
   endDate: number;
+  startDate: number | null;
   isFreePlan: boolean;
 }) {
   const formattedEndDate = new Date(endDate).toLocaleDateString("en-US", {
@@ -314,9 +352,11 @@ function SubscriptionEndBanner({
     day: "numeric",
   });
 
-  const variant = isFreePlan ? "success" : "info";
+  const variant = isFreePlan
+    ? getTrialDaysRemainingVariant(startDate, endDate)
+    : "info";
   const title = isFreePlan
-    ? `Free Trial Ending on ${formattedEndDate}`
+    ? `Free trial ending on ${formattedEndDate}`
     : `Subscription ending on ${formattedEndDate}`;
 
   return (
@@ -336,12 +376,18 @@ function SubscriptionEndBanner({
           </Link>
           .
           {isFreePlan && (
-            <p className="mt-2">
-              Make the best out of the remaining trial period or contact us to
-              subscribe.
-            </p>
+            <p className="mt-2">Keep everything. Subscribe now.</p>
           )}
         </>
+      }
+      footer={
+        isFreePlan && (
+          <Link href="/subscribe" className="no-underline">
+            <button className="rounded bg-foreground px-3 py-1.5 text-xs font-medium text-background">
+              Subscribe to Dust
+            </button>
+          </Link>
+        )
       }
     />
   );
@@ -372,6 +418,72 @@ function SubscriptionPastDueBanner() {
         </>
       }
     />
+  );
+}
+
+const MESSAGE_USAGE_CRITICAL_THRESHOLD = 0.9;
+
+interface TrialMessageUsageProps {
+  workspaceId: string;
+}
+
+function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
+  const { messageUsage } = useTrialMessageUsage({ workspaceId });
+
+  if (!messageUsage || messageUsage.limit === -1) {
+    return null;
+  }
+
+  const { count, limit } = messageUsage;
+  const percentage = limit > 0 ? count / limit : 0;
+  const isCritical = percentage >= MESSAGE_USAGE_CRITICAL_THRESHOLD;
+  const isAtLimit = count >= limit;
+
+  return (
+    <div
+      className={cn(
+        "mx-3 mb-3 rounded-lg border p-3",
+        "border-border dark:border-border-night",
+        "bg-muted-background dark:bg-muted-background-night"
+      )}
+    >
+      <div className="mb-2 flex items-center justify-between text-sm">
+        <span className="text-muted-foreground dark:text-muted-foreground-night">
+          Trial message used
+        </span>
+        <span className="font-medium text-foreground dark:text-foreground-night">
+          <span className={cn(isCritical && "text-red-600 dark:text-red-400")}>
+            {count}
+          </span>{" "}
+          / {limit}
+        </span>
+      </div>
+      <div
+        className={cn(
+          "h-2 w-full overflow-hidden rounded-full",
+          "bg-structure-200 dark:bg-structure-200-night"
+        )}
+      >
+        <div
+          className={cn(
+            "h-full rounded-full transition-all",
+            isCritical
+              ? "bg-red-700 dark:bg-red-600"
+              : "bg-foreground dark:bg-foreground-night"
+          )}
+          style={{ width: `${Math.min(percentage * 100, 100)}%` }}
+        />
+      </div>
+      {isAtLimit && (
+        <div className="mt-3">
+          <Link href="/subscribe" className="no-underline">
+            <button className="w-full rounded bg-foreground px-3 py-1.5 text-xs font-medium text-background dark:bg-foreground-night dark:text-background-night">
+              Subscribe to Dust
+            </button>
+          </Link>
+        </div>
+      )}
+    </div>
   );
 }
 
