@@ -127,6 +127,7 @@ export type ProviderVisibility = "public" | "private";
  * https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
  */
 export interface ContentNode {
+  childrenCount: number;
   expandable: boolean;
   internalId: string;
   lastUpdatedAt: number | null;

@@ -111,7 +111,6 @@ function isSkillResourceWithVersion(
 export interface SkillAttachedKnowledge {
   dataSourceView: DataSourceViewResource;
   nodeId: string;
-  nodeType: Extract<ContentNodeType, "folder" | "document">;
 }
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.

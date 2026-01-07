@@ -256,7 +256,6 @@ async function handler(
         (attachment) => ({
           dataSourceView: dataSourceViewIdMap.get(attachment.dataSourceViewId)!,
           nodeId: attachment.nodeId,
-          nodeType: attachment.nodeType,
         })
       );
 

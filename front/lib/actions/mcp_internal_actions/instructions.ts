@@ -106,15 +106,15 @@ export const FRESHSERVICE_SERVER_INSTRUCTIONS = `
 
 export const DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS =
   "This server contains tools to browse and search data in the space denoted by the server name, with a filesystem-like navigation.\n" +
-  "The space's contents are structured in nodes, similar to files and folders in a filesystem. Nodes are identified by a unique ID called `nodeId`.\n" +
+  "The space's contents are structured in nodes, similar to a filesystem. Nodes are identified by a unique ID called `nodeId`.\n" +
   "Node IDs are exposed in the outputs of the tools described below.\n" +
-  "The `list` tool lists child nodes of a given node, like 'ls' in Unix.\n" +
+  "The `list` tool lists child nodes of a given node, like 'ls' in Unix. It should only be used on nodes with children (hasChildren: true).\n" +
   "It can be used to explore the filesystem structure step by step " +
   "by being called recursively with the 'nodeId' output in a step passed to the next step's nodeId.\n" +
   "The `find` tool finds a node based on its title starting from a specific root node, like using 'find' in Unix.\n" +
   "The `cat` tool reads the actual content in a document node, like 'cat' in Unix.\n" +
   "The `locate_in_tree` tool finds the path to a node in the filesystem tree.\n" +
-  "The `semantic_search` tool performs a semantic search within the folders and files designated by `nodeIds`.\n" +
+  "The `semantic_search` tool performs a semantic search within the nodes designated by `nodeIds`.\n" +
   "Note: these tools are specific to data in the space denoted by the server name. For attachments and conversation files " +
   `prefer using the \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\`, \`${DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME}\` and ` +
   `\`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\` tools instead.`;
