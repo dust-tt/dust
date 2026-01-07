@@ -623,6 +623,107 @@ function createServer(
     )
   );
 
+  server.tool(
+    "send_mail",
+    `Send an email directly via Gmail.
+- The email will be sent immediately without creating a draft.
+- Use this to send emails when you have all the required information.
+- The email will include proper headers and formatting.`,
+    {
+      to: z
+        .array(z.string().email())
+        .min(1)
+        .describe("The email addresses of the recipients"),
+      cc: z
+        .array(z.string().email())
+        .optional()
+        .describe("The email addresses to CC"),
+      bcc: z
+        .array(z.string().email())
+        .optional()
+        .describe("The email addresses to BCC"),
+      subject: z.string().describe("The subject line of the email"),
+      contentType: z
+        .enum(["text/plain", "text/html"])
+        .describe("The content type of the email (text/plain or text/html)."),
+      body: z.string().describe("The body of the email"),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "gmail",
+        agentLoopContext,
+      },
+      async ({ to, cc, bcc, subject, contentType, body }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
+
+        // Reuse the message creation logic from create_draft
+        const encodedSubject = `=?UTF-8?B?${Buffer.from(subject, "utf-8").toString("base64")}?=`;
+
+        const message = [
+          `To: ${to.join(", ")}`,
+          cc?.length ? `Cc: ${cc.join(", ")}` : null,
+          bcc?.length ? `Bcc: ${bcc.join(", ")}` : null,
+          `Subject: ${encodedSubject}`,
+          `Content-Type: ${contentType}; charset=UTF-8`,
+          "MIME-Version: 1.0",
+          "",
+          body,
+        ]
+          .filter((line) => line !== null)
+          .join("\n");
+
+        // Encode the message in base64 as required by the Gmail API
+        const encodedMessage = Buffer.from(message)
+          .toString("base64")
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
+
+        // Use the send endpoint instead of drafts
+        const response = await fetchFromGmail(
+          "/gmail/v1/users/me/messages/send",
+          accessToken,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              raw: encodedMessage,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await getErrorText(response);
+          return new Err(new MCPError(`Failed to send email: ${errorText}`));
+        }
+
+        const result = await response.json();
+
+        return new Ok([
+          { type: "text" as const, text: "Email sent successfully" },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                messageId: result.id,
+                threadId: result.threadId,
+                labelIds: result.labelIds,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
+      }
+    )
+  );
+
   return server;
 }
 

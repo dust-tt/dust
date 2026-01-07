@@ -503,6 +503,7 @@ export const INTERNAL_MCP_SERVERS = {
       create_draft: "low",
       get_messages: "never_ask",
       create_reply_draft: "low",
+      send_mail: "high",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
