@@ -956,7 +956,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       async (agent) => {
         const spaceIdsToRemoveFromAgent = new Set<ModelId>();
 
-        // Some spaces were removed from the skill: we must check if they need to be removed from the agent. In order to achieve this, we check if the agent has any other capabilities that require the removed spaces.
+        // Some spaces were removed from the skill: we must check if they need to be
+        // removed from the agent. In order to achieve this, we check if the agent has
+        // any other capabilities that require the removed spaces.
         if (spaceIdsRemovedFromThisSkill.length > 0) {
           const agentConfig = await getAgentConfiguration(auth, {
             agentId: agent.sId,
@@ -984,7 +986,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
           for (const spaceId of spaceIdsRemovedFromThisSkill) {
             if (!otherCapabilitiesRequestedSpaceIds.has(spaceId)) {
-              // This space is not required by any other capabilities of the agent, so we must remove it from the config.
+              // This space is not required by any other capabilities of the agent, so
+              // we must remove it from the config.
               spaceIdsToRemoveFromAgent.add(spaceId);
             }
           }
