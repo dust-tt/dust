@@ -4,10 +4,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   FolderOpenIcon,
   MagicIcon,
   PlusIcon,
+  PuzzleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
@@ -16,18 +18,21 @@ import { useState } from "react";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
+import {
+  getAgentBuilderRoute,
+  getSkillBuilderRoute,
+} from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types";
 
-interface CreateAgentButtonProps {
+interface CreateDropdownProps {
   owner: LightWorkspaceType;
   dataGtmLocation: string;
 }
 
-export const CreateAgentButton = ({
+export const CreateDropdown = ({
   owner,
   dataGtmLocation,
-}: CreateAgentButtonProps) => {
+}: CreateDropdownProps) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
@@ -53,6 +58,7 @@ export const CreateAgentButton = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
+        {hasFeature("skills") && <DropdownMenuLabel label="Agents" />}
         <DropdownMenuItem
           label="agent from scratch"
           icon={DocumentIcon}
@@ -84,6 +90,23 @@ export const CreateAgentButton = ({
             disabled={isUploadingYAML}
             onClick={triggerYAMLUpload}
           />
+        )}
+        {hasFeature("skills") && (
+          <>
+            <DropdownMenuLabel label="Skills" />
+            <DropdownMenuItem
+              label="skill"
+              icon={PuzzleIcon}
+              onClick={withTracking(
+                TRACKING_AREAS.BUILDER,
+                "create_skill",
+                () => {
+                  setIsLoading(true);
+                  void router.push(getSkillBuilderRoute(owner.sId, "new"));
+                }
+              )}
+            />
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
