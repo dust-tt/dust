@@ -1,7 +1,7 @@
 import { RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 import {
   Carousel,
@@ -383,12 +383,19 @@ const QuoteCard = ({ quote, logo, name, title }: QuoteProps) => (
 );
 
 export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => {
-  // Create array of quotes with the provided quote first
   const currentQuote = { quote, logo, name, title };
-  const otherQuotes = AllQuotes.filter(
-    (q) => q.quote !== quote || q.name !== name || q.title !== title
-  );
-  const quotes = [currentQuote, ...otherQuotes];
+  const [quotes, setQuotes] = useState([
+    currentQuote,
+    ...AllQuotes.filter((q) => q.logo !== logo),
+  ]);
+
+  // Shuffle other quotes on mount (client-side only to avoid hydration mismatch)
+  useEffect(() => {
+    const otherQuotes = AllQuotes.filter((q) => q.logo !== logo).sort(
+      () => Math.random() - 0.5
+    );
+    setQuotes([currentQuote, ...otherQuotes]);
+  }, []);
 
   return (
     <div className="w-full">
