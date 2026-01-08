@@ -204,7 +204,7 @@ export function SkillInstructionsEditorContent({
           <EditorContent editor={editor} className="leading-7" />
         </div>
       ) : (
-        <EditorContent editor={editor} className={className} />
+        <EditorContent editor={editor} className={cn(className, "leading-7")} />
       )}
     </>
   );
