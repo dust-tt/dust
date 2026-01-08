@@ -1,13 +1,8 @@
-import {
-  Chip,
-  ReadOnlyTextArea,
-  Separator,
-  Spinner,
-  Tooltip,
-} from "@dust-tt/sparkle";
+import { Chip, Separator, Spinner, Tooltip } from "@dust-tt/sparkle";
 import sortBy from "lodash/sortBy";
 import { useMemo } from "react";
 
+import { SkillInstructionsReadOnlyEditor } from "@app/components/skills/SkillInstructionsReadOnlyEditor";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -80,7 +75,10 @@ export function SkillInfoTab({
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Instructions
           </div>
-          <ReadOnlyTextArea content={skill.instructions} />
+          <SkillInstructionsReadOnlyEditor
+            content={skill.instructions}
+            owner={owner}
+          />
         </div>
       )}
       {sortedMCPServerViews.length > 0 && (
