@@ -26,7 +26,11 @@ import {
   fetchMessageInConversation,
   getCompletionDuration,
 } from "@app/lib/api/assistant/messages";
-import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
+import {
+  createSkillKnowledgeFileSystemServer,
+  getSkillDataSourceConfigurations,
+  getSkillServers,
+} from "@app/lib/api/assistant/skill_actions";
 import config from "@app/lib/api/config";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
@@ -197,6 +201,22 @@ export async function runModelActivity(
     agentConfiguration,
     skills: enabledSkills,
   });
+
+  // Add file system server if skills have attached knowledge.
+  const dataSourceConfigurations = await getSkillDataSourceConfigurations(
+    auth,
+    {
+      skills: enabledSkills,
+    }
+  );
+  if (dataSourceConfigurations.length > 0) {
+    const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
+      dataSourceConfigurations,
+    });
+    if (fileSystemServer) {
+      skillServers.push(fileSystemServer);
+    }
+  }
 
   const {
     serverToolsAndInstructions: mcpActions,
