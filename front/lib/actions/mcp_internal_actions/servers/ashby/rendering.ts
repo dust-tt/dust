@@ -7,18 +7,6 @@ import type {
 function renderCandidate(candidate: AshbyCandidate): string {
   const lines = [`ID: ${candidate.id}`, `Name: ${candidate.name}`];
 
-  if (candidate.primaryEmailAddress) {
-    lines.push(
-      `Email: ${candidate.primaryEmailAddress.value} (${candidate.primaryEmailAddress.type})`
-    );
-  }
-
-  if (candidate.primaryPhoneNumber) {
-    lines.push(
-      `Phone: ${candidate.primaryPhoneNumber.value} (${candidate.primaryPhoneNumber.type})`
-    );
-  }
-
   if (candidate.createdAt) {
     lines.push(`Created: ${new Date(candidate.createdAt).toISOString()}`);
   }
@@ -113,10 +101,6 @@ export function renderInterviewFeedbackRecap(
     "",
     `**Candidate:** ${candidate.name}`,
   ];
-
-  if (candidate.primaryEmailAddress) {
-    header.push(`**Email:** ${candidate.primaryEmailAddress.value}`);
-  }
 
   header.push(
     "",
