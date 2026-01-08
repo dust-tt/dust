@@ -358,7 +358,13 @@ export const NotificationPreferences = forwardRef<
             />
             <DropdownMenuItem
               label={NOTIFICATION_TRIGGER_LABELS["only_mentions"]}
-              onClick={() => setUnreadTrigger("only_mentions")}
+              onClick={() => {
+                setUnreadTrigger("only_mentions");
+                // Constrain notify to match: can't notify on all if only marking mentions as unread
+                if (notifyTrigger === "all_messages") {
+                  setNotifyTrigger("only_mentions");
+                }
+              }}
             />
           </DropdownMenuContent>
         </DropdownMenu>
@@ -389,6 +395,7 @@ export const NotificationPreferences = forwardRef<
           <DropdownMenuContent>
             <DropdownMenuItem
               label={NOTIFICATION_TRIGGER_LABELS["all_messages"]}
+              disabled={unreadTrigger === "only_mentions"}
               onClick={() => setNotifyTrigger("all_messages")}
             />
             <DropdownMenuItem
@@ -404,6 +411,14 @@ export const NotificationPreferences = forwardRef<
         {notifyTrigger === "only_mentions" && (
           <Tooltip
             label="You'll still be notified if you're the only participant in a conversation."
+            trigger={
+              <InformationCircleIcon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
+            }
+          />
+        )}
+        {unreadTrigger === "only_mentions" && notifyTrigger !== "never" && (
+          <Tooltip
+            label="Notifications are limited to mentions because conversations are only marked unread when you're mentioned."
             trigger={
               <InformationCircleIcon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
             }
