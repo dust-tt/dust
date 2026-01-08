@@ -178,8 +178,8 @@ export function AgentBuilderSpacesBlock() {
           <SheetContainer>
             <SpaceSelectionPageContent
               alreadyRequestedSpaceIds={actionsAndSkillsRequestedSpaceIds}
-              draftSelectedSpaces={draftSelectedSpaces}
-              setDraftSelectedSpaces={setDraftSelectedSpaces}
+              selectedSpaces={draftSelectedSpaces}
+              setSelectedSpaces={setDraftSelectedSpaces}
             />
           </SheetContainer>
           <SheetFooter

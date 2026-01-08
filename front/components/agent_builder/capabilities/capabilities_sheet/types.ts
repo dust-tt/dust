@@ -37,7 +37,6 @@ export type CapabilitiesSheetContentProps = {
     tools: SelectedTool[];
   }) => void;
   onToolEditSave: (updatedAction: BuilderAction) => void;
-  initialAdditionalSpaces: string[];
   alreadyRequestedSpaceIds: Set<string>;
   alreadyAddedSkillIds: Set<string>;
   selectedActions: BuilderAction[];
