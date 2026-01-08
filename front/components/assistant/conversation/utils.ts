@@ -103,3 +103,13 @@ export function getGroupConversationsByDate({
 
   return groups;
 }
+
+export function filterTriggeredConversations(
+  conversations: ConversationWithoutContentType[],
+  hideTriggered: boolean
+): ConversationWithoutContentType[] {
+  if (!hideTriggered) {
+    return conversations;
+  }
+  return conversations.filter((c) => c.triggerId === null);
+}
