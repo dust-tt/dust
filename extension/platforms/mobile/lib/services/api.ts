@@ -15,6 +15,7 @@ import {
 
 import { MobileAuthService } from "@/lib/services/auth";
 import { storageService } from "@/lib/services/storage";
+import { streamAgentAnswerRN } from "@/lib/services/streaming";
 
 // Re-export types for backward compatibility
 export type {
@@ -223,65 +224,38 @@ export class DustApi {
     userMessageId: string,
     signal?: AbortSignal
   ): AsyncGenerator<StreamEvent, void, unknown> {
+    // First, get the conversation to find the agent message that's responding to our user message
     const api = createDustApi(dustDomain, workspaceId);
-
-    // First get the conversation to pass to streamAgentAnswerEvents
     const convResult = await api.getConversation({ conversationId });
+
     if (convResult.isErr()) {
       throw new ApiError(500, convResult.error.type, convResult.error.message);
     }
 
-    const streamResult = await api.streamAgentAnswerEvents({
-      conversation: convResult.value,
-      userMessageId,
-      signal,
-    });
-
-    if (streamResult.isErr()) {
-      const error = streamResult.error;
-      throw new ApiError(
-        500,
-        "type" in error ? error.type : "stream_error",
-        error.message
+    // Find the agent message with parentMessageId === userMessageId
+    const agentMessage = convResult.value.content
+      .flat()
+      .find(
+        (m): m is AgentMessagePublicType =>
+          m.type === "agent_message" && m.parentMessageId === userMessageId
       );
+
+    if (!agentMessage) {
+      throw new ApiError(404, "not_found", "Agent message not found");
     }
 
-    for await (const event of streamResult.value.eventStream) {
-      // Map SDK events to mobile's StreamEvent format
-      switch (event.type) {
-        case "generation_tokens":
-          yield {
-            type: "generation_tokens",
-            text: event.text,
-            classification: event.classification,
-          };
-          break;
-        case "agent_message_success":
-          yield {
-            type: "agent_message_success",
-            message: event.message,
-          };
-          break;
-        case "user_message_error":
-          yield {
-            type: "user_message_error",
-            error: event.error,
-          };
-          break;
-        case "agent_error":
-          yield {
-            type: "agent_error",
-            error: event.error,
-          };
-          break;
-        case "agent_action_success":
-          yield {
-            type: "agent_action_success",
-            action: event.action,
-          };
-          break;
-        // Skip other event types that mobile doesn't handle
-      }
+    // Use React Native compatible streaming with the agent message sId
+    const stream = streamAgentAnswerRN(
+      dustDomain,
+      workspaceId,
+      conversationId,
+      agentMessage.sId, // Use agent message sId, not user message sId
+      () => authService.getAccessToken(),
+      signal
+    );
+
+    for await (const event of stream) {
+      yield event;
     }
   }
 }

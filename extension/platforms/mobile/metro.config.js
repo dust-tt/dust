@@ -14,9 +14,11 @@ config.resolver.nodeModulesPaths = [
   path.resolve(extensionRoot, "node_modules"),
 ];
 
-// Add extra node modules resolution for workspace packages
+// Add extra node modules resolution for workspace packages and polyfills
 config.resolver.extraNodeModules = {
   "@app": extensionRoot,
+  // Node.js polyfills for packages that expect them
+  buffer: path.resolve(__dirname, "node_modules/buffer"),
 };
 
 module.exports = withNativeWind(config, {

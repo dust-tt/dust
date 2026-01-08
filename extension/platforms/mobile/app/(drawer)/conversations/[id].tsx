@@ -16,6 +16,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAgentConfigurations } from "@/hooks/useAgentConfigurations";
+import { useAgentMessageStream } from "@/hooks/useAgentMessageStream";
 import { useConversation } from "@/hooks/useConversation";
 import { useSendMessage } from "@/hooks/useSendMessage";
 import { colors } from "@/lib/colors";
@@ -41,18 +42,28 @@ function UserMessageBubble({ message }: { message: UserMessage }) {
 
 interface AgentMessageBubbleProps {
   message: AgentMessage;
+  conversationId: string;
   dustDomain: string;
   workspaceId: string;
   onPress?: () => void;
+  onStreamComplete?: () => void;
 }
 
 function AgentMessageBubble({
-  message,
+  message: initialMessage,
+  conversationId,
   dustDomain,
   workspaceId,
   onPress,
+  onStreamComplete,
 }: AgentMessageBubbleProps) {
-  const isLoading = message.status === "created";
+  // Each message manages its own streaming state
+  const { message, isStreaming } = useAgentMessageStream(initialMessage, {
+    conversationId,
+    onStreamComplete: onStreamComplete ? () => onStreamComplete() : undefined,
+  });
+
+  const isLoading = message.status === "created" && !message.content;
   const hasError = message.status === "failed";
 
   const citations = useMemo(() => {
@@ -80,7 +91,7 @@ function AgentMessageBubble({
         <Text variant="label-sm" className="text-foreground flex-1">
           {message.configuration.name}
         </Text>
-        {isLoading && <Spinner size="xs" variant="mono" />}
+        {(isLoading || isStreaming) && <Spinner size="xs" variant="mono" />}
         {onPress && (
           <Pressable
             onPress={onPress}
@@ -104,7 +115,7 @@ function AgentMessageBubble({
           </Text>
         )}
 
-        {message.content && (
+        {message.content ? (
           <DustMarkdown
             citations={citations}
             onCitationPress={handleCitationPress}
@@ -113,7 +124,11 @@ function AgentMessageBubble({
           >
             {message.content}
           </DustMarkdown>
-        )}
+        ) : isLoading ? (
+          <Text className="text-muted-foreground text-sm italic">
+            Thinking...
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -148,16 +163,20 @@ function ContentFragmentBubble({ message }: { message: ContentFragment }) {
 
 interface MessageItemProps {
   message: Message;
+  conversationId: string;
   dustDomain: string;
   workspaceId: string;
   onPressAgentMessage?: (message: AgentMessage) => void;
+  onStreamComplete?: () => void;
 }
 
 function MessageItem({
   message,
+  conversationId,
   dustDomain,
   workspaceId,
   onPressAgentMessage,
+  onStreamComplete,
 }: MessageItemProps) {
   if (message.visibility === "deleted") {
     return null;
@@ -170,11 +189,13 @@ function MessageItem({
       return (
         <AgentMessageBubble
           message={message}
+          conversationId={conversationId}
           dustDomain={dustDomain}
           workspaceId={workspaceId}
           onPress={
             onPressAgentMessage ? () => onPressAgentMessage(message) : undefined
           }
+          onStreamComplete={onStreamComplete}
         />
       );
     case "content_fragment":
@@ -221,6 +242,7 @@ function ErrorState({ error }: { error: string }) {
 
 export default function ConversationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const conversationId = Array.isArray(id) ? id[0] : id;
   const navigation = useNavigation();
   const router = useRouter();
   const { user } = useAuth();
@@ -229,28 +251,23 @@ export default function ConversationDetailScreen() {
   const { conversation, isLoading, error, refresh } = useConversation(
     user?.dustDomain,
     user?.selectedWorkspace,
-    id
+    conversationId
   );
 
   const { agents, isLoading: agentsLoading } = useAgentConfigurations();
 
   // Optimistic user message - shown immediately while waiting for API
   const [pendingUserMessage, setPendingUserMessage] = useState<UserMessage | null>(null);
+  // Track if any message is currently streaming
+  const [isStreaming, setIsStreaming] = useState(false);
 
   const handleStreamComplete = useCallback(() => {
     setPendingUserMessage(null);
+    setIsStreaming(false);
     void refresh();
   }, [refresh]);
 
-  const {
-    isSending,
-    isStreaming,
-    streamingMessage,
-    sendMessageToConversation,
-    cancelStream,
-  } = useSendMessage({
-    onStreamComplete: handleStreamComplete,
-  });
+  const { isSending, sendMessageToConversation } = useSendMessage({});
 
   useEffect(() => {
     navigation.setOptions({
@@ -269,7 +286,7 @@ export default function ConversationDetailScreen() {
 
   const handleSubmit = useCallback(
     async (content: string, mentions: AgentMention[]) => {
-      if (!id || !user) return;
+      if (!conversationId || !user) return;
 
       // Create optimistic user message
       const optimisticMessage: UserMessage = {
@@ -288,18 +305,26 @@ export default function ConversationDetailScreen() {
       };
 
       setPendingUserMessage(optimisticMessage);
+      setIsStreaming(true);
 
       // Scroll to bottom immediately
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 50);
 
-      await sendMessageToConversation(id, content, mentions);
+      const result = await sendMessageToConversation(conversationId, content, mentions);
+
+      // After message is sent, refresh to get the agent message
+      // The agent message will handle its own streaming
+      if (result) {
+        setPendingUserMessage(null);
+        await refresh();
+      }
     },
-    [id, user, sendMessageToConversation]
+    [conversationId, user, sendMessageToConversation, refresh]
   );
 
-  // Combine conversation messages with pending user message and streaming agent message
+  // Combine conversation messages with pending user message
   const messages = useMemo(() => {
     const baseMessages: Message[] = conversation?.content.flat() ?? [];
     const result: Message[] = [...baseMessages];
@@ -309,20 +334,8 @@ export default function ConversationDetailScreen() {
       result.push(pendingUserMessage);
     }
 
-    // Add or update streaming agent message
-    if (streamingMessage) {
-      const existingIndex = result.findIndex(
-        (m) => m.sId === streamingMessage.sId
-      );
-      if (existingIndex === -1) {
-        result.push(streamingMessage);
-      } else {
-        result[existingIndex] = streamingMessage;
-      }
-    }
-
     return result;
-  }, [conversation?.content, pendingUserMessage, streamingMessage]);
+  }, [conversation?.content, pendingUserMessage]);
 
   // Loading state
   if (isLoading && !conversation) {
@@ -352,7 +365,7 @@ export default function ConversationDetailScreen() {
   }
 
   const handlePressAgentMessage = (message: AgentMessage) => {
-    router.push(`/conversations/${id}/message/${message.sId}`);
+    router.push(`/conversations/${conversationId}/message/${message.sId}`);
   };
 
   return (
@@ -368,9 +381,11 @@ export default function ConversationDetailScreen() {
         renderItem={({ item }) => (
           <MessageItem
             message={item}
+            conversationId={conversationId ?? ""}
             dustDomain={user?.dustDomain ?? ""}
             workspaceId={user?.selectedWorkspace ?? ""}
             onPressAgentMessage={handlePressAgentMessage}
+            onStreamComplete={handleStreamComplete}
           />
         )}
         contentContainerStyle={{
@@ -389,7 +404,6 @@ export default function ConversationDetailScreen() {
         onSubmit={handleSubmit}
         isLoading={isSending}
         isGenerating={isStreaming}
-        onStop={cancelStream}
         placeholder="Send a message..."
         agents={agents}
         agentsLoading={agentsLoading}

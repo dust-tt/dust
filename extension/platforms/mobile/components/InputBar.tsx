@@ -164,15 +164,15 @@ export function InputBar({
       {showMentionDropdown && (
         <View
           className={cn(
-            "absolute bottom-full left-0 right-0 mb-1 mx-3",
+            "absolute bottom-full left-0 right-0 mx-3 mb-1",
             "bg-background dark:bg-gray-900",
-            "border border-border dark:border-gray-700",
+            "border-border border dark:border-gray-700",
             "rounded-xl shadow-lg",
-            "max-h-48 overflow-hidden"
+            "max-h-96 overflow-hidden"
           )}
         >
           {agentsLoading ? (
-            <View className="py-4 items-center">
+            <View className="items-center py-4">
               <Spinner size="sm" variant="mono" />
             </View>
           ) : (
@@ -211,7 +211,7 @@ export function InputBar({
                 </Pressable>
               )}
               ItemSeparatorComponent={() => (
-                <View className="h-px bg-border dark:bg-gray-700" />
+                <View className="bg-border h-px dark:bg-gray-700" />
               )}
             />
           )}
@@ -221,11 +221,10 @@ export function InputBar({
       {/* Input bar */}
       <View
         className={cn(
-          "flex-row items-end gap-2 p-3 mx-3 mb-2",
-          "bg-muted-background dark:bg-muted-background-night",
-          "rounded-3xl",
-          "border border-border-dark/50 dark:border-border-dark-night/50",
-          "shadow-lg shadow-black/10"
+          "mx-3 mb-2 flex-row items-end gap-2 p-3",
+          // bg should have alpha transparent to allow for mention dropdown shadow
+          "bg-background/100",
+          "rounded-2xl"
         )}
       >
         <View
@@ -233,15 +232,15 @@ export function InputBar({
             "flex-1 flex-row items-end",
             "bg-background dark:bg-gray-900",
             "rounded-2xl",
-            "border border-border dark:border-gray-700",
-            "min-h-[44px] max-h-[120px]"
+            "border-border border dark:border-gray-700",
+            "max-h-[120px] min-h-[44px]"
           )}
         >
           <TextInput
             ref={inputRef}
             className={cn(
               "flex-1 px-4 py-3",
-              "text-base text-foreground dark:text-gray-50",
+              "text-foreground text-base dark:text-gray-50",
               Platform.select({
                 ios: "leading-5",
                 android: "leading-6",
@@ -265,7 +264,7 @@ export function InputBar({
           onPress={handleSubmit}
           disabled={!canSubmit}
           className={cn(
-            "w-11 h-11 rounded-full items-center justify-center",
+            "h-11 w-11 items-center justify-center rounded-full",
             canSubmit
               ? "bg-blue-500 active:bg-blue-600"
               : "bg-gray-200 dark:bg-gray-700"
@@ -307,7 +306,7 @@ export function InputBarWithStop({
               "flex-row items-center gap-2 px-4 py-2",
               "bg-muted-background dark:bg-gray-800",
               "rounded-full",
-              "border border-border dark:border-gray-700",
+              "border-border border dark:border-gray-700",
               "active:bg-gray-100 dark:active:bg-gray-700",
               "shadow-sm shadow-black/5"
             )}
