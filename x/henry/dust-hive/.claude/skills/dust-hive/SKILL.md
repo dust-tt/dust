@@ -198,6 +198,20 @@ dust-hive sync
 
 ## Known Issues
 
+### npm install modifies the main repo's node_modules
+
+In dust-hive environments, `node_modules` directories are **symlinked** to the main repo to share dependencies and reduce disk space. Running `npm install` directly will modify the main repo's node_modules, which is usually not what you want.
+
+**Solution**: Remove the symlink before running npm install:
+```bash
+rm -rf node_modules && npm install
+```
+
+This is necessary when:
+- You modify `package.json` (add/remove dependencies)
+- You need to regenerate `package-lock.json`
+- You want isolated dependencies for this environment
+
 ### SDK watcher doesn't detect changes after git rebase
 
 The SDK watcher uses nodemon which relies on filesystem events. When running `git rebase`, `git pull`, or `git checkout`, nodemon may not detect the file changes due to how git updates files (fsevents on macOS can miss rapid file operations).
