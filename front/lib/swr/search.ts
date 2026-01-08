@@ -63,7 +63,7 @@ export function useUnifiedSearch({
 
   const loadPage = useCallback(
     (cursor?: string | null, appendResults = false) => {
-      if (disabled || !query || query.length < 3) {
+      if (disabled) {
         setIsSearchLoading(false);
         setIsLoadingNextPage(false);
         return;
