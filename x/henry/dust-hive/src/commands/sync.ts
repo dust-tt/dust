@@ -15,12 +15,9 @@ import {
   saveSyncState,
   setCacheSource,
 } from "../lib/cache";
-import { getEnvironment, listEnvironments } from "../lib/environment";
 import { directoryExists } from "../lib/fs";
 import { logger } from "../lib/logger";
 import { findRepoRoot } from "../lib/paths";
-import { isServiceRunning, stopService } from "../lib/process";
-import { startService } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { runNpmInstall } from "../lib/setup";
 import {
@@ -268,28 +265,6 @@ async function updateRustBinaries(repoRoot: string, needsBuild: boolean): Promis
   return Ok(undefined);
 }
 
-// Restart SDK watchers in all running environments
-// This ensures environments pick up SDK changes after git pull
-// Note: We don't wait for the SDK to finish building - just signal the restart
-async function restartRunningSDKWatchers(): Promise<number> {
-  const envNames = await listEnvironments();
-  let restartedCount = 0;
-
-  for (const envName of envNames) {
-    if (await isServiceRunning(envName, "sdk")) {
-      const env = await getEnvironment(envName);
-      if (env) {
-        logger.info(`  Restarting SDK in '${envName}'...`);
-        await stopService(envName, "sdk");
-        await startService(env, "sdk");
-        restartedCount++;
-      }
-    }
-  }
-
-  return restartedCount;
-}
-
 // Install and link dust-hive if needed
 async function updateDustHive(dustHivePath: string, needsInstall: boolean): Promise<Result<void>> {
   if (!needsInstall) {
@@ -421,16 +396,6 @@ export async function syncCommand(options: SyncOptions = {}): Promise<Result<voi
     return Err(new CommandError("Failed to install Claude Code skills"));
   }
   logger.success("Claude Code skills installed");
-
-  // Restart SDK watchers in running environments
-  // nodemon may not detect file changes from git pull/rebase
-  logger.step("Restarting SDK watchers in running environments...");
-  const restartedCount = await restartRunningSDKWatchers();
-  if (restartedCount > 0) {
-    logger.success(`Restarted SDK in ${restartedCount} environment(s)`);
-  } else {
-    logger.info("No running environments with SDK watchers");
-  }
 
   const elapsedSec = ((Date.now() - startTimeMs) / 1000).toFixed(1);
   console.log();
