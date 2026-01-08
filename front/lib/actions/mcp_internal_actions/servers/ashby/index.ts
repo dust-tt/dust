@@ -53,7 +53,10 @@ function createServer(
         if (!email && !name) {
           return new Err(
             new MCPError(
-              "At least one search parameter (email or name) must be provided."
+              "At least one search parameter (email or name) must be provided.",
+              {
+                tracked: false,
+              }
             )
           );
         }
@@ -264,7 +267,10 @@ function createServer(
                 (candidate.primaryEmailAddress?.value
                   ? `(${candidate.primaryEmailAddress?.value}) `
                   : "") +
-                "has no applications in the system."
+                "has no applications in the system.",
+              {
+                tracked: false,
+              }
             )
           );
         }
@@ -286,7 +292,10 @@ function createServer(
             return new Err(
               new MCPError(
                 `Candidate ${candidate.name} was hired, ` +
-                  "retrieving feedback for hired candidates is not permitted."
+                  "retrieving feedback for hired candidates is not permitted.",
+                {
+                  tracked: false,
+                }
               )
             );
           }
@@ -323,7 +332,10 @@ function createServer(
         ) {
           return new Err(
             new MCPError(
-              `No submitted interview feedback found for candidate ${candidate.name}.`
+              `No submitted interview feedback found for candidate ${candidate.name}.`,
+              {
+                tracked: false,
+              }
             )
           );
         }
@@ -425,7 +437,8 @@ async function findUniqueCandidate(
   if (!email && !name) {
     return new Err(
       new MCPError(
-        "At least one search parameter (email or name) must be provided."
+        "At least one search parameter (email or name) must be provided.",
+        { tracked: false }
       )
     );
   }
@@ -440,7 +453,9 @@ async function findUniqueCandidate(
   const candidates = searchResult.value.results;
   if (candidates.length === 0) {
     return new Err(
-      new MCPError("No candidates found matching the search criteria.")
+      new MCPError("No candidates found matching the search criteria.", {
+        tracked: false,
+      })
     );
   }
 
@@ -453,7 +468,10 @@ async function findUniqueCandidate(
       .join("\n");
     return new Err(
       new MCPError(
-        `Multiple candidates found. Please refine your search:\n\n${candidatesList}`
+        `Multiple candidates found. Please refine your search:\n\n${candidatesList}`,
+        {
+          tracked: false,
+        }
       )
     );
   }
