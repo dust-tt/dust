@@ -465,7 +465,7 @@ const getProcessingFunction = ({
   }
 
   if (isSupportedImageContentType(contentType)) {
-    if (useCase === "conversation") {
+    if (useCase === "conversation" || useCase === "project_context") {
       return makeResizeAndUploadImageToFileStorage(
         CONVERSATION_IMG_MAX_SIZE_PIXELS
       );
@@ -491,6 +491,7 @@ const getProcessingFunction = ({
         "folders_document",
         "upsert_table",
         "tool_output",
+        "project_context",
       ].includes(useCase)
     ) {
       return storeRawText;
@@ -500,7 +501,7 @@ const getProcessingFunction = ({
 
   if (isSupportedAudioContentType(contentType)) {
     if (
-      useCase === "conversation" &&
+      (useCase === "conversation" || useCase === "project_context") &&
       // Only handle voice transcription if the workspace has enabled it.
       auth.getNonNullableWorkspace().metadata?.allowVoiceTranscription !== false
     ) {
@@ -518,9 +519,12 @@ const getProcessingFunction = ({
     case "application/vnd.google-apps.presentation":
     case "application/pdf":
       if (
-        ["conversation", "upsert_document", "folders_document"].includes(
-          useCase
-        )
+        [
+          "conversation",
+          "upsert_document",
+          "folders_document",
+          "project_context",
+        ].includes(useCase)
       ) {
         return extractTextFromFileAndUpload;
       }
@@ -564,18 +568,19 @@ const getProcessingFunction = ({
           "upsert_document",
           "tool_output",
           "folders_document",
+          "project_context",
         ].includes(useCase)
       ) {
         return storeRawText;
       }
       break;
     case "text/vnd.dust.attachment.slack.thread":
-      if (useCase === "conversation") {
+      if (useCase === "conversation" || useCase === "project_context") {
         return storeRawText;
       }
       break;
     case "text/vnd.dust.attachment.pasted":
-      if (useCase === "conversation") {
+      if (useCase === "conversation" || useCase === "project_context") {
         return storeRawText;
       }
       break;
