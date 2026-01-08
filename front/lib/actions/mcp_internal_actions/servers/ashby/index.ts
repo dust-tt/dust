@@ -276,30 +276,12 @@ function createServer(
           );
         }
 
-        // Check if any application is in "hired" status; feedback retrieval is then blocked.
-        for (const applicationId of candidate.applicationIds) {
-          const appInfoResult = await client.getApplicationInfo({
-            applicationId,
-          });
-          if (appInfoResult.isErr()) {
-            return new Err(
-              new MCPError(
-                `Failed to retrieve application info for candidate ${candidate.name}.`
-              )
-            );
-          }
-
-          if (appInfoResult.value.results.status === "Hired") {
-            return new Err(
-              new MCPError(
-                `Candidate ${candidate.name} was hired, ` +
-                  "retrieving feedback for hired candidates is not permitted.",
-                {
-                  tracked: false,
-                }
-              )
-            );
-          }
+        const hiredCheckResult = await assertCandidateNotHired(
+          client,
+          candidate
+        );
+        if (hiredCheckResult.isErr()) {
+          return hiredCheckResult;
         }
 
         let latestApplicationFeedback: AshbyFeedbackSubmission[] | null = null;
@@ -458,6 +440,14 @@ function createServer(
 
         const candidate = candidateResult.value;
 
+        const hiredCheckResult = await assertCandidateNotHired(
+          client,
+          candidate
+        );
+        if (hiredCheckResult.isErr()) {
+          return hiredCheckResult;
+        }
+
         const notesResult = await client.listCandidateNotes({
           candidateId: candidate.id,
         });
@@ -499,6 +489,39 @@ function createServer(
   );
 
   return server;
+}
+
+async function assertCandidateNotHired(
+  client: AshbyClient,
+  candidate: AshbyCandidate
+): Promise<Result<void, MCPError>> {
+  if (!candidate.applicationIds) {
+    return new Ok(undefined);
+  }
+
+  for (const applicationId of candidate.applicationIds) {
+    const appInfoResult = await client.getApplicationInfo({ applicationId });
+    if (appInfoResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to retrieve application info for candidate ${candidate.name}.`
+        )
+      );
+    }
+
+    if (appInfoResult.value.results.status === "Hired") {
+      return new Err(
+        new MCPError(
+          `Candidate ${candidate.name} was hired, this operation is not permitted for hired candidates.`,
+          {
+            tracked: false,
+          }
+        )
+      );
+    }
+  }
+
+  return new Ok(undefined);
 }
 
 async function findUniqueCandidate(
