@@ -32,7 +32,7 @@ export function registerListTool(
   { name, extraDescription }: { name: string; extraDescription?: string }
 ) {
   const baseDescription =
-    "List the direct contents of a node. Should only be used on nodes with children " +
+    "List the direct contents of a node, like 'ls' in Unix. Should only be used on nodes with children " +
     "(hasChildren: true), like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
     "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
     "the next step's nodeId. If a node output by this tool or the find tool has children " +
