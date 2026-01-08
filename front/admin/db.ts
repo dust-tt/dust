@@ -98,6 +98,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import logger from "@app/logger/logger";
 import { sendInitDbMessage } from "@app/types";
+import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
 
 async function main() {
   await sendInitDbMessage({
@@ -201,6 +202,7 @@ async function main() {
   await ConversationSkillModel.sync({ alter: true });
   await AgentMessageSkillModel.sync({ alter: true });
   await SkillMCPServerConfigurationModel.sync({ alter: true });
+  await WorkspaceVerificationAttemptModel.sync({ alter: true });
 
   process.exit(0);
 }
