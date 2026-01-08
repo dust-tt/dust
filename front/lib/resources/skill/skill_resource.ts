@@ -226,6 +226,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   get isExtendable(): boolean {
+    // Auto-enabled skills are baseline discovery capabilities: they are not meant to be extended.
     return this.globalSId !== null && !this.isAutoEnabled;
   }
 
