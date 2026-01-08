@@ -254,10 +254,7 @@ export const useToolSelection = ({
   const handleToolToggle = useCallback(
     (mcpServerView: MCPServerViewTypeWithLabel) => {
       const tool = { view: mcpServerView } satisfies SelectedTool;
-      const requirements = getMCPServerRequirements(
-        mcpServerView,
-        featureFlags
-      );
+      const requirements = getMCPServerRequirements(mcpServerView);
 
       if (!requirements.noRequirement) {
         const action = getDefaultMCPAction(mcpServerView);

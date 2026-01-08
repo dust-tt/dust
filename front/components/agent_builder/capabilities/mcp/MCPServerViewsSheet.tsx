@@ -60,14 +60,12 @@ import type {
   BuilderAction,
   MCPServerConfigurationType,
 } from "@app/components/shared/tools_picker/types";
-import { useBuilderContext } from "@app/components/shared/useBuilderContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 const TOP_MCP_SERVER_VIEWS = [
   "web_search_&_browse",
@@ -135,10 +133,8 @@ export function MCPServerViewsSheet({
   getAgentInstructions,
   filterMCPServerViews,
 }: MCPServerViewsSheetProps) {
-  const { owner } = useBuilderContext();
   const confirm = React.useContext(ConfirmContext);
   const sendNotification = useSendNotification();
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const {
     mcpServerViews: allMcpServerViews,
     mcpServerViewsWithKnowledge,
@@ -203,11 +199,9 @@ export function MCPServerViewsSheet({
   }, [mcpServerViewsWithoutKnowledge, filterMCPServerViews]);
 
   const selectableTopMCPServerViews = useMemo(() => {
-    const filteredList = topMCPServerViews.filter(
+    return topMCPServerViews.filter(
       (view) => !shouldFilterServerView(view, selectedActions)
     );
-
-    return filteredList;
   }, [topMCPServerViews, selectedActions, shouldFilterServerView]);
 
   const selectableNonTopMCPServerViews = useMemo(
@@ -319,7 +313,7 @@ export function MCPServerViewsSheet({
 
   function onClickMCPServer(mcpServerView: MCPServerViewTypeWithLabel) {
     const tool = { view: mcpServerView } satisfies SelectedTool;
-    const requirements = getMCPServerRequirements(mcpServerView, featureFlags);
+    const requirements = getMCPServerRequirements(mcpServerView);
 
     if (!requirements.noRequirement) {
       const action = getDefaultMCPAction(mcpServerView);
@@ -409,11 +403,8 @@ export function MCPServerViewsSheet({
   });
 
   const requirements = useMemo(
-    () =>
-      mcpServerView
-        ? getMCPServerRequirements(mcpServerView, featureFlags)
-        : null,
-    [mcpServerView, featureFlags]
+    () => (mcpServerView ? getMCPServerRequirements(mcpServerView) : null),
+    [mcpServerView]
   );
 
   // Stable form reset handler - no form dependency to prevent re-renders
@@ -468,7 +459,6 @@ export function MCPServerViewsSheet({
             onToolDetailsClick={(tool) => {
               handleToolInfoClick(tool.view);
             }}
-            featureFlags={featureFlags}
           />
         </>
       ),

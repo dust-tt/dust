@@ -14,14 +14,12 @@ import {
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import type { WhitelistableFeature } from "@app/types";
 
 export interface MCPServerCardProps {
   view: MCPServerViewTypeWithLabel;
   isSelected: boolean;
   onClick: () => void;
   onToolInfoClick: () => void;
-  featureFlags?: WhitelistableFeature[];
 }
 
 export function MCPServerCard({
@@ -29,9 +27,8 @@ export function MCPServerCard({
   isSelected,
   onClick,
   onToolInfoClick,
-  featureFlags,
 }: MCPServerCardProps) {
-  const requirements = getMCPServerRequirements(view, featureFlags);
+  const requirements = getMCPServerRequirements(view);
   const canAdd = requirements.noRequirement ? !isSelected : true;
 
   const icon = isCustomResourceIconType(view.server.icon)
@@ -90,7 +87,6 @@ interface MCPServerSelectionPageProps {
   onItemClick: (mcpServerView: MCPServerViewTypeWithLabel) => void;
   selectedToolsInSheet?: SelectedTool[];
   onToolDetailsClick?: (tool: SelectedTool) => void;
-  featureFlags?: WhitelistableFeature[];
 }
 
 export function MCPServerSelectionPage({
@@ -99,7 +95,6 @@ export function MCPServerSelectionPage({
   onItemClick,
   selectedToolsInSheet = [],
   onToolDetailsClick,
-  featureFlags,
 }: MCPServerSelectionPageProps) {
   // Optimize selection lookup with Set-based approach
   const selectedMCPIds = useMemo(() => {
@@ -146,7 +141,6 @@ export function MCPServerSelectionPage({
                 onToolDetailsClick({ view });
               }
             }}
-            featureFlags={featureFlags}
           />
         ))}
       </div>
@@ -165,7 +159,6 @@ export function MCPServerSelectionPage({
                 onToolDetailsClick({ view });
               }
             }}
-            featureFlags={featureFlags}
           />
         ))}
       </div>

@@ -1,6 +1,7 @@
 import { DEFAULT_WEBSEARCH_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { USE_SUMMARY_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
@@ -706,7 +707,7 @@ export function _getDustTaskGlobalAgent(
       tables: null,
       childAgentId: null,
       additionalConfiguration: {
-        useSummary: true,
+        [USE_SUMMARY_SWITCH]: true,
       },
       timeFrame: null,
       dustAppConfiguration: null,
