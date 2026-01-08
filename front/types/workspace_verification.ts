@@ -1,9 +1,7 @@
-// Computed status (derived from verifiedAt/failedAt/createdAt).
+// Computed status (derived from verifiedAt).
 export const VERIFICATION_STATUSES = [
   "pending",
   "verified",
-  "failed",
-  "expired",
 ] as const;
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
 
