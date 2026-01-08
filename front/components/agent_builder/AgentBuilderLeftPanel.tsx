@@ -26,7 +26,6 @@ interface AgentBuilderLeftPanelProps {
   isTriggersLoading?: boolean;
 }
 
-// TODO(skills 2025-12-11): refactor multipages to use mode only
 export function AgentBuilderLeftPanel({
   title,
   onCancel,
