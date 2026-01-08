@@ -1,6 +1,5 @@
 import {
   ActionCodeBoxIcon,
-  BookOpenIcon,
   ContextItem,
   EyeIcon,
   Icon,
@@ -31,16 +30,6 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     icon: EyeIcon,
     description:
       "Receive meeting minutes processed by email automatically and store them in a Dust Folder.",
-  },
-  {
-    id: "trackers",
-    label: "Document Tracker",
-    featureFlag: "labs_trackers",
-    visibleWithoutAccess: false,
-    icon: BookOpenIcon,
-    description:
-      "Document monitoring made simple - receive alerts when documents are out of date.",
-    onlyAdminCanManage: false,
   },
   {
     id: "mcp_actions",
