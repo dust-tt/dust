@@ -456,7 +456,9 @@ describe("SkillResource", () => {
         agentConfigurationId: agent.id,
       });
 
-      const agentBefore = await AgentConfigurationModel.findByPk(agent.id);
+      const agentBefore = await AgentConfigurationModel.findOne({
+        where: { id: agent.id, workspaceId: testContext.workspace.id },
+      });
       expect(agentBefore?.requestedSpaceIds).toEqual([]);
 
       await skillResource.updateSkill(testContext.authenticator, {
@@ -470,7 +472,9 @@ describe("SkillResource", () => {
         requestedSpaceIds: [restrictedSpace.id],
       });
 
-      const agentAfter = await AgentConfigurationModel.findByPk(agent.id);
+      const agentAfter = await AgentConfigurationModel.findOne({
+        where: { id: agent.id, workspaceId: testContext.workspace.id },
+      });
       expect(agentAfter?.requestedSpaceIds.map((id) => Number(id))).toContain(
         restrictedSpace.id
       );
@@ -494,7 +498,7 @@ describe("SkillResource", () => {
 
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [restrictedSpace.id] },
-        { where: { id: agent.id } }
+        { where: { id: agent.id, workspaceId: testContext.workspace.id } }
       );
 
       await SkillFactory.linkToAgent(testContext.authenticator, {
@@ -513,7 +517,9 @@ describe("SkillResource", () => {
         requestedSpaceIds: [restrictedSpace.id],
       });
 
-      const agentAfter = await AgentConfigurationModel.findByPk(agent.id);
+      const agentAfter = await AgentConfigurationModel.findOne({
+        where: { id: agent.id, workspaceId: testContext.workspace.id },
+      });
       const spaceIds = agentAfter?.requestedSpaceIds.map((id) => Number(id));
       expect(spaceIds?.filter((id) => id === restrictedSpace.id)).toHaveLength(
         1
@@ -541,7 +547,7 @@ describe("SkillResource", () => {
 
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [space1.id, space2.id] },
-        { where: { id: agent.id } }
+        { where: { id: agent.id, workspaceId: testContext.workspace.id } }
       );
 
       await SkillFactory.linkToAgent(testContext.authenticator, {
@@ -561,7 +567,9 @@ describe("SkillResource", () => {
         requestedSpaceIds: [space1.id],
       });
 
-      const agentAfter = await AgentConfigurationModel.findByPk(agent.id);
+      const agentAfter = await AgentConfigurationModel.findOne({
+        where: { id: agent.id, workspaceId: testContext.workspace.id },
+      });
       const spaceIds = agentAfter?.requestedSpaceIds.map((id) => Number(id));
 
       expect(spaceIds).toContain(space1.id);
@@ -594,7 +602,7 @@ describe("SkillResource", () => {
 
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [sharedSpace.id, skill1OnlySpace.id] },
-        { where: { id: agent.id } }
+        { where: { id: agent.id, workspaceId: testContext.workspace.id } }
       );
 
       await SkillFactory.linkToAgent(testContext.authenticator, {
@@ -618,7 +626,9 @@ describe("SkillResource", () => {
         requestedSpaceIds: [skill1OnlySpace.id],
       });
 
-      const agentAfter = await AgentConfigurationModel.findByPk(agent.id);
+      const agentAfter = await AgentConfigurationModel.findOne({
+        where: { id: agent.id, workspaceId: testContext.workspace.id },
+      });
       const spaceIds = agentAfter?.requestedSpaceIds.map((id) => Number(id));
 
       // sharedSpace kept because skill2 still requires it.
