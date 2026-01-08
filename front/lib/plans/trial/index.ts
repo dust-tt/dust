@@ -38,6 +38,7 @@ export async function isWorkspaceEligibleForTrial(
 
   // Current plan is either FREE_NO_PLAN or FREE_TEST_PLAN if you're on this paywall.
   // FREE_NO_PLAN is not on the database, checking it comes down to having at least 1 subscription.
+  // Note that we treat users of the old free plan (FREE_TEST_PLAN) as eligible for a new trial.
   const noPreviousSubscription =
     subscriptions.length === 0 ||
     (subscriptions.length === 1 && isOldFreePlan(subscriptions[0].plan.code));
