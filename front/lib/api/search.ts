@@ -122,20 +122,7 @@ const NodeIdSearchBody = t.intersection([
   }),
 ]);
 
-const BrowseSearchBody = t.intersection([
-  BaseSearchBody,
-  t.partial({
-    query: t.undefined,
-    nodeIds: t.undefined,
-    searchSourceUrls: t.boolean,
-  }),
-]);
-
-export const SearchRequestBody = t.union([
-  TextSearchBody,
-  NodeIdSearchBody,
-  BrowseSearchBody,
-]);
+export const SearchRequestBody = t.union([TextSearchBody, NodeIdSearchBody]);
 
 export type SearchRequestBodyType = t.TypeOf<typeof SearchRequestBody>;
 
