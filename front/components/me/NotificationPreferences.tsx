@@ -11,7 +11,6 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { ChannelPreference, Preference } from "@novu/js";
-import { PreferenceLevel } from "@novu/js";
 import cloneDeep from "lodash/cloneDeep";
 import {
   forwardRef,
@@ -57,6 +56,8 @@ const NOTIFICATION_TRIGGER_LABELS: Record<NotificationTrigger, string> = {
 const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay = "1_hour";
 const DEFAULT_NOTIFICATION_TRIGGER: NotificationTrigger = "all_messages";
 
+const CONVERSATION_UNREAD_WORKFLOW_ID = "conversation-unread";
+
 export interface NotificationPreferencesRefProps {
   savePreferences: () => Promise<boolean>;
   isDirty: () => boolean;
@@ -73,8 +74,8 @@ export const NotificationPreferences = forwardRef<
 >(({ onChanged }, ref) => {
   const sendNotification = useSendNotification();
 
-  // Novu channel preferences
-  const [globalPreferences, setGlobalPreferences] = useState<
+  // Novu workflow-specific channel preferences for conversation-unread
+  const [workflowPreferences, setWorkflowPreferences] = useState<
     Preference | undefined
   >();
 
@@ -150,14 +151,15 @@ export const NotificationPreferences = forwardRef<
     }
   }, [notifyTriggerMetadata]);
 
-  // Load global preferences from Novu
+  // Load workflow-specific preferences from Novu
   useEffect(() => {
     void novuClient?.preferences.list().then((preferences) => {
-      const globalPref = preferences.data?.find(
-        (preference) => preference.level === PreferenceLevel.GLOBAL
+      const workflowPref = preferences.data?.find(
+        (preference) =>
+          preference.workflow?.identifier === CONVERSATION_UNREAD_WORKFLOW_ID
       );
-      setGlobalPreferences(globalPref);
-      originalPreferencesRef.current = globalPref;
+      setWorkflowPreferences(workflowPref);
+      originalPreferencesRef.current = workflowPref;
     });
   }, [novuClient]);
 
@@ -166,15 +168,15 @@ export const NotificationPreferences = forwardRef<
     ref,
     () => ({
       savePreferences: async () => {
-        if (!globalPreferences || !novuClient) {
+        if (!workflowPreferences || !novuClient) {
           return false;
         }
 
         try {
-          // Save global preferences in Novu
+          // Save workflow preferences in Novu
           const result = await novuClient.preferences.update({
-            preference: globalPreferences,
-            channels: globalPreferences.channels,
+            preference: workflowPreferences,
+            channels: workflowPreferences.channels,
           });
 
           if (result.error) {
@@ -220,7 +222,7 @@ export const NotificationPreferences = forwardRef<
           }
 
           // Update original references on successful save
-          originalPreferencesRef.current = globalPreferences;
+          originalPreferencesRef.current = workflowPreferences;
           originalEmailDelayRef.current = emailDelay;
           originalUnreadTriggerRef.current = unreadTrigger;
           originalNotifyTriggerRef.current = notifyTrigger;
@@ -235,12 +237,12 @@ export const NotificationPreferences = forwardRef<
         }
       },
       isDirty: () => {
-        if (!originalPreferencesRef.current || !globalPreferences) {
+        if (!originalPreferencesRef.current || !workflowPreferences) {
           return false;
         }
 
         const original = originalPreferencesRef.current;
-        const current = globalPreferences;
+        const current = workflowPreferences;
 
         // Compare channel preferences
         for (const channel of Object.keys(original.channels) as Array<
@@ -266,7 +268,7 @@ export const NotificationPreferences = forwardRef<
       },
       reset: () => {
         if (originalPreferencesRef.current) {
-          setGlobalPreferences(cloneDeep(originalPreferencesRef.current));
+          setWorkflowPreferences(cloneDeep(originalPreferencesRef.current));
         }
         setEmailDelay(originalEmailDelayRef.current);
         setUnreadTrigger(originalUnreadTriggerRef.current);
@@ -274,7 +276,7 @@ export const NotificationPreferences = forwardRef<
       },
     }),
     [
-      globalPreferences,
+      workflowPreferences,
       emailDelay,
       unreadTrigger,
       notifyTrigger,
@@ -288,13 +290,19 @@ export const NotificationPreferences = forwardRef<
 
   useEffect(() => {
     onChanged();
-  }, [globalPreferences, emailDelay, unreadTrigger, notifyTrigger, onChanged]);
+  }, [
+    workflowPreferences,
+    emailDelay,
+    unreadTrigger,
+    notifyTrigger,
+    onChanged,
+  ]);
 
   const updateChannelPreference = (
     channel: keyof ChannelPreference,
     enabled: boolean
   ) => {
-    setGlobalPreferences((prev) => {
+    setWorkflowPreferences((prev) => {
       if (!prev) {
         return undefined;
       }
@@ -304,14 +312,14 @@ export const NotificationPreferences = forwardRef<
     });
   };
 
-  if (!globalPreferences) {
+  if (!workflowPreferences) {
     return <Spinner />;
   }
 
   const isInAppEnabled =
-    globalPreferences.channels.in_app && globalPreferences.enabled;
+    workflowPreferences.channels.in_app && workflowPreferences.enabled;
   const isEmailEnabled =
-    globalPreferences.channels.email && globalPreferences.enabled;
+    workflowPreferences.channels.email && workflowPreferences.enabled;
 
   return (
     <div className="flex flex-col gap-4">
@@ -395,7 +403,7 @@ export const NotificationPreferences = forwardRef<
           Notify with
         </Label>
         <div className="flex items-center gap-4">
-          {globalPreferences.channels.in_app !== undefined && (
+          {workflowPreferences.channels.in_app !== undefined && (
             <div className="flex items-center gap-1.5">
               <Checkbox
                 id="in_app-preference"
@@ -417,7 +425,7 @@ export const NotificationPreferences = forwardRef<
               </Label>
             </div>
           )}
-          {globalPreferences.channels.email !== undefined && (
+          {workflowPreferences.channels.email !== undefined && (
             <div className="flex items-center gap-1.5">
               <Checkbox
                 id="email-preference"
