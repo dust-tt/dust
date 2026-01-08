@@ -25,7 +25,7 @@ import type {
   ReasoningEffort,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES, removeNulls } from "@app/types";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -133,24 +133,23 @@ export abstract class LLM {
     );
 
     generation.updateTrace({
-      tags: removeNulls([
-        this.authenticator.user()?.sId
-          ? `actualUserId:${this.authenticator.user()?.sId}`
-          : null,
-        this.authenticator.key()
-          ? `apiKeyId:${this.authenticator.key()?.id}`
-          : null,
-        `authMethod:${this.authenticator.authMethod() ?? "unknown"}`,
-        // Dynamic tags from all context fields (except userId and workspaceId).
-        ...Object.entries(this.context)
-          .filter(
+      metadata: {
+        dustTraceId: this.traceId,
+        // All contextual data as key-value pairs for better filtering in Langfuse UI.
+        ...(this.authenticator.user()?.sId && {
+          actualUserId: this.authenticator.user()!.sId,
+        }),
+        ...(this.authenticator.key() && {
+          apiKeyId: this.authenticator.key()!.id,
+        }),
+        authMethod: this.authenticator.authMethod() ?? "unknown",
+        // Include all context fields (except userId and workspaceId).
+        ...Object.fromEntries(
+          Object.entries(this.context).filter(
             ([key, value]) =>
               value !== undefined && !["userId", "workspaceId"].includes(key)
           )
-          .map(([key, value]) => `${key}:${value}`),
-      ]),
-      metadata: {
-        dustTraceId: this.traceId,
+        ),
       },
       // In observability, userId maps to workspaceId for consistent grouping.
       userId: this.authenticator.getNonNullableWorkspace().sId,
