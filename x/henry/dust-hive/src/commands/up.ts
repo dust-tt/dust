@@ -14,6 +14,7 @@ import { syncCommand } from "./sync";
 interface UpOptions {
   attach?: boolean;
   force?: boolean;
+  compact?: boolean;
 }
 
 // Check preconditions for managed services mode
@@ -101,10 +102,10 @@ export async function upCommand(options: UpOptions = {}): Promise<Result<void>> 
   // Create/attach main session
   if (options.attach) {
     console.log();
-    await openMainSession(repoRoot, { attach: true });
+    await openMainSession(repoRoot, { attach: true, compact: options.compact });
   } else {
     // Create session in background if it doesn't exist
-    await openMainSession(repoRoot, { attach: false });
+    await openMainSession(repoRoot, { attach: false, compact: options.compact });
     console.log();
     logger.success("Managed services started!");
     console.log();
