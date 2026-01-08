@@ -24,8 +24,8 @@ export const CompetitorHeroSection: FC<CompetitorHeroSectionProps> = ({
   trackingPrefix = "competitor",
 }) => {
   return (
-    <div className="bg-blue-50">
-      <div className="container flex w-full flex-col pt-16 pb-12 md:pt-24 md:pb-16">
+    <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-blue-50">
+      <div className="mx-auto flex w-full max-w-7xl flex-col px-6 pt-16 pb-12 md:pt-24 md:pb-16">
         <Grid>
           <div
             className={classNames(
@@ -100,7 +100,7 @@ export const CompetitorHeroSection: FC<CompetitorHeroSectionProps> = ({
           </div>
 
           {/* Trusted By - using existing component */}
-          <TrustedBy logoSet="default" />
+          <TrustedBy logoSet="default" size="large" />
         </Grid>
       </div>
     </div>

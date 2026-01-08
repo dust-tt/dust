@@ -6,7 +6,7 @@ import { classNames } from "@app/lib/utils";
 
 export interface FAQItem {
   question: string;
-  answer: React.ReactNode; // Now accepts React components, JSX, or strings
+  answer: React.ReactNode | string; // Accepts React components, JSX, or plain strings
 }
 
 interface FAQProps {

@@ -193,12 +193,18 @@ const LOGO_SETS = {
 type LogoSetKey = keyof typeof LOGO_SETS;
 type RegionKey = "us" | "eu";
 
+type SizeKey = "default" | "large";
+
 interface TrustedByProps {
   logoSet?: LogoSetKey;
   region?: RegionKey;
+  size?: SizeKey;
 }
 
-export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
+export default function TrustedBy({
+  logoSet = "default",
+  size = "default",
+}: TrustedByProps) {
   const { geoData } = useGeolocation();
   const [mounted, setMounted] = useState(false);
 
@@ -217,10 +223,13 @@ export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
 
   const logos = LOGO_SETS[logoSet][region];
 
+  const isLarge = size === "large";
+
   return (
     <div
       className={classNames(
-        "col-span-12 flex flex-col items-center py-4 sm:py-8",
+        "col-span-12 flex flex-col items-center",
+        isLarge ? "py-6 sm:py-10" : "py-4 sm:py-8",
         "lg:col-span-12 lg:col-start-1",
         "xl:col-span-10 xl:col-start-2"
       )}
@@ -230,21 +239,43 @@ export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
       </H4>
 
       <div className="w-full">
-        <div className="flex flex-wrap justify-center gap-x-6 gap-y-4 sm:gap-x-8 lg:gap-x-10 xl:gap-x-12">
+        <div
+          className={classNames(
+            "flex flex-wrap justify-center",
+            isLarge
+              ? "gap-x-8 gap-y-6 sm:gap-x-10 lg:gap-x-14 xl:gap-x-16"
+              : "gap-x-6 gap-y-4 sm:gap-x-8 lg:gap-x-10 xl:gap-x-12"
+          )}
+        >
           {logos.map((logo, index) => {
             const caseStudyUrl = CASE_STUDIES[logo.name];
             return (
               <div
                 key={`${logo.name}-${index}`}
-                className="flex w-36 flex-col items-center sm:w-48 lg:w-44 xl:w-40"
+                className={classNames(
+                  "flex flex-col items-center",
+                  isLarge
+                    ? "w-40 sm:w-56 lg:w-52 xl:w-48"
+                    : "w-36 sm:w-48 lg:w-44 xl:w-40"
+                )}
               >
-                <div className="flex h-12 items-center justify-center sm:h-14">
+                <div
+                  className={classNames(
+                    "flex items-center justify-center",
+                    isLarge ? "h-14 sm:h-16" : "h-12 sm:h-14"
+                  )}
+                >
                   <Image
                     alt={logo.name}
                     src={logo.src}
                     width={200}
                     height={80}
-                    className="h-auto max-h-16 w-auto object-contain sm:max-h-20 lg:max-h-24"
+                    className={classNames(
+                      "h-auto w-auto object-contain",
+                      isLarge
+                        ? "max-h-20 sm:max-h-24 lg:max-h-28"
+                        : "max-h-16 sm:max-h-20 lg:max-h-24"
+                    )}
                   />
                 </div>
                 {caseStudyUrl ? (

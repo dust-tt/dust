@@ -5,7 +5,7 @@ import type { FC } from "react";
 import { Grid, H2 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
-import type { FeatureComparisonConfig } from "./types";
+import type { FeatureComparisonConfig, FeatureStatus } from "./types";
 
 interface FeatureComparisonTableProps {
   config: FeatureComparisonConfig;
@@ -14,9 +14,7 @@ interface FeatureComparisonTableProps {
 }
 
 // Simple visual indicator
-const FeatureIndicator: FC<{ status: "yes" | "partial" | "no" }> = ({
-  status,
-}) => {
+const FeatureIndicator: FC<{ status: FeatureStatus }> = ({ status }) => {
   switch (status) {
     case "yes":
       return (
@@ -39,75 +37,13 @@ const FeatureIndicator: FC<{ status: "yes" | "partial" | "no" }> = ({
   }
 };
 
-// Visual feature comparison data
-const FEATURE_ROWS = [
-  {
-    feature: "Agent-first architecture",
-    description: "Built from day one for workflow automation, not search",
-    dust: "yes" as const,
-    competitor: "partial" as const,
-  },
-  {
-    feature: "No-code agent builder",
-    description: "Create agents in 5 minutes without technical knowledge",
-    dust: "yes" as const,
-    competitor: "partial" as const,
-  },
-  {
-    feature: "Multi-agent orchestration",
-    description: "Parallel sub-agents for complex cross-system workflows",
-    dust: "yes" as const,
-    competitor: "partial" as const,
-  },
-  {
-    feature: "20+ AI models",
-    description: "GPT-4, Claude, Gemini, Mistral—choose per task",
-    dust: "yes" as const,
-    competitor: "yes" as const,
-  },
-  {
-    feature: "Transparent pricing",
-    description: "$29/user/month with no hidden fees or minimums",
-    dust: "yes" as const,
-    competitor: "no" as const,
-  },
-  {
-    feature: "50+ integrations",
-    description: "Slack, Notion, Salesforce, GitHub, and more",
-    dust: "yes" as const,
-    competitor: "yes" as const,
-  },
-  {
-    feature: "Write actions (CRM, tickets)",
-    description: "Update records, create docs, post messages",
-    dust: "yes" as const,
-    competitor: "yes" as const,
-  },
-  {
-    feature: "Interactive dashboards (Frames)",
-    description: "Real-time React components for data visualization",
-    dust: "yes" as const,
-    competitor: "no" as const,
-  },
-  {
-    feature: "SOC 2 Type II certified",
-    description: "Enterprise-grade security and compliance",
-    dust: "yes" as const,
-    competitor: "yes" as const,
-  },
-  {
-    feature: "Self-hosted deployment",
-    description: "Deploy in your own cloud infrastructure",
-    dust: "no" as const,
-    competitor: "yes" as const,
-  },
-];
-
 export const FeatureComparisonTable: FC<FeatureComparisonTableProps> = ({
   config,
   competitorName,
   competitorLogo,
 }) => {
+  const rows = config.rows;
+
   return (
     <div className="py-12 md:py-16">
       <Grid>
@@ -133,7 +69,7 @@ export const FeatureComparisonTable: FC<FeatureComparisonTableProps> = ({
                   className="h-5 w-auto"
                 />
               </div>
-              <div className="flex items-center justify-center border-l border-border bg-structure-50 px-4 py-4">
+              <div className="flex items-center justify-center border-l border-border bg-white px-4 py-4">
                 {competitorLogo ? (
                   <Image
                     src={competitorLogo}
@@ -151,12 +87,12 @@ export const FeatureComparisonTable: FC<FeatureComparisonTableProps> = ({
             </div>
 
             {/* Rows */}
-            {FEATURE_ROWS.map((row, index) => (
+            {rows.map((row, index) => (
               <div
                 key={index}
                 className={classNames(
                   "grid grid-cols-1 md:grid-cols-3",
-                  index !== FEATURE_ROWS.length - 1 && "border-b border-border"
+                  index !== rows.length - 1 && "border-b border-border"
                 )}
               >
                 <div className="flex flex-col justify-center px-6 py-4 md:border-r md:border-border">
