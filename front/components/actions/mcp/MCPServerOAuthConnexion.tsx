@@ -10,7 +10,9 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
+import { useController, useFormContext, useWatch } from "react-hook-form";
 
+import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/types";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type {
   MCPOAuthUseCase,
@@ -35,24 +37,38 @@ export const OAUTH_USE_CASE_TO_DESCRIPTION: Record<MCPOAuthUseCase, string> = {
 type MCPServerOauthConnexionProps = {
   toolName: string;
   authorization: AuthorizationInfo;
-  authCredentials: OAuthCredentials | null;
-  useCase: MCPOAuthUseCase | null;
-  setUseCase: (useCase: MCPOAuthUseCase) => void;
-  setAuthCredentials: (authCredentials: OAuthCredentials) => void;
-  setIsFormValid: (isFormValid: boolean) => void;
   documentationUrl?: string;
 };
 
 export function MCPServerOAuthConnexion({
   toolName,
   authorization,
-  authCredentials,
-  useCase,
-  setUseCase,
-  setAuthCredentials,
-  setIsFormValid,
   documentationUrl,
 }: MCPServerOauthConnexionProps) {
+  const form = useFormContext<MCPServerOAuthFormValues>();
+  const {
+    field: { onChange: onUseCaseChange },
+  } = useController({
+    control: form.control,
+    name: "useCase",
+  });
+  const {
+    field: { onChange: onAuthCredentialsChange },
+  } = useController({
+    control: form.control,
+    name: "authCredentials",
+  });
+  const {
+    field: { onChange: onOauthFormValidChange },
+  } = useController({
+    control: form.control,
+    name: "oauthFormValid",
+  });
+  const useCase = useWatch({ control: form.control, name: "useCase" });
+  const authCredentials = useWatch({
+    control: form.control,
+    name: "authCredentials",
+  });
   const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
 
   useEffect(() => {
@@ -60,11 +76,11 @@ export function MCPServerOAuthConnexion({
       return;
     }
     if (authorization.supported_use_cases.includes("personal_actions")) {
-      setUseCase("personal_actions");
+      onUseCaseChange("personal_actions");
     } else if (authorization.supported_use_cases.length > 0) {
-      setUseCase(authorization.supported_use_cases[0]);
+      onUseCaseChange(authorization.supported_use_cases[0]);
     }
-  }, [authorization.supported_use_cases, setUseCase, useCase]);
+  }, [authorization.supported_use_cases, onUseCaseChange, useCase]);
 
   useEffect(() => {
     if (useCase) {
@@ -81,45 +97,53 @@ export function MCPServerOAuthConnexion({
         // Set the auth credentials to the values in the credentials object
         // that already have a value as we will not ask the user for these values.
         if (credentialInputs) {
-          setAuthCredentials(
-            Object.entries(credentialInputs).reduce(
-              (acc, [key, { value }]) => ({ ...acc, [key]: value }),
-              {}
-            )
-          );
+          const nextCredentials: OAuthCredentials = {};
+          for (const [key, inputData] of Object.entries(credentialInputs)) {
+            if (!isSupportedOAuthCredential(key)) {
+              continue;
+            }
+            nextCredentials[key] = inputData.value ?? "";
+          }
+          onAuthCredentialsChange(nextCredentials);
         }
       };
       void fetchCredentialInputs();
     }
-  }, [authorization.provider, setAuthCredentials, useCase]);
+  }, [authorization.provider, onAuthCredentialsChange, useCase]);
 
   // We check if the form is valid.
   useEffect(() => {
-    if (inputs && authCredentials) {
-      let isFormValid = true;
-      for (const [key, value] of Object.entries(authCredentials)) {
-        if (!isSupportedOAuthCredential(key)) {
-          // Can't happen but to make typescript happy.
-          continue;
-        }
+    if (!authCredentials) {
+      return;
+    }
 
-        const input = inputs[key];
-        if (input && input.validator) {
-          if (!input.validator(value)) {
-            isFormValid = false;
-            break;
-          }
-        } else {
-          if (!value) {
-            isFormValid = false;
-            break;
-          }
-        }
+    if (!inputs) {
+      onOauthFormValidChange(!!useCase);
+      return;
+    }
+
+    let isFormValid = true;
+    for (const [key, value] of Object.entries(authCredentials)) {
+      if (!isSupportedOAuthCredential(key)) {
+        continue;
       }
 
-      setIsFormValid(isFormValid && !!useCase);
+      const input = inputs[key];
+      if (input && input.validator) {
+        if (!input.validator(value)) {
+          isFormValid = false;
+          break;
+        }
+      } else {
+        if (!value) {
+          isFormValid = false;
+          break;
+        }
+      }
     }
-  }, [authCredentials, inputs, setIsFormValid, useCase]);
+
+    onOauthFormValidChange(isFormValid && !!useCase);
+  }, [authCredentials, inputs, onOauthFormValidChange, useCase]);
 
   const supportsPersonalActions =
     authorization.supported_use_cases.includes("personal_actions");
@@ -151,7 +175,7 @@ export function MCPServerOAuthConnexion({
                 )}
                 onClick={
                   supportsPersonalActions
-                    ? () => setUseCase("personal_actions")
+                    ? () => onUseCaseChange("personal_actions")
                     : undefined
                 }
               >
@@ -198,7 +222,7 @@ export function MCPServerOAuthConnexion({
                 )}
                 onClick={
                   supportsPlatformActions
-                    ? () => setUseCase("platform_actions")
+                    ? () => onUseCaseChange("platform_actions")
                     : undefined
                 }
               >
@@ -255,12 +279,13 @@ export function MCPServerOAuthConnexion({
                     <Input
                       id={key}
                       value={value}
-                      onChange={(e) =>
-                        setAuthCredentials({
-                          ...authCredentials,
-                          [key]: e.target.value,
-                        })
-                      }
+                      onChange={(e) => {
+                        const nextCredentials: OAuthCredentials = {
+                          ...(authCredentials ?? {}),
+                        };
+                        nextCredentials[key] = e.target.value;
+                        onAuthCredentialsChange(nextCredentials);
+                      }}
                       message={inputData.helpMessage}
                       messageStatus={
                         value.length > 0 &&
