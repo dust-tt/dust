@@ -1,3 +1,4 @@
+import { AttachmentIcon, Button } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
@@ -67,8 +68,12 @@ export function SkillBuilderInstructionsEditor({
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
 
+  // Helper function to extract attached knowledge and update form.
   const extractAttachedKnowledge = useCallback((editorInstance: Editor) => {
     const knowledgeItems: KnowledgeItem[] = [];
+
+    // Use TipTap's document traversal API to recursively find all knowledge nodes.
+    // Note: $nodes() only searches top-level nodes, not nested inline nodes.
     const { state } = editorInstance;
     const { doc } = state;
 
@@ -134,6 +139,12 @@ export function SkillBuilderInstructionsEditor({
     onBlur: handleBlur,
     onDelete: handleDelete,
   });
+
+  const handleAddKnowledge = useCallback(() => {
+    if (editor) {
+      editor.chain().focus().insertKnowledgeNode().run();
+    }
+  }, [editor]);
 
   useEffect(() => {
     return () => {
@@ -201,6 +212,16 @@ export function SkillBuilderInstructionsEditor({
   return (
     <div className="relative space-y-1 p-px">
       <SkillInstructionsEditorContent editor={editor} isReadOnly={false} />
+      <Button
+        size="xs"
+        variant="ghost"
+        icon={AttachmentIcon}
+        onClick={handleAddKnowledge}
+        className="absolute bottom-2 left-2"
+        tooltip="Add knowledge"
+        disabled={!editor}
+      />
+
       {instructionsFieldState.error && (
         <div className="dark:text-warning-night ml-2 text-xs text-warning">
           {instructionsFieldState.error.message}
