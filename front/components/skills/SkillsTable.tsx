@@ -16,7 +16,6 @@ import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { SkillManagerTabType } from "@app/pages/w/[wId]/builder/skills";
 import type { LightWorkspaceType, UserType } from "@app/types";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
@@ -115,21 +114,6 @@ const lastEditedColumn = {
   meta: { className: "hidden @sm:w-32 @sm:table-cell" },
 };
 
-const suggestionDateColumn = {
-  header: "Suggestion date",
-  accessorKey: "createdAt",
-  cell: (info: CellContext<RowData, number | null>) => {
-    const value = info.getValue();
-    return (
-      <DataTable.BasicCellContent
-        tooltip={value ? formatTimestampToFriendlyDate(value, "long") : ""}
-        label={value ? formatTimestampToFriendlyDate(value, "compact") : ""}
-      />
-    );
-  },
-  meta: { className: "hidden @sm:w-32 @sm:table-cell" },
-};
-
 const menuColumn = {
   header: "",
   accessorKey: "menuItems",
@@ -141,30 +125,23 @@ const menuColumn = {
   },
 };
 
-const getTableColumns = (
-  onAgentClick: (agentId: string) => void,
-  activeTab: SkillManagerTabType | "search"
-) => {
+const getTableColumns = (onAgentClick: (agentId: string) => void) => {
   /**
    * Columns order:
    * - Name (always)
-   * - Editors (hidden on mobile, not shown for suggested)
-   * - Used by (hidden on mobile, not shown for suggested)
-   * - Last Edited / Suggestion date (hidden on mobile)
+   * - Editors (hidden on mobile)
+   * - Used by (hidden on mobile)
+   * - Last Edited (hidden on mobile)
    * - Actions (always)
    */
-  switch (activeTab) {
-    case "suggested":
-      return [nameColumn, suggestionDateColumn, menuColumn];
-    default:
-      return [
-        nameColumn,
-        editorsColumn,
-        usedByColumn(onAgentClick),
-        lastEditedColumn,
-        menuColumn,
-      ];
-  }
+
+  return [
+    nameColumn,
+    editorsColumn,
+    usedByColumn(onAgentClick),
+    lastEditedColumn,
+    menuColumn,
+  ];
 };
 
 type SkillsTableProps = {
@@ -172,7 +149,6 @@ type SkillsTableProps = {
   owner: LightWorkspaceType;
   onSkillClick: (skill: SkillWithRelationsType) => void;
   onAgentClick: (agentId: string) => void;
-  activeTab: SkillManagerTabType | "search";
 };
 
 export function SkillsTable({
@@ -180,7 +156,6 @@ export function SkillsTable({
   owner,
   onSkillClick,
   onAgentClick,
-  activeTab,
 }: SkillsTableProps) {
   const router = useRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
@@ -277,7 +252,7 @@ export function SkillsTable({
       <DataTable
         className="relative"
         data={rows}
-        columns={getTableColumns(onAgentClick, activeTab)}
+        columns={getTableColumns(onAgentClick)}
         pagination={pagination}
         setPagination={setPagination}
       />
