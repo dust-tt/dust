@@ -71,7 +71,6 @@ export default function Space({
       onSelect={(sId) => {
         void router.push(`/w/${owner.sId}/spaces/${space.sId}/apps/${sId}`);
       }}
-      registryApps={registryApps}
     />
   );
 }
