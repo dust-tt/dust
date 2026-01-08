@@ -1,9 +1,10 @@
 import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
 import {
   Avatar,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CollapsibleComponent,
+  Icon,
   MultiPageSheet,
   MultiPageSheetContent,
 } from "@dust-tt/sparkle";
@@ -408,16 +409,28 @@ function KnowledgeConfigurationSheetContent({
           {/* Advanced Settings collapsible section */}
           {mcpServerView?.serverType === "internal" &&
             mcpServerView.server.name === SEARCH_SERVER_NAME && (
-              <Collapsible
-                open={isAdvancedSettingsOpen}
-                onOpenChange={setAdvancedSettingsOpen}
-              >
-                <CollapsibleTrigger isOpen={isAdvancedSettingsOpen}>
-                  <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
-                    Advanced Settings
-                  </h3>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="m-1">
+              <CollapsibleComponent
+                rootProps={{
+                  defaultOpen: isAdvancedSettingsOpen,
+                  onOpenChange: setAdvancedSettingsOpen,
+                }}
+                triggerChildren={
+                  <>
+                    <Icon
+                      visual={
+                        isAdvancedSettingsOpen
+                          ? ChevronDownIcon
+                          : ChevronRightIcon
+                      }
+                      size="sm"
+                    />
+                    <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
+                      Advanced Settings
+                    </h3>
+                  </>
+                }
+                contentProps={{ className: "m-1" }}
+                contentChildren={
                   <CustomCheckboxSection
                     title="Enable exploratory search mode"
                     description="Allow the agent to navigate the selected Data Sources like a filesystem (list folders, browse files, explore hierarchies). Best for complex tasks with large datasets where thoroughness matters more than speed."
@@ -425,8 +438,8 @@ function KnowledgeConfigurationSheetContent({
                     selectedMCPServerView={mcpServerView ?? undefined}
                     configurationKey={ADVANCED_SEARCH_SWITCH}
                   />
-                </CollapsibleContent>
-              </Collapsible>
+                }
+              />
             )}
 
           <SelectedDataSources />
