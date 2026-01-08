@@ -1,44 +1,21 @@
-import assert from "assert";
-
-import {
-  DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
-  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
-  DEFAULT_PROJECT_SEARCH_ACTION_NAME,
-} from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type {
-  DataSourceConfiguration,
-  TableDataSourceConfiguration,
-} from "@app/lib/api/assistant/configuration/types";
-import type {
-  ContentNodeAttachmentType,
-  ConversationAttachmentType,
-} from "@app/lib/api/assistant/conversation/attachments";
+import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import { getCommonUtilitiesServer } from "@app/lib/api/assistant/jit/common_utilities";
 import {
-  isContentFragmentDataSourceNode,
-  isContentNodeAttachmentType,
-  isFileAttachmentType,
-} from "@app/lib/api/assistant/conversation/attachments";
-import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conversation/content_types";
-import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
-import config from "@app/lib/api/config";
+  getConversationFilesServer,
+  getConversationMCPServers,
+  getConversationSearchServer,
+} from "@app/lib/api/assistant/jit/conversation";
+import { getFolderSearchServers } from "@app/lib/api/assistant/jit/folder";
+import { getProjectSearchServer } from "@app/lib/api/assistant/jit/projects";
+import { getQueryTablesServer } from "@app/lib/api/assistant/jit/query_tables_v2";
+import { getSchedulesManagementServer } from "@app/lib/api/assistant/jit/schedules_management";
+import { getSkillManagementServer } from "@app/lib/api/assistant/jit/skills";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
-import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import type {
   ConversationWithoutContentType,
   LightAgentConfigurationType,
 } from "@app/types";
-import { CoreAPI } from "@app/types";
 
 export async function getJITServers(
   auth: Authenticator,
@@ -54,674 +31,87 @@ export async function getJITServers(
 ): Promise<ServerSideMCPServerConfigurationType[]> {
   const jitServers: ServerSideMCPServerConfigurationType[] = [];
 
-  // Get the conversation MCP server views (aka Tools)
-  const conversationMCPServerViews =
-    await ConversationResource.fetchMCPServerViews(auth, conversation, true);
+  // Get conversation-specific MCP servers (tools).
+  const conversationServers = await getConversationMCPServers(
+    auth,
+    conversation
+  );
+  jitServers.push(...conversationServers);
 
-  const commonUtilitiesView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "common_utilities"
-    );
-
-  for (const conversationMCPServerView of conversationMCPServerViews) {
-    const mcpServerViewResource = await MCPServerViewResource.fetchByModelPk(
-      auth,
-      conversationMCPServerView.mcpServerViewId
-    );
-
-    if (!mcpServerViewResource) {
-      continue;
-    }
-
-    const mcpServerView = mcpServerViewResource.toJSON();
-
-    const conversationFilesServer: ServerSideMCPServerConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name: mcpServerView.name ?? mcpServerView.server.name,
-      description:
-        mcpServerView.description ?? mcpServerView.server.description,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      timeFrame: null,
-      jsonSchema: null,
-      secretName: null,
-      additionalConfiguration: {},
-      mcpServerViewId: mcpServerView.sId,
-      dustAppConfiguration: null,
-      internalMCPServerId:
-        mcpServerView.serverType === "internal"
-          ? mcpServerView.server.sId
-          : null,
-    };
-
-    jitServers.push(conversationFilesServer);
-  }
-
-  if (!commonUtilitiesView) {
-    logger.warn(
-      {
-        agentConfigurationId: agentConfiguration.sId,
-        conversationId: conversation.sId,
-      },
-      "MCP server view not found for common_utilities. Ensure auto tools are created."
-    );
-  } else {
-    const commonUtilitiesViewJSON = commonUtilitiesView.toJSON();
-    const commonUtilitiesServer: ServerSideMCPServerConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name:
-        commonUtilitiesViewJSON.name ??
-        commonUtilitiesViewJSON.server.name ??
-        "common_utilities",
-      description:
-        commonUtilitiesViewJSON.description ??
-        commonUtilitiesViewJSON.server.description ??
-        "Common utilities such as random numbers and timers.",
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      timeFrame: null,
-      jsonSchema: null,
-      secretName: null,
-      additionalConfiguration: {},
-      mcpServerViewId: commonUtilitiesViewJSON.sId,
-      dustAppConfiguration: null,
-      internalMCPServerId: commonUtilitiesView.mcpServerId,
-    };
-
+  // Get common utilities server.
+  const commonUtilitiesServer = await getCommonUtilitiesServer(
+    auth,
+    agentConfiguration,
+    conversation
+  );
+  if (commonUtilitiesServer) {
     jitServers.push(commonUtilitiesServer);
   }
 
-  // Add skill_management MCP server if the agent has any skills configured
-  const owner = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(owner);
-  if (featureFlags.includes("skills")) {
-    // TODO(resources): Add a countSkills method to the future AgentConfigurationResource
-    // and use that instead of querying the model directly.
-    const skillCount = await AgentSkillModel.count({
-      where: {
-        agentConfigurationId: agentConfiguration.id,
-        workspaceId: owner.id,
-      },
-    });
-
-    if (skillCount > 0) {
-      const skillManagementView =
-        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "skill_management"
-        );
-
-      if (!skillManagementView) {
-        logger.warn(
-          {
-            agentConfigurationId: agentConfiguration.sId,
-            conversationId: conversation.sId,
-          },
-          "MCP server view not found for skill_management. Ensure auto tools are created."
-        );
-      } else {
-        const skillManagementServer: ServerSideMCPServerConfigurationType = {
-          id: -1,
-          sId: generateRandomModelSId(),
-          type: "mcp_server_configuration",
-          name: "skill_management",
-          description: "Enable skills for the conversation.",
-          dataSources: null,
-          tables: null,
-          childAgentId: null,
-          timeFrame: null,
-          jsonSchema: null,
-          secretName: null,
-          additionalConfiguration: {},
-          mcpServerViewId: skillManagementView.sId,
-          dustAppConfiguration: null,
-          internalMCPServerId: skillManagementView.mcpServerId,
-        };
-
-        jitServers.push(skillManagementServer);
-      }
-    }
+  // Get skill management server (if applicable).
+  const skillManagementServer = await getSkillManagementServer(
+    auth,
+    agentConfiguration,
+    conversation
+  );
+  if (skillManagementServer) {
+    jitServers.push(skillManagementServer);
   }
 
-  if (featureFlags.includes("projects") && conversation.spaceId) {
-    const projectDatasourceView = await getProjectContextDataSourceView(
-      auth,
-      conversation
-    );
-
-    const retrievalView =
-      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-        auth,
-        "search"
-      );
-
-    assert(
-      retrievalView,
-      "MCP server view not found for search. Ensure auto tools are created."
-    );
-
-    if (projectDatasourceView) {
-      const dataSources: DataSourceConfiguration[] = [
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          dataSourceViewId: projectDatasourceView.sId,
-          filter: {
-            parents: null,
-            tags: null,
-          },
-        },
-      ];
-
-      // add search server for the folder
-      const projectFilesServer: ServerSideMCPServerConfigurationType = {
-        id: -1,
-        sId: generateRandomModelSId(),
-        type: "mcp_server_configuration",
-        name: DEFAULT_PROJECT_SEARCH_ACTION_NAME,
-        description: `Semantic search over the project context`,
-        dataSources,
-        tables: null,
-        childAgentId: null,
-        timeFrame: null,
-        jsonSchema: null,
-        secretName: null,
-        additionalConfiguration: {},
-        mcpServerViewId: retrievalView.sId,
-        dustAppConfiguration: null,
-        internalMCPServerId: retrievalView.mcpServerId,
-      };
-
-      jitServers.push(projectFilesServer);
-    }
-  }
-  // Add schedules_management MCP server if this is an onboarding conversation
-  // user is not always defined (API triggered agent loop)
-  const userResource = auth.user();
-  if (userResource && owner) {
-    const onboardingMetadata = await userResource.getMetadata(
-      "onboarding:conversation",
-      owner.id
-    );
-    if (onboardingMetadata?.value === conversation.sId) {
-      const schedulesManagementView =
-        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "schedules_management"
-        );
-      if (!schedulesManagementView) {
-        logger.warn(
-          {
-            agentConfigurationId: agentConfiguration.sId,
-            conversationId: conversation.sId,
-          },
-          "MCP server view not found for schedules_management. Ensure auto tools are created."
-        );
-      } else {
-        const schedulesManagementViewJSON = schedulesManagementView.toJSON();
-        const schedulesManagementServer: ServerSideMCPServerConfigurationType =
-          {
-            id: -1,
-            sId: generateRandomModelSId(),
-            type: "mcp_server_configuration",
-            name:
-              schedulesManagementViewJSON.name ??
-              schedulesManagementViewJSON.server.name ??
-              "schedules_management",
-            description:
-              schedulesManagementViewJSON.description ??
-              schedulesManagementViewJSON.server.description ??
-              "Create schedules to automate recurring tasks.",
-            dataSources: null,
-            tables: null,
-            childAgentId: null,
-            timeFrame: null,
-            jsonSchema: null,
-            secretName: null,
-            additionalConfiguration: {},
-            mcpServerViewId: schedulesManagementViewJSON.sId,
-            dustAppConfiguration: null,
-            internalMCPServerId: schedulesManagementView.mcpServerId,
-          };
-
-        jitServers.push(schedulesManagementServer);
-      }
-    }
+  // Get project search server (if in a project).
+  const projectSearchServer = await getProjectSearchServer(auth, conversation);
+  if (projectSearchServer) {
+    jitServers.push(projectSearchServer);
   }
 
+  // Get schedules management server (if onboarding conversation).
+  const schedulesManagementServer = await getSchedulesManagementServer(
+    auth,
+    agentConfiguration,
+    conversation
+  );
+  if (schedulesManagementServer) {
+    jitServers.push(schedulesManagementServer);
+  }
+
+  // If no attachments, return early.
   if (attachments.length === 0) {
     return jitServers;
   }
 
-  // Add conversation_files MCP server if there are conversation files
-  const conversationFilesView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "conversation_files"
-    );
+  // Get conversation files server.
+  const conversationFilesServer = await getConversationFilesServer(
+    auth,
 
-  assert(
-    conversationFilesView,
-    "MCP server view not found for conversation_files. Ensure auto tools are created."
+    attachments
   );
-
-  const conversationFilesServer: ServerSideMCPServerConfigurationType = {
-    id: -1,
-    sId: generateRandomModelSId(),
-    type: "mcp_server_configuration",
-    name: "conversation_files",
-    description: "Access and include files from the conversation",
-    dataSources: null,
-    tables: null,
-    childAgentId: null,
-    timeFrame: null,
-    jsonSchema: null,
-    secretName: null,
-    additionalConfiguration: {},
-    mcpServerViewId: conversationFilesView.sId,
-    dustAppConfiguration: null,
-    internalMCPServerId: conversationFilesView.mcpServerId,
-  };
-
-  jitServers.push(conversationFilesServer);
-
-  // Check tables for the table query action.
-  const filesUsableAsTableQuery = attachments.filter((f) => f.isQueryable);
-
-  // Check files for the retrieval query action.
-  const filesUsableAsRetrievalQuery = attachments.filter((f) => f.isSearchable);
-
-  if (
-    filesUsableAsTableQuery.length === 0 &&
-    filesUsableAsRetrievalQuery.length === 0
-  ) {
-    return jitServers;
+  if (conversationFilesServer) {
+    jitServers.push(conversationFilesServer);
   }
 
-  // Get datasource views for child conversations that have generated files
-  const fileIdToDataSourceViewMap = await getConversationDataSourceViews(
+  // Get query tables server.
+  const queryTablesServer = await getQueryTablesServer(
     auth,
     conversation,
     attachments
   );
+  if (queryTablesServer) {
+    jitServers.push(queryTablesServer);
+  }
 
-  // Assign tables to multi-sheet spreadsheets.
-  await concurrentExecutor(
-    filesUsableAsTableQuery.filter((f) =>
-      isMultiSheetSpreadsheetContentType(f.contentType)
-    ),
-    async (f) => {
-      assert(
-        isContentNodeAttachmentType(f),
-        "Unreachable: file should be a content node"
-      );
-      f.generatedTables = await getTablesFromMultiSheetSpreadsheet(auth, f);
-    },
-    {
-      concurrency: 10,
-    }
+  // Get conversation search server.
+  const conversationSearchServer = await getConversationSearchServer(
+    auth,
+    conversation,
+    attachments
   );
-
-  if (filesUsableAsTableQuery.length > 0) {
-    // Get the query_tables MCP server view
-
-    // Try to get the new query_tables_v2 server.
-    const queryTablesView =
-      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-        auth,
-        "query_tables_v2"
-      );
-
-    assert(
-      queryTablesView,
-      "MCP server view not found for query_tables_v2. Ensure auto tools are created."
-    );
-
-    const tables: TableDataSourceConfiguration[] = [];
-
-    for (const f of filesUsableAsTableQuery) {
-      if (isFileAttachmentType(f)) {
-        // For file attachments, we need to find which datasource they belong to
-        // Check if it's from the current conversation or a child conversation
-        const dataSourceView = fileIdToDataSourceViewMap.get(f.fileId);
-
-        if (!dataSourceView) {
-          logger.warn(
-            {
-              fileId: f.fileId,
-              conversationId: conversation.sId,
-            },
-            "Could not find datasource view for file in table query"
-          );
-          continue;
-        }
-
-        for (const tableId of f.generatedTables) {
-          tables.push({
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            dataSourceViewId: dataSourceView.sId,
-            tableId,
-          });
-        }
-      } else if (isContentNodeAttachmentType(f)) {
-        for (const tableId of f.generatedTables) {
-          tables.push({
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            dataSourceViewId: f.nodeDataSourceViewId,
-            tableId,
-          });
-        }
-      }
-    }
-
-    const tablesServer: ServerSideMCPServerConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-      description: `The tables associated with the 'queryable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``,
-      dataSources: null,
-      tables,
-      childAgentId: null,
-      timeFrame: null,
-      jsonSchema: null,
-      secretName: null,
-      additionalConfiguration: {},
-      mcpServerViewId: queryTablesView.sId,
-      dustAppConfiguration: null,
-      internalMCPServerId: queryTablesView.mcpServerId,
-    };
-    jitServers.push(tablesServer);
+  if (conversationSearchServer) {
+    jitServers.push(conversationSearchServer);
   }
 
-  // Get the retrieval view once - we'll need it for search functionality
-  const retrievalView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "search"
-    );
-
-  assert(
-    retrievalView,
-    "MCP server view not found for search. Ensure auto tools are created."
-  );
-
-  if (filesUsableAsRetrievalQuery.length > 0) {
-    const contentNodeAttachments: ContentNodeAttachmentType[] = [];
-    for (const f of filesUsableAsRetrievalQuery) {
-      if (isContentNodeAttachmentType(f)) {
-        contentNodeAttachments.push(f);
-      }
-    }
-    const dataSources: DataSourceConfiguration[] = contentNodeAttachments.map(
-      (f) => ({
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        dataSourceViewId: f.nodeDataSourceViewId,
-        filter: {
-          parents: {
-            in: [f.nodeId],
-            not: [],
-          },
-          tags: null,
-        },
-      })
-    );
-
-    const dataSourceIds = new Set(
-      [...fileIdToDataSourceViewMap.values()].map(
-        (dataSourceView) => dataSourceView.sId
-      )
-    );
-
-    // Add datasources for both current conversation and child conversations
-    for (const dataSourceViewId of dataSourceIds.values()) {
-      dataSources.push({
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        dataSourceViewId,
-        filter: { parents: null, tags: null },
-      });
-    }
-
-    const retrievalServer: ServerSideMCPServerConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name: DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
-      description: "Semantic search over all files from the conversation",
-      dataSources,
-      tables: null,
-      childAgentId: null,
-      timeFrame: null,
-      jsonSchema: null,
-      secretName: null,
-      additionalConfiguration: {},
-      mcpServerViewId: retrievalView.sId,
-      dustAppConfiguration: null,
-      internalMCPServerId: retrievalView.mcpServerId,
-    };
-    jitServers.push(retrievalServer);
-  }
-
-  const searchableFolders: ContentNodeAttachmentType[] = [];
-  for (const attachment of attachments) {
-    if (
-      isContentNodeAttachmentType(attachment) &&
-      isSearchableFolder(attachment)
-    ) {
-      searchableFolders.push(attachment);
-    }
-  }
-  for (const [i, folder] of searchableFolders.entries()) {
-    const dataSources: DataSourceConfiguration[] = [
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        dataSourceViewId: folder.nodeDataSourceViewId,
-        filter: {
-          // Do not filter on parent if the folder is a data source node.
-          parents: isContentFragmentDataSourceNode(folder)
-            ? null
-            : {
-                in: [folder.nodeId],
-                not: [],
-              },
-          tags: null,
-        },
-      },
-    ];
-
-    // add search server for the folder
-    const folderSearchServer: ServerSideMCPServerConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name: `search_folder_${i}`,
-      description: `Search content within the documents inside "${folder.title}"`,
-      dataSources,
-      tables: null,
-      childAgentId: null,
-      timeFrame: null,
-      jsonSchema: null,
-      secretName: null,
-      additionalConfiguration: {},
-      mcpServerViewId: retrievalView.sId,
-      dustAppConfiguration: null,
-      internalMCPServerId: retrievalView.mcpServerId,
-    };
-    jitServers.push(folderSearchServer);
-  }
+  // Get folder search servers.
+  const folderSearchServers = await getFolderSearchServers(auth, attachments);
+  jitServers.push(...folderSearchServers);
 
   return jitServers;
-}
-
-/**
- * Get datasource views for child conversations that have generated files
- * This allows JIT actions to access files from run_agent child conversations
- */
-async function getConversationDataSourceViews(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType,
-  attachments: ConversationAttachmentType[]
-): Promise<Map<string, DataSourceViewResource>> {
-  const conversationIdToDataSourceViewMap = new Map<
-    string,
-    DataSourceViewResource
-  >();
-
-  // Get the datasource view for the conversation.
-  const conversationDataSourceView =
-    await DataSourceViewResource.fetchByConversation(auth, conversation);
-  if (conversationDataSourceView) {
-    conversationIdToDataSourceViewMap.set(
-      conversation.sId,
-      conversationDataSourceView
-    );
-  }
-
-  const fileIdToDataSourceViewMap = new Map<string, DataSourceViewResource>();
-
-  // Check file attachments for their conversation metadata
-  for (const attachment of attachments) {
-    if (isFileAttachmentType(attachment)) {
-      try {
-        // Get the file resource to access its metadata
-        const fileResource = await FileResource.fetchById(
-          auth,
-          attachment.fileId
-        );
-        if (fileResource && fileResource.useCaseMetadata?.conversationId) {
-          const fileConversationId =
-            fileResource.useCaseMetadata.conversationId;
-
-          // First look in already fetched conversations
-          const cachedChildDataSourceView =
-            conversationIdToDataSourceViewMap.get(fileConversationId);
-          if (cachedChildDataSourceView) {
-            fileIdToDataSourceViewMap.set(
-              attachment.fileId,
-              cachedChildDataSourceView
-            );
-            continue;
-          }
-
-          // Fetch the datasource view for this conversation
-          const childConversation =
-            await ConversationResource.fetchConversationWithoutContent(
-              auth,
-              fileConversationId
-            );
-
-          if (childConversation.isErr()) {
-            logger.warn(
-              `Could not find child conversation with sId: ${fileConversationId}`
-            );
-            continue;
-          }
-
-          const childDataSourceView =
-            await DataSourceViewResource.fetchByConversation(
-              auth,
-              childConversation.value
-            );
-
-          if (childDataSourceView) {
-            conversationIdToDataSourceViewMap.set(
-              childConversation.value.sId,
-              childDataSourceView
-            );
-            // Map this file to its datasource view
-            fileIdToDataSourceViewMap.set(
-              attachment.fileId,
-              childDataSourceView
-            );
-          }
-        }
-      } catch (error) {
-        logger.warn(
-          `Failed to get file metadata for file ${attachment.fileId}: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-    }
-  }
-
-  return fileIdToDataSourceViewMap;
-}
-
-async function getTablesFromMultiSheetSpreadsheet(
-  auth: Authenticator,
-  f: ContentNodeAttachmentType
-): Promise<string[]> {
-  assert(
-    isMultiSheetSpreadsheetContentType(f.contentType),
-    `Unexpected: ${f.title} is not a multi-sheet spreadsheet`
-  );
-
-  const dataSourceView = await DataSourceViewResource.fetchById(
-    auth,
-    f.nodeDataSourceViewId
-  );
-
-  assert(
-    dataSourceView,
-    `Unexpected: No datasource view found for datasource view id ${f.nodeDataSourceViewId}`
-  );
-
-  const coreApi = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const searchResult = await coreApi.searchNodes({
-    filter: {
-      parent_id: f.nodeId,
-      data_source_views: [
-        {
-          data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
-          view_filter: [f.nodeId],
-        },
-      ],
-    },
-  });
-
-  if (searchResult.isErr()) {
-    throw new Error(
-      `Unexpected: Failed to get tables from multi-sheet spreadsheet: ${searchResult.error}`
-    );
-  }
-
-  // Children of multi-sheet spreadsheets are exclusively tables.
-  return searchResult.value.nodes.map((n) => n.node_id);
-}
-
-/**
- * Get the project context datasource view for a conversation's space (if any).
- * Returns null if the conversation not in a space or no project context datasource exists.
- */
-export async function getProjectContextDataSourceView(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType
-): Promise<DataSourceViewResource | null> {
-  if (!conversation.spaceId) {
-    // Conversation not in a space (private conversation).
-    return null;
-  }
-
-  // Fetch space.
-  const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-  if (!space) {
-    logger.warn(
-      {
-        conversationId: conversation.sId,
-        spaceId: conversation.spaceId,
-      },
-      "Space not found for conversation"
-    );
-    return null;
-  }
-
-  // Try to fetch the project context datasource.
-  const view = await DataSourceViewResource.fetchByProjectId(auth, space.id);
-
-  return view ?? null;
 }
