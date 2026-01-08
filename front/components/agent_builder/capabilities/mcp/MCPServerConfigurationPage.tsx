@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/shared/AdditionalConfigurationSection";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
@@ -14,7 +13,6 @@ import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_pi
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export interface MCPServerConfigurationPageProps {
   form: UseFormReturn<MCPFormData>;
@@ -29,12 +27,9 @@ export function MCPServerConfigurationPage({
   mcpServerView,
   getAgentInstructions,
 }: MCPServerConfigurationPageProps) {
-  const { owner } = useAgentBuilderContext();
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-
   const requirements = useMemo(() => {
-    return getMCPServerRequirements(mcpServerView, featureFlags);
-  }, [mcpServerView, featureFlags]);
+    return getMCPServerRequirements(mcpServerView);
+  }, [mcpServerView]);
 
   return (
     <FormProvider form={form} className="h-full">
