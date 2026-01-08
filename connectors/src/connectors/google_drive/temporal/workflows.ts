@@ -332,15 +332,14 @@ export async function googleDriveIncrementalSyncPerDrive({
   driveId,
   isShared,
   startSyncTs,
+  nextPageToken,
 }: {
   connectorId: ModelId;
   driveId: string;
   isShared: boolean;
   startSyncTs: number;
+  nextPageToken: string | undefined;
 }) {
-  let nextPageToken: string | undefined = undefined;
-  const discoveredFolders: string[] = [];
-
   // Process all changes for this drive with pagination
   do {
     const syncRes = await incrementalSync(
@@ -351,32 +350,44 @@ export async function googleDriveIncrementalSyncPerDrive({
       nextPageToken
     );
 
+    let foldersToBrowse: string[] = [];
+
     if (syncRes) {
-      discoveredFolders.push(...syncRes.newFolders);
+      foldersToBrowse = syncRes.newFolders;
       nextPageToken = syncRes.nextPageToken;
     }
-  } while (nextPageToken);
 
-  // If new folders discovered from this drive, launch child workflow
-  if (discoveredFolders.length > 0) {
-    await executeChild(googleDriveFullSync, {
-      workflowId: `googleDrive-newFolders-${connectorId}-drive-${driveId}-${startSyncTs}`,
-      searchAttributes: {
-        connectorId: [connectorId],
-      },
-      args: [
-        {
-          connectorId,
-          garbageCollect: false,
-          foldersToBrowse: discoveredFolders,
-          totalCount: 0,
-          startSyncTs,
-          mimeTypeFilter: undefined,
+    if (foldersToBrowse.length > 0) {
+      await executeChild(googleDriveFullSync, {
+        workflowId: `googleDrive-newFolders-${connectorId}-drive-${driveId}-${startSyncTs}`,
+        searchAttributes: {
+          connectorId: [connectorId],
         },
-      ],
-      memo: workflowInfo().memo,
-    });
-  }
+        args: [
+          {
+            connectorId: connectorId,
+            garbageCollect: false,
+            foldersToBrowse,
+            totalCount: 0,
+            startSyncTs: startSyncTs,
+            mimeTypeFilter: undefined,
+          },
+        ],
+        memo: workflowInfo().memo,
+      });
+    }
+
+    // Will restart exactly where it was.
+    if (workflowInfo().historyLength > 4000) {
+      await continueAsNew<typeof googleDriveIncrementalSyncPerDrive>({
+        connectorId,
+        driveId,
+        isShared,
+        startSyncTs,
+        nextPageToken,
+      });
+    }
+  } while (nextPageToken);
 }
 
 export function googleDriveIncrementalSyncPerDriveWorkflowId(
@@ -413,10 +424,6 @@ export async function googleDriveIncrementalSyncV2(
     });
 
   // Launch child workflows in parallel - one per drive
-  const childHandles: ChildWorkflowHandle<
-    typeof googleDriveIncrementalSyncPerDrive
-  >[] = [];
-
   await concurrentExecutor(
     drivesToSync,
     async (googleDrive) => {
@@ -434,6 +441,7 @@ export async function googleDriveIncrementalSyncV2(
             driveId: googleDrive.id,
             isShared: googleDrive.isShared,
             startSyncTs,
+            nextPageToken: undefined,
           },
         ],
         memo: workflowInfo().memo,

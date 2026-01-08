@@ -133,7 +133,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
     : googleDriveIncrementalSync;
 
   // Randomize the delay to avoid all incremental syncs starting at the same time, especially when restarting all via cli.
-  const delay = Math.floor(Math.random() * 5);
+  const delayMinutes = Math.floor(Math.random() * 5);
 
   try {
     // Terminate both versions of the workflows in case we changed the flag
@@ -152,7 +152,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
       memo: {
         connectorId,
       },
-      startDelay: `${delay} minutes`,
+      startDelay: `${delayMinutes} minutes`,
     });
     localLogger.info(
       {
