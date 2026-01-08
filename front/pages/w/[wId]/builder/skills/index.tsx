@@ -245,7 +245,7 @@ export default function WorkspaceSkills({
           <Page.Header
             title="Manage Skills"
             icon={SKILL_ICON}
-            description="Reusable packages of instructions, tools and knowledge that agents can share."
+            description="Reusable packages of instructions and tools that agents can share."
           />
           <Page.Vertical gap="md" align="stretch">
             <div className="flex flex-row gap-2">
