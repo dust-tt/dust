@@ -31,7 +31,6 @@ import {
   getSkillDataSourceConfigurations,
   getSkillServers,
 } from "@app/lib/api/assistant/skill_actions";
-import config from "@app/lib/api/config";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
@@ -43,7 +42,6 @@ import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -367,39 +365,6 @@ export async function runModelActivity(
     seen.add(spec.name);
   }
 
-  const runConfig = cloneBaseConfig(
-    getDustProdAction("assistant-v2-multi-actions-agent").config
-  );
-  if (isLegacyAgent) {
-    runConfig.MODEL.function_call =
-      specifications.length === 1 ? specifications[0].name : null;
-  } else {
-    runConfig.MODEL.function_call = specifications.length === 0 ? null : "auto";
-  }
-  runConfig.MODEL.provider_id = model.providerId;
-  runConfig.MODEL.model_id = model.modelId;
-  runConfig.MODEL.temperature = agentConfiguration.model.temperature;
-
-  const reasoningEffort =
-    agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
-
-  if (
-    reasoningEffort !== "none" &&
-    (reasoningEffort !== "light" || model.useNativeLightReasoning)
-  ) {
-    runConfig.MODEL.reasoning_effort = reasoningEffort;
-  }
-
-  if (agentConfiguration.model.responseFormat) {
-    runConfig.MODEL.response_format = JSON.parse(
-      agentConfiguration.model.responseFormat
-    );
-  }
-  const anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
-  if (anthropicBetaFlags) {
-    runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
-  }
-
   // Errors occurring during the multi-actions-agent dust app may be retryable.
   // Their implicit code should be "multi_actions_error".
   async function handlePossiblyRetryableError(
@@ -491,7 +456,6 @@ export async function runModelActivity(
     modelConversationRes,
     conversation,
     userMessage,
-    runConfig,
     specifications,
     flushParserTokens,
     contentParser,
