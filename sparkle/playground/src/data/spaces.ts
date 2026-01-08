@@ -9,20 +9,20 @@ export const mockSpaces: Space[] = [
   {
     id: "space-2",
     name: "Engineering",
-<<<<<<< HEAD
-    description: "Engineering team space for technical discussions and code reviews",
+    description:
+      "Engineering team space for technical discussions and code reviews",
   },
   {
     id: "space-3",
     name: "Design",
-<<<<<<< HEAD
-    description: "Design team workspace for creative collaboration and design reviews",
+    description:
+      "Design team workspace for creative collaboration and design reviews",
   },
   {
     id: "space-4",
     name: "Product",
-<<<<<<< HEAD
-    description: "Product team space for roadmap planning and feature discussions",
+    description:
+      "Product team space for roadmap planning and feature discussions",
   },
   {
     id: "space-5",
@@ -37,14 +37,14 @@ export const mockSpaces: Space[] = [
   {
     id: "space-7",
     name: "New Onboarding",
-<<<<<<< HEAD
-    description: "Resources and discussions for new employee onboarding program",
+    description:
+      "Resources and discussions for new employee onboarding program",
   },
   {
     id: "space-8",
     name: "Sales",
-<<<<<<< HEAD
-    description: "Sales team space for deals, pipeline, and customer relationships",
+    description:
+      "Sales team space for deals, pipeline, and customer relationships",
   },
   {
     id: "space-9",
@@ -59,8 +59,8 @@ export const mockSpaces: Space[] = [
   {
     id: "space-11",
     name: "Customer Success",
-<<<<<<< HEAD
-    description: "Customer success team space for support and account management",
+    description:
+      "Customer success team space for support and account management",
   },
   {
     id: "space-12",
@@ -75,8 +75,8 @@ export const mockSpaces: Space[] = [
   {
     id: "space-14",
     name: "Security & Compliance",
-<<<<<<< HEAD
-    description: "Security team space for compliance, audits, and security initiatives",
+    description:
+      "Security team space for compliance, audits, and security initiatives",
   },
   {
     id: "space-15",
@@ -91,26 +91,26 @@ export const mockSpaces: Space[] = [
   {
     id: "space-17",
     name: "API v2",
-<<<<<<< HEAD
-    description: "Development space for API version 2 redesign and implementation",
+    description:
+      "Development space for API version 2 redesign and implementation",
   },
   {
     id: "space-18",
     name: "Content Marketing",
-<<<<<<< HEAD
-    description: "Content team workspace for blog posts, documentation, and content strategy",
+    description:
+      "Content team workspace for blog posts, documentation, and content strategy",
   },
   {
     id: "space-19",
     name: "Platform Team",
-<<<<<<< HEAD
-    description: "Platform engineering team space for infrastructure and tooling",
+    description:
+      "Platform engineering team space for infrastructure and tooling",
   },
   {
     id: "space-20",
     name: "Enterprise Sales",
-<<<<<<< HEAD
-    description: "Enterprise sales team space for large deals and enterprise accounts",
+    description:
+      "Enterprise sales team space for large deals and enterprise accounts",
   },
   {
     id: "space-21",
@@ -120,8 +120,8 @@ export const mockSpaces: Space[] = [
   {
     id: "space-22",
     name: "UX Research",
-<<<<<<< HEAD
-    description: "User experience research team space for user studies and insights",
+    description:
+      "User experience research team space for user studies and insights",
   },
   {
     id: "space-23",
@@ -146,14 +146,14 @@ export const mockSpaces: Space[] = [
   {
     id: "space-27",
     name: "Customer Onboarding 2.0",
-<<<<<<< HEAD
-    description: "Project to redesign and improve customer onboarding experience",
+    description:
+      "Project to redesign and improve customer onboarding experience",
   },
   {
     id: "space-28",
     name: "AI/ML Initiatives",
-<<<<<<< HEAD
-    description: "Machine learning team space for AI features and model development",
+    description:
+      "Machine learning team space for AI features and model development",
   },
   {
     id: "space-29",
@@ -163,8 +163,8 @@ export const mockSpaces: Space[] = [
   {
     id: "space-30",
     name: "Quality Assurance",
-<<<<<<< HEAD
-    description: "QA team workspace for testing, bug tracking, and quality initiatives",
+    description:
+      "QA team workspace for testing, bug tracking, and quality initiatives",
   },
 ];
 
@@ -195,4 +195,3 @@ export function getSpaceById(id: string): Space | undefined {
 export function getSpacesByIds(ids: string[]): Space[] {
   return mockSpaces.filter((space) => ids.includes(space.id));
 }
-

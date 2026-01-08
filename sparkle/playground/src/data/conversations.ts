@@ -1,6 +1,6 @@
 import { mockAgents } from "./agents";
-import type { Conversation, Message } from "./types";
 import { mockSpaces } from "./spaces";
+import type { Conversation, Message } from "./types";
 import { mockUsers } from "./users";
 
 // Helper function to get random user IDs
@@ -71,23 +71,31 @@ function generateConversationParticipants(): {
 // Helper function to generate a description based on title
 function generateDescription(title: string): string {
   const descriptions: Record<string, string> = {
-    "Project Kickoff Meeting": "Initial discussion to align team on project goals and timeline",
-    "Budget Review Discussion": "Reviewing financial allocations and budget adjustments for Q4",
-    "Weekly Sync with Team": "Regular team check-in to discuss progress and blockers",
-    "AI Bot Training Session": "Training session on how to effectively use AI assistants",
+    "Project Kickoff Meeting":
+      "Initial discussion to align team on project goals and timeline",
+    "Budget Review Discussion":
+      "Reviewing financial allocations and budget adjustments for Q4",
+    "Weekly Sync with Team":
+      "Regular team check-in to discuss progress and blockers",
+    "AI Bot Training Session":
+      "Training session on how to effectively use AI assistants",
     "Quarterly Planning Meeting": "Strategic planning for the upcoming quarter",
-    "Feedback on Latest Design": "Collecting and discussing feedback on recent design iterations",
-    "Client Requirements Gathering": "Understanding and documenting client needs and expectations",
-    "Sprint Retrospective": "Reviewing sprint outcomes and identifying improvements",
+    "Feedback on Latest Design":
+      "Collecting and discussing feedback on recent design iterations",
+    "Client Requirements Gathering":
+      "Understanding and documenting client needs and expectations",
+    "Sprint Retrospective":
+      "Reviewing sprint outcomes and identifying improvements",
     "Daily Standup": "Quick sync on daily tasks and priorities",
-    "Marketing Strategy Planning": "Developing marketing campaigns and go-to-market strategies",
+    "Marketing Strategy Planning":
+      "Developing marketing campaigns and go-to-market strategies",
   };
-  
+
   // If we have a specific description, use it
   if (descriptions[title]) {
     return descriptions[title];
   }
-  
+
   // Otherwise generate a generic description
   const genericDescriptions = [
     `Discussion about ${title.toLowerCase()}`,
@@ -96,8 +104,10 @@ function generateDescription(title: string): string {
     `Planning and coordination for ${title.toLowerCase()}`,
     `Review and feedback session on ${title.toLowerCase()}`,
   ];
-  
-  return genericDescriptions[Math.floor(Math.random() * genericDescriptions.length)];
+
+  return genericDescriptions[
+    Math.floor(Math.random() * genericDescriptions.length)
+  ];
 }
 
 // Helper function to get a random space ID
@@ -218,14 +228,14 @@ export const mockConversations: Conversation[] = [];
 
 // Generate conversations for today (10 conversations)
 for (let i = 0; i < 10; i++) {
-  const { userParticipants, agentParticipants } = generateConversationParticipants();
+  const { userParticipants, agentParticipants } =
+    generateConversationParticipants();
   const createdAt = randomDateBetween(
     new Date(new Date().setHours(0, 0, 0, 0)),
     new Date()
   );
-  const title = conversationTitles[
-    Math.floor(Math.random() * conversationTitles.length)
-  ];
+  const title =
+    conversationTitles[Math.floor(Math.random() * conversationTitles.length)];
   mockConversations.push({
     id: `conv-${mockConversations.length + 1}`,
     title,
@@ -240,20 +250,23 @@ for (let i = 0; i < 10; i++) {
 
 // Generate conversations for yesterday (15 conversations)
 for (let i = 0; i < 15; i++) {
-  const { userParticipants, agentParticipants } = generateConversationParticipants();
+  const { userParticipants, agentParticipants } =
+    generateConversationParticipants();
   const yesterday = getDateInPast(1);
   const createdAt = randomDateBetween(
     new Date(yesterday.setHours(0, 0, 0, 0)),
     new Date(yesterday.setHours(23, 59, 59, 999))
   );
-  const title = conversationTitles[
-    Math.floor(Math.random() * conversationTitles.length)
-  ];
+  const title =
+    conversationTitles[Math.floor(Math.random() * conversationTitles.length)];
   mockConversations.push({
     id: `conv-${mockConversations.length + 1}`,
     title,
     createdAt,
-    updatedAt: randomDateBetween(createdAt, new Date(yesterday.setHours(23, 59, 59, 999))),
+    updatedAt: randomDateBetween(
+      createdAt,
+      new Date(yesterday.setHours(23, 59, 59, 999))
+    ),
     userParticipants,
     agentParticipants,
     description: generateDescription(title),
@@ -263,21 +276,24 @@ for (let i = 0; i < 15; i++) {
 
 // Generate conversations for last week (20 conversations)
 for (let i = 0; i < 20; i++) {
-  const { userParticipants, agentParticipants } = generateConversationParticipants();
+  const { userParticipants, agentParticipants } =
+    generateConversationParticipants();
   const daysAgo = Math.floor(Math.random() * 7) + 2; // 2-8 days ago
   const date = getDateInPast(daysAgo);
   const createdAt = randomDateBetween(
     new Date(date.setHours(0, 0, 0, 0)),
     new Date(date.setHours(23, 59, 59, 999))
   );
-  const title = conversationTitles[
-    Math.floor(Math.random() * conversationTitles.length)
-  ];
+  const title =
+    conversationTitles[Math.floor(Math.random() * conversationTitles.length)];
   mockConversations.push({
     id: `conv-${mockConversations.length + 1}`,
     title,
     createdAt,
-    updatedAt: randomDateBetween(createdAt, new Date(date.setHours(23, 59, 59, 999))),
+    updatedAt: randomDateBetween(
+      createdAt,
+      new Date(date.setHours(23, 59, 59, 999))
+    ),
     userParticipants,
     agentParticipants,
     description: generateDescription(title),
@@ -287,21 +303,24 @@ for (let i = 0; i < 20; i++) {
 
 // Generate conversations for last month (30 conversations)
 for (let i = 0; i < 30; i++) {
-  const { userParticipants, agentParticipants } = generateConversationParticipants();
+  const { userParticipants, agentParticipants } =
+    generateConversationParticipants();
   const daysAgo = Math.floor(Math.random() * 30) + 9; // 9-38 days ago
   const date = getDateInPast(daysAgo);
   const createdAt = randomDateBetween(
     new Date(date.setHours(0, 0, 0, 0)),
     new Date(date.setHours(23, 59, 59, 999))
   );
-  const title = conversationTitles[
-    Math.floor(Math.random() * conversationTitles.length)
-  ];
+  const title =
+    conversationTitles[Math.floor(Math.random() * conversationTitles.length)];
   mockConversations.push({
     id: `conv-${mockConversations.length + 1}`,
     title,
     createdAt,
-    updatedAt: randomDateBetween(createdAt, new Date(date.setHours(23, 59, 59, 999))),
+    updatedAt: randomDateBetween(
+      createdAt,
+      new Date(date.setHours(23, 59, 59, 999))
+    ),
     userParticipants,
     agentParticipants,
     description: generateDescription(title),
@@ -311,21 +330,24 @@ for (let i = 0; i < 30; i++) {
 
 // Generate older conversations (25 conversations)
 for (let i = 0; i < 25; i++) {
-  const { userParticipants, agentParticipants } = generateConversationParticipants();
+  const { userParticipants, agentParticipants } =
+    generateConversationParticipants();
   const daysAgo = Math.floor(Math.random() * 200) + 39; // 39-238 days ago
   const date = getDateInPast(daysAgo);
   const createdAt = randomDateBetween(
     new Date(date.setHours(0, 0, 0, 0)),
     new Date(date.setHours(23, 59, 59, 999))
   );
-  const title = conversationTitles[
-    Math.floor(Math.random() * conversationTitles.length)
-  ];
+  const title =
+    conversationTitles[Math.floor(Math.random() * conversationTitles.length)];
   mockConversations.push({
     id: `conv-${mockConversations.length + 1}`,
     title,
     createdAt,
-    updatedAt: randomDateBetween(createdAt, new Date(date.setHours(23, 59, 59, 999))),
+    updatedAt: randomDateBetween(
+      createdAt,
+      new Date(date.setHours(23, 59, 59, 999))
+    ),
     userParticipants,
     agentParticipants,
     description: generateDescription(title),
@@ -446,8 +468,13 @@ export function createConversationsWithMessages(
 
   // Get some users and agents for the conversations
   const user1 = mockUsers.find((u) => u.id !== locutorId) || mockUsers[0];
-  const user2 = mockUsers.find((u) => u.id !== locutorId && u.id !== user1.id) || mockUsers[1];
-  const user3 = mockUsers.find((u) => u.id !== locutorId && u.id !== user1.id && u.id !== user2.id) || mockUsers[2];
+  const user2 =
+    mockUsers.find((u) => u.id !== locutorId && u.id !== user1.id) ||
+    mockUsers[1];
+  const user3 =
+    mockUsers.find(
+      (u) => u.id !== locutorId && u.id !== user1.id && u.id !== user2.id
+    ) || mockUsers[2];
   const agent1 = mockAgents[0];
   const agent2 = mockAgents[1];
 
@@ -456,7 +483,8 @@ export function createConversationsWithMessages(
   const conv1Messages: Message[] = [
     {
       id: "msg-1-1",
-      content: "Hey team, let's discuss our Q4 planning. I've been reviewing the numbers and we need to prioritize our roadmap.",
+      content:
+        "Hey team, let's discuss our Q4 planning. I've been reviewing the numbers and we need to prioritize our roadmap.",
       timestamp: new Date(conv1Start.getTime() + 5 * 60 * 1000),
       ownerId: locutorId,
       ownerType: "user",
@@ -464,7 +492,8 @@ export function createConversationsWithMessages(
     },
     {
       id: "msg-1-2",
-      content: "I agree. Based on the data I've analyzed, we should focus on the three high-impact features that align with our strategic goals.",
+      content:
+        "I agree. Based on the data I've analyzed, we should focus on the three high-impact features that align with our strategic goals.",
       timestamp: new Date(conv1Start.getTime() + 12 * 60 * 1000),
       ownerId: agent1.id,
       ownerType: "agent",
@@ -472,7 +501,8 @@ export function createConversationsWithMessages(
     },
     {
       id: "msg-1-3",
-      content: "That makes sense. What about the mobile app improvements? I think those are critical for user retention.",
+      content:
+        "That makes sense. What about the mobile app improvements? I think those are critical for user retention.",
       timestamp: new Date(conv1Start.getTime() + 18 * 60 * 1000),
       ownerId: user1.id,
       ownerType: "user",
@@ -480,7 +510,8 @@ export function createConversationsWithMessages(
     },
     {
       id: "msg-1-4",
-      content: "Good point. The mobile engagement metrics show a 40% increase when we improve the UX. I recommend prioritizing that.",
+      content:
+        "Good point. The mobile engagement metrics show a 40% increase when we improve the UX. I recommend prioritizing that.",
       timestamp: new Date(conv1Start.getTime() + 25 * 60 * 1000),
       ownerId: agent1.id,
       ownerType: "agent",
@@ -488,7 +519,8 @@ export function createConversationsWithMessages(
     },
     {
       id: "msg-1-5",
-      content: "Perfect. Let's schedule a follow-up meeting to finalize the timeline. Can everyone make it Thursday at 2pm?",
+      content:
+        "Perfect. Let's schedule a follow-up meeting to finalize the timeline. Can everyone make it Thursday at 2pm?",
       timestamp: new Date(conv1Start.getTime() + 32 * 60 * 1000),
       ownerId: locutorId,
       ownerType: "user",
@@ -496,7 +528,8 @@ export function createConversationsWithMessages(
     },
     {
       id: "msg-1-6",
-      content: "I'm available. Should I prepare a detailed breakdown of the mobile improvements?",
+      content:
+        "I'm available. Should I prepare a detailed breakdown of the mobile improvements?",
       timestamp: new Date(conv1Start.getTime() + 38 * 60 * 1000),
       ownerId: user2.id,
       ownerType: "user",
@@ -504,7 +537,8 @@ export function createConversationsWithMessages(
     },
     {
       id: "msg-1-7",
-      content: "Yes, that would be helpful. I can also generate a comparison matrix of all proposed features with their expected ROI.",
+      content:
+        "Yes, that would be helpful. I can also generate a comparison matrix of all proposed features with their expected ROI.",
       timestamp: new Date(conv1Start.getTime() + 45 * 60 * 1000),
       ownerId: agent1.id,
       ownerType: "agent",
@@ -520,7 +554,8 @@ export function createConversationsWithMessages(
     userParticipants: [locutorId, user1.id, user2.id],
     agentParticipants: [agent1.id],
     messages: conv1Messages,
-    description: "Strategic planning session for Q4 roadmap and feature prioritization",
+    description:
+      "Strategic planning session for Q4 roadmap and feature prioritization",
     spaceId: getRandomSpaceId(),
   };
 
@@ -529,7 +564,8 @@ export function createConversationsWithMessages(
   const conv2Messages: Message[] = [
     {
       id: "msg-2-1",
-      content: "I've been getting feedback about the new search feature. Users find it confusing. What do you think?",
+      content:
+        "I've been getting feedback about the new search feature. Users find it confusing. What do you think?",
       timestamp: new Date(conv2Start.getTime() + 3 * 60 * 1000),
       ownerId: user3.id,
       ownerType: "user",
@@ -537,7 +573,8 @@ export function createConversationsWithMessages(
     },
     {
       id: "msg-2-2",
-      content: "I've analyzed the user feedback and session recordings. The main issue is the search bar placement and lack of autocomplete suggestions.",
+      content:
+        "I've analyzed the user feedback and session recordings. The main issue is the search bar placement and lack of autocomplete suggestions.",
       timestamp: new Date(conv2Start.getTime() + 8 * 60 * 1000),
       ownerId: agent2.id,
       ownerType: "agent",
@@ -545,7 +582,8 @@ export function createConversationsWithMessages(
     },
     {
       id: "msg-2-3",
-      content: "That aligns with what I've heard. Should we move it to the top navigation and add those suggestions?",
+      content:
+        "That aligns with what I've heard. Should we move it to the top navigation and add those suggestions?",
       timestamp: new Date(conv2Start.getTime() + 15 * 60 * 1000),
       ownerId: locutorId,
       ownerType: "user",
@@ -553,7 +591,8 @@ export function createConversationsWithMessages(
     },
     {
       id: "msg-2-4",
-      content: "Based on UX best practices, moving it to the top navigation would improve discoverability by 60%. I can draft a design proposal.",
+      content:
+        "Based on UX best practices, moving it to the top navigation would improve discoverability by 60%. I can draft a design proposal.",
       timestamp: new Date(conv2Start.getTime() + 22 * 60 * 1000),
       ownerId: agent2.id,
       ownerType: "agent",
@@ -561,7 +600,8 @@ export function createConversationsWithMessages(
     },
     {
       id: "msg-2-5",
-      content: "Great! Let's also consider adding keyboard shortcuts. Power users would love that.",
+      content:
+        "Great! Let's also consider adding keyboard shortcuts. Power users would love that.",
       timestamp: new Date(conv2Start.getTime() + 28 * 60 * 1000),
       ownerId: user3.id,
       ownerType: "user",
@@ -569,7 +609,8 @@ export function createConversationsWithMessages(
     },
     {
       id: "msg-2-6",
-      content: "Excellent idea. Keyboard shortcuts can increase productivity by 30% for frequent users. I'll include that in the proposal.",
+      content:
+        "Excellent idea. Keyboard shortcuts can increase productivity by 30% for frequent users. I'll include that in the proposal.",
       timestamp: new Date(conv2Start.getTime() + 35 * 60 * 1000),
       ownerId: agent2.id,
       ownerType: "agent",
@@ -577,7 +618,8 @@ export function createConversationsWithMessages(
     },
     {
       id: "msg-2-7",
-      content: "Perfect. Let's aim to have this ready for next week's sprint planning.",
+      content:
+        "Perfect. Let's aim to have this ready for next week's sprint planning.",
       timestamp: new Date(conv2Start.getTime() + 42 * 60 * 1000),
       ownerId: locutorId,
       ownerType: "user",
@@ -601,10 +643,10 @@ export function createConversationsWithMessages(
     userParticipants: [locutorId, user3.id],
     agentParticipants: [agent2.id],
     messages: conv2Messages,
-    description: "Reviewing user feedback on the new search feature and planning improvements",
+    description:
+      "Reviewing user feedback on the new search feature and planning improvements",
     spaceId: getRandomSpaceId(),
   };
 
   return [conversation1, conversation2];
 }
-

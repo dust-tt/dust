@@ -19,7 +19,7 @@ try {
     if (!fs.existsSync(destDir)) {
       fs.mkdirSync(destDir, { recursive: true });
     }
-    
+
     fs.copyFileSync(sourcePath, destPath);
     console.log("✓ Copied allotment CSS to src/styles/allotment.css");
   } else {
@@ -30,4 +30,3 @@ try {
   console.error("✗ Failed to copy allotment CSS:", error);
   process.exit(1);
 }
-

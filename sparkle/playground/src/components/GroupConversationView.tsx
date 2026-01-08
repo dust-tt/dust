@@ -24,8 +24,8 @@ interface GroupConversationViewProps {
 // Helper function to get random participants for a conversation
 function getRandomParticipants(
   conversation: Conversation,
-  users: User[],
-  agents: Agent[]
+  _users: User[],
+  _agents: Agent[]
 ): Array<{ type: "user" | "agent"; data: User | Agent }> {
   const allParticipants: Array<{ type: "user" | "agent"; data: User | Agent }> =
     [];
@@ -58,7 +58,7 @@ function getRandomParticipants(
 // Helper function to get random creator from people
 function getRandomCreator(
   conversation: Conversation,
-  users: User[]
+  _users: User[]
 ): User | null {
   if (conversation.userParticipants.length === 0) {
     return null;
@@ -234,4 +234,3 @@ export function GroupConversationView({
     </div>
   );
 }
-
