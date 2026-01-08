@@ -49,6 +49,7 @@ export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 export interface FileType {
   contentType: AllSupportedFileContentType;
   downloadUrl?: string;
+  version: number;
   fileName: string;
   fileSize: number;
   sId: string;
