@@ -129,7 +129,7 @@ export function registerWebBrowserTool(
         const { toolConfiguration } = agentLoopContext.runContext;
         const useSummarization =
           isLightServerSideMCPToolConfiguration(toolConfiguration) &&
-          toolConfiguration.additionalConfiguration.useSummarization === true;
+          toolConfiguration.additionalConfiguration.useSummary === true;
 
         const summaryAgentId = useSummarization
           ? GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY
