@@ -7,7 +7,6 @@ import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import { SpaceResourcesList } from "@app/components/spaces/SpaceResourcesList";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import config from "@app/lib/api/config";
 import {
   augmentDataSourceWithConnectorDetails,
   getDataSources,
@@ -15,8 +14,6 @@ import {
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
-import type { ActionApp } from "@app/lib/registry";
-import { getDustProdActionRegistry } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   ConnectorProvider,
@@ -40,7 +37,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     space: SpaceType;
     systemSpace: SpaceType;
     integrations: DataSourceIntegration[];
-    registryApps: ActionApp[] | null;
     user: UserType;
     activeSeats: number;
   }
@@ -133,14 +129,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     }
   }
 
-  const isDustAppsSpace =
-    owner.sId === config.getDustAppsWorkspaceId() &&
-    space.sId === config.getDustAppsSpaceId();
-
-  const registryApps = isDustAppsSpace
-    ? Object.values(getDustProdActionRegistry()).map((action) => action.app)
-    : null;
-
   const activeSeats = await countActiveSeatsInWorkspaceCached(owner.sId);
 
   return {
@@ -154,7 +142,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       owner,
       user: user.toJSON(),
       plan,
-      registryApps,
       space: space.toJSON(),
       subscription,
       systemSpace: systemSpace.toJSON(),
