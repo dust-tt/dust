@@ -438,13 +438,10 @@ export async function googleDriveIncrementalSyncV2(
         ],
         memo: workflowInfo().memo,
       });
-      childHandles.push(handle);
+      return handle.result();
     },
     { concurrency: GDRIVE_MAX_CONCURRENT_FOLDER_SYNCS }
   );
-
-  // Wait for all drive syncs to complete
-  await Promise.all(childHandles.map((handle) => handle.result()));
 
   // Check if garbage collection is needed
   const shouldGc = await shouldGarbageCollect(connectorId);
