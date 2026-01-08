@@ -359,10 +359,7 @@ export async function revertClientExecutableFileChanges(
     revertedByAgentConfigurationId: string;
   }
 ): Promise<
-  Result<
-    { fileResource: FileResource; revertedContent: string },
-    { tracked: boolean; message: string }
-  >
+  Result<{ fileResource: FileResource }, { tracked: boolean; message: string }>
 > {
   const fileResource = await FileResource.fetchById(auth, fileId);
   if (!fileResource) {
@@ -384,19 +381,7 @@ export async function revertClientExecutableFileChanges(
   const currentVersion = versions[0];
   const previousVersion = versions[1];
 
-  // Download the previous version's content
-  let revertedContent: string;
-  try {
-    const [content] = await previousVersion.download();
-    revertedContent = content.toString("utf8");
-  } catch (error) {
-    return new Err({
-      tracked: true,
-      message: `Failed to download previous version: ${normalizeError(error)}`,
-    });
-  }
-
-  // Update metadata BEFORE upload (following the pattern from editClientExecutableFile)
+  // Update metadata BEFORE copy (following the pattern from editClientExecutableFile)
   await fileResource.setUseCaseMetadata({
     ...fileResource.useCaseMetadata,
     lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
@@ -405,8 +390,18 @@ export async function revertClientExecutableFileChanges(
   // Decrement version since we're reverting to a previous version
   await fileResource.decrementVersion();
 
-  // Upload the reverted content
-  await fileResource.uploadContent(auth, revertedContent);
+  // Use GCS copy function to make a copy of the previous version the current version
+  const filePath = fileResource.getCloudStoragePath(auth, "original");
+  const bucket = fileResource.getBucketForVersion("original");
+  const destinationFile = bucket.file(filePath);
+  try {
+    await previousVersion.copy(destinationFile);
+  } catch (error) {
+    return new Err({
+      tracked: false,
+      message: `Failed to copy previous version: ${normalizeError(error)}`,
+    });
+  }
 
   // Delete old versions to prevent accumulation and infinite loops
   try {
@@ -419,7 +414,7 @@ export async function revertClientExecutableFileChanges(
     });
   }
 
-  return new Ok({ fileResource, revertedContent });
+  return new Ok({ fileResource });
 }
 
 export async function getClientExecutableFileShareUrl(
