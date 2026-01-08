@@ -15,7 +15,7 @@ import React, {
   useState,
 } from "react";
 
-export interface SlashCommandTooltip {
+interface SlashCommandTooltip {
   description: string;
   media?: React.ReactNode;
 }
