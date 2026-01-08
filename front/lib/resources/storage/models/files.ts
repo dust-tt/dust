@@ -19,15 +19,7 @@ export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare contentType: AllSupportedFileContentType;
   declare fileName: string;
   declare fileSize: number;
-<<<<<<< HEAD
-<<<<<<< HEAD
   declare version: number;
-=======
-  declare hasPreviousVersion: boolean | null;
->>>>>>> 61b8c67ba3 (Move hasPreviousVersion to FileModel instead of under json metadata)
-=======
-  declare version: number;
->>>>>>> def78a72cc (Change hasPreviousVersion to version count, disbale button instead of hiding)
   declare snippet: string | null;
   declare status: FileStatus;
   declare useCase: FileUseCase;
@@ -69,23 +61,10 @@ FileModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> def78a72cc (Change hasPreviousVersion to version count, disbale button instead of hiding)
     version: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
-<<<<<<< HEAD
-=======
-    hasPreviousVersion: {
-      type: DataTypes.BOOLEAN,
-      allowNull: true,
-      defaultValue: null,
->>>>>>> 61b8c67ba3 (Move hasPreviousVersion to FileModel instead of under json metadata)
-=======
->>>>>>> def78a72cc (Change hasPreviousVersion to version count, disbale button instead of hiding)
     },
     useCaseMetadata: {
       type: DataTypes.JSONB,

@@ -780,7 +780,6 @@ export class FileResource extends BaseResource<FileModel> {
       version: this.version,
       status: this.status,
       useCase: this.useCase,
-      version: this.version,
     };
 
     if (auth && this.isReady && !this.isUpsertUseCase()) {
@@ -823,7 +822,6 @@ export class FileResource extends BaseResource<FileModel> {
       version: this.version,
       status: this.status,
       useCase: this.useCase,
-      version: this.version,
     };
 
     if (this.isReady && !this.isUpsertUseCase()) {

@@ -284,7 +284,6 @@ const upsertExcelToDatasource: ProcessingFunction = async (
       contentType: "text/csv",
       fileName: `${slugifiedName}.csv`,
       fileSize: Buffer.byteLength(worksheetContent),
-      version: 0,
       useCase: file.useCase,
       useCaseMetadata: file.useCaseMetadata,
     });

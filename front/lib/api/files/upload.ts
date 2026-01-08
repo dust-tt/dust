@@ -801,7 +801,6 @@ export async function processAndStoreFromUrl(
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       fileName: fileName || new URL(url).pathname.split("/").pop() || "file",
       fileSize: contentLength ? parseInt(contentLength) : 1024 * 1024 * 10, // Default 10MB if no content-length
-      version: 0,
       useCase,
       useCaseMetadata,
     });
@@ -876,7 +875,6 @@ export async function uploadBase64DataToFileStorage(
     contentType,
     fileName,
     fileSize: fileSizeInBytes,
-    version: 0,
     useCase,
     useCaseMetadata,
   });

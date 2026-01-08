@@ -35,7 +35,6 @@ export async function generatePlainTextFile(
     contentType: "text/plain",
     fileName: title,
     fileSize: Buffer.byteLength(content),
-    version: 0,
     useCase: "tool_output",
     useCaseMetadata: {
       conversationId,
@@ -102,7 +101,6 @@ export async function generateCSVFileAndSnippet(
     contentType,
     fileName,
     fileSize: Buffer.byteLength(csvOutput),
-    version: 0,
     useCase: "tool_output",
     useCaseMetadata: {
       conversationId,
@@ -177,7 +175,6 @@ export async function generateSectionFile(
     contentType: "application/vnd.dust.section.json",
     fileName: title,
     fileSize: Buffer.byteLength(content),
-    version: 0,
     useCase: "tool_output",
     useCaseMetadata: {
       conversationId,
@@ -265,7 +262,6 @@ export async function generateJSONFileAndSnippet(
     contentType: "application/json",
     fileName: title,
     fileSize: Buffer.byteLength(jsonOutput),
-    version: 0,
     useCase: "tool_output",
     useCaseMetadata: {
       conversationId,

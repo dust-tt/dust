@@ -147,7 +147,6 @@ async function handler(
         contentType,
         fileName,
         fileSize,
-        version: 0,
         userId: user.id,
         workspaceId: owner.id,
         useCase,

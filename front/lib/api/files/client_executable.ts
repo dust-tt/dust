@@ -112,7 +112,6 @@ export async function createClientExecutableFile(
       fileName,
       contentType: mimeType,
       fileSize: 0, // Will be updated in uploadContent.
-      version: 0, // New file starts at version 0.
       // Attach the conversation id so we can use it to control access to the file.
       useCase: "conversation",
       useCaseMetadata: {
