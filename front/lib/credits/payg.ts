@@ -20,6 +20,41 @@ type CreatePAYGCreditError = {
   error_message: string;
 };
 
+type HandleErrorResult = { action: "skip" } | { action: "fail"; error: Error };
+
+function handlePAYGCreditCreationError({
+  error,
+  workspaceId,
+}: {
+  error: CreatePAYGCreditError;
+  workspaceId: string;
+}): HandleErrorResult {
+  const { error_type, error_message } = error;
+  switch (error_type) {
+    case "already_exists":
+      logger.info(
+        { workspaceId },
+        `[Credit PAYG] Credit already exists for this period`
+      );
+      return { action: "skip" };
+    case "invalid_discount":
+    case "unknown":
+      // for eng-oncall: this is a P0 panic, do not hesitate to ping @pr or @jd to jump immediately on it
+      logger.error(
+        { workspaceId, error: error_message, panic: true },
+        `[Credit PAYG] Failed to create PAYG credit for this period. Potentially blocking customer's automations`
+      );
+      statsDClient.increment("credits.top_up.error", 1, [
+        `workspace_id:${workspaceId}`,
+        "type:payg",
+        "customer:enterprise",
+      ]);
+      return { action: "fail", error: new Error(error_message) };
+    default:
+      assertNever(error_type);
+  }
+}
+
 async function createPAYGCreditForPeriod({
   auth,
   paygCapMicroUsd,
@@ -104,31 +139,11 @@ export async function allocatePAYGCreditsOnCycleRenewal({
   });
 
   if (result.isErr()) {
-    const { error_type, error_message } = result.error;
-    switch (error_type) {
-      case "already_exists":
-        logger.info(
-          { workspaceId: workspace.sId },
-          "[Credit PAYG] Credit already exists for this period, skipping allocation"
-        );
-        return;
-      case "invalid_discount":
-      case "unknown":
-        // for eng-oncall: this is a P0 panic, do not hesitate to ping @pr or @jd to jump immediately on it
-        logger.error(
-          { workspaceId: workspace.sId, error: error_message, panic: true },
-          "[Credit PAYG] Failed to create PAYG credit for this period. Potentially blocking customer's automations"
-        );
-        statsDClient.increment("credits.top_up.error", 1, [
-          `workspace_id:${workspace.sId}`,
-          "type:payg",
-          "customer:enterprise",
-        ]);
-
-        return;
-      default:
-        assertNever(error_type);
-    }
+    handlePAYGCreditCreationError({
+      error: result.error,
+      workspaceId: workspace.sId,
+    });
+    return;
   }
   logger.info(
     {
@@ -221,29 +236,12 @@ export async function startOrResumeEnterprisePAYG({
     });
 
     if (result.isErr()) {
-      const { error_type, error_message } = result.error;
-      switch (error_type) {
-        case "already_exists":
-          logger.info(
-            { workspaceId: workspace.sId },
-            "[Credit PAYG] Credit already exists for current period"
-          );
-          break;
-        case "invalid_discount":
-        case "unknown":
-          // for eng-oncall: this is a P0 panic, do not hesitate to ping @pr or @jd to jump immediately on it
-          logger.error(
-            { workspaceId: workspace.sId, error: error_message, panic: true },
-            "[Credit PAYG] Failed to create PAYG credit for current period. Potentially blocking customer's automations."
-          );
-          statsDClient.increment("credits.top_up.error", 1, [
-            `workspace_id:${workspace.sId}`,
-            "type:payg",
-            "customer:enterprise",
-          ]);
-          return new Err(new Error(error_message));
-        default:
-          assertNever(error_type);
+      const handleResult = handlePAYGCreditCreationError({
+        error: result.error,
+        workspaceId: workspace.sId,
+      });
+      if (handleResult.action === "fail") {
+        return new Err(handleResult.error);
       }
     } else {
       logger.info(
