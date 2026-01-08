@@ -276,7 +276,7 @@ function createServer(
           });
           if (
             appInfoResult.isOk() &&
-            appInfoResult.value.results.status === "hired"
+            appInfoResult.value.results.status === "Hired"
           ) {
             return new Err(
               new MCPError(
