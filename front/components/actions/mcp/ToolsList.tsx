@@ -74,8 +74,9 @@ const ToolItem = memo(
     };
 
     const toolPermissionLabel: Record<MCPToolStakeLevelType, string> = {
-      high: "High (update data or send information)",
-      low: "Low (retrieve data or generate content)",
+      high: "High (always ask for confirmation)",
+      medium: "Medium (per-agent per-argument confirmation saves)",
+      low: "Low (per-tool confirmation saves)",
       never_ask: "Never ask (automatic execution)",
     };
 
@@ -114,14 +115,16 @@ const ToolItem = memo(
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  {availableStakeLevels.map((permission) => (
-                    <DropdownMenuItem
-                      key={permission}
-                      onClick={() => handlePermissionChange(permission)}
-                      label={toolPermissionLabel[permission]}
-                      disabled={!toolEnabled}
-                    />
-                  ))}
+                  {availableStakeLevels
+                    .filter((v) => v !== "medium")
+                    .map((permission) => (
+                      <DropdownMenuItem
+                        key={permission}
+                        onClick={() => handlePermissionChange(permission)}
+                        label={toolPermissionLabel[permission]}
+                        disabled={!toolEnabled}
+                      />
+                    ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
