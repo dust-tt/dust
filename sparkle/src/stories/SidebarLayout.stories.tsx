@@ -16,7 +16,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Layouts/SidebarLayout",
+  title: "WIP/SidebarLayout",
   component: SidebarLayout,
 } satisfies Meta<typeof SidebarLayout>;
 
