@@ -24,7 +24,13 @@ import { GroupsList } from "@app/components/groups/GroupsList";
 import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
 import { SearchMembersDropdown } from "@app/components/spaces/SearchMembersDropdown";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { GroupType, LightWorkspaceType, UserType } from "@app/types";
+import type {
+  GroupType,
+  LightWorkspaceType,
+  SpaceUserType,
+  UserType,
+} from "@app/types";
+import { cp } from "fs";
 
 type MembersManagementType = "manual" | "group";
 
@@ -45,7 +51,6 @@ interface RestrictedAccessBodyProps {
   onManagementTypeChange: (managementType: MembersManagementType) => void;
   onMembersUpdated: (members: UserType[]) => void;
   onGroupsUpdated: (groups: GroupType[]) => void;
-  onEditorIdsUpdated?: (editorIds: string[]) => void;
   disabled?: boolean;
 }
 
@@ -60,7 +65,6 @@ export function RestrictedAccessBody({
   onManagementTypeChange,
   onMembersUpdated,
   onGroupsUpdated,
-  onEditorIdsUpdated,
   disabled = false,
 }: RestrictedAccessBodyProps) {
   const confirm = useContext(ConfirmContext);
@@ -227,7 +231,6 @@ export function RestrictedAccessBody({
               selectedMembers={selectedMembers}
               searchSelectedMembers={searchSelectedMembers}
               editorIds={editorIds}
-              onEditorIdsUpdated={onEditorIdsUpdated}
               disabled={disabled}
             />
           </ScrollArea>
@@ -259,26 +262,27 @@ type MemberRowData = {
   name: string;
   userId: string;
   email: string;
+  isEditor?: boolean;
   onClick?: () => void;
 };
 
 type MemberInfo = CellContext<MemberRowData, unknown>;
 
-function getMemberTableRows(allUsers: UserType[]): MemberRowData[] {
+function getMemberTableRows(allUsers: SpaceUserType[]): MemberRowData[] {
   return allUsers.map((user) => ({
     icon: user.image ?? "",
     name: user.fullName,
     userId: user.sId,
     email: user.email ?? "",
+    isEditor: user.isEditor ?? false,
   }));
 }
 
 interface MembersTableProps {
-  onMembersUpdated: (members: UserType[]) => void;
-  selectedMembers: UserType[];
+  onMembersUpdated: (members: SpaceUserType[]) => void;
+  selectedMembers: SpaceUserType[];
   searchSelectedMembers: string;
   editorIds?: string[];
-  onEditorIdsUpdated?: (editorIds: string[]) => void;
   disabled?: boolean;
 }
 
@@ -286,10 +290,12 @@ function MembersTable({
   onMembersUpdated,
   selectedMembers,
   searchSelectedMembers,
-  editorIds = [],
-  onEditorIdsUpdated,
   disabled = false,
 }: MembersTableProps) {
+  const editorIds = useMemo(
+    () => selectedMembers.filter((m) => m.isEditor).map((m) => m.sId),
+    [selectedMembers]
+  );
   const sendNotifications = useSendNotification();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -313,14 +319,15 @@ function MembersTable({
     };
 
     const toggleEditor = (userId: string) => {
-      if (!onEditorIdsUpdated) {
-        return;
-      }
-      if (editorIds.includes(userId)) {
-        onEditorIdsUpdated(editorIds.filter((id) => id !== userId));
-      } else {
-        onEditorIdsUpdated([...editorIds, userId]);
-      }
+      const toggledMember = selectedMembers.find((m) => m.sId === userId);
+      onMembersUpdated([
+        ...selectedMembers.slice(0, selectedMembers.indexOf(toggledMember!)),
+        {
+          ...toggledMember!,
+          isEditor: !toggledMember?.isEditor,
+        },
+        ...selectedMembers.slice(selectedMembers.indexOf(toggledMember!) + 1),
+      ]);
     };
 
     return [
@@ -393,14 +400,7 @@ function MembersTable({
         },
       },
     ];
-  }, [
-    onMembersUpdated,
-    selectedMembers,
-    sendNotifications,
-    editorIds,
-    onEditorIdsUpdated,
-    disabled,
-  ]);
+  }, [onMembersUpdated, selectedMembers, sendNotifications, disabled]);
 
   const rows = useMemo(
     () => getMemberTableRows(selectedMembers),

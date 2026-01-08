@@ -36,13 +36,13 @@ export function SpaceAboutTab({
   const [managementType, setManagementType] = useState<"manual" | "group">(
     initialManagementMode
   );
+  const [savedMembers, setSavedMembers] =
+    useState<SpaceUserType[]>(initialMembers);
   const [selectedMembers, setSelectedMembers] =
     useState<SpaceUserType[]>(initialMembers);
+  const [savedGroups, setSavedGroups] = useState<GroupType[]>(initialGroups);
   const [selectedGroups, setSelectedGroups] =
     useState<GroupType[]>(initialGroups);
-  const [editorIds, setEditorIds] = useState<string[]>(
-    initialMembers.filter((m) => m.isEditor).map((m) => m.sId)
-  );
   const [isSaving, setIsSaving] = useState(false);
 
   const [isRestricted, setIsRestricted] = useState(initialIsRestricted);
@@ -60,37 +60,38 @@ export function SpaceAboutTab({
 
     if (managementType === "manual") {
       const currentMemberIds = selectedMembers.map((m) => m.sId).sort();
-      const initialMemberIds = initialMembers.map((m) => m.sId).sort();
+      const savedMemberIds = savedMembers.map((m) => m.sId).sort();
       const memberIdsChanged =
-        JSON.stringify(currentMemberIds) !== JSON.stringify(initialMemberIds);
+        JSON.stringify(currentMemberIds) !== JSON.stringify(savedMemberIds);
 
       // Check if editor IDs have changed
-      const initialEditorIds = initialMembers
+      const selectedEditorIds = selectedMembers
+        .filter((m) => m.isEditor)
+        .map((m) => m.sId);
+      const savedEditorIds = savedMembers
         .filter((m: SpaceUserType) => m.isEditor)
         .map((m) => m.sId)
         .sort();
-      const currentEditorIds = [...editorIds].sort();
+      const currentEditorIds = [...selectedEditorIds].sort();
       const editorsChanged =
-        JSON.stringify(initialEditorIds) !== JSON.stringify(currentEditorIds);
+        JSON.stringify(savedEditorIds) !== JSON.stringify(currentEditorIds);
 
       return memberIdsChanged || editorsChanged;
     } else {
       const currentGroupIds = selectedGroups.map((g) => g.sId).sort();
-      const initialGroupIds = initialGroups.map((g) => g.sId).sort();
-      return (
-        JSON.stringify(currentGroupIds) !== JSON.stringify(initialGroupIds)
-      );
+      const savedGroupIds = savedGroups.map((g) => g.sId).sort();
+      return JSON.stringify(currentGroupIds) !== JSON.stringify(savedGroupIds);
     }
   }, [
     managementType,
     initialManagementMode,
     selectedMembers,
-    initialMembers,
+    savedMembers,
     selectedGroups,
     initialGroups,
     isRestricted,
     initialIsRestricted,
-    editorIds,
+    savedGroups,
   ]);
 
   const canSave = useMemo(() => {
@@ -120,14 +121,16 @@ export function SpaceAboutTab({
         managementMode: "group",
         name: space.name,
       });
+      setSavedGroups(selectedGroups);
     } else {
       await doUpdate(space, {
         isRestricted,
         memberIds: selectedMembers.map((member) => member.sId),
-        editorIds,
+        editorIds: selectedMembers.filter((m) => m.isEditor).map((m) => m.sId),
         managementMode: "manual",
         name: space.name,
       });
+      setSavedMembers(selectedMembers);
     }
 
     setIsSaving(false);
@@ -139,7 +142,6 @@ export function SpaceAboutTab({
     selectedGroups,
     selectedMembers,
     isRestricted,
-    editorIds,
     space,
   ]);
 
@@ -159,10 +161,8 @@ export function SpaceAboutTab({
         selectedMembers={selectedMembers}
         selectedGroups={selectedGroups}
         onManagementTypeChange={setManagementType}
-        editorIds={editorIds}
         onMembersUpdated={setSelectedMembers}
         onGroupsUpdated={setSelectedGroups}
-        onEditorIdsUpdated={setEditorIds}
         disabled={!isSpaceEditor}
       />
 
