@@ -12,6 +12,7 @@ import {
   NavigationList,
   NavigationListItem,
   NavigationListItemAction,
+  NavigationListItemStatus,
   NavigationListCollapsibleSection,
   NavigationListLabel,
   PencilSquareIcon,
@@ -97,15 +98,15 @@ export const Demo = () => {
                 // Add status based on index for demonstration
                 const getStatus = (idx: number) => {
                   if (idx % 7 === 0) {
-                    return "error";
+                    return NavigationListItemStatus.Error;
                   }
                   if (idx % 5 === 0) {
-                    return "unread";
+                    return NavigationListItemStatus.Unread;
                   }
                   if (idx % 3 === 0) {
-                    return "blocked";
+                    return NavigationListItemStatus.Blocked;
                   }
-                  return "idle";
+                  return NavigationListItemStatus.Idle;
                 };
                 return (
                   <NavigationListItem
@@ -140,15 +141,15 @@ export const Demo = () => {
                 // Add status based on index for demonstration.
                 const getStatus = (idx: number) => {
                   if (idx % 7 === 0) {
-                    return "error";
+                    return NavigationListItemStatus.Error;
                   }
                   if (idx % 5 === 0) {
-                    return "unread";
+                    return NavigationListItemStatus.Unread;
                   }
                   if (idx % 3 === 0) {
-                    return "blocked";
+                    return NavigationListItemStatus.Blocked;
                   }
-                  return "idle";
+                  return NavigationListItemStatus.Idle;
                 };
                 return (
                   <NavigationListItem
@@ -248,9 +249,14 @@ export const CollapsibleSection = () => {
           }
         >
           {getRandomTitles(6).map((title, index) => {
-            const statuses: Array<
-              "idle" | "unread" | "blocked" | "error" | number
-            > = ["idle", "unread", "blocked", "error", 5, 12];
+            const statuses: Array<NavigationListItemStatus | number> = [
+              NavigationListItemStatus.Idle,
+              NavigationListItemStatus.Unread,
+              NavigationListItemStatus.Blocked,
+              NavigationListItemStatus.Error,
+              5,
+              12,
+            ];
             return (
               <NavigationListItem
                 key={index}

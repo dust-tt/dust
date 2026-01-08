@@ -69,6 +69,13 @@ const NavigationList = React.forwardRef<
 });
 NavigationList.displayName = "NavigationList";
 
+export enum NavigationListItemStatus {
+  Idle = "idle",
+  Unread = "unread",
+  Blocked = "blocked",
+  Error = "error",
+}
+
 interface NavigationListItemProps
   extends
     React.HTMLAttributes<HTMLDivElement>,
@@ -78,7 +85,7 @@ interface NavigationListItemProps
   icon?: React.ComponentType;
   avatar?: React.ReactNode;
   moreMenu?: React.ReactNode;
-  status?: "idle" | "unread" | "blocked" | "error" | number;
+  status?: NavigationListItemStatus | number;
 }
 
 const NavigationListItem = React.forwardRef<
@@ -98,7 +105,7 @@ const NavigationListItem = React.forwardRef<
       replace,
       shallow,
       moreMenu,
-      status = "idle",
+      status = NavigationListItemStatus.Idle,
       ...props
     },
     ref
@@ -116,20 +123,21 @@ const NavigationListItem = React.forwardRef<
         return "";
       }
       switch (status) {
-        case "unread":
+        case NavigationListItemStatus.Unread:
           return "s-h-2 s-w-2 s-m-1 s-bg-highlight-500 dark:s-bg-highlight-500-night";
-        case "blocked":
+        case NavigationListItemStatus.Blocked:
           return "s-h-2 s-w-2 s-m-1 s-bg-golden-400 dark:s-bg-golden-400-night";
-        case "error":
+        case NavigationListItemStatus.Error:
           return "s-h-2 s-w-2 s-m-1 s-bg-warning-400 dark:s-bg-warning-400-night";
         default:
           return "";
       }
     };
 
-    const shouldShowCounter = typeof status === "number" && status > 0;
-    const shouldShowStatusDot = typeof status === "string" && status !== "idle";
-    const counterValue = typeof status === "number" ? status : undefined;
+    const shouldShowStatusDot =
+      typeof status !== "number" && status !== NavigationListItemStatus.Idle;
+    const counterValue =
+      typeof status === "number" && status > 0 ? status : undefined;
 
     return (
       <div
