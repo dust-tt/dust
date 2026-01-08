@@ -17,6 +17,7 @@ import {
   launchGoogleDriveFullSyncWorkflow,
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleGarbageCollector,
+  signalFolderRemoval,
 } from "@connectors/connectors/google_drive/temporal/client";
 import {
   isGoogleDriveFolder,
@@ -115,6 +116,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       pdfEnabled: false,
       largeFilesEnabled: false,
       csvEnabled: false,
+      useParallelSync: false,
     };
 
     const connector = await ConnectorResource.makeNew(
@@ -587,15 +589,16 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       const res = await launchGoogleDriveFullSyncWorkflow(
         this.connectorId,
         null,
-        addedFolderIds
+        addedFolderIds,
+        removedFolderIds
       );
       if (res.isErr()) {
         return res;
       }
     } else if (removedFolderIds.length > 0) {
       // If we have added folders, the garbage collector will be automatically at the end of the full sync,
-      // but if we only removed folders, we need launch it manually.
-      const res = await launchGoogleGarbageCollector(this.connectorId);
+      // but if we only removed folders, check if workflow is running to signal it
+      const res = await signalFolderRemoval(this.connectorId, removedFolderIds);
       if (res.isErr()) {
         return res;
       }
@@ -677,6 +680,18 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           this.connectorId,
           null,
           []
+        );
+        if (workflowRes.isErr()) {
+          return workflowRes;
+        }
+        return new Ok(void 0);
+      }
+      case "useParallelSync": {
+        await config.update({
+          useParallelSync: configValue === "true",
+        });
+        const workflowRes = await launchGoogleDriveIncrementalSyncWorkflow(
+          this.connectorId
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -770,6 +785,9 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       }
       case "csvEnabled": {
         return new Ok(config.csvEnabled ? "true" : "false");
+      }
+      case "useParallelSync": {
+        return new Ok(config.useParallelSync ? "true" : "false");
       }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));

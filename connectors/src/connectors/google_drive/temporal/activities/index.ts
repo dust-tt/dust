@@ -1,7 +1,9 @@
+export { cancelChildWorkflow } from "./cancel_child_workflow";
 export { fixParentsConsistencyActivity } from "./fix_parents_consistency_activity";
 export { garbageCollector } from "./garbage_collector";
 export { garbageCollectorFinished } from "./garbage_collector_finished";
 export { getDrivesToSync } from "./get_drives_to_sync";
+export { getFilesCountForSync } from "./get_files_count_for_sync";
 export { getFoldersToSync } from "./get_folders_to_sync";
 export { incrementalSync } from "./incremental_sync";
 export { markFolderAsVisited } from "./mark_folder_as_visited";
