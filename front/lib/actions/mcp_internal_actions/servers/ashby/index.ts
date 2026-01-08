@@ -286,7 +286,8 @@ function createServer(
             return new Err(
               new MCPError(
                 `Candidate ${candidate.name} was hired, ` +
-                  "retrieving feedback for hired candidates is not permitted."
+                  "retrieving feedback for hired candidates is not permitted.",
+                { tracked: false }
               )
             );
           }
