@@ -148,7 +148,7 @@ export function AgentBuilderInstructionsEditor({
             }
           }
 
-          return "What does this agent do? How should it behave? What should it avoid doing?";
+          return "What's the purpose of the agent? How should it behave?";
         },
         emptyNodeClass:
           "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
