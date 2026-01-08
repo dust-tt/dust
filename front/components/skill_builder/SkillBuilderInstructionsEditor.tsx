@@ -18,7 +18,7 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 const editorVariants = cva(
   [
-    "overflow-auto border rounded-xl px-3 py-2 resize-y min-h-60 max-h-[1024px]",
+    "overflow-auto border rounded-xl px-3 pt-2 pb-8 resize-y min-h-60 max-h-[1024px]",
     "transition-all duration-200",
     "bg-muted-background dark:bg-muted-background-night",
   ],
@@ -216,6 +216,8 @@ export function SkillBuilderInstructionsEditor({
   return (
     <div className="relative space-y-1 p-px">
       <SkillInstructionsEditorContent editor={editor} isReadOnly={false} />
+
+      {/* Floating Add Knowledge Button */}
       <Button
         size="xs"
         variant="ghost"
