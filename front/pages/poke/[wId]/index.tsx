@@ -4,12 +4,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
   Tabs,
   TabsContent,
   TabsList,
@@ -54,8 +48,6 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
-import type { ActionRegistry } from "@app/lib/registry";
-import { getDustProdActionRegistry } from "@app/lib/registry";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
@@ -76,14 +68,13 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   extensionConfig: ExtensionConfigurationType | null;
   owner: WorkspaceType;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
-  registry: ActionRegistry;
   stripeSubscription: Stripe.Subscription | null;
   subscriptions: SubscriptionType[];
   whitelistableFeatures: WhitelistableFeature[];
   workspaceVerifiedDomains: WorkspaceDomain[];
   workspaceCreationDay: string;
   workosEnvironmentId: string;
-}>(async (context, auth) => {
+}>(async (_context, auth) => {
   const owner = auth.workspace();
   const activeSubscription = auth.subscription();
 
@@ -136,7 +127,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       stripeSubscription,
       subscriptions,
       whitelistableFeatures: WHITELISTABLE_FEATURES,
-      registry: getDustProdActionRegistry(),
       workspaceVerifiedDomains,
       workspaceCreationDay: format(workspaceCreationDay, "yyyy-MM-dd"),
       extensionConfig: extensionConfig?.toJSON() ?? null,
@@ -153,12 +143,10 @@ const WorkspacePage = ({
   stripeSubscription,
   subscriptions,
   whitelistableFeatures,
-  registry,
   workspaceVerifiedDomains,
   workspaceCreationDay,
   extensionConfig,
   programmaticUsageConfig,
-  baseUrl,
   workosEnvironmentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
@@ -228,11 +216,6 @@ const WorkspacePage = ({
               href={`/poke/${owner.sId}/memberships`}
               label="View members"
               variant="outline"
-            />
-            <DustAppLogsModal
-              owner={owner}
-              registry={registry}
-              baseUrl={baseUrl}
             />
           </div>
         </div>
@@ -378,58 +361,6 @@ const WorkspacePage = ({
     </div>
   );
 };
-
-export function DustAppLogsModal({
-  owner,
-  registry,
-  baseUrl,
-}: {
-  owner: WorkspaceType;
-  registry: ActionRegistry;
-  baseUrl: string;
-}) {
-  return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button label="View Dust App Logs" variant="outline" />
-      </SheetTrigger>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>View Dust App Logs</SheetTitle>
-        </SheetHeader>
-        <SheetContainer>
-          {Object.entries(registry).map(
-            ([
-              action,
-              {
-                app: { appId, workspaceId: appWorkspaceId, appSpaceId },
-              },
-            ]) => {
-              const url = `${baseUrl}/w/${appWorkspaceId}/spaces/${appSpaceId}/apps/${appId}/runs?wIdTarget=${owner.sId}`;
-
-              return (
-                <div key={appId}>
-                  <div className="flex flex-row items-center space-x-2">
-                    <div className="flex-1">
-                      <h3
-                        className="cursor-pointer text-lg font-semibold text-highlight-600"
-                        onClick={() => {
-                          window.open(url, "_blank", "noopener,noreferrer");
-                        }}
-                      >
-                        {action}
-                      </h3>
-                    </div>
-                  </div>
-                </div>
-              );
-            }
-          )}
-        </SheetContainer>
-      </SheetContent>
-    </Sheet>
-  );
-}
 
 WorkspacePage.getLayout = (
   page: ReactElement,
