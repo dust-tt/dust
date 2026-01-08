@@ -26,8 +26,6 @@ import { useEffect, useState } from "react";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import type { Action } from "@app/lib/registry";
-import { getDustProdAction } from "@app/lib/registry";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { classNames } from "@app/lib/utils";
@@ -48,7 +46,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   workspaceId: string;
   conversationId: string;
   conversationDataSourceId: string | null;
-  multiActionsApp: Action;
   temporalWorkspace: string;
 }>(async (context, auth) => {
   const cId = context.params?.cId;
@@ -80,14 +77,11 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     cRes.value
   );
 
-  const multiActionsApp = getDustProdAction("assistant-v2-multi-actions-agent");
-
   return {
     props: {
       workspaceId: wId,
       conversationId: cId,
       conversationDataSourceId: conversationDataSource?.sId ?? null,
-      multiActionsApp,
       workspace: auth.getNonNullableWorkspace(),
       temporalWorkspace: TEMPORAL_AGENT_NAMESPACE,
     },
@@ -124,7 +118,6 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
 
 interface AgentMessageViewProps {
   message: PokeAgentMessageType;
-  multiActionsApp: Action;
   useMarkdown: boolean;
   workspaceId: string;
 }
@@ -318,7 +311,6 @@ const ConversationPage = ({
   workspace,
   conversationId,
   conversationDataSourceId,
-  multiActionsApp,
   temporalWorkspace,
 }: ConversationPageProps) => {
   const { conversation } = usePokeConversation({ workspaceId, conversationId });
@@ -564,7 +556,6 @@ const ConversationPage = ({
                         return (
                           <AgentMessageView
                             key={`message-${i}-${j}`}
-                            multiActionsApp={multiActionsApp}
                             message={m}
                             useMarkdown={useMarkdown}
                             workspaceId={workspaceId}
