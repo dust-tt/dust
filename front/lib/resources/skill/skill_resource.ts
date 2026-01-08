@@ -719,7 +719,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (s) => !enabledSkillIds.has(s.sId)
     );
 
-    // TODO(skills 2025-12-23): refactor to retrieve extended skills from baseFetch
     const augmentedEnabledSkills = await this.augmentSkillsWithExtendedSkills(
       auth,
       enabledSkills
