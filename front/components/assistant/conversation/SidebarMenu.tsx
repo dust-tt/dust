@@ -298,6 +298,11 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     }
   }, [setSidebarOpen, router, setAnimate]);
 
+  const hasTriggeredConversations = useMemo(
+    () => conversations.some((c) => c.triggerId !== null),
+    [conversations]
+  );
+
   const filteredConversations = useMemo(() => {
     return filterTriggeredConversations(
       conversations,
@@ -540,7 +545,9 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                           label="Hide triggered conversations"
                           checked={hideTriggeredConversations}
                           onCheckedChange={setHideTriggeredConversations}
-                          disabled={isHideTriggeredLoading}
+                          disabled={
+                            isHideTriggeredLoading || !hasTriggeredConversations
+                          }
                         />
                       </DropdownMenuContent>
                     </DropdownMenu>
