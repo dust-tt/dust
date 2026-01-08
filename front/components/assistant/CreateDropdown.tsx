@@ -24,15 +24,15 @@ import {
 } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types";
 
-interface CreateAgentButtonProps {
+interface CreateDropdownProps {
   owner: LightWorkspaceType;
   dataGtmLocation: string;
 }
 
-export const CreateAgentButton = ({
+export const CreateDropdown = ({
   owner,
   dataGtmLocation,
-}: CreateAgentButtonProps) => {
+}: CreateDropdownProps) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({

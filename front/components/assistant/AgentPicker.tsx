@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
+import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
 import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 
@@ -89,7 +89,7 @@ export function AgentPicker({
               }}
               button={
                 showFooterButtons && (
-                  <CreateAgentButton owner={owner} dataGtmLocation="homepage" />
+                  <CreateDropdown owner={owner} dataGtmLocation="homepage" />
                 )
               }
             />
