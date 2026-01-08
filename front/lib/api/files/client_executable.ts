@@ -173,7 +173,6 @@ export async function createClientExecutableFile(
     // Create the file resource.
     const fileResource = await FileResource.makeNew({
       workspaceId: workspace.id,
-      version: 0,
       fileName,
       contentType: mimeType,
       fileSize: 0, // Will be updated in uploadContent.

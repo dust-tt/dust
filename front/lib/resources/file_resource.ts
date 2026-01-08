@@ -64,11 +64,12 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<FileModel>, "status" | "sId">
+    blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "version">
   ) {
     const key = await FileResource.model.create({
       ...blob,
       status: "created",
+      version: 0,
     });
 
     return new this(FileResource.model, key.get());
