@@ -1275,6 +1275,7 @@ export const INTERNAL_MCP_SERVERS = {
       search_candidates: "never_ask",
       get_report_data: "never_ask",
       get_interview_feedback: "never_ask",
+      get_candidate_notes: "never_ask",
       create_candidate_note: "high",
     },
     tools_retry_policies: undefined,

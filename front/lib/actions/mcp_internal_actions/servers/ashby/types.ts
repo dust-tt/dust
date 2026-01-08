@@ -180,6 +180,42 @@ export type AshbyCandidateCreateNoteResponse = z.infer<
   typeof AshbyCandidateCreateNoteResponseSchema
 >;
 
+export const AshbyCandidateListNotesRequestSchema = z.object({
+  candidateId: z.string(),
+});
+
+export type AshbyCandidateListNotesRequest = z.infer<
+  typeof AshbyCandidateListNotesRequestSchema
+>;
+
+export const AshbyCandidateNoteSchema = z
+  .object({
+    id: z.string(),
+    content: z.string(),
+    createdAt: z.string(),
+    author: z
+      .object({
+        id: z.string(),
+        firstName: z.string(),
+        lastName: z.string(),
+        email: z.string(),
+      })
+      .optional()
+      .nullable(),
+  })
+  .passthrough();
+
+export type AshbyCandidateNote = z.infer<typeof AshbyCandidateNoteSchema>;
+
+export const AshbyCandidateListNotesResponseSchema = z.object({
+  success: z.boolean(),
+  results: z.array(AshbyCandidateNoteSchema),
+});
+
+export type AshbyCandidateListNotesResponse = z.infer<
+  typeof AshbyCandidateListNotesResponseSchema
+>;
+
 export const AshbyApplicationInfoRequestSchema = z.object({
   applicationId: z.string(),
 });

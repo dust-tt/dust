@@ -7,6 +7,7 @@ import type { AshbyClient } from "@app/lib/actions/mcp_internal_actions/servers/
 import { getAshbyClient } from "@app/lib/actions/mcp_internal_actions/servers/ashby/client";
 import {
   renderCandidateList,
+  renderCandidateNotes,
   renderInterviewFeedbackRecap,
   renderReportInfo,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/rendering";
@@ -275,30 +276,12 @@ function createServer(
           );
         }
 
-        // Check if any application is in "hired" status; feedback retrieval is then blocked.
-        for (const applicationId of candidate.applicationIds) {
-          const appInfoResult = await client.getApplicationInfo({
-            applicationId,
-          });
-          if (appInfoResult.isErr()) {
-            return new Err(
-              new MCPError(
-                `Failed to retrieve application info for candidate ${candidate.name}.`
-              )
-            );
-          }
-
-          if (appInfoResult.value.results.status === "Hired") {
-            return new Err(
-              new MCPError(
-                `Candidate ${candidate.name} was hired, ` +
-                  "retrieving feedback for hired candidates is not permitted.",
-                {
-                  tracked: false,
-                }
-              )
-            );
-          }
+        const hiredCheckResult = await assertCandidateNotHired(
+          client,
+          candidate
+        );
+        if (hiredCheckResult.isErr()) {
+          return hiredCheckResult;
         }
 
         let latestApplicationFeedback: AshbyFeedbackSubmission[] | null = null;
@@ -427,7 +410,118 @@ function createServer(
     )
   );
 
+  server.tool(
+    "get_candidate_notes",
+    "Retrieve all notes for a candidate. " +
+      "This tool will search for the candidate by name or email and return all notes on their profile.",
+    CandidateSearchInputSchema.shape,
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "ashby_get_candidate_notes",
+        agentLoopContext,
+      },
+      async ({ email, name }) => {
+        const clientResult = await getAshbyClient(auth, agentLoopContext);
+        if (clientResult.isErr()) {
+          return clientResult;
+        }
+
+        const client = clientResult.value;
+
+        const candidateResult = await findUniqueCandidate(client, {
+          email,
+          name,
+        });
+
+        if (candidateResult.isErr()) {
+          return new Err(candidateResult.error);
+        }
+
+        const candidate = candidateResult.value;
+
+        const hiredCheckResult = await assertCandidateNotHired(
+          client,
+          candidate
+        );
+        if (hiredCheckResult.isErr()) {
+          return hiredCheckResult;
+        }
+
+        const notesResult = await client.listCandidateNotes({
+          candidateId: candidate.id,
+        });
+
+        if (notesResult.isErr()) {
+          return new Err(
+            new MCPError(
+              `Failed to retrieve notes for candidate: ${notesResult.error.message}`
+            )
+          );
+        }
+
+        const notes = notesResult.value;
+
+        if (notes.length === 0) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text:
+                `No notes found for candidate ${candidate.name}` +
+                (candidate.primaryEmailAddress?.value
+                  ? ` (${candidate.primaryEmailAddress.value})`
+                  : "") +
+                ".",
+            },
+          ]);
+        }
+
+        const notesText = renderCandidateNotes(candidate, notes);
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: notesText,
+          },
+        ]);
+      }
+    )
+  );
+
   return server;
+}
+
+async function assertCandidateNotHired(
+  client: AshbyClient,
+  candidate: AshbyCandidate
+): Promise<Result<void, MCPError>> {
+  if (!candidate.applicationIds) {
+    return new Ok(undefined);
+  }
+
+  for (const applicationId of candidate.applicationIds) {
+    const appInfoResult = await client.getApplicationInfo({ applicationId });
+    if (appInfoResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to retrieve application info for candidate ${candidate.name}.`
+        )
+      );
+    }
+
+    if (appInfoResult.value.results.status === "Hired") {
+      return new Err(
+        new MCPError(
+          `Candidate ${candidate.name} was hired, this operation is not permitted for hired candidates.`,
+          {
+            tracked: false,
+          }
+        )
+      );
+    }
+  }
+
+  return new Ok(undefined);
 }
 
 async function findUniqueCandidate(
