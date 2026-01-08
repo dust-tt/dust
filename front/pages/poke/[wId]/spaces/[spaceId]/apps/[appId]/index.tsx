@@ -19,7 +19,6 @@ import config from "@app/lib/api/config";
 import { cleanSpecificationFromCore, getSpecification } from "@app/lib/api/run";
 import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { BaseDustProdActionRegistry } from "@app/lib/registry";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { decodeSqids } from "@app/lib/utils";
@@ -135,9 +134,6 @@ function AppSpecification({
   specificationHashes: string[] | null;
 }) {
   const { isDark } = useTheme();
-  const registryApp = Object.values(BaseDustProdActionRegistry).find(
-    (a) => a.app.appId === app.sId
-  );
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -197,11 +193,7 @@ function AppSpecification({
                 />
                 {specificationHashes.map((hash) => (
                   <DropdownMenuItem
-                    label={
-                      registryApp?.app?.appHash === hash
-                        ? `${hash} [registry]`
-                        : hash
-                    }
+                    label={hash}
                     key={hash}
                     onClick={() => {
                       void router.push(`${pathname}?hash=${hash}`);
