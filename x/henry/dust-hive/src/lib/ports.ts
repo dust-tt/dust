@@ -1,10 +1,10 @@
-import { spawnSync } from "node:child_process";
 import { mkdir, open, readdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { createTypeGuard, isErrnoException } from "./errors";
 import { directoryExists } from "./fs";
 import { DUST_HIVE_ENVS, DUST_HIVE_HOME, getPortsPath } from "./paths";
+import { getPidsOnPort, getProcessCommand } from "./platform";
 import { isProcessRunning, killProcess } from "./process";
 
 // Port offsets from base (spec-defined).
@@ -203,38 +203,8 @@ export async function loadPortAllocation(name: string): Promise<PortAllocation |
   return data;
 }
 
-// Get PIDs using a specific port
-export function getPidsOnPort(port: number): number[] {
-  const result = spawnSync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"], {
-    encoding: "utf-8",
-  });
-
-  const stdout = result.stdout?.trim() ?? "";
-  const stderr = result.stderr?.trim() ?? "";
-  if (result.error) {
-    if (isErrnoException(result.error) && result.error.code === "ENOENT") {
-      throw new Error("lsof not found in PATH");
-    }
-    if (result.status === 1 && stdout === "") {
-      return [];
-    }
-    throw result.error;
-  }
-
-  if (result.status === 1 && stdout === "") {
-    return [];
-  }
-
-  if (result.status !== 0) {
-    throw new Error(`lsof failed for port ${port}: ${stderr || "unknown error"}`);
-  }
-
-  return stdout
-    .split("\n")
-    .filter((line) => line.length > 0)
-    .map((pid) => Number.parseInt(pid, 10))
-    .filter((pid) => !Number.isNaN(pid));
-}
+// Re-export getPidsOnPort from platform module for backwards compatibility
+export { getPidsOnPort } from "./platform";
 
 // Check if a port is in use
 export function isPortInUse(port: number): boolean {
@@ -249,28 +219,6 @@ export function getServicePorts(ports: PortAllocation): number[] {
 export interface PortProcessInfo {
   pid: number;
   command: string | null;
-}
-
-function getProcessCommand(pid: number): string | null {
-  const result = spawnSync("ps", ["-p", String(pid), "-o", "command="], { encoding: "utf-8" });
-  const stdout = result.stdout?.trim() ?? "";
-  const stderr = result.stderr?.trim() ?? "";
-  if (result.error) {
-    if (isErrnoException(result.error) && result.error.code === "ENOENT") {
-      throw new Error("ps not found in PATH");
-    }
-    if (result.status === 1 && stdout === "") {
-      return null;
-    }
-    throw result.error;
-  }
-  if (result.status === 1 && stdout === "") {
-    return null;
-  }
-  if (result.status !== 0) {
-    throw new Error(`ps failed for pid ${pid}: ${stderr || "unknown error"}`);
-  }
-  return stdout.length > 0 ? stdout : null;
 }
 
 export function getPortProcessInfo(port: number): PortProcessInfo[] {
