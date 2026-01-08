@@ -1,6 +1,9 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
-import type { DataSourceNodeListType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type {
+  DataSourceNodeListType,
+  RenderedNodeType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type {
   ConnectorProvider,
@@ -50,7 +53,7 @@ function formatTimestamp(timestamp: number): string {
 export function renderNode(
   node: CoreAPIContentNode,
   dataSourceIdToConnectorMap: Map<string, ConnectorProvider | null>
-) {
+): RenderedNodeType {
   // Transform data source node IDs to include the data source ID
   const nodeId =
     node.node_id === DATA_SOURCE_NODE_ID
