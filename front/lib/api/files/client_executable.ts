@@ -371,34 +371,15 @@ export async function revertClientExecutableFileChanges(
 
   // Get all versions of the file (sorted newest to oldest)
   // No maxResults limit - we need all versions to ensure correct sorting
-  let versions;
-  try {
-    versions = await fileResource.getSortedFileVersions(auth);
-  } catch (error) {
-    return new Err({
-      tracked: true,
-      message: `Failed to retrieve file versions: ${normalizeError(error)}`,
-    });
-  }
+  const versions = await fileResource.getSortedFileVersions(auth);
 
-  // Check if there's a previous version available, button should be hidden in this
-  // case but just in case
+  // Check if there's a previous version available before attempting revert
   if (versions.length < MIN_VERSIONS_FOR_REVERT) {
     return new Err({
-      tracked: true,
+      tracked: false,
       message: "No previous version available to revert to",
     });
   }
-
-  // Log version generations for debugging
-  logger.info(
-    {
-      fileId,
-      versionGenerations: versions.map((v) => v.metadata.generation),
-      versionCount: versions.length,
-    },
-    "File versions retrieved for revert"
-  );
 
   const currentVersion = versions[0];
   const previousVersion = versions[1];
@@ -432,14 +413,10 @@ export async function revertClientExecutableFileChanges(
     await currentVersion.delete();
     await previousVersion.delete();
   } catch (error) {
-    // Log but don't fail the revert if deletion fails
-    logger.error(
-      {
-        fileId,
-        error,
-      },
-      "Failed to clean up old file versions after revert"
-    );
+    return new Err({
+      tracked: false,
+      message: `Failed to delete old file versions: ${normalizeError(error)}`,
+    });
   }
 
   return new Ok({ fileResource, revertedContent });

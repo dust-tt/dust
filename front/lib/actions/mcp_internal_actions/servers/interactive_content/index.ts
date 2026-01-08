@@ -291,8 +291,7 @@ function createServer(
   server.tool(
     REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     "Resets an Interactive Content file to its previous version. " +
-      "Each revert goes back one version in the file's history. " +
-      "Use retrieve to see the current content after reverting.",
+      "Each revert goes back one version in the file's history. ",
     {
       file_id: z
         .string()
