@@ -19,6 +19,7 @@ import {
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { hasSharedMembership } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -45,6 +46,7 @@ import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/regi
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -64,7 +66,13 @@ import type {
   ModelId,
   Result,
 } from "@app/types";
-import { Err, normalizeError, Ok, removeNulls } from "@app/types";
+import {
+  AGENT_GROUP_PREFIX,
+  Err,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
 import type {
   SkillStatus,
   SkillType,
@@ -255,16 +263,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       );
 
-      const editorGroup = await GroupResource.makeNewSkillEditorsGroup(
-        auth,
-        skill,
-        {
-          transaction,
-        }
-      );
+      const editorGroup = await this.makeNewSkillEditorsGroup(auth, skill, {
+        transaction,
+      });
 
       // MCP server configurations for the skill.
-
       await SkillMCPServerConfigurationModel.bulkCreate(
         mcpServerViews.map((mcpServerView) => ({
           workspaceId: owner.id,
@@ -292,6 +295,57 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         mcpServerViews,
       });
     });
+  }
+
+  /**
+   * Creates a new skill editors group for the given skill and adds the creating
+   * user to it.
+   */
+  private static async makeNewSkillEditorsGroup(
+    auth: Authenticator,
+    skill: SkillConfigurationModel,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<GroupResource> {
+    const user = auth.getNonNullableUser();
+    const workspace = auth.getNonNullableWorkspace();
+
+    if (skill.workspaceId !== workspace.id) {
+      throw new DustError(
+        "internal_error",
+        "Unexpected: skill and workspace mismatch"
+      );
+    }
+
+    const defaultGroup = await GroupResource.makeNew(
+      {
+        workspaceId: workspace.id,
+        name: `${AGENT_GROUP_PREFIX} ${skill.name} (skill:${skill.id})`,
+        kind: "agent_editors",
+      },
+      { transaction }
+    );
+
+    await GroupMembershipModel.create(
+      {
+        groupId: defaultGroup.id,
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: new Date(),
+        status: "active" as const,
+      },
+      { transaction }
+    );
+
+    await GroupSkillModel.create(
+      {
+        groupId: defaultGroup.id,
+        skillConfigurationId: skill.id,
+        workspaceId: workspace.id,
+      },
+      { transaction }
+    );
+
+    return defaultGroup;
   }
 
   private static async baseFetch(
