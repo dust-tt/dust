@@ -3,6 +3,7 @@ import React, { ComponentType, ReactNode } from "react";
 import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
+import { ListItem } from "./ListItem";
 
 type ContextItemProps = {
   action?: ReactNode;
@@ -32,65 +33,51 @@ export function ContextItem({
   truncateSubElement,
 }: ContextItemProps) {
   return (
-    <div
-      className={cn(
-        "s-group/context-item s-flex s-w-full s-flex-col",
-        className,
-        hasSeparator && "s-border-b s-border-border dark:s-border-border-night",
-        !hasSeparatorIfLast && "last:s-border-none"
-      )}
+    <ListItem
+      className={className}
+      onClick={onClick}
+      hasSeparator={hasSeparator}
+      hasSeparatorIfLast={hasSeparatorIfLast}
+      groupName="context-item"
+      itemsAlignment={children ? "start" : "center"}
     >
-      <div
-        className={cn(
-          "s-flex s-w-full s-flex-row s-items-start s-gap-3 s-px-4 s-py-3",
-          onClick &&
-            cn(
-              "s-cursor-pointer s-transition s-duration-200",
-              "hover:s-bg-muted-background dark:hover:s-bg-muted-background-night",
-              "active:s-bg-primary-100 dark:active:s-bg-primary-100-night"
-            ),
-          children ? "s-items-start" : "s-items-center"
-        )}
-        onClick={onClick}
-      >
-        {visual}
-        <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-0">
-          <div className="s-flex s-min-w-0 s-grow s-flex-col s-text-foreground dark:s-text-foreground-night sm:s-flex-row sm:s-gap-3">
-            <div
-              className={cn(
-                "s-heading-base",
-                truncateSubElement
-                  ? "s-shrink-0"
-                  : "s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap"
-              )}
-            >
-              {title}
-            </div>
-            {subElement &&
-              (truncateSubElement ? (
-                <div className="s-flex s-min-w-0 s-items-center s-gap-3 s-overflow-hidden s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                  <div className="s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap">
-                    {subElement}
-                  </div>
-                </div>
-              ) : (
-                <div className="s-flex s-items-center s-gap-3 s-overflow-hidden s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+      {visual}
+      <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-0">
+        <div className="s-flex s-min-w-0 s-grow s-flex-col s-text-foreground dark:s-text-foreground-night sm:s-flex-row sm:s-gap-3">
+          <div
+            className={cn(
+              "s-heading-base",
+              truncateSubElement
+                ? "s-shrink-0"
+                : "s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap"
+            )}
+          >
+            {title}
+          </div>
+          {subElement &&
+            (truncateSubElement ? (
+              <div className="s-flex s-min-w-0 s-items-center s-gap-3 s-overflow-hidden s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <div className="s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap">
                   {subElement}
                 </div>
-              ))}
-          </div>
-          {children && <div>{children}</div>}
+              </div>
+            ) : (
+              <div className="s-flex s-items-center s-gap-3 s-overflow-hidden s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                {subElement}
+              </div>
+            ))}
         </div>
-        <div
-          className={cn(
-            hoverAction &&
-              "s-opacity-0 s-transition-opacity s-duration-200 group-hover/context-item:s-opacity-100"
-          )}
-        >
-          {action}
-        </div>
+        {children && <div>{children}</div>}
       </div>
-    </div>
+      <div
+        className={cn(
+          hoverAction &&
+            "s-opacity-0 s-transition-opacity s-duration-200 group-hover/context-item:s-opacity-100"
+        )}
+      >
+        {action}
+      </div>
+    </ListItem>
   );
 }
 

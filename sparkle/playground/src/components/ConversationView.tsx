@@ -1,9 +1,13 @@
 import {
+  ArrowLeftIcon,
+  Bar,
   Button,
   ConversationContainer,
   ConversationMessage,
+  FolderIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
+  MoreIcon,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 
@@ -18,6 +22,9 @@ interface ConversationViewProps {
   users: User[];
   agents: Agent[];
   conversationsWithMessages: Conversation[]; // Conversations that have messages to randomly select from
+  showBackButton?: boolean;
+  onBack?: () => void;
+  conversationTitle?: string;
 }
 
 function formatTimestamp(date: Date): string {
@@ -62,6 +69,9 @@ export function ConversationView({
   users,
   agents,
   conversationsWithMessages,
+  showBackButton = false,
+  onBack,
+  conversationTitle,
 }: ConversationViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -151,6 +161,43 @@ export function ConversationView({
 
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-overflow-hidden">
+      <Bar
+        title={
+          <span className="s-text-base s-font-normal s-text-muted-foreground">
+            {conversationTitle || conversation.title || "Conversation"}
+          </span>
+        }
+        size="sm"
+        leftActions={
+          showBackButton && (
+            <Button
+              size="xmini"
+              variant="ghost"
+              icon={ArrowLeftIcon}
+              onClick={onBack}
+            />
+          )
+        }
+        rightActions={
+          <div className="s-flex s-gap-2">
+            <Button
+              size="mini"
+              variant="ghost"
+              icon={FolderIcon}
+              onClick={onBack}
+            />
+            <Button
+              size="mini"
+              variant="ghost"
+              icon={MoreIcon}
+              onClick={onBack}
+            />
+          </div>
+        }
+        position="top"
+        variant="default"
+      />
+
       {/* Messages container - scrollable */}
       <div
         ref={scrollContainerRef}
@@ -205,8 +252,8 @@ export function ConversationView({
                 <div
                   className={
                     isFromLocutor
-                      ? "s-flex s-w-full s-max-w-[85%] s-justify-end"
-                      : "s-flex s-w-full s-max-w-[85%] s-justify-start"
+                      ? "s-flex s-w-full s-max-w-3xl s-justify-end"
+                      : "s-flex s-w-full s-max-w-3xl s-justify-start"
                   }
                 >
                   <ConversationMessage

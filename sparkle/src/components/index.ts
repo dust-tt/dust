@@ -118,6 +118,7 @@ export { InteractiveImageGrid } from "./InteractiveImageGrid";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
+export { ListItem, ListGroup, ListItemSection } from "./ListItem";
 export { LoadingBlock } from "./LoadingBlock";
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";

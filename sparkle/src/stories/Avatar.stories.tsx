@@ -506,6 +506,171 @@ export const AvatarStackExample: Story = {
           ]}
         />
       </div>
+
+      <div className="s-mt-8 s-text-lg s-font-semibold">
+        onTop Prop Examples
+      </div>
+      <div className="s-flex s-flex-col s-gap-4">
+        <div>
+          <div className="s-mb-2 s-text-sm s-font-medium">
+            Horizontal: onTop="last" (default) vs onTop="first"
+          </div>
+          <div className="s-flex s-flex-row s-items-center s-gap-4">
+            <div className="s-flex s-flex-col s-gap-2">
+              <div className="s-text-xs s-text-muted-foreground">
+                onTop="last" (default)
+              </div>
+              <Avatar.Stack
+                size="sm"
+                nbVisibleItems={4}
+                onTop="last"
+                avatars={[
+                  {
+                    name: "Isabelle Doe",
+                    visual:
+                      "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+                  },
+                  {
+                    name: "Rafael Doe",
+                    visual:
+                      "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+                  },
+                  {
+                    name: "Aria Doe",
+                    visual:
+                      "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+                  },
+                  {
+                    name: "Omar Doe",
+                    visual:
+                      "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+                  },
+                ]}
+              />
+            </div>
+            <div className="s-flex s-flex-col s-gap-2">
+              <div className="s-text-xs s-text-muted-foreground">
+                onTop="first"
+              </div>
+              <div>
+                <Avatar.Stack
+                  size="sm"
+                  nbVisibleItems={4}
+                  onTop="first"
+                  avatars={[
+                    {
+                      name: "Isabelle Doe",
+                      visual:
+                        "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+                    },
+                    {
+                      name: "Rafael Doe",
+                      visual:
+                        "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+                    },
+                    {
+                      name: "Aria Doe",
+                      visual:
+                        "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+                    },
+                    {
+                      name: "Omar Doe",
+                      visual:
+                        "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+                    },
+                  ]}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="s-mb-2 s-text-sm s-font-medium">
+            Vertical: onTop="last" (default) vs onTop="first"
+          </div>
+          <div className="s-flex s-flex-row s-items-start s-gap-4">
+            <div className="s-flex s-flex-col s-gap-2">
+              <div className="s-text-xs s-text-muted-foreground">
+                onTop="last" (default)
+              </div>
+              <div>
+                <Avatar.Stack
+                  size="sm"
+                  nbVisibleItems={4}
+                  orientation="vertical"
+                  onTop="last"
+                  avatars={[
+                    {
+                      name: "Isabelle Doe",
+                      visual:
+                        "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+                      isRounded: true,
+                    },
+                    {
+                      name: "Rafael Doe",
+                      visual:
+                        "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+                      isRounded: true,
+                    },
+                    {
+                      name: "Aria Doe",
+                      visual:
+                        "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+                      isRounded: true,
+                    },
+                    {
+                      name: "Omar Doe",
+                      visual:
+                        "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+                      isRounded: true,
+                    },
+                  ]}
+                />
+              </div>
+            </div>
+            <div className="s-flex s-flex-col s-gap-2">
+              <div className="s-text-xs s-text-muted-foreground">
+                onTop="first"
+              </div>
+              <div>
+                <Avatar.Stack
+                  size="sm"
+                  nbVisibleItems={4}
+                  orientation="vertical"
+                  onTop="first"
+                  avatars={[
+                    {
+                      name: "Isabelle Doe",
+                      visual:
+                        "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+                      isRounded: true,
+                    },
+                    {
+                      name: "Rafael Doe",
+                      visual:
+                        "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+                      isRounded: true,
+                    },
+                    {
+                      name: "Aria Doe",
+                      visual:
+                        "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+                      isRounded: true,
+                    },
+                    {
+                      name: "Omar Doe",
+                      visual:
+                        "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+                      isRounded: true,
+                    },
+                  ]}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   ),
 };

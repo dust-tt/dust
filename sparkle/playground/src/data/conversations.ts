@@ -72,23 +72,25 @@ function generateConversationParticipants(): {
 function generateDescription(title: string): string {
   const descriptions: Record<string, string> = {
     "Project Kickoff Meeting":
-      "Initial discussion to align team on project goals and timeline",
+      "Initial discussion to align team on project goals and timeline. We'll be reviewing the scope of work, establishing key milestones, and defining success metrics. The team will also discuss resource allocation, potential challenges, and mitigation strategies. This foundational meeting sets the tone for the entire project lifecycle and ensures everyone is on the same page from day one.",
     "Budget Review Discussion":
-      "Reviewing financial allocations and budget adjustments for Q4",
+      "Reviewing financial allocations and budget adjustments for Q4. We need to analyze current spending patterns, identify areas where we're over or under budget, and make strategic decisions about resource reallocation. The discussion will cover department-specific budgets, unexpected costs, and opportunities for optimization. Final decisions will be made on any proposed adjustments to ensure we meet our financial targets.",
     "Weekly Sync with Team":
-      "Regular team check-in to discuss progress and blockers",
+      "Regular team check-in to discuss progress and blockers. This weekly meeting is essential for maintaining team alignment and addressing any issues that have arisen during the week. We'll review completed tasks, discuss upcoming priorities, and identify any obstacles that need escalation. The goal is to keep everyone informed, ensure smooth collaboration, and quickly resolve any challenges that might impact project timelines.",
     "AI Bot Training Session":
-      "Training session on how to effectively use AI assistants",
-    "Quarterly Planning Meeting": "Strategic planning for the upcoming quarter",
+      "Training session on how to effectively use AI assistants. We'll cover best practices for interacting with AI tools, understanding their capabilities and limitations, and integrating them into daily workflows. Participants will learn about prompt engineering, quality assurance, and how to leverage AI for maximum productivity. This hands-on session includes practical exercises and real-world use cases to help team members become proficient users.",
+    "Quarterly Planning Meeting":
+      "Strategic planning for the upcoming quarter. This comprehensive session will set the direction for the next three months, including key initiatives, resource planning, and goal setting. We'll review the previous quarter's performance, analyze market trends, and align our strategy with organizational objectives. The outcome will be a clear roadmap with defined milestones, responsibilities, and success metrics for each team.",
     "Feedback on Latest Design":
-      "Collecting and discussing feedback on recent design iterations",
+      "Collecting and discussing feedback on recent design iterations. This session involves reviewing the latest mockups, gathering input from stakeholders, and identifying areas for improvement. We'll discuss usability concerns, aesthetic preferences, and technical feasibility. The goal is to synthesize all feedback into actionable design changes that enhance user experience while maintaining brand consistency and meeting project requirements.",
     "Client Requirements Gathering":
-      "Understanding and documenting client needs and expectations",
+      "Understanding and documenting client needs and expectations. This crucial phase involves detailed conversations with the client to capture all functional and non-functional requirements. We'll explore their business objectives, technical constraints, user personas, and success criteria. The discussion will cover current pain points, desired outcomes, and any specific features or integrations they need. This information will be documented and used to create a comprehensive project specification.",
     "Sprint Retrospective":
-      "Reviewing sprint outcomes and identifying improvements",
-    "Daily Standup": "Quick sync on daily tasks and priorities",
+      "Reviewing sprint outcomes and identifying improvements. The team will reflect on what went well during the sprint, what challenges were encountered, and what could be improved in future sprints. We'll analyze velocity metrics, discuss team dynamics, and identify process improvements. This is an opportunity for honest feedback and collaborative problem-solving to continuously enhance our agile practices and team performance.",
+    "Daily Standup":
+      "Quick sync on daily tasks and priorities. Each team member shares what they accomplished yesterday, what they plan to work on today, and any blockers they're experiencing. This brief meeting ensures everyone stays aligned on progress and can quickly identify and resolve issues. It's also an opportunity to coordinate work, share knowledge, and maintain team momentum. The focus is on transparency and quick problem-solving.",
     "Marketing Strategy Planning":
-      "Developing marketing campaigns and go-to-market strategies",
+      "Developing marketing campaigns and go-to-market strategies. This session focuses on creating comprehensive marketing plans that align with business objectives. We'll define target audiences, craft messaging, select appropriate channels, and establish success metrics. The discussion covers budget allocation, timeline planning, and coordination with sales and product teams. The goal is to develop integrated campaigns that effectively reach our target market and drive desired outcomes.",
   };
 
   // If we have a specific description, use it
@@ -98,11 +100,17 @@ function generateDescription(title: string): string {
 
   // Otherwise generate a generic description
   const genericDescriptions = [
-    `Discussion about ${title.toLowerCase()}`,
-    `Collaborative session focused on ${title.toLowerCase()}`,
-    `Team meeting to address ${title.toLowerCase()}`,
-    `Planning and coordination for ${title.toLowerCase()}`,
-    `Review and feedback session on ${title.toLowerCase()}`,
+    `Discussion about ${title.toLowerCase()}. This conversation will explore various aspects of the topic, including key challenges, opportunities, and potential solutions. We'll dive deep into the subject matter, examining different perspectives and approaches. The goal is to gain a comprehensive understanding and develop actionable insights that can drive meaningful progress.`,
+    `Collaborative session focused on ${title.toLowerCase()}. Team members will come together to share ideas, brainstorm solutions, and work towards common goals. This interactive discussion will leverage the collective expertise of all participants, encouraging open dialogue and creative problem-solving. We'll work through the agenda systematically, ensuring all important points are addressed and decisions are made collaboratively.`,
+    `Team meeting to address ${title.toLowerCase()}. This session provides an opportunity for the team to discuss current status, address any issues or concerns, and plan next steps. We'll review relevant context, explore different options, and make informed decisions together. The meeting will ensure alignment across team members and set a clear direction for moving forward with confidence and clarity.`,
+    `Planning and coordination for ${title.toLowerCase()}. This strategic session focuses on organizing resources, timelines, and responsibilities to ensure successful execution. We'll define clear objectives, identify required resources, and establish communication protocols. The discussion will cover logistics, dependencies, and risk mitigation strategies. The outcome will be a well-structured plan with clear ownership and actionable next steps.`,
+    `Review and feedback session on ${title.toLowerCase()}. We'll thoroughly examine the work completed so far, gather comprehensive feedback from stakeholders, and identify areas for improvement. This collaborative review process ensures quality and alignment with expectations. Participants will share their perspectives, discuss trade-offs, and agree on any necessary revisions or next actions.`,
+    `Quick sync on ${title.toLowerCase()} progress and next steps.`,
+    `Brainstorming session to explore ideas around ${title.toLowerCase()}.`,
+    `Status update and problem-solving discussion for ${title.toLowerCase()}.`,
+    `Follow-up conversation about ${title.toLowerCase()} implementation details.`,
+    `Q&A session to clarify questions regarding ${title.toLowerCase()}.`,
+    `Decision-making meeting for key choices related to ${title.toLowerCase()}.`,
   ];
 
   return genericDescriptions[

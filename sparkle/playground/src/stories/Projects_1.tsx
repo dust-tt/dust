@@ -119,8 +119,9 @@ function DustMain() {
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<
     string | null
-  >(null);
+  >("new-conversation");
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
+  const [previousSpaceId, setPreviousSpaceId] = useState<string | null>(null);
   const [conversationsWithMessages, setConversationsWithMessages] = useState<
     Conversation[]
   >([]);
@@ -416,9 +417,9 @@ function DustMain() {
 
   // Sidebar content
   const sidebarContent = (
-    <div className="s-flex s-h-full s-flex-col s-bg-muted-background">
+    <div className="s-flex s-h-full s-flex-col s-border-r s-border-border s-bg-muted-background dark:s-border-border-night dark:s-bg-muted-background-night">
       {/* Top Bar */}
-      <div className="s-flex s-items-center s-justify-between s-gap-2 s-border-b s-border-border s-py-1 s-pl-1 s-pr-2 dark:s-border-border-night">
+      <div className="s-flex s-h-14 s-items-center s-justify-between s-gap-2 s-border-b s-border-border s-pl-1 s-pr-2 dark:s-border-border-night">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Card
@@ -590,6 +591,8 @@ function DustMain() {
                 icon={ChatBubbleLeftRightIcon}
                 selected={selectedConversationId === "new-conversation"}
                 onClick={() => {
+                  // Clear previousSpaceId when starting new conversation
+                  setPreviousSpaceId(null);
                   setSelectedConversationId("new-conversation");
                   setSelectedSpaceId(null);
                 }}
@@ -1045,6 +1048,8 @@ function DustMain() {
                       selected={conversation.id === selectedConversationId}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
+                        // Clear previousSpaceId when navigating from sidebar
+                        setPreviousSpaceId(null);
                         setSelectedConversationId(conversation.id);
                         setSelectedSpaceId(null);
                       }}
@@ -1062,6 +1067,8 @@ function DustMain() {
                       selected={conversation.id === selectedConversationId}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
+                        // Clear previousSpaceId when navigating from sidebar
+                        setPreviousSpaceId(null);
                         setSelectedConversationId(conversation.id);
                         setSelectedSpaceId(null);
                       }}
@@ -1079,6 +1086,8 @@ function DustMain() {
                       selected={conversation.id === selectedConversationId}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
+                        // Clear previousSpaceId when navigating from sidebar
+                        setPreviousSpaceId(null);
                         setSelectedConversationId(conversation.id);
                         setSelectedSpaceId(null);
                       }}
@@ -1096,6 +1105,8 @@ function DustMain() {
                       selected={conversation.id === selectedConversationId}
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
+                        // Clear previousSpaceId when navigating from sidebar
+                        setPreviousSpaceId(null);
                         setSelectedConversationId(conversation.id);
                         setSelectedSpaceId(null);
                       }}
@@ -1110,6 +1121,16 @@ function DustMain() {
     </div>
   );
 
+  // Handle back button from conversation view
+  const handleConversationBack = () => {
+    if (previousSpaceId) {
+      setSelectedSpaceId(previousSpaceId);
+      setSelectedConversationId(null);
+      // Optionally clear previousSpaceId, or keep it for future navigation
+      // setPreviousSpaceId(null);
+    }
+  };
+
   // Main content
   const mainContent =
     // Priority 1: Show conversation view if a conversation is selected (not "new-conversation")
@@ -1123,6 +1144,8 @@ function DustMain() {
         users={mockUsers}
         agents={mockAgents}
         conversationsWithMessages={conversationsWithMessages}
+        showBackButton={!!previousSpaceId}
+        onBack={handleConversationBack}
       />
     ) : // Priority 2: Show space view if a space is selected
     selectedSpace && selectedSpaceId ? (
@@ -1132,8 +1155,10 @@ function DustMain() {
         users={mockUsers}
         agents={mockAgents}
         onConversationClick={(conversation) => {
+          // Store the current space ID before navigating to conversation
+          setPreviousSpaceId(selectedSpaceId);
           setSelectedConversationId(conversation.id);
-          setSelectedSpaceId(null);
+          // Keep selectedSpaceId set so the space NavigationItem stays selected
         }}
       />
     ) : (

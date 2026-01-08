@@ -12,38 +12,40 @@ import { cn } from "@sparkle/lib/utils";
 
 import { Button, type ButtonProps } from "./Button";
 
-const barVariants = cva(
-  "s-flex s-h-16 s-flex-row s-items-center s-gap-3 s-px-4",
-  {
-    variants: {
-      position: {
-        top: "s-border-b",
-        bottom: "s-border-t",
-      },
-      variant: {
-        full: "s-fixed s-left-0 s-right-0 s-z-30 s-backdrop-blur s-border-border-dark/70 s-bg-background/80 dark:s-border-border-dark-night/70 dark:s-bg-background-night/80",
-        default:
-          "s-relative s-z-10 s-border-border s-bg-background dark:s-border-border-night dark:s-bg-background-night",
-      },
+const barVariants = cva("s-flex s-flex-row s-items-center s-gap-3 s-px-4", {
+  variants: {
+    position: {
+      top: "s-border-b",
+      bottom: "s-border-t",
     },
-    compoundVariants: [
-      {
-        position: "top",
-        variant: "full",
-        class: "s-top-0",
-      },
-      {
-        position: "bottom",
-        variant: "full",
-        class: "s-bottom-0",
-      },
-    ],
-    defaultVariants: {
+    variant: {
+      full: "s-fixed s-left-0 s-right-0 s-z-30 s-backdrop-blur s-border-border-dark/70 s-bg-background/80 dark:s-border-border-dark-night/70 dark:s-bg-background-night/80",
+      default:
+        "s-relative s-z-10 s-border-border s-bg-background dark:s-border-border-night dark:s-bg-background-night",
+    },
+    size: {
+      sm: "s-h-14",
+      md: "s-h-16",
+    },
+  },
+  compoundVariants: [
+    {
       position: "top",
       variant: "full",
+      class: "s-top-0",
     },
-  }
-);
+    {
+      position: "bottom",
+      variant: "full",
+      class: "s-bottom-0",
+    },
+  ],
+  defaultVariants: {
+    position: "top",
+    variant: "full",
+    size: "md",
+  },
+});
 
 interface BarProps extends VariantProps<typeof barVariants> {
   title?: string;
@@ -63,6 +65,7 @@ export function Bar({
   className,
   position,
   variant,
+  size,
 }: BarProps) {
   const titleClasses = cn(
     "s-text-foreground dark:s-text-foreground-night",
@@ -70,7 +73,7 @@ export function Bar({
   );
 
   return (
-    <div className={cn(barVariants({ position, variant }), className)}>
+    <div className={cn(barVariants({ position, variant, size }), className)}>
       {leftActions && <div className="s-flex s-gap-1">{leftActions}</div>}
       {title && (
         <div className={titleClasses}>
@@ -189,6 +192,7 @@ interface BarHeaderProps {
   rightActions?: React.ReactNode;
   className?: string;
   variant?: "full" | "default";
+  size?: "sm" | "md";
 }
 
 export function BarHeader({
@@ -199,6 +203,7 @@ export function BarHeader({
   rightActions,
   className,
   variant,
+  size,
 }: BarHeaderProps) {
   return (
     <Bar
@@ -210,6 +215,7 @@ export function BarHeader({
       rightActions={rightActions}
       className={className}
       variant={variant}
+      size={size}
     />
   );
 }
@@ -223,6 +229,7 @@ interface BarFooterProps {
   rightActions?: React.ReactNode;
   className?: string;
   variant?: "full" | "default";
+  size?: "sm" | "md";
 }
 
 export function BarFooter({
@@ -230,6 +237,7 @@ export function BarFooter({
   rightActions,
   className,
   variant,
+  size,
 }: BarFooterProps) {
   return (
     <Bar
@@ -238,6 +246,7 @@ export function BarFooter({
       rightActions={rightActions}
       className={className}
       variant={variant}
+      size={size}
     />
   );
 }
