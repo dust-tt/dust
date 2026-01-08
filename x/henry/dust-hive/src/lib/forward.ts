@@ -127,7 +127,9 @@ function looksLikeForwarderProcess(command: string | null): boolean {
 }
 
 async function stopForwarderProcessesOnPorts(ports: number[]): Promise<boolean> {
-  const portInfos = ports.map((port) => ({ port, processes: getPortProcessInfo(port) }));
+  const portInfos = await Promise.all(
+    ports.map(async (port) => ({ port, processes: await getPortProcessInfo(port) }))
+  );
   const forwarderPids = new Set<number>();
   const nonForwarder = portInfos.some((info) =>
     info.processes.some((proc) => !looksLikeForwarderProcess(proc.command))
@@ -155,7 +157,8 @@ async function stopForwarderProcessesOnPorts(ports: number[]): Promise<boolean> 
 
   const start = Date.now();
   while (Date.now() - start < 2000) {
-    if (ports.every((port) => !isPortInUse(port))) {
+    const allFree = await Promise.all(ports.map((port) => isPortInUse(port)));
+    if (allFree.every((inUse) => !inUse)) {
       return true;
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -165,20 +168,21 @@ async function stopForwarderProcessesOnPorts(ports: number[]): Promise<boolean> 
     await killProcess(pid, "SIGKILL");
   }
 
-  const killed = ports.every((port) => !isPortInUse(port));
-  return killed;
+  const finalCheck = await Promise.all(ports.map((port) => isPortInUse(port)));
+  return finalCheck.every((inUse) => !inUse);
 }
 
-function formatPortProcessInfo(ports: number[]): string {
-  return ports
-    .map((port) => {
-      const processes = getPortProcessInfo(port);
+async function formatPortProcessInfo(ports: number[]): Promise<string> {
+  const results = await Promise.all(
+    ports.map(async (port) => {
+      const processes = await getPortProcessInfo(port);
       const detail = processes
         .map((proc) => `${proc.pid}${proc.command ? ` (${proc.command})` : ""}`)
         .join(", ");
       return `${port}: ${detail || "unknown"}`;
     })
-    .join("; ");
+  );
+  return results.join("; ");
 }
 
 // Start forwarder to target port
@@ -187,11 +191,14 @@ export async function startForwarder(basePort: number, envName: string): Promise
   await stopForwarder();
 
   // Check if any standard ports are already in use by something else
-  const portsInUse = FORWARDER_PORTS.filter((port) => isPortInUse(port));
+  const portChecks = await Promise.all(
+    FORWARDER_PORTS.map(async (port) => ({ port, inUse: await isPortInUse(port) }))
+  );
+  const portsInUse = portChecks.filter((p) => p.inUse).map((p) => p.port);
   if (portsInUse.length > 0) {
     const stopped = await stopForwarderProcessesOnPorts(portsInUse);
     if (!stopped) {
-      const details = formatPortProcessInfo(portsInUse);
+      const details = await formatPortProcessInfo(portsInUse);
       throw new Error(
         `Ports ${portsInUse.join(", ")} are already in use (${details}). Stop the processes using them before starting the forwarder.`
       );

@@ -207,8 +207,9 @@ export async function loadPortAllocation(name: string): Promise<PortAllocation |
 export { getPidsOnPort } from "./platform";
 
 // Check if a port is in use
-export function isPortInUse(port: number): boolean {
-  return getPidsOnPort(port).length > 0;
+export async function isPortInUse(port: number): Promise<boolean> {
+  const pids = await getPidsOnPort(port);
+  return pids.length > 0;
 }
 
 // Check and clean service ports (front, core, connectors, oauth)
@@ -221,9 +222,12 @@ export interface PortProcessInfo {
   command: string | null;
 }
 
-export function getPortProcessInfo(port: number): PortProcessInfo[] {
-  const pids = getPidsOnPort(port);
-  return pids.map((pid) => ({ pid, command: getProcessCommand(pid) }));
+export async function getPortProcessInfo(port: number): Promise<PortProcessInfo[]> {
+  const pids = await getPidsOnPort(port);
+  const results = await Promise.all(
+    pids.map(async (pid) => ({ pid, command: await getProcessCommand(pid) }))
+  );
+  return results;
 }
 
 async function terminateProcess(pid: number, timeoutMs = 2000): Promise<void> {
@@ -256,7 +260,7 @@ export async function cleanupServicePorts(
   const allowed = options.allowedPids ?? new Set<number>();
 
   for (const port of servicePorts) {
-    const processes = getPortProcessInfo(port);
+    const processes = await getPortProcessInfo(port);
     if (processes.length === 0) {
       continue;
     }
