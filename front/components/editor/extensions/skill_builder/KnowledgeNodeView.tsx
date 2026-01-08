@@ -325,6 +325,14 @@ function KnowledgeSearchComponent({
   // Handle keyboard navigation.
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // Escape always cancels and deletes the node (search mode exits entirely).
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        onCancel();
+        return;
+      }
+
       if (!isOpen) {
         return;
       }
@@ -346,10 +354,6 @@ function KnowledgeSearchComponent({
         e.preventDefault();
         e.stopPropagation();
         handleItemSelect(selectedIndex);
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        onCancel();
       }
     },
     [isOpen, selectedIndex, knowledgeItems.length, handleItemSelect, onCancel]
@@ -483,6 +487,17 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
     [deleteNode]
   );
 
+  const handleCancel = useCallback(() => {
+    deleteNode();
+    // Return focus to the editor after the node is removed from the DOM.
+    // We need to wait for the next event loop tick for TipTap to process the deletion.
+    queueMicrotask(() => {
+      if (editor && !editor.isDestroyed) {
+        editor.chain().focus().run();
+      }
+    });
+  }, [deleteNode, editor]);
+
   const handleSelect = useCallback(
     (item: KnowledgeItem) => {
       updateAttributes({
@@ -490,11 +505,12 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
       });
 
       // Return focus to the editor after selection and add a space.
-      setTimeout(() => {
-        if (editor) {
+      // Wait for the next event loop tick for TipTap to process the attribute update.
+      queueMicrotask(() => {
+        if (editor && !editor.isDestroyed) {
           editor.chain().focus().insertContent(" ").run();
         }
-      }, 10);
+      });
     },
     [updateAttributes, editor]
   );
@@ -518,7 +534,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
     <NodeViewWrapper className="inline">
       <KnowledgeSearchComponent
         onSelect={handleSelect}
-        onCancel={deleteNode}
+        onCancel={handleCancel}
         clientRect={clientRect}
       />
     </NodeViewWrapper>
