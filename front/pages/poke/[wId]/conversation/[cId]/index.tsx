@@ -24,6 +24,7 @@ import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
+import config from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -42,11 +43,11 @@ import { assertNever, isFileContentFragment } from "@app/types";
 const { TEMPORAL_AGENT_NAMESPACE = "" } = process.env;
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  workspace: WorkspaceType;
-  workspaceId: string;
-  conversationId: string;
   conversationDataSourceId: string | null;
+  conversationId: string;
+  langfuseUiBaseUrl: string | null;
   temporalWorkspace: string;
+  workspace: WorkspaceType;
 }>(async (context, auth) => {
   const cId = context.params?.cId;
   if (!cId || typeof cId !== "string") {
@@ -79,11 +80,11 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
   return {
     props: {
-      workspaceId: wId,
-      conversationId: cId,
       conversationDataSourceId: conversationDataSource?.sId ?? null,
-      workspace: auth.getNonNullableWorkspace(),
+      conversationId: cId,
+      langfuseUiBaseUrl: config.getLangfuseUiBaseUrl() ?? null,
       temporalWorkspace: TEMPORAL_AGENT_NAMESPACE,
+      workspace: auth.getNonNullableWorkspace(),
     },
   };
 });
@@ -119,13 +120,15 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
 interface AgentMessageViewProps {
   message: PokeAgentMessageType;
   useMarkdown: boolean;
-  workspaceId: string;
+  workspace: WorkspaceType;
+  langfuseUiBaseUrl: string | null;
 }
 
 const AgentMessageView = ({
   message,
   useMarkdown,
-  workspaceId,
+  workspace,
+  langfuseUiBaseUrl,
 }: AgentMessageViewProps) => {
   const [expandedActions, setExpandedActions] = useState<Set<number>>(
     new Set()
@@ -152,7 +155,7 @@ const AgentMessageView = ({
           <>
             {message.configuration.name}{" "}
             <a
-              href={`/poke/${workspaceId}/assistants/${message.configuration.sId}`}
+              href={`/poke/${workspace.sId}/assistants/${message.configuration.sId}`}
               target="_blank"
               className="text-highlight-500"
             >
@@ -175,7 +178,7 @@ const AgentMessageView = ({
           date: {new Date(message.created).toLocaleString()} • message version :{" "}
           {message.version} • message sId : {message.sId} {" • "} agent sId :
           <a
-            href={`/poke/${workspaceId}/assistants/${message.configuration.sId}`}
+            href={`/poke/${workspace.sId}/assistants/${message.configuration.sId}`}
             target="_blank"
             className="text-highlight-500"
           >
@@ -194,9 +197,21 @@ const AgentMessageView = ({
                     {runId.substring(0, 16)}
                   </a>
                   {isLLM && (
-                    <span className="rounded-sm bg-blue-100 px-1 py-0.5 text-xs text-blue-800">
-                      LLM
-                    </span>
+                    <>
+                      <span className="rounded-sm bg-blue-100 px-1 py-0.5 text-xs text-blue-800">
+                        LLM
+                      </span>
+                      {langfuseUiBaseUrl && (
+                        <a
+                          href={`${langfuseUiBaseUrl}/traces?filter=metadata%3BstringObject%3BdustTraceId%3B%3D%3B${runId}`}
+                          target="_blank"
+                          className="text-highlight-500"
+                          title="View in Langfuse"
+                        >
+                          [LF]
+                        </a>
+                      )}
+                    </>
                   )}{" "}
                 </span>
               ))}
@@ -307,13 +322,16 @@ interface ConversationPageProps extends InferGetServerSidePropsType<
 > {}
 
 const ConversationPage = ({
-  workspaceId,
-  workspace,
-  conversationId,
   conversationDataSourceId,
+  conversationId,
+  langfuseUiBaseUrl,
   temporalWorkspace,
+  workspace,
 }: ConversationPageProps) => {
-  const { conversation } = usePokeConversation({ workspaceId, conversationId });
+  const { conversation } = usePokeConversation({
+    workspaceId: workspace.sId,
+    conversationId,
+  });
   const [useMarkdown, setUseMarkdown] = useState(false);
   const { data: agents } = usePokeAgentConfigurations({
     owner: workspace,
@@ -363,7 +381,7 @@ const ConversationPage = ({
     setRenderResult(null);
     try {
       const response = await clientFetch(
-        `/api/poke/workspaces/${workspaceId}/conversations/${conversationId}/render`,
+        `/api/poke/workspaces/${workspace.sId}/conversations/${conversationId}/render`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -399,12 +417,21 @@ const ConversationPage = ({
       <div className="max-w-4xl">
         <h3 className="text-xl font-bold">
           Conversation in workspace{" "}
-          <a href={`/poke/${workspaceId}`} className="text-highlight-500">
+          <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
             {workspace.name}
           </a>
         </h3>
         <Page.Vertical align="stretch">
           <div className="flex space-x-2">
+            {langfuseUiBaseUrl && (
+              <Button
+                href={`${langfuseUiBaseUrl}/traces?filter=metadata%3BstringObject%3BconversationId%3B%3D%3B${conversationId}`}
+                label="Langfuse Traces"
+                variant="primary"
+                size="xs"
+                target="_blank"
+              />
+            )}
             <Button
               href={`http://go/trace-conversation/${conversation.sId}`}
               label="Trace Conversation"
@@ -420,7 +447,7 @@ const ConversationPage = ({
               target="_blank"
             />
             <Button
-              href={`/poke/${workspaceId}/data_sources/${conversationDataSourceId}`}
+              href={`/poke/${workspace.sId}/data_sources/${conversationDataSourceId}`}
               label="Conversation DS"
               variant="primary"
               size="xs"
@@ -558,7 +585,8 @@ const ConversationPage = ({
                             key={`message-${i}-${j}`}
                             message={m}
                             useMarkdown={useMarkdown}
-                            workspaceId={workspaceId}
+                            workspace={workspace}
+                            langfuseUiBaseUrl={langfuseUiBaseUrl}
                           />
                         );
                       }

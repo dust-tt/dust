@@ -348,6 +348,9 @@ const config = {
 
     return isEnabled;
   },
+  getLangfuseUiBaseUrl: () => {
+    return EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_UI_BASE_URL");
+  },
 };
 
 export default config;
