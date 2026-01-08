@@ -102,13 +102,62 @@ async function checkDockerCompose(): Promise<CheckResult> {
   };
 }
 
+const TEMPORAL_MIN_VERSION = "0.12.0";
+
+function parseVersion(versionString: string): number[] | null {
+  // Extract version number from strings like "temporal version 0.12.0" or "0.12.0"
+  const match = versionString.match(/(\d+)\.(\d+)\.(\d+)/);
+  if (!match) return null;
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function isVersionAtLeast(version: number[], minVersion: number[]): boolean {
+  for (let i = 0; i < 3; i++) {
+    if ((version[i] ?? 0) > (minVersion[i] ?? 0)) return true;
+    if ((version[i] ?? 0) < (minVersion[i] ?? 0)) return false;
+  }
+  return true; // Equal versions
+}
+
 async function checkTemporalCli(): Promise<CheckResult> {
-  const version = await getCommandVersion("temporal");
+  const versionOutput = await getCommandVersion("temporal");
+  if (!versionOutput) {
+    return {
+      name: "Temporal CLI",
+      ok: false,
+      message: "Not found",
+      fix: getInstallInstructions("temporal"),
+    };
+  }
+
+  const version = parseVersion(versionOutput);
+  const minVersion = parseVersion(TEMPORAL_MIN_VERSION);
+
+  if (!(version && minVersion)) {
+    return {
+      name: "Temporal CLI",
+      ok: false,
+      message: `${versionOutput} (unable to parse version)`,
+      fix: getInstallInstructions("temporal"),
+    };
+  }
+
+  const meetsMinimum = isVersionAtLeast(version, minVersion);
+  const versionStr = version.join(".");
+
+  if (meetsMinimum) {
+    return {
+      name: "Temporal CLI",
+      ok: true,
+      message: versionOutput,
+    };
+  }
+
   return {
     name: "Temporal CLI",
-    ok: version !== null,
-    message: version ?? "Not found",
-    fix: getInstallInstructions("temporal"),
+    ok: false,
+    message: `${versionStr} (requires >= ${TEMPORAL_MIN_VERSION})`,
+    fix: `Upgrade temporal CLI: ${getInstallInstructions("temporal")}`,
   };
 }
 
