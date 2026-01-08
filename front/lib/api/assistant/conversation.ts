@@ -91,6 +91,9 @@ import {
 } from "@app/types";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
 
+// Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
+const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
+
 /**
  * Conversation Creation, update and deletion
  */
@@ -1585,11 +1588,12 @@ async function isMessagesLimitReached(
         0
       ) / 1_000_000;
 
-    // Rate limit: creditDollarAmount messages per minute.
     // Minimum of 1 to allow at least some messages even with very low credits.
     const maxMessagesPerMinute = Math.max(
       1,
-      Math.floor(totalRemainingCreditsDollars)
+      Math.floor(
+        totalRemainingCreditsDollars / PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE
+      )
     );
 
     const remainingMessages = await rateLimiter({
