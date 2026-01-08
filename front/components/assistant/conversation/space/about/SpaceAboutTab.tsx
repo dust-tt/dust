@@ -9,16 +9,17 @@ import type {
   GroupType,
   LightWorkspaceType,
   SpaceType,
-  UserType,
+  SpaceUserType,
 } from "@app/types";
 
 interface SpaceAboutTabProps {
   owner: LightWorkspaceType;
   space: SpaceType;
-  initialMembers: UserType[];
+  initialMembers: SpaceUserType[];
   initialGroups: GroupType[];
   initialManagementMode: "manual" | "group";
   initialIsRestricted: boolean;
+  isSpaceEditor: boolean;
   planAllowsSCIM: boolean;
 }
 
@@ -29,15 +30,19 @@ export function SpaceAboutTab({
   initialGroups,
   initialManagementMode,
   initialIsRestricted,
+  isSpaceEditor,
   planAllowsSCIM,
 }: SpaceAboutTabProps) {
   const [managementType, setManagementType] = useState<"manual" | "group">(
     initialManagementMode
   );
   const [selectedMembers, setSelectedMembers] =
-    useState<UserType[]>(initialMembers);
+    useState<SpaceUserType[]>(initialMembers);
   const [selectedGroups, setSelectedGroups] =
     useState<GroupType[]>(initialGroups);
+  const [editorIds, setEditorIds] = useState<string[]>(
+    initialMembers.filter((m) => m.isEditor).map((m) => m.sId)
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   const [isRestricted, setIsRestricted] = useState(initialIsRestricted);
@@ -56,9 +61,19 @@ export function SpaceAboutTab({
     if (managementType === "manual") {
       const currentMemberIds = selectedMembers.map((m) => m.sId).sort();
       const initialMemberIds = initialMembers.map((m) => m.sId).sort();
-      return (
-        JSON.stringify(currentMemberIds) !== JSON.stringify(initialMemberIds)
-      );
+      const memberIdsChanged =
+        JSON.stringify(currentMemberIds) !== JSON.stringify(initialMemberIds);
+
+      // Check if editor IDs have changed
+      const initialEditorIds = initialMembers
+        .filter((m: SpaceUserType) => m.isEditor)
+        .map((m) => m.sId)
+        .sort();
+      const currentEditorIds = [...editorIds].sort();
+      const editorsChanged =
+        JSON.stringify(initialEditorIds) !== JSON.stringify(currentEditorIds);
+
+      return memberIdsChanged || editorsChanged;
     } else {
       const currentGroupIds = selectedGroups.map((g) => g.sId).sort();
       const initialGroupIds = initialGroups.map((g) => g.sId).sort();
@@ -75,6 +90,7 @@ export function SpaceAboutTab({
     initialGroups,
     isRestricted,
     initialIsRestricted,
+    editorIds,
   ]);
 
   const canSave = useMemo(() => {
@@ -108,6 +124,7 @@ export function SpaceAboutTab({
       await doUpdate(space, {
         isRestricted,
         memberIds: selectedMembers.map((member) => member.sId),
+        editorIds,
         managementMode: "manual",
         name: space.name,
       });
@@ -122,6 +139,7 @@ export function SpaceAboutTab({
     selectedGroups,
     selectedMembers,
     isRestricted,
+    editorIds,
     space,
   ]);
 
@@ -141,36 +159,43 @@ export function SpaceAboutTab({
         selectedMembers={selectedMembers}
         selectedGroups={selectedGroups}
         onManagementTypeChange={setManagementType}
+        editorIds={editorIds}
         onMembersUpdated={setSelectedMembers}
         onGroupsUpdated={setSelectedGroups}
+        onEditorIdsUpdated={setEditorIds}
+        disabled={!isSpaceEditor}
       />
 
-      <div className="flex justify-end gap-2 pt-4">
-        <Button
-          variant="primary"
-          label={isSaving ? "Saving..." : "Save"}
-          onClick={onSave}
-          disabled={!canSave || isSaving}
-        />
-      </div>
+      {isSpaceEditor && (
+        <div className="flex justify-end gap-2 pt-4">
+          <Button
+            variant="primary"
+            label={isSaving ? "Saving..." : "Save"}
+            onClick={onSave}
+            disabled={!canSave || isSaving}
+          />
+        </div>
+      )}
 
-      <div className="flex w-full flex-col items-center gap-y-4 border-t pt-8">
-        <ContentMessage
-          variant="warning"
-          title="Danger Zone"
-          className="flex w-full"
-        >
-          <div className="flex flex-col gap-y-4">
-            <p className="text-sm text-muted-foreground">
-              Deleting this project will permanently remove all its content,
-              including conversations, folders, websites, and data sources. This
-              action cannot be undone. All assistants using tools that depend on
-              this project will be impacted.
-            </p>
-            <DeleteSpaceDialog owner={owner} space={space} />
-          </div>
-        </ContentMessage>
-      </div>
+      {isSpaceEditor && (
+        <div className="flex w-full flex-col items-center gap-y-4 border-t pt-8">
+          <ContentMessage
+            variant="warning"
+            title="Danger Zone"
+            className="flex w-full"
+          >
+            <div className="flex flex-col gap-y-4">
+              <p className="text-sm text-muted-foreground">
+                Deleting this project will permanently remove all its content,
+                including conversations, folders, websites, and data sources.
+                This action cannot be undone. All assistants using tools that
+                depend on this project will be impacted.
+              </p>
+              <DeleteSpaceDialog owner={owner} space={space} />
+            </div>
+          </ContentMessage>
+        </div>
+      )}
     </div>
   );
 }

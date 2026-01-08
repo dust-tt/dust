@@ -28,3 +28,10 @@ export type SpaceType = {
 export function isUniqueSpaceKind(kind: SpaceKind): kind is UniqueSpaceKind {
   return UNIQUE_SPACE_KINDS.includes(kind as UniqueSpaceKind);
 }
+
+// It's used only by projects
+export const GROUP_SPACE_KINDS = [
+  "member", // can access the space
+  "editor", // can manage the space
+] as const;
+export type GroupSpaceKind = (typeof GROUP_SPACE_KINDS)[number];

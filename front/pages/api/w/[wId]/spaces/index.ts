@@ -18,10 +18,15 @@ const PostSpaceRequestBodySchema = t.intersection([
     spaceKind: t.union([t.literal("regular"), t.literal("project")]),
   }),
   t.union([
-    t.type({
-      memberIds: t.array(t.string),
-      managementMode: t.literal("manual"),
-    }),
+    t.intersection([
+      t.type({
+        memberIds: t.array(t.string),
+        managementMode: t.literal("manual"),
+      }),
+      t.partial({
+        editorIds: t.array(t.string),
+      }),
+    ]),
     t.type({
       groupIds: t.array(t.string),
       managementMode: t.literal("group"),
@@ -97,15 +102,6 @@ async function handler(
       });
 
     case "POST":
-      if (!auth.isAdmin()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "Only users that are `admins` can administrate spaces.",
-          },
-        });
-      }
       const bodyValidation = PostSpaceRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
@@ -120,7 +116,22 @@ async function handler(
         });
       }
 
-      const spaceRes = await createSpaceAndGroup(auth, bodyValidation.right);
+      const requestBody = bodyValidation.right;
+
+      // Check permissions based on space kind
+      // Projects can be created by any workspace member
+      // Regular spaces require admin permissions
+      if (requestBody.spaceKind === "regular" && !auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Only users that are `admins` can create regular spaces.",
+          },
+        });
+      }
+
+      const spaceRes = await createSpaceAndGroup(auth, requestBody);
       if (spaceRes.isErr()) {
         switch (spaceRes.error.code) {
           case "limit_reached":

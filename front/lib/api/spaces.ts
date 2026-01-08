@@ -315,7 +315,7 @@ export async function createSpaceAndGroup(
     isRestricted: boolean;
     spaceKind: "regular" | "project";
   } & (
-    | { memberIds: string[]; managementMode: "manual" }
+    | { memberIds: string[]; editorIds?: string[]; managementMode: "manual" }
     | { groupIds: string[]; managementMode: "group" }
   ),
   { ignoreWorkspaceLimit = false }: { ignoreWorkspaceLimit?: boolean } = {}
@@ -358,7 +358,7 @@ export async function createSpaceAndGroup(
       );
     }
 
-    const group = await GroupResource.makeNew(
+    const memberGroup = await GroupResource.makeNew(
       {
         name: `${SPACE_GROUP_PREFIX} ${name}`,
         workspaceId: owner.id,
@@ -372,7 +372,7 @@ export async function createSpaceAndGroup(
       : await GroupResource.fetchWorkspaceGlobalGroup(auth);
 
     const groups = removeNulls([
-      group,
+      memberGroup,
       globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
     ]);
 
@@ -387,12 +387,24 @@ export async function createSpaceAndGroup(
       t
     );
 
+    // Update the member group kind in group_vaults
+    await GroupSpaceModel.update(
+      { kind: "member" },
+      {
+        where: {
+          groupId: memberGroup.id,
+          vaultId: space.id,
+        },
+        transaction: t,
+      }
+    );
+
     // Handle member-based space creation
-    if ("memberIds" in params && params.memberIds) {
+    if (params.managementMode === "manual") {
       const users = (await UserResource.fetchByIds(params.memberIds)).map(
         (user) => user.toJSON()
       );
-      const groupsResult = await group.addMembers(auth, users, {
+      const groupsResult = await memberGroup.addMembers(auth, users, {
         transaction: t,
       });
       if (groupsResult.isErr()) {
@@ -407,10 +419,58 @@ export async function createSpaceAndGroup(
           new DustError("internal_error", "The space cannot be created.")
         );
       }
+
+      // Handle editor group if editorIds are provided
+      if (params.editorIds && params.editorIds.length > 0) {
+        // Create editor group
+        const editorGroup = await GroupResource.makeNew(
+          {
+            name: `Editors for space ${name}`,
+            workspaceId: owner.id,
+            kind: "regular",
+          },
+          { transaction: t }
+        );
+
+        // Add editor group to space with kind="editor"
+        await GroupSpaceModel.create(
+          {
+            groupId: editorGroup.id,
+            vaultId: space.id,
+            workspaceId: owner.id,
+            kind: "editor",
+          },
+          { transaction: t }
+        );
+
+        // Add editors to the editor group
+        const editorUsers = (
+          await UserResource.fetchByIds(params.editorIds)
+        ).map((user) => user.toJSON());
+        const editorGroupResult = await editorGroup.addMembers(
+          auth,
+          editorUsers,
+          {
+            transaction: t,
+          }
+        );
+        if (editorGroupResult.isErr()) {
+          logger.error(
+            {
+              error: editorGroupResult.error,
+            },
+            "The space cannot be created - editor group members could not be added"
+          );
+
+          return new Err(
+            new DustError("internal_error", "The space cannot be created.")
+          );
+        }
+      }
     }
 
     // Handle group-based space creation
-    if ("groupIds" in params && params.groupIds.length > 0) {
+    if (params.managementMode === "group") {
       // For group-based spaces, we need to associate the selected groups with the space
       const selectedGroupsResult = await GroupResource.fetchByIds(
         auth,
@@ -435,6 +495,7 @@ export async function createSpaceAndGroup(
             groupId: selectedGroup.id,
             vaultId: space.id,
             workspaceId: space.workspaceId,
+            kind: "member",
           },
           { transaction: t }
         );

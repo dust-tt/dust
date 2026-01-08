@@ -1,3 +1,4 @@
+import assert from "assert";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import uniqBy from "lodash/uniqBy";
@@ -13,6 +14,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -36,7 +38,8 @@ export type GetSpaceResponseBody = {
   space: SpaceType & {
     categories: { [key: string]: SpaceCategoryInfo };
     isMember: boolean;
-    members: UserType[];
+    isEditor: boolean;
+    members: (UserType & { isEditor?: boolean })[];
   };
 };
 
@@ -125,12 +128,42 @@ async function handler(
         "sId"
       );
 
+      // Fetch editor information from group_vaults table
+      const editorGroupSpaces = await GroupSpaceModel.findAll({
+        where: {
+          vaultId: space.id,
+          kind: "editor",
+        },
+        attributes: ["groupId"],
+      });
+
+      assert(
+        editorGroupSpaces.length <= 1,
+        "There should be at most one editor group per space"
+      );
+
+      const editorGroupSpace = editorGroupSpaces[0];
+      const editorGroup = space.groups.find(
+        (g) => g.id === editorGroupSpace?.groupId
+      );
+      const spaceEditors = !editorGroup
+        ? []
+        : includeAllMembers
+          ? await editorGroup.getAllMembers(auth)
+          : await editorGroup.getActiveMembers(auth);
+
+      const spaceEditorIds = new Set(spaceEditors.map((m) => m.sId));
+
       return res.status(200).json({
         space: {
           ...space.toJSON(),
           categories,
           isMember: space.canRead(auth),
-          members: currentMembers.map((member) => member.toJSON()),
+          isEditor: space.canAdministrate(auth),
+          members: currentMembers.map((member) => ({
+            ...member.toJSON(),
+            isEditor: spaceEditorIds.has(member.sId),
+          })),
         },
       });
     }

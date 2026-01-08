@@ -74,7 +74,8 @@ export function CreateProjectModal({
       name: trimmedName,
       isRestricted,
       managementMode: "manual",
-      memberIds: user?.sId ? [user.sId] : [],
+      memberIds: [],
+      editorIds: user?.sId ? [user.sId] : [],
       spaceKind: "project",
     });
 

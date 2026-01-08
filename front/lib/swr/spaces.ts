@@ -404,7 +404,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     let res;
 
     if (managementMode === "manual") {
-      const { memberIds } = params;
+      const { memberIds, editorIds } = params;
 
       // Must have memberIds for manual management mode
       if (isRestricted && (!memberIds || memberIds.length < 1)) {
@@ -419,6 +419,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
         body: JSON.stringify({
           name,
           memberIds,
+          editorIds,
           managementMode,
           isRestricted,
           spaceKind,
@@ -524,6 +525,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
             isRestricted,
             managementMode,
             memberIds: params.memberIds,
+            editorIds: params.editorIds,
           }),
         })
       );

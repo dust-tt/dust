@@ -1,5 +1,6 @@
 import {
   Button,
+  Checkbox,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
@@ -40,9 +41,12 @@ interface RestrictedAccessBodyProps {
   owner: LightWorkspaceType;
   selectedMembers: UserType[];
   selectedGroups: GroupType[];
+  editorIds?: string[];
   onManagementTypeChange: (managementType: MembersManagementType) => void;
   onMembersUpdated: (members: UserType[]) => void;
   onGroupsUpdated: (groups: GroupType[]) => void;
+  onEditorIdsUpdated?: (editorIds: string[]) => void;
+  disabled?: boolean;
 }
 
 export function RestrictedAccessBody({
@@ -52,9 +56,12 @@ export function RestrictedAccessBody({
   owner,
   selectedMembers,
   selectedGroups,
+  editorIds,
   onManagementTypeChange,
   onMembersUpdated,
   onGroupsUpdated,
+  onEditorIdsUpdated,
+  disabled = false,
 }: RestrictedAccessBodyProps) {
   const confirm = useContext(ConfirmContext);
   const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
@@ -153,6 +160,7 @@ export function RestrictedAccessBody({
               owner={owner}
               selectedMembers={selectedMembers}
               onMembersUpdated={onMembersUpdated}
+              disabled={disabled}
             />
           )}
           {!isManual && selectedGroups.length > 0 && (
@@ -160,6 +168,7 @@ export function RestrictedAccessBody({
               owner={owner}
               selectedGroups={selectedGroups}
               onGroupsUpdated={onGroupsUpdated}
+              disabled={disabled}
             />
           )}
         </div>
@@ -171,6 +180,7 @@ export function RestrictedAccessBody({
               owner={owner}
               selectedMembers={selectedMembers}
               onMembersUpdated={onMembersUpdated}
+              disabled={disabled}
             />
           </div>
         )
@@ -183,6 +193,7 @@ export function RestrictedAccessBody({
               owner={owner}
               selectedMembers={selectedMembers}
               onMembersUpdated={onMembersUpdated}
+              disabled={disabled}
             />
           }
           message="Add members to the space"
@@ -195,6 +206,7 @@ export function RestrictedAccessBody({
               owner={owner}
               selectedGroups={selectedGroups}
               onGroupsUpdated={onGroupsUpdated}
+              disabled={disabled}
             />
           }
           message="Add groups to the space"
@@ -214,6 +226,9 @@ export function RestrictedAccessBody({
               onMembersUpdated={onMembersUpdated}
               selectedMembers={selectedMembers}
               searchSelectedMembers={searchSelectedMembers}
+              editorIds={editorIds}
+              onEditorIdsUpdated={onEditorIdsUpdated}
+              disabled={disabled}
             />
           </ScrollArea>
         </>
@@ -262,12 +277,18 @@ interface MembersTableProps {
   onMembersUpdated: (members: UserType[]) => void;
   selectedMembers: UserType[];
   searchSelectedMembers: string;
+  editorIds?: string[];
+  onEditorIdsUpdated?: (editorIds: string[]) => void;
+  disabled?: boolean;
 }
 
 function MembersTable({
   onMembersUpdated,
   selectedMembers,
   searchSelectedMembers,
+  editorIds = [],
+  onEditorIdsUpdated,
+  disabled = false,
 }: MembersTableProps) {
   const sendNotifications = useSendNotification();
   const [pagination, setPagination] = useState<PaginationState>({
@@ -290,6 +311,18 @@ function MembersTable({
       }
       onMembersUpdated(selectedMembers.filter((m) => m.sId !== userId));
     };
+
+    const toggleEditor = (userId: string) => {
+      if (!onEditorIdsUpdated) {
+        return;
+      }
+      if (editorIds.includes(userId)) {
+        onEditorIdsUpdated(editorIds.filter((id) => id !== userId));
+      } else {
+        onEditorIdsUpdated([...editorIds, userId]);
+      }
+    };
+
     return [
       {
         id: "name",
@@ -322,6 +355,25 @@ function MembersTable({
         enableSorting: true,
       },
       {
+        id: "editor",
+        header: "Editor",
+        meta: {
+          className: "w-20",
+        },
+        cell: (info: MemberInfo) => {
+          const isEditor = editorIds.includes(info.row.original.userId);
+          return (
+            <DataTable.CellContent>
+              <Checkbox
+                checked={isEditor}
+                onCheckedChange={() => toggleEditor(info.row.original.userId)}
+                disabled={disabled}
+              />
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
         id: "action",
         meta: {
           className: "w-12",
@@ -334,13 +386,21 @@ function MembersTable({
                 size="xs"
                 variant="ghost-secondary"
                 onClick={() => removeMember(info.row.original.userId)}
+                disabled={disabled}
               />
             </DataTable.CellContent>
           );
         },
       },
     ];
-  }, [onMembersUpdated, selectedMembers, sendNotifications]);
+  }, [
+    onMembersUpdated,
+    selectedMembers,
+    sendNotifications,
+    editorIds,
+    onEditorIdsUpdated,
+    disabled,
+  ]);
 
   const rows = useMemo(
     () => getMemberTableRows(selectedMembers),
