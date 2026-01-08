@@ -11,8 +11,8 @@ import { classNames } from "@app/lib/utils";
 
 const CASE_STUDIES: Record<string, string> = {
   alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
-  assembled:
-    "/customers/how-assembled-cut-knowledge-retrieval-time-by-hundreds-of-hours-with-dust",
+  // assembled:
+  //   "/customers/how-assembled-cut-knowledge-retrieval-time-by-hundreds-of-hours-with-dust",
   blueground: "/customers/customer-support-blueground",
   clay: "/customers/clay-scaling-gtme-team",
   doctolib:
