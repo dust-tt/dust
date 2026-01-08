@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
 import {
   allocatePAYGCreditsOnCycleRenewal,
@@ -290,6 +291,23 @@ describe("allocatePAYGCreditsOnCycleRenewal", () => {
 
     const credits = await CreditResource.listAll(auth);
     expect(credits[0].discount).toBe(20);
+  });
+
+  it("should not create credit when discount exceeds MAX_DISCOUNT_PERCENT", async () => {
+    await ProgrammaticUsageConfigurationResource.makeNew(auth, {
+      freeCreditMicroUsd: null,
+      defaultDiscountPercent: MAX_DISCOUNT_PERCENT + 1,
+      paygCapMicroUsd: 500_000_000,
+    });
+
+    await allocatePAYGCreditsOnCycleRenewal({
+      auth,
+      nextPeriodStartSeconds: NOW,
+      nextPeriodEndSeconds: NOW + MONTH_SECONDS,
+    });
+
+    const credits = await CreditResource.listAll(auth);
+    expect(credits.length).toBe(0);
   });
 });
 
