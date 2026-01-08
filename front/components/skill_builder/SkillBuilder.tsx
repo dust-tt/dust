@@ -169,7 +169,8 @@ export default function SkillBuilder({
                     Create new skill
                   </h2>
                   <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Create a custom capability for specific tasks
+                    Create a package of instructions, tools and knowledge that
+                    agents can share.
                   </p>
                 </div>
                 <SkillBuilderRequestedSpacesSection />

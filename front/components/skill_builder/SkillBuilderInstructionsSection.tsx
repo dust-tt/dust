@@ -73,7 +73,7 @@ export function SkillBuilderInstructionsSection({
       <div className="flex flex-col items-end justify-between gap-2 sm:flex-row">
         <div>
           <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
-            How should this skill behave?
+            What guidelines should it provide?
           </h3>
         </div>
         {headerActions && (

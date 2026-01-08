@@ -159,7 +159,8 @@ export function SkillBuilderInstructionsEditor({
       }),
       AgentInstructionDiffExtension,
       Placeholder.configure({
-        placeholder: "What does this skill do? How should it behave?",
+        placeholder:
+          "How should this work? What company-specific knowledge applies here?",
         emptyNodeClass:
           "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
       }),
