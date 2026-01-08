@@ -217,6 +217,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     this._mcpServerViews = value;
   }
 
+  get isAutoEnabled(): boolean {
+    if (!this.globalSId) {
+      return false;
+    }
+
+    return GlobalSkillsRegistry.isSkillAutoEnabled(this.sId);
+  }
+
+  get isExtendable(): boolean {
+    // Auto-enabled skills are baseline discovery capabilities: they are not meant to be extended.
+    return this.globalSId !== null && !this.isAutoEnabled;
+  }
+
   static async makeNew(
     auth: Authenticator,
     blob: Omit<CreationAttributes<SkillConfigurationModel>, "workspaceId">,
@@ -697,9 +710,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     // Auto-enabled skills are always treated as enabled when present in the agent configuration. Only possible for global skills for now.
-    const autoEnabledSkills = allAgentSkills.filter((s) =>
-      GlobalSkillsRegistry.isSkillAutoEnabled(s.sId)
-    );
+    const autoEnabledSkills = allAgentSkills.filter((s) => s.isAutoEnabled);
 
     const enabledSkills = [...conversationEnabledSkills, ...autoEnabledSkills];
     // Skills that are already enabled are not equipped.
@@ -879,10 +890,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return this.editorGroup.canWrite(auth);
-  }
-
-  isExtendable(): boolean {
-    return this.globalSId !== null;
   }
 
   private async listActiveAgents(
@@ -1613,7 +1620,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         };
       }),
       canWrite: this.canWrite(auth),
-      isExtendable: this.isExtendable(),
+      isExtendable: this.isExtendable,
       extendedSkillId: this.extendedSkillId,
     };
   }
