@@ -9,8 +9,7 @@ CREATE TABLE "workspace_verification_attempts" (
     "phoneNumberHash" VARCHAR(64) NOT NULL,
     "twilioVerificationSid" VARCHAR(64),
     "attemptNumber" INTEGER NOT NULL DEFAULT 1,
-    "verifiedAt" TIMESTAMP WITH TIME ZONE,
-    "failedAt" TIMESTAMP WITH TIME ZONE
+    "verifiedAt" TIMESTAMP WITH TIME ZONE
 );
 
 -- Index for workspace queries
