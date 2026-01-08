@@ -3,7 +3,7 @@ import type { Client, WorkflowHandle } from "@temporalio/client";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import type { ActionLink, CheckFunction } from "@app/types";
 
-const WORKFLOW_IDS = ["data-retention-workflow", "tracker-notify-workflow"];
+const WORKFLOW_IDS = ["data-retention-workflow"];
 
 async function isWorkflowRunning(client: Client, workflowId: string) {
   try {

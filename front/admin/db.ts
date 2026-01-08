@@ -38,11 +38,6 @@ import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_requ
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
-import {
-  TrackerConfigurationModel,
-  TrackerDataSourceConfigurationModel,
-  TrackerGenerationModel,
-} from "@app/lib/models/doc_tracker";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
@@ -145,10 +140,6 @@ async function main() {
 
   await RunModel.sync({ alter: true });
   await RunUsageModel.sync({ alter: true });
-
-  await TrackerConfigurationModel.sync({ alter: true });
-  await TrackerDataSourceConfigurationModel.sync({ alter: true });
-  await TrackerGenerationModel.sync({ alter: true });
 
   await ExtensionConfigurationModel.sync({ alter: true });
 

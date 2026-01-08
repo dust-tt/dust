@@ -45,53 +45,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "doc-tracker-retrieval": {
-    app: {
-      appId: "4180309c80",
-      appHash:
-        "8adcc9ae33a63cc735c9a23a97d7bffe658c6ef2400fc997e61e8817f611a1f8",
-    },
-    config: {
-      SEMANTIC_SEARCH: {
-        data_sources: [],
-        top_k: 1,
-        filter: {
-          tags: null,
-          timestamp: null,
-          parents: null,
-        },
-        use_cache: false,
-        full_text: false,
-        target_document_tokens: 2000,
-      },
-    },
-  },
-  "doc-tracker-score-docs": {
-    app: {
-      appId: "N0RrhyTXfq",
-      appHash:
-        "a5a24fb80df72394a41387a92ccf681d5ee35a90f00941d93200154e30d73b0a",
-    },
-    config: {
-      MODEL: {
-        use_cache: true,
-      },
-    },
-  },
-  "doc-tracker-suggest-changes": {
-    app: {
-      appId: "76b40f14fb",
-      appHash:
-        "5cf8b39da27d1b107c75af833d2ddec8d796ce919eefa10a1aa91779c9cbb33c",
-    },
-    config: {
-      SUGGEST_CHANGES: {
-        // `provider_id` and `model_id` must be set by caller.
-        use_cache: true,
-        function_call: "suggest_changes",
-      },
-    },
-  },
   "assistant-v2-websearch": {
     app: {
       appId: "098b515f8e",

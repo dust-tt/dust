@@ -97,11 +97,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "MCP actions dashboard in Labs section",
     stage: "on_demand",
   },
-  labs_trackers: {
-    description:
-      "Tracker feature. Check with Henry or eng oncall before activating to a new workspace.",
-    stage: "rolling_out",
-  },
   labs_transcripts: {
     description: "Transcript feature (Labs)",
     stage: "on_demand",

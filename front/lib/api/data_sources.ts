@@ -24,7 +24,6 @@ import { DustError } from "@app/lib/error";
 import { getDustDataSourcesBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { executeWithLock } from "@app/lib/lock";
-import { TrackerDataSourceConfigurationModel } from "@app/lib/models/doc_tracker";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -268,14 +267,6 @@ export async function hardDeleteDataSource(
       );
     }
   } while (files.length === FILE_BATCH_SIZE);
-
-  // Delete all trackers datasource configurations associated with the data source.
-  await TrackerDataSourceConfigurationModel.destroy({
-    where: {
-      dataSourceId: dataSource.id,
-    },
-    hardDelete: true,
-  });
 
   // Ensure all content fragments from dsviews are expired.
   // Only used temporarily to unstuck queues -- TODO(fontanierh)

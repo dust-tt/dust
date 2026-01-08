@@ -84,12 +84,6 @@ const ROUTE_MAPPINGS: RouteMapping[] = [
     pokePath: "/poke/$1/memberships",
   },
 
-  // Trackers (labs)
-  {
-    pattern: /^\/w\/([^/]+)\/labs\/trackers\/([^/]+)$/,
-    pokePath: "/poke/$1/trackers/$2",
-  },
-
   // Data sources (legacy)
   {
     pattern: /^\/w\/([^/]+)\/data_sources\/([^/]+)$/,
@@ -221,7 +215,6 @@ export function convertPokeToUrl(pokeUrl: string): string | null {
       ],
       [/^([^/]+)\/spaces\/([^/]+)$/, "/w/$1/spaces/$2"],
       [/^([^/]+)\/memberships$/, "/w/$1/members"],
-      [/^([^/]+)\/trackers\/([^/]+)$/, "/w/$1/labs/trackers/$2"],
       [/^([^/]+)\/data_sources\/([^/]+)$/, "/w/$1/data_sources/$2"],
       [/^([^/]+)$/, "/w/$1"],
     ];

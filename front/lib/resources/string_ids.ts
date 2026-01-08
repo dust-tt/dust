@@ -26,7 +26,6 @@ export const RESOURCES_PREFIX = {
   space: "vlt",
   data_source: "dts",
   data_source_view: "dsv",
-  tracker: "trk",
   template: "tpl",
   extension: "ext",
   mcp_server_connection: "msc",
