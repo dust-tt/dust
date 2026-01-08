@@ -16,7 +16,9 @@ describe("PostgreSQL BIGINT type parser", () => {
       requestedSpaceIds: [],
     });
 
-    const fetched = await ConversationModel.findByPk(conversation.id);
+    const fetched = await ConversationModel.findOne({
+      where: { id: conversation.id, workspaceId: workspace.id },
+    });
 
     expect(fetched).not.toBeNull();
     expect(fetched!.spaceId).toBe(space.id);
@@ -36,7 +38,9 @@ describe("PostgreSQL BIGINT type parser", () => {
       requestedSpaceIds: spaceIds,
     });
 
-    const fetched = await ConversationModel.findByPk(conversation.id);
+    const fetched = await ConversationModel.findOne({
+      where: { id: conversation.id, workspaceId: workspace.id },
+    });
 
     expect(fetched).not.toBeNull();
     expect(fetched!.requestedSpaceIds).toEqual(spaceIds);
