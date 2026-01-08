@@ -286,6 +286,8 @@ export default function WorkspaceSkills({
                     <SuggestedSkillsSection
                       skills={sortSkillsByName(suggestedSkills)}
                       onSkillClick={setSelectedSkill}
+                      owner={owner}
+                      user={user}
                     />
                   )}
                   <SkillsTable

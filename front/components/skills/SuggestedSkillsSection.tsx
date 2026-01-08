@@ -8,19 +8,38 @@ import {
   SparklesIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 
 import { getSkillIcon } from "@app/lib/skill";
+import { useUpdateSkillEditors } from "@app/lib/swr/skill_editors";
+import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import type { LightWorkspaceType, UserType } from "@app/types";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 type SuggestedSkillCardProps = {
   skill: SkillWithRelationsType;
   onMoreInfoClick: () => void;
+  owner: LightWorkspaceType;
+  user: UserType;
 };
 
 function SuggestedSkillCard({
   skill,
   onMoreInfoClick,
+  owner,
+  user,
 }: SuggestedSkillCardProps) {
+  const router = useRouter();
+  const updateSkillEditors = useUpdateSkillEditors({
+    owner,
+    skillId: skill.sId,
+  });
+
+  const handleAddSkillClick = async () => {
+    await updateSkillEditors({ addEditorIds: [user.sId], removeEditorIds: [] });
+    void router.push(getSkillBuilderRoute(owner.sId, skill.sId));
+  };
+
   return (
     <Card
       variant="primary"
@@ -52,8 +71,8 @@ function SuggestedSkillCard({
             icon={PlusIcon}
             label="Add skill" // TODO(skills): decide if this is the right label
             onClick={(e) => {
-              // TODO(skills): open the editor to customize the skill before adding
               e.stopPropagation();
+              void handleAddSkillClick();
             }}
           />
         </div>
@@ -65,11 +84,15 @@ function SuggestedSkillCard({
 type SuggestedSkillsSectionProps = {
   skills: SkillWithRelationsType[];
   onSkillClick: (skill: SkillWithRelationsType) => void;
+  owner: LightWorkspaceType;
+  user: UserType;
 };
 
 export function SuggestedSkillsSection({
   skills,
   onSkillClick,
+  owner,
+  user,
 }: SuggestedSkillsSectionProps) {
   if (skills.length === 0) {
     return null;
@@ -87,6 +110,8 @@ export function SuggestedSkillsSection({
             key={skill.sId}
             skill={skill}
             onMoreInfoClick={() => onSkillClick(skill)}
+            owner={owner}
+            user={user}
           />
         ))}
       </CardGrid>

@@ -489,6 +489,63 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
   });
 });
 
+describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
+  it("should activate a suggested skill and set the author when saving", async () => {
+    const {
+      req,
+      res,
+      workspace,
+      user: requestUser,
+    } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "PATCH",
+    });
+
+    await FeatureFlagFactory.basic("skills", workspace);
+
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      requestUser.sId,
+      workspace.sId
+    );
+    await SpaceFactory.defaults(adminAuth);
+
+    const suggestedSkill = await SkillFactory.create(adminAuth, {
+      name: "Suggested Skill",
+      status: "suggested",
+    });
+
+    expect(suggestedSkill.status).toBe("suggested");
+    expect(suggestedSkill.authorId).toBeNull();
+
+    req.query = { wId: workspace.sId, sId: suggestedSkill.sId };
+    req.body = {
+      name: "Activated Skill",
+      agentFacingDescription: "Updated agent description",
+      userFacingDescription: "Updated user description",
+      instructions: "Updated instructions",
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data).toHaveProperty("skill");
+    expect(data.skill.status).toBe("active");
+    expect(data.skill.authorId).toBe(requestUser.id);
+
+    const updatedSkill = await SkillResource.fetchById(
+      adminAuth,
+      suggestedSkill.sId
+    );
+    expect(updatedSkill).not.toBeNull();
+    expect(updatedSkill?.status).toBe("active");
+    expect(updatedSkill?.authorId).toBe(requestUser.id);
+  });
+});
+
 describe("DELETE /api/w/[wId]/skills/[sId]", () => {
   it("should return 403 for non-editor user", async () => {
     const { req, res } = await setupTest({

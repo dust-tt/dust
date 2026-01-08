@@ -1220,6 +1220,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews,
       name,
       requestedSpaceIds,
+      status,
       userFacingDescription,
     }: {
       agentFacingDescription: string;
@@ -1229,6 +1230,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews: MCPServerViewResource[];
       name: string;
       requestedSpaceIds: ModelId[];
+      status?: SkillStatus;
       userFacingDescription: string;
     }
   ): Promise<void> {
@@ -1236,7 +1238,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     await withTransaction(async (transaction) => {
       // Save the current version before updating.
-      await this.saveVersion(auth, { transaction });
+      // Skip version saving for suggested skills since they have no meaningful history.
+      if (this.status !== "suggested") {
+        await this.saveVersion(auth, { transaction });
+      }
 
       // Snapshot the previous requested space IDs before updating.
       const previousRequestedSpaceIds = [...this.requestedSpaceIds];
@@ -1252,6 +1257,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           icon,
           requestedSpaceIds,
           authorId,
+          ...(status ? { status } : {}),
         },
         transaction
       );
