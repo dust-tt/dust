@@ -45,6 +45,8 @@ export async function getExecutionStatusFromConfig(
       }
       return { status: "blocked_validation_required" };
     }
+    // For now, "medium" is treated the same as "high".
+    case "medium":
     case "high":
       return { status: "blocked_validation_required" };
     default:

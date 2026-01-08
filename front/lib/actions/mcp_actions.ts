@@ -129,7 +129,7 @@ export function getToolExtraFields(
   mcpServerId: string,
   metadata: {
     toolName: string;
-    permission: "high" | "low" | "never_ask";
+    permission: MCPToolStakeLevelType;
     enabled: boolean;
   }[]
 ) {

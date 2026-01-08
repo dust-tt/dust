@@ -1135,7 +1135,9 @@ export type ConversationMessageReactionsType = z.infer<
   typeof ConversationMessageReactionsSchema
 >;
 
-const MCPStakeLevelSchema = z.enum(["low", "high", "never_ask"]).optional();
+const MCPStakeLevelSchema = z
+  .enum(["low", "medium", "high", "never_ask"])
+  .optional();
 
 const MCPValidationMetadataSchema = z.object({
   agentName: z.string(),
@@ -2916,6 +2918,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "MondayLogo"
   | "NotionLogo"
   | "OpenaiLogo"
+  | "PuzzleIcon"
   | "SalesforceLogo"
   | "SlackLogo"
   | "StripeLogo"
@@ -3315,6 +3318,7 @@ export type RemoteMCPToolStakeLevelPublicType =
   (typeof REMOTE_MCP_TOOL_STAKE_LEVELS)[number];
 const MCP_TOOL_STAKE_LEVELS = [
   ...REMOTE_MCP_TOOL_STAKE_LEVELS,
+  "medium",
   "never_ask",
 ] as const;
 export type MCPToolStakeLevelPublicType =

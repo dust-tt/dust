@@ -64,11 +64,12 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<FileModel>, "status" | "sId">
+    blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "version">
   ) {
     const key = await FileResource.model.create({
       ...blob,
       status: "created",
+      version: 0,
     });
 
     return new this(FileResource.model, key.get());
@@ -686,6 +687,7 @@ export class FileResource extends BaseResource<FileModel> {
       fileSize: this.fileSize,
       status: this.status,
       useCase: this.useCase,
+      version: this.version,
     };
 
     if (auth && this.isReady && !this.isUpsertUseCase()) {
@@ -727,6 +729,7 @@ export class FileResource extends BaseResource<FileModel> {
       fileSize: this.fileSize,
       status: this.status,
       useCase: this.useCase,
+      version: this.version,
     };
 
     if (this.isReady && !this.isUpsertUseCase()) {

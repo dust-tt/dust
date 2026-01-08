@@ -1,329 +1,569 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// TODO(SKILLS 2025-12-16): Refactor and re-enable tests.
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
-describe("Placeholder test", () => {
-  it("should pass", () => {
-    expect(true).toBe(true);
+import handler from "./index";
+
+// Mock FileStorage to avoid GCS calls
+vi.mock("@app/lib/file_storage", () => {
+  const createMockGCSFile = () => ({
+    createReadStream: vi.fn().mockReturnValue({
+      on: vi.fn().mockImplementation(function (this: any) {
+        return this;
+      }),
+      pipe: vi.fn(),
+    }),
+    getSignedUrl: vi.fn().mockResolvedValue(["https://signed-url.test"]),
+    createWriteStream: vi.fn().mockReturnValue({
+      on: vi.fn().mockImplementation(function (
+        this: any,
+        event: string,
+        cb: any
+      ) {
+        if (event === "finish") {
+          // Use setImmediate instead of setTimeout for proper async handling
+          // eslint-disable-next-line @typescript-eslint/no-implied-eval
+          setImmediate(cb);
+        }
+        return this;
+      }),
+      write: vi.fn(),
+      end: vi.fn(),
+    }),
+    delete: vi.fn().mockResolvedValue(undefined),
+    publicUrl: vi.fn().mockReturnValue("https://public-url.test"),
+  });
+
+  const createMockFileStorage = () => ({
+    file: vi.fn(createMockGCSFile),
+    getSignedUrl: vi.fn().mockResolvedValue("https://signed-url.test"),
+    uploadFileToBucket: vi.fn().mockResolvedValue(undefined),
+    uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
+    fetchFileContent: vi.fn().mockResolvedValue("mock content"),
+    delete: vi.fn().mockResolvedValue(undefined),
+  });
+
+  return {
+    FileStorage: vi.fn().mockImplementation(createMockFileStorage),
+    getPrivateUploadBucket: vi.fn(createMockFileStorage),
+    getPublicUploadBucket: vi.fn(createMockFileStorage),
+    getUpsertQueueBucket: vi.fn(createMockFileStorage),
+  };
+});
+
+// Mock the data sources functions to avoid actual upserting
+vi.mock("@app/lib/api/data_sources", () => ({
+  getOrCreateConversationDataSourceFromFile: vi.fn().mockResolvedValue({
+    isErr: () => false,
+    value: {
+      id: "test-datasource-id",
+      sId: "test-datasource-sid",
+    },
+  }),
+  getOrCreateProjectContextDataSourceFromFile: vi.fn().mockResolvedValue({
+    isErr: () => false,
+    value: {
+      id: "test-project-datasource-id",
+      sId: "test-project-datasource-sid",
+    },
+  }),
+}));
+
+// Mock the file processing functions
+vi.mock("@app/lib/api/files/upload", () => ({
+  processAndStoreFile: vi.fn().mockResolvedValue({
+    isErr: () => false,
+    value: {},
+  }),
+}));
+
+vi.mock("@app/lib/api/files/upsert", () => ({
+  isFileTypeUpsertableForUseCase: vi.fn().mockReturnValue(true),
+  processAndUpsertToDataSource: vi.fn().mockResolvedValue({
+    isErr: () => false,
+    value: {},
+  }),
+}));
+
+// Mock feature flags
+vi.mock("@app/lib/auth", async () => {
+  const actual: any = await vi.importActual("@app/lib/auth");
+  return {
+    ...actual,
+    getFeatureFlags: vi.fn(async () => ["projects"]),
+  };
+});
+
+describe("GET /api/w/[wId]/files/[fileId]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should return 404 when file does not exist", async () => {
+    const { req, res } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+
+    req.query = {
+      ...req.query,
+      fileId: "non-existent-file",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  });
+
+  it("should return 404 when user cannot access conversation file", async () => {
+    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+
+    // Create a file with a non-existent conversation
+    const file = await FileFactory.create(workspace, user, {
+      contentType: "application/pdf",
+      fileName: "test.pdf",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: "non-existent-conversation",
+      },
+    });
+
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  });
+
+  it("should redirect to signed URL for download action", async () => {
+    const { req, res, workspace, user, authenticator } =
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "user",
+      });
+
+    // Create a conversation
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date()],
+    });
+
+    // Create a file associated with the conversation
+    const file = await FileFactory.create(workspace, user, {
+      contentType: "application/pdf",
+      fileName: "test.pdf",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: conversation.sId,
+      },
+    });
+
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+      action: "download",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(302);
+    expect(res._getRedirectUrl()).toBe("https://signed-url.test");
+  });
+
+  it("should stream file content for view action on safe files", async () => {
+    const { req, res, workspace, user, authenticator } =
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "user",
+      });
+
+    // Create a conversation
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date()],
+    });
+
+    // Create a safe file (image)
+    const file = await FileFactory.create(workspace, user, {
+      contentType: "image/png",
+      fileName: "test.png",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: conversation.sId,
+      },
+    });
+
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+      action: "view",
+    };
+
+    await handler(req, res);
+
+    expect(res._getHeaders()["content-type"]).toBe("image/png");
+  });
+
+  it("should return 404 when user cannot read space for folders_document", async () => {
+    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+
+    // Create a regular space (user has no access)
+    const space = await SpaceFactory.regular(workspace);
+
+    // Create a file in that space
+    const file = await FileFactory.create(workspace, user, {
+      contentType: "application/pdf",
+      fileName: "test.pdf",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "folders_document",
+      useCaseMetadata: {
+        spaceId: space.sId,
+      },
+    });
+
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  });
+
+  it("should allow access to folders_document in global space", async () => {
+    const { req, res, workspace, user, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "user",
+      });
+
+    // Create a file in global space
+    const file = await FileFactory.create(workspace, user, {
+      contentType: "application/pdf",
+      fileName: "test.pdf",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "folders_document",
+      useCaseMetadata: {
+        spaceId: globalSpace.sId,
+      },
+    });
+
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+      action: "download",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(302);
   });
 });
 
-// import type { RequestMethod } from "node-mocks-http";
-// import { beforeEach, describe, expect, it, vi } from "vitest";
+describe("DELETE /api/w/[wId]/files/[fileId]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-// import { FileResource } from "@app/lib/resources/file_resource";
-// import handler from "@app/pages/api/w/[wId]/files/[fileId]/index";
-// import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-// import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+  it("should allow builder to delete any file", async () => {
+    const { req, res, workspace, user, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "DELETE",
+        role: "builder",
+      });
 
-// vi.mock("@app/lib/resources/file_resource", () => ({
-//   FileResource: {
-//     fetchById: vi.fn(),
-//   },
-// }));
+    const file = await FileFactory.create(workspace, user, {
+      contentType: "application/pdf",
+      fileName: "test.pdf",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "folders_document",
+      useCaseMetadata: {
+        spaceId: globalSpace.sId,
+      },
+    });
 
-// // vi.mock("@app/lib/api/auth_wrappers", async () => {
-// //   const actual = await vi.importActual("@app/lib/api/auth_wrappers");
-// //   return {
-// //     ...actual,
-// //     withSessionAuthenticationForWorkspace: (handler: any) => {
-// //       return async (req: any, res: any) => {
-// //         const auth = req.auth;
-// //         return handler(req, res, auth, {
-// //           user: { sub: "workos|test-user-id" },
-// //         });
-// //       };
-// //     },
-// //   };
-// // });
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
 
-// vi.mock("@app/lib/api/files/upload", () => ({
-//   processAndStoreFile: vi.fn().mockResolvedValue({ isErr: () => false }),
-// }));
+    await handler(req, res);
 
-// vi.mock("@app/lib/api/files/upsert", () => ({
-//   isFileTypeUpsertableForUseCase: vi.fn().mockReturnValue(true),
-//   processAndUpsertToDataSource: vi
-//     .fn()
-//     .mockResolvedValue({ isErr: () => false }),
-// }));
+    expect(res._getStatusCode()).toBe(204);
+  });
 
-// vi.mock("@app/lib/api/data_sources", () => ({
-//   getOrCreateConversationDataSourceFromFile: vi.fn().mockResolvedValue({
-//     isErr: () => false,
-//     value: { id: "test_data_source" },
-//   }),
-// }));
+  it("should allow file author with admin role to delete upload files", async () => {
+    const { req, res, workspace, user, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "DELETE",
+        role: "admin",
+      });
 
-// vi.mock("@app/lib/resources/conversation_resource", () => ({
-//   ConversationResource: {
-//     fetchById: vi.fn().mockResolvedValue({ id: "test-conversation-id" }),
-//   },
-// }));
+    // Create a file in global space (admin has write access)
+    const file = await FileFactory.create(workspace, user, {
+      contentType: "application/pdf",
+      fileName: "test.pdf",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "folders_document",
+      useCaseMetadata: {
+        spaceId: globalSpace.sId,
+      },
+    });
 
-// const mockDelete = vi.fn().mockResolvedValue({ isErr: () => false });
-// const mockGetSignedUrlForDownload = vi
-//   .fn()
-//   .mockResolvedValue("http://signed-url.example");
-// const mockGetReadStream = vi.fn().mockReturnValue({
-//   on: vi.fn().mockImplementation(function (this: any) {
-//     return this;
-//   }),
-//   pipe: vi.fn(),
-// });
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
 
-// async function setupTest(
-//   options: {
-//     userRole?: "admin" | "builder" | "user";
-//     method?: RequestMethod;
-//     fileExists?: boolean;
-//     useCase?: "conversation" | "folders_document";
-//   } = {}
-// ) {
-//   const userRole = options.userRole ?? "admin";
-//   const method = options.method ?? "GET";
-//   const fileExists = options.fileExists ?? true;
-//   const useCase = options.useCase ?? "conversation";
+    await handler(req, res);
 
-//   const { req, res, workspace, user } = await createPrivateApiMockRequest({
-//     role: userRole,
-//     method: method,
-//   });
+    expect(res._getStatusCode()).toBe(204);
+  });
 
-//   const space = await SpaceFactory.regular(workspace);
+  it("should deny non-author without builder role from deleting upload files", async () => {
+    const { req, res, workspace, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "DELETE",
+        role: "user",
+      });
 
-//   const useCaseMetadata =
-//     options.useCase === "folders_document"
-//       ? { spaceId: space.sId }
-//       : {
-//           conversationId: "test_conversation_id",
-//         };
+    // Create a file by a different user
+    const file = await FileFactory.create(workspace, null, {
+      contentType: "application/pdf",
+      fileName: "test.pdf",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "folders_document",
+      useCaseMetadata: {
+        spaceId: globalSpace.sId,
+      },
+    });
 
-//   const mockFile = fileExists
-//     ? {
-//         id: "123",
-//         sId: "test_file_id",
-//         workspaceId: workspace.id,
-//         contentType: "application/pdf",
-//         fileName: "test.pdf",
-//         fileSize: 1024,
-//         status: "ready",
-//         useCase,
-//         useCaseMetadata,
-//         isReady: true,
-//         isUpsertUseCase: () => false,
-//         isSafeToDisplay: () => true,
-//         delete: mockDelete,
-//         getSignedUrlForDownload: mockGetSignedUrlForDownload,
-//         getReadStream: mockGetReadStream,
-//         toJSON: () => ({
-//           id: "test_file_id",
-//           sId: "test_file_id",
-//           contentType: "application/pdf",
-//           fileName: "test.pdf",
-//           fileSize: 1024,
-//           status: "ready",
-//           useCase,
-//         }),
-//       }
-//     : null;
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
 
-//   vi.mocked(FileResource.fetchById).mockResolvedValue(
-//     mockFile as unknown as FileResource
-//   );
+    await handler(req, res);
 
-//   req.query = {
-//     wId: workspace.sId,
-//     fileId: fileExists ? "test_file_id" : "non-existent-file-id",
-//   };
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "You cannot edit files in that space.",
+      },
+    });
+  });
 
-//   return {
-//     req,
-//     res,
-//     workspace,
-//     user,
-//     file: mockFile,
-//   };
-// }
+  it("should deny non-builder from deleting non-conversation files", async () => {
+    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "user",
+    });
 
-// describe("GET /api/w/[wId]/files/[fileId]", () => {
-//   beforeEach(() => {
-//     vi.clearAllMocks();
-//   });
+    const file = await FileFactory.create(workspace, user, {
+      contentType: "application/pdf",
+      fileName: "test.pdf",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "avatar",
+    });
 
-//   it("should return 404 for non-existent file", async () => {
-//     const { req, res } = await setupTest({ fileExists: false });
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
 
-//     await handler(req, res);
-//     expect(res._getStatusCode()).toBe(404);
-//     expect(res._getJSONData()).toEqual({
-//       error: {
-//         type: "file_not_found",
-//         message: "File not found.",
-//       },
-//     });
-//   });
+    await handler(req, res);
 
-//   it("should allow any role to view file for GET request", async () => {
-//     for (const role of ["admin", "builder", "user"] as const) {
-//       const { req, res } = await setupTest({ userRole: role });
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `builders` for the current workspace can modify files.",
+      },
+    });
+  });
+});
 
-//       // Reset for each test
-//       mockGetSignedUrlForDownload.mockClear();
+describe("POST /api/w/[wId]/files/[fileId]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-//       await handler(req, res);
-//       expect(res._getStatusCode()).toBe(302); // Should redirect to the signed URL
-//       expect(res._getRedirectUrl()).toBe("http://signed-url.example");
-//       expect(mockGetSignedUrlForDownload).toHaveBeenCalledTimes(1);
-//     }
-//   });
-// });
+  it("should allow builder to upload any file", async () => {
+    const { req, res, workspace, user, authenticator } =
+      await createPrivateApiMockRequest({
+        method: "POST",
+        role: "builder",
+      });
 
-// describe("POST /api/w/[wId]/files/[fileId]", () => {
-//   beforeEach(() => {
-//     vi.clearAllMocks();
-//   });
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date()],
+    });
 
-//   it("should return 403 when user cannot write to space for non-conversation files", async () => {
-//     const { req, res } = await setupTest({
-//       userRole: "user",
-//       method: "POST",
-//       useCase: "folders_document",
-//     });
+    const file = await FileFactory.create(workspace, user, {
+      contentType: "application/pdf",
+      fileName: "test.pdf",
+      fileSize: 1024,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: conversation.sId,
+      },
+    });
 
-//     // vi.mock("@app/lib/resources/space_resource", () => ({
-//     //   SpaceResource: {
-//     //     fetchById: vi.fn().mockResolvedValue({
-//     //       id: "test-space-id",
-//     //       canRead: vi.fn().mockReturnValue(true),
-//     //       canWrite: vi.fn().mockReturnValue(false),
-//     //     }),
-//     //   },
-//     // }));
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
 
-//     await handler(req, res);
-//     expect(res._getStatusCode()).toBe(403);
-//     expect(res._getJSONData()).toEqual({
-//       error: {
-//         type: "workspace_auth_error",
-//         message: "You cannot edit files in that space.",
-//       },
-//     });
-//   });
+    await handler(req, res);
 
-//   it("should allow regular user to modify conversation files", async () => {
-//     const { req, res } = await setupTest({
-//       userRole: "user",
-//       method: "POST",
-//       useCase: "conversation",
-//     });
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toHaveProperty("file");
+  });
 
-//     await handler(req, res);
-//     expect(res._getStatusCode()).toBe(200);
-//   });
+  it("should allow file author with admin role to upload to their space", async () => {
+    const { req, res, workspace, user, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "POST",
+        role: "admin",
+      });
 
-//   it("should allow admin to modify any file", async () => {
-//     const { req, res } = await setupTest({
-//       userRole: "admin",
-//       method: "POST",
-//     });
+    const file = await FileFactory.create(workspace, user, {
+      contentType: "text/csv",
+      fileName: "test.csv",
+      fileSize: 1024,
+      status: "created",
+      useCase: "upsert_table",
+      useCaseMetadata: {
+        spaceId: globalSpace.sId,
+      },
+    });
 
-//     await handler(req, res);
-//     expect(res._getStatusCode()).toBe(200);
-//   });
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
 
-//   it("should allow builder to modify any file", async () => {
-//     const { req, res } = await setupTest({
-//       userRole: "builder",
-//       method: "POST",
-//     });
+    await handler(req, res);
 
-//     await handler(req, res);
-//     expect(res._getStatusCode()).toBe(200);
-//   });
-// });
+    expect(res._getStatusCode()).toBe(200);
+  });
 
-// describe("DELETE /api/w/[wId]/files/[fileId]", () => {
-//   beforeEach(() => {
-//     vi.clearAllMocks();
-//   });
+  it("should deny non-author without builder role from uploading to space", async () => {
+    const { req, res, workspace, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
 
-//   it("should return 403 when user is not a builder for non-conversation files", async () => {
-//     const { req, res, space } = await setupTest({
-//       userRole: "user",
-//       method: "DELETE",
-//       useCase: "folders_document",
-//     });
+    // Create file with no user (simulating another user's file)
+    const file = await FileFactory.create(workspace, null, {
+      contentType: "text/csv",
+      fileName: "test.csv",
+      fileSize: 1024,
+      status: "created",
+      useCase: "upsert_table",
+      useCaseMetadata: {
+        spaceId: globalSpace.sId,
+      },
+    });
 
-//     // vi.mock("@app/lib/resources/space_resource", () => ({
-//     //   SpaceResource: {
-//     //     fetchById: vi.fn().mockResolvedValue({
-//     //       id: "test-space-id",
-//     //       canRead: vi.fn().mockReturnValue(true),
-//     //       canWrite: vi.fn().mockReturnValue(false),
-//     //     }),
-//     //   },
-//     // }));
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
 
-//     await handler(req, res);
-//     expect(res._getStatusCode()).toBe(403);
-//     expect(res._getJSONData()).toEqual({
-//       error: {
-//         type: "workspace_auth_error",
-//         message: "You cannot edit files in that space.",
-//       },
-//     });
-//   });
+    await handler(req, res);
 
-//   it("should allow regular user to delete conversation files", async () => {
-//     const { req, res } = await setupTest({
-//       userRole: "user",
-//       method: "DELETE",
-//       useCase: "conversation",
-//     });
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "You cannot edit files in that space.",
+      },
+    });
+  });
 
-//     await handler(req, res);
-//     expect(res._getStatusCode()).toBe(204);
-//     expect(mockDelete).toHaveBeenCalledTimes(1);
-//   });
+  it("should process conversation file and upsert to data source", async () => {
+    const { processAndUpsertToDataSource } =
+      await import("@app/lib/api/files/upsert");
 
-//   it("should allow admin to delete any file", async () => {
-//     const { req, res } = await setupTest({
-//       userRole: "admin",
-//       method: "DELETE",
-//     });
+    const { req, res, workspace, user, authenticator } =
+      await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
 
-//     await handler(req, res);
-//     expect(res._getStatusCode()).toBe(204);
-//     expect(mockDelete).toHaveBeenCalledTimes(1);
-//   });
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date()],
+    });
 
-//   it("should allow builder to delete any file", async () => {
-//     const { req, res } = await setupTest({
-//       userRole: "builder",
-//       method: "DELETE",
-//     });
+    const file = await FileFactory.create(workspace, user, {
+      contentType: "text/plain",
+      fileName: "test.txt",
+      fileSize: 1024,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: conversation.sId,
+      },
+    });
 
-//     await handler(req, res);
-//     expect(res._getStatusCode()).toBe(204);
-//     expect(mockDelete).toHaveBeenCalledTimes(1);
-//   });
-// });
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
 
-// describe("Method Support /api/w/[wId]/files/[fileId]", () => {
-//   it("should return 405 for unsupported methods", async () => {
-//     for (const method of ["PUT", "PATCH"] as const) {
-//       const { req, res } = await setupTest({ method });
+    await handler(req, res);
 
-//       await handler(req, res);
-
-//       expect(res._getStatusCode()).toBe(405);
-//       expect(res._getJSONData()).toEqual({
-//         error: {
-//           type: "method_not_supported_error",
-//           message: "The method passed is not supported, POST is expected.",
-//         },
-//       });
-//     }
-//   });
-// });
+    expect(res._getStatusCode()).toBe(200);
+    expect(processAndUpsertToDataSource).toHaveBeenCalled();
+  });
+});
