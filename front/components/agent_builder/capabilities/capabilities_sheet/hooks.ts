@@ -19,11 +19,9 @@ import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-import { useBuilderContext } from "@app/components/shared/useBuilderContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { doesSkillTriggerSelectSpaces } from "@app/lib/skill";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 function isGlobalSkillWithSpaceSelection(skill: SkillType): boolean {
@@ -168,9 +166,6 @@ export const useToolSelection = ({
   onStateChange: (state: SheetState) => void;
   searchQuery: string;
 }) => {
-  const { owner } = useBuilderContext();
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-
   const [localSelectedTools, setLocalSelectedTools] = useState<SelectedTool[]>(
     []
   );
@@ -283,7 +278,7 @@ export const useToolSelection = ({
         return [...prev, tool];
       });
     },
-    [featureFlags, onStateChange]
+    [onStateChange]
   );
 
   const handleToolInfoClick = useCallback(
