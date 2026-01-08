@@ -1,10 +1,10 @@
 import { cn, markdownStyles } from "@dust-tt/sparkle";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
+import type { Transaction } from "@tiptap/pm/state";
 import type { Editor, Extensions } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import type { Transaction } from "@tiptap/pm/state";
 import { useEffect, useMemo, useRef } from "react";
 
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
