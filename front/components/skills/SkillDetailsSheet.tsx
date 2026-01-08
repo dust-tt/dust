@@ -134,7 +134,7 @@ const DescriptionSection = ({
   onClose,
 }: DescriptionSectionProps) => {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const author = skill.relations.author;
+  const { editedByUser } = skill.relations;
   const editedDate =
     skill.updatedAt &&
     new Date(skill.updatedAt).toLocaleDateString("en-US", {
@@ -165,7 +165,7 @@ const DescriptionSection = ({
         {editedDate && (
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Last edited: {editedDate}
-            {author && ` by ${author.fullName}`}
+            {editedByUser && ` by ${editedByUser.fullName}`}
           </p>
         )}
       </div>

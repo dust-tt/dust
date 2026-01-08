@@ -9,7 +9,7 @@ export type SkillType = {
   sId: string;
   createdAt: number | null;
   updatedAt: number | null;
-  authorId: number | null;
+  editedBy: number | null;
   status: SkillStatus;
   name: string;
   agentFacingDescription: string;
@@ -26,7 +26,7 @@ export type SkillType = {
 export type SkillRelations = {
   usage: AgentsUsageType;
   editors: UserType[] | null;
-  author: UserType | null;
+  editedByUser: UserType | null;
   extendedSkill: SkillType | null;
 };
 

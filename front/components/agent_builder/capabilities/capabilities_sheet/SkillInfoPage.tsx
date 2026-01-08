@@ -102,8 +102,8 @@ function SkillInfoContent({
   }, [skill.updatedAt]);
 
   const editedBy = useMemo(
-    () => skill.relations.author?.fullName ?? null,
-    [skill.relations.author?.fullName]
+    () => skill.relations.editedByUser?.fullName ?? null,
+    [skill.relations.editedByUser?.fullName]
   );
 
   const editorsForAvatars = useMemo(() => {
@@ -116,12 +116,12 @@ function SkillInfoContent({
       seen.add(u.sId);
       users.push(u);
     };
-    maybePush(skill.relations.author);
+    maybePush(skill.relations.editedByUser);
     for (const editor of skill.relations.editors ?? []) {
       maybePush(editor);
     }
     return users.slice(0, 3);
-  }, [skill.relations.author, skill.relations.editors]);
+  }, [skill.relations.editedByUser, skill.relations.editors]);
 
   return (
     <div className="flex flex-col gap-4">
