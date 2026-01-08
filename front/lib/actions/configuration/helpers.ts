@@ -79,9 +79,11 @@ export function renderTableConfiguration(
 export function buildServerSideMCPServerConfiguration({
   mcpServerView,
   dataSources = null,
+  serverNameOverride,
 }: {
   mcpServerView: MCPServerViewResource;
   dataSources?: DataSourceConfiguration[] | null;
+  serverNameOverride?: string;
 }): ServerSideMCPServerConfigurationType {
   const { server } = mcpServerView.toJSON();
 
@@ -89,7 +91,7 @@ export function buildServerSideMCPServerConfiguration({
     id: -1,
     sId: `mcp_${server.sId}`,
     type: "mcp_server_configuration",
-    name: mcpServerView.name ?? server.name,
+    name: serverNameOverride ?? mcpServerView.name ?? server.name,
     description: mcpServerView.description ?? server.description,
     icon: server.icon,
     mcpServerViewId: mcpServerView.sId,
