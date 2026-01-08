@@ -30,7 +30,26 @@ export function makeNotificationPreferencesUserMetadata(
 }
 
 /**
- * Mention-based notification trigger options.
+ * Unread trigger options (determines when conversations are marked as unread).
+ * Does not include "never" since that would break notification logic.
+ */
+export const UNREAD_TRIGGER_OPTIONS = [
+  "all_messages",
+  "only_mentions",
+] as const;
+
+export type UnreadTrigger = (typeof UNREAD_TRIGGER_OPTIONS)[number];
+
+export const isUnreadTrigger = (value: unknown): value is UnreadTrigger => {
+  return (
+    typeof value === "string" &&
+    (UNREAD_TRIGGER_OPTIONS as readonly string[]).includes(value)
+  );
+};
+
+/**
+ * Notification trigger options (determines when to send notifications).
+ * Includes "never" to allow disabling notifications entirely.
  */
 export const NOTIFICATION_TRIGGER_OPTIONS = [
   "all_messages",

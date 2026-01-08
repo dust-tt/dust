@@ -48,10 +48,10 @@ import type {
   UserType,
 } from "@app/types";
 import { ConversationError, Err, normalizeError, Ok } from "@app/types";
-import type { NotificationTrigger } from "@app/types/notification_preferences";
+import type { UnreadTrigger } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
-  isNotificationTrigger,
+  isUnreadTrigger,
 } from "@app/types/notification_preferences";
 
 export type FetchConversationOptions = {
@@ -893,9 +893,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
     });
 
-    const preferenceMap = new Map<number, NotificationTrigger>();
+    const preferenceMap = new Map<number, UnreadTrigger>();
     for (const pref of preferences) {
-      if (isNotificationTrigger(pref.value)) {
+      if (isUnreadTrigger(pref.value)) {
         preferenceMap.set(pref.userId, pref.value);
       }
     }

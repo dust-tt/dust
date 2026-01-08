@@ -27,11 +27,13 @@ import { setUserMetadataFromClient } from "@app/lib/user";
 import type {
   NotificationPreferencesDelay,
   NotificationTrigger,
+  UnreadTrigger,
 } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   isNotificationPreferencesDelay,
   isNotificationTrigger,
+  isUnreadTrigger,
   makeNotificationPreferencesUserMetadata,
   NOTIFICATION_DELAY_OPTIONS,
 } from "@app/types/notification_preferences";
@@ -47,6 +49,11 @@ const NOTIFICATION_PREFERENCES_DELAY_LABELS: Record<
   daily: "once a day",
 };
 
+const UNREAD_TRIGGER_LABELS: Record<UnreadTrigger, string> = {
+  all_messages: "for all new messages",
+  only_mentions: "only when I'm mentioned",
+};
+
 const NOTIFICATION_TRIGGER_LABELS: Record<NotificationTrigger, string> = {
   all_messages: "for all new messages",
   only_mentions: "only when I'm mentioned",
@@ -54,6 +61,7 @@ const NOTIFICATION_TRIGGER_LABELS: Record<NotificationTrigger, string> = {
 };
 
 const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay = "1_hour";
+const DEFAULT_UNREAD_TRIGGER: UnreadTrigger = "all_messages";
 const DEFAULT_NOTIFICATION_TRIGGER: NotificationTrigger = "all_messages";
 
 const CONVERSATION_UNREAD_WORKFLOW_ID = "conversation-unread";
@@ -86,8 +94,8 @@ export const NotificationPreferences = forwardRef<
   );
 
   // Conversation notification triggers
-  const [unreadTrigger, setUnreadTrigger] = useState<NotificationTrigger>(
-    DEFAULT_NOTIFICATION_TRIGGER
+  const [unreadTrigger, setUnreadTrigger] = useState<UnreadTrigger>(
+    DEFAULT_UNREAD_TRIGGER
   );
   const [notifyTrigger, setNotifyTrigger] = useState<NotificationTrigger>(
     DEFAULT_NOTIFICATION_TRIGGER
@@ -112,8 +120,8 @@ export const NotificationPreferences = forwardRef<
   const originalEmailDelayRef = useRef<NotificationPreferencesDelay>(
     DEFAULT_NOTIFICATION_DELAY
   );
-  const originalUnreadTriggerRef = useRef<NotificationTrigger>(
-    DEFAULT_NOTIFICATION_TRIGGER
+  const originalUnreadTriggerRef = useRef<UnreadTrigger>(
+    DEFAULT_UNREAD_TRIGGER
   );
   const originalNotifyTriggerRef = useRef<NotificationTrigger>(
     DEFAULT_NOTIFICATION_TRIGGER
@@ -133,8 +141,8 @@ export const NotificationPreferences = forwardRef<
   // Load unread trigger from user metadata
   useEffect(() => {
     if (unreadTriggerMetadata?.value) {
-      const trigger = unreadTriggerMetadata.value as NotificationTrigger;
-      if (isNotificationTrigger(trigger)) {
+      const trigger = unreadTriggerMetadata.value as UnreadTrigger;
+      if (isUnreadTrigger(trigger)) {
         setUnreadTrigger(trigger);
         originalUnreadTriggerRef.current = trigger;
       }
@@ -348,16 +356,16 @@ export const NotificationPreferences = forwardRef<
               variant="outline"
               size="sm"
               isSelect
-              label={NOTIFICATION_TRIGGER_LABELS[unreadTrigger]}
+              label={UNREAD_TRIGGER_LABELS[unreadTrigger]}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem
-              label={NOTIFICATION_TRIGGER_LABELS["all_messages"]}
+              label={UNREAD_TRIGGER_LABELS["all_messages"]}
               onClick={() => setUnreadTrigger("all_messages")}
             />
             <DropdownMenuItem
-              label={NOTIFICATION_TRIGGER_LABELS["only_mentions"]}
+              label={UNREAD_TRIGGER_LABELS["only_mentions"]}
               onClick={() => {
                 setUnreadTrigger("only_mentions");
                 // Constrain notify to match: can't notify on all if only marking mentions as unread
