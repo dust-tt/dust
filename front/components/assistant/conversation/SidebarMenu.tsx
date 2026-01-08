@@ -442,21 +442,11 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                     {hasSkills && isBuilder(owner) && (
                       <>
                         <DropdownMenuLabel>Skills</DropdownMenuLabel>
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger
-                            icon={PlusIcon}
-                            label="New skill"
-                          />
-                          <DropdownMenuPortal>
-                            <DropdownMenuSubContent className="pointer-events-auto">
-                              <DropdownMenuItem
-                                href={getSkillBuilderRoute(owner.sId, "new")}
-                                icon={DocumentIcon}
-                                label="From scratch"
-                              />
-                            </DropdownMenuSubContent>
-                          </DropdownMenuPortal>
-                        </DropdownMenuSub>
+                        <DropdownMenuItem
+                          href={getSkillBuilderRoute(owner.sId, "new")}
+                          icon={PlusIcon}
+                          label="New skill"
+                        />
                         <DropdownMenuItem
                           href={getSkillBuilderRoute(owner.sId, "manage")}
                           icon={SKILL_ICON}
