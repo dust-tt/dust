@@ -485,7 +485,6 @@ export function isUserMessageContextValid(
     case "powerpoint":
     case "zapier":
       return authMethod === "api_key";
-
     case "zendesk":
       return (
         (authMethod === "api_key" || authMethod === "oauth") && !!zendeskUserId
