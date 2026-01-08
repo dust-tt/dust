@@ -11,7 +11,6 @@ export class WorkspaceVerificationAttemptModel extends WorkspaceAwareModel<Works
   declare twilioVerificationSid: string | null;
   declare attemptNumber: number;
   declare verifiedAt: Date | null;
-  declare failedAt: Date | null;
 }
 
 WorkspaceVerificationAttemptModel.init(
@@ -45,11 +44,6 @@ WorkspaceVerificationAttemptModel.init(
       allowNull: true,
       defaultValue: null,
     },
-    failedAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: null,
-    },
   },
   {
     modelName: "workspace_verification_attempt",
@@ -60,6 +54,7 @@ WorkspaceVerificationAttemptModel.init(
         fields: ["phoneNumberHash"],
         unique: true,
         name: "workspace_verification_attempts_phone_hash_unique_idx",
+        where: { verifiedAt: { [Op.ne]: null } },
       },
       {
         fields: ["twilioVerificationSid"],

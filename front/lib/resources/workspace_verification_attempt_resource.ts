@@ -13,8 +13,6 @@ import type { Result } from "@app/types";
 import { Ok } from "@app/types";
 import type { VerificationStatus } from "@app/types/workspace_verification";
 
-const VERIFICATION_EXPIRY_SECONDS = 10 * 60; // 10 minutes.
-
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceVerificationAttemptResource extends ReadonlyAttributesType<WorkspaceVerificationAttemptModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -39,14 +37,6 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
   get status(): VerificationStatus {
     if (this.verifiedAt) {
       return "verified";
-    }
-    if (this.failedAt) {
-      return "failed";
-    }
-    const expiryTime =
-      this.createdAt.getTime() + VERIFICATION_EXPIRY_SECONDS * 1000;
-    if (Date.now() > expiryTime) {
-      return "expired";
     }
     return "pending";
   }
@@ -138,23 +128,10 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
   async markVerified({
     transaction,
   }: { transaction?: Transaction } = {}): Promise<void> {
-    if (this.verifiedAt || this.failedAt) {
-      throw new Error(
-        "Verification attempt already marked as verified or failed"
-      );
+    if (this.verifiedAt) {
+      throw new Error("Verification attempt already marked as verified");
     }
     await this.update({ verifiedAt: new Date() }, transaction);
-  }
-
-  async markFailed({
-    transaction,
-  }: { transaction?: Transaction } = {}): Promise<void> {
-    if (this.verifiedAt || this.failedAt) {
-      throw new Error(
-        "Verification attempt already marked as verified or failed"
-      );
-    }
-    await this.update({ failedAt: new Date() }, transaction);
   }
 
   toLogJSON() {
@@ -165,7 +142,6 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
       attemptNumber: this.attemptNumber,
       status: this.status,
       verifiedAt: this.verifiedAt?.toISOString() ?? null,
-      failedAt: this.failedAt?.toISOString() ?? null,
     };
   }
 
