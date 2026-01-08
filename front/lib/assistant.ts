@@ -1,4 +1,3 @@
-import type { RegionType } from "@app/lib/api/regions/config";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import type {
   AgentModelConfigurationType,
@@ -39,8 +38,7 @@ export function canUseModel(
   m: ModelConfigurationType,
   featureFlags: WhitelistableFeature[],
   plan: PlanType | null,
-  owner: WorkspaceType,
-  _region: RegionType
+  owner: WorkspaceType
 ) {
   if (m.featureFlag && !featureFlags.includes(m.featureFlag)) {
     return false;
