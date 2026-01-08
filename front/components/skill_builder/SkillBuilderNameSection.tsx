@@ -12,16 +12,14 @@ export function SkillBuilderNameSection() {
       triggerValidationOnChange={false}
     >
       {({ registerRef, registerProps, onChange, errorMessage, hasError }) => (
-        <div className="relative">
-          <Input
-            ref={registerRef}
-            placeholder="Enter skill name"
-            onChange={onChange}
-            message={errorMessage}
-            messageStatus={hasError ? "error" : "default"}
-            {...registerProps}
-          />
-        </div>
+        <Input
+          ref={registerRef}
+          placeholder="Enter skill name"
+          onChange={onChange}
+          message={errorMessage}
+          messageStatus={hasError ? "error" : "default"}
+          {...registerProps}
+        />
       )}
     </BaseFormFieldSection>
   );
