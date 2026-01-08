@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Sparkle-aligned color palette */
+    /* Background & Foreground */
+    --background: 0 0% 100%;
+    --foreground: 214 21% 9%;
+
+    /* Card */
+    --card: 0 0% 100%;
+    --card-foreground: 214 21% 9%;
+
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 214 21% 9%;
+
+    /* Primary (gray-based like Sparkle) */
+    --primary: 214 21% 9%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary */
+    --secondary: 220 6% 93%;
+    --secondary-foreground: 214 21% 9%;
+
+    /* Muted */
+    --muted: 220 6% 93%;
+    --muted-foreground: 218 9% 52%;
+
+    /* Accent */
+    --accent: 220 6% 93%;
+    --accent-foreground: 214 21% 9%;
+
+    /* Highlight (blue-based for actions) */
+    --highlight: 209 100% 55%;
+    --highlight-foreground: 0 0% 100%;
+
+    /* Success (green-based) */
+    --success: 140 36% 40%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning (golden-based) */
+    --warning: 39 100% 52%;
+    --warning-foreground: 214 21% 9%;
+
+    /* Destructive (rose-based) */
+    --destructive: 7 74% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border & Input */
+    --border: 220 9% 83%;
+    --input: 220 9% 83%;
+    --ring: 209 100% 55%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark:root {
+    /* Background & Foreground */
+    --background: 214 21% 9%;
+    --foreground: 220 20% 97%;
+
+    /* Card */
+    --card: 217 19% 14%;
+    --card-foreground: 220 20% 97%;
+
+    /* Popover */
+    --popover: 217 19% 14%;
+    --popover-foreground: 220 20% 97%;
+
+    /* Primary (inverted for dark) */
+    --primary: 220 20% 97%;
+    --primary-foreground: 214 21% 9%;
+
+    /* Secondary */
+    --secondary: 215 19% 21%;
+    --secondary-foreground: 220 20% 97%;
+
+    /* Muted */
+    --muted: 215 19% 21%;
+    --muted-foreground: 217 8% 62%;
+
+    /* Accent */
+    --accent: 215 19% 21%;
+    --accent-foreground: 220 20% 97%;
+
+    /* Highlight (blue-based) */
+    --highlight: 209 100% 65%;
+    --highlight-foreground: 214 21% 9%;
+
+    /* Success (green-based) */
+    --success: 103 38% 60%;
+    --success-foreground: 214 21% 9%;
+
+    /* Warning (golden-based) */
+    --warning: 43 100% 58%;
+    --warning-foreground: 214 21% 9%;
+
+    /* Destructive (rose-based) */
+    --destructive: 7 82% 67%;
+    --destructive-foreground: 214 21% 9%;
+
+    /* Border & Input */
+    --border: 213 18% 27%;
+    --input: 213 18% 27%;
+    --ring: 209 100% 65%;
+  }
+}
