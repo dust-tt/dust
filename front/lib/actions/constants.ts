@@ -49,7 +49,12 @@ export const DEFAULT_MCP_ACTION_VERSION = "1.0.0";
 export const DEFAULT_MCP_ACTION_DESCRIPTION =
   "Call a tool to answer a question.";
 
-export const MCP_TOOL_STAKE_LEVELS = ["high", "low", "never_ask"] as const;
+export const MCP_TOOL_STAKE_LEVELS = [
+  "high",
+  "medium",
+  "low",
+  "never_ask",
+] as const;
 export type MCPToolStakeLevelType = (typeof MCP_TOOL_STAKE_LEVELS)[number];
 
 export const FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL =
