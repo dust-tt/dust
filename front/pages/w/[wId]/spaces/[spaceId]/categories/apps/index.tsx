@@ -6,10 +6,7 @@ import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import type { ActionApp } from "@app/lib/registry";
-import { getDustProdActionRegistry } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { DataSourceViewCategory, SpaceType } from "@app/types";
 
@@ -17,7 +14,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {
     isBuilder: boolean;
     category: DataSourceViewCategory;
-    registryApps: ActionApp[] | null;
     space: SpaceType;
   }
 >(async (context, auth) => {
@@ -45,14 +41,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const isBuilder = auth.isBuilder();
   const canWriteInSpace = space.canWrite(auth);
 
-  const isDustAppsSpace =
-    owner.sId === config.getDustAppsWorkspaceId() &&
-    space.sId === config.getDustAppsSpaceId();
-
-  const registryApps = isDustAppsSpace
-    ? Object.values(getDustProdActionRegistry()).map((action) => action.app)
-    : null;
-
   return {
     props: {
       canReadInSpace: space.canRead(auth),
@@ -62,7 +50,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       isBuilder,
       owner,
       plan,
-      registryApps,
       space: space.toJSON(),
       subscription,
     },
@@ -73,7 +60,6 @@ export default function Space({
   isBuilder,
   owner,
   space,
-  registryApps,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
