@@ -9,7 +9,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { LightAgentConfigurationType } from "@app/types";
 import { removeNulls } from "@app/types";
 
-const SKIL_KNOWLEDGE_FILE_SYSTEM_SERVER_NAME = "skill_knowledge_file_system";
+const SKILL_KNOWLEDGE_FILE_SYSTEM_SERVER_NAME = "skill_knowledge_file_system";
 
 export async function getSkillServers(
   auth: Authenticator,
@@ -168,6 +168,6 @@ export async function createSkillKnowledgeFileSystemServer(
   return buildServerSideMCPServerConfiguration({
     mcpServerView,
     dataSources: dataSourceConfigurations,
-    serverNameOverride: SKIL_KNOWLEDGE_FILE_SYSTEM_SERVER_NAME,
+    serverNameOverride: SKILL_KNOWLEDGE_FILE_SYSTEM_SERVER_NAME,
   });
 }

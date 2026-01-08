@@ -209,13 +209,12 @@ export async function runModelActivity(
       skills: enabledSkills,
     }
   );
-  if (dataSourceConfigurations.length > 0) {
-    const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
-      dataSourceConfigurations,
-    });
-    if (fileSystemServer) {
-      skillServers.push(fileSystemServer);
-    }
+
+  const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
+    dataSourceConfigurations,
+  });
+  if (fileSystemServer) {
+    skillServers.push(fileSystemServer);
   }
 
   const {
