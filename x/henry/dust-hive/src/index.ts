@@ -18,12 +18,7 @@ import { startCommand } from "./commands/start";
 import { statusCommand } from "./commands/status";
 import { stopCommand } from "./commands/stop";
 import { syncCommand } from "./commands/sync";
-import {
-  temporalRestartCommand,
-  temporalStartCommand,
-  temporalStatusCommand,
-  temporalStopCommand,
-} from "./commands/temporal";
+import { temporalCommand } from "./commands/temporal";
 import { upCommand } from "./commands/up";
 import { urlCommand } from "./commands/url";
 import { warmCommand } from "./commands/warm";
@@ -251,21 +246,11 @@ cli
   });
 
 // Temporal subcommands
-cli.command("temporal start", "Start Temporal server").action(async () => {
-  await prepareAndRun(temporalStartCommand());
-});
-
-cli.command("temporal stop", "Stop Temporal server").action(async () => {
-  await prepareAndRun(temporalStopCommand());
-});
-
-cli.command("temporal restart", "Restart Temporal server").action(async () => {
-  await prepareAndRun(temporalRestartCommand());
-});
-
-cli.command("temporal status", "Show Temporal server status").action(async () => {
-  await prepareAndRun(temporalStatusCommand());
-});
+cli
+  .command("temporal [subcommand]", "Manage Temporal server (start|stop|restart|status)")
+  .action(async (subcommand: string | undefined) => {
+    await prepareAndRun(temporalCommand(subcommand));
+  });
 
 cli
   .command(
