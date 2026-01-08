@@ -43,12 +43,12 @@ export async function handler(
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
-  if (!space.isRegular()) {
+  if (!space.isRegular() && !space.isProject()) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Only regular spaces can have members.",
+        message: "Only projects and regular spaces can have members.",
       },
     });
   }

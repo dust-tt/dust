@@ -16,8 +16,9 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import * as React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 
+import { ConfirmContext } from "@app/components/Confirm";
 import { GroupsList } from "@app/components/groups/GroupsList";
 import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
 import { SearchMembersDropdown } from "@app/components/spaces/SearchMembersDropdown";
@@ -39,9 +40,7 @@ interface RestrictedAccessBodyProps {
   owner: LightWorkspaceType;
   selectedMembers: UserType[];
   selectedGroups: GroupType[];
-  searchSelectedMembers: string;
-  onSearchChange: (value: string) => void;
-  onManagementTypeChange: (value: string) => void;
+  onManagementTypeChange: (value: MembersManagementType) => void;
   onMembersUpdated: (members: UserType[]) => void;
   onGroupsUpdated: (groups: GroupType[]) => void;
 }
@@ -53,12 +52,71 @@ export function RestrictedAccessBody({
   owner,
   selectedMembers,
   selectedGroups,
-  searchSelectedMembers,
-  onSearchChange,
   onManagementTypeChange,
   onMembersUpdated,
   onGroupsUpdated,
 }: RestrictedAccessBodyProps) {
+  const confirm = useContext(ConfirmContext);
+  const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
+
+  const handleManagementTypeChange = useCallback(
+    async (value: string) => {
+      if (!isMembersManagementType(value) || !planAllowsSCIM) {
+        return;
+      }
+
+      // If switching from manual to group mode with manually added members.
+      if (
+        managementType === "manual" &&
+        value === "group" &&
+        selectedMembers.length > 0
+      ) {
+        const confirmed = await confirm({
+          title: "Switch to groups",
+          message:
+            "This switches from manual member to group-based access. " +
+            "Your current member list will be saved but no longer active.",
+          validateLabel: "Confirm",
+          validateVariant: "primary",
+        });
+
+        if (confirmed) {
+          onManagementTypeChange("group");
+        }
+      }
+      // If switching from group to manual mode with selected groups.
+      else if (
+        managementType === "group" &&
+        value === "manual" &&
+        selectedGroups.length > 0
+      ) {
+        const confirmed = await confirm({
+          title: "Switch to members",
+          message:
+            "This switches from group-based access to manual member management. " +
+            "Your current group settings will be saved but no longer active.",
+          validateLabel: "Confirm",
+          validateVariant: "primary",
+        });
+
+        if (confirmed) {
+          onManagementTypeChange("manual");
+        }
+      } else {
+        // For direct switches without selections, clear everything and let the user start fresh.
+        onManagementTypeChange(value);
+      }
+    },
+    [
+      confirm,
+      managementType,
+      selectedMembers.length,
+      selectedGroups.length,
+      planAllowsSCIM,
+      onManagementTypeChange,
+    ]
+  );
+
   return (
     <>
       {planAllowsSCIM ? (
@@ -79,17 +137,13 @@ export function RestrictedAccessBody({
               <DropdownMenuItem
                 label="Manual access"
                 onClick={() => {
-                  if (isMembersManagementType("manual")) {
-                    onManagementTypeChange("manual");
-                  }
+                  void handleManagementTypeChange("manual");
                 }}
               />
               <DropdownMenuItem
                 label="Provisioned group access"
                 onClick={() => {
-                  if (isMembersManagementType("group")) {
-                    onManagementTypeChange("group");
-                  }
+                  void handleManagementTypeChange("group");
                 }}
               />
             </DropdownMenuContent>
@@ -153,7 +207,7 @@ export function RestrictedAccessBody({
             name="search"
             placeholder="Search (email)"
             value={searchSelectedMembers}
-            onChange={onSearchChange}
+            onChange={setSearchSelectedMembers}
           />
           <ScrollArea className="h-full">
             <MembersTable
@@ -170,7 +224,7 @@ export function RestrictedAccessBody({
             name="search"
             placeholder={"Search groups"}
             value={searchSelectedMembers}
-            onChange={onSearchChange}
+            onChange={setSearchSelectedMembers}
           />
           <ScrollArea className="h-full">
             <GroupsTable

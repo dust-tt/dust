@@ -485,9 +485,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       );
     }
 
-    if (!this.isRegular()) {
+    if (!this.isRegular() && !this.isProject()) {
       return new Err(
-        new DustError("unauthorized", "Only regular spaces can have members.")
+        new DustError(
+          "unauthorized",
+          "Only projects and regular spaces can have members."
+        )
       );
     }
 
