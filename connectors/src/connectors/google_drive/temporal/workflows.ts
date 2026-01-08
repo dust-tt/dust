@@ -10,13 +10,13 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 import { uniq } from "lodash";
-import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
 import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import type * as sync_status from "@connectors/lib/sync_status";
 import type { ModelId } from "@connectors/types";
 
+import { concurrentExecutor } from "../../../lib/async_utils";
 import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "../lib/consts";
 import { GDRIVE_MAX_CONCURRENT_FOLDER_SYNCS } from "./config";
 import { folderUpdatesSignal } from "./signals";
@@ -413,14 +413,13 @@ export async function googleDriveIncrementalSyncV2(
     });
 
   // Launch child workflows in parallel - one per drive
-  const queue = new PQueue({ concurrency: GDRIVE_MAX_CONCURRENT_FOLDER_SYNCS });
   const childHandles: ChildWorkflowHandle<
     typeof googleDriveIncrementalSyncPerDrive
   >[] = [];
 
-  // Start all child workflows
-  for (const googleDrive of drivesToSync) {
-    await queue.add(async () => {
+  await concurrentExecutor(
+    drivesToSync,
+    async (googleDrive) => {
       const handle = await startChild(googleDriveIncrementalSyncPerDrive, {
         workflowId: googleDriveIncrementalSyncPerDriveWorkflowId(
           connectorId,
@@ -440,8 +439,9 @@ export async function googleDriveIncrementalSyncV2(
         memo: workflowInfo().memo,
       });
       childHandles.push(handle);
-    });
-  }
+    },
+    { concurrency: GDRIVE_MAX_CONCURRENT_FOLDER_SYNCS }
+  );
 
   // Wait for all drive syncs to complete
   await Promise.all(childHandles.map((handle) => handle.result()));
