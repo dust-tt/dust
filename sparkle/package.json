@@ -7,6 +7,7 @@
     "build:esm": "npm run copy:esm && tsgo && tsc-alias",
     "copy:esm": "copyfiles -u 1 src/**/*.css src/**/*.svg src/**/*.png src/**/*.json dist/esm",
     "build:cjs": "node scripts/build-cjs.mjs",
+    "postinstall": "node scripts/copy-allotment-css.mjs && npm run tailwind",
     "storybook": "storybook dev -p 6006 --debug-webpack",
     "build-storybook": "storybook build",
     "format:check": "prettier --check .",

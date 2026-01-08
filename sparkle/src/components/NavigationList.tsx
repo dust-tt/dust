@@ -77,7 +77,7 @@ interface NavigationListItemProps
   icon?: React.ComponentType;
   avatar?: React.ReactNode;
   moreMenu?: React.ReactNode;
-  status?: "idle" | "unread" | "blocked";
+  status?: "idle" | "unread" | "blocked" | "error";
 }
 
 const NavigationListItem = React.forwardRef<
@@ -113,9 +113,11 @@ const NavigationListItem = React.forwardRef<
     const getStatusDotColor = () => {
       switch (status) {
         case "unread":
-          return "s-bg-highlight-500 dark:s-bg-highlight-500-night";
+          return "s-h-2 s-w-2 s-m-1 s-bg-highlight-500 dark:s-bg-highlight-500-night";
         case "blocked":
-          return "s-bg-golden-500 dark:s-bg-golden-500-night";
+          return "s-h-4 s-w-4 s-bg-golden-200 dark:s-bg-golden-800-night s-text-golden-900 dark:s-text-golden-900-night";
+        case "error":
+          return "s-h-2 s-w-2 s-m-1 s-bg-warning dark:s-bg-warning-night";
         default:
           return "";
       }
@@ -155,20 +157,22 @@ const NavigationListItem = React.forwardRef<
             onMouseDown={handleMouseDown}
             onMouseUp={() => setIsPressed(false)}
           >
+            {icon && <Icon visual={icon} size="sm" />}
+            {avatar}
+            {label && (
+              <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8">
+                {label}
+              </span>
+            )}
             {shouldShowStatusDot && (
               <div
                 className={cn(
-                  "s-h-2 s-w-2 s-flex-shrink-0 s-rounded-full",
+                  "s-heading-xs s-flex s-flex-shrink-0 s-items-center s-justify-center s-rounded-full group-hover/menu-item:s-hidden",
                   getStatusDotColor()
                 )}
-              />
-            )}
-            {icon && <Icon visual={icon} size="xs" className="s-m-0.5" />}
-            {avatar}
-            {label && (
-              <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-hover/menu-item:s-pr-7 group-data-[selected=true]/menu-item:s-pr-7">
-                {label}
-              </span>
+              >
+                {status === "blocked" ? "!" : ""}
+              </div>
             )}
           </div>
         </LinkWrapper>
@@ -192,13 +196,13 @@ const NavigationListItemAction = React.forwardRef<
       ref={ref}
       data-sidebar="menu-action"
       className={cn(
-        "s-absolute s-right-2 s-top-1.5 s-opacity-0 s-transition-opacity",
+        "s-absolute s-right-1.5 s-top-1 s-opacity-0 s-transition-opacity",
         "s-opacity-0 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100 group-data-[selected=true]/menu-item:s-opacity-100",
         className
       )}
       {...props}
     >
-      <Button size="xmini" icon={MoreIcon} variant="ghost" />
+      <Button size="mini" icon={MoreIcon} variant="ghost" />
     </div>
   );
 });

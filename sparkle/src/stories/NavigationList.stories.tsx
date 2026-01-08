@@ -93,6 +93,9 @@ export const Demo = () => {
                 const itemIndex = allItems.indexOf(title);
                 // Add status based on index for demonstration
                 const getStatus = (idx: number) => {
+                  if (idx % 7 === 0) {
+                    return "error";
+                  }
                   if (idx % 5 === 0) {
                     return "unread";
                   }
@@ -133,6 +136,9 @@ export const Demo = () => {
                 const itemIndex = allItems.indexOf(title);
                 // Add status based on index for demonstration.
                 const getStatus = (idx: number) => {
+                  if (idx % 7 === 0) {
+                    return "error";
+                  }
                   if (idx % 5 === 0) {
                     return "unread";
                   }
@@ -243,6 +249,7 @@ export const CollapsibleSection = () => {
               key={index}
               href={index % 2 === 0 ? "#" : undefined}
               selected={index === selectedIndex}
+              status="error"
               onClick={(e) => {
                 if (!e.defaultPrevented) {
                   e.preventDefault();

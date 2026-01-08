@@ -32,6 +32,8 @@ export interface Conversation {
   userParticipants: string[];
   agentParticipants: string[];
   messages?: Message[];
+  description?: string;
+  spaceId?: string;
 }
 
 export interface Space {

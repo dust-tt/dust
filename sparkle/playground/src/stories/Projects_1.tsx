@@ -2,6 +2,7 @@ import {
   AtomIcon,
   Avatar,
   BoltOffIcon,
+  BookOpenIcon,
   Button,
   Card,
   ChatBubbleLeftRightIcon,
@@ -19,7 +20,9 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  HeartIcon,
   InboxIcon,
+  LightbulbIcon,
   ListSelectIcon,
   LogoutIcon,
   MagnifyingGlassIcon,
@@ -38,6 +41,7 @@ import {
   type SidebarLayoutRef,
   SidebarLeftCloseIcon,
   SidebarLeftOpenIcon,
+  SlackLogo,
   SpaceClosedIcon,
   SpaceOpenIcon,
   StarStrokeIcon,
@@ -47,12 +51,14 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ConversationView } from "../components/ConversationView";
+import { GroupConversationView } from "../components/GroupConversationView";
 import { InputBar } from "../components/InputBar";
 import {
   type Agent,
   type Conversation,
   createConversationsWithMessages,
   getAgentById,
+  getConversationsBySpaceId,
   getRandomAgents,
   getRandomSpaces,
   getRandomUsers,
@@ -107,12 +113,14 @@ function DustMain() {
   const [searchText, setSearchText] = useState("");
   const [agentSearchText, setAgentSearchText] = useState("");
   const [peopleSearchText, setPeopleSearchText] = useState("");
+  const [documentSearchText, setDocumentSearchText] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<
     string | null
   >(null);
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [conversationsWithMessages, setConversationsWithMessages] = useState<
     Conversation[]
   >([]);
@@ -295,6 +303,18 @@ function DustMain() {
     );
   }, [selectedConversationId, allConversations]);
 
+  // Find selected space
+  const selectedSpace = useMemo(() => {
+    if (!selectedSpaceId) return null;
+    return spaces.find((s) => s.id === selectedSpaceId) || null;
+  }, [selectedSpaceId, spaces]);
+
+  // Get conversations for selected space
+  const spaceConversations = useMemo(() => {
+    if (!selectedSpaceId) return [];
+    return getConversationsBySpaceId(selectedSpaceId);
+  }, [selectedSpaceId]);
+
   const getConversationMoreMenu = (conversation: Conversation) => {
     const participants = getRandomParticipants(conversation);
     return (
@@ -444,6 +464,79 @@ function DustMain() {
                 console.log("Administration");
               }}
             />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger icon={HeartIcon} label="Help & Support" />
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  <DropdownMenuLabel label="Learn about Dust" />
+                  <DropdownMenuItem
+                    label="Quickstart Guide"
+                    icon={LightbulbIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log("Quickstart Guide");
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Guides & Documentation"
+                    icon={BookOpenIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log("Guides & Documentation");
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Join the Slack Community"
+                    icon={SlackLogo}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log("Join the Slack Community");
+                    }}
+                  />
+                  <DropdownMenuLabel label="Ask questions" />
+                  <DropdownMenuItem
+                    label="Ask @help"
+                    description="Ask anything about Dust"
+                    icon={ChatBubbleLeftRightIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log("Ask @help");
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="How to invite new users?"
+                    icon={ChatBubbleLeftRightIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log("How to invite new users?");
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="How to use agents in Slack workflow?"
+                    icon={ChatBubbleLeftRightIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log("How to use agents in Slack workflow?");
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="How to manage billing?"
+                    icon={ChatBubbleLeftRightIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log("How to manage billing?");
+                    }}
+                  />
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               label="Signout"
@@ -495,8 +588,10 @@ function DustMain() {
               <NavigationListItem
                 label="New Conversation"
                 icon={ChatBubbleLeftRightIcon}
+                selected={selectedConversationId === "new-conversation"}
                 onClick={() => {
-                  console.log("Selected Inbox");
+                  setSelectedConversationId("new-conversation");
+                  setSelectedSpaceId(null);
                 }}
               />
             </>
@@ -581,6 +676,7 @@ function DustMain() {
                     key={space.id}
                     label={space.name}
                     icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
+                    selected={space.id === selectedSpaceId}
                     moreMenu={
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -609,7 +705,8 @@ function DustMain() {
                       </DropdownMenu>
                     }
                     onClick={() => {
-                      console.log("Selected space:", space.id);
+                      setSelectedSpaceId(space.id);
+                      setSelectedConversationId(null);
                     }}
                   />
                 );
@@ -949,6 +1046,7 @@ function DustMain() {
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
                         setSelectedConversationId(conversation.id);
+                        setSelectedSpaceId(null);
                       }}
                     />
                   ))}
@@ -965,6 +1063,7 @@ function DustMain() {
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
                         setSelectedConversationId(conversation.id);
+                        setSelectedSpaceId(null);
                       }}
                     />
                   ))}
@@ -981,6 +1080,7 @@ function DustMain() {
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
                         setSelectedConversationId(conversation.id);
+                        setSelectedSpaceId(null);
                       }}
                     />
                   ))}
@@ -997,6 +1097,7 @@ function DustMain() {
                       moreMenu={getConversationMoreMenu(conversation)}
                       onClick={() => {
                         setSelectedConversationId(conversation.id);
+                        setSelectedSpaceId(null);
                       }}
                     />
                   ))}
@@ -1011,7 +1112,11 @@ function DustMain() {
 
   // Main content
   const mainContent =
-    selectedConversation && user ? (
+    // Priority 1: Show conversation view if a conversation is selected (not "new-conversation")
+    selectedConversationId &&
+    selectedConversationId !== "new-conversation" &&
+    selectedConversation &&
+    user ? (
       <ConversationView
         conversation={selectedConversation}
         locutor={user}
@@ -1019,10 +1124,39 @@ function DustMain() {
         agents={mockAgents}
         conversationsWithMessages={conversationsWithMessages}
       />
+    ) : // Priority 2: Show space view if a space is selected
+    selectedSpace && selectedSpaceId ? (
+      <GroupConversationView
+        space={selectedSpace}
+        conversations={spaceConversations}
+        users={mockUsers}
+        agents={mockAgents}
+        onConversationClick={(conversation) => {
+          setSelectedConversationId(conversation.id);
+          setSelectedSpaceId(null);
+        }}
+      />
     ) : (
+      // Priority 3: Show welcome/new conversation view
       <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
-        <div className="s-flex s-w-full s-max-w-3xl s-flex-col s-gap-8 s-px-4 s-py-8">
+        <div className="s-flex s-w-full s-max-w-3xl s-flex-col s-gap-6 s-px-4 s-py-8">
+          <div className="s-heading-2xl s-text-foreground">
+            Welcome, Edouard!{" "}
+          </div>
           <InputBar placeholder="Ask a question" />
+          <div className="s-flex s-w-full s-flex-col s-gap-2">
+            <div className="s-heading-lg s-text-foreground">
+              Universal search
+            </div>
+            <SearchInput
+              name="document-search"
+              value={documentSearchText}
+              onChange={setDocumentSearchText}
+              placeholder="Find company documents, Agents, People…"
+              className="s-w-full"
+            />
+          </div>
+          <div className="s-heading-lg s-text-foreground">Chat with…</div>
         </div>
       </div>
     );

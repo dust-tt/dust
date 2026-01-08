@@ -1,5 +1,6 @@
 import { mockAgents } from "./agents";
 import type { Conversation, Message } from "./types";
+import { mockSpaces } from "./spaces";
 import { mockUsers } from "./users";
 
 // Helper function to get random user IDs
@@ -65,6 +66,44 @@ function generateConversationParticipants(): {
     userParticipants: getRandomUserIds(userCount),
     agentParticipants: agentCount > 0 ? getRandomAgentIds(agentCount) : [],
   };
+}
+
+// Helper function to generate a description based on title
+function generateDescription(title: string): string {
+  const descriptions: Record<string, string> = {
+    "Project Kickoff Meeting": "Initial discussion to align team on project goals and timeline",
+    "Budget Review Discussion": "Reviewing financial allocations and budget adjustments for Q4",
+    "Weekly Sync with Team": "Regular team check-in to discuss progress and blockers",
+    "AI Bot Training Session": "Training session on how to effectively use AI assistants",
+    "Quarterly Planning Meeting": "Strategic planning for the upcoming quarter",
+    "Feedback on Latest Design": "Collecting and discussing feedback on recent design iterations",
+    "Client Requirements Gathering": "Understanding and documenting client needs and expectations",
+    "Sprint Retrospective": "Reviewing sprint outcomes and identifying improvements",
+    "Daily Standup": "Quick sync on daily tasks and priorities",
+    "Marketing Strategy Planning": "Developing marketing campaigns and go-to-market strategies",
+  };
+  
+  // If we have a specific description, use it
+  if (descriptions[title]) {
+    return descriptions[title];
+  }
+  
+  // Otherwise generate a generic description
+  const genericDescriptions = [
+    `Discussion about ${title.toLowerCase()}`,
+    `Collaborative session focused on ${title.toLowerCase()}`,
+    `Team meeting to address ${title.toLowerCase()}`,
+    `Planning and coordination for ${title.toLowerCase()}`,
+    `Review and feedback session on ${title.toLowerCase()}`,
+  ];
+  
+  return genericDescriptions[Math.floor(Math.random() * genericDescriptions.length)];
+}
+
+// Helper function to get a random space ID
+function getRandomSpaceId(): string {
+  const randomIndex = Math.floor(Math.random() * mockSpaces.length);
+  return mockSpaces[randomIndex].id;
 }
 
 // Realistic conversation titles
@@ -184,16 +223,18 @@ for (let i = 0; i < 10; i++) {
     new Date(new Date().setHours(0, 0, 0, 0)),
     new Date()
   );
+  const title = conversationTitles[
+    Math.floor(Math.random() * conversationTitles.length)
+  ];
   mockConversations.push({
     id: `conv-${mockConversations.length + 1}`,
-    title:
-      conversationTitles[
-        Math.floor(Math.random() * conversationTitles.length)
-      ],
+    title,
     createdAt,
     updatedAt: randomDateBetween(createdAt, new Date()),
     userParticipants,
     agentParticipants,
+    description: generateDescription(title),
+    spaceId: getRandomSpaceId(),
   });
 }
 
@@ -205,16 +246,18 @@ for (let i = 0; i < 15; i++) {
     new Date(yesterday.setHours(0, 0, 0, 0)),
     new Date(yesterday.setHours(23, 59, 59, 999))
   );
+  const title = conversationTitles[
+    Math.floor(Math.random() * conversationTitles.length)
+  ];
   mockConversations.push({
     id: `conv-${mockConversations.length + 1}`,
-    title:
-      conversationTitles[
-        Math.floor(Math.random() * conversationTitles.length)
-      ],
+    title,
     createdAt,
     updatedAt: randomDateBetween(createdAt, new Date(yesterday.setHours(23, 59, 59, 999))),
     userParticipants,
     agentParticipants,
+    description: generateDescription(title),
+    spaceId: getRandomSpaceId(),
   });
 }
 
@@ -227,16 +270,18 @@ for (let i = 0; i < 20; i++) {
     new Date(date.setHours(0, 0, 0, 0)),
     new Date(date.setHours(23, 59, 59, 999))
   );
+  const title = conversationTitles[
+    Math.floor(Math.random() * conversationTitles.length)
+  ];
   mockConversations.push({
     id: `conv-${mockConversations.length + 1}`,
-    title:
-      conversationTitles[
-        Math.floor(Math.random() * conversationTitles.length)
-      ],
+    title,
     createdAt,
     updatedAt: randomDateBetween(createdAt, new Date(date.setHours(23, 59, 59, 999))),
     userParticipants,
     agentParticipants,
+    description: generateDescription(title),
+    spaceId: getRandomSpaceId(),
   });
 }
 
@@ -249,16 +294,18 @@ for (let i = 0; i < 30; i++) {
     new Date(date.setHours(0, 0, 0, 0)),
     new Date(date.setHours(23, 59, 59, 999))
   );
+  const title = conversationTitles[
+    Math.floor(Math.random() * conversationTitles.length)
+  ];
   mockConversations.push({
     id: `conv-${mockConversations.length + 1}`,
-    title:
-      conversationTitles[
-        Math.floor(Math.random() * conversationTitles.length)
-      ],
+    title,
     createdAt,
     updatedAt: randomDateBetween(createdAt, new Date(date.setHours(23, 59, 59, 999))),
     userParticipants,
     agentParticipants,
+    description: generateDescription(title),
+    spaceId: getRandomSpaceId(),
   });
 }
 
@@ -271,16 +318,18 @@ for (let i = 0; i < 25; i++) {
     new Date(date.setHours(0, 0, 0, 0)),
     new Date(date.setHours(23, 59, 59, 999))
   );
+  const title = conversationTitles[
+    Math.floor(Math.random() * conversationTitles.length)
+  ];
   mockConversations.push({
     id: `conv-${mockConversations.length + 1}`,
-    title:
-      conversationTitles[
-        Math.floor(Math.random() * conversationTitles.length)
-      ],
+    title,
     createdAt,
     updatedAt: randomDateBetween(createdAt, new Date(date.setHours(23, 59, 59, 999))),
     userParticipants,
     agentParticipants,
+    description: generateDescription(title),
+    spaceId: getRandomSpaceId(),
   });
 }
 
@@ -375,6 +424,15 @@ export function getConversationsByAgentId(agentId: string): Conversation[] {
 }
 
 /**
+ * Get conversations by space ID
+ * @param spaceId - Space ID
+ * @returns Array of conversations in the specified space
+ */
+export function getConversationsBySpaceId(spaceId: string): Conversation[] {
+  return mockConversations.filter((conv) => conv.spaceId === spaceId);
+}
+
+/**
  * Create conversations with messages for demo purposes
  * @param locutorId - The current user's ID (Locutor)
  * @returns Array of conversations with messages
@@ -462,6 +520,8 @@ export function createConversationsWithMessages(
     userParticipants: [locutorId, user1.id, user2.id],
     agentParticipants: [agent1.id],
     messages: conv1Messages,
+    description: "Strategic planning session for Q4 roadmap and feature prioritization",
+    spaceId: getRandomSpaceId(),
   };
 
   // Conversation 2: Product Feature Review
@@ -541,6 +601,8 @@ export function createConversationsWithMessages(
     userParticipants: [locutorId, user3.id],
     agentParticipants: [agent2.id],
     messages: conv2Messages,
+    description: "Reviewing user feedback on the new search feature and planning improvements",
+    spaceId: getRandomSpaceId(),
   };
 
   return [conversation1, conversation2];
