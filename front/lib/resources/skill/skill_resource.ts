@@ -309,7 +309,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const workspace = auth.getNonNullableWorkspace();
 
     assert(
-      skill.workspaceId !== workspace.id,
+      skill.workspaceId === workspace.id,
       "Unexpected: skill and workspace mismatch"
     );
 
