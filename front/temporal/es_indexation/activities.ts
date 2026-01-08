@@ -12,7 +12,8 @@ export async function indexUserSearchActivity({
 }): Promise<void> {
   const user = await UserResource.fetchById(userId);
   if (!user) {
-    throw new Error(`User not found: ${userId}`);
+    logger.warn({ userId }, `[user_search] User not found (likely scrubbed)`);
+    return;
   }
 
   // Get all memberships for this user
