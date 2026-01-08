@@ -81,8 +81,7 @@ export function ProviderManagementModal({
     [...USED_MODEL_CONFIGS, ...REASONING_MODEL_CONFIGS],
     (m) => m.modelId
   ).filter(
-    (model) =>
-      !model.isLegacy && canUseModel(model, featureFlags, plan, owner)
+    (model) => !model.isLegacy && canUseModel(model, featureFlags, plan, owner)
   );
 
   const modelProviders = filteredModels.reduce(
