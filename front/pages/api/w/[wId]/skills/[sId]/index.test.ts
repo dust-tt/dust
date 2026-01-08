@@ -1,7 +1,9 @@
 import type { RequestMethod } from "node-mocks-http";
+import type { WhereOptions } from "sequelize";
 import { describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
+import { SkillVersionModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -543,6 +545,16 @@ describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.status).toBe("active");
     expect(updatedSkill?.authorId).toBe(requestUser.id);
+
+    const where: WhereOptions<SkillVersionModel> = {
+      workspaceId: workspace.id,
+      skillConfigurationId: updatedSkill!.id,
+    };
+    const versions = await SkillVersionModel.findAll({
+      where,
+    });
+    expect(versions).toHaveLength(1);
+    expect(versions[0].authorId).toBeNull();
   });
 });
 

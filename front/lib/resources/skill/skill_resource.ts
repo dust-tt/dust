@@ -1238,10 +1238,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     await withTransaction(async (transaction) => {
       // Save the current version before updating.
-      // Skip version saving for suggested skills since they have no meaningful history.
-      if (this.status !== "suggested") {
-        await this.saveVersion(auth, { transaction });
-      }
+      await this.saveVersion(auth, { transaction });
 
       // Snapshot the previous requested space IDs before updating.
       const previousRequestedSpaceIds = [...this.requestedSpaceIds];
