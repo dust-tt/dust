@@ -234,11 +234,13 @@ export default function MessageDetailScreen() {
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
 
-  const { conversation, isLoading, error } = useConversation(
-    user?.dustDomain,
-    user?.selectedWorkspace,
-    id
-  );
+  const {
+    conversation,
+    isConversationLoading: isLoading,
+    conversationError,
+  } = useConversation({ conversationId: id ?? null });
+
+  const error = conversationError?.message ?? null;
 
   useEffect(() => {
     navigation.setOptions({

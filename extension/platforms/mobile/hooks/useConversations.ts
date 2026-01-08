@@ -1,73 +1,31 @@
-import { useCallback, useEffect, useState } from "react";
+import type { ConversationWithoutContentPublicType } from "@dust-tt/client";
+import { useMemo } from "react";
 
-import { dustApi } from "@/lib/services/api";
-import type { ConversationWithoutContent } from "@/lib/types/conversations";
+import { useSWRWithDefaults } from "@/lib/swr";
+import { useDustAPI } from "@/lib/useDustAPI";
 
-interface UseConversationsState {
-  conversations: ConversationWithoutContent[];
-  isLoading: boolean;
-  error: string | null;
-  errorType: string | null;
-}
+type ConversationsKey = ["getConversations", string];
 
-interface UseConversationsResult extends UseConversationsState {
-  refresh: () => Promise<void>;
-}
+export function useConversations() {
+  const dustAPI = useDustAPI();
 
-export function useConversations(
-  dustDomain: string | undefined,
-  workspaceId: string | null | undefined
-): UseConversationsResult {
-  const [state, setState] = useState<UseConversationsState>({
-    conversations: [],
-    isLoading: false,
-    error: null,
-    errorType: null,
-  });
-
-  const fetchConversations = useCallback(async () => {
-    if (!dustDomain || !workspaceId) {
-      setState({
-        conversations: [],
-        isLoading: false,
-        error: null,
-        errorType: null,
-      });
-      return;
+  const conversationsFetcher = async () => {
+    const res = await dustAPI.getConversations();
+    if (res.isOk()) {
+      return res.value;
     }
+    throw res.error;
+  };
 
-    setState((prev) => ({
-      ...prev,
-      isLoading: true,
-      error: null,
-      errorType: null,
-    }));
-
-    const result = await dustApi.getConversations(dustDomain, workspaceId);
-
-    if (result.isOk()) {
-      setState({
-        conversations: result.value,
-        isLoading: false,
-        error: null,
-        errorType: null,
-      });
-    } else {
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: result.error.message,
-        errorType: result.error.type,
-      }));
-    }
-  }, [dustDomain, workspaceId]);
-
-  useEffect(() => {
-    void fetchConversations();
-  }, [fetchConversations]);
+  const { data, error, mutate } = useSWRWithDefaults<
+    ConversationsKey,
+    ConversationWithoutContentPublicType[]
+  >(["getConversations", dustAPI.workspaceId()], conversationsFetcher);
 
   return {
-    ...state,
-    refresh: fetchConversations,
+    conversations: useMemo(() => data ?? [], [data]),
+    isConversationsLoading: !error && !data,
+    isConversationsError: error,
+    mutateConversations: mutate,
   };
 }

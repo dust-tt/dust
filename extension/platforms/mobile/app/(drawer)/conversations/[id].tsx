@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAgentConfigurations } from "@/hooks/useAgentConfigurations";
 import { useAgentMessageStream } from "@/hooks/useAgentMessageStream";
 import { useConversation } from "@/hooks/useConversation";
+import { useConversationEvents } from "@/hooks/useConversationEvents";
 import { useSendMessage } from "@/hooks/useSendMessage";
 import { colors } from "@/lib/colors";
 import type { AgentMention } from "@/lib/services/api";
@@ -231,7 +232,7 @@ function ErrorState({ error }: { error: string }) {
         />
       </View>
       <Text variant="heading-base" className="text-center mb-1">
-        Couldn't load conversation
+        Could not load conversation
       </Text>
       <Text variant="copy-sm" className="text-muted-foreground text-center">
         {error}
@@ -248,13 +249,25 @@ export default function ConversationDetailScreen() {
   const { user } = useAuth();
   const flatListRef = useRef<FlatList<Message>>(null);
 
-  const { conversation, isLoading, error, refresh } = useConversation(
-    user?.dustDomain,
-    user?.selectedWorkspace,
-    conversationId
-  );
+  const {
+    conversation,
+    isConversationLoading: isLoading,
+    conversationError,
+    mutateConversation,
+  } = useConversation({ conversationId: conversationId ?? null });
 
-  const { agents, isLoading: agentsLoading } = useAgentConfigurations();
+  const error = conversationError?.message ?? null;
+
+  // Subscribe to real-time conversation events (for messages from web/other devices)
+  useConversationEvents({
+    conversationId: conversationId ?? null,
+    onNewMessage: useCallback(() => {
+      void mutateConversation();
+    }, [mutateConversation]),
+  });
+
+  const { agents, isAgentConfigurationsLoading: agentsLoading } =
+    useAgentConfigurations();
 
   // Optimistic user message - shown immediately while waiting for API
   const [pendingUserMessage, setPendingUserMessage] = useState<UserMessage | null>(null);
@@ -264,8 +277,8 @@ export default function ConversationDetailScreen() {
   const handleStreamComplete = useCallback(() => {
     setPendingUserMessage(null);
     setIsStreaming(false);
-    void refresh();
-  }, [refresh]);
+    void mutateConversation();
+  }, [mutateConversation]);
 
   const { isSending, sendMessageToConversation } = useSendMessage({});
 
@@ -318,10 +331,10 @@ export default function ConversationDetailScreen() {
       // The agent message will handle its own streaming
       if (result) {
         setPendingUserMessage(null);
-        await refresh();
+        await mutateConversation();
       }
     },
-    [conversationId, user, sendMessageToConversation, refresh]
+    [conversationId, user, sendMessageToConversation, mutateConversation]
   );
 
   // Combine conversation messages with pending user message

@@ -1,20 +1,22 @@
+import type { ConversationWithoutContentPublicType } from "@dust-tt/client";
 import { useRouter } from "expo-router";
 import { View } from "react-native";
 
 import { ConversationList } from "@/components/ConversationList";
-import { useAuth } from "@/contexts/AuthContext";
 import { useConversations } from "@/hooks/useConversations";
-import type { ConversationWithoutContent } from "@/lib/types/conversations";
 
 export default function ConversationsScreen() {
   const router = useRouter();
-  const { user } = useAuth();
 
-  const { conversations, isLoading, error, errorType, refresh } =
-    useConversations(user?.dustDomain, user?.selectedWorkspace);
+  const {
+    conversations,
+    isConversationsLoading,
+    isConversationsError,
+    mutateConversations,
+  } = useConversations();
 
   const handleSelectConversation = (
-    conversation: ConversationWithoutContent
+    conversation: ConversationWithoutContentPublicType
   ) => {
     router.push(`/conversations/${conversation.sId}`);
   };
@@ -23,10 +25,10 @@ export default function ConversationsScreen() {
     <View className="flex-1 bg-background">
       <ConversationList
         conversations={conversations}
-        isLoading={isLoading}
-        error={error}
-        errorType={errorType}
-        onRefresh={refresh}
+        isLoading={isConversationsLoading}
+        error={isConversationsError?.message ?? null}
+        errorType={isConversationsError?.type ?? null}
+        onRefresh={() => mutateConversations()}
         onSelect={handleSelectConversation}
       />
     </View>

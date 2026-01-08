@@ -18,7 +18,8 @@ export default function HomeScreen() {
 
   const firstName = user?.fullName?.split(" ")[0] || "there";
 
-  const { agents, isLoading: agentsLoading } = useAgentConfigurations();
+  const { agents, isAgentConfigurationsLoading: agentsLoading } =
+    useAgentConfigurations();
 
   const handleConversationCreated = useCallback(
     (conversationId: string) => {

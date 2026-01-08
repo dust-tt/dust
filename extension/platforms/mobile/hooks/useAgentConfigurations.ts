@@ -1,65 +1,39 @@
-import { useCallback, useEffect, useState } from "react";
+import type { LightAgentConfigurationType } from "@dust-tt/client";
+import { useMemo } from "react";
 
-import { useAuth } from "@/contexts/AuthContext";
-import { dustApi } from "@/lib/services/api";
-import type { LightAgentConfiguration } from "@/lib/types/conversations";
-
-interface UseAgentConfigurationsState {
-  agents: LightAgentConfiguration[];
-  isLoading: boolean;
-  error: string | null;
-}
+import { useSWRWithDefaults } from "@/lib/swr";
+import { useDustAPI } from "@/lib/useDustAPI";
 
 export function useAgentConfigurations() {
-  const { user } = useAuth();
-  const [state, setState] = useState<UseAgentConfigurationsState>({
-    agents: [],
-    isLoading: false,
-    error: null,
-  });
+  const dustAPI = useDustAPI();
 
-  const fetchAgents = useCallback(async () => {
-    if (!user?.dustDomain || !user?.selectedWorkspace) {
-      return;
+  const agentConfigurationsFetcher = async () => {
+    const res = await dustAPI.getAgentConfigurations({});
+    if (res.isOk()) {
+      return res.value;
     }
+    throw res.error;
+  };
 
-    setState((prev) => ({
-      ...prev,
-      isLoading: true,
-      error: null,
-    }));
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults<
+      ["getAgentConfigurations", string],
+      LightAgentConfigurationType[]
+    >(["getAgentConfigurations", dustAPI.workspaceId()], agentConfigurationsFetcher);
 
-    const result = await dustApi.getAgentConfigurations(
-      user.dustDomain,
-      user.selectedWorkspace
-    );
-
-    if (result.isOk()) {
-      // Filter to only active agents and sort by name
-      const activeAgents = result.value
-        .filter((a) => a.status === "active")
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-      setState({
-        agents: activeAgents,
-        isLoading: false,
-        error: null,
-      });
-    } else {
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: result.error.message,
-      }));
-    }
-  }, [user?.dustDomain, user?.selectedWorkspace]);
-
-  useEffect(() => {
-    void fetchAgents();
-  }, [fetchAgents]);
+  // Filter to only active agents and sort by name
+  const agents = useMemo(() => {
+    if (!data) return [];
+    return data
+      .filter((a) => a.status === "active")
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [data]);
 
   return {
-    ...state,
-    refresh: fetchAgents,
+    agents,
+    isAgentConfigurationsLoading: !error && !data,
+    isAgentConfigurationsError: error,
+    mutate,
+    mutateRegardlessOfQueryParams,
   };
 }

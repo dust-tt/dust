@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PortalHost } from "@rn-primitives/portal";
 
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { SWRConfig, swrReactNativeConfig } from "@/lib/swr";
 
 const NAV_THEME = {
   dark: true,
@@ -60,13 +61,15 @@ function AuthGate({ children }: AuthGateProps) {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView className="flex-1 dark">
-      <AuthProvider>
-        <AuthGate>
-          <StatusBar barStyle="light-content" />
-          <Slot />
-          <PortalHost />
-        </AuthGate>
-      </AuthProvider>
+      <SWRConfig value={swrReactNativeConfig}>
+        <AuthProvider>
+          <AuthGate>
+            <StatusBar barStyle="light-content" />
+            <Slot />
+            <PortalHost />
+          </AuthGate>
+        </AuthProvider>
+      </SWRConfig>
     </GestureHandlerRootView>
   );
 }
