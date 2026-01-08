@@ -57,7 +57,6 @@ import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { TagResource } from "@app/lib/resources/tags_resource";
-import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
@@ -404,21 +403,6 @@ export const deleteRemoteMCPServersActivity = async ({
   const remoteMCPServers = await RemoteMCPServerResource.listByWorkspace(auth);
   for (const remoteMCPServer of remoteMCPServers) {
     await remoteMCPServer.delete(auth);
-  }
-};
-
-export const deleteTrackersActivity = async ({
-  workspaceId,
-}: {
-  workspaceId: string;
-}) => {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const trackers = await TrackerConfigurationResource.listByWorkspace(auth, {
-    includeDeleted: true,
-  });
-
-  for (const tracker of trackers) {
-    await tracker.delete(auth, { hardDelete: true });
   }
 };
 

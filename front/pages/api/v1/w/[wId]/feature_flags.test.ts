@@ -37,14 +37,14 @@ describe("GET /api/v1/w/[wId]/feature_flags", () => {
 
     // Add features flag
     await FeatureFlagFactory.basic("deepseek_feature", workspace);
-    await FeatureFlagFactory.basic("labs_trackers", workspace);
+    await FeatureFlagFactory.basic("xai_feature", workspace);
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual(
       expect.objectContaining({
-        feature_flags: ["deepseek_feature", "labs_trackers"],
+        feature_flags: ["deepseek_feature", "xai_feature"],
       })
     );
   });
@@ -93,7 +93,7 @@ describe("GET /api/v1/w/[wId]/feature_flags", () => {
 
     const workspace2 = await WorkspaceFactory.basic();
 
-    await FeatureFlagFactory.basic("labs_trackers", workspace1);
+    await FeatureFlagFactory.basic("xai_feature", workspace1);
     await FeatureFlagFactory.basic("labs_transcripts", workspace2);
 
     await handler(req, res);
@@ -101,7 +101,7 @@ describe("GET /api/v1/w/[wId]/feature_flags", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual(
       expect.objectContaining({
-        feature_flags: expect.arrayContaining(["labs_trackers"]),
+        feature_flags: expect.arrayContaining(["xai_feature"]),
       })
     );
     expect(res._getJSONData().feature_flags).not.toContain("labs_transcripts");

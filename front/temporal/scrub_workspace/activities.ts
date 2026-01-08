@@ -29,7 +29,6 @@ import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resou
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
-import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -125,7 +124,6 @@ export async function scrubWorkspaceData({
   await deleteAgentMemories(auth);
   await deleteOnboardingTasks(auth);
   await deleteTags(auth);
-  await deleteTrackers(auth);
   await deleteDatasources(auth);
   await deleteSpaces(auth);
   await cleanupCustomerio(auth);
@@ -232,20 +230,6 @@ async function deleteTags(auth: Authenticator) {
   const tags = await TagResource.findAll(auth);
   for (const tag of tags) {
     await tag.delete(auth);
-  }
-}
-
-async function deleteTrackers(auth: Authenticator) {
-  const workspace = auth.workspace();
-  if (!workspace) {
-    throw new Error("No workspace found");
-  }
-
-  const trackers = await TrackerConfigurationResource.listByWorkspace(auth, {
-    includeDeleted: true,
-  });
-  for (const tracker of trackers) {
-    await tracker.delete(auth, { hardDelete: true });
   }
 }
 
