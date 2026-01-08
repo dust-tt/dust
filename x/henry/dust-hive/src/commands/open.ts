@@ -43,7 +43,7 @@ function kdlEscape(value: string): string {
 }
 
 function getUserShell(): string {
-  return process.env["SHELL"] ?? "zsh";
+  return process.env["SHELL"] ?? "/bin/bash";
 }
 
 // Shared tab template for all zellij layouts (ensures consistent tab bar)
@@ -66,7 +66,7 @@ const TAB_TEMPLATE_COMPACT = `    default_tab_template {
 // Usage: watch-logs.sh --temporal
 //        watch-logs.sh <env-name> <service>
 function getWatchScriptContent(): string {
-  return `#!/bin/bash
+  return `#!/usr/bin/env bash
 # Log watcher with Ctrl+C menu for restart/clear/quit
 # Usage: watch-logs.sh --temporal
 #        watch-logs.sh <env-name> <service>
