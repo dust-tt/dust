@@ -853,29 +853,27 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }: {
       conversation: ConversationWithoutContentType;
       excludedUser?: UserType;
-      messageId?: string;
+      messageId: string;
     }
   ) {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Get total participant count (for single-participant exception).
-    const totalParticipantCount = await ConversationParticipantModel.count({
+    // Get all participants (for total count and filtering).
+    const allParticipants = await ConversationParticipantModel.findAll({
       where: {
         conversationId: conversation.id,
         workspaceId,
       },
+      attributes: ["userId", "unread"],
     });
 
-    // Get participants to consider (excluding sender, only those with unread=false).
-    const participants = await ConversationParticipantModel.findAll({
-      where: {
-        conversationId: conversation.id,
-        workspaceId,
-        ...(excludedUser ? { userId: { [Op.ne]: excludedUser.id } } : {}),
-        unread: false,
-      },
-      attributes: ["userId"],
-    });
+    const totalParticipantCount = allParticipants.length;
+
+    // Filter to participants we might mark as unread (excluding sender, only unread=false).
+    const participants = allParticipants.filter(
+      (p) =>
+        !p.unread && (!excludedUser || p.userId !== excludedUser.id)
+    );
 
     if (participants.length === 0) {
       return new Ok([0]);
@@ -899,29 +897,25 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     }
 
-    // Get mentioned user IDs if messageId provided.
-    let mentionedUserIds: Set<number> = new Set();
-    if (messageId) {
-      const message = await MessageModel.findOne({
-        where: { sId: messageId, workspaceId },
-        attributes: ["id"],
-      });
-      if (message) {
-        const mentions = await MentionModel.findAll({
-          where: {
-            messageId: message.id,
-            workspaceId,
-            userId: { [Op.ne]: null },
-          },
-          attributes: ["userId"],
-        });
-        mentionedUserIds = new Set(
-          mentions
-            .map((m) => m.userId)
-            .filter((id): id is number => id !== null)
-        );
-      }
-    }
+    // Get mentioned user IDs from the message.
+    const message = await MessageModel.findOne({
+      where: { sId: messageId, workspaceId },
+      attributes: ["id"],
+    });
+    assert(message, `Unexpected: could not find message ${messageId}`);
+
+    const mentions = await MentionModel.findAll({
+      where: {
+        messageId: message.id,
+        workspaceId,
+        userId: { [Op.ne]: null },
+        status: "approved",
+      },
+      attributes: ["userId"],
+    });
+    const mentionedUserIds = new Set(
+      mentions.map((m) => m.userId).filter((id): id is number => id !== null)
+    );
 
     // Filter participants based on preferences.
     const eligibleUserIds = userIds.filter((userId) => {

@@ -3158,11 +3158,18 @@ describe("markAsUnreadForOtherParticipants", () => {
     // Wait a bit to ensure updatedAt would change if updated
     await new Promise((resolve) => setTimeout(resolve, 10));
 
+    // Get a message from the conversation to use as messageId
+    const message = await MessageModel.findOne({
+      where: { conversationId: conversationResource.id },
+    });
+    assert(message, "Message not found");
+
     // Call markAsUnreadForOtherParticipants
     const result = await ConversationResource.markAsUnreadForOtherParticipants(
       auth,
       {
         conversation,
+        messageId: message.sId,
       }
     );
 
@@ -3253,12 +3260,19 @@ describe("markAsUnreadForOtherParticipants", () => {
       }
     );
 
+    // Get a message from the conversation to use as messageId
+    const message = await MessageModel.findOne({
+      where: { conversationId: conversationResource.id },
+    });
+    assert(message, "Message not found");
+
     // Call markAsUnreadForOtherParticipants with excludedUser (user1)
     const result = await ConversationResource.markAsUnreadForOtherParticipants(
       auth,
       {
         conversation,
         excludedUser: user1Auth.getNonNullableUser().toJSON(),
+        messageId: message.sId,
       }
     );
 
