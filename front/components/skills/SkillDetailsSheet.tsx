@@ -2,6 +2,7 @@ import {
   ArrowPathIcon,
   Button,
   ContentMessage,
+  Icon,
   InformationCircleIcon,
   Sheet,
   SheetContainer,
@@ -158,9 +159,18 @@ const DescriptionSection = ({
           {skill.name}
         </h2>
         {skill.relations.extendedSkill && (
-          <p className="text-base text-muted-foreground dark:text-muted-foreground-night">
-            Extends {skill.relations.extendedSkill.name}
-          </p>
+          <div className="flex items-center gap-1 text-base">
+            <p className="text-muted-foreground dark:text-muted-foreground-night">
+              Based on
+            </p>
+            <Icon
+              visual={getSkillIcon(skill.relations.extendedSkill.icon)}
+              size="xs"
+            />
+            <p className="text-foreground dark:text-foreground-night">
+              {skill.relations.extendedSkill.name}
+            </p>
+          </div>
         )}
 
         {editedDate && (
