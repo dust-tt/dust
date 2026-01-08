@@ -188,9 +188,16 @@ export type AshbyApplicationInfoRequest = z.infer<
   typeof AshbyApplicationInfoRequestSchema
 >;
 
-export const AshbyApplicationStatusSchema = z.enum(["active", "hired", "archived"]);
+export const AshbyApplicationStatusSchema = z.enum([
+  "Hired",
+  "Archived",
+  "Active",
+  "Lead",
+]);
 
-export type AshbyApplicationStatus = z.infer<typeof AshbyApplicationStatusSchema>;
+export type AshbyApplicationStatus = z.infer<
+  typeof AshbyApplicationStatusSchema
+>;
 
 export const AshbyApplicationInfoResponseSchema = z.object({
   success: z.boolean(),
