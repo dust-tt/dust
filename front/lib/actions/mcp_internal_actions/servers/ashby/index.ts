@@ -285,8 +285,8 @@ function createServer(
           if (appInfoResult.value.results.status === "Hired") {
             return new Err(
               new MCPError(
-                `Cannot retrieve interview feedback for ${candidate.name}: ` +
-                  "feedback is not available for hired candidates."
+                `Candidate ${candidate.name} was hired, ` +
+                  "retrieving feedback for hired candidates is not permitted."
               )
             );
           }
