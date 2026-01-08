@@ -19,7 +19,6 @@ import {
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { hasSharedMembership } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
 import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -309,7 +308,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
 
-    assert(skill.workspaceId !== workspace.id, "Unexpected: skill and workspace mismatch");
+    assert(
+      skill.workspaceId !== workspace.id,
+      "Unexpected: skill and workspace mismatch"
+    );
 
     const defaultGroup = await GroupResource.makeNew(
       {
