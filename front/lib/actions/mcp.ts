@@ -91,6 +91,9 @@ export type ServerSideMCPToolType = Omit<
   toolServerId: string;
   timeoutMs?: number;
   retryPolicy: MCPToolRetryPolicyType;
+  // For "medium" stake tools: defines which arguments require per-agent approval.
+  // When present, the user must approve the specific (agent, tool, argument values) combination.
+  approvalHoldingArguments?: string[];
 };
 
 export type ClientSideMCPToolType = Omit<
