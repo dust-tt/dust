@@ -3312,11 +3312,12 @@ export type PostMCPResultsResponseType = z.infer<
   typeof PostMCPResultsResponseSchema
 >;
 
-const REMOTE_MCP_TOOL_STAKE_LEVELS = ["high", "medium", "low"] as const;
+const REMOTE_MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
 export type RemoteMCPToolStakeLevelPublicType =
   (typeof REMOTE_MCP_TOOL_STAKE_LEVELS)[number];
 const MCP_TOOL_STAKE_LEVELS = [
   ...REMOTE_MCP_TOOL_STAKE_LEVELS,
+  "medium",
   "never_ask",
 ] as const;
 export type MCPToolStakeLevelPublicType =
