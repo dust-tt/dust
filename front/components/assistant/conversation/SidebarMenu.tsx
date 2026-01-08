@@ -5,6 +5,7 @@ import {
   Checkbox,
   DocumentIcon,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -54,11 +55,13 @@ import { StackedInAppBanners } from "@app/components/assistant/conversation/InAp
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { ProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
 import {
+  filterTriggeredConversations,
   getGroupConversationsByDate,
   getGroupConversationsByUnreadAndActionRequired,
 } from "@app/components/assistant/conversation/utils";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
+import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
@@ -131,6 +134,12 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
+
+  const {
+    hideTriggeredConversations,
+    setHideTriggeredConversations,
+    isLoading: isHideTriggeredLoading,
+  } = useHideTriggeredConversations();
 
   const hasSkills = hasFeature("skills");
 
@@ -289,11 +298,18 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     }
   }, [setSidebarOpen, router, setAnimate]);
 
+  const filteredConversations = useMemo(() => {
+    return filterTriggeredConversations(
+      conversations,
+      hideTriggeredConversations
+    );
+  }, [conversations, hideTriggeredConversations]);
+
   const conversationsList = useMemo(() => {
     return (
       <NavigationListWithInbox
         ref={ref}
-        conversations={conversations}
+        conversations={filteredConversations}
         conversationsPage={conversationsPage}
         titleFilter={titleFilter}
         isMultiSelect={isMultiSelect}
@@ -305,7 +321,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     );
   }, [
     ref,
-    conversations,
+    filteredConversations,
     conversationsPage,
     titleFilter,
     isMultiSelect,
@@ -459,13 +475,13 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                       label="Edit conversations"
                       onClick={toggleMultiSelect}
                       icon={ListCheckIcon}
-                      disabled={conversations.length === 0}
+                      disabled={filteredConversations.length === 0}
                     />
                     <DropdownMenuItem
                       label="Clear conversation history"
                       onClick={() => setShowDeleteDialog("all")}
                       icon={TrashIcon}
-                      disabled={conversations.length === 0}
+                      disabled={filteredConversations.length === 0}
                     />
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -514,6 +530,21 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                 <NavigationListCollapsibleSection
                   label="My conversations"
                   defaultOpen
+                  action={
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="xs" icon={MoreIcon} variant="ghost" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuCheckboxItem
+                          label="Hide triggered conversations"
+                          checked={hideTriggeredConversations}
+                          onCheckedChange={setHideTriggeredConversations}
+                          disabled={isHideTriggeredLoading}
+                        />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  }
                 >
                   {conversationsList}
                 </NavigationListCollapsibleSection>
