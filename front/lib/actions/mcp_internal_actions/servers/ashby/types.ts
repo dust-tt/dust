@@ -179,3 +179,30 @@ export const AshbyCandidateCreateNoteResponseSchema = z.object({
 export type AshbyCandidateCreateNoteResponse = z.infer<
   typeof AshbyCandidateCreateNoteResponseSchema
 >;
+
+export const AshbyApplicationInfoRequestSchema = z.object({
+  applicationId: z.string(),
+});
+
+export type AshbyApplicationInfoRequest = z.infer<
+  typeof AshbyApplicationInfoRequestSchema
+>;
+
+export const AshbyApplicationStatusSchema = z.enum(["active", "hired", "archived"]);
+
+export type AshbyApplicationStatus = z.infer<typeof AshbyApplicationStatusSchema>;
+
+export const AshbyApplicationInfoResponseSchema = z.object({
+  success: z.boolean(),
+  results: z
+    .object({
+      id: z.string(),
+      status: AshbyApplicationStatusSchema,
+      candidateId: z.string(),
+    })
+    .passthrough(),
+});
+
+export type AshbyApplicationInfoResponse = z.infer<
+  typeof AshbyApplicationInfoResponseSchema
+>;

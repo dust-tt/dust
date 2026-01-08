@@ -269,6 +269,24 @@ function createServer(
           );
         }
 
+        // Check if any application is in "hired" status; feedback retrieval is then blocked.
+        for (const applicationId of candidate.applicationIds) {
+          const appInfoResult = await client.getApplicationInfo({
+            applicationId,
+          });
+          if (
+            appInfoResult.isOk() &&
+            appInfoResult.value.results.status === "hired"
+          ) {
+            return new Err(
+              new MCPError(
+                `Cannot retrieve interview feedback for ${candidate.name}: ` +
+                  "feedback is not available for hired candidates."
+              )
+            );
+          }
+        }
+
         let latestApplicationFeedback: AshbyFeedbackSubmission[] | null = null;
         let latestApplicationDate: Date | null = null;
 
