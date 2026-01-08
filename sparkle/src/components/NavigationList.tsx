@@ -311,7 +311,7 @@ const NavigationListCompactLabel = React.forwardRef<
     {...props}
   >
     <div className="s-flex s-items-center s-gap-1 s-overflow-hidden s-text-ellipsis">
-      <span className="s-overflow-hidden s-text-ellipsis">{label}</span>
+      {label}
     </div>
   </div>
 ));
