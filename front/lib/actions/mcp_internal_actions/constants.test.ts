@@ -60,6 +60,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "common_utilities", id: 1017 },
       { name: "skill_management", id: 1019 },
       { name: "schedules_management", id: 1020 },
+      { name: "project_context_management", id: 1021 },
     ];
     expect(
       autoInternalTools,

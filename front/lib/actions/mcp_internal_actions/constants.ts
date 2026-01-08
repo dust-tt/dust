@@ -147,6 +147,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   TABLE_QUERY_V2_SERVER_NAME,
   "skill_management",
   "schedules_management",
+  "project_context_management",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -1794,6 +1795,38 @@ export const INTERNAL_MCP_SERVERS = {
         "Schedules are user-specific: each user can only view and manage their own schedules. " +
         "When a schedule triggers, it runs this agent with the specified prompt. " +
         "Limit: 20 schedule creations per user per day.",
+    },
+  },
+  project_context_management: {
+    id: 1021,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("projects");
+    },
+    tools_stakes: {
+      list_project_files: "never_ask",
+      add_project_file: "high",
+      update_project_file: "high",
+      delete_project_file: "high",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "project_context_management",
+      version: "1.0.0",
+      description:
+        "Manage files in the project context. Add, update, delete, and list project files.",
+      icon: "ActionDocumentTextIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions:
+        "Project context files are shared across all conversations in this project. " +
+        "Only text-based files are supported for adding/updating. " +
+        "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
+        "Requires write permissions on the project space.",
     },
   },
   databricks: {

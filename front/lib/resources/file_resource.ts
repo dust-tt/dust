@@ -3,7 +3,12 @@
 
 import type { File } from "@google-cloud/storage";
 import assert from "assert";
-import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
 
@@ -228,6 +233,31 @@ export class FileResource extends BaseResource<FileModel> {
     });
 
     return file ? new this(this.model, file.get()) : null;
+  }
+
+  static async listByProject(
+    auth: Authenticator,
+    {
+      projectId,
+    }: {
+      projectId: string;
+    }
+  ): Promise<FileResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const whereClause: WhereOptions = {
+      workspaceId: owner.id,
+      useCase: "project_context",
+      status: "ready",
+      useCaseMetadata: { spaceId: projectId },
+    };
+
+    const files = await this.model.findAll({
+      where: whereClause,
+      order: [["createdAt", "DESC"]],
+    });
+
+    return files.map((f) => new this(this.model, f.get()));
   }
 
   static async deleteAllForWorkspace(auth: Authenticator) {

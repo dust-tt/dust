@@ -43,6 +43,7 @@ import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as extractDataServer } from "@app/lib/actions/mcp_internal_actions/servers/process";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
+import { default as projectContextManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/project_context_management";
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
@@ -223,6 +224,8 @@ export async function getInternalMCPServer(
       return schedulesManagementServer(auth, agentLoopContext);
     case "productboard":
       return productboardServer(auth, agentLoopContext);
+    case "project_context_management":
+      return projectContextManagementServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }
