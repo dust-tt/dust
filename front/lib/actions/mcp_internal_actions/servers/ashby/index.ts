@@ -274,10 +274,15 @@ function createServer(
           const appInfoResult = await client.getApplicationInfo({
             applicationId,
           });
-          if (
-            appInfoResult.isOk() &&
-            appInfoResult.value.results.status === "Hired"
-          ) {
+          if (appInfoResult.isErr()) {
+            return new Err(
+              new MCPError(
+                `Failed to retrieve application info for candidate ${candidate.name}.`
+              )
+            );
+          }
+
+          if (appInfoResult.value.results.status === "Hired") {
             return new Err(
               new MCPError(
                 `Cannot retrieve interview feedback for ${candidate.name}: ` +
