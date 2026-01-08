@@ -44,29 +44,29 @@ describe("platform", () => {
   });
 
   describe("getProcessCommand", () => {
-    it("returns null for non-existent PID", async () => {
+    it("returns null for non-existent PID", () => {
       // Use a very high PID that's unlikely to exist
-      const result = await getProcessCommand(999999999);
+      const result = getProcessCommand(999999999);
       expect(result).toBeNull();
     });
 
-    it("returns string for current process PID", async () => {
-      const result = await getProcessCommand(process.pid);
+    it("returns string for current process PID", () => {
+      const result = getProcessCommand(process.pid);
       expect(result).not.toBeNull();
       expect(typeof result).toBe("string");
     });
   });
 
   describe("getPidsOnPort", () => {
-    it("returns empty array for unused port", async () => {
+    it("returns empty array for unused port", () => {
       // Use a high port number that's unlikely to be in use
-      const pids = await getPidsOnPort(59999);
+      const pids = getPidsOnPort(59999);
       expect(Array.isArray(pids)).toBe(true);
       expect(pids.length).toBe(0);
     });
 
-    it("returns array of numbers", async () => {
-      const pids = await getPidsOnPort(59999);
+    it("returns array of numbers", () => {
+      const pids = getPidsOnPort(59999);
       expect(Array.isArray(pids)).toBe(true);
       for (const pid of pids) {
         expect(typeof pid).toBe("number");

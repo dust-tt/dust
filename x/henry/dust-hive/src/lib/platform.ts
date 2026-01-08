@@ -1,6 +1,9 @@
 // Platform detection and cross-platform abstractions for dust-hive
 // Supports macOS (darwin) and Linux
 
+import { spawnSync } from "node:child_process";
+import { isErrnoException } from "./errors";
+
 // ============================================================================
 // Platform Detection
 // ============================================================================
@@ -33,34 +36,38 @@ export function getPlatformName(): PlatformName {
  * - macOS: ps -p PID -o command=
  * - Linux: ps -p PID -o cmd=
  */
-export async function getProcessCommand(pid: number): Promise<string | null> {
+export function getProcessCommand(pid: number): string | null {
   // macOS uses 'command=', Linux uses 'cmd=' for the full command
   const outputFormat = isMacOS() ? "command=" : "cmd=";
 
-  const proc = Bun.spawn(["ps", "-p", String(pid), "-o", outputFormat], {
-    stdout: "pipe",
-    stderr: "pipe",
+  const result = spawnSync("ps", ["-p", String(pid), "-o", outputFormat], {
+    encoding: "utf-8",
   });
 
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
+  const stdout = result.stdout?.trim() ?? "";
+  const stderr = result.stderr?.trim() ?? "";
 
-  const stdoutTrimmed = stdout.trim();
-  const stderrTrimmed = stderr.trim();
+  if (result.error) {
+    if (isErrnoException(result.error) && result.error.code === "ENOENT") {
+      throw new Error("ps not found in PATH");
+    }
+    // Exit code 1 with no output means process not found
+    if (result.status === 1 && stdout === "") {
+      return null;
+    }
+    throw result.error;
+  }
 
   // Exit code 1 with no output means process not found
-  if (exitCode === 1 && stdoutTrimmed === "") {
+  if (result.status === 1 && stdout === "") {
     return null;
   }
 
-  if (exitCode !== 0) {
-    throw new Error(`ps failed for pid ${pid}: ${stderrTrimmed || "unknown error"}`);
+  if (result.status !== 0) {
+    throw new Error(`ps failed for pid ${pid}: ${stderr || "unknown error"}`);
   }
 
-  return stdoutTrimmed.length > 0 ? stdoutTrimmed : null;
+  return stdout.length > 0 ? stdout : null;
 }
 
 // ============================================================================
@@ -72,31 +79,35 @@ export async function getProcessCommand(pid: number): Promise<string | null> {
  * Uses lsof which is available on both macOS and Linux.
  * On Linux, lsof may need to be installed: sudo apt install lsof
  */
-export async function getPidsOnPort(port: number): Promise<number[]> {
-  const proc = Bun.spawn(["lsof", "-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"], {
-    stdout: "pipe",
-    stderr: "pipe",
+export function getPidsOnPort(port: number): number[] {
+  const result = spawnSync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"], {
+    encoding: "utf-8",
   });
 
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
+  const stdout = result.stdout?.trim() ?? "";
+  const stderr = result.stderr?.trim() ?? "";
 
-  const stdoutTrimmed = stdout.trim();
-  const stderrTrimmed = stderr.trim();
+  if (result.error) {
+    if (isErrnoException(result.error) && result.error.code === "ENOENT") {
+      throw new Error(`lsof not found in PATH. ${getInstallInstructions("lsof")}`);
+    }
+    // Exit code 1 with no output means no processes found
+    if (result.status === 1 && stdout === "") {
+      return [];
+    }
+    throw result.error;
+  }
 
   // Exit code 1 with no output means no processes found
-  if (exitCode === 1 && stdoutTrimmed === "") {
+  if (result.status === 1 && stdout === "") {
     return [];
   }
 
-  if (exitCode !== 0) {
-    throw new Error(`lsof failed for port ${port}: ${stderrTrimmed || "unknown error"}`);
+  if (result.status !== 0) {
+    throw new Error(`lsof failed for port ${port}: ${stderr || "unknown error"}`);
   }
 
-  return stdoutTrimmed
+  return stdout
     .split("\n")
     .filter((line) => line.length > 0)
     .map((pid) => Number.parseInt(pid, 10))
