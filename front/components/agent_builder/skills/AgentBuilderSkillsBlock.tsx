@@ -66,7 +66,7 @@ function SkillCard({ skill, onRemove, onClick }: SkillCardProps) {
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          <ResourceAvatar icon={SkillIcon} size="sm" />
+          <ResourceAvatar icon={SkillIcon} size="xs" />
           <span className="truncate">{skill.name}</span>
         </div>
 
