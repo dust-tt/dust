@@ -51,6 +51,7 @@ const NOTIFICATION_PREFERENCES_DELAY_LABELS: Record<
 const NOTIFICATION_TRIGGER_LABELS: Record<NotificationTrigger, string> = {
   all_messages: "for all new messages",
   only_mentions: "only when I'm mentioned",
+  never: "never",
 };
 
 const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay = "1_hour";
@@ -343,7 +344,7 @@ export const NotificationPreferences = forwardRef<
           <Tooltip
             label="Conversations where you're the only participant will still be marked as unread."
             trigger={
-              <InformationCircleIcon className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
+              <InformationCircleIcon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
             }
           />
         )}
@@ -372,22 +373,26 @@ export const NotificationPreferences = forwardRef<
               label={NOTIFICATION_TRIGGER_LABELS["only_mentions"]}
               onClick={() => setNotifyTrigger("only_mentions")}
             />
+            <DropdownMenuItem
+              label={NOTIFICATION_TRIGGER_LABELS["never"]}
+              onClick={() => setNotifyTrigger("never")}
+            />
           </DropdownMenuContent>
         </DropdownMenu>
         {notifyTrigger === "only_mentions" && (
           <Tooltip
             label="You'll still be notified if you're the only participant in a conversation."
             trigger={
-              <InformationCircleIcon className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
+              <InformationCircleIcon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
             }
           />
         )}
       </div>
 
       {/* Notification channels */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Label className="text-foreground dark:text-foreground-night">
-          Notify me with
+      <div className="flex flex-wrap items-center gap-1.5 pl-4">
+        <Label className="text-muted-foreground dark:text-muted-foreground-night">
+          Notify with
         </Label>
         <div className="flex items-center gap-4">
           {globalPreferences.channels.in_app !== undefined && (
@@ -395,11 +400,19 @@ export const NotificationPreferences = forwardRef<
               <Checkbox
                 id="in_app-preference"
                 checked={isInAppEnabled}
+                disabled={notifyTrigger === "never"}
                 onCheckedChange={(checked) =>
                   updateChannelPreference("in_app", checked === true)
                 }
               />
-              <Label htmlFor="in_app-preference" className="cursor-pointer">
+              <Label
+                htmlFor="in_app-preference"
+                className={
+                  notifyTrigger === "never"
+                    ? "text-muted-foreground dark:text-muted-foreground-night"
+                    : "cursor-pointer"
+                }
+              >
                 In-app popup
               </Label>
             </div>
@@ -409,11 +422,19 @@ export const NotificationPreferences = forwardRef<
               <Checkbox
                 id="email-preference"
                 checked={isEmailEnabled}
+                disabled={notifyTrigger === "never"}
                 onCheckedChange={(checked) =>
                   updateChannelPreference("email", checked === true)
                 }
               />
-              <Label htmlFor="email-preference" className="cursor-pointer">
+              <Label
+                htmlFor="email-preference"
+                className={
+                  notifyTrigger === "never"
+                    ? "text-muted-foreground dark:text-muted-foreground-night"
+                    : "cursor-pointer"
+                }
+              >
                 Email
               </Label>
             </div>

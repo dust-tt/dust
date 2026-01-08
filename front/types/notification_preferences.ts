@@ -35,6 +35,7 @@ export function makeNotificationPreferencesUserMetadata(
 export const NOTIFICATION_TRIGGER_OPTIONS = [
   "all_messages",
   "only_mentions",
+  "never",
 ] as const;
 
 export type NotificationTrigger = (typeof NOTIFICATION_TRIGGER_OPTIONS)[number];
