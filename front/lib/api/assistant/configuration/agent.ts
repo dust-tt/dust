@@ -1387,11 +1387,12 @@ export async function updateAgentConfigurationScope(
 
 export async function updateAgentRequirements(
   auth: Authenticator,
-  params: { agentId: string; newSpaceIds: number[] },
-  options?: { transaction?: Transaction }
+  {
+    agentModelId,
+    newSpaceIds,
+  }: { agentModelId: ModelId; newSpaceIds: ModelId[] },
+  { transaction }: { transaction?: Transaction }
 ): Promise<Result<boolean, Error>> {
-  const { agentId, newSpaceIds } = params;
-
   const owner = auth.getNonNullableWorkspace();
 
   const updated = await AgentConfigurationModel.update(
@@ -1401,9 +1402,9 @@ export async function updateAgentRequirements(
     {
       where: {
         workspaceId: owner.id,
-        sId: agentId,
+        id: agentModelId,
       },
-      transaction: options?.transaction,
+      transaction,
     }
   );
 

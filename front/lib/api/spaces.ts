@@ -178,7 +178,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           const res = await updateAgentRequirements(
             auth,
             {
-              agentId,
+              agentModelId: agentConfig.id,
               newSpaceIds: requirements.requestedSpaceIds,
             },
             { transaction: t }

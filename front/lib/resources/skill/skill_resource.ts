@@ -1000,7 +1000,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         await updateAgentRequirements(
           auth,
           {
-            agentId: agent.sId,
+            agentModelId: agent.id,
             newSpaceIds,
           },
           { transaction }
