@@ -138,12 +138,22 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
   async markVerified({
     transaction,
   }: { transaction?: Transaction } = {}): Promise<void> {
+    if (this.verifiedAt || this.failedAt) {
+      throw new Error(
+        "Verification attempt already marked as verified or failed"
+      );
+    }
     await this.update({ verifiedAt: new Date() }, transaction);
   }
 
   async markFailed({
     transaction,
   }: { transaction?: Transaction } = {}): Promise<void> {
+    if (this.verifiedAt || this.failedAt) {
+      throw new Error(
+        "Verification attempt already marked as verified or failed"
+      );
+    }
     await this.update({ failedAt: new Date() }, transaction);
   }
 
