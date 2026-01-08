@@ -19,6 +19,7 @@ export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare contentType: AllSupportedFileContentType;
   declare fileName: string;
   declare fileSize: number;
+  declare version: number;
   declare snippet: string | null;
   declare status: FileStatus;
   declare useCase: FileUseCase;
@@ -59,6 +60,11 @@ FileModel.init(
     useCase: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    version: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
     useCaseMetadata: {
       type: DataTypes.JSONB,

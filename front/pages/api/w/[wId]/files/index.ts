@@ -139,6 +139,7 @@ async function handler(
         fileName,
         fileSize,
         userId: user.id,
+        version: 0,
         workspaceId: owner.id,
         useCase,
         useCaseMetadata: useCaseMetadata,

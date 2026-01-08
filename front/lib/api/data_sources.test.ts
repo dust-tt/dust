@@ -102,6 +102,7 @@ describe("Project Context DataSource", () => {
         fileName: "test-file.txt",
         fileSize: 1024,
         userId: user.id,
+        version: 0,
         workspaceId: workspace.id,
         useCase: "project_context",
         useCaseMetadata: {
@@ -131,6 +132,7 @@ describe("Project Context DataSource", () => {
         fileName: "test-file-1.txt",
         fileSize: 1024,
         userId: user.id,
+        version: 0,
         workspaceId: workspace.id,
         useCase: "project_context",
         useCaseMetadata: {
@@ -143,6 +145,7 @@ describe("Project Context DataSource", () => {
         fileName: "test-file-2.txt",
         fileSize: 2048,
         userId: user.id,
+        version: 0,
         workspaceId: workspace.id,
         useCase: "project_context",
         useCaseMetadata: {
@@ -180,6 +183,7 @@ describe("Project Context DataSource", () => {
         fileName: "test-file.txt",
         fileSize: 1024,
         userId: user.id,
+        version: 0,
         workspaceId: workspace.id,
         useCase: "project_context",
         useCaseMetadata: {},
@@ -210,6 +214,7 @@ describe("Project Context DataSource", () => {
         fileName: "test-file-1.txt",
         fileSize: 1024,
         userId: user.id,
+        version: 0,
         workspaceId: workspace.id,
         useCase: "project_context",
         useCaseMetadata: {
@@ -222,6 +227,7 @@ describe("Project Context DataSource", () => {
         fileName: "test-file-2.txt",
         fileSize: 2048,
         userId: user.id,
+        version: 0,
         workspaceId: workspace.id,
         useCase: "project_context",
         useCaseMetadata: {
@@ -266,6 +272,7 @@ describe("Project Context DataSource", () => {
         fileName: "test-file.txt",
         fileSize: 1024,
         userId: user.id,
+        version: 0,
         workspaceId: workspace.id,
         useCase: "project_context",
         useCaseMetadata: {

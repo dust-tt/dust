@@ -387,6 +387,7 @@ export async function triggerFromEmail({
         contentType: attachment.contentType as SupportedFileContentType,
         fileName: attachment.filename,
         fileSize: attachment.size,
+        version: 0,
         userId: user.id,
         workspaceId: auth.getNonNullableWorkspace().id,
         useCase: "conversation",

@@ -80,6 +80,7 @@ async function backfillAvatars(
       fileName: "avatar.jpeg",
       fileSize: metadata.size ? Number(metadata.size) : 0,
       userId: agentConfiguration.authorId,
+      version: 0,
       workspaceId: workspace.id,
       useCase: "avatar" as const,
       useCaseMetadata: null,

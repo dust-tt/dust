@@ -281,6 +281,7 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     const worksheetFile = await FileResource.makeNew({
       workspaceId: file.workspaceId,
       userId: file.userId,
+      version: 0,
       contentType: "text/csv",
       fileName: `${slugifiedName}.csv`,
       fileSize: Buffer.byteLength(worksheetContent),

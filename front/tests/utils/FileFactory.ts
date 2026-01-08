@@ -35,6 +35,7 @@ export class FileFactory {
     const file = await FileResource.makeNew({
       workspaceId: workspace.id,
       userId: user?.id ?? null,
+      version: 0,
       contentType,
       fileName,
       fileSize,

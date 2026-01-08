@@ -686,6 +686,7 @@ export class FileResource extends BaseResource<FileModel> {
       fileSize: this.fileSize,
       status: this.status,
       useCase: this.useCase,
+      version: this.version,
     };
 
     if (auth && this.isReady && !this.isUpsertUseCase()) {
@@ -727,6 +728,7 @@ export class FileResource extends BaseResource<FileModel> {
       fileSize: this.fileSize,
       status: this.status,
       useCase: this.useCase,
+      version: this.version,
     };
 
     if (this.isReady && !this.isUpsertUseCase()) {

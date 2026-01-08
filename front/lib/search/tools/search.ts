@@ -304,6 +304,7 @@ export async function downloadAndUploadToolFile({
     fileName: `${downloadResult.fileName}.${extension}`,
     fileSize: Buffer.byteLength(downloadResult.content, "utf8"),
     userId: user.id,
+    version: 0,
     workspaceId: owner.id,
     useCase: "conversation",
     useCaseMetadata: {

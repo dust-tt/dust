@@ -69,6 +69,7 @@ export async function toFileContentFragment(
       fileName ??
       "content" + extensionsForContentType(contentFragment.contentType)[0],
     fileSize: contentFragment.content.length,
+    version: 0,
     userId: auth.user()?.id,
     workspaceId: auth.getNonNullableWorkspace().id,
     useCase: "conversation",

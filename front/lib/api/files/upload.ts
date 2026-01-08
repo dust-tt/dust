@@ -792,6 +792,7 @@ export async function processAndStoreFromUrl(
     const file = await FileResource.makeNew({
       workspaceId: auth.getNonNullableWorkspace().id,
       userId: auth.user()?.id ?? null,
+      version: 0,
       contentType: finalContentType,
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       fileName: fileName || new URL(url).pathname.split("/").pop() || "file",
@@ -867,6 +868,7 @@ export async function uploadBase64DataToFileStorage(
   const file = await FileResource.makeNew({
     workspaceId: auth.getNonNullableWorkspace().id,
     userId: auth.user()?.id ?? null,
+    version: 0,
     contentType,
     fileName,
     fileSize: fileSizeInBytes,
