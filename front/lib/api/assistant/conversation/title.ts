@@ -25,8 +25,6 @@ import {
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
-const MIN_GENERATION_TOKENS = 1024;
-
 export async function ensureConversationTitleFromAgentLoop(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
@@ -155,13 +153,17 @@ async function generateConversationTitle(
     );
   }
 
+  const prompt =
+    "Generate a concise conversation title (3-8 words) based on the user's message and context. " +
+    "The title should capture the main topic or request without being too generic.";
+
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel(auth, {
     conversation,
     model,
-    prompt: "", // There is no prompt for title generation.
+    prompt,
     tools: "",
-    allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
+    allowedTokenCount: model.contextSize - model.generationTokensCount,
     excludeActions: true,
     excludeImages: true,
   });
@@ -192,9 +194,7 @@ async function generateConversationTitle(
     },
     {
       conversation: conv,
-      prompt:
-        "Generate a concise conversation title (3-8 words) based on the user's message and context. " +
-        "The title should capture the main topic or request without being too generic.",
+      prompt: prompt,
       specifications,
     },
     {
