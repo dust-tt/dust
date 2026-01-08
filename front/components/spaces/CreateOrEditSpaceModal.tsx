@@ -276,8 +276,8 @@ export function CreateOrEditSpaceModal({
   }, [doDelete, handleClose, owner.sId, router, space]);
 
   const handleManagementTypeChange = useCallback(
-    (value: MembersManagementType) => {
-      setManagementType(value);
+    (managementType: MembersManagementType) => {
+      setManagementType(managementType);
       setIsDirty(true);
     },
     []
