@@ -1,6 +1,8 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useWatch } from "react-hook-form";
 
 import type {
+  AgentBuilderFormData,
   AgentBuilderSkillsType,
   MCPFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -28,36 +30,50 @@ function isGlobalSkillWithSpaceSelection(skill: SkillType): boolean {
   return doesSkillTriggerSelectSpaces(skill.sId);
 }
 
+export const useSkillSpaceSelection = () => {
+  const agentBuilderFormAdditionalSpaces = useWatch<
+    AgentBuilderFormData,
+    "additionalSpaces"
+  >({
+    name: "additionalSpaces",
+  });
+
+  const [localSelectedSpaces, setLocalSelectedSpaces] = useState<string[]>([]);
+
+  const resetLocalState = useCallback(() => {
+    setLocalSelectedSpaces(agentBuilderFormAdditionalSpaces);
+  }, [agentBuilderFormAdditionalSpaces]);
+
+  useEffect(() => {
+    // When agent builder form spaces change, make sure local state is updated
+    resetLocalState();
+  }, [agentBuilderFormAdditionalSpaces, resetLocalState]);
+
+  return {
+    localSelectedSpaces,
+    setLocalSelectedSpaces,
+    resetLocalState,
+  };
+};
+
 type UseSkillSelectionProps = {
   onStateChange: (state: SheetState) => void;
   alreadyAddedSkillIds: Set<string>;
-  initialAdditionalSpaces: string[];
   searchQuery: string;
 };
 
 export const useSkillSelection = ({
   onStateChange,
   alreadyAddedSkillIds,
-  initialAdditionalSpaces,
   searchQuery,
 }: UseSkillSelectionProps) => {
   const [localSelectedSkills, setLocalSelectedSkills] = useState<
     AgentBuilderSkillsType[]
   >([]);
-  const [localAdditionalSpaces, setLocalAdditionalSpaces] = useState<string[]>(
-    initialAdditionalSpaces
-  );
-
-  // Draft state for space selection (only committed on save)
-  const [draftSelectedSpaces, setDraftSelectedSpaces] = useState<string[]>(
-    initialAdditionalSpaces
-  );
 
   const resetLocalState = useCallback(() => {
     setLocalSelectedSkills([]);
-    setLocalAdditionalSpaces(initialAdditionalSpaces);
-    setDraftSelectedSpaces(initialAdditionalSpaces);
-  }, [initialAdditionalSpaces]);
+  }, []);
 
   const { skills, isSkillsLoading } = useSkillsContext();
 
@@ -120,8 +136,6 @@ export const useSkillSelection = ({
 
   const handleSpaceSelectionSave = useCallback(
     (skill: SkillType) => {
-      // Commit draft spaces to actual state
-      setLocalAdditionalSpaces(draftSelectedSpaces);
       // Add the skill
       setLocalSelectedSkills((prev) => [
         ...prev,
@@ -134,25 +148,17 @@ export const useSkillSelection = ({
       ]);
       onStateChange({ state: "selection" });
     },
-    [
-      onStateChange,
-      setLocalSelectedSkills,
-      setLocalAdditionalSpaces,
-      draftSelectedSpaces,
-    ]
+    [onStateChange, setLocalSelectedSkills]
   );
 
   return {
     localSelectedSkills,
-    localAdditionalSpaces,
     unselectSkill,
     handleSkillToggle,
     filteredSkills,
     isSkillsLoading,
     selectedSkillIds,
     handleSpaceSelectionSave,
-    draftSelectedSpaces,
-    setDraftSelectedSpaces,
     resetLocalState,
   };
 };

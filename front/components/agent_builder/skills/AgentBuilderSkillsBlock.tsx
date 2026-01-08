@@ -340,7 +340,6 @@ export function AgentBuilderSkillsBlock() {
         onCapabilitiesSave={handleCapabilitiesSave}
         onToolEditSave={handleToolEditSave}
         onStateChange={setSheetState}
-        initialAdditionalSpaces={additionalSpacesField.value}
         alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
         alreadyAddedSkillIds={alreadyAddedSkillIds}
         selectedActions={actionFields}

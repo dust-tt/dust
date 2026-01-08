@@ -18,14 +18,14 @@ type SpaceRowData = {
 
 interface SpaceSelectionPageProps {
   alreadyRequestedSpaceIds: Set<string>;
-  draftSelectedSpaces: string[];
-  setDraftSelectedSpaces: React.Dispatch<React.SetStateAction<string[]>>;
+  selectedSpaces: string[];
+  setSelectedSpaces: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 export function SpaceSelectionPageContent({
   alreadyRequestedSpaceIds,
-  draftSelectedSpaces,
-  setDraftSelectedSpaces,
+  selectedSpaces,
+  setSelectedSpaces,
 }: SpaceSelectionPageProps) {
   const { spaces } = useSpacesContext();
 
@@ -33,21 +33,21 @@ export function SpaceSelectionPageContent({
     return spaces.filter((s) => s.kind !== "global");
   }, [spaces]);
 
-  const localSelectedSpaceIds = useMemo(
-    () => new Set(draftSelectedSpaces),
-    [draftSelectedSpaces]
+  const selectedSpaceIds = useMemo(
+    () => new Set(selectedSpaces),
+    [selectedSpaces]
   );
 
   const handleSpaceToggle = useCallback(
     (space: SpaceType) => {
-      setDraftSelectedSpaces((prev) => {
+      setSelectedSpaces((prev) => {
         const newSpaces = prev.includes(space.sId)
           ? prev.filter((id) => id !== space.sId)
           : [...prev, space.sId];
         return newSpaces;
       });
     },
-    [setDraftSelectedSpaces]
+    [setSelectedSpaces]
   );
 
   const tableData: SpaceRowData[] = useMemo(() => {
@@ -57,7 +57,7 @@ export function SpaceSelectionPageContent({
         sId: space.sId,
         name: getSpaceName(space),
         space,
-        isSelected: localSelectedSpaceIds.has(space.sId) || isAlreadyRequested,
+        isSelected: selectedSpaceIds.has(space.sId) || isAlreadyRequested,
         isAlreadyRequested,
         onToggle: () => handleSpaceToggle(space),
       };
@@ -65,7 +65,7 @@ export function SpaceSelectionPageContent({
   }, [
     selectableSpaces,
     alreadyRequestedSpaceIds,
-    localSelectedSpaceIds,
+    selectedSpaceIds,
     handleSpaceToggle,
   ]);
 
