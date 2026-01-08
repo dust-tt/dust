@@ -175,14 +175,11 @@ function KnowledgeSearchComponent({
 
   const spaceIds = useMemo(() => spaces.map((s) => s.sId), [spaces]);
 
-  const isDisabled = !searchQuery || searchQuery.length < 2;
-
   const { knowledgeResults: searchResults, isSearchLoading } = useUnifiedSearch(
     {
       owner,
       query: searchQuery,
       pageSize: 10,
-      disabled: isDisabled,
       spaceIds,
       // Tables can't be attached to a skill.
       viewType: "document",
@@ -281,7 +278,9 @@ function KnowledgeSearchComponent({
   const handleInput = useCallback((e: React.FormEvent<HTMLSpanElement>) => {
     const text = e.currentTarget.textContent ?? "";
     setSearchQuery(text);
-    setIsOpen(text.trim().length > 0);
+    if (text.trim().length > 0) {
+      setIsOpen(true);
+    }
   }, []);
 
   // Auto-focus when component mounts.
@@ -308,6 +307,9 @@ function KnowledgeSearchComponent({
   // Reset selected index when items change.
   useEffect(() => {
     setSelectedIndex(0);
+    if (knowledgeItems.length > 0) {
+      setIsOpen(true);
+    }
   }, [knowledgeItems.length]);
 
   // Delete empty node helper.
