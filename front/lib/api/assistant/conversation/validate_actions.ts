@@ -6,11 +6,7 @@ import {
   getMCPApprovalStateFromUserApprovalState,
   isMCPApproveExecutionEvent,
 } from "@app/lib/actions/mcp";
-import {
-  setUserAlwaysApprovedTool,
-  setUserApprovedToolWithArgs,
-} from "@app/lib/actions/tool_status";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { setUserAlwaysApprovedTool } from "@app/lib/actions/tool_status";
 import { getRelatedContentFragments } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
@@ -195,24 +191,6 @@ export async function validateAction(
       user,
       mcpServerId: action.toolConfiguration.toolServerId,
       functionCallName: action.functionCallName,
-    });
-  }
-
-  // For medium stake tools, store per-argument approval on any approval (not just always_approved).
-  if (
-    approvalState !== "rejected" &&
-    user &&
-    action.toolConfiguration.permission === "medium" &&
-    isLightServerSideMCPToolConfiguration(action.toolConfiguration)
-  ) {
-    await setUserApprovedToolWithArgs({
-      user,
-      mcpServerId: action.toolConfiguration.toolServerId,
-      toolName: action.toolConfiguration.originalName,
-      agentId: agentMessage.agentConfigurationId,
-      approvalHoldingArgs:
-        action.toolConfiguration.approvalHoldingArguments ?? [],
-      toolInputs: action.augmentedInputs,
     });
   }
 
