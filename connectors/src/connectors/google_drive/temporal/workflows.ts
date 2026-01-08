@@ -1,5 +1,4 @@
 import { assertNever } from "@temporalio/common/lib/type-helpers";
-import type { ChildWorkflowHandle } from "@temporalio/workflow";
 import {
   continueAsNew,
   executeChild,
