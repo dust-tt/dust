@@ -130,7 +130,7 @@ export function CapabilitiesSelectionPageContent({
               <div>
                 <span className="text-lg font-semibold">Skills</span>
                 <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  Reusable packages that enable agents to perform specialized tasks.
+                  Reusable packages of instructions and tools that enable agents to perform specialized tasks.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
