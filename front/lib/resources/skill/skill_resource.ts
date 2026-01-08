@@ -309,12 +309,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
 
-    if (skill.workspaceId !== workspace.id) {
-      throw new DustError(
-        "internal_error",
-        "Unexpected: skill and workspace mismatch"
-      );
-    }
+    assert(skill.workspaceId !== workspace.id, "Unexpected: skill and workspace mismatch");
 
     const defaultGroup = await GroupResource.makeNew(
       {
