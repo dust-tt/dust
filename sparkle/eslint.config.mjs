@@ -19,6 +19,7 @@ export default [
       "svgr.config.js",
       "postcss.config.js",
       "tailwind.config.js",
+      "playground/",
       "svgr-*-template.js",
       "**/*.stories.tsx",
       ".storybook/**",
