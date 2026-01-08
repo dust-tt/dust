@@ -246,60 +246,6 @@ export async function extractTextFromSalesforceAttachment(
   return extractTextFromBuffer(downloadResult.value, mimeType);
 }
 
-function sanitizeRecord(
-  record: Record<string, unknown>
-): Record<string, unknown> {
-  return Object.entries(record).reduce<Record<string, unknown>>(
-    (acc, [key, value]) => {
-      if (key === "attributes") {
-        return acc;
-      }
-      acc[key] = value;
-      return acc;
-    },
-    {}
-  );
-}
-
-function formatValue(value: unknown): string {
-  if (value === null || value === undefined) {
-    return "null";
-  }
-  if (typeof value === "string") {
-    return value;
-  }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  if (Array.isArray(value)) {
-    return value.length === 0 ? "[]" : JSON.stringify(value);
-  }
-  if (typeof value === "object") {
-    try {
-      return JSON.stringify(value, null, 2);
-    } catch {
-      return String(value);
-    }
-  }
-  return String(value);
-}
-
-export function formatRecords(records: Record<string, unknown>[]): string {
-  if (records.length === 0) {
-    return "No records returned.";
-  }
-
-  return records
-    .map((record, index) => {
-      const sanitizedRecord = sanitizeRecord(record);
-      const fieldLines = Object.entries(sanitizedRecord).map(
-        ([key, value]) => `  - ${key}: ${formatValue(value)}`
-      );
-      return `Record ${index + 1}:\n${fieldLines.join("\n")}`;
-    })
-    .join("\n\n");
-}
-
 function getMimeType(fileType: string): string {
   const type = fileType?.toUpperCase();
 

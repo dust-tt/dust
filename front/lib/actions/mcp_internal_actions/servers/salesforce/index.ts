@@ -6,10 +6,12 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   downloadSalesforceContent,
   extractTextFromSalesforceAttachment,
-  formatRecords,
   getAllSalesforceAttachments,
 } from "@app/lib/actions/mcp_internal_actions/servers/salesforce/salesforce_api_helper";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  jsonToMarkdown,
+  makeInternalMCPServer,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -58,7 +60,7 @@ function createServer(
 
         const result = await conn.query(query);
 
-        const formattedRecords = formatRecords(result.records);
+        const formattedRecords = jsonToMarkdown(result.records);
 
         const summaryParts = [
           `Query returned ${result.totalSize ?? result.records.length} record(s).`,
