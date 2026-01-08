@@ -1,4 +1,5 @@
 import { AttachmentIcon, Button } from "@dust-tt/sparkle";
+import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
@@ -90,6 +91,7 @@ export function SkillBuilderInstructionsEditor({
   const updateAttachedKnowledge = useCallback(
     (editor: Editor) => {
       const attachedKnowledge = extractAttachedKnowledge(editor);
+      // Transform for form storage.
       const transformedAttachments = attachedKnowledge.map((item) => ({
         dataSourceViewId: item.dataSourceViewId,
         nodeId: item.nodeId, // This is the node ID from the data source view content node.
@@ -113,8 +115,10 @@ export function SkillBuilderInstructionsEditor({
   );
 
   const handleUpdate = useCallback(
-    (editor: Editor) => {
-      debouncedUpdate(editor);
+    ({ editor, transaction }: { editor: Editor; transaction: Transaction }) => {
+      if (transaction.docChanged) {
+        debouncedUpdate(editor);
+      }
     },
     [debouncedUpdate]
   );

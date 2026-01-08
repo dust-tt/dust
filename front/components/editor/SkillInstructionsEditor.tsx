@@ -4,6 +4,7 @@ import { Markdown } from "@tiptap/markdown";
 import type { Editor, Extensions } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
+import type { Transaction } from "@tiptap/pm/state";
 import { useEffect, useMemo, useRef } from "react";
 
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
@@ -131,7 +132,7 @@ function useEditorService(editor: Editor | null) {
 interface UseSkillInstructionsEditorProps {
   content: string;
   isReadOnly: boolean;
-  onUpdate?: (editor: Editor) => void;
+  onUpdate?: (props: { editor: Editor; transaction: Transaction }) => void;
   onBlur?: () => void;
   onDelete?: (editor: Editor) => void;
 }
@@ -157,11 +158,7 @@ export function useSkillInstructionsEditor({
       editable: !isReadOnly,
       immediatelyRender: false,
       onUpdate: onUpdate
-        ? ({ editor, transaction }) => {
-            if (transaction.docChanged) {
-              onUpdate(editor);
-            }
-          }
+        ? ({ editor, transaction }) => onUpdate({ editor, transaction })
         : undefined,
       onBlur: onBlur ? () => onBlur() : undefined,
       onDelete: onDelete ? ({ editor }) => onDelete(editor) : undefined,
