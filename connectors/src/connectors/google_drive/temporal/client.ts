@@ -120,7 +120,6 @@ export async function launchGoogleDriveFullSyncWorkflow(
                 garbageCollect: true,
                 startSyncTs: undefined,
                 mimeTypeFilter,
-                runningFolderWorkflows: {},
                 folderWorkflowCounters: {},
                 initialFolderIds: addedFolderIds,
               },
