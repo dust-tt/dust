@@ -10,6 +10,7 @@ import { CapabilitiesFooter } from "@app/components/agent_builder/capabilities/c
 import { CapabilitiesSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSelectionPage";
 import {
   useSkillSelection,
+  useSkillSpaceSelection,
   useToolSelection,
 } from "@app/components/agent_builder/capabilities/capabilities_sheet/hooks";
 import { SkillInfoPage } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillInfoPage";
@@ -42,7 +43,6 @@ export function useCapabilitiesPageAndFooter({
   onToolEditSave,
   alreadyRequestedSpaceIds,
   alreadyAddedSkillIds,
-  initialAdditionalSpaces,
   selectedActions,
   getAgentInstructions,
 }: CapabilitiesSheetContentProps): {
@@ -53,10 +53,10 @@ export function useCapabilitiesPageAndFooter({
   const { owner, user } = useAgentBuilderContext();
   const [searchQuery, setSearchQuery] = useState("");
 
+  const skillSpaceSelection = useSkillSpaceSelection();
   const skillSelection = useSkillSelection({
     onStateChange,
     alreadyAddedSkillIds,
-    initialAdditionalSpaces,
     searchQuery,
   });
   const toolSelection = useToolSelection({
@@ -65,16 +65,28 @@ export function useCapabilitiesPageAndFooter({
     searchQuery,
   });
 
+  const resetSheetState = useCallback(() => {
+    skillSpaceSelection.resetLocalState();
+    skillSelection.resetLocalState();
+    toolSelection.resetLocalState();
+  }, [skillSpaceSelection, skillSelection, toolSelection]);
+
   const handleCapabilitiesSelectionSave = useCallback(() => {
     onCapabilitiesSave({
       skills: skillSelection.localSelectedSkills,
-      additionalSpaces: skillSelection.localAdditionalSpaces,
+      additionalSpaces: skillSpaceSelection.localSelectedSpaces,
       tools: toolSelection.localSelectedTools,
     });
-    skillSelection.resetLocalState();
-    toolSelection.resetLocalState();
+    resetSheetState();
     onClose();
-  }, [skillSelection, toolSelection, onCapabilitiesSave, onClose]);
+  }, [
+    skillSpaceSelection,
+    skillSelection,
+    toolSelection,
+    onCapabilitiesSave,
+    resetSheetState,
+    onClose,
+  ]);
 
   const handleToolEditSave = useCallback(
     (configState: ConfigurationState) => (formData: MCPFormData) => {
@@ -272,8 +284,8 @@ export function useCapabilitiesPageAndFooter({
           content: (
             <SpaceSelectionPageContent
               alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
-              draftSelectedSpaces={skillSelection.draftSelectedSpaces}
-              setDraftSelectedSpaces={skillSelection.setDraftSelectedSpaces}
+              selectedSpaces={skillSpaceSelection.localSelectedSpaces}
+              setSelectedSpaces={skillSpaceSelection.setLocalSelectedSpaces}
             />
           ),
         },
@@ -281,9 +293,7 @@ export function useCapabilitiesPageAndFooter({
           label: "Cancel",
           variant: "outline",
           onClick: () => {
-            skillSelection.setDraftSelectedSpaces(
-              skillSelection.localAdditionalSpaces
-            );
+            skillSpaceSelection.resetLocalState();
             onStateChange({ state: "selection" });
           },
         },
