@@ -589,6 +589,36 @@ describe("DELETE /api/w/[wId]/skills/[sId]", () => {
       },
     });
   });
+
+  it("should successfully archive a suggested skill", async () => {
+    const { req, res, requestUserAuth, workspace } = await setupTest({
+      requestUserRole: "admin",
+      method: "DELETE",
+    });
+
+    // Create a suggested skill
+    const suggestedSkill = await SkillFactory.create(requestUserAuth, {
+      name: "Suggested Skill To Archive",
+      status: "suggested",
+    });
+
+    expect(suggestedSkill.status).toBe("suggested");
+
+    req.query = { ...req.query, wId: workspace.sId, sId: suggestedSkill.sId };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({ success: true });
+
+    // Verify the skill is now archived
+    const archivedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      suggestedSkill.sId
+    );
+    expect(archivedSkill).not.toBeNull();
+    expect(archivedSkill?.status).toBe("archived");
+  });
 });
 
 describe("Method Support /api/w/[wId]/skills/[sId]", () => {
