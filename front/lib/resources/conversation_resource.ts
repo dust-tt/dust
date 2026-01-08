@@ -835,6 +835,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(updated[0]);
   }
 
+  /**
+   * Marks conversation as unread for other participants based on their preferences.
+   *
+   * Logic for each participant:
+   * - "all_messages" preference (default): always mark as unread
+   * - "only_mentions" preference: mark as unread only if:
+   *   - They are mentioned in the message (when messageId provided), OR
+   *   - They are the only participant in the conversation (single-participant exception)
+   */
   static async markAsUnreadForOtherParticipants(
     auth: Authenticator,
     {
@@ -849,44 +858,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ) {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // If no messageId provided, use the original simple behavior (mark all participants).
-    // This is used for agent messages where mention-based filtering doesn't apply.
-    if (!messageId) {
-      const updated = await ConversationParticipantModel.update(
-        { unread: true },
-        {
-          where: {
-            conversationId: conversation.id,
-            workspaceId,
-            ...(excludedUser ? { userId: { [Op.ne]: excludedUser.id } } : {}),
-            unread: false,
-          },
-        }
-      );
-      return new Ok(updated);
-    }
-
-    // Get mentioned user IDs from the message.
-    let mentionedUserIds: Set<number> = new Set();
-    const message = await MessageModel.findOne({
-      where: { sId: messageId, workspaceId },
-      attributes: ["id"],
+    // Get total participant count (for single-participant exception).
+    const totalParticipantCount = await ConversationParticipantModel.count({
+      where: {
+        conversationId: conversation.id,
+        workspaceId,
+      },
     });
-    if (message) {
-      const mentions = await MentionModel.findAll({
-        where: {
-          messageId: message.id,
-          workspaceId,
-          userId: { [Op.ne]: null },
-        },
-        attributes: ["userId"],
-      });
-      mentionedUserIds = new Set(
-        mentions.map((m) => m.userId).filter((id): id is number => id !== null)
-      );
-    }
 
-    // Get all participants who currently have unread=false (excluding the sender).
+    // Get participants to consider (excluding sender, only those with unread=false).
     const participants = await ConversationParticipantModel.findAll({
       where: {
         conversationId: conversation.id,
@@ -901,8 +881,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Ok([0]);
     }
 
-    // Get unread trigger preferences for all participants.
     const userIds = participants.map((p) => p.userId);
+
+    // Get preferences for all participants.
     const preferences = await UserMetadataModel.findAll({
       where: {
         userId: { [Op.in]: userIds },
@@ -918,22 +899,37 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     }
 
-    // Count total participants in the conversation (to check for single-participant exception).
-    const totalParticipantCount = await ConversationParticipantModel.count({
-      where: {
-        conversationId: conversation.id,
-        workspaceId,
-      },
-    });
+    // Get mentioned user IDs if messageId provided.
+    let mentionedUserIds: Set<number> = new Set();
+    if (messageId) {
+      const message = await MessageModel.findOne({
+        where: { sId: messageId, workspaceId },
+        attributes: ["id"],
+      });
+      if (message) {
+        const mentions = await MentionModel.findAll({
+          where: {
+            messageId: message.id,
+            workspaceId,
+            userId: { [Op.ne]: null },
+          },
+          attributes: ["userId"],
+        });
+        mentionedUserIds = new Set(
+          mentions
+            .map((m) => m.userId)
+            .filter((id): id is number => id !== null)
+        );
+      }
+    }
 
-    // Filter participants: include if preference is "all_messages" (or unset),
-    // if they were mentioned, or if they are the only human participant.
+    // Filter participants based on preferences.
     const eligibleUserIds = userIds.filter((userId) => {
       const trigger = preferenceMap.get(userId) ?? "all_messages";
       if (trigger === "all_messages") {
         return true;
       }
-      // trigger === "only_mentions": include if mentioned OR if only human participant.
+      // "only_mentions": mark if mentioned OR if only participant.
       return mentionedUserIds.has(userId) || totalParticipantCount === 1;
     });
 
