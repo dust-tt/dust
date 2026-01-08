@@ -159,11 +159,11 @@ SkillConfigurationModel.belongsTo(UserModel, {
 
 // Skill version <> Author
 UserModel.hasMany(SkillVersionModel, {
-  foreignKey: { name: "authorId", allowNull: false },
+  foreignKey: { name: "authorId", allowNull: true },
   onDelete: "RESTRICT",
 });
 SkillVersionModel.belongsTo(UserModel, {
-  foreignKey: { name: "authorId", allowNull: false },
+  foreignKey: { name: "authorId", allowNull: true },
   as: "author",
 });
 

@@ -1220,6 +1220,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews,
       name,
       requestedSpaceIds,
+      status,
       userFacingDescription,
     }: {
       agentFacingDescription: string;
@@ -1229,6 +1230,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews: MCPServerViewResource[];
       name: string;
       requestedSpaceIds: ModelId[];
+      status?: SkillStatus;
       userFacingDescription: string;
     }
   ): Promise<void> {
@@ -1252,6 +1254,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           icon,
           requestedSpaceIds,
           authorId,
+          ...(status ? { status } : {}),
         },
         transaction
       );

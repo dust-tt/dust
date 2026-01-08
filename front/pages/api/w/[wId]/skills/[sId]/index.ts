@@ -267,6 +267,9 @@ async function handler(
         })
       );
 
+      // When saving a suggested skill, automatically activate it.
+      const shouldActivate = skillResource.status === "suggested";
+
       await skillResource.updateSkill(auth, {
         agentFacingDescription: body.agentFacingDescription,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
@@ -276,6 +279,7 @@ async function handler(
         name,
         requestedSpaceIds,
         userFacingDescription: body.userFacingDescription,
+        ...(shouldActivate ? { status: "active" as const } : {}),
       });
 
       return res.status(200).json({
