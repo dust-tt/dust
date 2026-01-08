@@ -3,6 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import {
+  Counter,
   Icon,
   LinkWrapper,
   LinkWrapperProps,
@@ -77,7 +78,7 @@ interface NavigationListItemProps
   icon?: React.ComponentType;
   avatar?: React.ReactNode;
   moreMenu?: React.ReactNode;
-  status?: "idle" | "unread" | "blocked" | "error";
+  status?: "idle" | "unread" | "blocked" | "error" | number;
 }
 
 const NavigationListItem = React.forwardRef<
@@ -111,19 +112,23 @@ const NavigationListItem = React.forwardRef<
     };
 
     const getStatusDotColor = () => {
+      if (typeof status === "number") {
+        return "";
+      }
       switch (status) {
         case "unread":
           return "s-h-2 s-w-2 s-m-1 s-bg-highlight-500 dark:s-bg-highlight-500-night";
         case "blocked":
-          return "s-h-4 s-w-4 s-bg-golden-200 dark:s-bg-golden-800-night s-text-golden-900 dark:s-text-golden-900-night";
+          return "s-h-2 s-w-2 s-m-1 s-bg-golden-400 dark:s-bg-golden-400-night";
         case "error":
-          return "s-h-2 s-w-2 s-m-1 s-bg-warning dark:s-bg-warning-night";
+          return "s-h-2 s-w-2 s-m-1 s-bg-warning-400 dark:s-bg-warning-400-night";
         default:
           return "";
       }
     };
 
-    const shouldShowStatusDot = status !== "idle";
+    const shouldShowCounter = typeof status === "number" && status > 0;
+    const shouldShowStatusDot = typeof status === "string" && status !== "idle";
 
     return (
       <div
@@ -164,15 +169,25 @@ const NavigationListItem = React.forwardRef<
                 {label}
               </span>
             )}
+            {shouldShowCounter && (
+              <Counter
+                value={status as number}
+                size="xs"
+                variant="outline"
+                className={cn(
+                  "s-flex-shrink-0 s-translate-x-0.5",
+                  moreMenu && "group-hover/menu-item:s-hidden"
+                )}
+              />
+            )}
             {shouldShowStatusDot && (
               <div
                 className={cn(
-                  "s-heading-xs s-flex s-flex-shrink-0 s-items-center s-justify-center s-rounded-full group-hover/menu-item:s-hidden",
+                  "s-heading-xs s-flex s-flex-shrink-0 s-items-center s-justify-center s-rounded-full",
+                  moreMenu && "group-hover/menu-item:s-hidden",
                   getStatusDotColor()
                 )}
-              >
-                {status === "blocked" ? "!" : ""}
-              </div>
+              />
             )}
           </div>
         </LinkWrapper>

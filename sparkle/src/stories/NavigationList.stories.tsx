@@ -25,6 +25,9 @@ import {
   NavigationListCompactLabel,
   ChatBubbleLeftRightIcon,
   CheckIcon,
+  SpaceOpenIcon,
+  SpaceClosedIcon,
+  CheckDoubleIcon,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -231,7 +234,7 @@ export const CollapsibleSection = () => {
               </div> */}
               <Button
                 size="xmini"
-                icon={CheckIcon}
+                icon={CheckDoubleIcon}
                 variant="ghost"
                 aria-label="Add new item"
                 tooltip="Mark all as read"
@@ -244,27 +247,32 @@ export const CollapsibleSection = () => {
             </>
           }
         >
-          {getRandomTitles(4).map((title, index) => (
-            <NavigationListItem
-              key={index}
-              href={index % 2 === 0 ? "#" : undefined}
-              selected={index === selectedIndex}
-              status="error"
-              onClick={(e) => {
-                if (!e.defaultPrevented) {
-                  e.preventDefault();
-                  setSelectedIndex(index);
-                }
-              }}
-              label={title}
-              className="s-w-full"
-              moreMenu={getMoreMenu(title)}
-            />
-          ))}
+          {getRandomTitles(6).map((title, index) => {
+            const statuses: Array<
+              "idle" | "unread" | "blocked" | "error" | number
+            > = ["idle", "unread", "blocked", "error", 5, 12];
+            return (
+              <NavigationListItem
+                key={index}
+                href={index % 2 === 0 ? "#" : undefined}
+                selected={index === selectedIndex}
+                status={statuses[index % 6]}
+                onClick={(e) => {
+                  if (!e.defaultPrevented) {
+                    e.preventDefault();
+                    setSelectedIndex(index);
+                  }
+                }}
+                label={title}
+                className="s-w-full"
+                moreMenu={getMoreMenu(title)}
+              />
+            );
+          })}
         </NavigationListCollapsibleSection>
         <div className="s-px-2">
           <NavigationListCollapsibleSection
-            label="Projects"
+            label="Projects (empty)"
             type="collapse"
             defaultOpen={true}
             action={
@@ -298,6 +306,65 @@ export const CollapsibleSection = () => {
             <NavigationListItem
               icon={PlusIcon}
               label="Create Project"
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+              }}
+            />
+          </NavigationListCollapsibleSection>
+          <NavigationListCollapsibleSection
+            label="Projects"
+            type="collapse"
+            defaultOpen={true}
+            action={
+              <>
+                <Button
+                  size="xmini"
+                  icon={PlusIcon}
+                  variant="ghost"
+                  aria-label="Add new item"
+                  tooltip="New Conversation"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Add action logic here
+                  }}
+                />
+                <Button
+                  size="xmini"
+                  icon={MoreIcon}
+                  variant="ghost"
+                  aria-label="Add new item"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Add action logic here
+                  }}
+                />
+              </>
+            }
+          >
+            <NavigationListItem
+              icon={SpaceOpenIcon}
+              label="Company"
+              href="#"
+              status={3}
+              onClick={(e) => {
+                e.preventDefault();
+              }}
+            />
+            <NavigationListItem
+              icon={SpaceOpenIcon}
+              label="Design"
+              status={8}
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+              }}
+            />
+            <NavigationListItem
+              icon={SpaceClosedIcon}
+              label="SeriesB"
               href="#"
               onClick={(e) => {
                 e.preventDefault();

@@ -33,6 +33,7 @@ export { default as ChatBubbleLeftRightIcon } from "./ChatBubbleLeftRight";
 export { default as ChatBubbleThoughtIcon } from "./ChatBubbleThought";
 export { default as CheckIcon } from "./Check";
 export { default as CheckCircleIcon } from "./CheckCircle";
+export { default as CheckDoubleIcon } from "./CheckDouble";
 export { default as ChevronDoubleLeftIcon } from "./ChevronDoubleLeft";
 export { default as ChevronDoubleRightIcon } from "./ChevronDoubleRight";
 export { default as ChevronDownIcon } from "./ChevronDown";
