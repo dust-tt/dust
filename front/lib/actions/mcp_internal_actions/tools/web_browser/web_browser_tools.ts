@@ -9,6 +9,7 @@ import {
 import { MAXED_OUTPUT_FILE_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
+  USE_SUMMARY_SWITCH,
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -129,7 +130,8 @@ export function registerWebBrowserTool(
         const { toolConfiguration } = agentLoopContext.runContext;
         const useSummarization =
           isLightServerSideMCPToolConfiguration(toolConfiguration) &&
-          toolConfiguration.additionalConfiguration.useSummary === true;
+          toolConfiguration.additionalConfiguration[USE_SUMMARY_SWITCH] ===
+            true;
 
         const summaryAgentId = useSummarization
           ? GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY
