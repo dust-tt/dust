@@ -157,10 +157,8 @@ export function useSkillInstructionsEditor({
       extensions,
       editable: !isReadOnly,
       immediatelyRender: false,
-      onUpdate: onUpdate
-        ? ({ editor, transaction }) => onUpdate({ editor, transaction })
-        : undefined,
-      onBlur: onBlur ? () => onBlur() : undefined,
+      onUpdate,
+      onBlur,
       onDelete: onDelete ? ({ editor }) => onDelete(editor) : undefined,
     },
     [extensions, isReadOnly]
