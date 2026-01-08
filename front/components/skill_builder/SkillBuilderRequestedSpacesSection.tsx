@@ -63,7 +63,7 @@ export function SkillBuilderRequestedSpacesSection() {
           Spaces
         </h3>
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Set who can use this skill and the data it can access.
+          Set what data the skill can access and who can use it.
         </p>
       </div>
       <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
