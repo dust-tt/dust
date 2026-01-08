@@ -1,5 +1,6 @@
 import type {
   AshbyCandidate,
+  AshbyCandidateNote,
   AshbyFeedbackSubmission,
   AshbyReportSynchronousResponse,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
@@ -115,4 +116,41 @@ export function renderInterviewFeedbackRecap(
   );
 
   return header.join("\n") + feedbackTexts.join(`\n\n${delimiterLine}\n\n`);
+}
+
+function renderSingleNote(note: AshbyCandidateNote): string {
+  const lines: string[] = [];
+
+  if (note.author) {
+    lines.push(
+      `**Author:** ${note.author.firstName} ${note.author.lastName} (${note.author.email})`
+    );
+  }
+
+  lines.push(`**Created at:** ${new Date(note.createdAt).toISOString()}`);
+  lines.push("");
+  lines.push(note.content);
+
+  return lines.join("\n");
+}
+
+export function renderCandidateNotes(
+  candidate: AshbyCandidate,
+  notes: AshbyCandidateNote[]
+): string {
+  const delimiterLine = "=".repeat(80);
+
+  const header = [
+    "# Candidate Notes",
+    "",
+    `**Candidate:** ${candidate.name}`,
+    "",
+    `**Total Notes:** ${notes.length}`,
+    "",
+    delimiterLine,
+    "",
+  ];
+  const noteTexts = notes.map((note) => renderSingleNote(note));
+
+  return header.join("\n") + noteTexts.join(`\n\n${delimiterLine}\n\n`);
 }

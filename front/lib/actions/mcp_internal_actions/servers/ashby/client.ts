@@ -5,6 +5,8 @@ import type {
   AshbyApplicationFeedbackListRequest,
   AshbyApplicationInfoRequest,
   AshbyCandidateCreateNoteRequest,
+  AshbyCandidateListNotesRequest,
+  AshbyCandidateNote,
   AshbyCandidateSearchRequest,
   AshbyFeedbackSubmission,
   AshbyReportSynchronousRequest,
@@ -13,6 +15,7 @@ import {
   AshbyApplicationFeedbackListResponseSchema,
   AshbyApplicationInfoResponseSchema,
   AshbyCandidateCreateNoteResponseSchema,
+  AshbyCandidateListNotesResponseSchema,
   AshbyCandidateSearchResponseSchema,
   AshbyReportSynchronousResponseSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
@@ -171,5 +174,20 @@ export class AshbyClient {
       request,
       AshbyApplicationInfoResponseSchema
     );
+  }
+
+  async listCandidateNotes(
+    request: AshbyCandidateListNotesRequest
+  ): Promise<Result<AshbyCandidateNote[], Error>> {
+    const response = await this.postRequest(
+      "candidate.listNotes",
+      request,
+      AshbyCandidateListNotesResponseSchema
+    );
+    if (response.isErr()) {
+      return response;
+    }
+
+    return new Ok(response.value.results);
   }
 }

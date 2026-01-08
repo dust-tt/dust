@@ -7,6 +7,7 @@ import type { AshbyClient } from "@app/lib/actions/mcp_internal_actions/servers/
 import { getAshbyClient } from "@app/lib/actions/mcp_internal_actions/servers/ashby/client";
 import {
   renderCandidateList,
+  renderCandidateNotes,
   renderInterviewFeedbackRecap,
   renderReportInfo,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/rendering";
@@ -421,6 +422,76 @@ function createServer(
                 ? `(${candidate.primaryEmailAddress?.value}) `
                 : "") +
               `profile.\n\nNote ID: ${noteResult.value.results.id}`,
+          },
+        ]);
+      }
+    )
+  );
+
+  server.tool(
+    "get_candidate_notes",
+    "Retrieve all notes for a candidate. " +
+      "This tool will search for the candidate by name or email and return all notes on their profile.",
+    CandidateSearchInputSchema.shape,
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "ashby_get_candidate_notes",
+        agentLoopContext,
+      },
+      async ({ email, name }) => {
+        const clientResult = await getAshbyClient(auth, agentLoopContext);
+        if (clientResult.isErr()) {
+          return clientResult;
+        }
+
+        const client = clientResult.value;
+
+        const candidateResult = await findUniqueCandidate(client, {
+          email,
+          name,
+        });
+
+        if (candidateResult.isErr()) {
+          return new Err(candidateResult.error);
+        }
+
+        const candidate = candidateResult.value;
+
+        const notesResult = await client.listCandidateNotes({
+          candidateId: candidate.id,
+        });
+
+        if (notesResult.isErr()) {
+          return new Err(
+            new MCPError(
+              `Failed to retrieve notes for candidate: ${notesResult.error.message}`
+            )
+          );
+        }
+
+        const notes = notesResult.value;
+
+        if (notes.length === 0) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text:
+                `No notes found for candidate ${candidate.name}` +
+                (candidate.primaryEmailAddress?.value
+                  ? ` (${candidate.primaryEmailAddress.value})`
+                  : "") +
+                ".",
+            },
+          ]);
+        }
+
+        const notesText = renderCandidateNotes(candidate, notes);
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: notesText,
           },
         ]);
       }
