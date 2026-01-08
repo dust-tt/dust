@@ -10,6 +10,7 @@ import {
 import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import { folderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { GoogleDriveConfigModel } from "@connectors/lib/models/google_drive";
 import { getTemporalClient, terminateWorkflow } from "@connectors/lib/temporal";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -27,6 +28,8 @@ import {
   googleDriveGarbageCollectorWorkflow,
   googleDriveGarbageCollectorWorkflowId,
   googleDriveIncrementalSync,
+  googleDriveIncrementalSyncV2,
+  googleDriveIncrementalSyncV2WorkflowId,
 } from "./workflows";
 
 export async function launchGoogleDriveFullSyncWorkflow(
@@ -112,24 +115,42 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
   }
   const localLogger = getActivityLogger(connector);
 
+  // Check feature flag to determine which workflow version to use
+  const config = await GoogleDriveConfigModel.findOne({
+    where: { connectorId },
+  });
+  const useParallelSync = config?.useParallelSync ?? false;
+
   const client = await getTemporalClient();
 
-  const workflowId = googleDriveIncrementalSyncWorkflowId(connectorId);
+  // Route to appropriate workflow based on feature flag
+  const workflowId = useParallelSync
+    ? googleDriveIncrementalSyncV2WorkflowId(connectorId)
+    : googleDriveIncrementalSyncWorkflowId(connectorId);
+
+  const workflowFn = useParallelSync
+    ? googleDriveIncrementalSyncV2
+    : googleDriveIncrementalSync;
 
   // Randomize the delay to avoid all incremental syncs starting at the same time, especially when restarting all via cli.
   const delay = Math.floor(Math.random() * 5);
 
   try {
-    await terminateWorkflow(workflowId);
-    await client.workflow.start(googleDriveIncrementalSync, {
+    // Terminate both versions of the workflows in case we changed the flag
+    await terminateWorkflow(
+      googleDriveIncrementalSyncV2WorkflowId(connectorId)
+    );
+    await terminateWorkflow(googleDriveIncrementalSyncWorkflowId(connectorId));
+
+    await client.workflow.start(workflowFn, {
       args: [connectorId],
       taskQueue: GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
-      workflowId: workflowId,
+      workflowId,
       searchAttributes: {
         connectorId: [connectorId],
       },
       memo: {
-        connectorId: connectorId,
+        connectorId,
       },
       startDelay: `${delay} minutes`,
     });
@@ -137,6 +158,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
       {
         workspaceId: connector.workspaceId,
         workflowId,
+        useParallelSync,
       },
       `Started workflow.`
     );
