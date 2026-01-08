@@ -156,10 +156,10 @@ export const UseCases: UseCaseProps = {
 
 export const Quote: QuoteProps = {
   quote:
-    "Thanks to what we've implemented at Alan, in less than three question iterations, I can craft the perfect SQL query I need and get the context behind it.",
-  name: "Vincent Delagabbe",
-  title: "Software Engineer at Alan",
-  logo: "/static/landing/logos/color/alan.png",
+    "Dust has revolutionized our partner insights, condensing days of manual research into minutes of AI-powered conversation. It's not just about efficiency and time savings—it's about making smarter decisions and doing things we could not do before.",
+  name: "Alexandre Morillon",
+  title: "CEO at Wakam",
+  logo: "/static/landing/logos/color/wakam.svg",
 };
 
 export const DemoVideo: DemoVideoProps = {

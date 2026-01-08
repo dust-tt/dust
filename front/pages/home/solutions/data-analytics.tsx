@@ -70,10 +70,6 @@ export default function Data() {
           </div>
           <div className={GRID_SECTION_CLASSES}>
             <QuoteSection {...Quote} />
-            {/* <CustomerStoriesSection
-              title="Customer stories"
-              stories={Stories}
-            /> */}
           </div>
           <TrustedBy />
           <div className={GRID_SECTION_CLASSES}>
