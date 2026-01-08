@@ -195,3 +195,21 @@ dust-hive cache
 # Sync with main (pull, rebuild binaries, refresh deps)
 dust-hive sync
 ```
+
+## Known Issues
+
+### SDK watcher doesn't detect changes after git rebase
+
+The SDK watcher uses nodemon which relies on filesystem events. When running `git rebase`, `git pull`, or `git checkout`, nodemon may not detect the file changes due to how git updates files (fsevents on macOS can miss rapid file operations).
+
+**Symptoms**: Type errors in front about missing types that should exist in the SDK (e.g., new enum values, new fields).
+
+**Solution**: Restart the SDK watcher after git operations that change SDK files:
+```bash
+dust-hive restart [ENV_NAME] sdk
+```
+
+Alternatively, manually trigger a rebuild by touching the SDK source:
+```bash
+touch sdks/js/src/types.ts
+```
