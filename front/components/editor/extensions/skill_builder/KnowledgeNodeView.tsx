@@ -331,9 +331,11 @@ function KnowledgeSearchComponent({
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
+        e.stopPropagation();
         setSelectedIndex((selectedIndex + 1) % knowledgeItems.length);
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
+        e.stopPropagation();
         setSelectedIndex(
           (selectedIndex + knowledgeItems.length - 1) % knowledgeItems.length
         );
@@ -342,9 +344,11 @@ function KnowledgeSearchComponent({
         knowledgeItems.length > 0
       ) {
         e.preventDefault();
+        e.stopPropagation();
         handleItemSelect(selectedIndex);
       } else if (e.key === "Escape") {
         e.preventDefault();
+        e.stopPropagation();
         onCancel();
       }
     },
