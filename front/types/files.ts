@@ -52,7 +52,6 @@ export interface FileType {
   version: number;
   fileName: string;
   fileSize: number;
-  version: number;
   sId: string;
   // TODO(spolu): move this to being the ModelId
   id: string;

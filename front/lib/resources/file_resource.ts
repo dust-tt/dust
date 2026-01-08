@@ -24,6 +24,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import type {
   FileShareScope,
   FileType,
@@ -553,17 +554,20 @@ export class FileResource extends BaseResource<FileModel> {
 
     // Delete old versions to prevent accumulation and infinite loops
     try {
+      // Decrement version after deletion to ensure version counter only changes on success
       await currentVersion.delete();
       await previousVersion.delete();
+      await this.decrementVersion();
     } catch (error) {
-      return new Err(
-        `Revert partially applied, failed to delete old file versions: ${normalizeError(error)}`
+      logger.error(
+        {
+          fileId: this.sId,
+          workspaceId: this.workspaceId,
+          error: normalizeError(error),
+        },
+        "Failed to delete old file versions after successful revert, future reverts may loop"
       );
     }
-
-    // Decrement version since we're reverting to a previous version
-    // Do this at the end to ensure version counter only changes on success
-    await this.decrementVersion();
 
     return new Ok(undefined);
   }
