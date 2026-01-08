@@ -129,6 +129,7 @@ async function handleRoleAssignmentForGroup(
         user,
         workspace,
         newRole,
+        allowLastAdminRemoval: true,
         author: auth.user()?.toJSON() ?? "no-author",
       });
 
@@ -167,6 +168,7 @@ async function handleRoleAssignmentForGroup(
         user,
         workspace,
         newRole,
+        allowLastAdminRemoval: true,
         author: auth.user()?.toJSON() ?? "no-author",
       });
 
