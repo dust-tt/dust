@@ -1135,7 +1135,9 @@ export type ConversationMessageReactionsType = z.infer<
   typeof ConversationMessageReactionsSchema
 >;
 
-const MCPStakeLevelSchema = z.enum(["low", "high", "never_ask"]).optional();
+const MCPStakeLevelSchema = z
+  .enum(["low", "medium", "high", "never_ask"])
+  .optional();
 
 const MCPValidationMetadataSchema = z.object({
   agentName: z.string(),
@@ -3310,7 +3312,7 @@ export type PostMCPResultsResponseType = z.infer<
   typeof PostMCPResultsResponseSchema
 >;
 
-const REMOTE_MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
+const REMOTE_MCP_TOOL_STAKE_LEVELS = ["high", "medium", "low"] as const;
 export type RemoteMCPToolStakeLevelPublicType =
   (typeof REMOTE_MCP_TOOL_STAKE_LEVELS)[number];
 const MCP_TOOL_STAKE_LEVELS = [
