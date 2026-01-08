@@ -7,6 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   CombinedResourcePermissions,
@@ -56,14 +57,18 @@ export function groupsFromRequestedPermissions(
   );
 }
 
-export async function getAgentConfigurationRequirementsFromActions(
+export async function getAgentConfigurationRequirementsFromCapabilities(
   auth: Authenticator,
-  params: {
+  {
+    actions,
+    skills,
+    ignoreSpaces,
+  }: {
     actions: UnsavedMCPServerConfigurationType[];
+    skills: SkillResource[];
     ignoreSpaces?: SpaceResource[];
   }
 ): Promise<{ requestedSpaceIds: ModelId[] }> {
-  const { actions, ignoreSpaces } = params;
   const ignoreSpaceModelIds = new Set(ignoreSpaces?.map((space) => space.id));
 
   // Collect DataSourceView permissions by space.
@@ -95,10 +100,14 @@ export async function getAgentConfigurationRequirementsFromActions(
     dustAppRequirements = dustApps.map((app) => app.space.id);
   }
 
+  // Collect Skill permissions by space.
+  const skillRequirements = skills.flatMap((skill) => skill.requestedSpaceIds);
+
   const requestedSpaceIds = uniq([
     ...dsViewRequirements,
     ...mcpServerViewRequirements,
     ...dustAppRequirements,
+    ...skillRequirements,
   ]).filter((id) => !ignoreSpaceModelIds.has(id));
 
   return { requestedSpaceIds };

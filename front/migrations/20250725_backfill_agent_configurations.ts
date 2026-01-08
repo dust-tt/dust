@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
+import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -56,10 +56,11 @@ async function updateAgentConfigurationGroupIds(
     }
 
     // Calculate the correct group IDs using the updated function
-    const newRequirements = await getAgentConfigurationRequirementsFromActions(
-      auth,
-      { actions: ac.actions }
-    );
+    const newRequirements =
+      await getAgentConfigurationRequirementsFromCapabilities(auth, {
+        actions: ac.actions,
+        skills: [],
+      });
 
     // Check if the group IDs have changed
     if (_.isEqual(newRequirements.requestedSpaceIds, agent.requestedSpaceIds)) {

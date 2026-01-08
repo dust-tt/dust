@@ -2,7 +2,7 @@ import * as _ from "lodash";
 import { Op } from "sequelize";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
+import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -45,9 +45,9 @@ async function updateAgentRequestedSpaceIds(
   }
 
   // Calculate the correct space IDs from actions
-  const requirements = await getAgentConfigurationRequirementsFromActions(
+  const requirements = await getAgentConfigurationRequirementsFromCapabilities(
     auth,
-    { actions: agentConfiguration.actions }
+    { actions: agentConfiguration.actions, skills: [] }
   );
 
   // Skip if no space IDs are required
