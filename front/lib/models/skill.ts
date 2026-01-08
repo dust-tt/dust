@@ -101,6 +101,10 @@ SkillConfigurationModel.init(SKILL_MODEL_ATTRIBUTES, {
       concurrently: true,
     },
     {
+      fields: ["workspaceId", "editedBy"],
+      concurrently: true,
+    },
+    {
       unique: true,
       fields: ["workspaceId", "name", "status"],
       concurrently: true,
@@ -136,6 +140,10 @@ SkillVersionModel.init(
     indexes: [
       {
         fields: ["workspaceId", "skillConfigurationId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "editedBy"],
         concurrently: true,
       },
       {
