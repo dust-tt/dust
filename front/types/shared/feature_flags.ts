@@ -204,10 +204,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Vanta MCP tool for security and compliance testing",
     stage: "dust_only",
   },
-  web_summarization: {
-    description: "AI-powered web page summarization in the web browser tool",
-    stage: "on_demand",
-  },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
