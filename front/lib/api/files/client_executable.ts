@@ -209,9 +209,6 @@ export async function editClientExecutableFile(
     }
   }
 
-  // Increment version since we're creating a new version
-  await fileResource.incrementVersion();
-
   // Validate the Tailwind classes in the resulting code.
   const tailwindValidation = validateTailwindCode(updatedContent);
   if (tailwindValidation.isErr()) {
@@ -230,7 +227,7 @@ export async function editClientExecutableFile(
     });
   }
 
-  // Upload the updated content.
+  // Upload the updated content (version is incremented inside uploadContent).
   await fileResource.uploadContent(auth, updatedContent);
 
   return new Ok({ fileResource, replacementCount: occurrences });
@@ -344,11 +341,8 @@ export async function getClientExecutableFileContent(
   }
 }
 
-// Minimum number of versions required to perform a revert (current + previous).
-const MIN_VERSIONS_FOR_REVERT = 2;
-
 // Revert the changes made to the Interactive Content file in the last agent message.
-// Uses GCS versioning to restore the previous version of the file.
+// Uses FileResource revert function
 export async function revertClientExecutableFileChanges(
   auth: Authenticator,
   {
@@ -366,51 +360,14 @@ export async function revertClientExecutableFileChanges(
     return new Err({ tracked: true, message: "File not found" });
   }
 
-  // Get all versions of the file (sorted newest to oldest)
-  // No maxResults limit - we need all versions to ensure correct sorting
-  const versions = await fileResource.getSortedFileVersions(auth);
-
-  // Check if there's a previous version available before attempting revert
-  if (versions.length < MIN_VERSIONS_FOR_REVERT) {
-    return new Err({
-      tracked: false,
-      message: "No previous version available to revert to",
-    });
-  }
-
-  const currentVersion = versions[0];
-  const previousVersion = versions[1];
-
-  // Update metadata BEFORE copy (following the pattern from editClientExecutableFile)
-  await fileResource.setUseCaseMetadata({
-    ...fileResource.useCaseMetadata,
-    lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
+  const revertResult = await fileResource.revert(auth, {
+    revertedByAgentConfigurationId,
   });
 
-  // Decrement version since we're reverting to a previous version
-  await fileResource.decrementVersion();
-
-  // Use GCS copy function to make a copy of the previous version the current version
-  const filePath = fileResource.getCloudStoragePath(auth, "original");
-  const bucket = fileResource.getBucketForVersion("original");
-  const destinationFile = bucket.file(filePath);
-  try {
-    await previousVersion.copy(destinationFile);
-  } catch (error) {
+  if (revertResult.isErr()) {
     return new Err({
       tracked: false,
-      message: `Failed to copy previous version: ${normalizeError(error)}`,
-    });
-  }
-
-  // Delete old versions to prevent accumulation and infinite loops
-  try {
-    await currentVersion.delete();
-    await previousVersion.delete();
-  } catch (error) {
-    return new Err({
-      tracked: false,
-      message: `Failed to delete old file versions: ${normalizeError(error)}`,
+      message: revertResult.error,
     });
   }
 

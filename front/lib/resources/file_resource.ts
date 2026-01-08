@@ -508,6 +508,66 @@ export class FileResource extends BaseResource<FileModel> {
     }
   }
 
+  /**
+   * Revert the file to its previous version.
+   * Uses GCS copy function to restore the previous version as the current version.
+   * Deletes old versions to prevent accumulation.
+   */
+  async revert(
+    auth: Authenticator,
+    {
+      revertedByAgentConfigurationId,
+    }: {
+      revertedByAgentConfigurationId: string;
+    }
+  ): Promise<Result<undefined, string>> {
+    // Get all versions of the file (sorted newest to oldest)
+    const versions = await this.getSortedFileVersions(auth);
+
+    // Check if there's a previous version available before attempting revert
+    if (versions.length < 2) {
+      return new Err("No previous version available to revert to");
+    }
+
+    const currentVersion = versions[0];
+    const previousVersion = versions[1];
+
+    // Update metadata before copy
+    await this.setUseCaseMetadata({
+      ...this.useCaseMetadata,
+      lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
+    });
+
+    // Use GCS copy function to make a copy of the previous version the current version
+    const filePath = this.getCloudStoragePath(auth, "original");
+    const bucket = this.getBucketForVersion("original");
+    const destinationFile = bucket.file(filePath);
+
+    try {
+      await previousVersion.copy(destinationFile);
+    } catch (error) {
+      return new Err(
+        `Revert unsuccessful. Failed to copy previous version: ${normalizeError(error)}`
+      );
+    }
+
+    // Delete old versions to prevent accumulation and infinite loops
+    try {
+      await currentVersion.delete();
+      await previousVersion.delete();
+    } catch (error) {
+      return new Err(
+        `Revert partially applied, failed to delete old file versions: ${normalizeError(error)}`
+      );
+    }
+
+    // Decrement version since we're reverting to a previous version
+    // Do this at the end to ensure version counter only changes on success
+    await this.decrementVersion();
+
+    return new Ok(undefined);
+  }
+
   // Stream logic.
 
   getWriteStream({
@@ -594,7 +654,8 @@ export class FileResource extends BaseResource<FileModel> {
       filePath: this.getCloudStoragePath(auth, "original"),
     });
 
-    // Mark the file as ready.
+    // Increment version after successful upload and mark as ready
+    await this.update({ version: this.version + 1 });
     await this.markAsReady();
   }
 
@@ -606,11 +667,11 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ snippet });
   }
 
-  incrementVersion() {
+  private incrementVersion() {
     return this.update({ version: this.version + 1 });
   }
 
-  decrementVersion() {
+  private decrementVersion() {
     return this.update({ version: Math.max(0, this.version - 1) });
   }
 
