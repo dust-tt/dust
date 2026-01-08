@@ -1,5 +1,5 @@
 import { Button, ContentMessage } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
@@ -35,18 +35,10 @@ export function SpaceAboutTab({
     useState<UserType[]>(initialMembers);
   const [selectedGroups, setSelectedGroups] =
     useState<GroupType[]>(initialGroups);
-  const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   const isManual = !planAllowsSCIM || managementType === "manual";
   const doUpdate = useUpdateSpace({ owner });
-
-  // Update state when initial values change
-  useEffect(() => {
-    setManagementType(initialManagementMode);
-    setSelectedMembers(initialMembers);
-    setSelectedGroups(initialGroups);
-  }, [initialManagementMode, initialMembers, initialGroups]);
 
   const hasChanges = useMemo(() => {
     if (managementType !== initialManagementMode) {
@@ -131,13 +123,7 @@ export function SpaceAboutTab({
         owner={owner}
         selectedMembers={selectedMembers}
         selectedGroups={selectedGroups}
-        searchSelectedMembers={searchSelectedMembers}
-        onSearchChange={setSearchSelectedMembers}
-        onManagementTypeChange={(value) => {
-          if (value === "manual" || value === "group") {
-            setManagementType(value);
-          }
-        }}
+        onManagementTypeChange={setManagementType}
         onMembersUpdated={setSelectedMembers}
         onGroupsUpdated={setSelectedGroups}
       />

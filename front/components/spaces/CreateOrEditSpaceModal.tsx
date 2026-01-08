@@ -36,12 +36,6 @@ import type {
 
 type MembersManagementType = "manual" | "group";
 
-function isMembersManagementType(
-  value: string
-): value is MembersManagementType {
-  return value === "manual" || value === "group";
-}
-
 interface CreateOrEditSpaceModalProps {
   defaultRestricted?: boolean;
   isAdmin: boolean;
@@ -71,8 +65,6 @@ export function CreateOrEditSpaceModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestricted, setIsRestricted] = useState(false);
-  const [searchSelectedMembers, setSearchSelectedMembers] =
-    useState<string>("");
   const [managementType, setManagementType] =
     useState<MembersManagementType>("manual");
   const [isDirty, setIsDirty] = useState(false);
@@ -284,63 +276,11 @@ export function CreateOrEditSpaceModal({
   }, [doDelete, handleClose, owner.sId, router, space]);
 
   const handleManagementTypeChange = useCallback(
-    async (value: string) => {
-      if (!isMembersManagementType(value) || !planAllowsSCIM) {
-        return;
-      }
-
-      // If switching from manual to group mode with manually added members.
-      if (
-        managementType === "manual" &&
-        value === "group" &&
-        selectedMembers.length > 0
-      ) {
-        const confirmed = await confirm({
-          title: "Switch to groups",
-          message:
-            "This switches from manual member to group-based access. " +
-            "Your current member list will be saved but no longer active.",
-          validateLabel: "Confirm",
-          validateVariant: "primary",
-        });
-
-        if (confirmed) {
-          setManagementType("group");
-          setIsDirty(true);
-        }
-      }
-      // If switching from group to manual mode with selected groups.
-      else if (
-        managementType === "group" &&
-        value === "manual" &&
-        selectedGroups.length > 0
-      ) {
-        const confirmed = await confirm({
-          title: "Switch to members",
-          message:
-            "This switches from group-based access to manual member management. " +
-            "Your current group settings will be saved but no longer active.",
-          validateLabel: "Confirm",
-          validateVariant: "primary",
-        });
-
-        if (confirmed) {
-          setManagementType("manual");
-          setIsDirty(true);
-        }
-      } else {
-        // For direct switches without selections, clear everything and let the user start fresh.
-        setManagementType(value);
-        setIsDirty(true);
-      }
+    (managementType: MembersManagementType) => {
+      setManagementType(managementType);
+      setIsDirty(true);
     },
-    [
-      confirm,
-      managementType,
-      selectedMembers.length,
-      selectedGroups.length,
-      planAllowsSCIM,
-    ]
+    []
   );
 
   const disabled = useMemo(() => {
@@ -419,11 +359,7 @@ export function CreateOrEditSpaceModal({
                 owner={owner}
                 selectedMembers={selectedMembers}
                 selectedGroups={selectedGroups}
-                searchSelectedMembers={searchSelectedMembers}
-                onSearchChange={setSearchSelectedMembers}
-                onManagementTypeChange={(value) => {
-                  void handleManagementTypeChange(value);
-                }}
+                onManagementTypeChange={handleManagementTypeChange}
                 onMembersUpdated={(members) => {
                   setSelectedMembers(members);
                   setIsDirty(true);
