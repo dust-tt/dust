@@ -477,8 +477,6 @@ export function isUserMessageContextValid(
 
   switch (context.origin) {
     case "api":
-    case "slack": // TODO: should not be allowed
-    case "web": // TODO: should not be allowed
       return true;
     case "excel":
     case "gsheet":
@@ -487,6 +485,7 @@ export function isUserMessageContextValid(
     case "powerpoint":
     case "zapier":
       return authMethod === "api_key";
+
     case "zendesk":
       return (
         (authMethod === "api_key" || authMethod === "oauth") && !!zendeskUserId
@@ -499,12 +498,14 @@ export function isUserMessageContextValid(
     case "raycast":
       return authMethod === "oauth" && userAgent === "undici";
     case "email":
+    case "slack":
     case "slack_workflow":
     case "teams":
     case "transcript":
     case "triggered":
     case "triggered_programmatic":
     case "onboarding_conversation":
+    case "web":
       return false;
     default:
       assertNever(context.origin);
