@@ -78,6 +78,7 @@ export const NotificationPreferences = forwardRef<
   const [workflowPreferences, setWorkflowPreferences] = useState<
     Preference | undefined
   >();
+  const [isLoadingPreferences, setIsLoadingPreferences] = useState(true);
 
   // Email digest delay
   const [emailDelay, setEmailDelay] = useState<NotificationPreferencesDelay>(
@@ -153,13 +154,18 @@ export const NotificationPreferences = forwardRef<
 
   // Load workflow-specific preferences from Novu
   useEffect(() => {
-    void novuClient?.preferences.list().then((preferences) => {
+    if (!novuClient) {
+      return;
+    }
+    setIsLoadingPreferences(true);
+    void novuClient.preferences.list().then((preferences) => {
       const workflowPref = preferences.data?.find(
         (preference) =>
           preference.workflow?.identifier === CONVERSATION_UNREAD_WORKFLOW_ID
       );
       setWorkflowPreferences(workflowPref);
       originalPreferencesRef.current = workflowPref;
+      setIsLoadingPreferences(false);
     });
   }, [novuClient]);
 
@@ -312,8 +318,16 @@ export const NotificationPreferences = forwardRef<
     });
   };
 
-  if (!workflowPreferences) {
+  if (isLoadingPreferences) {
     return <Spinner />;
+  }
+
+  if (!workflowPreferences) {
+    return (
+      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        Unable to load notification preferences. Please contact support.
+      </div>
+    );
   }
 
   const isInAppEnabled =
