@@ -54,6 +54,9 @@ export async function sendDataDeletionEmail({
     if (!ws) {
       throw new Error("No workspace found");
     }
+
+    const subscription = await SubscriptionResource.fetchLastByWorkspace(ws);
+
     const { members: admins } = await getMembers(auth, {
       roles: ["admin"],
       activeOnly: true,
@@ -63,6 +66,7 @@ export async function sendDataDeletionEmail({
         email: a.email,
         workspaceName: ws.name,
         remainingDays,
+        planCode: subscription?.getPlan().code,
         isLast,
       });
     }

@@ -2,15 +2,14 @@ import { mergeAttributes, Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
 import { KnowledgeNodeView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
-import type { ContentNodeType } from "@app/types";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 
 // Minimal data from serialization.
 export interface BaseKnowledgeItem {
   dataSourceViewId: string;
+  hasChildren: boolean;
   label: string;
   nodeId: string;
-  nodeType: ContentNodeType;
   spaceId: string;
 }
 
@@ -25,6 +24,29 @@ export function isFullKnowledgeItem(
   item: KnowledgeItem
 ): item is FullKnowledgeItem {
   return "node" in item && item.node !== undefined;
+}
+
+/**
+ * Computes whether a node has children, with special handling for Notion.
+ * For Notion: pages and databases can have children even if they're currently empty.
+ * For others: uses expandable field or node type.
+ */
+export function computeHasChildren(node: DataSourceViewContentNode): boolean {
+  const isNotion =
+    node.dataSourceView.dataSource.connectorProvider === "notion";
+
+  if (isNotion) {
+    // In Notion, pages (documents) and databases (tables) can have children.
+    // Folders always can have children (though Notion doesn't actually use folders).
+    return (
+      node.type === "folder" ||
+      node.type === "document" ||
+      node.type === "table"
+    );
+  }
+
+  // For non-Notion sources, use the childrenCount field.
+  return node.childrenCount > 0;
 }
 
 export interface KnowledgeNodeAttributes {
@@ -63,10 +85,10 @@ export const KnowledgeNode = Node.create<{}>({
 
       const attributesString = match[1];
       const dsvMatch = attributesString.match(/dsv="([^"]*)"/);
+      const hasChildrenMatch = attributesString.match(/hasChildren="([^"]*)"/);
       const idMatch = attributesString.match(/id="([^"]+)"/);
       const spaceMatch = attributesString.match(/space="([^"]*)"/);
       const titleMatch = attributesString.match(/title="([^"]+)"/);
-      const typeMatch = attributesString.match(/type="([^"]*)"/);
 
       if (!idMatch || !titleMatch) {
         return undefined;
@@ -75,9 +97,9 @@ export const KnowledgeNode = Node.create<{}>({
       const token = {
         type: "knowledgeNode",
         dataSourceViewId: dsvMatch ? dsvMatch[1] : undefined,
+        hasChildren: hasChildrenMatch ? hasChildrenMatch[1] === "true" : false,
         knowledgeId: idMatch[1],
         knowledgeTitle: titleMatch[1],
-        nodeType: typeMatch ? typeMatch[1] : undefined,
         raw: match[0],
         spaceId: spaceMatch ? spaceMatch[1] : undefined,
       };
@@ -146,6 +168,13 @@ export const KnowledgeNode = Node.create<{}>({
   },
 
   // Markdown serialization and deserialization.
+  //
+  // IMPORTANT: The serialization format (especially hasChildren) is designed to match
+  // the output of renderNode() in lib/actions/mcp_internal_actions/rendering.ts.
+  // This ensures agents see consistent data structure between:
+  // - Knowledge attached in instructions (serialized here)
+  // - Tool outputs from data_sources_file_system server (rendered by renderNode)
+  // If you change this format, review renderNode() and vice versa.
 
   renderMarkdown: (node) => {
     if (
@@ -154,10 +183,16 @@ export const KnowledgeNode = Node.create<{}>({
       node.attrs.selectedItems &&
       node.attrs.selectedItems.length > 0
     ) {
-      const [item] = node.attrs.selectedItems as FullKnowledgeItem[];
+      const [item] = node.attrs.selectedItems as KnowledgeItem[];
+
+      // Compute hasChildren with special logic for Notion if we have full node data.
+      const hasChildren = isFullKnowledgeItem(item)
+        ? computeHasChildren(item.node)
+        : item.hasChildren;
 
       // Serialize essential data for model understanding and API fetching.
-      return `<knowledge id="${item.nodeId}" title="${item.label}" space="${item.spaceId}" dsv="${item.dataSourceViewId}" type="${item.nodeType}" />`;
+      // Format kept aligned with renderNode() output for consistency.
+      return `<knowledge id="${item.nodeId}" title="${item.label}" space="${item.spaceId}" dsv="${item.dataSourceViewId}" hasChildren="${hasChildren}" />`;
     }
 
     // Don't serialize search state, empty nodes shouldn't be saved.
@@ -167,9 +202,9 @@ export const KnowledgeNode = Node.create<{}>({
   parseMarkdown: (token) => {
     const selectedItem: BaseKnowledgeItem = {
       dataSourceViewId: token.dataSourceViewId,
+      hasChildren: token.hasChildren,
       label: token.knowledgeTitle,
       nodeId: token.knowledgeId,
-      nodeType: token.nodeType,
       spaceId: token.spaceId,
     };
 

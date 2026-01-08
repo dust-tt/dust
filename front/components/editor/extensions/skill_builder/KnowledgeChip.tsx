@@ -36,18 +36,12 @@ export function KnowledgeChip({ node, title, onRemove }: KnowledgeChipProps) {
         );
 
   return (
-    // TODO(2026-01-02 SKILL): Add support truncate + elipsis if title is too long.
     <AttachmentChip
       label={title}
       icon={{ visual: icon }}
       target="_blank"
-      // TODO(2026-01-02 SKILL): decide on proper color.
-      color="highlight"
-      // TODO(2026-01-02 SKILL): Stop propagating event so it does not open the link.
+      color="white"
       onRemove={onRemove}
-      className="rounded-md bg-white align-middle font-medium drop-shadow"
-      // TODO(2026-01-02 SKILL): Make href optional in AttachmentChip.
-      href={""}
       size="xs"
     />
   );
@@ -68,12 +62,9 @@ export function KnowledgeErrorChip({
       label={title}
       icon={{ visual: ExclamationCircleIcon }}
       target="_blank"
-      color="warning"
+      color="white"
       onRemove={onRemove}
-      // TODO(2026-01-02 SKILL): Create proper variant in Sparkle.
-      className="rounded-md bg-white align-middle font-medium drop-shadow"
       size="xs"
-      href=""
     />
   );
 }

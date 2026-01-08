@@ -105,25 +105,14 @@ async function checkDockerCompose(): Promise<CheckResult> {
   };
 }
 
-async function checkTemporal(): Promise<{ cli: CheckResult; server: CheckResult }> {
+async function checkTemporalCli(): Promise<CheckResult> {
   const version = await getCommandVersion("temporal");
-  const running = await checkCommand("temporal", ["workflow", "list", "--limit", "1"]);
-
   return {
-    cli: {
-      name: "Temporal CLI",
-      ok: version !== null,
-      message: version ?? "Not found",
-      fix: "Install Temporal: brew install temporal",
-      installable: true,
-    },
-    server: {
-      name: "Temporal Server",
-      ok: running,
-      message: running ? "Running" : "Not running",
-      fix: "Start Temporal: temporal server start-dev",
-      installable: false,
-    },
+    name: "Temporal CLI",
+    ok: version !== null,
+    message: version ?? "Not found",
+    fix: "Install Temporal: brew install temporal",
+    installable: true,
   };
 }
 
@@ -249,16 +238,13 @@ function printResults(results: CheckResult[]): boolean {
 }
 
 async function runAllChecks(): Promise<CheckResult[]> {
-  const temporal = await checkTemporal();
-
   return [
     await checkHomebrew(),
     await checkBun(),
     await checkZellij(),
     await checkDocker(),
     await checkDockerCompose(),
-    temporal.cli,
-    temporal.server,
+    await checkTemporalCli(),
     await checkNvm(),
     await checkCargo(),
     await checkSccache(),
@@ -336,6 +322,11 @@ export async function setupCommand(options: SetupOptions = {}): Promise<Result<v
 
   if (allOk) {
     logger.success("All prerequisites met!");
+    console.log();
+    console.log("Next steps:");
+    console.log("  dust-hive up            # Start temporal server + sync main repo");
+    console.log("  dust-hive spawn <name>  # Create a new environment");
+    console.log();
     return Ok(undefined);
   }
 
@@ -360,6 +351,11 @@ export async function setupCommand(options: SetupOptions = {}): Promise<Result<v
 
   if (allOk) {
     logger.success("All prerequisites met!");
+    console.log();
+    console.log("Next steps:");
+    console.log("  dust-hive up            # Start temporal server + sync main repo");
+    console.log("  dust-hive spawn <name>  # Create a new environment");
+    console.log();
     return Ok(undefined);
   }
 
@@ -375,7 +371,7 @@ export async function setupCommand(options: SetupOptions = {}): Promise<Result<v
     console.log();
   }
 
-  logger.info("Ready to create environments once all prerequisites are met!");
+  logger.info("Once prerequisites are met, run: dust-hive up");
   return Err(new CommandError("Prerequisites check failed"));
 }
 

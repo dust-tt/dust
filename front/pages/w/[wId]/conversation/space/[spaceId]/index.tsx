@@ -19,7 +19,7 @@ import { useCallback, useState } from "react";
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import { ConversationLayout } from "@app/components/assistant/conversation/ConversationLayout";
-import { SpaceAboutTab } from "@app/components/assistant/conversation/space/SpaceAboutTab";
+import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/SpaceConversationsTab";
 import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
 import { SpaceToolsTab } from "@app/components/assistant/conversation/space/SpaceToolsTab";
@@ -149,7 +149,7 @@ export default function SpaceConversations({
     // Listen for hash changes
     window.addEventListener("hashchange", updateTabFromHash);
     return () => window.removeEventListener("hashchange", updateTabFromHash);
-  }, []);
+  }, [router.asPath]);
 
   const handleTabChange = useCallback((tab: SpaceTab) => {
     window.location.hash = tab;

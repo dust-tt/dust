@@ -270,6 +270,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
             className={cn("-s-mr-1", closeIconVariants[color || "primary"])}
             aria-label="Remove"
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               onRemove();
             }}

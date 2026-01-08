@@ -9,7 +9,8 @@ import { LinkWrapperProps } from "./LinkWrapper";
 const attachmentChipOverrides = cn(
   "s-rounded-lg s-px-2 s-py-1 s-heading-sm s-gap-1.5",
   "s-bg-background s-text-foreground s-max-w-44",
-  "dark:s-bg-background-night dark:s-text-foreground-night"
+  "dark:s-bg-background-night dark:s-text-foreground-night",
+  "s-align-middle"
 );
 
 export type AttachmentChipIconProps = IconProps;
@@ -32,8 +33,6 @@ export type AttachmentChipBaseProps = AttachmentChipIconOptions & {
 export type AttachmentChipButtonProps = AttachmentChipBaseProps & {
   href?: never;
   onClick?: () => void;
-} & {
-  [K in keyof Omit<LinkWrapperProps, "children">]?: never;
 };
 
 export type AttachmentChipLinkProps = AttachmentChipBaseProps &

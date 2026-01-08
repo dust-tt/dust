@@ -13,7 +13,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
@@ -242,7 +242,7 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - Skills with restric
     await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });
     await authenticator.refresh();
 
-    const skill = await SkillConfigurationFactory.create(authenticator, {
+    const skill = await SkillFactory.create(authenticator, {
       name: "Skill with restricted space",
     });
     await SkillConfigurationModel.update(
@@ -317,7 +317,7 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - additionalRequested
     expect(agentConfigurationModel).not.toBeNull();
     const openSpaceModelId = getResourceIdFromSId(openSpace.sId);
     expect(agentConfigurationModel?.requestedSpaceIds).toContain(
-      openSpaceModelId?.toString()
+      openSpaceModelId
     );
   });
 

@@ -298,7 +298,7 @@ export const intercom = async ({
       while (hasMore && totalCount < MAX_CONVERSATIONS_COUNT) {
         const response = await fetchIntercomConversations({
           accessToken,
-          teamId: args.teamId,
+          teamId: args.teamId?.toString(),
           slidingWindow: workspace.conversationsSlidingWindow,
           cursor,
           pageSize: 50,

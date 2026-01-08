@@ -6,8 +6,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { ModelId } from "@app/types";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
 
-// TODO(SKILLS 2026-01-05) Rename to SkillFactory.
-export class SkillConfigurationFactory {
+export class SkillFactory {
   static async create(
     auth: Authenticator,
     overrides: Partial<{
@@ -17,6 +16,7 @@ export class SkillConfigurationFactory {
       instructions: string;
       status: SkillStatus;
       version: number;
+      requestedSpaceIds: ModelId[];
     }> = {}
   ): Promise<SkillResource> {
     const user = auth.user();
@@ -30,6 +30,7 @@ export class SkillConfigurationFactory {
     const instructions = overrides.instructions ?? "Test skill instructions";
     const status = overrides.status ?? "active";
     const authorId = overrides.status === "suggested" ? null : user.id;
+    const requestedSpaceIds = overrides.requestedSpaceIds ?? [];
 
     return SkillResource.makeNew(
       auth,
@@ -39,7 +40,7 @@ export class SkillConfigurationFactory {
         userFacingDescription,
         instructions,
         name,
-        requestedSpaceIds: [],
+        requestedSpaceIds,
         status,
       },
       {

@@ -1,6 +1,7 @@
-import { Button } from "@dust-tt/sparkle";
+import { Button, ContentMessage } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type {
@@ -122,7 +123,7 @@ export function SpaceAboutTab({
   ]);
 
   return (
-    <div className="flex w-full flex-col gap-y-4 p-8">
+    <div className="flex w-full flex-col gap-y-4 px-4 py-8">
       <RestrictedAccessBody
         isManual={isManual}
         planAllowsSCIM={planAllowsSCIM}
@@ -148,6 +149,24 @@ export function SpaceAboutTab({
           onClick={onSave}
           disabled={!canSave || isSaving}
         />
+      </div>
+
+      <div className="flex w-full flex-col items-center gap-y-4 border-t pt-8">
+        <ContentMessage
+          variant="warning"
+          title="Danger Zone"
+          className="flex w-full"
+        >
+          <div className="flex flex-col gap-y-4">
+            <p className="text-sm text-muted-foreground">
+              Deleting this project will permanently remove all its content,
+              including conversations, folders, websites, and data sources. This
+              action cannot be undone. All assistants using tools that depend on
+              this project will be impacted.
+            </p>
+            <DeleteSpaceDialog owner={owner} space={space} />
+          </div>
+        </ContentMessage>
       </div>
     </div>
   );

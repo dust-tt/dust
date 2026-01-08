@@ -18,12 +18,7 @@ import { startCommand } from "./commands/start";
 import { statusCommand } from "./commands/status";
 import { stopCommand } from "./commands/stop";
 import { syncCommand } from "./commands/sync";
-import {
-  temporalRestartCommand,
-  temporalStartCommand,
-  temporalStatusCommand,
-  temporalStopCommand,
-} from "./commands/temporal";
+import { temporalCommand } from "./commands/temporal";
 import { upCommand } from "./commands/up";
 import { urlCommand } from "./commands/url";
 import { warmCommand } from "./commands/warm";
@@ -59,10 +54,20 @@ cli
     "-W, --wait",
     "Wait for SDK to build before opening zellij (cannot be used with --no-open)"
   )
+  .option("-c, --command <cmd>", "Run command in shell tab after opening (drops to shell on exit)")
+  .option("-C, --compact", "Use compact zellij layout (no tab bar)")
   .action(
     async (
       name: string | undefined,
-      options: { name?: string; open?: boolean; attach?: boolean; warm?: boolean; wait?: boolean }
+      options: {
+        name?: string;
+        open?: boolean;
+        attach?: boolean;
+        warm?: boolean;
+        wait?: boolean;
+        command?: string;
+        compact?: boolean;
+      }
     ) => {
       // Validate --wait cannot be used with --no-open
       if (options.wait && options.open === false) {
@@ -77,6 +82,8 @@ cli
         noAttach?: boolean;
         warm?: boolean;
         wait?: boolean;
+        command?: string;
+        compact?: boolean;
       } = {};
       if (resolvedName !== undefined) {
         spawnOptions.name = resolvedName;
@@ -93,6 +100,12 @@ cli
       if (options.wait) {
         spawnOptions.wait = true;
       }
+      if (options.command) {
+        spawnOptions.command = options.command;
+      }
+      if (options.compact) {
+        spawnOptions.compact = true;
+      }
       await prepareAndRun(spawnCommand(spawnOptions));
     }
   );
@@ -100,8 +113,9 @@ cli
 cli
   .command("open [name]", "Open environment's zellij session")
   .alias("o")
-  .action(async (name: string | undefined) => {
-    await prepareAndRun(openCommand(name));
+  .option("-C, --compact", "Use compact zellij layout (no tab bar)")
+  .action(async (name: string | undefined, options: { compact?: boolean }) => {
+    await prepareAndRun(openCommand(name, { compact: options.compact }));
   });
 
 cli
@@ -211,7 +225,7 @@ cli.command("url [name]", "Print front URL").action(async (name: string | undefi
 });
 
 cli
-  .command("setup", "Interactive setup wizard for prerequisites")
+  .command("setup", "Check and install prerequisites (run this first!)")
   .option("-y, --non-interactive", "Run in non-interactive mode (same as doctor)")
   .action(async (options: { nonInteractive?: boolean }) => {
     await prepareAndRun(setupCommand({ nonInteractive: Boolean(options.nonInteractive) }));
@@ -239,21 +253,11 @@ cli
   });
 
 // Temporal subcommands
-cli.command("temporal start", "Start Temporal server").action(async () => {
-  await prepareAndRun(temporalStartCommand());
-});
-
-cli.command("temporal stop", "Stop Temporal server").action(async () => {
-  await prepareAndRun(temporalStopCommand());
-});
-
-cli.command("temporal restart", "Restart Temporal server").action(async () => {
-  await prepareAndRun(temporalRestartCommand());
-});
-
-cli.command("temporal status", "Show Temporal server status").action(async () => {
-  await prepareAndRun(temporalStatusCommand());
-});
+cli
+  .command("temporal [subcommand]", "Manage Temporal server (start|stop|restart|status)")
+  .action(async (subcommand: string | undefined) => {
+    await prepareAndRun(temporalCommand(subcommand));
+  });
 
 cli
   .command(

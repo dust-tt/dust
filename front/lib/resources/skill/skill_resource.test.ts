@@ -1,12 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 describe("SkillResource", () => {
   let testContext: Awaited<ReturnType<typeof createResourceTest>>;
@@ -75,12 +79,10 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1",
-          nodeType: "document",
         },
         {
           dataSourceView: dataSourceView2,
           nodeId: "node2",
-          nodeType: "folder",
         },
       ];
 
@@ -122,17 +124,14 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1",
-          nodeType: "document",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node2",
-          nodeType: "folder",
         },
         {
           dataSourceView: dataSourceView2,
           nodeId: "node3",
-          nodeType: "document",
         },
       ];
 
@@ -163,7 +162,7 @@ describe("SkillResource", () => {
     });
 
     it("should detect configurations that need deletion", async () => {
-      const skillResource = await SkillConfigurationFactory.create(
+      const skillResource = await SkillFactory.create(
         testContext.authenticator,
         {}
       );
@@ -187,7 +186,6 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1",
-          nodeType: "document",
         },
       ];
 
@@ -208,7 +206,7 @@ describe("SkillResource", () => {
     });
 
     it("should detect when parentsIn has changed", async () => {
-      const skillResource = await SkillConfigurationFactory.create(
+      const skillResource = await SkillFactory.create(
         testContext.authenticator,
         {}
       );
@@ -226,12 +224,10 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1", // Keep this one.
-          nodeType: "document",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node3", // Change node2 to node3.
-          nodeType: "folder",
         },
       ];
 
@@ -253,7 +249,7 @@ describe("SkillResource", () => {
     });
 
     it("should not include unchanged configurations in toUpsert", async () => {
-      const skillResource = await SkillConfigurationFactory.create(
+      const skillResource = await SkillFactory.create(
         testContext.authenticator,
         {}
       );
@@ -271,12 +267,10 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node2", // Order doesn't matter.
-          nodeType: "folder",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1",
-          nodeType: "document",
         },
       ];
 
@@ -295,7 +289,7 @@ describe("SkillResource", () => {
     });
 
     it("should handle mixed scenarios: add, update, delete", async () => {
-      const skillResource = await SkillConfigurationFactory.create(
+      const skillResource = await SkillFactory.create(
         testContext.authenticator,
         {}
       );
@@ -317,17 +311,14 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1",
-          nodeType: "document",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1_new", // Add new node to existing DSV.
-          nodeType: "folder",
         },
         {
           dataSourceView: dataSourceView3, // New DSV.
           nodeId: "node3",
-          nodeType: "document",
         },
         // dataSourceView2 is removed.
       ];
@@ -366,17 +357,14 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1",
-          nodeType: "document",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1", // Duplicate.
-          nodeType: "folder",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node2",
-          nodeType: "document",
         },
       ];
 
@@ -396,7 +384,7 @@ describe("SkillResource", () => {
     });
 
     it("should create unique configurations and handle updates properly", async () => {
-      const skillResource = await SkillConfigurationFactory.create(
+      const skillResource = await SkillFactory.create(
         testContext.authenticator,
         {}
       );
@@ -415,17 +403,14 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1",
-          nodeType: "document",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node2",
-          nodeType: "document",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node3", // Adding new node
-          nodeType: "document",
         },
       ];
 
@@ -450,6 +435,195 @@ describe("SkillResource", () => {
       // Verify only one configuration per skill+dataSourceView combination
       expect(toUpsert[0].dataSourceViewId).toBe(dataSourceView1.dataSource.id);
       expect(toUpsert[0].skillConfigurationId).toBe(skillResource.id);
+    });
+  });
+
+  describe("updateSkill", () => {
+    it("should add skill space requirements to agents using the skill", async () => {
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+
+      const skillResource = await SkillFactory.create(
+        testContext.authenticator,
+        { name: "Test Skill For Update" }
+      );
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Test Agent With Skill" }
+      );
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skillResource.id,
+        agentConfigurationId: agent.id,
+      });
+
+      const agentBefore = await AgentConfigurationModel.findByPk(agent.id);
+      expect(agentBefore?.requestedSpaceIds).toEqual([]);
+
+      await skillResource.updateSkill(testContext.authenticator, {
+        name: skillResource.name,
+        agentFacingDescription: skillResource.agentFacingDescription,
+        userFacingDescription: skillResource.userFacingDescription,
+        instructions: skillResource.instructions,
+        icon: skillResource.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+
+      const agentAfter = await AgentConfigurationModel.findByPk(agent.id);
+      expect(agentAfter?.requestedSpaceIds.map((id) => Number(id))).toContain(
+        restrictedSpace.id
+      );
+    });
+
+    it("should not duplicate requestedSpaceIds if already present on agent", async () => {
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+
+      const skillResource = await SkillFactory.create(
+        testContext.authenticator,
+        {
+          name: "Test Skill With Space",
+          requestedSpaceIds: [restrictedSpace.id],
+        }
+      );
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Test Agent With Space" }
+      );
+
+      await AgentConfigurationModel.update(
+        { requestedSpaceIds: [restrictedSpace.id] },
+        { where: { id: agent.id } }
+      );
+
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skillResource.id,
+        agentConfigurationId: agent.id,
+      });
+
+      await skillResource.updateSkill(testContext.authenticator, {
+        name: skillResource.name,
+        agentFacingDescription: skillResource.agentFacingDescription,
+        userFacingDescription: skillResource.userFacingDescription,
+        instructions: "Updated instructions",
+        icon: skillResource.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+
+      const agentAfter = await AgentConfigurationModel.findByPk(agent.id);
+      const spaceIds = agentAfter?.requestedSpaceIds.map((id) => Number(id));
+      expect(spaceIds?.filter((id) => id === restrictedSpace.id)).toHaveLength(
+        1
+      );
+    });
+
+    it("should remove space from agent when skill no longer requires it", async () => {
+      const space1 = await SpaceFactory.regular(testContext.workspace);
+      const space2 = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(space1, testContext.globalGroup);
+      await GroupSpaceFactory.associate(space2, testContext.globalGroup);
+
+      const skillResource = await SkillFactory.create(
+        testContext.authenticator,
+        {
+          name: "Test Skill With Spaces",
+          requestedSpaceIds: [space1.id, space2.id],
+        }
+      );
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Test Agent" }
+      );
+
+      await AgentConfigurationModel.update(
+        { requestedSpaceIds: [space1.id, space2.id] },
+        { where: { id: agent.id } }
+      );
+
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skillResource.id,
+        agentConfigurationId: agent.id,
+      });
+
+      // Remove space2 from the skill.
+      await skillResource.updateSkill(testContext.authenticator, {
+        name: skillResource.name,
+        agentFacingDescription: skillResource.agentFacingDescription,
+        userFacingDescription: skillResource.userFacingDescription,
+        instructions: skillResource.instructions,
+        icon: skillResource.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [space1.id],
+      });
+
+      const agentAfter = await AgentConfigurationModel.findByPk(agent.id);
+      const spaceIds = agentAfter?.requestedSpaceIds.map((id) => Number(id));
+
+      expect(spaceIds).toContain(space1.id);
+      expect(spaceIds).not.toContain(space2.id);
+    });
+
+    it("should keep space on agent if another skill still requires it", async () => {
+      const sharedSpace = await SpaceFactory.regular(testContext.workspace);
+      const skill1OnlySpace = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(sharedSpace, testContext.globalGroup);
+      await GroupSpaceFactory.associate(
+        skill1OnlySpace,
+        testContext.globalGroup
+      );
+
+      const skill1 = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill 1",
+        requestedSpaceIds: [sharedSpace.id, skill1OnlySpace.id],
+      });
+
+      const skill2 = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill 2",
+        requestedSpaceIds: [sharedSpace.id],
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Test Agent" }
+      );
+
+      await AgentConfigurationModel.update(
+        { requestedSpaceIds: [sharedSpace.id, skill1OnlySpace.id] },
+        { where: { id: agent.id } }
+      );
+
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skill1.id,
+        agentConfigurationId: agent.id,
+      });
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skill2.id,
+        agentConfigurationId: agent.id,
+      });
+
+      // Remove sharedSpace from skill1 (skill2 still requires it).
+      await skill1.updateSkill(testContext.authenticator, {
+        name: skill1.name,
+        agentFacingDescription: skill1.agentFacingDescription,
+        userFacingDescription: skill1.userFacingDescription,
+        instructions: skill1.instructions,
+        icon: skill1.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [skill1OnlySpace.id],
+      });
+
+      const agentAfter = await AgentConfigurationModel.findByPk(agent.id);
+      const spaceIds = agentAfter?.requestedSpaceIds.map((id) => Number(id));
+
+      // sharedSpace kept because skill2 still requires it.
+      expect(spaceIds).toContain(sharedSpace.id);
+      expect(spaceIds).toContain(skill1OnlySpace.id);
     });
   });
 });

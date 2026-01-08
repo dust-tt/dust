@@ -1,6 +1,6 @@
 ---
 name: dust-hive
-description: Information about dust-hive, a CLI tool for running multiple isolated Dust development environments. Use this when working in a dust-hive environment, checking environment status, or running Dust app commands.
+description: Information about dust-hive, a CLI tool for running multiple isolated Dust development environments. ALWAYS enable this skill when the working directory is under ~/dust-hive/. Use for environment status, Dust app commands, and understanding port allocation.
 ---
 
 # dust-hive
@@ -124,17 +124,20 @@ bun run test         # All tests
 
 ### For Dust apps (in worktree or main repo):
 ```bash
-# TypeScript SDK
-cd types && npm run build
+# TypeScript SDK (watch is running - check logs if issues after SDK changes)
+dust-hive logs [ENV_NAME] sdk
 
 # Front (Next.js)
-cd front && npm run lint && npm run build
+cd front && npm run lint                                              # ESLint
+cd front && NODE_OPTIONS="--max-old-space-size=8192" npx tsgo --noEmit  # Type-check
+cd front && npm run build                                             # Build
 
 # Core (Rust)
 cd core && cargo check && cargo clippy
 
 # Connectors
-cd connectors && npm run lint && npm run build
+cd connectors && npm run lint   # ESLint
+cd connectors && npm run build  # Type-check + build
 
 # OAuth (Rust)
 cd oauth && cargo check && cargo clippy

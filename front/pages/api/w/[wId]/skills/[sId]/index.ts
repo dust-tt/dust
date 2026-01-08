@@ -4,7 +4,6 @@ import * as reporter from "io-ts-reporters";
 import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getRequestedSpaceIdsFromMCPServerViewIds } from "@app/lib/api/assistant/permissions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -207,7 +206,7 @@ async function handler(
       }
 
       // Fetch MCP server views first to compute requestedSpaceIds.
-      const mcpServerViewIds = body.tools.map((t) => t.mcpServerViewId);
+      const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
       const mcpServerViews = await MCPServerViewResource.fetchByIds(
         auth,
         mcpServerViewIds
@@ -215,7 +214,7 @@ async function handler(
 
       if (mcpServerViewIds.length !== mcpServerViews.length) {
         return apiError(req, res, {
-          status_code: 400,
+          status_code: 404,
           api_error: {
             type: "invalid_request_error",
             message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
@@ -223,10 +222,11 @@ async function handler(
         });
       }
 
-      const requestedSpaceIds = await getRequestedSpaceIdsFromMCPServerViewIds(
-        auth,
-        mcpServerViewIds
-      );
+      const requestedSpaceIds =
+        await MCPServerViewResource.listSpaceRequirementsByIds(
+          auth,
+          mcpServerViewIds
+        );
 
       // Validate all data source views from attached knowledge exist and user has access.
       const { attachedKnowledge } = body;
@@ -256,7 +256,6 @@ async function handler(
         (attachment) => ({
           dataSourceView: dataSourceViewIdMap.get(attachment.dataSourceViewId)!,
           nodeId: attachment.nodeId,
-          nodeType: attachment.nodeType,
         })
       );
 

@@ -293,7 +293,7 @@ export const IntercomCommandSchema = t.type({
     day: t.union([t.string, t.undefined]),
     helpCenterId: t.union([t.number, t.undefined]),
     conversationsSlidingWindow: t.union([t.number, t.undefined]),
-    teamId: t.union([t.string, t.undefined]),
+    teamId: t.union([t.number, t.undefined]),
     closedAfter: t.union([t.number, t.undefined]),
     state: t.union([
       t.union([t.literal("open"), t.literal("closed")]),

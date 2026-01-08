@@ -1,5 +1,6 @@
 import assert from "assert";
 import { tracer } from "dd-trace";
+import uniq from "lodash/uniq";
 import type {
   Attributes,
   CreationAttributes,
@@ -16,6 +17,7 @@ import {
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
+  getAvailabilityOfInternalMCPServerById,
   getAvailabilityOfInternalMCPServerByName,
   isAutoInternalMCPServerName,
   isValidInternalMCPServerId,
@@ -440,6 +442,38 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       (view) =>
         spaceModelIds.includes(view.vaultId) || view.space.kind === "global"
     );
+  }
+
+  static async listSpaceRequirementsByIds(
+    auth: Authenticator,
+    mcpServerViewIds: string[]
+  ): Promise<ModelId[]> {
+    const mcpServerViews = await this.fetchByIds(auth, mcpServerViewIds);
+
+    const spaceRequirements = mcpServerViews
+      .filter((view) => {
+        if (view.serverType !== "internal") {
+          return true;
+        }
+
+        // We skip the permissions for auto internal tools as they are automatically available to all users.
+        // This mimic the previous behavior of generic internal tools (search etc..).
+        const availability = getAvailabilityOfInternalMCPServerById(
+          view.mcpServerId
+        );
+        switch (availability) {
+          case "auto":
+          case "auto_hidden_builder":
+            return false;
+          case "manual":
+            return true;
+          default:
+            assertNever(availability);
+        }
+      })
+      .map((view) => view.space.id);
+
+    return uniq(spaceRequirements);
   }
 
   static async getMCPServerViewForSystemSpace(

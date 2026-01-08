@@ -15,6 +15,7 @@ import type { PortAllocation } from "../lib/ports";
 import { allocateNextPort, calculatePorts, savePortAllocation } from "../lib/ports";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
+import { getBranchName, loadSettings } from "../lib/settings";
 import { installAllDependencies } from "../lib/setup";
 import { cleanupPartialEnvironment, createWorktree, getMainRepoPath } from "../lib/worktree";
 import { openCommand } from "./open";
@@ -26,6 +27,8 @@ interface SpawnOptions {
   noAttach?: boolean;
   warm?: boolean;
   wait?: boolean;
+  command?: string;
+  compact?: boolean;
 }
 
 async function promptForName(): Promise<string> {
@@ -180,9 +183,12 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
     return Err(new CommandError(`Environment '${name}' already exists`));
   }
 
+  // Load settings for branch prefix
+  const settings = await loadSettings();
+
   // Always base on main branch
   const baseBranch = "main";
-  const workspaceBranch = `${name}-workspace`;
+  const workspaceBranch = getBranchName(name, settings);
   const worktreePath = getWorktreeDir(name);
 
   logger.info(`Creating environment '${name}' from branch '${baseBranch}'`);
@@ -238,16 +244,26 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
 
   // Open zellij unless --no-open
   if (!options.noOpen) {
-    const openOpts: { warmCommand?: string; noAttach?: boolean } = {};
-    if (options.warm) openOpts.warmCommand = `dust-hive warm ${name}`;
-    if (options.noAttach) openOpts.noAttach = true;
-    return openCommand(name, openOpts);
+    return openCommand(name, buildOpenOptions(name, options));
   }
 
   // If --no-open and --warm, run warm command directly in current terminal
-  if (options.warm) {
-    return warmCommand(name, {});
-  }
+  return options.warm ? warmCommand(name, {}) : Ok(undefined);
+}
 
-  return Ok(undefined);
+function buildOpenOptions(
+  name: string,
+  options: SpawnOptions
+): { warmCommand?: string; noAttach?: boolean; initialCommand?: string; compact?: boolean } {
+  const openOpts: {
+    warmCommand?: string;
+    noAttach?: boolean;
+    initialCommand?: string;
+    compact?: boolean;
+  } = {};
+  if (options.warm) openOpts.warmCommand = `dust-hive warm ${name}`;
+  if (options.noAttach) openOpts.noAttach = true;
+  if (options.command) openOpts.initialCommand = options.command;
+  if (options.compact) openOpts.compact = true;
+  return openOpts;
 }

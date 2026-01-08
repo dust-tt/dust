@@ -10,7 +10,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 
@@ -84,7 +84,7 @@ async function setupTest(
   }
 
   // Create skill owned by skillOwner
-  const skillModel = await SkillConfigurationFactory.create(skillOwnerAuth);
+  const skillModel = await SkillFactory.create(skillOwnerAuth);
   const skill = await SkillResource.fetchByModelIdWithAuth(
     skillOwnerAuth,
     skillModel.id
@@ -184,7 +184,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     });
 
     // Create another skill with a different name
-    await SkillConfigurationFactory.create(requestUserAuth, {
+    await SkillFactory.create(requestUserAuth, {
       name: "Other Skill",
     });
 
@@ -229,6 +229,30 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
     expect(res._getJSONData().error.message).toContain("Invalid MCP server");
+  });
+
+  it("should return 404 when MCP server views not found", async () => {
+    const { req, res } = await setupTest({
+      requestUserRole: "admin",
+      method: "PATCH",
+    });
+
+    req.body = {
+      name: "Updated Skill",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
+      instructions: "Instructions",
+      icon: null,
+      tools: [{ mcpServerViewId: "msv_nonexistent123456" }],
+      attachedKnowledge: [],
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData().error.type).toBe("invalid_request_error");
+    expect(res._getJSONData().error.message).toContain(
+      "MCP server views not all found"
+    );
   });
 
   it("should return 400 for invalid request body", async () => {

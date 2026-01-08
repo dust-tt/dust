@@ -7,6 +7,10 @@ import { ALL_BINARIES, buildBinaries } from "./cache";
 import { directoryExists } from "./fs";
 import { logger } from "./logger";
 
+// User config directories to copy from main repo to worktree
+// These are personal/local files that aren't tracked in git
+const USER_CONFIG_DIRS = [".claude"];
+
 // Configuration for how to install each dependency type
 export interface DependencyConfig {
   rust: "symlink" | "build";
@@ -43,6 +47,83 @@ async function symlinkCargoTarget(srcDir: string, destDir: string): Promise<void
   if (await directoryExists(srcTarget)) {
     // Create symlink (ignore errors if already exists)
     await Bun.spawn(["ln", "-sf", srcTarget, destTarget]).exited;
+  }
+}
+
+// Find all AGENTS.local.md files in the repo (excluding node_modules and other large dirs)
+// Uses -prune to skip entire directory trees rather than filtering after traversal
+async function findAgentsLocalFiles(srcDir: string): Promise<string[]> {
+  const proc = Bun.spawn(
+    [
+      "find",
+      srcDir,
+      // Prune large directories (skips traversal entirely, much faster than -not -path)
+      "-type",
+      "d",
+      "(",
+      "-name",
+      "node_modules",
+      "-o",
+      "-name",
+      ".git",
+      "-o",
+      "-name",
+      "target",
+      "-o",
+      "-name",
+      ".next",
+      "-o",
+      "-name",
+      ".turbo",
+      ")",
+      "-prune",
+      "-o",
+      // Find AGENTS.local.md files
+      "-name",
+      "AGENTS.local.md",
+      "-type",
+      "f",
+      "-print",
+    ],
+    {
+      stdout: "pipe",
+      stderr: "pipe",
+    }
+  );
+  const output = await new Response(proc.stdout).text();
+  await proc.exited;
+
+  if (proc.exitCode !== 0) {
+    return [];
+  }
+
+  return output
+    .trim()
+    .split("\n")
+    .filter((line) => line.length > 0);
+}
+
+// Copy user config files (AGENTS.local.md files, .claude/) from main repo to worktree
+async function copyUserConfigFiles(srcDir: string, destDir: string): Promise<void> {
+  // Find and copy all AGENTS.local.md files, preserving directory structure
+  const agentsFiles = await findAgentsLocalFiles(srcDir);
+  for (const srcPath of agentsFiles) {
+    // Get relative path from srcDir
+    const relativePath = srcPath.slice(srcDir.length + 1);
+    const destPath = `${destDir}/${relativePath}`;
+    await Bun.spawn(["cp", srcPath, destPath]).exited;
+    logger.success(`Copied ${relativePath}`);
+  }
+
+  // Copy directories recursively
+  for (const dir of USER_CONFIG_DIRS) {
+    const srcPath = `${srcDir}/${dir}`;
+    const destPath = `${destDir}/${dir}`;
+    if (await directoryExists(srcPath)) {
+      // Use cp -r to copy directory recursively
+      await Bun.spawn(["cp", "-r", srcPath, destPath]).exited;
+      logger.success(`Copied ${dir}/`);
+    }
   }
 }
 
@@ -142,4 +223,8 @@ export async function installAllDependencies(
   if (failed.length > 0) {
     throw new Error(`Failed to install dependencies for: ${failed.join(", ")}`);
   }
+
+  // Copy user config files (AGENTS.local.md, CLAUDE.md, .claude/) if they exist
+  logger.step("Copying user config files...");
+  await copyUserConfigFiles(repoRoot, worktreePath);
 }

@@ -3,6 +3,7 @@ import type { z } from "zod";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   AshbyApplicationFeedbackListRequest,
+  AshbyApplicationInfoRequest,
   AshbyCandidateCreateNoteRequest,
   AshbyCandidateSearchRequest,
   AshbyFeedbackSubmission,
@@ -10,6 +11,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 import {
   AshbyApplicationFeedbackListResponseSchema,
+  AshbyApplicationInfoResponseSchema,
   AshbyCandidateCreateNoteResponseSchema,
   AshbyCandidateSearchResponseSchema,
   AshbyReportSynchronousResponseSchema,
@@ -160,6 +162,14 @@ export class AshbyClient {
       "candidate.createNote",
       request,
       AshbyCandidateCreateNoteResponseSchema
+    );
+  }
+
+  async getApplicationInfo(request: AshbyApplicationInfoRequest) {
+    return this.postRequest(
+      "application.info",
+      request,
+      AshbyApplicationInfoResponseSchema
     );
   }
 }

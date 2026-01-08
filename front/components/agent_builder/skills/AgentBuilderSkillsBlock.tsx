@@ -4,7 +4,6 @@ import {
   Card,
   CardActionButton,
   CardGrid,
-  ContentMessage,
   EmptyCTA,
   Hoverable,
   Spinner,
@@ -39,7 +38,6 @@ import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picke
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
-import { pluralize } from "@app/types";
 
 interface SkillCardProps {
   skill: AgentBuilderSkillsType;
@@ -68,7 +66,7 @@ function SkillCard({ skill, onRemove, onClick }: SkillCardProps) {
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          <ResourceAvatar icon={SkillIcon} size="sm" />
+          <ResourceAvatar icon={SkillIcon} size="xs" />
           <span className="truncate">{skill.name}</span>
         </div>
 
@@ -142,17 +140,14 @@ export function AgentBuilderSkillsBlock() {
   const { skills: allSkills, isSkillsLoading } = useSkillsContext();
   const { spaces } = useSpacesContext();
 
-  const {
-    alreadyAddedSkillIds,
-    alreadyRequestedSpaceIds,
-    nonGlobalSpacesUsedInActions,
-  } = useSkillsAndActionsState(
-    skillFields,
-    actionFields,
-    mcpServerViews,
-    allSkills,
-    spaces
-  );
+  const { alreadyAddedSkillIds, alreadyRequestedSpaceIds } =
+    useSkillsAndActionsState(
+      skillFields,
+      actionFields,
+      mcpServerViews,
+      allSkills,
+      spaces
+    );
 
   const [sheetState, setSheetState] = useState<SheetState>({ state: "closed" });
 
@@ -287,41 +282,26 @@ export function AgentBuilderSkillsBlock() {
             <Spinner />
           </div>
         ) : hasCapabilitiesConfigured ? (
-          <>
-            {nonGlobalSpacesUsedInActions.length > 0 && (
-              <div className="mb-4 w-full">
-                <ContentMessage variant="golden" size="lg">
-                  Based on your selection, this agent can only be used by users
-                  with access to space
-                  {pluralize(nonGlobalSpacesUsedInActions.length)} :{" "}
-                  <strong>
-                    {nonGlobalSpacesUsedInActions.map((v) => v.name).join(", ")}
-                  </strong>
-                  .
-                </ContentMessage>
-              </div>
-            )}
-            <CardGrid>
-              {skillFields.map((field, index) => (
-                <SkillCard
-                  key={field.id}
-                  skill={field}
-                  onRemove={() => removeSkill(index)}
-                  onClick={() => {
-                    void fetchSkillWithRelations(field.sId);
-                  }}
-                />
-              ))}
-              {actionFields.map((field, index) => (
-                <ActionCard
-                  key={field.id}
-                  action={field}
-                  onRemove={() => removeAction(index)}
-                  onClick={() => handleActionEdit(field, index)}
-                />
-              ))}
-            </CardGrid>
-          </>
+          <CardGrid>
+            {skillFields.map((field, index) => (
+              <SkillCard
+                key={field.id}
+                skill={field}
+                onRemove={() => removeSkill(index)}
+                onClick={() => {
+                  void fetchSkillWithRelations(field.sId);
+                }}
+              />
+            ))}
+            {actionFields.map((field, index) => (
+              <ActionCard
+                key={field.id}
+                action={field}
+                onRemove={() => removeAction(index)}
+                onClick={() => handleActionEdit(field, index)}
+              />
+            ))}
+          </CardGrid>
         ) : (
           <EmptyCTA
             action={

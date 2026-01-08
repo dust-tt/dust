@@ -68,7 +68,7 @@ export function ProjectsList({ owner, summary }: ProjectsListProps) {
   }
 
   return (
-    <div className="mt-0.5 px-3 sm:flex sm:flex-col sm:gap-0.5">
+    <>
       {summary.map(({ space, unreadConversations }) => (
         <ProjectListItem
           key={space.sId}
@@ -77,6 +77,6 @@ export function ProjectsList({ owner, summary }: ProjectsListProps) {
           owner={owner}
         />
       ))}
-    </div>
+    </>
   );
 }

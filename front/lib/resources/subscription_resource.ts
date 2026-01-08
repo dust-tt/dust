@@ -104,6 +104,44 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return res[workspace.sId] ?? null;
   }
 
+  static async fetchLastByWorkspace(
+    workspace: LightWorkspaceType,
+    transaction?: Transaction
+  ): Promise<SubscriptionResource | null> {
+    const lastSubscription = await this.model.findOne({
+      where: {
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: PlanModel,
+          as: "plan",
+          required: true,
+        },
+      ],
+      order: [
+        ["startDate", "DESC"],
+        ["createdAt", "DESC"],
+      ],
+      transaction,
+    });
+
+    if (!lastSubscription) {
+      return null;
+    }
+
+    const plan = this.determinePlanFromSubscription(
+      lastSubscription,
+      workspace.sId
+    );
+
+    return new SubscriptionResource(
+      SubscriptionModel,
+      lastSubscription.get(),
+      renderPlanFromModel({ plan })
+    );
+  }
+
   static async fetchActiveByWorkspaces(
     workspaces: LightWorkspaceType[],
     transaction?: Transaction
@@ -150,24 +188,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       const activeSubscription =
         activeSubscriptionByWorkspaceId[workspace.id.toString()];
 
-      let plan: PlanAttributes = DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION;
+      const plan = this.determinePlanFromSubscription(
+        activeSubscription ?? null,
+        sId
+      );
 
-      if (activeSubscription) {
-        // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
-        if (isTrial(activeSubscription)) {
-          plan = getTrialVersionForPlan(activeSubscription.plan);
-        } else if (activeSubscription.plan) {
-          plan = activeSubscription.plan;
-        } else {
-          logger.error(
-            {
-              workspaceId: sId,
-              activeSubscription,
-            },
-            "Cannot find plan for active subscription. Will use limits of FREE_TEST_PLAN instead. Please check and fix."
-          );
-        }
-      }
       subscriptionResourceByWorkspaceSid[sId] = new SubscriptionResource(
         SubscriptionModel,
         activeSubscription?.get() ||
@@ -798,6 +823,32 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     }
 
     return workspace;
+  }
+
+  private static determinePlanFromSubscription(
+    subscription: SubscriptionModel | null,
+    workspaceSId: string
+  ): PlanAttributes {
+    let plan: PlanAttributes = DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION;
+
+    if (subscription) {
+      // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
+      if (isTrial(subscription)) {
+        plan = getTrialVersionForPlan(subscription.plan);
+      } else if (subscription.plan) {
+        plan = subscription.plan;
+      } else {
+        logger.error(
+          {
+            workspaceId: workspaceSId,
+            subscription,
+          },
+          "Cannot find plan for subscription. Will use limits of FREE_TEST_PLAN instead. Please check and fix."
+        );
+      }
+    }
+
+    return plan;
   }
 
   private static async findPlanOrThrow(planCode: string): Promise<PlanModel> {

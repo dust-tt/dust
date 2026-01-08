@@ -12,8 +12,14 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import {
+  getAgentConfiguration,
+  updateAgentRequirements,
+} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { hasSharedMembership } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
+import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import {
@@ -51,7 +57,6 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   AgentConfigurationType,
   AgentsUsageType,
-  ContentNodeType,
   ConversationType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
@@ -111,7 +116,6 @@ function isSkillResourceWithVersion(
 export interface SkillAttachedKnowledge {
   dataSourceView: DataSourceViewResource;
   nodeId: string;
-  nodeType: Extract<ContentNodeType, "folder" | "document">;
 }
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -307,16 +311,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
 
     const validCustomSkills = customSkills.filter((skill) =>
-      // Parse as Number since Sequelize array of BigInts are returned as strings.
-      skill.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
+      skill.requestedSpaceIds.every((id) => foundSpaceIds.has(id))
     );
 
     const allowedCustomSkills = validCustomSkills.filter((skill) =>
       auth.canRead(
         createResourcePermissionsFromSpacesWithMap(
           spaceIdToGroupsMap,
-          // Parse as Number since Sequelize array of BigInts are returned as strings.
-          skill.requestedSpaceIds.map((id) => Number(id))
+          skill.requestedSpaceIds
         )
       )
     );
@@ -883,7 +885,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.globalSId !== null;
   }
 
-  async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
+  private async listActiveAgents(
+    auth: Authenticator
+  ): Promise<AgentConfigurationModel[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const agentSkills = await AgentSkillModel.findAll({
@@ -894,19 +898,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     if (agentSkills.length === 0) {
-      return { count: 0, agents: [] };
+      return [];
     }
 
     const agentConfigIds = agentSkills.map((as) => as.agentConfigurationId);
 
-    // Fetch related active agent configurations
-    const agents = await AgentConfigurationModel.findAll({
+    return AgentConfigurationModel.findAll({
       where: {
         id: { [Op.in]: agentConfigIds },
         workspaceId: workspace.id,
         status: "active",
       },
     });
+  }
+
+  async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
+    const agents = await this.listActiveAgents(auth);
 
     const sortedAgents = agents
       .map((agent) => ({ sId: agent.sId, name: agent.name }))
@@ -916,6 +923,91 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       count: sortedAgents.length,
       agents: sortedAgents,
     };
+  }
+
+  private async updateActiveAgentsRequirements(
+    auth: Authenticator,
+    { previousRequestedSpaceIds }: { previousRequestedSpaceIds: ModelId[] },
+    { transaction }: { transaction?: Transaction }
+  ): Promise<void> {
+    if (
+      previousRequestedSpaceIds.length === this.requestedSpaceIds.length &&
+      hasAll(previousRequestedSpaceIds, this.requestedSpaceIds)
+    ) {
+      // Requested spaces didn't change, skip.
+      return;
+    }
+
+    const agents = await this.listActiveAgents(auth);
+
+    if (agents.length === 0) {
+      // No agents are using this skill, skip.
+      return;
+    }
+
+    const spaceIdsRemovedFromThisSkill = previousRequestedSpaceIds.filter(
+      (spaceId) => !this.requestedSpaceIds.includes(spaceId)
+    );
+
+    await concurrentExecutor(
+      agents,
+      async (agent) => {
+        const spaceIdsToRemoveFromAgent = new Set<ModelId>();
+
+        // Some spaces were removed from the skill: we must check if they need to be
+        // removed from the agent. In order to achieve this, we check if the agent has
+        // any other capabilities that require the removed spaces.
+        if (spaceIdsRemovedFromThisSkill.length > 0) {
+          const agentConfig = await getAgentConfiguration(auth, {
+            agentId: agent.sId,
+            variant: "full",
+          });
+          assert(agentConfig, "Agent configuration not found");
+
+          const agentSkills = await SkillResource.listByAgentConfiguration(
+            auth,
+            agentConfig
+          );
+          const otherAgentSkills = agentSkills.filter(
+            (skill) => skill.sId !== this.sId
+          );
+
+          const agentOtherCapabilitiesRequirements =
+            await getAgentConfigurationRequirementsFromCapabilities(auth, {
+              actions: agentConfig.actions,
+              skills: otherAgentSkills,
+            });
+
+          const otherCapabilitiesRequestedSpaceIds = new Set(
+            agentOtherCapabilitiesRequirements.requestedSpaceIds
+          );
+
+          for (const spaceId of spaceIdsRemovedFromThisSkill) {
+            if (!otherCapabilitiesRequestedSpaceIds.has(spaceId)) {
+              // This space is not required by any other capabilities of the agent, so
+              // we must remove it from the config.
+              spaceIdsToRemoveFromAgent.add(spaceId);
+            }
+          }
+        }
+
+        const newSpaceIds = uniq(
+          agent.requestedSpaceIds
+            .filter((id) => !spaceIdsToRemoveFromAgent.has(id))
+            .concat(this.requestedSpaceIds)
+        );
+
+        await updateAgentRequirements(
+          auth,
+          {
+            agentId: agent.sId,
+            newSpaceIds,
+          },
+          { transaction }
+        );
+      },
+      { concurrency: 5 }
+    );
   }
 
   async listVersions(
@@ -1083,6 +1175,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       // Save the current version before updating.
       await this.saveVersion(auth, { transaction });
 
+      // Snapshot the previous requested space IDs before updating.
+      const previousRequestedSpaceIds = [...this.requestedSpaceIds];
+
       const authorId = auth.user()?.id;
 
       await this.update(
@@ -1105,6 +1200,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         {
           attachedKnowledge,
         },
+        { transaction }
+      );
+
+      await this.updateActiveAgentsRequirements(
+        auth,
+        { previousRequestedSpaceIds },
         { transaction }
       );
     });
@@ -1475,7 +1576,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   toJSON(auth: Authenticator): SkillType {
     const requestedSpaceIds = this.requestedSpaceIds.map((spaceId) =>
       SpaceResource.modelIdToSId({
-        id: Number(spaceId), // Note: Sequelize returns BIGINT arrays as strings
+        id: spaceId,
         workspaceId: this.workspaceId,
       })
     );

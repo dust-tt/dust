@@ -1,11 +1,12 @@
 import { requireEnvironment } from "../lib/commands";
 import { removeDockerVolumes, stopDocker } from "../lib/docker";
-import { deleteEnvironmentDir } from "../lib/environment";
+import { type Environment, deleteEnvironmentDir, getEnvironment } from "../lib/environment";
 import { directoryExists } from "../lib/fs";
 import { logger } from "../lib/logger";
 import { getWorktreeDir } from "../lib/paths";
 import { cleanupServicePorts } from "../lib/ports";
 import { readPid, stopAllServices } from "../lib/process";
+import { restoreTerminal, selectMultipleEnvironments } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import type { ServiceName } from "../lib/services";
 import { isDockerRunning } from "../lib/state";
@@ -50,29 +51,23 @@ async function cleanupDocker(envName: string): Promise<void> {
   }
 }
 
-export async function destroyCommand(
-  name: string | undefined,
-  options?: Partial<DestroyOptions>
+// Destroy a single environment (internal helper)
+async function destroySingleEnvironment(
+  env: Environment,
+  options: DestroyOptions
 ): Promise<Result<void>> {
-  const resolvedOptions: DestroyOptions = { force: false, ...options };
-
-  // When using interactive selection, ask for confirmation before proceeding
-  const envResult = await requireEnvironment(name, "destroy", {
-    confirmMessage: "Destroy environment '{name}'?",
-  });
-  if (!envResult.ok) return envResult;
-  const env = envResult.value;
-
   const worktreePath = getWorktreeDir(env.name);
 
   // Check for uncommitted changes (unless --force)
-  if (!resolvedOptions.force) {
+  if (!options.force) {
     const worktreeExists = await directoryExists(worktreePath);
     if (worktreeExists) {
       const hasChanges = await hasUncommittedChanges(worktreePath);
       if (hasChanges) {
         return Err(
-          new CommandError("Worktree has uncommitted changes. Use --force to destroy anyway.")
+          new CommandError(
+            `Environment '${env.name}' has uncommitted changes. Use --force to destroy anyway.`
+          )
         );
       }
     }
@@ -96,7 +91,7 @@ export async function destroyCommand(
   // Force cleanup any orphaned processes on service ports
   const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {
     allowedPids,
-    force: resolvedOptions.force,
+    force: options.force,
   });
   if (blockedPorts.length > 0) {
     const details = blockedPorts
@@ -139,6 +134,61 @@ export async function destroyCommand(
   console.log();
   logger.success(`Environment '${env.name}' destroyed`);
   console.log();
+
+  return Ok(undefined);
+}
+
+export async function destroyCommand(
+  name: string | undefined,
+  options?: Partial<DestroyOptions>
+): Promise<Result<void>> {
+  const resolvedOptions: DestroyOptions = { force: false, ...options };
+
+  // If a name is provided, use single-environment flow with confirmation
+  if (name) {
+    const envResult = await requireEnvironment(name, "destroy", {
+      confirmMessage: "Destroy environment '{name}'?",
+    });
+    if (!envResult.ok) return envResult;
+
+    return destroySingleEnvironment(envResult.value, resolvedOptions);
+  }
+
+  // No name provided - use multi-select for batch destruction
+  const selectedNames = await selectMultipleEnvironments({
+    message: "Select environments to destroy (space to toggle, enter to confirm)",
+    confirmMessage: "Destroy {count} environment(s): {names}?",
+  });
+
+  // Restore terminal after interactive prompt
+  restoreTerminal();
+
+  if (selectedNames.length === 0) {
+    return Err(new CommandError("No environments selected"));
+  }
+
+  // Resolve all environments first
+  const envs: Environment[] = [];
+  for (const envName of selectedNames) {
+    const env = await getEnvironment(envName);
+    if (!env) {
+      return Err(new CommandError(`Environment '${envName}' not found`));
+    }
+    envs.push(env);
+  }
+
+  // Destroy each environment sequentially
+  for (const env of envs) {
+    const result = await destroySingleEnvironment(env, resolvedOptions);
+    if (!result.ok) {
+      return result;
+    }
+  }
+
+  if (envs.length > 1) {
+    logger.success(`All ${envs.length} environments destroyed`);
+    console.log();
+  }
 
   return Ok(undefined);
 }

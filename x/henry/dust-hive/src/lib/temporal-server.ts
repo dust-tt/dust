@@ -197,6 +197,21 @@ export async function stopTemporalServer(): Promise<{ success: boolean; wasRunni
   return { success: true, wasRunning: true };
 }
 
+// Wait for the temporal port to be free
+async function waitForPortFree(timeoutMs = 10000): Promise<boolean> {
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    const portInUse = await isTemporalPortInUse();
+    if (!portInUse) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  return false;
+}
+
 // Restart the temporal server
 export async function restartTemporalServer(): Promise<{
   success: boolean;
@@ -204,5 +219,16 @@ export async function restartTemporalServer(): Promise<{
   pid?: number;
 }> {
   await stopTemporalServer();
+
+  // Wait for the port to be free before starting
+  // This avoids a race condition where the old process is still releasing the port
+  const portFree = await waitForPortFree();
+  if (!portFree) {
+    return {
+      success: false,
+      error: `Port ${TEMPORAL_PORT} is still in use after stopping temporal. Another process may be using it.`,
+    };
+  }
+
   return startTemporalServer();
 }

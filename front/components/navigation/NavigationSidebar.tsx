@@ -1,4 +1,5 @@
 import {
+  Button,
   classNames,
   cn,
   CollapseButton,
@@ -385,9 +386,7 @@ function SubscriptionEndBanner({
       footer={
         isFreePlan && (
           <Link href={`/w/${workspaceId}/subscribe`} className="no-underline">
-            <button className="rounded bg-foreground px-3 py-1.5 text-xs font-medium text-background">
-              Subscribe to Dust
-            </button>
+            <Button label="Subscribe to Dust" variant="primary" />
           </Link>
         )
       }
@@ -446,12 +445,12 @@ function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
       className={cn(
         "mx-3 mb-3 rounded-lg border p-3",
         "border-border dark:border-border-night",
-        "bg-muted-background dark:bg-muted-background-night"
+        "bg-background dark:bg-background-night"
       )}
     >
       <div className="mb-2 flex items-center justify-between text-sm">
-        <span className="text-muted-foreground dark:text-muted-foreground-night">
-          Trial message used
+        <span className="font-semibold text-foreground dark:text-foreground-night">
+          Trial messages used
         </span>
         <span className="font-medium text-foreground dark:text-foreground-night">
           <span className={cn(isCritical && "text-red-600 dark:text-red-400")}>
@@ -463,14 +462,14 @@ function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
       <div
         className={cn(
           "h-2 w-full overflow-hidden rounded-full",
-          "bg-structure-200 dark:bg-structure-200-night"
+          "bg-gray-100 dark:bg-gray-100-night"
         )}
       >
         <div
           className={cn(
             "h-full rounded-full transition-all",
             isCritical
-              ? "bg-red-700 dark:bg-red-600"
+              ? "bg-red-700 dark:bg-red-700-night"
               : "bg-foreground dark:bg-foreground-night"
           )}
           style={{ width: `${Math.min(percentage * 100, 100)}%` }}
@@ -479,9 +478,7 @@ function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
       {isAtLimit && (
         <div className="mt-3">
           <Link href={`/w/${workspaceId}/subscribe`} className="no-underline">
-            <button className="w-full rounded bg-foreground px-3 py-1.5 text-xs font-medium text-background dark:bg-foreground-night dark:text-background-night">
-              Subscribe to Dust
-            </button>
+            <Button label="Subscribe to Dust" variant="primary" />
           </Link>
         </div>
       )}

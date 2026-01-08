@@ -27,7 +27,10 @@ import type {
   KnowledgeItem,
   KnowledgeNodeAttributes,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import {
+  computeHasChildren,
+  isFullKnowledgeItem,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
@@ -241,11 +244,11 @@ function KnowledgeSearchComponent({
             node,
             spacesMap
           ),
-          nodeId: node.internalId,
+          hasChildren: computeHasChildren(node),
           label: node.title,
           node, // Store the original node for chip display.
+          nodeId: node.internalId,
           spaceId: node.dataSourceView.spaceId,
-          nodeType: node.type,
         };
       });
     }, [dataSourceNodes, spacesMap]);

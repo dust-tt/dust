@@ -15,6 +15,7 @@ export const DUST_HIVE_WORKTREES = join(homedir(), "dust-hive");
 
 // Global config
 export const CONFIG_ENV_PATH = join(DUST_HIVE_HOME, "config.env");
+export const SETTINGS_PATH = join(DUST_HIVE_HOME, "settings.json");
 
 // Global forwarder paths (not per-env, since forwarding is global)
 export const FORWARDER_PID_PATH = join(DUST_HIVE_HOME, "forward.pid");
