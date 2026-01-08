@@ -2918,6 +2918,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "MondayLogo"
   | "NotionLogo"
   | "OpenaiLogo"
+  | "PuzzleIcon"
   | "SalesforceLogo"
   | "SlackLogo"
   | "StripeLogo"

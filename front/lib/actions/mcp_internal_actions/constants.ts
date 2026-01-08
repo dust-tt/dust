@@ -1764,8 +1764,7 @@ export const INTERNAL_MCP_SERVERS = {
       name: "skill_management",
       version: "1.0.0",
       description: "",
-      // TODO(skill): Add proper skill icon here once in ActionsIcons
-      icon: "ActionLightbulbIcon",
+      icon: "PuzzleIcon",
       authorization: null,
       documentationUrl: null,
       instructions: null,
