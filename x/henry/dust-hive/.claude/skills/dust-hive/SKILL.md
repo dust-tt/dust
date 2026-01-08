@@ -213,5 +213,3 @@ Alternatively, manually trigger a rebuild by touching the SDK source:
 ```bash
 touch sdks/js/src/types.ts
 ```
-
-Note: `dust-hive sync` automatically restarts SDK watchers in all running environments.
