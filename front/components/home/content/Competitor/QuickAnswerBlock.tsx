@@ -5,45 +5,28 @@ import type { FC } from "react";
 import { Grid, H2 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
+import type { QuickAnswerConfig } from "./types";
+
 interface QuickAnswerBlockProps {
+  config: QuickAnswerConfig;
   competitorName: string;
   competitorLogo?: string;
 }
 
 export const QuickAnswerBlock: FC<QuickAnswerBlockProps> = ({
+  config,
   competitorName,
   competitorLogo,
 }) => {
-  // Key differentiators - visual comparison
-  const differentiators = [
-    {
-      label: "Architecture",
-      dust: "Agent-first from day one",
-      competitor: "Search-first, agents added later",
-    },
-    {
-      label: "Pricing",
-      dust: "$29/user/month, transparent",
-      competitor: "$50K+ minimum, hidden pricing",
-    },
-    {
-      label: "Adoption",
-      dust: "70-90% team adoption",
-      competitor: "~40% typical adoption",
-    },
-    {
-      label: "Time to value",
-      dust: "5-minute agent creation",
-      competitor: "Complex setup required",
-    },
-  ];
+  const rows = config.rows;
+  const title = config.title ?? "The Key Differences";
 
   return (
     <div className="py-12 md:py-16">
       <Grid>
         <div className="col-span-12">
           <H2 className="mb-8 text-center text-2xl font-semibold text-foreground md:text-3xl">
-            The Key Differences
+            {title}
           </H2>
 
           <div className="mx-auto max-w-4xl overflow-hidden rounded-2xl border border-border bg-white">
@@ -59,7 +42,7 @@ export const QuickAnswerBlock: FC<QuickAnswerBlockProps> = ({
                   className="h-5 w-auto"
                 />
               </div>
-              <div className="flex items-center justify-center gap-2 border-l border-border bg-structure-50 px-4 py-4">
+              <div className="flex items-center justify-center gap-2 border-l border-border bg-white px-4 py-4">
                 {competitorLogo ? (
                   <Image
                     src={competitorLogo}
@@ -77,32 +60,32 @@ export const QuickAnswerBlock: FC<QuickAnswerBlockProps> = ({
             </div>
 
             {/* Comparison rows */}
-            {differentiators.map((item, index) => (
+            {rows.map((row, index) => (
               <div
                 key={index}
                 className={classNames(
                   "grid grid-cols-1 md:grid-cols-3",
-                  index !== differentiators.length - 1 && "border-b border-border"
+                  index !== rows.length - 1 && "border-b border-border"
                 )}
               >
                 {/* Label */}
                 <div className="flex items-center px-6 py-4 md:border-r md:border-border">
                   <span className="text-sm font-semibold text-foreground">
-                    {item.label}
+                    {row.label}
                   </span>
                 </div>
 
                 {/* Dust */}
                 <div className="flex items-center gap-3 border-l border-border bg-green-50 px-4 py-4">
                   <CheckIcon className="h-5 w-5 flex-shrink-0 text-green-600" />
-                  <span className="text-sm text-foreground">{item.dust}</span>
+                  <span className="text-sm text-foreground">{row.dust}</span>
                 </div>
 
                 {/* Competitor */}
                 <div className="flex items-center gap-3 border-l border-border px-4 py-4">
                   <XMarkIcon className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">
-                    {item.competitor}
+                    {row.competitor}
                   </span>
                 </div>
               </div>

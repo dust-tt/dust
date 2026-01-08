@@ -1,7 +1,8 @@
-import type { ComponentType } from "react";
-
 // Winner indicator for comparison tables
 export type ComparisonWinner = "dust" | "competitor" | "tie";
+
+// Feature status for comparison tables
+export type FeatureStatus = "yes" | "partial" | "no";
 
 // Core positioning table row
 export interface CorePositioningRow {
@@ -10,12 +11,12 @@ export interface CorePositioningRow {
   dust: string;
 }
 
-// Feature comparison table row
+// Feature comparison table row (data-driven, no JSX)
 export interface FeatureComparisonRow {
-  capability: string;
-  dust: string;
-  competitor: string;
-  winner: ComparisonWinner;
+  feature: string;
+  description: string;
+  dust: FeatureStatus;
+  competitor: FeatureStatus;
 }
 
 // Integration comparison row
@@ -53,10 +54,10 @@ export interface UseCaseFitItem {
   description: string;
 }
 
-// FAQ item (matches existing FAQ component)
+// FAQ item (data-driven, plain text/markdown - no JSX)
 export interface FAQItem {
   question: string;
-  answer: React.ReactNode;
+  answer: string;
 }
 
 // Discovery question for sales section
@@ -92,9 +93,17 @@ export interface HeroConfig {
   socialProofLogos: string[];
 }
 
-// Quick answer block config
+// Quick answer row (data-driven comparison)
+export interface QuickAnswerRow {
+  label: string;
+  dust: string;
+  competitor: string;
+}
+
+// Quick answer block config (data-driven, no JSX)
 export interface QuickAnswerConfig {
-  content: React.ReactNode;
+  title?: string;
+  rows: QuickAnswerRow[];
 }
 
 // Core positioning section config

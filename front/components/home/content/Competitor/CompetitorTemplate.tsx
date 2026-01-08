@@ -16,9 +16,7 @@ import type { CompetitorTemplateProps, SectionType } from "./types";
 import { WhyChooseSection } from "./WhyChooseSection";
 
 // Generate Schema.org FAQPage JSON-LD
-function generateFAQSchema(
-  faqItems: { question: string; answer: React.ReactNode }[]
-) {
+function generateFAQSchema(faqItems: { question: string; answer: string }[]) {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -27,11 +25,7 @@ function generateFAQSchema(
       name: item.question,
       acceptedAnswer: {
         "@type": "Answer",
-        // For the schema, we need plain text. If answer is ReactNode, this will be a simplification.
-        text:
-          typeof item.answer === "string"
-            ? item.answer
-            : "See the full answer on our website.",
+        text: item.answer,
       },
     })),
   };
@@ -93,13 +87,14 @@ export default function CompetitorTemplate({
         ) : null;
 
       case "quickAnswer":
-        return (
+        return config.quickAnswer ? (
           <QuickAnswerBlock
             key="quickAnswer"
+            config={config.quickAnswer}
             competitorName={config.competitorDisplayName}
             competitorLogo={config.competitorLogo}
           />
-        );
+        ) : null;
 
       case "corePositioning":
         // Removed - too text-heavy for marketing page

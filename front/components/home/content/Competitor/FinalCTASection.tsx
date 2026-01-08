@@ -3,7 +3,6 @@ import Link from "next/link";
 import type { FC } from "react";
 
 import { Grid, H2, P } from "@app/components/home/ContentComponents";
-import TrustedBy from "@app/components/home/TrustedBy";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 
 import type { FinalCTAConfig } from "./types";
@@ -19,8 +18,9 @@ export const FinalCTASection: FC<FinalCTASectionProps> = ({
   trackingPrefix = "competitor",
 }) => {
   return (
-    <div className="bg-blue-50 py-12 md:py-16">
-      <Grid>
+    <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-blue-50 py-12 md:py-16">
+      <div className="mx-auto max-w-7xl px-6">
+        <Grid>
         <div className="col-span-12">
           <div className="px-6 py-16 md:px-12 md:py-20">
             <div className="mx-auto max-w-3xl text-center">
@@ -67,10 +67,8 @@ export const FinalCTASection: FC<FinalCTASectionProps> = ({
             </div>
           </div>
         </div>
-
-        {/* Trusted By - using existing component */}
-        <TrustedBy logoSet="default" />
-      </Grid>
+        </Grid>
+      </div>
     </div>
   );
 };
