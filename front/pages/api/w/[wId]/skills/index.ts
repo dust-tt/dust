@@ -171,18 +171,26 @@ async function handler(
       }
 
       const body: PostSkillRequestBody = bodyValidation.right;
+      const name = body.name.trim();
 
-      const existingSkill = await SkillResource.fetchActiveByName(
-        auth,
-        body.name
-      );
+      if (!name) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Skill name cannot be empty.",
+          },
+        });
+      }
+
+      const existingSkill = await SkillResource.fetchActiveByName(auth, name);
 
       if (existingSkill) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `A skill with the name "${body.name}" already exists.`,
+            message: `A skill with the name "${name}" already exists.`,
           },
         });
       }
@@ -263,7 +271,7 @@ async function handler(
         auth,
         {
           status: "active",
-          name: body.name,
+          name,
           agentFacingDescription: body.agentFacingDescription,
           userFacingDescription: body.userFacingDescription,
           instructions: body.instructions,

@@ -164,6 +164,17 @@ async function handler(
       }
 
       const body: PatchSkillRequestBody = bodyValidation.right;
+      const name = body.name.trim();
+
+      if (!name) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Skill name cannot be empty.",
+          },
+        });
+      }
 
       // Check if user can write.
       if (!skillResource.canWrite(auth)) {
@@ -177,17 +188,14 @@ async function handler(
       }
 
       // Check for existing active skill with the same name (excluding current skill).
-      const existingSkill = await SkillResource.fetchActiveByName(
-        auth,
-        body.name
-      );
+      const existingSkill = await SkillResource.fetchActiveByName(auth, name);
 
       if (existingSkill && existingSkill.id !== skillResource.id) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `A skill with the name "${body.name}" already exists.`,
+            message: `A skill with the name "${name}" already exists.`,
           },
         });
       }
@@ -265,7 +273,7 @@ async function handler(
         icon: body.icon,
         instructions: body.instructions,
         mcpServerViews,
-        name: body.name,
+        name,
         requestedSpaceIds,
         userFacingDescription: body.userFacingDescription,
       });

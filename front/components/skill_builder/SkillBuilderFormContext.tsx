@@ -15,8 +15,8 @@ export const attachedKnowledgeSchema = z.object({
 export const skillBuilderFormSchema = z.object({
   name: z
     .string()
-    .min(1, "Skill name is required")
-    .refine((value) => !/\s/.test(value), "Skill name cannot contain spaces"),
+    .transform((v) => v.trim())
+    .pipe(z.string().min(1, "Skill name is required")),
   agentFacingDescription: z
     .string()
     .min(1, "Description of when to use the skill is required"),
