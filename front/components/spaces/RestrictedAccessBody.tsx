@@ -40,7 +40,7 @@ interface RestrictedAccessBodyProps {
   owner: LightWorkspaceType;
   selectedMembers: UserType[];
   selectedGroups: GroupType[];
-  onManagementTypeChange: (value: MembersManagementType) => void;
+  onManagementTypeChange: (managementType: MembersManagementType) => void;
   onMembersUpdated: (members: UserType[]) => void;
   onGroupsUpdated: (groups: GroupType[]) => void;
 }
@@ -60,15 +60,15 @@ export function RestrictedAccessBody({
   const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
 
   const handleManagementTypeChange = useCallback(
-    async (value: string) => {
-      if (!isMembersManagementType(value) || !planAllowsSCIM) {
+    async (newManagementType: string) => {
+      if (!isMembersManagementType(newManagementType) || !planAllowsSCIM) {
         return;
       }
 
       // If switching from manual to group mode with manually added members.
       if (
         managementType === "manual" &&
-        value === "group" &&
+        newManagementType === "group" &&
         selectedMembers.length > 0
       ) {
         const confirmed = await confirm({
@@ -87,7 +87,7 @@ export function RestrictedAccessBody({
       // If switching from group to manual mode with selected groups.
       else if (
         managementType === "group" &&
-        value === "manual" &&
+        newManagementType === "manual" &&
         selectedGroups.length > 0
       ) {
         const confirmed = await confirm({
@@ -104,7 +104,7 @@ export function RestrictedAccessBody({
         }
       } else {
         // For direct switches without selections, clear everything and let the user start fresh.
-        onManagementTypeChange(value);
+        onManagementTypeChange(newManagementType);
       }
     },
     [
