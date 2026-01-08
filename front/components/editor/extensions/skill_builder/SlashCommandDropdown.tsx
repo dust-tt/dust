@@ -3,6 +3,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownTooltipTrigger,
 } from "@dust-tt/sparkle";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import React, {
@@ -14,12 +15,17 @@ import React, {
   useState,
 } from "react";
 
+export interface SlashCommandTooltip {
+  description: string;
+  media?: React.ReactNode;
+}
+
 export interface SlashCommand {
   action: string;
-  description: string;
   icon: React.ComponentType<any>;
   id: string;
   label: string;
+  tooltip?: SlashCommandTooltip;
 }
 
 export interface SlashCommandDropdownProps extends SuggestionProps<SlashCommand> {}
@@ -108,7 +114,7 @@ export const SlashCommandDropdown = forwardRef<
       </DropdownMenuTrigger>
       <DropdownMenuContent
         ref={containerRef}
-        className="min-h-16 w-96"
+        className="w-64"
         align="start"
         side="bottom"
         sideOffset={4}
@@ -120,20 +126,38 @@ export const SlashCommandDropdown = forwardRef<
             No commands found
           </div>
         ) : (
-          items.map((item, index) => (
-            <DropdownMenuItem
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              description={item.description}
-              truncateText
-              onClick={() => selectItem(index)}
-              onMouseEnter={() => setSelectedIndex(index)}
-              className={
-                index === selectedIndex ? "bg-gray-100 dark:bg-gray-800" : ""
-              }
-            />
-          ))
+          items.map((item, index) => {
+            const menuItem = (
+              <DropdownMenuItem
+                key={item.id}
+                icon={item.icon}
+                label={item.label}
+                truncateText
+                onClick={() => selectItem(index)}
+                onMouseEnter={() => setSelectedIndex(index)}
+                className={
+                  index === selectedIndex ? "bg-gray-100 dark:bg-gray-800" : ""
+                }
+              />
+            );
+
+            // Wrap with DropdownTooltipTrigger if command has tooltip property.
+            if (item.tooltip) {
+              return (
+                <DropdownTooltipTrigger
+                  key={item.id}
+                  description={item.tooltip.description}
+                  media={item.tooltip.media}
+                  side="right"
+                  sideOffset={8}
+                >
+                  {menuItem}
+                </DropdownTooltipTrigger>
+              );
+            }
+
+            return menuItem;
+          })
         )}
       </DropdownMenuContent>
     </DropdownMenu>
