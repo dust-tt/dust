@@ -1,11 +1,12 @@
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
+import type { FC } from "react";
 
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import TrustedBy from "@app/components/home/TrustedBy";
-import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { classNames } from "@app/lib/utils";
 
 import type { HeroConfig } from "./types";
 
@@ -16,18 +17,18 @@ interface CompetitorHeroSectionProps {
   trackingPrefix?: string;
 }
 
-export function CompetitorHeroSection({
+export const CompetitorHeroSection: FC<CompetitorHeroSectionProps> = ({
   config,
   competitorLogo,
   competitorName,
   trackingPrefix = "competitor",
-}: CompetitorHeroSectionProps) {
+}) => {
   return (
-    <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-blue-50">
-      <div className="mx-auto flex w-full max-w-7xl flex-col px-6 pb-12 pt-16 md:pb-16 md:pt-24">
+    <div className="bg-blue-50">
+      <div className="container flex w-full flex-col pt-16 pb-12 md:pt-24 md:pb-16">
         <Grid>
           <div
-            className={cn(
+            className={classNames(
               "col-span-12 flex flex-col items-center justify-center text-center",
               "lg:col-span-10 lg:col-start-2",
               "xl:col-span-8 xl:col-start-3"
@@ -72,7 +73,7 @@ export function CompetitorHeroSection({
 
             {/* CTAs */}
             <div className="flex flex-col gap-4 sm:flex-row">
-              <Link href={config.primaryCTA.href} shallow>
+              <Link href={config.primaryCTA.href} shallow={true}>
                 <Button
                   variant="highlight"
                   size="md"
@@ -84,7 +85,7 @@ export function CompetitorHeroSection({
                   )}
                 />
               </Link>
-              <Link href={config.secondaryCTA.href} shallow>
+              <Link href={config.secondaryCTA.href} shallow={true}>
                 <Button
                   variant="outline"
                   size="md"
@@ -99,9 +100,9 @@ export function CompetitorHeroSection({
           </div>
 
           {/* Trusted By - using existing component */}
-          <TrustedBy logoSet="default" size="large" />
+          <TrustedBy logoSet="default" />
         </Grid>
       </div>
     </div>
   );
-}
+};

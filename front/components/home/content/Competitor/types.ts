@@ -1,8 +1,7 @@
+import type { ComponentType } from "react";
+
 // Winner indicator for comparison tables
 export type ComparisonWinner = "dust" | "competitor" | "tie";
-
-// Feature status for comparison tables
-export type FeatureStatus = "yes" | "partial" | "no";
 
 // Core positioning table row
 export interface CorePositioningRow {
@@ -11,12 +10,12 @@ export interface CorePositioningRow {
   dust: string;
 }
 
-// Feature comparison table row (data-driven, no JSX)
+// Feature comparison table row
 export interface FeatureComparisonRow {
-  feature: string;
-  description: string;
-  dust: FeatureStatus;
-  competitor: FeatureStatus;
+  capability: string;
+  dust: string;
+  competitor: string;
+  winner: ComparisonWinner;
 }
 
 // Integration comparison row
@@ -27,20 +26,9 @@ export interface IntegrationComparisonRow {
   winner: ComparisonWinner;
 }
 
-// Valid icon types for benefit cards
-export type BenefitIconType =
-  | "rocket"
-  | "users"
-  | "dollar"
-  | "chart"
-  | "sparkles"
-  | "chat"
-  | "clock"
-  | "shield";
-
-// Benefit card for WhyChoose section
+// Benefit card for WhyChoose section (simplified)
 export interface BenefitCard {
-  icon: BenefitIconType;
+  icon: string;
   title: string;
   description: string;
 }
@@ -65,10 +53,10 @@ export interface UseCaseFitItem {
   description: string;
 }
 
-// FAQ item (data-driven, plain text/markdown - no JSX)
+// FAQ item (matches existing FAQ component)
 export interface FAQItem {
   question: string;
-  answer: string;
+  answer: React.ReactNode;
 }
 
 // Discovery question for sales section
@@ -89,81 +77,87 @@ export interface Testimonial {
   metric?: string;
 }
 
-// Shared CTA button configuration
-export interface CTAConfig {
-  label: string;
-  href: string;
-}
-
 // Hero section config
 export interface HeroConfig {
   title: string;
   subtitle: string;
-  primaryCTA: CTAConfig;
-  secondaryCTA: CTAConfig;
+  primaryCTA: {
+    label: string;
+    href: string;
+  };
+  secondaryCTA: {
+    label: string;
+    href: string;
+  };
   socialProofLogos: string[];
 }
 
-// Base section types for composition
-interface TitledSection {
+// Quick answer block config
+export interface QuickAnswerConfig {
+  content: React.ReactNode;
+}
+
+// Core positioning section config
+export interface CorePositioningConfig {
   title: string;
-}
-
-interface OptionallyTitledSection {
-  title?: string;
-}
-
-// Quick answer row (data-driven comparison)
-export interface QuickAnswerRow {
-  label: string;
-  dust: string;
-  competitor: string;
-}
-
-// Section configs using type composition
-export type QuickAnswerConfig = OptionallyTitledSection & {
-  rows: QuickAnswerRow[];
-};
-
-export type CorePositioningConfig = TitledSection & {
   rows: CorePositioningRow[];
-};
+}
 
-export type FeatureComparisonConfig = TitledSection & {
+// Feature comparison section config
+export interface FeatureComparisonConfig {
+  title: string;
   rows: FeatureComparisonRow[];
-};
+}
 
-export type WhenCompetitorBetterConfig = TitledSection & {
+
+// When competitor better section config
+export interface WhenCompetitorBetterConfig {
+  title: string;
   cards: CompetitorAdvantageCard[];
-};
+}
 
+// Social proof section config
 export interface SocialProofConfig {
   testimonials: Testimonial[];
 }
 
-export type IntegrationComparisonConfig = TitledSection & {
+// Integration comparison section config
+export interface IntegrationComparisonConfig {
+  title: string;
   rows: IntegrationComparisonRow[];
-};
+}
 
-export type UseCaseFitConfig = TitledSection & {
+// Use case fit section config
+export interface UseCaseFitConfig {
+  title: string;
   dustUseCases: UseCaseFitItem[];
   competitorUseCases: UseCaseFitItem[];
-};
+}
 
-export type FAQSectionConfig = TitledSection & {
+// FAQ section config
+export interface FAQSectionConfig {
+  title: string;
   items: FAQItem[];
-};
+}
 
-export type DiscoveryQuestionsConfig = TitledSection & {
+// Discovery questions section config
+export interface DiscoveryQuestionsConfig {
+  title: string;
   questions: DiscoveryQuestion[];
-};
+}
 
 // Final CTA section config
 export interface FinalCTAConfig {
   title: string;
   subtitle?: string;
-  primaryCTA: CTAConfig;
-  secondaryCTA: CTAConfig;
+  primaryCTA: {
+    label: string;
+    href: string;
+  };
+  secondaryCTA: {
+    label: string;
+    href: string;
+  };
   trustText?: string;
   socialProofLogos?: string[];
 }
@@ -176,9 +170,10 @@ export interface SEOConfig {
 }
 
 // Metrics section config
-export type MetricsConfig = OptionallyTitledSection & {
+export interface MetricsConfig {
+  title?: string;
   metrics: Metric[];
-};
+}
 
 // Section types for layout ordering
 export type SectionType =

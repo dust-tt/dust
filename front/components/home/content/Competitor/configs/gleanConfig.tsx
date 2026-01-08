@@ -6,7 +6,7 @@ export const gleanConfig: CompetitorPageConfig = {
   competitorLogo: "/static/landing/compare/glean.svg",
 
   seo: {
-    title: "Glean Alternative for AI Agent Workflows | Dust",
+    title: "Best Glean Alternative for AI Agent Workflows | Dust",
     description:
       "Compare Dust to Glean for enterprise AI. Agent-first platform with 70-90% adoption, transparent pricing from $29/user, multi-agent orchestration, and proven ROI. Trusted by Clay, Vanta, Qonto.",
   },
@@ -39,95 +39,12 @@ export const gleanConfig: CompetitorPageConfig = {
   },
 
   quickAnswer: {
-    title: "The Key Differences",
-    rows: [
-      {
-        label: "Architecture",
-        dust: "Agent-first from day one",
-        competitor: "Search-first, agents added later",
-      },
-      {
-        label: "Pricing",
-        dust: "$29/user/month, transparent",
-        competitor: "$50K+ minimum, hidden pricing",
-      },
-      {
-        label: "Adoption",
-        dust: "70-90% team adoption",
-        competitor: "~40% typical adoption",
-      },
-      {
-        label: "Time to value",
-        dust: "5-minute agent creation",
-        competitor: "Complex setup required",
-      },
-    ],
+    content: null, // Not used in redesigned version
   },
 
   featureComparison: {
     title: "How Dust Compares to Glean",
-    rows: [
-      {
-        feature: "Agent-first architecture",
-        description: "Built from day one for workflow automation, not search",
-        dust: "yes",
-        competitor: "partial",
-      },
-      {
-        feature: "No-code agent builder",
-        description: "Create agents in 5 minutes without technical knowledge",
-        dust: "yes",
-        competitor: "partial",
-      },
-      {
-        feature: "Multi-agent orchestration",
-        description: "Parallel sub-agents for complex cross-system workflows",
-        dust: "yes",
-        competitor: "partial",
-      },
-      {
-        feature: "20+ AI models",
-        description: "GPT-4, Claude, Gemini, Mistral—choose per task",
-        dust: "yes",
-        competitor: "partial",
-      },
-      {
-        feature: "Transparent pricing",
-        description: "$29/user/month with no hidden fees or minimums",
-        dust: "yes",
-        competitor: "no",
-      },
-      {
-        feature: "50+ integrations",
-        description: "Slack, Notion, Salesforce, GitHub, and more",
-        dust: "yes",
-        competitor: "yes",
-      },
-      {
-        feature: "Write actions (CRM, tickets)",
-        description: "Update records, create docs, post messages",
-        dust: "yes",
-        competitor: "yes",
-      },
-      {
-        feature: "Interactive dashboards (Frames)",
-        description: "Real-time React components for data visualization",
-        dust: "yes",
-        competitor: "no",
-      },
-      {
-        feature: "SOC 2 Type II certified",
-        description: "Enterprise-grade security and compliance",
-        dust: "yes",
-        competitor: "yes",
-      },
-      {
-        feature: "Self-hosted deployment",
-        description: "Deploy in your own cloud infrastructure",
-        dust: "no",
-        competitor: "yes",
-      },
-    ],
+    rows: [],
   },
 
   whyChoose: {
@@ -153,9 +70,9 @@ export const gleanConfig: CompetitorPageConfig = {
       },
       {
         icon: "sparkles",
-        title: "Model agnostic from day one",
+        title: "20+ AI models",
         description:
-          "Switch between GPT-4, Claude, Gemini, and Mistral as better models launch. Glean only added multi-LLM support in December 2024 with cloud provider lock-in focus.",
+          "Switch between GPT-4, Claude, Gemini, and Mistral as better models launch. Choose the best model for each task.",
       },
       {
         icon: "chart",
@@ -198,33 +115,82 @@ export const gleanConfig: CompetitorPageConfig = {
     items: [
       {
         question: "Is Dust a drop-in replacement for Glean?",
-        answer:
-          "Yes—with a key difference. Glean excels at enterprise search, while Dust excels at agentic workflows. If your team needs to automate work—triaging tickets, updating CRMs, drafting reports—Dust delivers higher adoption (70-90% vs. 40%) and faster ROI.",
+        answer: (
+          <>
+            <p>
+              Yes—with a key difference. Glean excels at{" "}
+              <strong>enterprise search</strong>, while Dust excels at{" "}
+              <strong>agentic workflows</strong>. If your team needs to automate
+              work—triaging tickets, updating CRMs, drafting reports—Dust
+              delivers higher adoption (70-90% vs. 40%) and faster ROI.
+            </p>
+          </>
+        ),
       },
       {
         question: "How does Dust's pricing compare to Glean?",
-        answer:
-          "Glean: No public pricing, $50K+ minimum ACV, paid POCs up to $70K. Dust: $29/user/month Pro, ~$45/user Enterprise. 14-day free trial, no credit card required.",
+        answer: (
+          <>
+            <p>
+              <strong>Glean:</strong> No public pricing, $50K+ minimum ACV, paid
+              POCs up to $70K.
+            </p>
+            <p className="mt-2">
+              <strong>Dust:</strong> $29/user/month Pro, ~$45/user Enterprise.
+              14-day free trial, no credit card required.
+            </p>
+          </>
+        ),
       },
       {
         question: "Does Dust support multi-agent workflows?",
-        answer:
-          "Yes. Dust enables teams of specialized agents that collaborate: research agent gathers data, analysis agent processes it, writing agent drafts reports. Parallel execution for faster results.",
+        answer: (
+          <>
+            <p>
+              Yes. Dust enables <strong>teams of specialized agents</strong>{" "}
+              that collaborate: research agent gathers data, analysis agent
+              processes it, writing agent drafts reports. Parallel execution for
+              faster results.
+            </p>
+          </>
+        ),
       },
       {
         question: "Can Dust match Glean's search quality?",
-        answer:
-          "For pure enterprise search, Glean's ex-Google engineers have an edge. But 95% of teams need good search + workflow automation. Dust delivers both at half the cost.",
+        answer: (
+          <>
+            <p>
+              For pure enterprise search, Glean&apos;s ex-Google engineers have
+              an edge. But 95% of teams need{" "}
+              <strong>good search + workflow automation</strong>. Dust delivers
+              both at half the cost.
+            </p>
+          </>
+        ),
       },
       {
         question: "What security certifications does Dust have?",
-        answer:
-          "SOC 2 Type II, GDPR, and HIPAA-ready. SSO/SAML, SCIM, RBAC, audit logs, US/EU data residency, zero data retention options.",
+        answer: (
+          <>
+            <p>
+              <strong>SOC 2 Type II</strong>, <strong>GDPR</strong>, and{" "}
+              <strong>HIPAA-ready</strong>. SSO/SAML, SCIM, RBAC, audit logs,
+              US/EU data residency, zero data retention options.
+            </p>
+          </>
+        ),
       },
       {
         question: "Can I try Dust before committing?",
-        answer:
-          "Yes. 14-day free trial—no credit card required. Full access to agent building, 50+ integrations, and multi-agent orchestration.",
+        answer: (
+          <>
+            <p>
+              Yes. <strong>14-day free trial</strong>—no credit card required.
+              Full access to agent building, 50+ integrations, and multi-agent
+              orchestration.
+            </p>
+          </>
+        ),
       },
     ],
   },

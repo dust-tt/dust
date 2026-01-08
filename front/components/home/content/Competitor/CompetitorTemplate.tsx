@@ -16,7 +16,9 @@ import type { CompetitorTemplateProps, SectionType } from "./types";
 import { WhyChooseSection } from "./WhyChooseSection";
 
 // Generate Schema.org FAQPage JSON-LD
-function generateFAQSchema(faqItems: { question: string; answer: string }[]) {
+function generateFAQSchema(
+  faqItems: { question: string; answer: React.ReactNode }[]
+) {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -25,7 +27,11 @@ function generateFAQSchema(faqItems: { question: string; answer: string }[]) {
       name: item.question,
       acceptedAnswer: {
         "@type": "Answer",
-        text: item.answer,
+        // For the schema, we need plain text. If answer is ReactNode, this will be a simplification.
+        text:
+          typeof item.answer === "string"
+            ? item.answer
+            : "See the full answer on our website.",
       },
     })),
   };
@@ -45,7 +51,8 @@ function generateSoftwareSchema() {
       price: "29",
       priceCurrency: "USD",
       priceValidUntil: "2026-12-31",
-      description: "14-day free trial, transparent pricing from $29/user/month",
+      description:
+        "14-day free trial, transparent pricing from $29/user/month",
     },
     aggregateRating: {
       "@type": "AggregateRating",
@@ -86,14 +93,13 @@ export default function CompetitorTemplate({
         ) : null;
 
       case "quickAnswer":
-        return config.quickAnswer ? (
+        return (
           <QuickAnswerBlock
             key="quickAnswer"
-            config={config.quickAnswer}
             competitorName={config.competitorDisplayName}
             competitorLogo={config.competitorLogo}
           />
-        ) : null;
+        );
 
       case "corePositioning":
         // Removed - too text-heavy for marketing page
@@ -136,13 +142,20 @@ export default function CompetitorTemplate({
         return null;
 
       case "faq":
-        return config.faq ? <FAQSection key="faq" config={config.faq} /> : null;
+        return config.faq ? (
+          <FAQSection
+            key="faq"
+            config={config.faq}
+            competitorName={config.competitorDisplayName}
+          />
+        ) : null;
 
       case "finalCTA":
         return config.finalCTA ? (
           <FinalCTASection
             key="finalCTA"
             config={config.finalCTA}
+            competitorName={config.competitorDisplayName}
             trackingPrefix={prefix}
           />
         ) : null;
@@ -151,6 +164,10 @@ export default function CompetitorTemplate({
       case "socialProof":
       case "integrationComparison":
       case "discoveryQuestions":
+        return null;
+
+      default:
+        console.warn(`Unknown section type: ${sectionType}`);
         return null;
     }
   };
@@ -181,7 +198,7 @@ export default function CompetitorTemplate({
         )}
       </Head>
 
-      <div className="-mb-24 flex w-full flex-col">
+      <div className="flex w-full flex-col">
         {config.layout.sections.map((sectionType) => {
           const section = renderSection(sectionType);
           if (!section) {

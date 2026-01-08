@@ -1,16 +1,22 @@
+import type { FC } from "react";
+
 import { Grid, H2 } from "@app/components/home/ContentComponents";
 
-import type { Metric } from "./types";
+interface Metric {
+  value: string;
+  label: string;
+  description: string;
+}
 
 interface MetricsSectionProps {
   title?: string;
   metrics: Metric[];
 }
 
-export function MetricsSection({
+export const MetricsSection: FC<MetricsSectionProps> = ({
   title = "Why teams choose Dust",
   metrics,
-}: MetricsSectionProps) {
+}) => {
   return (
     <div className="py-12 md:py-20">
       <div className="container px-4">
@@ -42,4 +48,4 @@ export function MetricsSection({
       </div>
     </div>
   );
-}
+};
