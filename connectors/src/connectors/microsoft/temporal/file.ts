@@ -152,7 +152,7 @@ export async function syncOneFile({
     }
 
     const item = (await getItem(
-      logger,
+      localLogger,
       client,
       `${itemAPIPath}?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
     )) as DriveItem;
