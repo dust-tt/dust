@@ -129,6 +129,7 @@ const NavigationListItem = React.forwardRef<
 
     const shouldShowCounter = typeof status === "number" && status > 0;
     const shouldShowStatusDot = typeof status === "string" && status !== "idle";
+    const counterValue = typeof status === "number" ? status : undefined;
 
     return (
       <div
@@ -169,9 +170,9 @@ const NavigationListItem = React.forwardRef<
                 {label}
               </span>
             )}
-            {shouldShowCounter && (
+            {counterValue !== undefined && (
               <Counter
-                value={status as number}
+                value={counterValue}
                 size="xs"
                 variant="outline"
                 className={cn(
@@ -231,7 +232,7 @@ const variantStyles = cva("", {
     },
     isSticky: {
       true: cn(
-        "s-sticky s-top-0 s-z-10 s-bg-background dark:s-bg-muted-background-night",
+        "s-sticky s-top-0 s-bg-background dark:s-bg-muted-background-night",
         "s-border-border dark:s-border-border-night"
       ),
     },
@@ -283,7 +284,7 @@ const variantCompactStyles = cva(
     variants: {
       isSticky: {
         true: cn(
-          "s-sticky s-top-0 s-z-10 s-bg-background dark:s-bg-muted-background-night",
+          "s-sticky s-top-0 s-z-10 s-bg-muted-background dark:s-bg-muted-background-night",
           "s-border-border dark:s-border-border-night"
         ),
       },
@@ -362,8 +363,22 @@ const collapseableStyles = cva(
   }
 );
 
+function isRefObject<T>(
+  ref: React.Ref<T> | undefined
+): ref is React.MutableRefObject<T | null> {
+  return ref != null && typeof ref !== "function" && "current" in ref;
+}
+
+function assignRef<T>(ref: React.Ref<T> | undefined, value: T | null): void {
+  if (typeof ref === "function") {
+    ref(value);
+  } else if (isRefObject(ref)) {
+    ref.current = value;
+  }
+}
+
 const NavigationListCollapsibleSection = React.forwardRef<
-  React.ElementRef<typeof Collapsible>,
+  HTMLDivElement | React.ElementRef<typeof Collapsible>,
   NavigationListCollapsibleSectionProps
 >(
   (
@@ -407,12 +422,14 @@ const NavigationListCollapsibleSection = React.forwardRef<
     );
 
     if (type === "static") {
+      const divRef = React.useCallback(
+        (node: HTMLDivElement | null) => {
+          assignRef(ref, node);
+        },
+        [ref]
+      );
       return (
-        <div
-          ref={ref as React.Ref<HTMLDivElement>}
-          className={className}
-          {...props}
-        >
+        <div ref={divRef} className={className} {...props}>
           {labelElement}
           <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
         </div>
