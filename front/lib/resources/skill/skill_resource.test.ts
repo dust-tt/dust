@@ -79,12 +79,10 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1",
-          nodeType: "document",
         },
         {
           dataSourceView: dataSourceView2,
           nodeId: "node2",
-          nodeType: "folder",
         },
       ];
 
@@ -126,17 +124,14 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1",
-          nodeType: "document",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node2",
-          nodeType: "folder",
         },
         {
           dataSourceView: dataSourceView2,
           nodeId: "node3",
-          nodeType: "document",
         },
       ];
 
@@ -191,7 +186,6 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1",
-          nodeType: "document",
         },
       ];
 
@@ -230,12 +224,10 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1", // Keep this one.
-          nodeType: "document",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node3", // Change node2 to node3.
-          nodeType: "folder",
         },
       ];
 
@@ -275,12 +267,10 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node2", // Order doesn't matter.
-          nodeType: "folder",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1",
-          nodeType: "document",
         },
       ];
 
@@ -321,17 +311,14 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1",
-          nodeType: "document",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1_new", // Add new node to existing DSV.
-          nodeType: "folder",
         },
         {
           dataSourceView: dataSourceView3, // New DSV.
           nodeId: "node3",
-          nodeType: "document",
         },
         // dataSourceView2 is removed.
       ];
@@ -370,17 +357,14 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1",
-          nodeType: "document",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1", // Duplicate.
-          nodeType: "folder",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node2",
-          nodeType: "document",
         },
       ];
 
@@ -419,17 +403,14 @@ describe("SkillResource", () => {
         {
           dataSourceView: dataSourceView1,
           nodeId: "node1",
-          nodeType: "document",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node2",
-          nodeType: "document",
         },
         {
           dataSourceView: dataSourceView1,
           nodeId: "node3", // Adding new node
-          nodeType: "document",
         },
       ];
 

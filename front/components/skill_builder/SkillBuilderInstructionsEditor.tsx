@@ -105,7 +105,6 @@ export function SkillBuilderInstructionsEditor({
       const transformedAttachments = attachedKnowledge.map((item) => ({
         dataSourceViewId: item.dataSourceViewId,
         nodeId: item.nodeId, // This is the node ID from the data source view content node.
-        nodeType: item.nodeType,
         spaceId: item.spaceId,
         title: item.label,
       }));

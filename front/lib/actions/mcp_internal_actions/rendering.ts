@@ -39,6 +39,13 @@ function formatTimestamp(timestamp: number): string {
 /**
  * Translation from a content node to the format expected to the agent.
  * Removes references to the term 'content node' and simplifies the format.
+ *
+ * IMPORTANT: This output format (especially hasChildren) is kept aligned with
+ * knowledge node serialization in skill instructions. See:
+ * components/editor/extensions/skill_builder/KnowledgeNode.tsx (renderMarkdown)
+ *
+ * When changing this format, review knowledge serialization to ensure agents see
+ * consistent data structure between tool outputs and instruction-attached knowledge.
  */
 export function renderNode(
   node: CoreAPIContentNode,

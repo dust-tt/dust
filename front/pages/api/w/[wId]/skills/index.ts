@@ -43,7 +43,6 @@ const SkillStatusSchema = t.union([
 export const AttachedKnowledgeSchema = t.type({
   dataSourceViewId: t.string,
   nodeId: t.string,
-  nodeType: t.union([t.literal("folder"), t.literal("document")]),
   spaceId: t.string,
   title: t.string,
 });
@@ -233,7 +232,6 @@ async function handler(
         (attachment) => ({
           dataSourceView: dataSourceViewIdMap.get(attachment.dataSourceViewId)!,
           nodeId: attachment.nodeId,
-          nodeType: attachment.nodeType,
         })
       );
 
