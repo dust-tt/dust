@@ -205,7 +205,6 @@ export const AshbyApplicationInfoResponseSchema = z.object({
     .object({
       id: z.string(),
       status: AshbyApplicationStatusSchema,
-      candidateId: z.string(),
     })
     .passthrough(),
 });
