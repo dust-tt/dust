@@ -17,37 +17,28 @@
   width: 100%;
 }
 
-.allotment-module_splitView__L-yRc
-  > .allotment-module_sashContainer__fzwJF
-  > .allotment-module_sash__QA-2t {
+.allotment-module_splitView__L-yRc > .allotment-module_sashContainer__fzwJF > .allotment-module_sash__QA-2t {
   pointer-events: auto;
 }
 
-.allotment-module_splitView__L-yRc
-  > .allotment-module_splitViewContainer__rQnVa {
+.allotment-module_splitView__L-yRc > .allotment-module_splitViewContainer__rQnVa {
   height: 100%;
   position: relative;
   white-space: nowrap;
   width: 100%;
 }
 
-.allotment-module_splitView__L-yRc
-  > .allotment-module_splitViewContainer__rQnVa
-  > .allotment-module_splitViewView__MGZ6O {
+.allotment-module_splitView__L-yRc > .allotment-module_splitViewContainer__rQnVa > .allotment-module_splitViewView__MGZ6O {
   overflow: hidden;
   position: absolute;
   white-space: initial;
 }
 
-.allotment-module_splitView__L-yRc.allotment-module_vertical__WSwwa
-  > .allotment-module_splitViewContainer__rQnVa
-  > .allotment-module_splitViewView__MGZ6O {
+.allotment-module_splitView__L-yRc.allotment-module_vertical__WSwwa > .allotment-module_splitViewContainer__rQnVa > .allotment-module_splitViewView__MGZ6O {
   width: 100%;
 }
 
-.allotment-module_splitView__L-yRc.allotment-module_horizontal__7doS8
-  > .allotment-module_splitViewContainer__rQnVa
-  > .allotment-module_splitViewView__MGZ6O {
+.allotment-module_splitView__L-yRc.allotment-module_horizontal__7doS8 > .allotment-module_splitViewContainer__rQnVa > .allotment-module_splitViewView__MGZ6O {
   height: 100%;
 }
 
@@ -138,8 +129,7 @@
   height: var(--sash-size);
 }
 
-.sash-module_sash__K-9lB:not(.sash-module_disabled__Hm-wx)
-  > .sash-module_orthogonal-drag-handle__Yii2- {
+.sash-module_sash__K-9lB:not(.sash-module_disabled__Hm-wx) > .sash-module_orthogonal-drag-handle__Yii2- {
   content: " ";
   height: calc(var(--sash-size) * 2);
   width: calc(var(--sash-size) * 2);
@@ -149,48 +139,36 @@
   position: absolute;
 }
 
-.sash-module_sash__K-9lB.sash-module_horizontal__kFbiw.sash-module_orthogonal-edge-north__f7Noe:not(
-    .sash-module_disabled__Hm-wx
-  )
+.sash-module_sash__K-9lB.sash-module_horizontal__kFbiw.sash-module_orthogonal-edge-north__f7Noe:not(.sash-module_disabled__Hm-wx)
   > .sash-module_orthogonal-drag-handle__Yii2-.sash-module_start__uZEDk,
-.sash-module_sash__K-9lB.sash-module_horizontal__kFbiw.sash-module_orthogonal-edge-south__6ZrFC:not(
-    .sash-module_disabled__Hm-wx
-  )
+.sash-module_sash__K-9lB.sash-module_horizontal__kFbiw.sash-module_orthogonal-edge-south__6ZrFC:not(.sash-module_disabled__Hm-wx)
   > .sash-module_orthogonal-drag-handle__Yii2-.sash-module_end__0TP-R {
   cursor: nwse-resize;
 }
 
-.sash-module_sash__K-9lB.sash-module_horizontal__kFbiw.sash-module_orthogonal-edge-north__f7Noe:not(
-    .sash-module_disabled__Hm-wx
-  )
+.sash-module_sash__K-9lB.sash-module_horizontal__kFbiw.sash-module_orthogonal-edge-north__f7Noe:not(.sash-module_disabled__Hm-wx)
   > .sash-module_orthogonal-drag-handle__Yii2-.sash-module_end__0TP-R,
-.sash-module_sash__K-9lB.sash-module_horizontal__kFbiw.sash-module_orthogonal-edge-south__6ZrFC:not(
-    .sash-module_disabled__Hm-wx
-  )
+.sash-module_sash__K-9lB.sash-module_horizontal__kFbiw.sash-module_orthogonal-edge-south__6ZrFC:not(.sash-module_disabled__Hm-wx)
   > .sash-module_orthogonal-drag-handle__Yii2-.sash-module_start__uZEDk {
   cursor: nesw-resize;
 }
 
-.sash-module_sash__K-9lB.sash-module_vertical__pB-rs
-  > .sash-module_orthogonal-drag-handle__Yii2-.sash-module_start__uZEDk {
+.sash-module_sash__K-9lB.sash-module_vertical__pB-rs > .sash-module_orthogonal-drag-handle__Yii2-.sash-module_start__uZEDk {
   left: calc(var(--sash-size) * -0.5);
   top: calc(var(--sash-size) * -1);
 }
 
-.sash-module_sash__K-9lB.sash-module_vertical__pB-rs
-  > .sash-module_orthogonal-drag-handle__Yii2-.sash-module_end__0TP-R {
+.sash-module_sash__K-9lB.sash-module_vertical__pB-rs > .sash-module_orthogonal-drag-handle__Yii2-.sash-module_end__0TP-R {
   left: calc(var(--sash-size) * -0.5);
   bottom: calc(var(--sash-size) * -1);
 }
 
-.sash-module_sash__K-9lB.sash-module_horizontal__kFbiw
-  > .sash-module_orthogonal-drag-handle__Yii2-.sash-module_start__uZEDk {
+.sash-module_sash__K-9lB.sash-module_horizontal__kFbiw > .sash-module_orthogonal-drag-handle__Yii2-.sash-module_start__uZEDk {
   top: calc(var(--sash-size) * -0.5);
   left: calc(var(--sash-size) * -1);
 }
 
-.sash-module_sash__K-9lB.sash-module_horizontal__kFbiw
-  > .sash-module_orthogonal-drag-handle__Yii2-.sash-module_end__0TP-R {
+.sash-module_sash__K-9lB.sash-module_horizontal__kFbiw > .sash-module_orthogonal-drag-handle__Yii2-.sash-module_end__0TP-R {
   top: calc(var(--sash-size) * -0.5);
   right: calc(var(--sash-size) * -1);
 }
