@@ -170,9 +170,14 @@ cli
   .command("up", "Start managed services (temporal + main session)")
   .option("-a, --attach", "Attach to main zellij session")
   .option("-f, --force", "Force rebuild even if no changes detected")
-  .action(async (options: { attach?: boolean; force?: boolean }) => {
+  .option("-C, --compact", "Use compact zellij layout (bar at bottom)")
+  .action(async (options: { attach?: boolean; force?: boolean; compact?: boolean }) => {
     await prepareAndRun(
-      upCommand({ attach: Boolean(options.attach), force: Boolean(options.force) })
+      upCommand({
+        attach: Boolean(options.attach),
+        force: Boolean(options.force),
+        compact: Boolean(options.compact),
+      })
     );
   });
 

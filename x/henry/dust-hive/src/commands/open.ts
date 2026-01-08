@@ -387,11 +387,12 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
 });
 
 // Generate layout for main session (repo root + temporal logs)
-function generateMainLayout(repoRoot: string, watchScriptPath: string): string {
+function generateMainLayout(repoRoot: string, watchScriptPath: string, compact?: boolean): string {
   const shellPath = getUserShell();
+  const tabTemplate = compact ? TAB_TEMPLATE_COMPACT : TAB_TEMPLATE;
 
   return `layout {
-${TAB_TEMPLATE}
+${tabTemplate}
 
     tab name="main" focus=true {
         pane {
@@ -412,16 +413,21 @@ ${TAB_TEMPLATE}
 `;
 }
 
-async function writeMainLayout(repoRoot: string, watchScriptPath: string): Promise<string> {
+async function writeMainLayout(
+  repoRoot: string,
+  watchScriptPath: string,
+  compact?: boolean
+): Promise<string> {
   await mkdir(DUST_HIVE_ZELLIJ, { recursive: true });
   const layoutPath = join(DUST_HIVE_ZELLIJ, "main-layout.kdl");
-  const content = generateMainLayout(repoRoot, watchScriptPath);
+  const content = generateMainLayout(repoRoot, watchScriptPath, compact);
   await Bun.write(layoutPath, content);
   return layoutPath;
 }
 
 interface MainSessionOptions {
   attach?: boolean;
+  compact?: boolean | undefined;
 }
 
 // Open the main session (for managed services mode)
@@ -447,7 +453,7 @@ export async function openMainSession(
     }
 
     if (!sessionExists) {
-      const layoutPath = await writeMainLayout(repoRoot, watchScriptPath);
+      const layoutPath = await writeMainLayout(repoRoot, watchScriptPath, options.compact);
       await createSessionInBackground(sessionName, layoutPath);
     }
 
@@ -483,7 +489,7 @@ export async function openMainSession(
     });
     await proc.exited;
   } else {
-    const layoutPath = await writeMainLayout(repoRoot, watchScriptPath);
+    const layoutPath = await writeMainLayout(repoRoot, watchScriptPath, options.compact);
 
     if (!options.attach) {
       await createSessionInBackground(sessionName, layoutPath);
