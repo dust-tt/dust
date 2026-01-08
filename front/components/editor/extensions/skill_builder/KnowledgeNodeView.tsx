@@ -357,10 +357,6 @@ function KnowledgeSearchComponent({
     [isOpen, selectedIndex, knowledgeItems.length, handleItemSelect, onCancel]
   );
 
-  const handleBlur = useCallback(() => {
-    deleteIfEmpty(50);
-  }, [deleteIfEmpty]);
-
   const handleInteractOutside = useCallback(() => {
     setIsOpen(false);
     deleteIfEmpty(50);
@@ -381,7 +377,6 @@ function KnowledgeSearchComponent({
         ref={contentRef}
         onKeyDown={handleKeyDown}
         onInput={handleInput}
-        onBlur={handleBlur}
         data-placeholder="Search for knowledge..."
       />
 
