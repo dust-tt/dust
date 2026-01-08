@@ -142,7 +142,7 @@ function getSpaceAccessPriority(space: SpaceResource) {
     return 1;
   }
 
-  // Restriced spaces with manual membership have lowest priority.
+  // Restricted spaces with manual membership have the lowest priority.
   return 0;
 }
 
@@ -169,9 +169,7 @@ function selectHighestPriorityDataSourceView(
 export async function handleSearch(
   req: NextApiRequest,
   auth: Authenticator,
-  searchParams: SearchRequestBodyType
-): Promise<Result<SearchResult, SearchError>> {
-  const {
+  {
     allowAdminSearch,
     dataSourceViewIdsBySpaceId,
     includeDataSources,
@@ -183,15 +181,19 @@ export async function handleSearch(
     searchSourceUrls,
     spaceIds,
     viewType,
-  } = searchParams;
+  }: SearchRequestBodyType
+): Promise<Result<SearchResult, SearchError>> {
+  let spaces;
+  if (allowAdminSearch) {
+    const allWorkspaceSpaces = await SpaceResource.listWorkspaceSpaces(auth);
+    spaces = allWorkspaceSpaces.filter(
+      (s) => s.canAdministrate(auth) || s.canRead(auth)
+    );
+  } else {
+    spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
+  }
 
-  const spaces = allowAdminSearch
-    ? (await SpaceResource.listWorkspaceSpaces(auth)).filter(
-        (s) => s.canAdministrate(auth) || s.canRead(auth)
-      )
-    : await SpaceResource.listWorkspaceSpacesAsMember(auth);
-
-  if (!spaces.length) {
+  if (spaces.length === 0) {
     return new Err({
       status: 400,
       error: {
@@ -277,7 +279,8 @@ export async function handleSearch(
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const searchRes = await coreAPI.searchNodes({
-    query,
+    // To run an empty search, we need to pass undefined to the API.
+    query: query && query.length > 0 ? query : undefined,
     filter: searchFilter,
     options: {
       cursor: paginationRes.value?.cursor ?? undefined,
