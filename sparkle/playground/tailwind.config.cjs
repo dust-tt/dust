@@ -7,9 +7,10 @@ const parentConfig = require(path.resolve(__dirname, "../tailwind.config.js"));
 module.exports = {
   ...parentConfig,
   content: [
-    ...(Array.isArray(parentConfig.content) ? parentConfig.content : [parentConfig.content]),
+    ...(Array.isArray(parentConfig.content)
+      ? parentConfig.content
+      : [parentConfig.content]),
     "./src/**/*.{html,js,ts,jsx,tsx}",
     "../src/**/*.{html,js,ts,jsx,tsx}", // Also include Sparkle source for class detection
   ],
 };
-
