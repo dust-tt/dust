@@ -3315,6 +3315,171 @@ describe("markAsUnreadForOtherParticipants", () => {
     assert(participant3After, "Participant 3 not found after update");
     expect(participant3After.unread).toBe(true);
   });
+
+  it("should not mark users with only_mentions preference as unread unless mentioned", async () => {
+    const { ConversationParticipantModel, MentionModel } =
+      await import("@app/lib/models/agent/conversation");
+    const { UserMetadataModel } = await import(
+      "@app/lib/resources/storage/models/user"
+    );
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    assert(conversationResource, "Conversation resource not found");
+
+    // Set user1 preference to "only_mentions", user2 to "all_messages" (default)
+    await UserMetadataModel.upsert({
+      userId: user1Auth.getNonNullableUser().id,
+      key: "conversation_unread_trigger",
+      value: "only_mentions",
+    });
+
+    // Set all participants to unread: false
+    await ConversationParticipantModel.update(
+      { unread: false },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+
+    // Get a message and create a mention for user2 only
+    const message = await MessageModel.findOne({
+      where: { conversationId: conversationResource.id },
+    });
+    assert(message, "Message not found");
+
+    await MentionModel.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      messageId: message.id,
+      userId: user2Auth.getNonNullableUser().id,
+      agentConfigurationId: null,
+      status: "approved",
+    });
+
+    // Call markAsUnreadForOtherParticipants
+    const result = await ConversationResource.markAsUnreadForOtherParticipants(
+      auth,
+      {
+        conversation,
+        messageId: message.sId,
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+
+    // user1 has "only_mentions" and was NOT mentioned - should NOT be marked unread
+    const participant1After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user1Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant1After, "Participant 1 not found");
+    expect(participant1After.unread).toBe(false);
+
+    // user2 has default preference and was mentioned - should be marked unread
+    const participant2After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user2Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant2After, "Participant 2 not found");
+    expect(participant2After.unread).toBe(true);
+
+    // user3 has default preference - should be marked unread
+    const participant3After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user3Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant3After, "Participant 3 not found");
+    expect(participant3After.unread).toBe(true);
+  });
+
+  it("should mark single participant as unread even with only_mentions preference", async () => {
+    const { ConversationParticipantModel } =
+      await import("@app/lib/models/agent/conversation");
+    const { UserMetadataModel } = await import(
+      "@app/lib/resources/storage/models/user"
+    );
+
+    // Create a new conversation with only one participant
+    const singleUserConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(1)],
+    });
+
+    await ConversationResource.upsertParticipation(user1Auth, {
+      conversation: singleUserConversation,
+      action: "posted",
+      user: user1Auth.getNonNullableUser().toJSON(),
+    });
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      singleUserConversation.sId
+    );
+    assert(conversationResource, "Conversation resource not found");
+
+    // Set user1 preference to "only_mentions"
+    await UserMetadataModel.upsert({
+      userId: user1Auth.getNonNullableUser().id,
+      key: "conversation_unread_trigger",
+      value: "only_mentions",
+    });
+
+    // Set participant to unread: false
+    await ConversationParticipantModel.update(
+      { unread: false },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+
+    // Get a message
+    const message = await MessageModel.findOne({
+      where: { conversationId: conversationResource.id },
+    });
+    assert(message, "Message not found");
+
+    // Call markAsUnreadForOtherParticipants (no mentions)
+    const result = await ConversationResource.markAsUnreadForOtherParticipants(
+      auth,
+      {
+        conversation: singleUserConversation,
+        messageId: message.sId,
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+
+    // user1 is the ONLY participant - should be marked unread despite "only_mentions" preference
+    const participant1After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user1Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant1After, "Participant 1 not found");
+    expect(participant1After.unread).toBe(true);
+
+    // Cleanup
+    await destroyConversation(auth, { conversationId: singleUserConversation.sId });
+  });
 });
 
 describe("markAsActionRequired", () => {

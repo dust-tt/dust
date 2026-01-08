@@ -850,10 +850,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       conversation,
       excludedUser,
       messageId,
+      transaction,
     }: {
       conversation: ConversationWithoutContentType;
       excludedUser?: UserType;
       messageId: string;
+      transaction?: Transaction;
     }
   ) {
     const workspaceId = auth.getNonNullableWorkspace().id;
@@ -865,14 +867,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId,
       },
       attributes: ["userId", "unread"],
+      transaction,
     });
 
     const totalParticipantCount = allParticipants.length;
 
     // Filter to participants we might mark as unread (excluding sender, only unread=false).
     const participants = allParticipants.filter(
-      (p) =>
-        !p.unread && (!excludedUser || p.userId !== excludedUser.id)
+      (p) => !p.unread && (!excludedUser || p.userId !== excludedUser.id)
     );
 
     if (participants.length === 0) {
@@ -888,6 +890,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         key: CONVERSATION_NOTIFICATION_METADATA_KEYS.unreadTrigger,
       },
       attributes: ["userId", "value"],
+      transaction,
     });
 
     const preferenceMap = new Map<number, NotificationTrigger>();
@@ -901,6 +904,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const message = await MessageModel.findOne({
       where: { sId: messageId, workspaceId },
       attributes: ["id"],
+      transaction,
     });
     assert(message, `Unexpected: could not find message ${messageId}`);
 
@@ -912,6 +916,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         status: "approved",
       },
       attributes: ["userId"],
+      transaction,
     });
     const mentionedUserIds = new Set(
       mentions.map((m) => m.userId).filter((id): id is number => id !== null)
@@ -940,6 +945,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           userId: { [Op.in]: eligibleUserIds },
           unread: false,
         },
+        transaction,
       }
     );
     return new Ok(updated);
