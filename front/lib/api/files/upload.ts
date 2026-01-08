@@ -183,6 +183,14 @@ const resizeAndUploadToFileStorage = async (
         version: "processed",
       });
 
+      logger.info(
+        {
+          dimensions: { width: dimensions.width, height: dimensions.height },
+          maxSize: maxSizePixels,
+        },
+        "Image already within size limits, skipping ConvertAPI"
+      );
+
       await pipeline(readStream, writeStream);
 
       return new Ok(undefined);
