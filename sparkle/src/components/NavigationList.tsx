@@ -277,22 +277,21 @@ const NavigationListLabel = React.forwardRef<
 
 NavigationListLabel.displayName = "NavigationListLabel";
 
-const variantCompactStyles = cva("", {
-  variants: {
-    isSticky: {
-      true: cn(
-        "s-sticky s-top-0 s-z-10 s-bg-background dark:s-bg-muted-background-night",
-        "s-border-border dark:s-border-border-night"
-      ),
+const variantCompactStyles = cva(
+  "s-flex s-px-2 s-py-1 s-pl-3 s-text-[10px] s-font-semibold s-text-foreground s-pt-3 s-uppercase s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
+  {
+    variants: {
+      isSticky: {
+        true: cn(
+          "s-sticky s-top-0 s-z-10 s-bg-background dark:s-bg-muted-background-night",
+          "s-border-border dark:s-border-border-night"
+        ),
+      },
     },
-  },
-  defaultVariants: {
-    isSticky: false,
-  },
-});
-
-const compactLabelStyles = cva(
-  "s-flex s-px-2 s-py-1 s-text-[10px] s-font-semibold s-text-foreground s-pt-3 s-uppercase s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
+    defaultVariants: {
+      isSticky: false,
+    },
+  }
 );
 
 interface NavigationListCompactLabelProps
@@ -308,12 +307,7 @@ const NavigationListCompactLabel = React.forwardRef<
 >(({ className, label, isSticky, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(
-      compactLabelStyles(),
-      variantCompactStyles({ isSticky }),
-      "s-pl-3",
-      className
-    )}
+    className={cn(variantCompactStyles({ isSticky }), className)}
     {...props}
   >
     <div className="s-flex s-items-center s-gap-1 s-overflow-hidden s-text-ellipsis">
