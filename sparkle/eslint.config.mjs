@@ -150,7 +150,6 @@ export default [
       ],
     },
   },
-  
   // Prettier config (must be last)
   eslintConfigPrettier,
 ];
