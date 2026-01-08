@@ -1036,47 +1036,53 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (a, b) => b.version - a.version
     );
 
-    // Convert version models to SkillResource instances.
-    return concurrentExecutor(
-      sortedVersionModels,
-      async (versionModel) => {
-        // TODO(skills 2025-12-23): add caching on the MCP server views across versions.
-        const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
-          auth,
-          versionModel.mcpServerViewIds
-        );
-
-        const skill = new SkillResource(
-          this.model,
-          {
-            id: this.id,
-            workspaceId: workspace.id,
-            authorId: versionModel.authorId,
-            createdAt: versionModel.createdAt,
-            updatedAt: versionModel.updatedAt,
-            status: versionModel.status,
-            name: versionModel.name,
-            agentFacingDescription: versionModel.agentFacingDescription,
-            userFacingDescription: versionModel.userFacingDescription,
-            instructions: versionModel.instructions,
-            icon: versionModel.icon,
-            requestedSpaceIds: versionModel.requestedSpaceIds,
-            extendedSkillId: versionModel.extendedSkillId,
-          },
-          {
-            // We ignore data source configurations for historical versions.
-            // As when user saves we re-compute those from the nodes.
-            dataSourceConfigurations: [],
-            editorGroup: this.editorGroup ?? undefined,
-            mcpServerViews,
-            version: versionModel.version,
-          }
-        );
-        assert(isSkillResourceWithVersion(skill));
-        return skill;
-      },
-      { concurrency: 5 }
+    // Build map to cache MCPServerViewResource instances.
+    const allMcpServerViewIds = uniq(
+      sortedVersionModels.flatMap((model) => model.mcpServerViewIds)
     );
+    const allMcpServerViews = await MCPServerViewResource.fetchByModelIds(
+      auth,
+      allMcpServerViewIds
+    );
+    const mcpServerViewMap = new Map(
+      allMcpServerViews.map((view) => [view.id, view])
+    );
+
+    // Convert version models to SkillResource instances.
+    return sortedVersionModels.map((versionModel) => {
+      const mcpServerViews = removeNulls(
+        versionModel.mcpServerViewIds.map((id) => mcpServerViewMap.get(id))
+      );
+
+      const skill = new SkillResource(
+        this.model,
+        {
+          id: this.id,
+          workspaceId: workspace.id,
+          authorId: versionModel.authorId,
+          createdAt: versionModel.createdAt,
+          updatedAt: versionModel.updatedAt,
+          status: versionModel.status,
+          name: versionModel.name,
+          agentFacingDescription: versionModel.agentFacingDescription,
+          userFacingDescription: versionModel.userFacingDescription,
+          instructions: versionModel.instructions,
+          icon: versionModel.icon,
+          requestedSpaceIds: versionModel.requestedSpaceIds,
+          extendedSkillId: versionModel.extendedSkillId,
+        },
+        {
+          // We ignore data source configurations for historical versions.
+          // As when user saves we re-compute those from the nodes.
+          dataSourceConfigurations: [],
+          editorGroup: this.editorGroup ?? undefined,
+          mcpServerViews,
+          version: versionModel.version,
+        }
+      );
+      assert(isSkillResourceWithVersion(skill));
+      return skill;
+    });
   }
 
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
