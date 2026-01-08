@@ -1,6 +1,5 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import type { MentionStatusType } from "@app/lib/models/agent/conversation";
 import type {
   AllSupportedWithDustSpecificFileContentType,
   ContentFragmentType,
@@ -116,9 +115,12 @@ export type AgenticMessageData = {
   originMessageId: string;
 };
 
-export type RichMentionWithStatus = RichMention & {
-  status: MentionStatusType;
-};
+export type RichMentionWithStatus =
+  | (RichMention & { status: "pending" })
+  | (RichMention & { status: "approved" })
+  | (RichMention & { status: "rejected" })
+  | (RichMention & { status: "user_restricted_by_conversation_access" })
+  | (RichMention & { status: "agent_restricted_by_space_usage" });
 
 export type UserMessageType = {
   id: ModelId;

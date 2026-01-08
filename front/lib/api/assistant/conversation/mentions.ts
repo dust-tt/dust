@@ -21,6 +21,7 @@ import {
 import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/workflows/conversation-added-as-participant";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   generateRandomModelSId,
   getResourceIdFromSId,
@@ -116,6 +117,11 @@ export const createUserMentions = async (
               user: user.toJSON(),
             });
 
+          const canAccess = await canUserAccessConversation(auth, {
+            userId: user.sId,
+            conversationId: conversation.sId,
+          });
+
           // Always auto approve mentions for existing participants.
           let autoApprove = isParticipant;
           // In case of agent message on triggered conversation, we want to auto approve mentions only if the users are mentioned in the prompt.
@@ -136,9 +142,11 @@ export const createUserMentions = async (
             }
           }
 
-          const status: MentionStatusType = autoApprove
-            ? "approved"
-            : "pending";
+          const status: MentionStatusType = !canAccess
+            ? "user_restricted_by_conversation_access"
+            : autoApprove
+              ? "approved"
+              : "pending";
 
           const mentionModel = await MentionModel.create(
             {
@@ -174,28 +182,11 @@ export const createUserMentions = async (
     })
   );
 
-  const richMentions = getRichMentionsWithStatusForMessage(
+  return getRichMentionsWithStatusForMessage(
     message.id,
     removeNulls(mentionModels),
     usersById,
     new Map() // No agent configurations in the users mentions.
-  );
-
-  return Promise.all(
-    richMentions.map(async (mention) => {
-      // For user mentions, check if they can access the conversation.
-      if (mention.type === "user") {
-        const canAccess = await canUserAccessConversation(auth, {
-          userId: mention.id,
-          conversationId: conversation.sId,
-        });
-        return {
-          ...mention,
-          userConversationAccessStatus: canAccess ? "accessible" : "restricted",
-        };
-      }
-      return mention;
-    })
   );
 };
 
@@ -493,14 +484,20 @@ export const createAgentMessages = async (
         };
     transaction?: Transaction;
   }
-) => {
+): Promise<{
+  agentMessages: AgentMessageType[];
+  richMentions: RichMentionWithStatus[];
+}> => {
   const owner = auth.getNonNullableWorkspace();
   const results: {
-    agentMessageRow: AgentMessageModel;
-    messageRow: MessageModel;
+    agentAnswer: {
+      agentMessageRow: AgentMessageModel;
+      messageRow: MessageModel;
+    } | null;
     configuration: LightAgentConfigurationType;
     parentMessageId: string;
     parentAgentMessageId: string | null;
+    mentionRow: MentionModel | null;
   }[] = [];
 
   switch (metadata.type) {
@@ -539,11 +536,14 @@ export const createAgentMessages = async (
         });
 
         results.push({
-          agentMessageRow,
-          messageRow,
+          agentAnswer: {
+            agentMessageRow,
+            messageRow,
+          },
           parentMessageId: metadata.agentMessage.parentMessageId,
           parentAgentMessageId: metadata.agentMessage.parentAgentMessageId,
           configuration: metadata.agentMessage.configuration,
+          mentionRow: null,
         });
       }
       break;
@@ -575,11 +575,14 @@ export const createAgentMessages = async (
         );
 
         results.push({
-          agentMessageRow,
-          messageRow,
+          agentAnswer: {
+            agentMessageRow,
+            messageRow,
+          },
           parentMessageId: metadata.agentMessage.parentMessageId,
           parentAgentMessageId: metadata.agentMessage.parentAgentMessageId,
           configuration: metadata.agentMessage.configuration,
+          mentionRow: null,
         });
       }
       break;
@@ -596,9 +599,50 @@ export const createAgentMessages = async (
               return;
             }
 
+            // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or public spaces, otherwise we reject the mention and do not create the agent message.
+            if (conversation.spaceId) {
+              // Check to skip heavy work if the agent configuration is only using the project space.
+              if (
+                configuration.requestedSpaceIds.some(
+                  (spaceId) => spaceId !== conversation.spaceId
+                )
+              ) {
+                // Need to load all the spaces to check if they are restricted.
+                const spaces = await SpaceResource.fetchByIds(
+                  auth,
+                  configuration.requestedSpaceIds.filter(
+                    (spaceId) => spaceId !== conversation.spaceId
+                  )
+                );
+                if (spaces.some((space) => !space.isOpen())) {
+                  // This create the mentions from the original user message.
+                  // Not to be mixed with the mentions from the agent message (which will be filled later).
+                  const mentionRow = await MentionModel.create(
+                    {
+                      messageId: metadata.userMessage.id,
+                      agentConfigurationId: configuration.sId,
+                      workspaceId: owner.id,
+                      status: "agent_restricted_by_space_usage",
+                    },
+                    { transaction }
+                  );
+
+                  results.push({
+                    mentionRow,
+                    agentAnswer: null,
+                    parentMessageId: metadata.userMessage.sId,
+                    parentAgentMessageId: null,
+                    configuration,
+                  });
+
+                  return;
+                }
+              }
+            }
+
             // This create the mentions from the original user message.
             // Not to be mixed with the mentions from the agent message (which will be filled later).
-            await MentionModel.create(
+            const mentionRow = await MentionModel.create(
               {
                 messageId: metadata.userMessage.id,
                 agentConfigurationId: configuration.sId,
@@ -643,11 +687,14 @@ export const createAgentMessages = async (
             });
 
             results.push({
-              agentMessageRow,
-              messageRow,
+              agentAnswer: {
+                agentMessageRow,
+                messageRow,
+              },
               parentAgentMessageId,
               parentMessageId: metadata.userMessage.sId,
               configuration,
+              mentionRow,
             });
           },
           {
@@ -660,43 +707,65 @@ export const createAgentMessages = async (
       assertNever(metadata);
   }
 
-  const agentMessages: AgentMessageType[] = results.map(
-    ({
-      agentMessageRow,
-      messageRow,
-      parentMessageId,
-      parentAgentMessageId,
-      configuration,
-    }) => ({
-      id: messageRow.id,
-      agentMessageId: agentMessageRow.id,
-      created: agentMessageRow.createdAt.getTime(),
-      completedTs: agentMessageRow.completedAt?.getTime() ?? null,
-      sId: messageRow.sId,
-      type: "agent_message",
-      visibility: messageRow.visibility,
-      version: messageRow.version,
-      parentMessageId,
-      parentAgentMessageId,
-      status: agentMessageRow.status,
-      actions: [],
-      content: null,
-      chainOfThought: null,
-      rawContents: [],
-      error: null,
-      configuration,
-      rank: messageRow.rank,
-      skipToolsValidation: agentMessageRow.skipToolsValidation,
-      contents: [],
-      parsedContents: {},
-      modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
-      completionDurationMs: getCompletionDuration(
-        agentMessageRow.createdAt.getTime(),
-        agentMessageRow.completedAt?.getTime() ?? null,
-        []
-      ),
-      richMentions: [],
-      reactions: [],
+  const agentMessages: AgentMessageType[] = removeNulls(
+    results.map(
+      ({
+        agentAnswer,
+        parentMessageId,
+        parentAgentMessageId,
+        configuration,
+      }) => {
+        if (agentAnswer) {
+          const { agentMessageRow, messageRow } = agentAnswer;
+          return {
+            id: messageRow.id,
+            agentMessageId: agentMessageRow.id,
+            created: agentMessageRow.createdAt.getTime(),
+            completedTs: agentMessageRow.completedAt?.getTime() ?? null,
+            sId: messageRow.sId,
+            type: "agent_message",
+            visibility: messageRow.visibility,
+            version: messageRow.version,
+            parentMessageId,
+            parentAgentMessageId,
+            status: agentMessageRow.status,
+            actions: [],
+            content: null,
+            chainOfThought: null,
+            rawContents: [],
+            error: null,
+            configuration,
+            rank: messageRow.rank,
+            skipToolsValidation: agentMessageRow.skipToolsValidation,
+            contents: [],
+            parsedContents: {},
+            modelInteractionDurationMs:
+              agentMessageRow.modelInteractionDurationMs,
+            completionDurationMs: getCompletionDuration(
+              agentMessageRow.createdAt.getTime(),
+              agentMessageRow.completedAt?.getTime() ?? null,
+              []
+            ),
+            richMentions: [],
+            reactions: [],
+          };
+        }
+      }
+    )
+  );
+
+  const richMentions: RichMentionWithStatus[] = removeNulls(
+    results.map(({ mentionRow, configuration }) => {
+      if (mentionRow) {
+        return {
+          type: "agent",
+          id: configuration.sId,
+          label: configuration.name,
+          status: mentionRow.status,
+          pictureUrl: configuration.pictureUrl,
+          description: configuration.description,
+        };
+      }
     })
   );
 
@@ -717,5 +786,5 @@ export const createAgentMessages = async (
     }
   }
 
-  return agentMessages;
+  return { agentMessages, richMentions };
 };
