@@ -358,21 +358,11 @@ export async function createSpaceAndGroup(
       );
     }
 
-    const memberGroup = await GroupResource.makeNew(
-      {
-        name: `${SPACE_GROUP_PREFIX} ${name}`,
-        workspaceId: owner.id,
-        kind: "regular",
-      },
-      { transaction: t }
-    );
-
     const globalGroupRes = isRestricted
       ? null
       : await GroupResource.fetchWorkspaceGlobalGroup(auth);
 
     const groups = removeNulls([
-      memberGroup,
       globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
     ]);
 
@@ -387,20 +377,20 @@ export async function createSpaceAndGroup(
       t
     );
 
-    // Update the member group kind in group_vaults
-    await GroupSpaceModel.update(
-      { kind: "member" },
-      {
-        where: {
-          groupId: memberGroup.id,
-          vaultId: space.id,
-        },
-        transaction: t,
-      }
-    );
-
     // Handle member-based space creation
     if (params.managementMode === "manual") {
+      const memberGroup = await GroupResource.makeNew(
+        {
+          name: `${SPACE_GROUP_PREFIX} ${name}`,
+          workspaceId: owner.id,
+          kind: "regular",
+        },
+        { transaction: t }
+      );
+
+      // Update the member group kind in group_vaults
+      await space.linkGroup(memberGroup, "member", t);
+
       const users = (await UserResource.fetchByIds(params.memberIds)).map(
         (user) => user.toJSON()
       );
@@ -433,15 +423,7 @@ export async function createSpaceAndGroup(
         );
 
         // Add editor group to space with kind="editor"
-        await GroupSpaceModel.create(
-          {
-            groupId: editorGroup.id,
-            vaultId: space.id,
-            workspaceId: owner.id,
-            kind: "editor",
-          },
-          { transaction: t }
-        );
+        await space.linkGroup(editorGroup, "editor", t);
 
         // Add editors to the editor group
         const editorUsers = (
@@ -490,15 +472,7 @@ export async function createSpaceAndGroup(
 
       const selectedGroups = selectedGroupsResult.value;
       for (const selectedGroup of selectedGroups) {
-        await GroupSpaceModel.create(
-          {
-            groupId: selectedGroup.id,
-            vaultId: space.id,
-            workspaceId: space.workspaceId,
-            kind: "member",
-          },
-          { transaction: t }
-        );
+        await space.linkGroup(selectedGroup, "member", t);
       }
     }
 

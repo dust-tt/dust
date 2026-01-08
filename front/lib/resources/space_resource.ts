@@ -696,6 +696,22 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
+  async linkGroup(
+    group: GroupResource,
+    kind: "member" | "editor" = "member",
+    t: Transaction
+  ) {
+    await GroupSpaceModel.create(
+      {
+        groupId: group.id,
+        vaultId: this.id,
+        workspaceId: this.workspaceId,
+        kind,
+      },
+      { transaction: t }
+    );
+  }
+
   private async addGroup(group: GroupResource) {
     await GroupSpaceModel.create({
       groupId: group.id,

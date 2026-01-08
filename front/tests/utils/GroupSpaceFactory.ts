@@ -8,6 +8,7 @@ export class GroupSpaceFactory {
       groupId: group.id,
       vaultId: space.id,
       workspaceId: space.workspaceId,
+      kind: "member",
     });
   }
 }
