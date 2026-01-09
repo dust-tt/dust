@@ -4,8 +4,8 @@ import Link from "next/link";
 
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import TrustedBy from "@app/components/home/TrustedBy";
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { classNames } from "@app/lib/utils";
 
 import type { HeroConfig } from "./types";
 
@@ -27,7 +27,7 @@ export function CompetitorHeroSection({
       <div className="mx-auto flex w-full max-w-7xl flex-col px-6 pb-12 pt-16 md:pb-16 md:pt-24">
         <Grid>
           <div
-            className={classNames(
+            className={cn(
               "col-span-12 flex flex-col items-center justify-center text-center",
               "lg:col-span-10 lg:col-start-2",
               "xl:col-span-8 xl:col-start-3"

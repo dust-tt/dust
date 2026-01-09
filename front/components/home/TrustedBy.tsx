@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { H4 } from "@app/components/home/ContentComponents";
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { isEUCountry } from "@app/lib/geo/eu-detection";
 import { useGeolocation } from "@app/lib/swr/geo";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
-import { classNames } from "@app/lib/utils";
 
 const CASE_STUDIES: Record<string, string> = {
   alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
@@ -224,7 +224,7 @@ export default function TrustedBy({
 
   return (
     <div
-      className={classNames(
+      className={cn(
         "col-span-12 flex flex-col items-center",
         isLarge ? "py-6 sm:py-10" : "py-4 sm:py-8",
         "lg:col-span-12 lg:col-start-1",
@@ -237,7 +237,7 @@ export default function TrustedBy({
 
       <div className="w-full">
         <div
-          className={classNames(
+          className={cn(
             "flex flex-wrap justify-center",
             isLarge
               ? "gap-x-8 gap-y-6 sm:gap-x-10 lg:gap-x-14 xl:gap-x-16"
@@ -249,7 +249,7 @@ export default function TrustedBy({
             return (
               <div
                 key={`${logo.name}-${index}`}
-                className={classNames(
+                className={cn(
                   "flex flex-col items-center",
                   isLarge
                     ? "w-40 sm:w-56 lg:w-52 xl:w-48"
@@ -257,7 +257,7 @@ export default function TrustedBy({
                 )}
               >
                 <div
-                  className={classNames(
+                  className={cn(
                     "flex items-center justify-center",
                     isLarge ? "h-14 sm:h-16" : "h-12 sm:h-14"
                   )}
@@ -267,7 +267,7 @@ export default function TrustedBy({
                     src={logo.src}
                     width={200}
                     height={80}
-                    className={classNames(
+                    className={cn(
                       "h-auto w-auto object-contain",
                       isLarge
                         ? "max-h-20 sm:max-h-24 lg:max-h-28"
