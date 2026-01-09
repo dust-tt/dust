@@ -4,7 +4,11 @@ import React, { useState } from "react";
 import { SearchInput } from "@sparkle/components";
 import { Button } from "@sparkle/components/Button";
 import { Checkbox } from "@sparkle/components/Checkbox";
-import { CollapsibleComponent } from "@sparkle/components/Collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@sparkle/components/Collapsible";
 import {
   MultiPageDialog,
   MultiPageDialogContent,
@@ -920,13 +924,13 @@ export const ActionValidation: Story = {
               </p>
 
               <div className="s-space-y-3">
-                <CollapsibleComponent
-                  triggerChildren={
+                <Collapsible>
+                  <CollapsibleTrigger>
                     <span className="s-text-sm s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
                       Details
                     </span>
-                  }
-                  contentChildren={
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
                     <div className="s-mt-2 s-rounded-md s-border s-bg-muted s-p-3">
                       <h4 className="s-mb-2 s-text-sm s-font-medium">
                         Email Details
@@ -946,8 +950,8 @@ export const ActionValidation: Story = {
                         </div>
                       </div>
                     </div>
-                  }
-                />
+                  </CollapsibleContent>
+                </Collapsible>
 
                 {errorMessage && (
                   <div className="s-flex s-items-center s-gap-2 s-text-sm s-font-medium s-text-warning-800">
@@ -989,13 +993,13 @@ export const ActionValidation: Story = {
               </p>
 
               <div className="s-space-y-3">
-                <CollapsibleComponent
-                  triggerChildren={
+                <Collapsible>
+                  <CollapsibleTrigger>
                     <span className="s-text-sm s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
                       Details
                     </span>
-                  }
-                  contentChildren={
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
                     <div className="s-mt-2 s-rounded-md s-border s-bg-muted s-p-3">
                       <h4 className="s-mb-2 s-text-sm s-font-medium">
                         Campaign Details
@@ -1015,8 +1019,8 @@ export const ActionValidation: Story = {
                         </div>
                       </div>
                     </div>
-                  }
-                />
+                  </CollapsibleContent>
+                </Collapsible>
 
                 <div className="s-rounded-md s-border s-bg-blue-50 s-p-3">
                   <h4 className="s-mb-1 s-text-sm s-font-medium s-text-blue-900">
@@ -1048,13 +1052,13 @@ export const ActionValidation: Story = {
               </p>
 
               <div className="s-space-y-3">
-                <CollapsibleComponent
-                  triggerChildren={
+                <Collapsible>
+                  <CollapsibleTrigger>
                     <span className="s-text-sm s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
                       Details
                     </span>
-                  }
-                  contentChildren={
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
                     <div className="s-mt-2 s-rounded-md s-border s-bg-muted s-p-3">
                       <h4 className="s-mb-2 s-text-sm s-font-medium">
                         Template Details
@@ -1074,8 +1078,8 @@ export const ActionValidation: Story = {
                         </div>
                       </div>
                     </div>
-                  }
-                />
+                  </CollapsibleContent>
+                </Collapsible>
 
                 <div className="s-rounded-md s-border s-bg-green-50 s-p-3">
                   <h4 className="s-mb-1 s-text-sm s-font-medium s-text-green-900">

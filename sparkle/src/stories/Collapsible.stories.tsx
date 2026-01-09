@@ -4,7 +4,6 @@ import React from "react";
 import {
   Chip,
   Collapsible,
-  CollapsibleComponent,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "../index_with_tw_base";
@@ -45,25 +44,34 @@ export const CollapsibleExample = () => (
     </Collapsible>
     <Collapsible>
       <CollapsibleTrigger>
-        <Chip>Click me custom</Chip>
+        <Chip>Click me custom (with chevron)</Chip>
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="mt-1 s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-muted-background">
-          Anything goes for the Collapsible button
+          Custom trigger content with chevron shown by default
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+    <Collapsible>
+      <CollapsibleTrigger hideChevron>
+        <Chip>Click me custom (no chevron)</Chip>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="mt-1 s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-muted-background">
+          Custom trigger content with chevron hidden
         </div>
       </CollapsibleContent>
     </Collapsible>
     <div className="s-rounded-md s-border s-border-gray-200 s-p-4">
       <h3 className="s-mb-2 s-font-medium">Default Open</h3>
-      <CollapsibleComponent
-        rootProps={{ defaultOpen: true }}
-        triggerProps={{ label: "Open by default" }}
-        contentChildren={
+      <Collapsible defaultOpen>
+        <CollapsibleTrigger label="Open by default" />
+        <CollapsibleContent>
           <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-muted-background">
             This collapsible is open by default
           </div>
-        }
-      />
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   </div>
 );
