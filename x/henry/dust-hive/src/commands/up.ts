@@ -2,6 +2,7 @@ import { logger } from "../lib/logger";
 import { TEMPORAL_PORT, findRepoRoot } from "../lib/paths";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { isTemporalServerRunning, startTemporalServer } from "../lib/temporal-server";
+import { isTestPostgresRunning, startTestPostgres } from "../lib/test-postgres";
 import {
   getCurrentBranch,
   getMainRepoPath,
@@ -53,6 +54,49 @@ async function checkPreconditions(repoRoot: string): Promise<Result<void>> {
   return Ok(undefined);
 }
 
+// Start temporal server if not already running
+async function startTemporalIfNeeded(): Promise<Result<void>> {
+  logger.step("Starting Temporal server...");
+  const temporalStatus = await isTemporalServerRunning();
+
+  if (temporalStatus.running) {
+    if (temporalStatus.managed) {
+      logger.info(`Temporal already running (PID: ${temporalStatus.pid})`);
+      return Ok(undefined);
+    }
+    return Err(
+      new CommandError(
+        `Temporal is already running externally on port ${TEMPORAL_PORT}. Stop it first to use dust-hive managed temporal.`
+      )
+    );
+  }
+
+  const startResult = await startTemporalServer();
+  if (!startResult.success) {
+    return Err(new CommandError(startResult.error ?? "Failed to start Temporal server"));
+  }
+  logger.success(`Temporal server started (PID: ${startResult.pid})`);
+  return Ok(undefined);
+}
+
+// Start shared test postgres if not already running
+async function startTestPostgresIfNeeded(): Promise<Result<void>> {
+  logger.step("Starting shared test Postgres...");
+  const testPgRunning = await isTestPostgresRunning();
+
+  if (testPgRunning) {
+    logger.info("Test Postgres already running");
+    return Ok(undefined);
+  }
+
+  const result = await startTestPostgres();
+  if (!result.success) {
+    return Err(new CommandError(result.error ?? "Failed to start test Postgres"));
+  }
+  logger.success("Test Postgres started (port 5433)");
+  return Ok(undefined);
+}
+
 export async function upCommand(options: UpOptions = {}): Promise<Result<void>> {
   const repoRoot = await findRepoRoot();
   if (!repoRoot) {
@@ -78,25 +122,15 @@ export async function upCommand(options: UpOptions = {}): Promise<Result<void>> 
   console.log();
 
   // Start temporal server
-  logger.step("Starting Temporal server...");
-  const temporalStatus = await isTemporalServerRunning();
+  const temporalResult = await startTemporalIfNeeded();
+  if (!temporalResult.ok) {
+    return temporalResult;
+  }
 
-  if (temporalStatus.running) {
-    if (temporalStatus.managed) {
-      logger.info(`Temporal already running (PID: ${temporalStatus.pid})`);
-    } else {
-      return Err(
-        new CommandError(
-          `Temporal is already running externally on port ${TEMPORAL_PORT}. Stop it first to use dust-hive managed temporal.`
-        )
-      );
-    }
-  } else {
-    const startResult = await startTemporalServer();
-    if (!startResult.success) {
-      return Err(new CommandError(startResult.error ?? "Failed to start Temporal server"));
-    }
-    logger.success(`Temporal server started (PID: ${startResult.pid})`);
+  // Start shared test Postgres
+  const testPgResult = await startTestPostgresIfNeeded();
+  if (!testPgResult.ok) {
+    return testPgResult;
   }
 
   // Create/attach main session

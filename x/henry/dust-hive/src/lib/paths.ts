@@ -30,6 +30,12 @@ export const TEMPORAL_PID_PATH = join(DUST_HIVE_HOME, "temporal.pid");
 export const TEMPORAL_LOG_PATH = join(DUST_HIVE_HOME, "temporal.log");
 export const TEMPORAL_PORT = 7233;
 
+// Shared test Postgres paths (global, not per-env)
+export const TEST_POSTGRES_CONTAINER_NAME = "dust-hive-test-postgres";
+export const TEST_POSTGRES_PORT = 5433;
+export const TEST_POSTGRES_USER = "test";
+export const TEST_POSTGRES_PASSWORD = "test";
+
 // Main zellij session
 export const MAIN_SESSION_NAME = "dust-hive-main";
 

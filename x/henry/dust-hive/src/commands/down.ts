@@ -6,6 +6,7 @@ import { confirm } from "../lib/prompt";
 import { Ok, type Result } from "../lib/result";
 import { getStateInfo, isDockerRunning } from "../lib/state";
 import { stopTemporalServer } from "../lib/temporal-server";
+import { stopTestPostgres } from "../lib/test-postgres";
 
 interface DownOptions {
   force?: boolean;
@@ -77,6 +78,17 @@ async function stopTemporalAndLog(): Promise<void> {
   }
 }
 
+// Stop test postgres and log result
+async function stopTestPostgresAndLog(): Promise<void> {
+  logger.step("Stopping test Postgres...");
+  const result = await stopTestPostgres();
+  if (result.wasRunning) {
+    logger.success("Test Postgres stopped");
+  } else {
+    logger.info("Test Postgres was not running");
+  }
+}
+
 // Show confirmation prompt and return whether to proceed
 async function confirmStopAll(envNames: string[], sessions: string[]): Promise<boolean> {
   console.log();
@@ -88,6 +100,7 @@ async function confirmStopAll(envNames: string[], sessions: string[]): Promise<b
     console.log(`  - ${sessions.length} zellij session(s): ${sessions.join(", ")}`);
   }
   console.log("  - Temporal server");
+  console.log("  - Shared test Postgres");
   console.log();
 
   return confirm("Are you sure you want to stop all dust-hive services?", false);
@@ -108,6 +121,9 @@ async function executeStopAll(envNames: string[], sessions: string[]): Promise<v
   // Stop temporal server
   await stopTemporalAndLog();
 
+  // Stop test postgres
+  await stopTestPostgresAndLog();
+
   // Kill all zellij sessions
   if (sessions.length > 0) {
     logger.step(`Killing ${sessions.length} zellij session(s)...`);
@@ -123,16 +139,11 @@ export async function downCommand(options: DownOptions = {}): Promise<Result<voi
   const envNames = await listEnvironments();
   const sessions = await getDustHiveSessions();
 
-  // Nothing to stop - just check temporal
+  // Nothing to stop - just check managed services
   if (envNames.length === 0 && sessions.length === 0) {
     logger.info("No dust-hive environments or sessions to stop.");
-    logger.step("Checking Temporal server...");
-    const temporalResult = await stopTemporalServer();
-    if (temporalResult.wasRunning) {
-      logger.success("Temporal server stopped");
-    } else {
-      logger.info("Temporal server was not running");
-    }
+    await stopTemporalAndLog();
+    await stopTestPostgresAndLog();
     return Ok(undefined);
   }
 
