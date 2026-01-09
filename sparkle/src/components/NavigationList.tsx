@@ -219,13 +219,13 @@ const NavigationListItemAction = React.forwardRef<
       ref={ref}
       data-sidebar="menu-action"
       className={cn(
-        "s-absolute s-right-1.5 s-top-1 s-opacity-0 s-transition-opacity",
+        "s-absolute s-right-2 s-top-1.5 s-opacity-0 s-transition-opacity",
         "s-opacity-0 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100 group-data-[selected=true]/menu-item:s-opacity-100",
         className
       )}
       {...props}
     >
-      <Button size="mini" icon={MoreIcon} variant="ghost" />
+      <Button size="xmini" icon={MoreIcon} variant="ghost" />
     </div>
   );
 });
@@ -340,7 +340,7 @@ interface NavigationListCollapsibleSectionProps extends React.HTMLAttributes<HTM
 
 const collapseableStyles = cva(
   cn(
-    "s-py-2 s-px-2.5 s-w-full",
+    "s-py-2 s-px-2.5 s-w-full s-flex-1 s-text-left s-w-full",
     "s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
     "s-select-none",
     "s-outline-none s-rounded-xl s-transition-colors s-duration-300",
@@ -391,14 +391,14 @@ const NavigationListCollapsibleSection = React.forwardRef<
   ) => {
     const isCollapsible = type !== "static";
     const labelElement = (
-      <div className="s-group/menu-item s-relative s-mt-2 s-flex s-items-center s-justify-between s-gap-1">
+      <div className="s-group/menu-item s-relative s-mt-2 s-flex s-flex-1 s-items-center s-justify-start s-gap-1">
         <div className={collapseableStyles({ variant, isCollapsible })}>
           {label}
         </div>
         {action && (
           <div
             className={cn(
-              "s-m-1.5 s-flex s-gap-1 s-transition-opacity",
+              "s-m-1.5 s-flex s-gap-1 s-pr-0.5 s-transition-opacity",
               actionOnHover
                 ? "s-opacity-0 hover:s-opacity-100 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
                 : "s-opacity-100"

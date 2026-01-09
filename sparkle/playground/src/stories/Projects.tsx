@@ -568,7 +568,6 @@ function DustMain() {
               {(filteredConversations.length > 0 || !searchText.trim()) && (
                 <NavigationListCollapsibleSection
                   label="Conversations"
-                  type="collapse"
                   defaultOpen={true}
                   action={
                     <>
@@ -651,7 +650,7 @@ function DustMain() {
                   )}
                   {groupedConversations.yesterday.length > 0 && (
                     <>
-                      <NavigationListCompactLabel label="Yesterday" />
+                      <NavigationListCompactLabel label="Yesterday" isSticky />
                       {groupedConversations.yesterday.map((conversation) => (
                         <NavigationListItem
                           key={conversation.id}
@@ -670,7 +669,7 @@ function DustMain() {
                   )}
                   {groupedConversations.lastWeek.length > 0 && (
                     <>
-                      <NavigationListCompactLabel label="Last week" />
+                      <NavigationListCompactLabel label="Last week" isSticky />
                       {groupedConversations.lastWeek.map((conversation) => (
                         <NavigationListItem
                           key={conversation.id}
