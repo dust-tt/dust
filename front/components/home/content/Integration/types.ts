@@ -13,7 +13,8 @@ export type IntegrationCategory =
   | "storage"
   | "support"
   | "security"
-  | "ai";
+  | "ai"
+  | "transcripts";
 
 export interface IntegrationTool {
   name: string;
@@ -49,6 +50,10 @@ export interface IntegrationFAQItem {
 }
 
 export interface IntegrationEnrichment {
+  // SEO-optimized title for the page (e.g., "AI Sales Assistant for Salesforce")
+  seoTitle?: string;
+  // SEO-optimized subtitle/tagline (e.g., "Automate your CRM workflows with AI agents")
+  seoSubtitle?: string;
   tagline?: string;
   longDescription?: string;
   useCases?: IntegrationUseCase[];
