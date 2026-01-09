@@ -492,21 +492,17 @@ export class FileResource extends BaseResource<FileModel> {
    * Used for reverting Interactive Content files to previous versions.
    * Returns an empty array if versions cannot be retrieved.
    */
-  async getSortedFileVersions(
+  private async getSortedFileVersions(
     auth: Authenticator,
     maxResults?: number
   ): Promise<File[]> {
     const filePath = this.getCloudStoragePath(auth, "original");
     const fileStorage = getPrivateUploadBucket();
 
-    try {
-      return await fileStorage.getSortedFileVersions({
-        filePath,
-        maxResults,
-      });
-    } catch {
-      return [];
-    }
+    return fileStorage.getSortedFileVersions({
+      filePath,
+      maxResults,
+    });
   }
 
   /**
@@ -659,7 +655,7 @@ export class FileResource extends BaseResource<FileModel> {
     });
 
     // Increment version after successful upload and mark as ready
-    await this.update({ version: this.version + 1 });
+    await this.incrementVersion();
     await this.markAsReady();
   }
 

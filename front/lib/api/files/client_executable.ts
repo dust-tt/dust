@@ -246,7 +246,7 @@ export async function renameClientExecutableFile(
 ): Promise<Result<FileResource, { tracked: boolean; message: string }>> {
   const fileResource = await FileResource.fetchById(auth, fileId);
   if (!fileResource) {
-    return new Err({ message: `File not found: ${fileId}`, tracked: true });
+    return new Err({ message: `File not found: ${fileId}`, tracked: false });
   }
 
   if (!isInteractiveContentFileContentType(fileResource.contentType)) {
