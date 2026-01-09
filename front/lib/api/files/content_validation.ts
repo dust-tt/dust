@@ -1,7 +1,7 @@
 import * as ts from "typescript";
 
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 // Maximum number of syntax errors to display in validation error messages.
 // Additional errors beyond this limit are summarized with a count.
@@ -152,10 +152,10 @@ export function validateTypeScriptSyntax(
 
     return new Ok(undefined);
   } catch (error) {
-    // If transpilation completely fails, return a generic error.
-    const errorMessage = error instanceof Error ? error.message : String(error);
     return new Err(
-      new Error(`Failed to validate TypeScript syntax: ${errorMessage}`)
+      new Error(
+        `Failed to validate TypeScript syntax: ${normalizeError(error)}`
+      )
     );
   }
 }
