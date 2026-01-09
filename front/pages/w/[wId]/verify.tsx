@@ -73,7 +73,6 @@ export default function Verify({
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(""));
-  const [codeError, setCodeError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -110,99 +109,52 @@ export default function Verify({
     }
 
     setIsLoading(true);
+    const e164Phone = phoneNumber;
+    let response: Response;
     try {
-      const e164Phone = phoneNumber;
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/verification/start`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber: e164Phone }),
-        }
-      );
-
-      if (!response.ok) {
-        const data = await response.json();
-        if (data.error?.type === "rate_limit_error" && data.error?.retryAfter) {
-          const waitSeconds = Math.max(
-            0,
-            data.error.retryAfter - Math.floor(Date.now() / 1000)
-          );
-          setResendCooldown(waitSeconds);
-          const waitMinutes = Math.ceil(waitSeconds / 60);
-          setPhoneError(
-            `Too many verification attempts. Please try again in ${waitMinutes} minute${waitMinutes > 1 ? "s" : ""}.`
-          );
-          return;
-        }
-        setPhoneError(data.error?.message ?? "Failed to send code");
-        return;
-      }
-
-      setResendCooldown(RESEND_COOLDOWN_SECONDS);
-      setStep("code");
+      response = await clientFetch(`/api/w/${owner.sId}/verification/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: e164Phone }),
+      });
     } catch {
-      setPhoneError("Network error. Please try again.");
+      setPhoneError("Unexpected error. Please try again.");
+      return;
     } finally {
       setIsLoading(false);
     }
-  };
 
-  const handleResendCode = async () => {
-    if (resendCooldown > 0 || isLoading) {
+    if (!response.ok) {
+      const data = await response.json();
+      if (data.error?.type === "rate_limit_error" && data.error?.retryAfter) {
+        const waitSeconds = Math.max(
+          0,
+          data.error.retryAfter - Math.floor(Date.now() / 1000)
+        );
+        setResendCooldown(waitSeconds);
+        const waitMinutes = Math.ceil(waitSeconds / 60);
+        setPhoneError(
+          `Too many verification attempts. Please try again in ${waitMinutes} minute${waitMinutes > 1 ? "s" : ""}.`
+        );
+        return;
+      }
+      setPhoneError(data.error?.message ?? "Failed to send code");
       return;
     }
 
-    setIsLoading(true);
-    setCodeError(null);
-    try {
-      const e164Phone = phoneNumber;
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/verification/start`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber: e164Phone }),
-        }
-      );
-
-      if (!response.ok) {
-        const data = await response.json();
-        if (data.error?.type === "rate_limit_error" && data.error?.retryAfter) {
-          const waitSeconds = Math.max(
-            0,
-            data.error.retryAfter - Math.floor(Date.now() / 1000)
-          );
-          setResendCooldown(waitSeconds);
-          const waitMinutes = Math.ceil(waitSeconds / 60);
-          setCodeError(
-            `Too many verification attempts. Please try again in ${waitMinutes} minute${waitMinutes > 1 ? "s" : ""}.`
-          );
-          return;
-        }
-        setCodeError(data.error?.message ?? "Failed to resend code");
-        return;
-      }
-
-      setResendCooldown(RESEND_COOLDOWN_SECONDS);
-      setCode(Array(CODE_LENGTH).fill(""));
-      inputRefs.current[0]?.focus();
-    } catch {
-      setCodeError("Network error. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    setStep("code");
   };
 
   const handleVerifyCode = async () => {
     const fullCode = code.join("");
     if (fullCode.length !== CODE_LENGTH) {
-      setCodeError("Please enter the full 6-digit code.");
+      setPhoneError("Please enter the full 6-digit code.");
       return;
     }
 
     setIsLoading(true);
-    setCodeError(null);
+    setPhoneError(null);
     try {
       const e164Phone = phoneNumber;
 
@@ -217,7 +169,7 @@ export default function Verify({
 
       if (!verifyResponse.ok) {
         const data = await verifyResponse.json();
-        setCodeError(data.error?.message ?? "Invalid code");
+        setPhoneError(data.error?.message ?? "Invalid code");
         return;
       }
 
@@ -231,13 +183,13 @@ export default function Verify({
 
       if (!trialResponse.ok) {
         const data = await trialResponse.json();
-        setCodeError(data.api_error?.message ?? "Failed to start trial");
+        setPhoneError(data.api_error?.message ?? "Failed to start trial");
         return;
       }
 
       void router.push(`/w/${owner.sId}/welcome`);
     } catch {
-      setCodeError("Network error. Please try again.");
+      setPhoneError("Network error. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -251,7 +203,7 @@ export default function Verify({
       newCode[index] = digit;
       return newCode;
     });
-    setCodeError(null);
+    setPhoneError(null);
 
     if (digit && index < CODE_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
@@ -283,7 +235,7 @@ export default function Verify({
         });
         return newCode;
       });
-      setCodeError(null);
+      setPhoneError(null);
 
       const nextIndex = Math.min(digits.length, CODE_LENGTH - 1);
       inputRefs.current[nextIndex]?.focus();
@@ -305,7 +257,7 @@ export default function Verify({
   const handleBack = () => {
     setStep("phone");
     setCode(Array(CODE_LENGTH).fill(""));
-    setCodeError(null);
+    setPhoneError(null);
   };
 
   if (step === "code") {
@@ -313,7 +265,7 @@ export default function Verify({
       <CodeVerificationStep
         maskedPhone={maskPhoneNumber(phoneNumber)}
         code={code}
-        error={codeError}
+        error={phoneError}
         resendCooldown={resendCooldown}
         inputRefs={inputRefs}
         isLoading={isLoading}
@@ -321,7 +273,7 @@ export default function Verify({
         onCodeKeyDown={handleCodeKeyDown}
         onCodePaste={handleCodePaste}
         onBack={handleBack}
-        onResend={handleResendCode}
+        onResend={handleSendCode}
         onVerify={handleVerifyCode}
       />
     );
