@@ -309,9 +309,9 @@ describe("renderAllMessages", () => {
       expect(
         assistantMsg.contents.some((c) => c.type === "function_call")
       ).toBe(false);
-      expect(
-        assistantMsg.contents.some((c) => c.type === "text_content")
-      ).toBe(true);
+      expect(assistantMsg.contents.some((c) => c.type === "text_content")).toBe(
+        true
+      );
     });
 
     it("should include function_call contents when excludeActions is false", async () => {

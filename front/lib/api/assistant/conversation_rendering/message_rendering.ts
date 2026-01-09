@@ -53,7 +53,7 @@ export function renderAgentSteps(
       // Filter out function_call contents since we're not including their outputs.
       // Including function_calls without outputs causes OpenAI's responses API to error.
       const filteredContents = lastStepWithContent.contents.filter(
-        (c) => c.type !== "function_call" || true
+        (c) => c.type !== "function_call"
       );
       messages.push({
         role: "assistant",

@@ -137,10 +137,6 @@ export async function agentLoopWorkflow({
 }) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  let childWorkflowHandle: ChildWorkflowHandle<
-    typeof agentLoopConversationTitleWorkflow
-  > | null = null;
-
   // Allow cancellation of in-flight activities via signal-triggered scope cancellation.
   let cancelRequested = false;
   const executionScope = new CancellationScope();
@@ -157,6 +153,9 @@ export async function agentLoopWorkflow({
       const runIds: string[] = [];
       const syncStartTime = Date.now();
       let currentStep = startStep;
+      let childWorkflowHandle: ChildWorkflowHandle<
+        typeof agentLoopConversationTitleWorkflow
+      > | null = null;
 
       await logAgentLoopPhaseStartActivity({
         authType,
@@ -240,11 +239,11 @@ export async function agentLoopWorkflow({
       await CancellationScope.nonCancellable(async () => {
         await finalizeSuccessfulAgentLoopActivity(authType, agentLoopArgs);
       });
-    });
 
-    if (childWorkflowHandle) {
-      await childWorkflowHandle.result();
-    }
+      if (childWorkflowHandle) {
+        await childWorkflowHandle.result();
+      }
+    });
   } catch (err) {
     const workflowError = err instanceof Error ? err : new Error(String(err));
 
