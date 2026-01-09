@@ -181,7 +181,7 @@ export default function CompetitorTemplate({
         )}
       </Head>
 
-      <div className="flex w-full flex-col">
+      <div className="-mb-24 flex w-full flex-col">
         {config.layout.sections.map((sectionType) => {
           const section = renderSection(sectionType);
           if (!section) {
