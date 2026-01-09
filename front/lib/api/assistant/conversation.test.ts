@@ -1077,11 +1077,11 @@ describe("postUserMessage rate limiting", () => {
     }
     conversation = fetchedConversationResult.value;
 
-    // Spy on the rateLimiter function to track calls
+    vi.clearAllMocks();
+
+    // Spy on the rateLimiter function to track calls (after clearAllMocks)
     rateLimiterSpy = vi.spyOn(rateLimiterModule, "rateLimiter");
     rateLimiterSpy.mockResolvedValue(100); // Return high value to indicate not rate limited
-
-    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -1129,9 +1129,7 @@ describe("postUserMessage rate limiting", () => {
     const agentMentionRateLimiterCalls = rateLimiterSpy.mock.calls.filter(
       (call: unknown[]) => {
         const arg = call[0] as { key?: string } | undefined;
-        return (
-          typeof arg === "object" && arg?.key?.includes("agent_mentions")
-        );
+        return typeof arg === "object" && arg?.key?.includes("agent_mentions");
       }
     );
 
@@ -1178,9 +1176,7 @@ describe("postUserMessage rate limiting", () => {
     const agentMentionRateLimiterCalls = rateLimiterSpy.mock.calls.filter(
       (call: unknown[]) => {
         const arg = call[0] as { key?: string } | undefined;
-        return (
-          typeof arg === "object" && arg?.key?.includes("agent_mentions")
-        );
+        return typeof arg === "object" && arg?.key?.includes("agent_mentions");
       }
     );
 
@@ -1234,9 +1230,7 @@ describe("postUserMessage rate limiting", () => {
     const agentMentionRateLimiterCalls = rateLimiterSpy.mock.calls.filter(
       (call: unknown[]) => {
         const arg = call[0] as { key?: string } | undefined;
-        return (
-          typeof arg === "object" && arg?.key?.includes("agent_mentions")
-        );
+        return typeof arg === "object" && arg?.key?.includes("agent_mentions");
       }
     );
 
