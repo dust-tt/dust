@@ -61,6 +61,7 @@ const CATEGORY_LABELS: Record<IntegrationCategory, string> = {
   support: "Support",
   security: "Security",
   ai: "AI & ML",
+  transcripts: "Meeting Transcripts",
 };
 
 export const getStaticProps: GetStaticProps<IntegrationsPageProps> = async () => {
