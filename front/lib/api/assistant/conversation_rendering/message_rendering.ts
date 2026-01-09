@@ -50,11 +50,16 @@ export function renderAgentSteps(
           textContents.push(content);
         }
       }
+      // Filter out function_call contents since we're not including their outputs.
+      // Including function_calls without outputs causes OpenAI's responses API to error.
+      const filteredContents = lastStepWithContent.contents.filter(
+        (c) => c.type !== "function_call"
+      );
       messages.push({
         role: "assistant",
         name: message.configuration.name,
         content: textContents.map((c) => c.value).join("\n"),
-        contents: lastStepWithContent.contents,
+        contents: filteredContents,
       } satisfies AssistantContentMessageTypeModel);
     }
   } else {
