@@ -297,7 +297,7 @@ function InteractiveImageGrid({
                   <DialogClose asChild>
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="xs"
                       icon={XMarkIcon}
                       className="s-absolute s-right-2 s-top-2"
                     />
@@ -306,7 +306,7 @@ function InteractiveImageGrid({
                   {imageLoaded && (
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="xs"
                       icon={ArrowDownOnSquareIcon}
                       tooltip="Download"
                       className="s-absolute s-bottom-2 s-right-2"
