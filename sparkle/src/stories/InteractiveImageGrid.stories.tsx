@@ -98,7 +98,6 @@ export const InteractiveImageWithRemove = () => {
           </div>
         ) : (
           <InteractiveImageGrid
-            size="sm"
             images={images.slice(1, 2)}
             onRemove={() => setRemoved(true)}
           />
@@ -106,7 +105,7 @@ export const InteractiveImageWithRemove = () => {
       </div>
       <div>
         <h2 className="s-mb-2">Without onRemove (hover to see download button, no X button)</h2>
-        <InteractiveImageGrid size="sm" images={images.slice(1, 2)} />
+        <InteractiveImageGrid images={images.slice(1, 2)} />
       </div>
     </div>
   );
