@@ -149,9 +149,9 @@ curl -sf http://localhost:10000/api/healthz  # front
 curl -sf http://localhost:10001/             # core
 ```
 
-## Running Tests in Cold Environments
+## Running Front Tests in Cold Environments
 
-dust-hive provides a **shared test Postgres** container that allows running tests without warming up the full environment. This is especially useful for CI agents and quick test runs.
+The `front` project requires a Postgres database to run tests. dust-hive provides a **shared test Postgres** container that allows running front tests without warming up the full environment. This is useful for any agent making changes to front that needs to verify tests pass.
 
 ### How it works
 
@@ -160,13 +160,13 @@ dust-hive provides a **shared test Postgres** container that allows running test
 - The database is created automatically when you `spawn` an environment
 - `TEST_FRONT_DATABASE_URI` is set in each environment's `env.sh`
 
-### Running tests in a cold environment
+### Running front tests in a cold environment
 
 ```bash
 # Ensure dust-hive managed services are running (includes test postgres)
 dust-hive up
 
-# From any cold environment, just run tests directly
+# From any cold environment, run front tests directly
 cd front && npm test
 
 # Run specific test file
@@ -187,9 +187,9 @@ cd front && npm test --reporter verbose path/to/test.test.ts
 | `dust-hive up` | Shared Postgres started |
 | `dust-hive down` | Shared Postgres stopped |
 
-### Troubleshooting tests
+### Troubleshooting front tests
 
-If tests fail with database connection errors:
+If front tests fail with database connection errors:
 1. Check if test postgres is running: `docker ps | grep dust-hive-test-postgres`
 2. If not, run `dust-hive up` or start it manually: `docker start dust-hive-test-postgres`
 3. Verify the database exists: `docker exec dust-hive-test-postgres psql -U test -l`
