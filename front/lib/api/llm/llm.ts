@@ -1,6 +1,6 @@
 import { startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
-import filter from "lodash/filter";
+import pickBy from "lodash/pickBy";
 
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
@@ -145,7 +145,7 @@ export abstract class LLM {
         }),
         authMethod: this.authenticator.authMethod() ?? "unknown",
         // Include all context fields (except userId and workspaceId).
-        ...filter(
+        ...pickBy(
           this.context,
           (value, key) =>
             value !== undefined && !["userId", "workspaceId"].includes(key)
