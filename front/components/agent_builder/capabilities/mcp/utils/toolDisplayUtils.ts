@@ -1,7 +1,7 @@
 import { ActionIcons, BookOpenIcon } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import {
   InternalActionIcons,
   isCustomResourceIconType,
