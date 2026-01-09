@@ -8,7 +8,7 @@ export const n8nConfig: CompetitorPageConfig = {
   seo: {
     title: "Best n8n Alternative for Enterprise AI Agents | Dust",
     description:
-      "Compare Dust to n8n. Enterprise AI agents anyone can build—no DevOps required. Native semantic search, 50+ integrations, SOC 2 security, distributed everywhere teams work. Trusted by Clay, Vanta, Qonto.",
+      "Compare Dust to n8n. Enterprise AI agents anyone can build with natural language. Native semantic search, 50+ integrations, SOC 2 security, distributed everywhere teams work. Trusted by Clay, Vanta, Qonto.",
   },
 
   layout: {
@@ -26,7 +26,7 @@ export const n8nConfig: CompetitorPageConfig = {
   hero: {
     title: "The Best n8n Alternative for Enterprise AI Agents",
     subtitle:
-      "AI agents anyone can build, everywhere your team works—no DevOps required",
+      "AI agents anyone can build with natural language, everywhere your team works",
     primaryCTA: {
       label: "Start Free Trial",
       href: "/home/pricing",
@@ -43,13 +43,13 @@ export const n8nConfig: CompetitorPageConfig = {
     rows: [
       {
         label: "Who can build",
-        dust: "Anyone—no-code agent creation in minutes",
-        competitor: "DevOps/engineers only—technical expertise required",
+        dust: "Anyone—natural language agent creation in minutes",
+        competitor: "Technical teams—drag-and-drop requires system knowledge",
       },
       {
-        label: "Agent distribution",
-        dust: "Slack, Teams, Chrome, Excel, Zendesk natively",
-        competitor: "No distribution layer—API/webhooks only",
+        label: "Native distribution",
+        dust: "Agents accessible in Slack, Teams, Chrome, Excel, Zendesk",
+        competitor: "No distribution layer—build integrations yourself",
       },
       {
         label: "Semantic search",
@@ -68,8 +68,16 @@ export const n8nConfig: CompetitorPageConfig = {
     title: "How Dust Compares to n8n",
     rows: [
       {
-        feature: "No-code agent creation",
-        description: "Anyone can build agents in minutes with natural language",
+        feature: "Natural language agent creation",
+        description:
+          "Build agents by describing what you want, not wiring blocks",
+        dust: "yes",
+        competitor: "no",
+      },
+      {
+        feature: "Agentic-first approach",
+        description:
+          "Agents reason and adapt vs deterministic workflows that break",
         dust: "yes",
         competitor: "no",
       },
@@ -138,9 +146,9 @@ export const n8nConfig: CompetitorPageConfig = {
     benefits: [
       {
         icon: "users",
-        title: "Enterprise-wide adoption, not just DevOps",
+        title: "Enterprise-wide adoption, not just technical teams",
         description:
-          "No-code agent creation in natural language—anyone can build in minutes. Sales, marketing, support, HR, legal—every team creates value. Persona achieved 80% AI agent adoption company-wide.",
+          "Natural language agent creation—anyone can build in minutes. Sales, marketing, support, HR, legal—every team creates value. Persona achieved 80% AI agent adoption company-wide.",
       },
       {
         icon: "rocket",
@@ -158,7 +166,7 @@ export const n8nConfig: CompetitorPageConfig = {
         icon: "clock",
         title: "Adaptive agents > high-maintenance workflows",
         description:
-          "Agents adapt naturally when processes or APIs change—no reconfiguration needed. n8n workflows are brittle and require constant DevOps maintenance.",
+          "Agents adapt naturally when processes or APIs change—no reconfiguration needed. n8n workflows are brittle and require constant technical maintenance.",
       },
       {
         icon: "shield",
@@ -170,7 +178,7 @@ export const n8nConfig: CompetitorPageConfig = {
         icon: "dollar",
         title: "True total cost of ownership",
         description:
-          "All-in per-user pricing includes models, infrastructure, security, compliance. n8n's 'free' license requires infrastructure + DevOps salaries + OpenAI API costs + maintenance.",
+          "All-in per-user pricing includes models, infrastructure, security, compliance. n8n's 'free' license requires infrastructure + technical staff + OpenAI API costs + maintenance.",
       },
     ],
   },
@@ -207,7 +215,7 @@ export const n8nConfig: CompetitorPageConfig = {
       {
         question: "How does Dust's pricing compare to n8n?",
         answer:
-          "n8n has a 'free' license but requires infrastructure costs ($500-$2,000+/month), DevOps salaries ($150K+ annually), and separate OpenAI/Anthropic API costs. Dust offers all-in per-user pricing that includes models, infrastructure, security (SOC 2 Type II), and compliance. When you factor total cost of ownership, Dust is often more cost-effective.",
+          "n8n has a 'free' license but requires infrastructure costs ($500-$2,000+/month), technical staff to maintain it, and separate OpenAI/Anthropic API costs. Dust offers all-in per-user pricing that includes models, infrastructure, security (SOC 2 Type II), and compliance. When you factor total cost of ownership, Dust is often more cost-effective.",
       },
       {
         question: "n8n has 500+ integrations. Dust has ~50. Why choose Dust?",
@@ -217,7 +225,7 @@ export const n8nConfig: CompetitorPageConfig = {
       {
         question: "We can build agents in n8n. Why use Dust?",
         answer:
-          "You'll hit limitations fast: no distribution layer (can't reach Slack/Teams/Chrome), no semantic search (need to build RAG pipelines manually), shared credentials (compliance risk), only engineers can maintain it, and workflows break when APIs change. n8n is an automation tool for DevOps. Dust is an agent platform for enterprises.",
+          "You'll hit limitations fast: no distribution layer (can't reach Slack/Teams/Chrome), no semantic search (need to build RAG pipelines manually), shared credentials (compliance risk), only technical teams can maintain it, and workflows break when APIs change. n8n is a workflow automation tool. Dust is an agentic-first platform for enterprises.",
       },
       {
         question: "What security certifications does Dust have?",
