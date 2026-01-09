@@ -1,7 +1,7 @@
+import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/types";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/types";
 import type { Result, WorkspaceType } from "@app/types";
 import { Err, Ok, setupOAuthConnection } from "@app/types";
 import type { OAuthProvider } from "@app/types/oauth/lib";
