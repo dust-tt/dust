@@ -1,8 +1,5 @@
 // Computed status (derived from verifiedAt).
-export const VERIFICATION_STATUSES = [
-  "pending",
-  "verified",
-] as const;
+export const VERIFICATION_STATUSES = ["pending", "verified"] as const;
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
 
 // API request/response types.
