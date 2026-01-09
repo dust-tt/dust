@@ -6,10 +6,12 @@ import type { Step } from "@app/lib/api/assistant/conversation_rendering/helpers
 import {
   getSteps,
   renderContentFragment,
+  renderOtherAgentMessageAsUserMessage,
   renderUserMessage,
 } from "@app/lib/api/assistant/conversation_rendering/helpers";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentTextContentType } from "@app/types/assistant/agent_message_content";
 import type {
   AgentMessageType,
@@ -27,6 +29,7 @@ import type {
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { WhitelistableFeature } from "@dust-tt/client";
 
 /**
  * Renders agent message steps into model messages
@@ -35,14 +38,14 @@ export function renderAgentSteps(
   steps: Step[],
   message: AgentMessageType,
   conversation: ConversationType,
-  excludeActions: boolean
+  excludeActions: boolean,
 ): ModelMessageTypeMultiActions[] {
   const messages: ModelMessageTypeMultiActions[] = [];
 
   if (excludeActions) {
     // In Exclude Actions mode, we only render the last step that has text content.
     const stepsWithContent = steps.filter((s) =>
-      s?.contents.some((c) => c.type === "text_content")
+      s?.contents.some((c) => c.type === "text_content"),
     );
     if (stepsWithContent.length) {
       const lastStepWithContent = stepsWithContent[stepsWithContent.length - 1];
@@ -55,7 +58,7 @@ export function renderAgentSteps(
       // Filter out function_call contents since we're not including their outputs.
       // Including function_calls without outputs causes OpenAI's responses API to error.
       const filteredContents = lastStepWithContent.contents.filter(
-        (c) => c.type !== "function_call"
+        (c) => c.type !== "function_call",
       );
       messages.push({
         role: "assistant",
@@ -75,7 +78,7 @@ export function renderAgentSteps(
             agentMessageId: message.sId,
             panic: true,
           },
-          "Unexpected state, agent message step is empty"
+          "Unexpected state, agent message step is empty",
         );
         continue;
       }
@@ -92,7 +95,7 @@ export function renderAgentSteps(
             conversationId: conversation.sId,
             agentMessageId: message.sId,
           },
-          "Unexpected state, agent message step with no actions and no contents"
+          "Unexpected state, agent message step with no actions and no contents",
         );
         continue;
       }
@@ -124,6 +127,10 @@ export function renderAgentSteps(
 
 /**
  * Renders all conversation messages into model messages
+ *
+ * When `agentConfiguration` is provided and the `agent_bound_loop_rendering` feature flag
+ * is enabled, agent messages from other agents are rendered as user messages with system tags,
+ * showing only the final output (not the full agentic loop).
  */
 export async function renderAllMessages(
   auth: Authenticator,
@@ -133,15 +140,22 @@ export async function renderAllMessages(
     excludeActions,
     excludeImages,
     onMissingAction,
+    agentConfiguration,
+    featureFlags,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
     excludeActions?: boolean;
     excludeImages?: boolean;
     onMissingAction: "inject-placeholder" | "skip";
-  }
+    agentConfiguration?: AgentConfigurationType;
+    featureFlags?: WhitelistableFeature[];
+  },
 ): Promise<ModelMessageTypeMultiActions[]> {
   const messages: ModelMessageTypeMultiActions[] = [];
+
+  const agentBoundLoopRendering =
+    featureFlags?.includes("agent_bound_loop_rendering") ?? false;
 
   // Render loop: render all messages and all actions.
   for (const versions of conversation.content) {
@@ -149,21 +163,37 @@ export async function renderAllMessages(
 
     if (isAgentMessageType(m)) {
       if (m.visibility === "visible") {
-        const steps = getSteps(auth, {
-          model,
-          message: m,
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          onMissingAction,
-        });
+        // When agent_bound_loop_rendering is enabled, check if this is the current agent's message.
+        const isAgentMessage =
+          !agentBoundLoopRendering ||
+          !agentConfiguration ||
+          m.configuration.sId === agentConfiguration.sId;
 
-        const agentMessages = renderAgentSteps(
-          steps,
-          m,
-          conversation,
-          !!excludeActions
-        );
-        messages.push(...agentMessages);
+        if (isAgentMessage) {
+          // Render the current agent's messages normally with full agentic loop.
+          const steps = getSteps(auth, {
+            model,
+            message: m,
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            onMissingAction,
+          });
+
+          const agentMessages = renderAgentSteps(
+            steps,
+            m,
+            conversation,
+            !!excludeActions,
+          );
+          messages.push(...agentMessages);
+        } else {
+          // Render other agent messages as user messages with system tags,
+          // showing only the final output (not the full agentic loop).
+          const userMessage = renderOtherAgentMessageAsUserMessage(m);
+          if (userMessage) {
+            messages.push(userMessage);
+          }
+        }
       }
     } else if (isUserMessageType(m)) {
       if (m.visibility === "visible") {
@@ -175,7 +205,7 @@ export async function renderAllMessages(
           auth,
           m,
           model,
-          !!excludeImages
+          !!excludeImages,
         );
         if (renderedContentFragment) {
           messages.push(renderedContentFragment);
