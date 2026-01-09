@@ -1,7 +1,9 @@
 import {
   Button,
   ChevronDownIcon,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -225,10 +227,9 @@ export function CreateWebhookSourceFormContent({
 
       {!provider && (
         <div>
-          <CollapsibleComponent
-            rootProps={{ defaultOpen: false }}
-            triggerProps={{ label: "Advanced settings", variant: "secondary" }}
-            contentChildren={
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger label="Advanced settings" variant="secondary" />
+            <CollapsibleContent>
               <div className="flex flex-col space-y-2">
                 <Label>Secret</Label>
                 <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -323,8 +324,8 @@ export function CreateWebhookSourceFormContent({
                   />
                 </div>
               </div>
-            }
-          />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       )}
     </>

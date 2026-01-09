@@ -110,6 +110,7 @@ function UserMessageEditor({
 interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
+  enableReactions: boolean;
   currentUserId: string;
   isLastMessage: boolean;
   message: UserMessageTypeWithContentFragments;
@@ -120,6 +121,7 @@ interface UserMessageProps {
 export function UserMessage({
   citations,
   conversationId,
+  enableReactions,
   currentUserId,
   isLastMessage,
   message,
@@ -142,7 +144,8 @@ export function UserMessage({
   const confirm = useContext(ConfirmContext);
 
   const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
-  const reactionsEnabled = featureFlags.hasFeature("reactions");
+  const reactionsEnabled =
+    featureFlags.hasFeature("projects") && enableReactions;
 
   const handleSave = async () => {
     const { markdown, mentions } = editorService.getMarkdownAndMentions();

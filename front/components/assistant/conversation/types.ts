@@ -69,6 +69,7 @@ export type VirtuosoMessageListContext = {
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
   conversationId: string;
+  enableReactions: boolean;
   agentBuilderContext?: {
     draftAgent?: LightAgentConfigurationType;
     isSavingDraftAgent: boolean;

@@ -2,7 +2,9 @@ import {
   Button,
   Card,
   Checkbox,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -155,12 +157,11 @@ export const ToolsList = memo(
     return (
       <>
         {tools && tools.length > 0 && (
-          <CollapsibleComponent
-            rootProps={{ defaultOpen: tools.length <= 5 }}
-            triggerChildren={
+          <Collapsible defaultOpen={tools.length <= 5}>
+            <CollapsibleTrigger>
               <div className="heading-lg">Available Tools ({tools.length})</div>
-            }
-            contentChildren={
+            </CollapsibleTrigger>
+            <CollapsibleContent>
               <>
                 <ContentMessage
                   className="mb-4 w-full"
@@ -221,8 +222,8 @@ export const ToolsList = memo(
                   )}
                 </div>
               </>
-            }
-          />
+            </CollapsibleContent>
+          </Collapsible>
         )}
       </>
     );

@@ -646,6 +646,7 @@ export const ConversationViewer = ({
       owner,
       handleSubmit,
       conversationId,
+      enableReactions: !!conversation?.spaceId,
       agentBuilderContext,
       feedbacksByMessageId,
     };
@@ -654,6 +655,7 @@ export const ConversationViewer = ({
     owner,
     handleSubmit,
     conversationId,
+    conversation?.spaceId,
     agentBuilderContext,
     feedbacksByMessageId,
   ]);
