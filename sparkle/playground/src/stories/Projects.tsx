@@ -466,7 +466,7 @@ function DustMain() {
             <NavigationList className="s-px-2">
               {(filteredSpaces.length > 0 || !searchText.trim()) && (
                 <NavigationListCollapsibleSection
-                  label="Projects"
+                  label="Rooms"
                   type="collapse"
                   defaultOpen={true}
                   action={
