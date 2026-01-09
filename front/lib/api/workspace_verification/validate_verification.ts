@@ -40,20 +40,6 @@ export async function validateVerification(
     });
   }
 
-  if (attempt.status === "expired") {
-    return new Err({
-      type: "verification_error",
-      message: "Verification code has expired. Please request a new code.",
-    });
-  }
-
-  if (attempt.status === "failed") {
-    return new Err({
-      type: "verification_error",
-      message: "Verification has failed. Please start a new verification.",
-    });
-  }
-
   const verifyResult = await checkOtp(phoneNumber, code);
   if (verifyResult.isErr()) {
     const error = verifyResult.error;
