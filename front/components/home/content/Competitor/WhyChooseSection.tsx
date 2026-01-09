@@ -47,7 +47,7 @@ export function WhyChooseSection({
                 className="group rounded-2xl border border-border bg-white p-6 transition-all hover:border-green-200"
               >
                 {/* Icon */}
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 text-green-600 transition-colors group-hover:bg-green-500 group-hover:text-white">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 text-green-600">
                   {BENEFIT_ICONS[benefit.icon]}
                 </div>
 
