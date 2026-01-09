@@ -1098,7 +1098,7 @@ describe("postUserMessage rate limiting", () => {
     const mentions: MentionType[] = [
       {
         type: "user",
-        userId: mentionedUser.sId.toString(),
+        userId: mentionedUser.sId,
       },
       {
         configurationId: agentConfig.sId,
@@ -1128,8 +1128,14 @@ describe("postUserMessage rate limiting", () => {
     // Count the rate limiter calls that are for agent mentions (the key contains "agent_mentions")
     const agentMentionRateLimiterCalls = rateLimiterSpy.mock.calls.filter(
       (call: unknown[]) => {
-        const arg = call[0] as { key?: string } | undefined;
-        return typeof arg === "object" && arg?.key?.includes("agent_mentions");
+        const arg = call[0];
+        return (
+          typeof arg === "object" &&
+          arg !== null &&
+          "key" in arg &&
+          typeof arg.key === "string" &&
+          arg.key.includes("agent_mentions")
+        );
       }
     );
 
@@ -1175,8 +1181,14 @@ describe("postUserMessage rate limiting", () => {
     // Count the rate limiter calls for agent mentions
     const agentMentionRateLimiterCalls = rateLimiterSpy.mock.calls.filter(
       (call: unknown[]) => {
-        const arg = call[0] as { key?: string } | undefined;
-        return typeof arg === "object" && arg?.key?.includes("agent_mentions");
+        const arg = call[0];
+        return (
+          typeof arg === "object" &&
+          arg !== null &&
+          "key" in arg &&
+          typeof arg.key === "string" &&
+          arg.key.includes("agent_mentions")
+        );
       }
     );
 
@@ -1198,11 +1210,11 @@ describe("postUserMessage rate limiting", () => {
     const mentions: MentionType[] = [
       {
         type: "user",
-        userId: mentionedUser1.sId.toString(),
+        userId: mentionedUser1.sId,
       },
       {
         type: "user",
-        userId: mentionedUser2.sId.toString(),
+        userId: mentionedUser2.sId,
       },
     ];
 
@@ -1229,8 +1241,14 @@ describe("postUserMessage rate limiting", () => {
     // Count the rate limiter calls for agent mentions
     const agentMentionRateLimiterCalls = rateLimiterSpy.mock.calls.filter(
       (call: unknown[]) => {
-        const arg = call[0] as { key?: string } | undefined;
-        return typeof arg === "object" && arg?.key?.includes("agent_mentions");
+        const arg = call[0];
+        return (
+          typeof arg === "object" &&
+          arg !== null &&
+          "key" in arg &&
+          typeof arg.key === "string" &&
+          arg.key.includes("agent_mentions")
+        );
       }
     );
 
