@@ -3,8 +3,8 @@ import React from "react";
 import {
   Button,
   Dialog,
+  DialogClose,
   DialogContent,
-  DialogHeader,
   DialogTrigger,
   Spinner,
 } from "@sparkle/components/";
@@ -12,6 +12,7 @@ import {
   ArrowDownOnSquareIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  XMarkIcon,
 } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
@@ -50,10 +51,11 @@ interface ImagePreviewProps {
   };
   onClick: () => void;
   onDownload: (e: React.MouseEvent) => Promise<void>;
+  onClose?: (e: React.MouseEvent) => void;
 }
 
 const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
-  ({ image, onClick, onDownload }, ref) => {
+  ({ image, onClick, onDownload, onClose }, ref) => {
     return (
       <div
         ref={ref}
@@ -75,29 +77,54 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
               alt={image.alt}
               className="s-h-full s-w-full s-rounded-2xl s-object-cover"
             />
+            {/* Blur overlay with filename - hidden by default, shown on hover */}
             <div
               className={cn(
-                "s-absolute s-inset-0 s-bg-gradient-to-b",
-                "s-from-black/40 s-via-transparent s-to-black/40",
-                "s-opacity-0 s-transition-opacity s-duration-200",
+                "s-absolute s-inset-0 s-z-10",
+                "s-flex s-items-center s-justify-center",
+                "s-bg-primary-100/80 dark:s-bg-primary-100-night/80",
+                "s-backdrop-blur-sm",
+                "s-opacity-0 s-transition s-duration-200",
                 "group-hover/preview:s-opacity-100"
               )}
-            />
+            >
+              <span
+                className={cn(
+                  "s-max-w-[90%] s-truncate s-px-2 s-text-center",
+                  "s-text-sm s-font-medium",
+                  "s-text-foreground dark:s-text-foreground-night"
+                )}
+              >
+                {image.title}
+              </span>
+            </div>
             <div
               className={cn(
-                "s-absolute s-right-3 s-top-3 s-z-10 s-flex",
+                "s-absolute s-right-1 s-top-1 s-z-10 s-flex",
                 "s-opacity-0 s-transition-opacity s-duration-200",
                 "group-hover/preview:s-opacity-100"
               )}
             >
-              <Button
-                variant="ghost"
-                size="xs"
-                icon={ArrowDownOnSquareIcon}
-                className="s-text-white dark:s-text-white"
-                tooltip="Download"
-                onClick={onDownload}
-              />
+              {onClose && (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  icon={XMarkIcon}
+                  className="s-text-white dark:s-text-white"
+                  tooltip="Remove"
+                  onClick={onClose}
+                />
+              )}
+              {!onClose && (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  icon={ArrowDownOnSquareIcon}
+                  className="s-text-white dark:s-text-white"
+                  tooltip="Download"
+                  onClick={onDownload}
+                />
+              )}
             </div>
           </>
         )}
@@ -108,6 +135,14 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
 
 ImagePreview.displayName = "ImagePreview";
 
+const SIZE_CLASSES = {
+  sm: "s-h-24 s-w-24",
+  md: "s-h-48 s-w-48",
+  lg: "s-h-80 s-w-80",
+} as const;
+
+type InteractiveImageGridSize = keyof typeof SIZE_CLASSES;
+
 interface InteractiveImageGridProps {
   className?: string;
   images: {
@@ -117,11 +152,15 @@ interface InteractiveImageGridProps {
     isLoading?: boolean;
     title: string;
   }[];
+  onClose?: () => void;
+  size?: InteractiveImageGridSize;
 }
 
 function InteractiveImageGrid({
   className,
   images,
+  onClose,
+  size = "lg",
 }: InteractiveImageGridProps) {
   const [currentImageIndex, setCurrentImageIndex] = React.useState<
     number | null
@@ -187,7 +226,7 @@ function InteractiveImageGrid({
       <DialogTrigger asChild>
         <div className={cn("s-@container", className)}>
           {images.length === 1 ? (
-            <div className="s-h-80 s-w-80">
+            <div className={SIZE_CLASSES[size]}>
               <ImagePreview
                 image={images[0]}
                 onClick={() => {
@@ -197,6 +236,14 @@ function InteractiveImageGrid({
                   e.stopPropagation();
                   await handleDownload(images[0].downloadUrl, images[0].title);
                 }}
+                onClose={
+                  onClose
+                    ? (e) => {
+                        e.stopPropagation();
+                        onClose();
+                      }
+                    : undefined
+                }
               />
             </div>
           ) : (
@@ -218,70 +265,51 @@ function InteractiveImageGrid({
           )}
         </div>
       </DialogTrigger>
-      <DialogContent
-        size="full"
-        className="s-rounded-none s-border-0 s-bg-white/95 s-p-0 s-shadow-none s-outline-none s-ring-0 dark:s-bg-gray-900/95"
-      >
+      <DialogContent size="xl" className="s-max-w-[90vw] s-overflow-hidden s-p-3">
         {currentImageIndex !== null && (
-          <div className="s-relative s-flex s-h-full s-w-full s-flex-col">
-            {/* Top bar */}
-            <DialogHeader
-              buttonVariant="outline"
-              buttonSize="md"
-              className="s-h-6"
-            />
+          <div className="s-relative s-flex s-items-center s-justify-center s-gap-2">
+            {/* Previous button */}
+            {images.length > 1 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={ChevronLeftIcon}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePrevious();
+                }}
+              />
+            )}
 
-            {/* Main content */}
-            <div className="s-flex s-flex-1 s-items-center s-justify-center">
-              <div className="s-relative s-flex s-items-center s-gap-4">
-                {images.length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="md"
-                    icon={ChevronLeftIcon}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePrevious();
-                    }}
-                  />
-                )}
-                {images[currentImageIndex].isLoading ? (
-                  <ImageLoadingState size="lg" />
-                ) : (
+            {/* Image container with overlay buttons */}
+            <div className="s-relative">
+              {images[currentImageIndex].isLoading ? (
+                <ImageLoadingState size="lg" />
+              ) : (
+                <>
                   <img
                     src={images[currentImageIndex].imageUrl}
                     alt={images[currentImageIndex].alt}
-                    className={cn(
-                      "s-max-h-[90vh] s-min-h-[50vh] s-w-auto s-min-w-[50vh]",
-                      "s-checkerboard s-object-contain"
-                    )}
+                    className="s-max-h-full s-max-w-full s-rounded-lg s-object-contain"
                     onLoad={() => setImageLoaded(true)}
                   />
-                )}
-                {images.length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="md"
-                    icon={ChevronRightIcon}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleNext();
-                    }}
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* Bottom controls */}
-            {!images[currentImageIndex].isLoading && (
-              <>
-                {imageLoaded ? (
-                  <div className="s-absolute s-bottom-3 s-right-3 s-z-10">
+                  {/* Close button - top right of image */}
+                  <DialogClose asChild>
                     <Button
                       variant="outline"
-                      size="md"
+                      size="xs"
+                      icon={XMarkIcon}
+                      className="s-absolute s-right-2 s-top-2"
+                    />
+                  </DialogClose>
+                  {/* Download button - bottom right of image */}
+                  {imageLoaded && (
+                    <Button
+                      variant="outline"
+                      size="xs"
                       icon={ArrowDownOnSquareIcon}
                       tooltip="Download"
+                      className="s-absolute s-bottom-2 s-right-2"
                       onClick={async () => {
                         await handleDownload(
                           images[currentImageIndex].downloadUrl,
@@ -289,11 +317,22 @@ function InteractiveImageGrid({
                         );
                       }}
                     />
-                  </div>
-                ) : (
-                  <ImageLoadingState size="lg" />
-                )}
-              </>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Next button */}
+            {images.length > 1 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={ChevronRightIcon}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNext();
+                }}
+              />
             )}
           </div>
         )}
