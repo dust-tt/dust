@@ -1,5 +1,5 @@
 import YAML from "yaml";
-import { type Environment, getEnvSlug } from "./environment";
+import type { Environment } from "./environment";
 import { logger } from "./logger";
 import { getDockerComposePath, getDockerOverridePath } from "./paths";
 import type { PortAllocation } from "./ports";
@@ -35,7 +35,7 @@ const VOLUME_KEYS = ["pgsql", "qdrant-primary", "qdrant-secondary", "elasticsear
 type VolumeKey = (typeof VOLUME_KEYS)[number];
 
 function getVolumeName(envName: string, volume: VolumeKey): string {
-  return `dust-hive-${getEnvSlug(envName)}-${volume}`;
+  return `dust-hive-${envName}-${volume}`;
 }
 
 // Get list of volume names for an environment
@@ -89,7 +89,7 @@ export async function writeDockerComposeOverride(
 
 // Get docker project name for an environment
 export function getDockerProjectName(name: string): string {
-  return `dust-hive-${getEnvSlug(name)}`;
+  return `dust-hive-${name}`;
 }
 
 // Start docker-compose containers (starts in background, services have retry logic)

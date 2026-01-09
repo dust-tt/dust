@@ -3,7 +3,8 @@
 
 import * as p from "@clack/prompts";
 import { getLastActiveEnv } from "./activity";
-import { detectEnvFromCwd, listEnvironments } from "./environment";
+import { listEnvironments } from "./environment";
+import { detectEnvFromCwd } from "./paths";
 
 export interface SelectEnvironmentOptions {
   message?: string;
@@ -96,7 +97,7 @@ export async function selectEnvironment(
     return null;
   }
 
-  const currentEnv = await detectEnvFromCwd();
+  const currentEnv = detectEnvFromCwd();
   const lastActiveEnv = await getLastActiveEnv();
   const sortedEnvs = sortEnvs(envs, currentEnv, lastActiveEnv);
   const initialValue = findInitialValue(sortedEnvs, envs, currentEnv, lastActiveEnv);
@@ -155,7 +156,7 @@ export async function selectMultipleEnvironments(
     return [];
   }
 
-  const currentEnv = await detectEnvFromCwd();
+  const currentEnv = detectEnvFromCwd();
   const lastActiveEnv = await getLastActiveEnv();
   const sortedEnvs = sortEnvs(envs, currentEnv, lastActiveEnv);
   const initialValues: string[] = [];

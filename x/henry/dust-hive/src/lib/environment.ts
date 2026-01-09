@@ -2,13 +2,7 @@ import { mkdir, readdir, rm } from "node:fs/promises";
 import { z } from "zod";
 import { createTypeGuard } from "./errors";
 import { directoryExists } from "./fs";
-import {
-  DUST_HIVE_ENVS,
-  DUST_HIVE_WORKTREES,
-  getEnvDir,
-  getInitializedMarkerPath,
-  getMetadataPath,
-} from "./paths";
+import { DUST_HIVE_ENVS, getEnvDir, getInitializedMarkerPath, getMetadataPath } from "./paths";
 import type { PortAllocation } from "./ports";
 import { loadPortAllocation } from "./ports";
 
@@ -29,16 +23,9 @@ export const isEnvironmentMetadata =
 
 export interface Environment {
   name: string;
-  slug: string; // name with "/" replaced by "-", safe for file paths, Docker, Zellij, etc.
   metadata: EnvironmentMetadata;
   ports: PortAllocation;
   initialized: boolean;
-}
-
-// Convert environment name to a slug safe for file paths, Docker, Zellij, etc.
-// Replaces "/" with "-" to flatten hierarchical names.
-export function getEnvSlug(name: string): string {
-  return name.replace(/\//g, "-");
 }
 
 // Validate environment name
@@ -47,28 +34,17 @@ export function validateEnvName(name: string): { valid: boolean; error?: string 
     return { valid: false, error: "Name is required" };
   }
 
-  // Allow lowercase letters, numbers, hyphens, and forward slashes
-  // Must start with a letter, cannot have consecutive slashes or end with slash
-  if (!/^[a-z][a-z0-9/-]*$/.test(name)) {
+  if (!/^[a-z][a-z0-9-]*$/.test(name)) {
     return {
       valid: false,
       error:
-        "Name must start with a letter and contain only lowercase letters, numbers, hyphens, and slashes",
+        "Name must start with a letter and contain only lowercase letters, numbers, and hyphens",
     };
   }
 
-  if (/\/\//.test(name)) {
-    return { valid: false, error: "Name cannot contain consecutive slashes" };
-  }
-
-  if (name.endsWith("/")) {
-    return { valid: false, error: "Name cannot end with a slash" };
-  }
-
   // Zellij has a 36-character session name limit. Since session names are
-  // formatted as "dust-hive-{slug}" (10-char prefix), slug must be ≤26 chars.
-  const slug = getEnvSlug(name);
-  if (slug.length > 26) {
+  // formatted as "dust-hive-{name}" (10-char prefix), env names must be ≤26 chars.
+  if (name.length > 26) {
     return { valid: false, error: "Name must be 26 characters or less" };
   }
 
@@ -141,15 +117,14 @@ export async function getEnvironment(name: string): Promise<Environment | null> 
   const initialized = await isInitialized(name);
 
   return {
-    name: metadata.name,
-    slug: getEnvSlug(metadata.name),
+    name,
     metadata,
     ports,
     initialized,
   };
 }
 
-// List all environments (returns original names, not slugs)
+// List all environments
 export async function listEnvironments(): Promise<string[]> {
   const envsExists = await directoryExists(DUST_HIVE_ENVS);
   if (!envsExists) {
@@ -161,38 +136,14 @@ export async function listEnvironments(): Promise<string[]> {
 
   for (const entry of entries) {
     if (entry.isDirectory()) {
-      // entry.name is the slug (directory name), use it to load metadata
-      const metadata = await loadMetadata(entry.name);
-      if (metadata) {
-        // Return the original name from metadata (may contain slashes)
-        names.push(metadata.name);
+      const exists = await environmentExists(entry.name);
+      if (exists) {
+        names.push(entry.name);
       }
     }
   }
 
   return names.sort();
-}
-
-// Detect environment name from current working directory
-// Returns the original name (with slashes) by loading metadata, or null if not in a worktree
-export async function detectEnvFromCwd(): Promise<string | null> {
-  const cwd = process.cwd();
-
-  // Check if cwd is under ~/dust-hive/{slug}/
-  if (!cwd.startsWith(`${DUST_HIVE_WORKTREES}/`)) {
-    return null;
-  }
-
-  // Extract slug (directory name) from path
-  const relativePath = cwd.slice(DUST_HIVE_WORKTREES.length + 1);
-  const slug = relativePath.split("/")[0];
-  if (!slug) {
-    return null;
-  }
-
-  // Load metadata to get the original name (may contain slashes)
-  const metadata = await loadMetadata(slug);
-  return metadata?.name ?? null;
 }
 
 // Delete environment directory

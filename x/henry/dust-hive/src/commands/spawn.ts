@@ -7,7 +7,6 @@ import {
   createEnvironment,
   deleteEnvironmentDir,
   environmentExists,
-  getEnvSlug,
   validateEnvName,
 } from "../lib/environment";
 import { logger } from "../lib/logger";
@@ -24,6 +23,7 @@ import { warmCommand } from "./warm";
 
 interface SpawnOptions {
   name?: string;
+  branchName?: string;
   noOpen?: boolean;
   noAttach?: boolean;
   warm?: boolean;
@@ -189,7 +189,7 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
 
   // Always base on main branch
   const baseBranch = "main";
-  const workspaceBranch = getBranchName(name, settings);
+  const workspaceBranch = options.branchName ?? getBranchName(name, settings);
   const worktreePath = getWorktreeDir(name);
 
   logger.info(`Creating environment '${name}' from branch '${baseBranch}'`);
@@ -219,7 +219,6 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   // Phase 3: Start SDK
   const env: Environment = {
     name,
-    slug: getEnvSlug(name),
     metadata,
     ports,
     initialized: false,

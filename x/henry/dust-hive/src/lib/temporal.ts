@@ -1,5 +1,3 @@
-import { getEnvSlug } from "./environment";
-
 // Search attribute definitions for Temporal namespaces
 // These must be registered before workflows can use them
 export const SEARCH_ATTRIBUTES = {
@@ -34,13 +32,11 @@ export const TEMPORAL_NAMESPACE_CONFIG = [
 ] as const;
 
 export function getTemporalNamespaces(envName: string): string[] {
-  const slug = getEnvSlug(envName);
-  return TEMPORAL_NAMESPACE_CONFIG.map((config) => `dust-hive-${slug}${config.suffix}`);
+  return TEMPORAL_NAMESPACE_CONFIG.map((config) => `dust-hive-${envName}${config.suffix}`);
 }
 
 export function getTemporalEnvExports(envName: string): string {
-  const slug = getEnvSlug(envName);
   return TEMPORAL_NAMESPACE_CONFIG.map(
-    (config) => `export ${config.envVar}=dust-hive-${slug}${config.suffix}`
+    (config) => `export ${config.envVar}=dust-hive-${envName}${config.suffix}`
   ).join("\n");
 }

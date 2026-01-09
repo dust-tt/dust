@@ -3,12 +3,6 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { isErrnoException } from "./errors";
 
-// Local slug function to avoid circular import with environment.ts
-// Converts "/" to "-" for use in file paths
-function toSlug(name: string): string {
-  return name.replace(/\//g, "-");
-}
-
 // dust-hive project root (where this package lives)
 export const DUST_HIVE_ROOT = resolve(dirname(import.meta.path), "../..");
 
@@ -44,11 +38,11 @@ export const SEED_USER_PATH = join(DUST_HIVE_HOME, "seed-user.json");
 
 // Per-environment paths
 export function getEnvDir(name: string): string {
-  return join(DUST_HIVE_ENVS, toSlug(name));
+  return join(DUST_HIVE_ENVS, name);
 }
 
 export function getWorktreeDir(name: string): string {
-  return join(DUST_HIVE_WORKTREES, toSlug(name));
+  return join(DUST_HIVE_WORKTREES, name);
 }
 
 export function getEnvFilePath(name: string): string {
@@ -143,4 +137,26 @@ export async function findRepoRoot(startPath?: string): Promise<string | null> {
   }
 
   return null;
+}
+
+// Detect if current working directory is inside a dust-hive worktree
+// Returns the environment name if found, null otherwise
+export function detectEnvFromCwd(): string | null {
+  const cwd = process.cwd();
+  const worktreesBase = DUST_HIVE_WORKTREES;
+
+  // Check if cwd is under ~/dust-hive/{name}/
+  if (!cwd.startsWith(`${worktreesBase}/`)) {
+    return null;
+  }
+
+  // Extract environment name from path
+  const relativePath = cwd.slice(worktreesBase.length + 1);
+  const envName = relativePath.split("/")[0];
+
+  if (!envName) {
+    return null;
+  }
+
+  return envName;
 }

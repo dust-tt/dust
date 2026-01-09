@@ -137,7 +137,6 @@ describe("registry", () => {
   describe("buildCommand functions", () => {
     const mockEnv = {
       name: "test",
-      slug: "test",
       metadata: {
         name: "test",
         baseBranch: "main",
@@ -180,7 +179,6 @@ describe("registry", () => {
       const secondEnv = {
         ...mockEnv,
         name: "second",
-        slug: "second",
         ports: calculatePorts(11000),
       };
       const command = SERVICE_REGISTRY.connectors.buildCommand(secondEnv);
