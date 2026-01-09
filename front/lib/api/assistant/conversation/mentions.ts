@@ -532,6 +532,12 @@ export const createAgentMessages = async (
           }
         );
 
+        // Track agent usage when retrying an agent message.
+        void signalAgentUsage({
+          agentConfigurationId: agentConfiguration.sId,
+          workspaceId: owner.sId,
+        });
+
         results.push({
           agentMessageRow,
           messageRow,

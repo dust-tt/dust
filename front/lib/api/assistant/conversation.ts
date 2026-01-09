@@ -556,21 +556,9 @@ export async function postUserMessage(
   }
 
   // Check plan and rate limit.
-  const messageLimit = await isMessagesLimitReached(auth, {
-    mentions,
-    context,
-  });
-  if (messageLimit.isLimitReached && messageLimit.limitType) {
-    return new Err({
-      status_code: 403,
-      api_error: {
-        type: "plan_message_limit_exceeded",
-        message:
-          messageLimit.limitType === "plan_message_limit_exceeded"
-            ? "The message limit for this plan has been exceeded."
-            : "The rate limit for this workspace has been exceeded.",
-      },
-    });
+  const limitResult = await checkMessagesLimit(auth, { mentions, context });
+  if (limitResult.isErr()) {
+    return limitResult;
   }
 
   // `getAgentConfiguration` checks that we're only pulling a configuration from the
@@ -1141,6 +1129,35 @@ export async function retryAgentMessage(
     message: AgentMessageType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
+  // Find the parent user message to get the original context for rate limiting.
+  // This ensures retries are counted with the same origin (web vs programmatic) as the original.
+  const parentUserMessage = conversation.content
+    .flat()
+    .find(
+      (m): m is UserMessageType =>
+        isUserMessageType(m) && m.sId === message.parentMessageId
+    );
+
+  if (!parentUserMessage) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Could not find the parent user message for this retry.",
+      },
+    });
+  }
+
+  // Check plan and rate limit before retrying.
+  const mentions = [{ configurationId: message.configuration.sId }];
+  const limitResult = await checkMessagesLimit(auth, {
+    mentions,
+    context: parentUserMessage.context,
+  });
+  if (limitResult.isErr()) {
+    return limitResult;
+  }
+
   let agentMessageResult: {
     agentMessage: AgentMessageType;
   } | null = null;
@@ -1554,9 +1571,38 @@ export async function softDeleteAgentMessage(
   return new Ok({ success: true });
 }
 
-export interface MessageLimit {
+interface MessageLimit {
   isLimitReached: boolean;
   limitType: "rate_limit_error" | "plan_message_limit_exceeded" | null;
+}
+
+async function checkMessagesLimit(
+  auth: Authenticator,
+  {
+    mentions,
+    context,
+  }: {
+    mentions: MentionType[];
+    context: UserMessageContext;
+  }
+): Promise<Result<void, APIErrorWithStatusCode>> {
+  const messageLimit = await isMessagesLimitReached(auth, {
+    mentions,
+    context,
+  });
+  if (messageLimit.isLimitReached && messageLimit.limitType) {
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: "plan_message_limit_exceeded",
+        message:
+          messageLimit.limitType === "plan_message_limit_exceeded"
+            ? "The message limit for this plan has been exceeded."
+            : "The rate limit for this workspace has been exceeded.",
+      },
+    });
+  }
+  return new Ok(undefined);
 }
 
 async function isMessagesLimitReached(

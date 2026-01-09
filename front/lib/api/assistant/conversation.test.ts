@@ -43,6 +43,9 @@ vi.mock("@app/lib/api/assistant/streaming/events", () => ({
   publishMessageEventsOnMessagePostOrEdit: vi.fn(),
 }));
 
+// Mock rateLimiter from the utils module
+import * as rateLimiterModule from "@app/lib/utils/rate_limiter";
+
 describe("retryAgentMessage", () => {
   let auth: Authenticator;
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
@@ -298,6 +301,69 @@ describe("retryAgentMessage", () => {
     }
     const finalConversation = finalConversationResult.value;
     expect(finalConversation.hasError).toBe(false);
+  });
+
+  it("should return error when message limit is reached", async () => {
+    // Mock rateLimiter to return 0 (no remaining messages)
+    const rateLimiterSpy = vi
+      .spyOn(rateLimiterModule, "rateLimiter")
+      .mockResolvedValue(0);
+
+    const result = await retryAgentMessage(auth, {
+      conversation,
+      message: agentMessage,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(403);
+      expect(result.error.api_error.type).toBe("plan_message_limit_exceeded");
+    }
+    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
+    expect(publishAgentMessagesEvents).not.toHaveBeenCalled();
+
+    // Restore the mock for other tests
+    rateLimiterSpy.mockRestore();
+  });
+
+  it("should succeed when under the message limit", async () => {
+    // Mock rateLimiter to return positive value (messages remaining)
+    const rateLimiterSpy = vi
+      .spyOn(rateLimiterModule, "rateLimiter")
+      .mockResolvedValue(100);
+
+    const result = await retryAgentMessage(auth, {
+      conversation,
+      message: agentMessage,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+
+    // Restore the mock for other tests
+    rateLimiterSpy.mockRestore();
+  });
+
+  it("should return error when parent user message is not found", async () => {
+    // Create a message with an invalid parentMessageId
+    const messageWithInvalidParent: AgentMessageType = {
+      ...agentMessage,
+      parentMessageId: "non-existent-parent-id",
+    };
+
+    const result = await retryAgentMessage(auth, {
+      conversation,
+      message: messageWithInvalidParent,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(400);
+      expect(result.error.api_error.type).toBe("invalid_request_error");
+      expect(result.error.api_error.message).toContain("parent user message");
+    }
+    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
+    expect(publishAgentMessagesEvents).not.toHaveBeenCalled();
   });
 });
 
