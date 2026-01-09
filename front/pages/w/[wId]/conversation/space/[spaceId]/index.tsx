@@ -159,29 +159,36 @@ export default function SpaceConversations({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [_planLimitReached, setPlanLimitReached] = useState(false);
-  const [currentTab, setCurrentTab] = useState<SpaceTab>("conversations");
+
+  // Parse and validate the current tab from URL hash
+  const getCurrentTabFromHash = useCallback((): SpaceTab => {
+    const hash = window.location.hash.slice(1); // Remove the # prefix
+    if (
+      hash === "knowledge" ||
+      hash === "tools" ||
+      hash === "about" ||
+      hash === "conversations"
+    ) {
+      return hash;
+    }
+    return "conversations";
+  }, []);
+
+  const [currentTab, setCurrentTab] = useState<SpaceTab>(getCurrentTabFromHash);
 
   // Sync current tab with URL hash
   React.useEffect(() => {
     const updateTabFromHash = () => {
-      const hash = window.location.hash.slice(1); // Remove the # prefix
-      if (
-        hash === "knowledge" ||
-        hash === "tools" ||
-        hash === "about" ||
-        hash === "conversations"
-      ) {
-        setCurrentTab(hash);
-      } else {
-        // No hash or invalid hash, set to conversations and update URL
-        setCurrentTab("conversations");
-        if (!window.location.hash) {
-          window.history.replaceState(
-            null,
-            "",
-            `${window.location.pathname}#conversations`
-          );
-        }
+      const newTab = getCurrentTabFromHash();
+      setCurrentTab(newTab);
+
+      // Ensure URL has a hash
+      if (!window.location.hash) {
+        window.history.replaceState(
+          null,
+          "",
+          `${window.location.pathname}${window.location.search}#${newTab}`
+        );
       }
     };
 
@@ -191,10 +198,17 @@ export default function SpaceConversations({
     // Listen for hash changes
     window.addEventListener("hashchange", updateTabFromHash);
     return () => window.removeEventListener("hashchange", updateTabFromHash);
-  }, [router.asPath]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount and cleanup on unmount
 
   const handleTabChange = useCallback((tab: SpaceTab) => {
-    window.location.hash = tab;
+    // Use replaceState to avoid adding to browser history for each tab switch
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${window.location.search}#${tab}`
+    );
+    setCurrentTab(tab);
   }, []);
 
   const handleConversationCreation = useCallback(
