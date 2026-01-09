@@ -178,6 +178,7 @@ export async function createTestDatabase(envName: string): Promise<{
   }
 
   // Create database if it doesn't exist
+  // Must connect to 'postgres' db since the default db (username) doesn't exist
   const proc = Bun.spawn(
     [
       "docker",
@@ -186,6 +187,8 @@ export async function createTestDatabase(envName: string): Promise<{
       "psql",
       "-U",
       TEST_POSTGRES_USER,
+      "-d",
+      "postgres",
       "-c",
       `CREATE DATABASE ${dbName};`,
     ],
@@ -219,6 +222,7 @@ export async function dropTestDatabase(envName: string): Promise<{
   }
 
   // Terminate existing connections and drop
+  // Must connect to 'postgres' db since the default db (username) doesn't exist
   const proc = Bun.spawn(
     [
       "docker",
@@ -227,6 +231,8 @@ export async function dropTestDatabase(envName: string): Promise<{
       "psql",
       "-U",
       TEST_POSTGRES_USER,
+      "-d",
+      "postgres",
       "-c",
       `DROP DATABASE IF EXISTS ${dbName};`,
     ],
