@@ -411,8 +411,29 @@ export const menuConfig: DocsConfig = {
       ],
     },
     {
-      title: SolutionsMenuConfig.title,
-      items: SolutionsMenuConfig.items,
+      title: "Compare",
+      items: [
+        {
+          title: "Dust vs ChatGPT Enterprise",
+          href: "/compare/chatgpt",
+        },
+        {
+          title: "Dust vs Glean",
+          href: "/compare/glean",
+        },
+        {
+          title: "Dust vs Langdock",
+          href: "/compare/langdock",
+        },
+        {
+          title: "Dust vs n8n",
+          href: "/compare/n8n",
+        },
+        {
+          title: "Dust vs Notion AI",
+          href: "/compare/notion",
+        },
+      ],
     },
     {
       title: "Company",
