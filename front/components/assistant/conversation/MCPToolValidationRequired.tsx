@@ -3,7 +3,9 @@ import {
   Checkbox,
   CheckIcon,
   CodeBlockWithExtendedSupport,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessage,
   Label,
   XMarkIcon,
@@ -103,18 +105,18 @@ export function MCPToolValidationRequired({
       {isTriggeredByCurrentUser ? (
         <>
           {hasDetails && (
-            <CollapsibleComponent
-              triggerChildren={
+            <Collapsible>
+              <CollapsibleTrigger>
                 <span className="my-2 font-medium">Details</span>
-              }
-              contentChildren={
+              </CollapsibleTrigger>
+              <CollapsibleContent>
                 <div className="max-h-80 overflow-auto bg-muted dark:bg-muted-night">
                   <CodeBlockWithExtendedSupport className="language-json">
                     {JSON.stringify(blockedAction.inputs, null, 2)}
                   </CodeBlockWithExtendedSupport>
                 </div>
-              }
-            />
+              </CollapsibleContent>
+            </Collapsible>
           )}
           {errorMessage && (
             <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">

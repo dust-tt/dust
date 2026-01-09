@@ -1,5 +1,7 @@
 import {
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessageInline,
   Label,
   Markdown,
@@ -57,19 +59,18 @@ export function PokeRecentWebhookRequests({
             )}
           </div>
         )}
-        <CollapsibleComponent
-          rootProps={{ defaultOpen, onOpenChange: setIsOpen }}
-          triggerChildren={
+        <Collapsible defaultOpen={defaultOpen} onOpenChange={setIsOpen}>
+          <CollapsibleTrigger>
             <Label className="cursor-pointer">Recent requests (last 15)</Label>
-          }
-          contentChildren={
+          </CollapsibleTrigger>
+          <CollapsibleContent>
             <PokeRecentWebhookRequestsContent
               isOpen={isOpen}
               owner={owner}
               triggerId={trigger.sId}
             />
-          }
-        />
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </div>
   );
@@ -134,9 +135,8 @@ function PokeRecentWebhookRequestsContent({
       <div className="flex flex-col px-4">
         {webhookRequests.map((request, idx) => (
           <div key={request.id}>
-            <CollapsibleComponent
-              rootProps={{ defaultOpen: false }}
-              triggerChildren={
+            <Collapsible defaultOpen={false}>
+              <CollapsibleTrigger>
                 <div className="my-2 flex w-full items-center justify-between gap-4">
                   {moment(new Date(request.timestamp)).calendar(undefined, {
                     sameDay: "[Today at] LTS",
@@ -145,9 +145,9 @@ function PokeRecentWebhookRequestsContent({
                   })}
                   <WebhookRequestStatusBadge status={request.status} />
                 </div>
-              }
-              contentChildren={
-                request.payload ? (
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                {request.payload ? (
                   <div className="rounded">
                     <pre className="max-h-64 overflow-auto text-xs">
                       <Markdown
@@ -160,9 +160,9 @@ function PokeRecentWebhookRequestsContent({
                   <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     No payload available.
                   </p>
-                )
-              }
-            />
+                )}
+              </CollapsibleContent>
+            </Collapsible>
             {idx < webhookRequests.length - 1 && <Separator />}
           </div>
         ))}
