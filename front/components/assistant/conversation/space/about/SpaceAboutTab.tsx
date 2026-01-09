@@ -49,6 +49,9 @@ export function SpaceAboutTab({
     if (managementType !== initialManagementMode) {
       return true;
     }
+    if (isRestricted !== initialIsRestricted) {
+      return true;
+    }
 
     if (managementType === "manual") {
       const currentMemberIds = selectedMembers.map((m) => m.sId).sort();
@@ -70,6 +73,8 @@ export function SpaceAboutTab({
     initialMembers,
     selectedGroups,
     initialGroups,
+    isRestricted,
+    initialIsRestricted,
   ]);
 
   const canSave = useMemo(() => {
@@ -116,6 +121,7 @@ export function SpaceAboutTab({
     planAllowsSCIM,
     selectedGroups,
     selectedMembers,
+    isRestricted,
     space,
   ]);
 
