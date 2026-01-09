@@ -1,11 +1,11 @@
 import { Chip } from "@dust-tt/sparkle";
 
 import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import {
   getSelectedToolIcon,
   getSelectedToolLabel,
 } from "@app/components/agent_builder/capabilities/mcp/utils/toolDisplayUtils";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import { getSkillIcon } from "@app/lib/skill";
 
 interface CapabilitiesFooterProps {

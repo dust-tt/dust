@@ -6,12 +6,12 @@ import type {
   AgentBuilderSkillsType,
   MCPFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
-import { TOP_MCP_SERVER_VIEWS } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import {
   generateUniqueActionName,
   nameToStorageFormat,
 } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
+import { TOP_MCP_SERVER_VIEWS } from "@app/components/agent_builder/capabilities/shared/types";
 import type {
   ConfigurationState,
   SheetState,
@@ -228,11 +228,11 @@ export const useToolSelection = ({
           );
         });
 
-    const topViews = mcpServerViewsWithoutKnowledge.filter(
-      (view) => !TOP_MCP_SERVER_VIEWS.includes(view.server.name)
-    );
-    const nonTopViews = mcpServerViewsWithoutKnowledge.filter((view) =>
+    const topViews = mcpServerViewsWithoutKnowledge.filter((view) =>
       TOP_MCP_SERVER_VIEWS.includes(view.server.name)
+    );
+    const nonTopViews = mcpServerViewsWithoutKnowledge.filter(
+      (view) => !TOP_MCP_SERVER_VIEWS.includes(view.server.name)
     );
 
     return {
