@@ -418,6 +418,10 @@ export const menuConfig: DocsConfig = {
           href: "/compare/chatgpt",
         },
         {
+          title: "Dust vs Gemini Enterprise",
+          href: "/compare/gemini",
+        },
+        {
           title: "Dust vs Glean",
           href: "/compare/glean",
         },
