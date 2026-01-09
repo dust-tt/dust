@@ -57,12 +57,10 @@ export function validateEnvName(name: string): { valid: boolean; error?: string 
     };
   }
 
-  // No consecutive slashes
   if (/\/\//.test(name)) {
     return { valid: false, error: "Name cannot contain consecutive slashes" };
   }
 
-  // Cannot end with slash
   if (name.endsWith("/")) {
     return { valid: false, error: "Name cannot end with a slash" };
   }
