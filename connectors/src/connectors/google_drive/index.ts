@@ -650,8 +650,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
         const workflowRes = await launchGoogleDriveFullSyncWorkflow(
           this.connectorId,
-          null,
-          []
+          null
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -664,8 +663,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
         const workflowRes = await launchGoogleDriveFullSyncWorkflow(
           this.connectorId,
-          null,
-          []
+          null
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -678,8 +676,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
         const workflowRes = await launchGoogleDriveFullSyncWorkflow(
           this.connectorId,
-          null,
-          []
+          null
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -833,7 +830,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    return launchGoogleDriveFullSyncWorkflow(this.connectorId, fromTs, []);
+    return launchGoogleDriveFullSyncWorkflow(this.connectorId, fromTs, null);
   }
 
   async configure(): Promise<Result<void, Error>> {

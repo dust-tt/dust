@@ -61,18 +61,20 @@ const { reportInitialSyncProgress, syncSucceeded, syncStarted } =
  * If this workflow is called while it's running, the queue is updated using Temporal signals.
  * At the end, we start the garbage collector workflow to delete files that are still in our database but that we are not supposed
  * to sync anymore.
+ *
+ * @param foldersToBrowse - Pass `null` to sync all folders from DB, or specific folder IDs to sync only those.
  */
 export async function googleDriveFullSync({
   connectorId,
   garbageCollect = true,
-  foldersToBrowse = [],
+  foldersToBrowse = null,
   totalCount = 0,
   startSyncTs = undefined,
   mimeTypeFilter,
 }: {
   connectorId: ModelId;
   garbageCollect: boolean;
-  foldersToBrowse: string[];
+  foldersToBrowse: string[] | null;
   totalCount: number;
   startSyncTs: number | undefined;
   mimeTypeFilter?: string[];
@@ -88,21 +90,23 @@ export async function googleDriveFullSync({
 
   let nextPageToken: string | undefined = undefined;
 
-  if (!foldersToBrowse.length) {
-    foldersToBrowse = await getFoldersToSync(connectorId);
-  }
+  // Initialize foldersToBrowse from DB if null, otherwise use provided list
+  let foldersQueue: string[] =
+    foldersToBrowse !== null
+      ? foldersToBrowse
+      : await getFoldersToSync(connectorId);
 
   setHandler(folderUpdatesSignal, (folderUpdates: FolderUpdatesSignal[]) => {
     // If we get a signal, update the workflow state by adding/removing folder ids.
     for (const { action, folderId } of folderUpdates) {
       switch (action) {
         case "added":
-          if (!foldersToBrowse.includes(folderId)) {
-            foldersToBrowse.push(folderId);
+          if (!foldersQueue.includes(folderId)) {
+            foldersQueue.push(folderId);
           }
           break;
         case "removed":
-          foldersToBrowse.splice(foldersToBrowse.indexOf(folderId), 1);
+          foldersQueue.splice(foldersQueue.indexOf(folderId), 1);
           break;
         default:
           assertNever(
@@ -116,10 +120,10 @@ export async function googleDriveFullSync({
   await upsertSharedWithMeFolder(connectorId);
 
   // Temp to clean up the running workflows state
-  foldersToBrowse = uniq(foldersToBrowse);
+  foldersQueue = uniq(foldersQueue);
 
-  while (foldersToBrowse.length > 0) {
-    const folder = foldersToBrowse.pop();
+  while (foldersQueue.length > 0) {
+    const folder = foldersQueue.pop();
     if (!folder) {
       throw new Error("folderId should be defined");
     }
@@ -133,7 +137,7 @@ export async function googleDriveFullSync({
       );
       nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
       totalCount += res.count;
-      foldersToBrowse = foldersToBrowse.concat(res.subfolders);
+      foldersQueue = foldersQueue.concat(res.subfolders);
 
       await reportInitialSyncProgress(
         connectorId,
@@ -145,7 +149,7 @@ export async function googleDriveFullSync({
       await continueAsNew<typeof googleDriveFullSync>({
         connectorId,
         garbageCollect,
-        foldersToBrowse,
+        foldersToBrowse: foldersQueue,
         totalCount,
         startSyncTs,
         mimeTypeFilter,
@@ -153,7 +157,7 @@ export async function googleDriveFullSync({
     }
 
     // Temp to clean up the running workflows state
-    foldersToBrowse = uniq(foldersToBrowse);
+    foldersQueue = uniq(foldersQueue);
   }
   await syncSucceeded(connectorId);
 
@@ -412,6 +416,8 @@ export function googleDriveFolderSyncWorkflowId(
  * V2 Full Sync Coordinator Workflow - launches child workflows for each selected folder
  * to enable parallel processing. This is the gradual migration version that runs
  * alongside the legacy googleDriveFullSync workflow.
+ *
+ * @param initialFolderIds - Pass `null` to sync all folders from DB, or specific folder IDs to sync only those.
  */
 export async function googleDriveFullSyncV2({
   connectorId,
@@ -419,14 +425,14 @@ export async function googleDriveFullSyncV2({
   startSyncTs = undefined,
   mimeTypeFilter,
   folderWorkflowCounters = {},
-  initialFolderIds = [],
+  initialFolderIds = null,
 }: {
   connectorId: ModelId;
   garbageCollect: boolean;
   startSyncTs: number | undefined;
   mimeTypeFilter?: string[];
   folderWorkflowCounters?: Record<string, number>;
-  initialFolderIds?: string[];
+  initialFolderIds?: string[] | null;
 }) {
   // Initialize sync timestamp
   if (!startSyncTs) {
@@ -439,16 +445,16 @@ export async function googleDriveFullSyncV2({
 
   // Get folders to sync - use initialFolderIds if provided, otherwise fetch all from DB
   const folderIds =
-    initialFolderIds.length > 0
+    initialFolderIds !== null
       ? initialFolderIds
       : await getFoldersToSync(connectorId);
 
   // Upsert shared with me folder
   await upsertSharedWithMeFolder(connectorId);
 
-  // Track pending folder changes that arrive after sync completes
-  const addedFoldersForNextRun: string[] = [];
-  const removedFoldersForNextRun: string[] = [];
+  // Track pending folder changes that arrive after sync completes (Sets for O(1) lookup)
+  const addedFoldersForNextRun = new Set<string>();
+  const removedFoldersForNextRun = new Set<string>();
   let syncCompleted = false;
 
   const runningFolderWorkflows: Record<
@@ -458,7 +464,8 @@ export async function googleDriveFullSyncV2({
       workflowId: string;
     }
   > = {};
-  const pendingFolderIds: string[] = [...folderIds];
+  // Set preserves insertion order in JS, so we can use it as a FIFO queue with O(1) membership checks
+  const pendingFolderIds = new Set<string>(folderIds);
 
   // Helper to start a child workflow for a folder (does not wait for completion)
   const launchFolderWorkflow = async (folderId: string) => {
@@ -491,36 +498,42 @@ export async function googleDriveFullSyncV2({
   // Helper to start workflows up to the concurrency limit
   const fillConcurrencySlots = async () => {
     while (
-      pendingFolderIds.length > 0 &&
+      pendingFolderIds.size > 0 &&
       Object.keys(runningFolderWorkflows).length <
         GDRIVE_MAX_CONCURRENT_FOLDER_SYNCS
     ) {
-      const folderId = pendingFolderIds.shift();
-      if (folderId && !(folderId in runningFolderWorkflows)) {
-        await launchFolderWorkflow(folderId);
+      // Get first element from Set (preserves insertion order)
+      const folderId = pendingFolderIds.values().next().value;
+      if (folderId) {
+        pendingFolderIds.delete(folderId);
+        if (!(folderId in runningFolderWorkflows)) {
+          await launchFolderWorkflow(folderId);
+        }
       }
     }
   };
 
   // Set up signal handler for folder additions/removals
   setHandler(folderUpdatesSignal, (folderUpdates: FolderUpdatesSignal[]) => {
+    let shouldFillSlots = false;
+
     for (const { action, folderId } of folderUpdates) {
       switch (action) {
         case "added": {
           if (syncCompleted) {
             // Sync already done, queue for next run
-            const idx = removedFoldersForNextRun.indexOf(folderId);
-            if (idx !== -1) {
-              removedFoldersForNextRun.splice(idx, 1);
-            } else if (!addedFoldersForNextRun.includes(folderId)) {
-              addedFoldersForNextRun.push(folderId);
+            if (removedFoldersForNextRun.has(folderId)) {
+              removedFoldersForNextRun.delete(folderId);
+            } else {
+              addedFoldersForNextRun.add(folderId);
             }
           } else {
             if (
               !(folderId in runningFolderWorkflows) &&
-              !pendingFolderIds.includes(folderId)
+              !pendingFolderIds.has(folderId)
             ) {
-              pendingFolderIds.push(folderId);
+              pendingFolderIds.add(folderId);
+              shouldFillSlots = true;
             }
           }
           break;
@@ -528,18 +541,14 @@ export async function googleDriveFullSyncV2({
         case "removed": {
           if (syncCompleted) {
             // Sync already done, queue for next run
-            const idx = addedFoldersForNextRun.indexOf(folderId);
-            if (idx !== -1) {
-              addedFoldersForNextRun.splice(idx, 1);
-            } else if (!removedFoldersForNextRun.includes(folderId)) {
-              removedFoldersForNextRun.push(folderId);
+            if (addedFoldersForNextRun.has(folderId)) {
+              addedFoldersForNextRun.delete(folderId);
+            } else {
+              removedFoldersForNextRun.add(folderId);
             }
           } else {
             // Remove from pending queue if present
-            const pendingIdx = pendingFolderIds.indexOf(folderId);
-            if (pendingIdx !== -1) {
-              pendingFolderIds.splice(pendingIdx, 1);
-            }
+            pendingFolderIds.delete(folderId);
             // Cancel running workflow if present
             const folderWorkflow = runningFolderWorkflows[folderId];
             if (folderWorkflow) {
@@ -558,6 +567,11 @@ export async function googleDriveFullSyncV2({
           );
         }
       }
+    }
+
+    // Start workflows immediately if slots are available
+    if (shouldFillSlots) {
+      void fillConcurrencySlots();
     }
   });
 
@@ -589,7 +603,7 @@ export async function googleDriveFullSyncV2({
 
   while (
     Object.keys(runningFolderWorkflows).length > 0 ||
-    pendingFolderIds.length > 0
+    pendingFolderIds.size > 0
   ) {
     // Wait for at least one workflow to complete
     if (Object.keys(runningFolderWorkflows).length > 0) {
@@ -638,7 +652,7 @@ export async function googleDriveFullSyncV2({
   }
 
   // If folders were added during sync or GC, restart workflow to handle them
-  if (addedFoldersForNextRun.length > 0) {
+  if (addedFoldersForNextRun.size > 0) {
     // Restart workflow to sync newly added folders
     // GC will automatically clean up removed folders based on lastSeenTs
     await continueAsNew<typeof googleDriveFullSyncV2>({
@@ -647,9 +661,9 @@ export async function googleDriveFullSyncV2({
       startSyncTs: undefined,
       mimeTypeFilter,
       folderWorkflowCounters: {},
-      initialFolderIds: addedFoldersForNextRun,
+      initialFolderIds: [...addedFoldersForNextRun],
     });
-  } else if (removedFoldersForNextRun.length > 0) {
+  } else if (removedFoldersForNextRun.size > 0) {
     // Only removals, just re-launch GC to clean them up
     await executeChild(googleDriveGarbageCollectorWorkflow, {
       workflowId: googleDriveGarbageCollectorWorkflowId(connectorId),
