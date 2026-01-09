@@ -155,17 +155,13 @@ The `front` project requires a Postgres database to run tests. dust-hive provide
 
 ### How it works
 
-- `dust-hive up` starts a shared Postgres container on port **5433** (separate from per-env Postgres)
+- A shared Postgres container runs on port **5433** (started by `dust-hive up`)
 - Each environment gets its own test database: `dust_front_test_{env_name}`
-- The database is created automatically when you `spawn` an environment
-- `TEST_FRONT_DATABASE_URI` is set in each environment's `env.sh`
+- `TEST_FRONT_DATABASE_URI` is already set in each environment's `env.sh`
 
 ### Running front tests in a cold environment
 
 ```bash
-# Ensure dust-hive managed services are running (includes test postgres)
-dust-hive up
-
 # From any cold environment, run front tests directly
 cd front && npm test
 
@@ -176,7 +172,7 @@ cd front && npm test lib/resources/user_resource.test.ts
 cd front && npm test --reporter verbose path/to/test.test.ts
 ```
 
-**No need to warm the environment** - the shared test Postgres is always available when `dust-hive up` has been run.
+**No need to warm the environment** - the shared test Postgres is always available.
 
 ### Test database lifecycle
 
@@ -191,7 +187,7 @@ cd front && npm test --reporter verbose path/to/test.test.ts
 
 If front tests fail with database connection errors:
 1. Check if test postgres is running: `docker ps | grep dust-hive-test-postgres`
-2. If not, run `dust-hive up` or start it manually: `docker start dust-hive-test-postgres`
+2. If not running, start it: `docker start dust-hive-test-postgres`
 3. Verify the database exists: `docker exec dust-hive-test-postgres psql -U test -l`
 
 ## Services in Each Environment
