@@ -190,6 +190,7 @@ function createServer(
   server.tool(
     EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     "Modifies content within an Interactive Content file by substituting specified text segments. " +
+      "Each edit creates a new version of the Interactive Content file. " +
       "Performs single substitution by default, or multiple substitutions when " +
       "`expected_replacements` is defined. This function demands comprehensive contextual " +
       "information surrounding the target modification to ensure accurate targeting. " +
@@ -289,7 +290,8 @@ function createServer(
   );
   server.tool(
     REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-    "Reverts a Interactive Content file by canceling the edits and file renames in the last agent message.",
+    "Resets an Interactive Content file to its previous version. " +
+      "Each revert goes back one version in the file's history. ",
     {
       file_id: z
         .string()
@@ -311,12 +313,10 @@ function createServer(
           );
         }
 
-        const { conversation, agentConfiguration } =
-          agentLoopContext.runContext;
+        const { agentConfiguration } = agentLoopContext.runContext;
 
         const result = await revertClientExecutableFileChanges(auth, {
           fileId: file_id,
-          conversationId: conversation.id,
           revertedByAgentConfigurationId: agentConfiguration.sId,
         });
 
