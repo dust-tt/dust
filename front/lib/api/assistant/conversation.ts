@@ -1746,7 +1746,10 @@ async function isMessagesLimitReached(
   );
   // We let the user talk to all agents if any of the rate limiter answered "ok".
   // Subsequent calls to this function would block the user anyway.
-  const isLimitReached = remainingMentions.filter((r) => r > 0).length === 0;
+  // If remainingMentions is empty, don't block the call (user mention scenario).
+  const isLimitReached =
+    remainingMentions.length > 0 &&
+    remainingMentions.filter((r) => r > 0).length === 0;
   return {
     isLimitReached,
     limitType: isLimitReached ? "plan_message_limit_exceeded" : null,
