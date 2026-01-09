@@ -764,6 +764,7 @@ export const createAgentMessages = async (
           status: mentionRow.status,
           pictureUrl: configuration.pictureUrl,
           description: configuration.description,
+          dismissed: mentionRow.dismissed ?? false,
         };
       }
     })
