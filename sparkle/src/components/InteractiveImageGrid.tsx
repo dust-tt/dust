@@ -77,14 +77,27 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
               alt={image.alt}
               className="s-h-full s-w-full s-rounded-2xl s-object-cover"
             />
+            {/* Blur overlay with filename - hidden by default, shown on hover */}
             <div
               className={cn(
-                "s-absolute s-inset-0 s-bg-gradient-to-b",
-                "s-from-black/40 s-via-transparent s-to-black/40",
-                "s-opacity-0 s-transition-opacity s-duration-200",
+                "s-absolute s-inset-0 s-z-10",
+                "s-flex s-items-center s-justify-center",
+                "s-bg-primary-100/80 dark:s-bg-primary-100-night/80",
+                "s-backdrop-blur-sm",
+                "s-opacity-0 s-transition s-duration-200",
                 "group-hover/preview:s-opacity-100"
               )}
-            />
+            >
+              <span
+                className={cn(
+                  "s-max-w-[90%] s-truncate s-px-2 s-text-center",
+                  "s-text-sm s-font-medium",
+                  "s-text-foreground dark:s-text-foreground-night"
+                )}
+              >
+                {image.title}
+              </span>
+            </div>
             <div
               className={cn(
                 "s-absolute s-right-1 s-top-1 s-z-10 s-flex",
@@ -252,68 +265,74 @@ function InteractiveImageGrid({
           )}
         </div>
       </DialogTrigger>
-      <DialogContent className="s-w-auto s-max-w-[90vw] s-overflow-hidden s-p-0">
+      <DialogContent className="s-w-auto s-max-w-[90vw] s-overflow-hidden s-p-3">
         {currentImageIndex !== null && (
-          <div className="s-relative s-flex s-flex-col">
-            {/* Top bar with close button */}
-            <div className="s-flex s-h-10 s-flex-shrink-0 s-items-center s-justify-end s-px-3 s-pt-2">
-              <DialogClose asChild>
-                <Button variant="outline" size="sm" icon={XMarkIcon} />
-              </DialogClose>
-            </div>
+          <div className="s-relative s-flex s-items-center s-justify-center s-gap-2">
+            {/* Previous button */}
+            {images.length > 1 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={ChevronLeftIcon}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePrevious();
+                }}
+              />
+            )}
 
-            {/* Main content */}
-            <div className="s-flex s-items-center s-justify-center s-gap-2 s-px-3 s-pb-2">
-              {images.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon={ChevronLeftIcon}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePrevious();
-                  }}
-                />
-              )}
+            {/* Image container with overlay buttons */}
+            <div className="s-relative">
               {images[currentImageIndex].isLoading ? (
                 <ImageLoadingState size="lg" />
               ) : (
-                <img
-                  src={images[currentImageIndex].imageUrl}
-                  alt={images[currentImageIndex].alt}
-                  className="s-max-h-[70vh] s-max-w-full s-rounded-lg s-object-contain"
-                  onLoad={() => setImageLoaded(true)}
-                />
-              )}
-              {images.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon={ChevronRightIcon}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleNext();
-                  }}
-                />
+                <>
+                  <img
+                    src={images[currentImageIndex].imageUrl}
+                    alt={images[currentImageIndex].alt}
+                    className="s-max-h-[70vh] s-max-w-full s-rounded-lg s-object-contain"
+                    onLoad={() => setImageLoaded(true)}
+                  />
+                  {/* Close button - top right of image */}
+                  <DialogClose asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={XMarkIcon}
+                      className="s-absolute s-right-2 s-top-2"
+                    />
+                  </DialogClose>
+                  {/* Download button - bottom right of image */}
+                  {imageLoaded && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={ArrowDownOnSquareIcon}
+                      tooltip="Download"
+                      className="s-absolute s-bottom-2 s-right-2"
+                      onClick={async () => {
+                        await handleDownload(
+                          images[currentImageIndex].downloadUrl,
+                          images[currentImageIndex].title
+                        );
+                      }}
+                    />
+                  )}
+                </>
               )}
             </div>
 
-            {/* Bottom controls */}
-            {!images[currentImageIndex].isLoading && imageLoaded && (
-              <div className="s-flex s-h-10 s-flex-shrink-0 s-items-center s-justify-end s-px-3 s-pb-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={ArrowDownOnSquareIcon}
-                  tooltip="Download"
-                  onClick={async () => {
-                    await handleDownload(
-                      images[currentImageIndex].downloadUrl,
-                      images[currentImageIndex].title
-                    );
-                  }}
-                />
-              </div>
+            {/* Next button */}
+            {images.length > 1 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={ChevronRightIcon}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNext();
+                }}
+              />
             )}
           </div>
         )}
