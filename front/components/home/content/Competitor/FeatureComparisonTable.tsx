@@ -2,7 +2,7 @@ import { CheckIcon, DashIcon, XMarkIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 
 import { Grid, H2 } from "@app/components/home/ContentComponents";
-import { classNames } from "@app/lib/utils";
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 
 import type { FeatureComparisonConfig, FeatureStatus } from "./types";
 
@@ -92,7 +92,7 @@ export function FeatureComparisonTable({
             {rows.map((row, index) => (
               <div
                 key={index}
-                className={classNames(
+                className={cn(
                   "grid grid-cols-1 md:grid-cols-3",
                   index !== rows.length - 1 && "border-b border-border"
                 )}
