@@ -536,7 +536,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
     const data = res._getJSONData();
     expect(data).toHaveProperty("skill");
     expect(data.skill.status).toBe("active");
-    expect(data.skill.authorId).toBe(requestUser.id);
+    expect(data.skill.editedBy).toBe(requestUser.id);
 
     const updatedSkill = await SkillResource.fetchById(
       adminAuth,
