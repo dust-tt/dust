@@ -47,6 +47,7 @@ const barVariants = cva(
 
 interface BarProps extends VariantProps<typeof barVariants> {
   title?: string;
+  subtitle?: React.ReactNode;
   tooltip?: string;
   leftActions?: React.ReactNode;
   rightActions?: React.ReactNode;
@@ -55,6 +56,7 @@ interface BarProps extends VariantProps<typeof barVariants> {
 
 export function Bar({
   title,
+  subtitle,
   tooltip,
   leftActions,
   rightActions,
@@ -75,11 +77,19 @@ export function Bar({
           {tooltip ? (
             <Tooltip
               tooltipTriggerAsChild
-              trigger={<span>{title}</span>}
+              trigger={
+                <>
+                  <span>{title}</span>
+                  {subtitle}
+                </>
+              }
               label={tooltip}
             />
           ) : (
-            title
+            <>
+              <span>{title}</span>
+              {subtitle}
+            </>
           )}
         </div>
       )}
@@ -173,6 +183,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
 // BarHeader component - convenience wrapper for top-positioned Bar
 interface BarHeaderProps {
   title: string;
+  subtitle?: React.ReactNode;
   tooltip?: string;
   leftActions?: React.ReactNode;
   rightActions?: React.ReactNode;
@@ -182,6 +193,7 @@ interface BarHeaderProps {
 
 export function BarHeader({
   title,
+  subtitle,
   tooltip,
   leftActions,
   rightActions,
@@ -192,6 +204,7 @@ export function BarHeader({
     <Bar
       position="top"
       title={title}
+      subtitle={subtitle}
       tooltip={tooltip}
       leftActions={leftActions}
       rightActions={rightActions}
