@@ -168,3 +168,92 @@ WorkspaceModel.hasMany(UserMetadataModel, {
 UserMetadataModel.belongsTo(WorkspaceModel, {
   foreignKey: { name: "workspaceId", allowNull: true },
 });
+
+/**
+ * Stores user approvals for MCP tools.
+ *
+ * Supports two approval types:
+ * - Low stake: Tool-level approval (agentId = NULL, argsAndValues = NULL)
+ * - Medium stake: Per-agent, per-argument-values approval (agentId and argsAndValues set)
+ */
+export class UserToolApprovalModel extends BaseModel<UserToolApprovalModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare userId: ForeignKey<UserModel["id"]>;
+  declare workspaceId: ForeignKey<WorkspaceModel["id"]>;
+  declare mcpServerId: string;
+  declare toolName: string;
+  declare agentId: string | null;
+  declare argsAndValues: Record<string, string> | null;
+}
+
+UserToolApprovalModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    mcpServerId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    toolName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    agentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    argsAndValues: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+    },
+  },
+  {
+    modelName: "user_tool_approval",
+    sequelize: frontSequelize,
+    indexes: [
+      { fields: ["workspaceId"], concurrently: true },
+      { fields: ["userId"], concurrently: true },
+      {
+        fields: [
+          "workspaceId",
+          "userId",
+          "mcpServerId",
+          "toolName",
+          "agentId",
+          "argsAndValues",
+        ],
+        unique: true,
+        name: "user_tool_approvals_unique_idx",
+      },
+    ],
+  }
+);
+
+UserModel.hasMany(UserToolApprovalModel, {
+  foreignKey: { name: "userId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+
+WorkspaceModel.hasMany(UserToolApprovalModel, {
+  foreignKey: { name: "workspaceId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+
+UserToolApprovalModel.belongsTo(UserModel, {
+  foreignKey: { name: "userId", allowNull: false },
+});
+
+UserToolApprovalModel.belongsTo(WorkspaceModel, {
+  foreignKey: { name: "workspaceId", allowNull: false },
+});

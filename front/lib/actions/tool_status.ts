@@ -119,6 +119,16 @@ export async function setUserAlwaysApprovedTool({
     getToolsValidationKey(mcpServerId),
     functionCallName
   );
+
+  /**
+    await user.createToolApproval(auth, {
+      mcpServerId,
+      toolName: functionCallName,
+      agentId: null,
+      argsAndValues: null,
+    });
+  }
+  */
 }
 
 export async function hasUserAlwaysApprovedTool({
@@ -254,13 +264,23 @@ export async function setUserApprovedToolWithArgs({
     toolInputs
   );
 
-  // If no approval-holding args have values, don't store anything
+  // If no approval-holding args have values, don't store anything.
   if (Object.keys(argValues).length === 0) {
     return new Ok(undefined);
   }
 
+  // Write to legacy metadata storage.
   const key = buildArgApprovalKey(mcpServerId, toolName, argValues);
   await user.upsertMetadataArray(key, agentId);
+
+  /**
+    await user.createToolApproval(auth, {
+      mcpServerId,
+      toolName,
+      agentId,
+      argsAndValues: argValues,
+    });
+  */
 
   return new Ok(undefined);
 }

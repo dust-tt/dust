@@ -14,6 +14,7 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import {
   UserMetadataModel,
   UserModel,
+  UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { searchUsers } from "@app/lib/user_search/search";
@@ -497,6 +498,51 @@ export class UserResource extends BaseResource<UserModel> {
         .filter((name) => name.length > 0);
 
       return { mcpServerId, toolNames };
+    });
+  }
+
+  /**
+   * Create a tool approval for this user.
+   *
+   * For low stake (tool-level): pass agentId=null and argsAndValues=null
+   * For medium stake (per-agent, per-args): pass agentId and argsAndValues
+   *
+   * Uses upsert to avoid duplicates.
+   */
+  async createToolApproval(
+    auth: Authenticator,
+    {
+      mcpServerId,
+      toolName,
+      agentId = null,
+      argsAndValues = null,
+    }: {
+      mcpServerId: string;
+      toolName: string;
+      agentId?: string | null;
+      argsAndValues?: Record<string, string> | null;
+    }
+  ): Promise<void> {
+    // Sort keys to ensure consistent JSONB storage for unique constraint.
+    const sortedArgsAndValues = argsAndValues
+      ? Object.keys(argsAndValues)
+          .sort()
+          .reduce(
+            (acc, key) => {
+              acc[key] = argsAndValues[key];
+              return acc;
+            },
+            {} as Record<string, string>
+          )
+      : null;
+
+    await UserToolApprovalModel.upsert({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      userId: this.id,
+      mcpServerId,
+      toolName,
+      agentId,
+      argsAndValues: sortedArgsAndValues,
     });
   }
 
