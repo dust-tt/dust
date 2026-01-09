@@ -151,31 +151,6 @@ export async function agentLoopWorkflow({
   });
 
   try {
-    // If conversation title is not set, launch a child workflow to generate the conversation title in
-    // the background. If a workflow with the same ID is already running, ignore the error and
-    // continue. Do not wait for the child workflow to complete at this point.
-    // This is to avoid blocking the main workflow.
-    if (!agentLoopArgs.conversationTitle) {
-      try {
-        childWorkflowHandle = await startChild(
-          agentLoopConversationTitleWorkflow,
-          {
-            workflowId: makeAgentLoopConversationTitleWorkflowId(
-              authType,
-              agentLoopArgs
-            ),
-            searchAttributes: parentSearchAttributes,
-            args: [{ authType, agentLoopArgs }],
-            memo,
-          }
-        );
-      } catch (err) {
-        if (!(err instanceof WorkflowExecutionAlreadyStartedError)) {
-          throw err;
-        }
-      }
-    }
-
     const { agentMessageId, conversationId } = agentLoopArgs;
 
     await executionScope.run(async () => {
@@ -219,6 +194,30 @@ export async function agentLoopWorkflow({
           step: currentStep,
           stepStartTime,
         });
+
+        // After the first step completes, launch title generation in the background.
+        // We wait until the first step so the agent has at least one response in the database,
+        // otherwise the title model would only see the user's question without context.
+        if (i === startStep && !agentLoopArgs.conversationTitle) {
+          try {
+            childWorkflowHandle = await startChild(
+              agentLoopConversationTitleWorkflow,
+              {
+                workflowId: makeAgentLoopConversationTitleWorkflowId(
+                  authType,
+                  agentLoopArgs
+                ),
+                searchAttributes: parentSearchAttributes,
+                args: [{ authType, agentLoopArgs }],
+                memo,
+              }
+            );
+          } catch (err) {
+            if (!(err instanceof WorkflowExecutionAlreadyStartedError)) {
+              throw err;
+            }
+          }
+        }
 
         if (!shouldContinue) {
           break;

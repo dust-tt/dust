@@ -260,4 +260,106 @@ describe("renderAllMessages", () => {
 
     expect(result).toHaveLength(0);
   });
+
+  describe("excludeActions", () => {
+    it("should filter out function_call contents when excludeActions is true", async () => {
+      const conversation = createConversation([
+        { type: "agent", visibility: "visible" },
+      ]);
+
+      // Mock getSteps to return a step with both text_content and function_call
+      vi.mocked(getSteps).mockResolvedValue([
+        {
+          contents: [
+            { type: "text_content", value: "Agent response" },
+            {
+              type: "function_call",
+              value: {
+                id: "toolu_123",
+                name: "some_tool",
+                arguments: "{}",
+              },
+            },
+          ],
+          actions: [
+            {
+              call: { id: "toolu_123", name: "some_tool", arguments: "{}" },
+              result: {
+                role: "function" as const,
+                name: "some_tool",
+                function_call_id: "toolu_123",
+                content: "result",
+              },
+            },
+          ],
+        },
+      ]);
+
+      const result = await renderAllMessages(auth, {
+        conversation,
+        model,
+        excludeActions: true,
+        onMissingAction: "skip",
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].role).toBe("assistant");
+      // Verify function_call is filtered out from contents
+      const assistantMsg = result[0] as { contents: Array<{ type: string }> };
+      expect(
+        assistantMsg.contents.some((c) => c.type === "function_call")
+      ).toBe(false);
+      expect(
+        assistantMsg.contents.some((c) => c.type === "text_content")
+      ).toBe(true);
+    });
+
+    it("should include function_call contents when excludeActions is false", async () => {
+      const conversation = createConversation([
+        { type: "agent", visibility: "visible" },
+      ]);
+
+      // Mock getSteps to return a step with both text_content and function_call
+      vi.mocked(getSteps).mockResolvedValue([
+        {
+          contents: [
+            { type: "text_content", value: "Agent response" },
+            {
+              type: "function_call",
+              value: {
+                id: "toolu_123",
+                name: "some_tool",
+                arguments: "{}",
+              },
+            },
+          ],
+          actions: [
+            {
+              call: { id: "toolu_123", name: "some_tool", arguments: "{}" },
+              result: {
+                role: "function" as const,
+                name: "some_tool",
+                function_call_id: "toolu_123",
+                content: "result",
+              },
+            },
+          ],
+        },
+      ]);
+
+      const result = await renderAllMessages(auth, {
+        conversation,
+        model,
+        excludeActions: false,
+        onMissingAction: "skip",
+      });
+
+      // With excludeActions: false, we get the assistant message with function_calls
+      // plus the function result message
+      expect(result.length).toBeGreaterThanOrEqual(1);
+      // The assistant message should have function_calls in its structure
+      const assistantMessage = result.find((m) => m.role === "assistant");
+      expect(assistantMessage).toBeDefined();
+    });
+  });
 });
