@@ -77,8 +77,8 @@ dust-hive forward status
 ### Managed Services (Global)
 | Command | Description |
 |---------|-------------|
-| `dust-hive up [-a]` | Start temporal + sync + main session |
-| `dust-hive down [-f]` | Stop everything (all envs, temporal, sessions) |
+| `dust-hive up [-a]` | Start temporal + test postgres + sync + main session |
+| `dust-hive down [-f]` | Stop everything (all envs, temporal, test postgres, sessions) |
 | `dust-hive temporal start/stop/status` | Control temporal server |
 
 ### Environment Lifecycle
@@ -148,6 +148,51 @@ cd oauth && cargo check && cargo clippy
 curl -sf http://localhost:10000/api/healthz  # front
 curl -sf http://localhost:10001/             # core
 ```
+
+## Running Tests in Cold Environments
+
+dust-hive provides a **shared test Postgres** container that allows running tests without warming up the full environment. This is especially useful for CI agents and quick test runs.
+
+### How it works
+
+- `dust-hive up` starts a shared Postgres container on port **5433** (separate from per-env Postgres)
+- Each environment gets its own test database: `dust_front_test_{env_name}`
+- The database is created automatically when you `spawn` an environment
+- `TEST_FRONT_DATABASE_URI` is set in each environment's `env.sh`
+
+### Running tests in a cold environment
+
+```bash
+# Ensure dust-hive managed services are running (includes test postgres)
+dust-hive up
+
+# From any cold environment, just run tests directly
+cd front && npm test
+
+# Run specific test file
+cd front && npm test lib/resources/user_resource.test.ts
+
+# Run with verbose output
+cd front && npm test --reporter verbose path/to/test.test.ts
+```
+
+**No need to warm the environment** - the shared test Postgres is always available when `dust-hive up` has been run.
+
+### Test database lifecycle
+
+| Action | Test Database |
+|--------|---------------|
+| `dust-hive spawn` | Created (`dust_front_test_{env_name}`) |
+| `dust-hive destroy` | Dropped |
+| `dust-hive up` | Shared Postgres started |
+| `dust-hive down` | Shared Postgres stopped |
+
+### Troubleshooting tests
+
+If tests fail with database connection errors:
+1. Check if test postgres is running: `docker ps | grep dust-hive-test-postgres`
+2. If not, run `dust-hive up` or start it manually: `docker start dust-hive-test-postgres`
+3. Verify the database exists: `docker exec dust-hive-test-postgres psql -U test -l`
 
 ## Services in Each Environment
 

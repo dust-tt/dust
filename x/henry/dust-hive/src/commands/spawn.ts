@@ -17,6 +17,7 @@ import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { getBranchName, loadSettings } from "../lib/settings";
 import { installAllDependencies } from "../lib/setup";
+import { createTestDatabase, isTestPostgresRunning } from "../lib/test-postgres";
 import { cleanupPartialEnvironment, createWorktree, getMainRepoPath } from "../lib/worktree";
 import { openCommand } from "./open";
 import { warmCommand } from "./warm";
@@ -51,6 +52,23 @@ async function promptForName(): Promise<string> {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+// Try to create test database, logging result (non-fatal if it fails)
+async function tryCreateTestDatabase(name: string): Promise<void> {
+  if (!(await isTestPostgresRunning())) {
+    logger.info("Test Postgres not running, skipping test database creation");
+    logger.info("Run 'dust-hive up' to start it, then 'cd front && npm test' will work");
+    return;
+  }
+
+  logger.step("Creating test database...");
+  const result = await createTestDatabase(name);
+  if (result.success) {
+    logger.success("Test database created");
+  } else {
+    logger.warn(`Could not create test database: ${result.error}`);
+  }
 }
 
 // Phase 1: Create environment files
@@ -210,6 +228,9 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   // Phase 1: Setup environment files
   const filesResult = await setupEnvironmentFiles(metadata, ports);
   if (!filesResult.ok) return filesResult;
+
+  // Phase 1.5: Create test database (if test postgres is running)
+  await tryCreateTestDatabase(name);
 
   // Phase 2: Setup worktree
   const worktreeResult = await setupWorktree(metadata, worktreePath, workspaceBranch);
