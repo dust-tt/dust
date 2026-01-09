@@ -690,7 +690,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_message_splitting"
   | "slideshow"
   | "usage_data_api"
-  | "vanta_tool"
   | "xai_feature"
 >();
 

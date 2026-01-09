@@ -1412,11 +1412,9 @@ export const INTERNAL_MCP_SERVERS = {
   vanta: {
     id: 44,
     availability: "manual",
-    allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("vanta_tool");
-    },
-    isPreview: true,
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       list_tests: "never_ask",
       list_test_entities: "never_ask",
@@ -1446,7 +1444,7 @@ export const INTERNAL_MCP_SERVERS = {
         supported_use_cases: ["platform_actions"] as const,
       },
       icon: "VantaLogo",
-      documentationUrl: null,
+      documentationUrl: "https://docs.dust.tt/docs/vanta",
       instructions: null,
     },
   },
