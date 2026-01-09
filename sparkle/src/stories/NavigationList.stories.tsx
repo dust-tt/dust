@@ -23,6 +23,7 @@ import {
   SpaceClosedIcon,
   CheckDoubleIcon,
 } from "../index_with_tw_base";
+import type { NavigationListItemStatus } from "../components/NavigationList";
 
 const meta = {
   title: "Modules/NavigationList",
