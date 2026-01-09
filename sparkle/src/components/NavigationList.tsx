@@ -130,6 +130,7 @@ const NavigationListItem = React.forwardRef<
 
     const shouldShowStatusDot = status !== "idle";
     const counterValue = count && count > 0 ? count : undefined;
+    const shouldShowCounter = counterValue !== undefined;
 
     return (
       <div
@@ -172,7 +173,7 @@ const NavigationListItem = React.forwardRef<
             )}
             {shouldShowCounter && (
               <Counter
-                value={status as number}
+                value={counterValue}
                 size="xs"
                 variant="outline"
                 className={cn(
