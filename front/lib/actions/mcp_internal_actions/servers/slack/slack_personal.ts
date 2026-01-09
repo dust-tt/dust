@@ -75,7 +75,8 @@ const SLACK_TOOL_LOG_NAME = "slack";
 
 export const slackSearch = async (
   query: string,
-  accessToken: string
+  accessToken: string,
+  includeBots = false
 ): Promise<SlackSearchMatch[]> => {
   // Try assistant.search.context first (requires special token and Slack AI enabled).
   try {
@@ -85,6 +86,7 @@ export const slackSearch = async (
       sort_dir: "desc",
       limit: SLACK_SEARCH_ACTION_NUM_RESULTS.toString(),
       channel_types: "public_channel,private_channel,mpim,im",
+      include_bots: includeBots.toString(),
     });
 
     // eslint-disable-next-line no-restricted-globals
@@ -263,6 +265,12 @@ const buildCommonSearchParams = () => ({
     .describe(
       "Narrow the search to messages mentioning specific users ids (optional)"
     ),
+  includeBots: z
+    .boolean()
+    .optional()
+    .describe(
+      "Whether the results should include bots (optional, default: false)"
+    ),
   relativeTimeFrame: z
     .string()
     .regex(/^(all|\d+[hdwmy])$/)
@@ -433,6 +441,7 @@ async function createServer(
             usersFrom,
             usersTo,
             usersMentioned,
+            includeBots,
             relativeTimeFrame,
             channels,
           },
@@ -474,7 +483,7 @@ async function createServer(
                   usersMentioned,
                 });
 
-                return slackSearch(query, accessToken);
+                return slackSearch(query, accessToken, includeBots);
               },
               { concurrency: 3 }
             );
@@ -561,6 +570,7 @@ async function createServer(
             usersFrom,
             usersTo,
             usersMentioned,
+            includeBots,
             relativeTimeFrame,
             channels,
           },
@@ -588,7 +598,7 @@ async function createServer(
               usersMentioned,
             });
 
-            const matches = await slackSearch(searchQuery, accessToken);
+            const matches = await slackSearch(searchQuery, accessToken, includeBots);
 
             if (matches.length === 0) {
               return new Ok([
