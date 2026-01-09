@@ -146,6 +146,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             <UserMessage
               citations={citations}
               conversationId={context.conversationId}
+              enableReactions={context.enableReactions}
               currentUserId={context.user.sId}
               isLastMessage={!nextData}
               message={data}
