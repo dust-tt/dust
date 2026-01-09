@@ -51,11 +51,11 @@ interface ImagePreviewProps {
   };
   onClick: () => void;
   onDownload: (e: React.MouseEvent) => Promise<void>;
-  onRemove?: (e: React.MouseEvent) => void;
+  onClose?: (e: React.MouseEvent) => void;
 }
 
 const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
-  ({ image, onClick, onDownload, onRemove }, ref) => {
+  ({ image, onClick, onDownload, onClose }, ref) => {
     return (
       <div
         ref={ref}
@@ -105,17 +105,17 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
                 "group-hover/preview:s-opacity-100"
               )}
             >
-              {onRemove && (
+              {onClose && (
                 <Button
                   variant="ghost"
                   size="xs"
                   icon={XMarkIcon}
                   className="s-text-white dark:s-text-white"
                   tooltip="Remove"
-                  onClick={onRemove}
+                  onClick={onClose}
                 />
               )}
-              {!onRemove && (
+              {!onClose && (
                 <Button
                   variant="ghost"
                   size="xs"
@@ -152,14 +152,14 @@ interface InteractiveImageGridProps {
     isLoading?: boolean;
     title: string;
   }[];
-  onRemove?: () => void;
+  onClose?: () => void;
   size?: InteractiveImageGridSize;
 }
 
 function InteractiveImageGrid({
   className,
   images,
-  onRemove,
+  onClose,
   size = "lg",
 }: InteractiveImageGridProps) {
   const [currentImageIndex, setCurrentImageIndex] = React.useState<
@@ -236,11 +236,11 @@ function InteractiveImageGrid({
                   e.stopPropagation();
                   await handleDownload(images[0].downloadUrl, images[0].title);
                 }}
-                onRemove={
-                  onRemove
+                onClose={
+                  onClose
                     ? (e) => {
                         e.stopPropagation();
-                        onRemove();
+                        onClose();
                       }
                     : undefined
                 }
@@ -265,7 +265,7 @@ function InteractiveImageGrid({
           )}
         </div>
       </DialogTrigger>
-      <DialogContent className="s-w-auto s-max-w-[90vw] s-overflow-hidden s-p-3">
+      <DialogContent size="xl" className="s-max-w-[90vw] s-overflow-hidden s-p-3">
         {currentImageIndex !== null && (
           <div className="s-relative s-flex s-items-center s-justify-center s-gap-2">
             {/* Previous button */}
@@ -290,7 +290,7 @@ function InteractiveImageGrid({
                   <img
                     src={images[currentImageIndex].imageUrl}
                     alt={images[currentImageIndex].alt}
-                    className="s-max-h-[70vh] s-max-w-full s-rounded-lg s-object-contain"
+                    className="s-max-h-full s-max-w-full s-rounded-lg s-object-contain"
                     onLoad={() => setImageLoaded(true)}
                   />
                   {/* Close button - top right of image */}
