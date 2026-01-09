@@ -1,4 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
+import { isFreePlan } from "@app/lib/plans/plan_codes";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import {
   expireRateLimiterKey,
   getRateLimiterCount,
@@ -54,6 +56,12 @@ export async function getMessageUsageCount(auth: Authenticator): Promise<{
     return { count: 0, limit: -1 };
   }
 
+  // For free plans, don't multiply by activeSeats to prevent increased limits with more users.
+  const activeSeats = await countActiveSeatsInWorkspaceCached(workspace.sId);
+  const effectiveLimit = isFreePlan(plan.code)
+    ? maxMessages
+    : maxMessages * activeSeats;
+
   const result = await getRateLimiterCount({
     key: makeAgentMentionsRateLimitKeyForWorkspace(
       workspace,
@@ -64,8 +72,8 @@ export async function getMessageUsageCount(auth: Authenticator): Promise<{
 
   if (result.isErr()) {
     // Return 0 on error to avoid blocking the UI
-    return { count: 0, limit: maxMessages };
+    return { count: 0, limit: effectiveLimit };
   }
 
-  return { count: result.value, limit: maxMessages };
+  return { count: result.value, limit: effectiveLimit };
 }
