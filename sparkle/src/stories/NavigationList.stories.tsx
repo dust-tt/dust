@@ -1,7 +1,6 @@
 import type { Meta } from "@storybook/react";
 import React, { useEffect, useState } from "react";
 
-import { ActionInboxIcon } from "@sparkle/icons/actions";
 import {
   Avatar,
   Button,
@@ -17,18 +16,14 @@ import {
   PencilSquareIcon,
   TrashIcon,
   MoreIcon,
-  InboxIcon,
-  CollapsibleContent,
-  Collapsible,
-  CollapsibleTrigger,
   PlusIcon,
   NavigationListCompactLabel,
   ChatBubbleLeftRightIcon,
-  CheckIcon,
   SpaceOpenIcon,
   SpaceClosedIcon,
   CheckDoubleIcon,
 } from "../index_with_tw_base";
+import { NavigationListItemStatus } from "../components/NavigationList";
 
 const meta = {
   title: "Modules/NavigationList",
@@ -97,15 +92,15 @@ export const Demo = () => {
                 // Add status based on index for demonstration
                 const getStatus = (idx: number) => {
                   if (idx % 7 === 0) {
-                    return "error";
+                    return NavigationListItemStatus.Error;
                   }
                   if (idx % 5 === 0) {
-                    return "unread";
+                    return NavigationListItemStatus.Unread;
                   }
                   if (idx % 3 === 0) {
-                    return "blocked";
+                    return NavigationListItemStatus.Blocked;
                   }
-                  return "idle";
+                  return NavigationListItemStatus.Idle;
                 };
                 return (
                   <NavigationListItem
@@ -140,15 +135,15 @@ export const Demo = () => {
                 // Add status based on index for demonstration.
                 const getStatus = (idx: number) => {
                   if (idx % 7 === 0) {
-                    return "error";
+                    return NavigationListItemStatus.Error;
                   }
                   if (idx % 5 === 0) {
-                    return "unread";
+                    return NavigationListItemStatus.Unread;
                   }
                   if (idx % 3 === 0) {
-                    return "blocked";
+                    return NavigationListItemStatus.Blocked;
                   }
-                  return "idle";
+                  return NavigationListItemStatus.Idle;
                 };
                 return (
                   <NavigationListItem
@@ -248,9 +243,14 @@ export const CollapsibleSection = () => {
           }
         >
           {getRandomTitles(6).map((title, index) => {
-            const statuses: Array<
-              "idle" | "unread" | "blocked" | "error" | number
-            > = ["idle", "unread", "blocked", "error", 5, 12];
+            const statuses: Array<NavigationListItemStatus | number> = [
+              NavigationListItemStatus.Idle,
+              NavigationListItemStatus.Unread,
+              NavigationListItemStatus.Blocked,
+              NavigationListItemStatus.Error,
+              5,
+              12,
+            ];
             return (
               <NavigationListItem
                 key={index}
@@ -373,7 +373,7 @@ export const CollapsibleSection = () => {
           </NavigationListCollapsibleSection>
           <NavigationListCollapsibleSection
             label="Conversations"
-            type="collapse"
+            type="static"
             defaultOpen={true}
             action={
               <>
