@@ -436,7 +436,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
     if (type === "collapseAndScroll") {
       return (
         <Collapsible ref={ref} className={className} {...collapsibleProps}>
-          <CollapsibleTrigger asChild>{labelElement}</CollapsibleTrigger>
+          <CollapsibleTrigger hideChevron>{labelElement}</CollapsibleTrigger>
           <CollapsibleContent>
             <ScrollArea>
               <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
@@ -450,7 +450,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
     // type === "collapse" (default collapsible behavior)
     return (
       <Collapsible ref={ref} className={className} {...collapsibleProps}>
-        <CollapsibleTrigger asChild>{labelElement}</CollapsibleTrigger>
+        <CollapsibleTrigger hideChevron>{labelElement}</CollapsibleTrigger>
         <CollapsibleContent>
           <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
         </CollapsibleContent>
