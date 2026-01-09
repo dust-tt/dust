@@ -21,7 +21,10 @@ interface FAQItemComponentProps {
   defaultOpen?: boolean;
 }
 
-function FAQItemComponent({ item, defaultOpen = false }: FAQItemComponentProps) {
+function FAQItemComponent({
+  item,
+  defaultOpen = false,
+}: FAQItemComponentProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
