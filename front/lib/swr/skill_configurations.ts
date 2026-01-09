@@ -127,6 +127,12 @@ export function useArchiveSkill({
       status: "active",
       disabled: true,
     });
+  const { mutateSkillsWithRelations: mutateSuggestedSkills } =
+    useSkillsWithRelations({
+      owner,
+      status: "suggested",
+      disabled: true,
+    });
 
   const doArchive = async () => {
     if (!skill.sId) {
@@ -139,6 +145,7 @@ export function useArchiveSkill({
     if (res.ok) {
       void mutateArchivedSkills();
       void mutateActiveSkills();
+      void mutateSuggestedSkills();
 
       sendNotification({
         type: "success",
