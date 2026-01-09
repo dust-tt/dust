@@ -50,7 +50,7 @@ export function ChartContainer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   return (
     <>
-      <div>
+      <div className="observability-chart-container">
         <div className="flex items-center justify-between">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-base font-medium text-foreground dark:text-foreground-night">
@@ -101,7 +101,10 @@ export function ChartContainer({
       </div>
       {isAllowFullScreen && (
         <Sheet open={isFullscreen} onOpenChange={setIsFullscreen}>
-          <SheetContent size="xl" className="max-w-[75%]">
+          <SheetContent
+            size="xl"
+            className="observability-chart-container max-w-[75%]"
+          >
             <SheetHeader>
               <SheetTitle>{title}</SheetTitle>
             </SheetHeader>
