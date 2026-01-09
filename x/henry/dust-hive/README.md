@@ -117,9 +117,9 @@ dust-hive down
 |---------|-------------|
 | `spawn [NAME] [--no-open] [--no-attach] [--warm] [--wait]` | Create new environment |
 | `warm [NAME] [--no-forward] [--force-ports]` | Start docker + all services |
-| `cool [NAME]` | Stop services, keep SDK watch |
+| `cool [NAME]` | Pause services + docker, keep SDK (fast restart) |
 | `start [NAME]` | Resume stopped environment (when NAME provided) |
-| `stop [NAME]` | Full stop of environment (when NAME provided) |
+| `stop [NAME]` | Full stop + remove docker containers |
 | `destroy NAME [--force]` | Remove environment completely |
 | `restart [NAME] SERVICE` | Restart a single service |
 | `open [NAME]` | Open zellij terminal session |

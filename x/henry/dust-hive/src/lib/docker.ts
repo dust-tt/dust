@@ -118,7 +118,35 @@ export async function startDocker(env: Environment): Promise<void> {
   logger.success("Docker containers started");
 }
 
-// Stop docker-compose containers
+// Pause docker-compose containers (stop without removing)
+// Returns true if paused successfully, false if docker-compose failed
+// Use this for cool operations - faster restart since containers don't need to be recreated
+export async function pauseDocker(envName: string): Promise<boolean> {
+  logger.step("Pausing Docker containers...");
+
+  const projectName = getDockerProjectName(envName);
+  const overridePath = getDockerOverridePath(envName);
+  const basePath = getDockerComposePath();
+
+  const args = ["docker", "compose", "-f", basePath, "-f", overridePath, "-p", projectName, "stop"];
+
+  const proc = Bun.spawn(args, {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  await proc.exited;
+
+  if (proc.exitCode === 0) {
+    logger.success("Docker containers paused");
+    return true;
+  }
+
+  logger.warn("Docker containers may not have paused cleanly");
+  return false;
+}
+
+// Stop docker-compose containers (stop and remove)
 // Returns true if stopped successfully, false if docker-compose failed
 export async function stopDocker(
   envName: string,
@@ -146,7 +174,7 @@ export async function stopDocker(
   if (proc.exitCode === 0) {
     const msg = options.removeVolumes
       ? "Docker containers and volumes removed"
-      : "Docker containers stopped";
+      : "Docker containers stopped and removed";
     logger.success(msg);
     return true;
   }

@@ -1,5 +1,5 @@
 import { withEnvironment } from "../lib/commands";
-import { stopDocker } from "../lib/docker";
+import { pauseDocker } from "../lib/docker";
 import { logger } from "../lib/logger";
 import { stopService } from "../lib/process";
 import { CommandError, Err, Ok } from "../lib/result";
@@ -26,9 +26,9 @@ export const coolCommand = withEnvironment("cool", async (env) => {
   }
   logger.success("Services stopped");
 
-  // Stop Docker
-  const dockerStopped = await stopDocker(env.name);
-  if (!dockerStopped) {
+  // Pause Docker (stop without removing containers for faster restart)
+  const dockerPaused = await pauseDocker(env.name);
+  if (!dockerPaused) {
     logger.warn("Docker containers may need manual cleanup");
   }
 
