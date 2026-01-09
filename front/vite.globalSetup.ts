@@ -32,6 +32,8 @@ export default async function setup() {
     DUST_US_URL: "http://fake-url",
     LOG_LEVEL: process.env.TEST_LOG_LEVEL ?? "silent",
     VIZ_JWT_SECRET: "viz-secret-for-tests",
+    DUST_APPS_HELPER_DATASOURCE_VIEW_ID: "dsv_xx",
+    DUST_APPS_WORKSPACE_ID: "xx",
     REGION: "us-central1",
   };
 
