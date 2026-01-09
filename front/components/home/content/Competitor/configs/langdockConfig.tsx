@@ -6,7 +6,7 @@ export const langdockConfig: CompetitorPageConfig = {
   competitorLogo: "/static/landing/compare/langdock.svg",
 
   seo: {
-    title: "Langdock Alternative for Enterprise AI Agents | Dust",
+    title: "Best Langdock Alternative for Enterprise AI Agents | Dust",
     description:
       "Compare Dust to Langdock. Superior semantic search, AI everywhere you work, real-time collaboration, and predictable pricing. Trusted by Clay, Vanta, Qonto. 14-day free trial.",
   },
@@ -210,7 +210,7 @@ export const langdockConfig: CompetitorPageConfig = {
       {
         question: "What about semantic search vs. Langdock's text search?",
         answer:
-          "This is Dust's biggest differentiator. Langdock uses basic text search through document titles and content—you need exact keywords. Dust uses semantic RAG that understands context, intent, and meaning. Independent users concluded: \"Dust's killer feature is embedded RAG-retrieval database.\"",
+          'This is Dust\'s biggest differentiator. Langdock uses basic text search through document titles and content—you need exact keywords. Dust uses semantic RAG that understands context, intent, and meaning. Independent users concluded: "Dust\'s killer feature is embedded RAG-retrieval database."',
       },
       {
         question: "Does Dust support visual workflow automation like Langdock?",
