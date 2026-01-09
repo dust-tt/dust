@@ -51,6 +51,22 @@ const logger = mainLogger.child(
 const ADMIN_GROUP_NAME = "dust-admins";
 const BUILDER_GROUP_NAME = "dust-builders";
 
+const SCIM_ENTERPRISE_USER_SCHEMA =
+  "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User";
+
+const SCIM_ATTRIBUTES_TO_SYNC = [
+  "department",
+  "division",
+  "organization",
+] as const;
+type ScimAttributeKey = (typeof SCIM_ATTRIBUTES_TO_SYNC)[number];
+
+const SCIM_METADATA_KEY_PREFIX = "scim:";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 /**
  * Verify if workspace exist, if it does will call the callback with the found workspace.
  * Otherwise will return undefined
@@ -680,6 +696,104 @@ async function handleUserRemovedFromGroup(
   });
 }
 
+// Extracts SCIM Enterprise User extension attributes from DirectoryUser.
+// Checks both rawAttributes (SCIM extension schema) and customAttributes (mapped attributes).
+function extractScimAttributes(
+  directoryUser: DirectoryUser
+): Record<ScimAttributeKey, string | null> {
+  const result: Record<ScimAttributeKey, string | null> = {
+    department: null,
+    division: null,
+    organization: null,
+  };
+
+  const { rawAttributes } = directoryUser;
+  if (isRecord(rawAttributes)) {
+    const enterpriseExtension = rawAttributes[SCIM_ENTERPRISE_USER_SCHEMA];
+    if (isRecord(enterpriseExtension)) {
+      for (const attr of SCIM_ATTRIBUTES_TO_SYNC) {
+        const value = enterpriseExtension[attr];
+        if (typeof value === "string" && value.trim() !== "") {
+          result[attr] = value.trim();
+        }
+      }
+    }
+  }
+
+  // Fallback to customAttributes if not in rawAttributes.
+  const { customAttributes } = directoryUser;
+  if (isRecord(customAttributes)) {
+    for (const attr of SCIM_ATTRIBUTES_TO_SYNC) {
+      if (result[attr] === null) {
+        const value = customAttributes[attr];
+        if (typeof value === "string" && value.trim() !== "") {
+          result[attr] = value.trim();
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+// Syncs SCIM attributes to UserMetadataModel.
+// Stores attributes with workspace scope and "scim:" prefix.
+// Removes attributes that are no longer present in the directory.
+async function syncScimAttributesToUserMetadata(
+  user: UserResource,
+  workspace: LightWorkspaceType,
+  attributes: Record<ScimAttributeKey, string | null>
+): Promise<void> {
+  for (const attr of SCIM_ATTRIBUTES_TO_SYNC) {
+    const metadataKey = `${SCIM_METADATA_KEY_PREFIX}${attr}`;
+    const value = attributes[attr];
+
+    if (value !== null) {
+      await user.setMetadata(metadataKey, value, workspace.id);
+      logger.info(
+        {
+          userId: user.sId,
+          workspaceId: workspace.sId,
+          attribute: attr,
+          value,
+        },
+        "Synced SCIM attribute to user metadata"
+      );
+    } else {
+      // Remove attribute if no longer present in directory.
+      const existing = await user.getMetadata(metadataKey, workspace.id);
+      if (existing) {
+        await user.deleteMetadata({
+          key: metadataKey,
+          workspaceId: workspace.id,
+        });
+        logger.info(
+          { userId: user.sId, workspaceId: workspace.sId, attribute: attr },
+          "Removed SCIM attribute from user metadata"
+        );
+      }
+    }
+  }
+}
+
+// Clears all SCIM attributes for a user in a workspace.
+// Called when the user is deleted from the directory.
+async function clearScimAttributesFromUserMetadata(
+  user: UserResource,
+  workspace: LightWorkspaceType
+): Promise<void> {
+  for (const attr of SCIM_ATTRIBUTES_TO_SYNC) {
+    await user.deleteMetadata({
+      key: `${SCIM_METADATA_KEY_PREFIX}${attr}`,
+      workspaceId: workspace.id,
+    });
+  }
+  logger.info(
+    { userId: user.sId, workspaceId: workspace.sId },
+    "Cleared SCIM attributes from user metadata"
+  );
+}
+
 async function handleCreateOrUpdateWorkOSUser(
   workspace: LightWorkspaceType,
   event: DirectoryUser
@@ -710,6 +824,14 @@ async function handleCreateOrUpdateWorkOSUser(
     externalUser,
     forceNameUpdate: !!(workOSUser.firstName && workOSUser.lastName),
   });
+
+  // Sync SCIM attributes from directory user.
+  const scimAttributes = extractScimAttributes(event);
+  await syncScimAttributesToUserMetadata(
+    createdOrUpdatedUser,
+    workspace,
+    scimAttributes
+  );
 
   const membership =
     await MembershipResource.getActiveMembershipOfUserInWorkspace({
@@ -756,6 +878,9 @@ async function handleDeleteWorkOSUser(
       `Did not find user to delete for workOSUserId "${workOSUser.id}" in workspace "${workspace.sId}"`
     );
   }
+
+  // Clear SCIM attributes before revoking membership.
+  await clearScimAttributesFromUserMetadata(user, workspace);
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const groups = await GroupResource.listUserGroupsInWorkspace({
