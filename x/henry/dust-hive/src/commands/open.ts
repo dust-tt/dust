@@ -321,7 +321,19 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
       ],
       { stdin: "ignore", stdout: "ignore", stderr: "ignore" }
     );
-    await switchProc.exited;
+
+    // Add timeout to prevent hanging if plugin fails
+    const timeout = 10000; // 10 seconds
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), timeout)
+    );
+
+    try {
+      await Promise.race([switchProc.exited, timeoutPromise]);
+    } catch {
+      switchProc.kill();
+      logger.warn("Session switch timed out. Use zellij session manager (Ctrl+o, w) to switch.");
+    }
 
     return Ok(undefined);
   }
@@ -464,7 +476,19 @@ export async function openMainSession(
       ],
       { stdin: "ignore", stdout: "ignore", stderr: "ignore" }
     );
-    await switchProc.exited;
+
+    // Add timeout to prevent hanging if plugin fails
+    const timeout = 10000; // 10 seconds
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), timeout)
+    );
+
+    try {
+      await Promise.race([switchProc.exited, timeoutPromise]);
+    } catch {
+      switchProc.kill();
+      logger.warn("Session switch timed out. Use zellij session manager (Ctrl+o, w) to switch.");
+    }
     return;
   }
 
