@@ -170,8 +170,8 @@ export default function SkillBuilder({
                       Create new skill
                     </h2>
                     <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                      Create a package of instructions and tools that
-                      agents can share.
+                      Create a package of instructions and tools that agents can
+                      share.
                     </p>
                   </div>
                 )}
