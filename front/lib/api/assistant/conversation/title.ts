@@ -8,18 +8,11 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import type {
-  ConversationType,
-  ModelIdType,
-  ModelProviderIdType,
-  Result,
-  UserMessageType,
-} from "@app/types";
+import type { ConversationType, Result, UserMessageType } from "@app/types";
 import {
   ConversationError,
   Err,
-  getLargeNonAnthropicWhitelistedModel,
-  GPT_4O_MINI_MODEL_ID,
+  getSmallWhitelistedModel,
   Ok,
 } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -118,9 +111,6 @@ export async function ensureConversationTitle(
   return title;
 }
 
-const PROVIDER_ID: ModelProviderIdType = "openai";
-const MODEL_ID: ModelIdType = GPT_4O_MINI_MODEL_ID;
-
 const FUNCTION_NAME = "update_title";
 
 const specifications: AgentActionSpecification[] = [
@@ -146,7 +136,7 @@ async function generateConversationTitle(
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getLargeNonAnthropicWhitelistedModel(owner);
+  const model = getSmallWhitelistedModel(owner);
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate title")
@@ -187,8 +177,8 @@ async function generateConversationTitle(
   const res = await runMultiActionsAgent(
     auth,
     {
-      providerId: PROVIDER_ID,
-      modelId: MODEL_ID,
+      providerId: model.providerId,
+      modelId: model.modelId,
       functionCall: FUNCTION_NAME,
       useCache: false,
     },
@@ -216,11 +206,6 @@ async function generateConversationTitle(
     const title = res.value.actions[0].arguments.conversation_title;
     return new Ok(title);
   }
-
-  logger.error(
-    { arguments: res.value.actions?.[0]?.arguments },
-    "No title found in LLM response (log with response)"
-  );
 
   return new Err(new Error("No title found in LLM response"));
 }
