@@ -85,7 +85,7 @@ export default function Verify({
     const timerMs = 1000;
     const timer = setTimeout(
       () => setResendCooldown((prev) => prev - 1),
-      timerMs,
+      timerMs
     );
     return () => clearTimeout(timer);
   }, [resendCooldown]);
@@ -118,7 +118,7 @@ export default function Verify({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ phoneNumber: e164Phone }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -126,12 +126,12 @@ export default function Verify({
         if (data.error?.type === "rate_limit_error" && data.error?.retryAfter) {
           const waitSeconds = Math.max(
             0,
-            data.error.retryAfter - Math.floor(Date.now() / 1000),
+            data.error.retryAfter - Math.floor(Date.now() / 1000)
           );
           setResendCooldown(waitSeconds);
           const waitMinutes = Math.ceil(waitSeconds / 60);
           setPhoneError(
-            `Too many verification attempts. Please try again in ${waitMinutes} minute${waitMinutes > 1 ? "s" : ""}.`,
+            `Too many verification attempts. Please try again in ${waitMinutes} minute${waitMinutes > 1 ? "s" : ""}.`
           );
           return;
         }
@@ -163,7 +163,7 @@ export default function Verify({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ phoneNumber: e164Phone }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -171,12 +171,12 @@ export default function Verify({
         if (data.error?.type === "rate_limit_error" && data.error?.retryAfter) {
           const waitSeconds = Math.max(
             0,
-            data.error.retryAfter - Math.floor(Date.now() / 1000),
+            data.error.retryAfter - Math.floor(Date.now() / 1000)
           );
           setResendCooldown(waitSeconds);
           const waitMinutes = Math.ceil(waitSeconds / 60);
           setCodeError(
-            `Too many verification attempts. Please try again in ${waitMinutes} minute${waitMinutes > 1 ? "s" : ""}.`,
+            `Too many verification attempts. Please try again in ${waitMinutes} minute${waitMinutes > 1 ? "s" : ""}.`
           );
           return;
         }
@@ -212,7 +212,7 @@ export default function Verify({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ phoneNumber: e164Phone, code: fullCode }),
-        },
+        }
       );
 
       if (!verifyResponse.ok) {
@@ -226,7 +226,7 @@ export default function Verify({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-        },
+        }
       );
 
       if (!trialResponse.ok) {
@@ -264,7 +264,7 @@ export default function Verify({
         inputRefs.current[index - 1]?.focus();
       }
     },
-    [code],
+    [code]
   );
 
   const handleCodePaste = useCallback(
@@ -288,7 +288,7 @@ export default function Verify({
       const nextIndex = Math.min(digits.length, CODE_LENGTH - 1);
       inputRefs.current[nextIndex]?.focus();
     },
-    [],
+    []
   );
 
   const handlePhoneNumberChange = (value: string) => {
@@ -333,7 +333,6 @@ export default function Verify({
       countryCode={countryCode}
       error={phoneError}
       isLoading={isLoading}
-      onCountryCodeChange={setCountryCode}
       onPhoneNumberChange={handlePhoneNumberChange}
       onCountryCodeChange={handleCountryCodeChange}
       onSubmit={handleSendCode}
@@ -346,7 +345,7 @@ interface PhoneInputStepProps {
   countryCode: Country;
   error: string | null;
   isLoading: boolean;
-  onCountryCodeChange: (code: string) => void;
+  onCountryCodeChange: (code?: Country) => void;
   onPhoneNumberChange: (phone: string) => void;
   onSubmit: () => void;
 }
@@ -414,7 +413,7 @@ interface CodeVerificationStepProps {
   onCodeChange: (index: number, value: string) => void;
   onCodeKeyDown: (
     index: number,
-    e: React.KeyboardEvent<HTMLInputElement>,
+    e: React.KeyboardEvent<HTMLInputElement>
   ) => void;
   onCodePaste: (e: React.ClipboardEvent<HTMLInputElement>) => void;
   onBack: () => void;
