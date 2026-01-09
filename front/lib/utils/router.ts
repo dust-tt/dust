@@ -8,28 +8,14 @@ export const setQueryParam = (
   const q = router.query;
   q[key] = value;
 
-  // Preserve the hash when updating query params
-  const hash = window.location.hash;
-
-  void router
-    .push(
-      {
-        pathname: router.pathname,
-        query: q,
-      },
-      undefined,
-      { shallow: true }
-    )
-    .then(() => {
-      // Restore hash after router.push (Next.js doesn't preserve it)
-      if (hash && window.location.hash !== hash) {
-        window.history.replaceState(
-          null,
-          "",
-          `${window.location.pathname}${window.location.search}${hash}`
-        );
-      }
-    });
+  void router.push(
+    {
+      pathname: router.pathname,
+      query: q,
+    },
+    undefined,
+    { shallow: true }
+  );
 };
 
 export const parseQueryString = (url: string) => {
