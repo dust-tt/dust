@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import {
   getTimeframeSecondsFromLiteral,
@@ -23,8 +24,12 @@ export async function checkWebhookRequestForRateLimit(
 
   if (maxMessages !== -1) {
     const activeSeats = await countActiveSeatsInWorkspaceCached(workspace.sId);
+    // For free plans, don't multiply by activeSeats to prevent increased limits with more users.
+    const effectiveMaxMessages = isFreePlan(plan.code)
+      ? maxMessages
+      : maxMessages * activeSeats;
     const webhookLimit = Math.ceil(
-      maxMessages * activeSeats * WORKSPACE_MESSAGE_LIMIT_MULTIPLIER
+      effectiveMaxMessages * WORKSPACE_MESSAGE_LIMIT_MULTIPLIER
     );
 
     const remaining = await rateLimiter({
