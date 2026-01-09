@@ -51,6 +51,20 @@ export const ScrollAreaExample: Story = {
           <ScrollBar orientation="vertical" size="classic" />
         </ScrollArea>
       </div>
+      <div className="s-h-[400px]">
+        <ScrollArea className="s-h-full s-w-[200px] s-border-b s-border-t s-border-border s-bg-white">
+          <h4 className="s-mb-4 s-text-sm s-font-medium s-leading-none">
+            Minimal ScrollBar
+          </h4>
+          {tags.map((tag) => (
+            <React.Fragment key={tag}>
+              <div className="s-text-sm">{tag}</div>
+              <Separator className="s-my-2" />
+            </React.Fragment>
+          ))}
+          <ScrollBar orientation="vertical" size="minimal" />
+        </ScrollArea>
+      </div>
     </div>
   ),
 };
