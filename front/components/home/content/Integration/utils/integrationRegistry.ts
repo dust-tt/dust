@@ -112,7 +112,7 @@ const CONNECTOR_CATEGORY_MAP: Record<ConnectorProvider, IntegrationCategory> = {
   zendesk: "support",
   bigquery: "data",
   salesforce: "crm",
-  gong: "crm",
+  gong: "transcripts",
 };
 
 // Display names for MCP servers (snake_case to Title Case)
@@ -193,14 +193,14 @@ function getConnectorIcon(provider: ConnectorProvider): InternalAllowedIconType 
     slack: "SlackLogo",
     slack_bot: "SlackLogo",
     github: "GithubLogo",
-    intercom: "ActionMegaphoneIcon",
+    intercom: "IntercomLogo",
     microsoft: "MicrosoftLogo",
     microsoft_bot: "MicrosoftLogo",
-    snowflake: "ActionTableIcon",
+    snowflake: "SnowflakeLogo",
     zendesk: "ZendeskLogo",
-    bigquery: "ActionTableIcon",
+    bigquery: "BigQueryLogo",
     salesforce: "SalesforceLogo",
-    gong: "ActionMegaphoneIcon",
+    gong: "GongLogo",
     webcrawler: "ActionGlobeAltIcon",
     discord_bot: "ActionMegaphoneIcon",
   };
@@ -212,14 +212,10 @@ export function buildIntegrationRegistry(): IntegrationBase[] {
   const integrationMap = new Map<string, IntegrationBase>();
 
   // Add MCP servers
+  // Note: For marketing/SEO pages, we include servers that are behind feature flags
+  // (isRestricted) or in preview since they are still valid integrations to advertise.
   for (const [name, server] of Object.entries(INTERNAL_MCP_SERVERS)) {
     if (EXCLUDED_MCP_SERVERS.has(name)) {
-      continue;
-    }
-
-    // Skip restricted/preview servers that require feature flags
-    // These are generally not ready for public marketing
-    if (server.isRestricted !== undefined || server.isPreview) {
       continue;
     }
 
@@ -240,6 +236,8 @@ export function buildIntegrationRegistry(): IntegrationBase[] {
   }
 
   // Add connectors (or merge with existing MCP entries)
+  // Note: For marketing/SEO pages, we include connectors that are hidden in the app UI
+  // (e.g., Salesforce, Slack during rollout) since they are still valid integrations.
   for (const [provider, config] of Object.entries(CONNECTOR_CONFIGURATIONS)) {
     const connectorProvider = provider as ConnectorProvider;
 
@@ -248,9 +246,6 @@ export function buildIntegrationRegistry(): IntegrationBase[] {
     }
 
     const uiConfig = CONNECTOR_UI_CONFIGURATIONS[connectorProvider];
-    if (uiConfig.hide) {
-      continue;
-    }
 
     const displayName =
       CONNECTOR_DISPLAY_NAMES[connectorProvider] ?? config.name;
@@ -276,6 +271,41 @@ export function buildIntegrationRegistry(): IntegrationBase[] {
         tools: [], // Connectors don't expose tools the same way
         category: CONNECTOR_CATEGORY_MAP[connectorProvider] ?? "productivity",
       });
+    }
+  }
+
+  // Add manual transcript integrations (these are special integrations
+  // that work via the Labs Transcripts feature)
+  const manualTranscriptIntegrations: IntegrationBase[] = [
+    {
+      slug: "google-meet",
+      name: "Google Meet",
+      type: "connector",
+      description:
+        "Connect Google Meet recordings to Dust. AI automatically summarizes your meetings, extracts action items, and syncs insights to your workspace.",
+      icon: "GcalLogo", // Using Google Calendar logo as closest match
+      documentationUrl: "https://docs.dust.tt/docs/meeting-recordings",
+      authorizationRequired: true,
+      tools: [],
+      category: "transcripts",
+    },
+    {
+      slug: "modjo",
+      name: "Modjo",
+      type: "connector",
+      description:
+        "Connect Modjo call recordings to Dust. AI analyzes sales calls, extracts key insights, and helps your team improve performance.",
+      icon: "ActionMegaphoneIcon",
+      documentationUrl: "https://docs.dust.tt/docs/meeting-recordings",
+      authorizationRequired: true,
+      tools: [],
+      category: "transcripts",
+    },
+  ];
+
+  for (const integration of manualTranscriptIntegrations) {
+    if (!integrationMap.has(integration.slug)) {
+      integrationMap.set(integration.slug, integration);
     }
   }
 

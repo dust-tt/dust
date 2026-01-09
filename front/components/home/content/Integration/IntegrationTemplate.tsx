@@ -13,6 +13,11 @@ import { RelatedIntegrationsSection } from "./sections/RelatedIntegrationsSectio
 import { ToolsSection } from "./sections/ToolsSection";
 import { UseCasesSection } from "./sections/UseCasesSection";
 import type { IntegrationBase, IntegrationPageConfig } from "./types";
+import {
+  getDefaultSEOMetaDescription,
+  getDefaultSEOSubtitle,
+  getDefaultSEOTitle,
+} from "./utils/seoUtils";
 
 interface IntegrationTemplateProps {
   integration: IntegrationPageConfig;
@@ -64,10 +69,16 @@ export default function IntegrationTemplate({
   const router = useRouter();
   const enrichment = integration.enrichment;
 
-  const seoTitle = `${integration.name} Integration | Dust AI Agents`;
+  // Use SEO-optimized titles for long-tail queries
+  const seoTitle =
+    enrichment?.seoTitle ??
+    getDefaultSEOTitle(integration.name, integration.category);
+  const seoSubtitle =
+    enrichment?.seoSubtitle ??
+    getDefaultSEOSubtitle(integration.name, integration.category);
   const seoDescription =
     enrichment?.longDescription ??
-    `Connect ${integration.name} to Dust and automate your workflows with AI agents. ${integration.description}`;
+    getDefaultSEOMetaDescription(integration.name, integration.category);
 
   // Default CTA config
   const finalCTAConfig = {
@@ -114,7 +125,8 @@ export default function IntegrationTemplate({
         {/* Hero Section */}
         <IntegrationHeroSection
           integration={integration}
-          tagline={enrichment?.tagline}
+          seoTitle={seoTitle}
+          seoSubtitle={seoSubtitle}
         />
 
         {/* Tools Section (if MCP server with tools) */}

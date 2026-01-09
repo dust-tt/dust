@@ -13,12 +13,14 @@ import type { IntegrationBase } from "../types";
 
 interface IntegrationHeroSectionProps {
   integration: IntegrationBase;
-  tagline?: string;
+  seoTitle: string;
+  seoSubtitle: string;
 }
 
 export function IntegrationHeroSection({
   integration,
-  tagline,
+  seoTitle,
+  seoSubtitle,
 }: IntegrationHeroSectionProps) {
   const IconComponent = getIcon(integration.icon);
   const typeLabel =
@@ -51,11 +53,11 @@ export function IntegrationHeroSection({
               mono
               className="mb-4 text-center text-4xl font-medium leading-tight text-foreground md:text-5xl"
             >
-              {integration.name} Integration
+              {seoTitle}
             </H1>
 
             <P size="lg" className="mb-4 max-w-2xl text-muted-foreground">
-              {tagline ?? integration.description}
+              {seoSubtitle}
             </P>
 
             {integration.authorizationRequired && (
