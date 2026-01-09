@@ -3,7 +3,9 @@ import "@uiw/react-textarea-code-editor/dist.css";
 import {
   Checkbox,
   Chip,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   Input,
   Label,
 } from "@dust-tt/sparkle";
@@ -290,10 +292,9 @@ export default function DataSource({
         </div>
 
         <div className="w-full">
-          <CollapsibleComponent
-            rootProps={{ defaultOpen: false }}
-            triggerProps={{ label: "Filters" }}
-            contentChildren={
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger label="Filters" />
+            <CollapsibleContent>
               <div className="flex w-full flex-col gap-2">
                 <div className="flex w-full flex-col gap-2">
                   <CodeEditor
@@ -420,8 +421,8 @@ export default function DataSource({
                   </div>
                 </div>
               </div>
-            }
-          />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </div>
     </Block>

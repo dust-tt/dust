@@ -2,7 +2,9 @@ import "@uiw/react-textarea-code-editor/dist.css";
 
 import {
   Checkbox,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   Input,
   Label,
   XMarkIcon,
@@ -327,10 +329,9 @@ export default function Chat({
           </div>
         </div>
         <div>
-          <CollapsibleComponent
-            rootProps={{ defaultOpen: false }}
-            triggerProps={{ label: "Advanced" }}
-            contentChildren={
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger label="Advanced" />
+            <CollapsibleContent>
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                   <div className="flex items-center space-x-2">
@@ -440,8 +441,8 @@ export default function Chat({
                   </div>
                 ) : null}
               </div>
-            }
-          />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         <div className="flex flex-col gap-2 text-sm">
@@ -492,10 +493,9 @@ export default function Chat({
           </div>
         </div>
         <div>
-          <CollapsibleComponent
-            rootProps={{ defaultOpen: false }}
-            triggerProps={{ label: "Functions" }}
-            contentChildren={
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger label="Functions" />
+            <CollapsibleContent>
               <div className="flex flex-col gap-2 text-sm">
                 <div className="flex w-full font-normal">
                   <div className="w-full leading-4">
@@ -532,8 +532,8 @@ export default function Chat({
                   </div>
                 </div>
               </div>
-            }
-          />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </div>
     </Block>

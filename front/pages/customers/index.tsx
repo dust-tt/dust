@@ -1,4 +1,10 @@
-import { Chip, CollapsibleComponent, Pagination } from "@dust-tt/sparkle";
+import {
+  Chip,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Pagination,
+} from "@dust-tt/sparkle";
 import type { GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
@@ -151,13 +157,9 @@ function FilterSection({
 
   return (
     <div className="mb-6">
-      <CollapsibleComponent
-        rootProps={{ defaultOpen }}
-        triggerProps={{
-          label: title,
-          variant: "secondary",
-        }}
-        contentChildren={
+      <Collapsible defaultOpen={defaultOpen}>
+        <CollapsibleTrigger label={title} variant="secondary" />
+        <CollapsibleContent>
           <div className="flex flex-col gap-2">
             {options.map((option) => (
               <FilterCheckbox
@@ -168,8 +170,8 @@ function FilterSection({
               />
             ))}
           </div>
-        }
-      />
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

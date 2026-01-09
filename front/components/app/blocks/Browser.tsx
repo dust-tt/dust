@@ -1,7 +1,9 @@
 import {
   Button,
   Checkbox,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   Input,
   Label,
 } from "@dust-tt/sparkle";
@@ -183,10 +185,9 @@ export default function Browser({
           />
         </div>
 
-        <CollapsibleComponent
-          rootProps={{ defaultOpen: false }}
-          triggerProps={{ label: "Advanced" }}
-          contentChildren={
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger label="Advanced" />
+          <CollapsibleContent>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="flex items-center space-x-2">
                 <Label className="whitespace-nowrap">Error as output</Label>
@@ -233,8 +234,8 @@ export default function Browser({
                 />
               </div>
             </div>
-          }
-        />
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </Block>
   );

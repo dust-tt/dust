@@ -2,7 +2,9 @@ import {
   ActionRobotIcon,
   Avatar,
   Button,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessage,
   ExternalLinkIcon,
   Markdown,
@@ -111,20 +113,20 @@ export function MCPAgentManagementActionDetails({
           </div>
 
           {typeof toolParams.instructions === "string" ? (
-            <CollapsibleComponent
-              triggerChildren={
+            <Collapsible>
+              <CollapsibleTrigger>
                 <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                   Instructions
                 </span>
-              }
-              contentChildren={
+              </CollapsibleTrigger>
+              <CollapsibleContent>
                 <div className="mt-2">
                   <ContentMessage variant="primary" size="sm">
                     <Markdown content={toolParams.instructions} />
                   </ContentMessage>
                 </div>
-              }
-            />
+              </CollapsibleContent>
+            </Collapsible>
           ) : null}
 
           <Button
@@ -167,20 +169,20 @@ export function MCPAgentManagementActionDetails({
               </div>
 
               {typeof toolParams.sub_agent_instructions === "string" ? (
-                <CollapsibleComponent
-                  triggerChildren={
+                <Collapsible>
+                  <CollapsibleTrigger>
                     <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                       Instructions
                     </span>
-                  }
-                  contentChildren={
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
                     <div className="mt-2">
                       <ContentMessage variant="primary" size="sm">
                         <Markdown content={toolParams.sub_agent_instructions} />
                       </ContentMessage>
                     </div>
-                  }
-                />
+                  </CollapsibleContent>
+                </Collapsible>
               ) : null}
 
               <Button
