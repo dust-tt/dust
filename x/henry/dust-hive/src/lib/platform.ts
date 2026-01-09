@@ -118,7 +118,16 @@ export function getPidsOnPort(port: number): number[] {
 // Installation Instructions
 // ============================================================================
 
-type InstallableTool = "zellij" | "temporal" | "sccache" | "lsof" | "bun" | "nvm" | "cargo";
+type InstallableTool =
+  | "zellij"
+  | "temporal"
+  | "sccache"
+  | "lsof"
+  | "bun"
+  | "nvm"
+  | "cargo"
+  | "cmake"
+  | "protobuf";
 
 const INSTALL_INSTRUCTIONS: Record<PlatformName, Record<InstallableTool, string>> = {
   macos: {
@@ -129,6 +138,8 @@ const INSTALL_INSTRUCTIONS: Record<PlatformName, Record<InstallableTool, string>
     bun: "curl -fsSL https://bun.sh/install | bash",
     nvm: "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash",
     cargo: 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh',
+    cmake: "brew install cmake",
+    protobuf: "brew install protobuf",
   },
   linux: {
     zellij: "cargo install zellij (or download from https://github.com/zellij-org/zellij/releases)",
@@ -138,6 +149,9 @@ const INSTALL_INSTRUCTIONS: Record<PlatformName, Record<InstallableTool, string>
     bun: "curl -fsSL https://bun.sh/install | bash",
     nvm: "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash",
     cargo: 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh',
+    cmake: "sudo apt install cmake (Debian/Ubuntu) or sudo dnf install cmake (Fedora)",
+    protobuf:
+      "sudo apt install protobuf-compiler (Debian/Ubuntu) or sudo dnf install protobuf-compiler (Fedora)",
   },
 };
 
