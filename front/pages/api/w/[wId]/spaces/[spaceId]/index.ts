@@ -114,9 +114,9 @@ async function handler(
       const currentMembers = uniqBy(
         (
           await concurrentExecutor(
-            // Get members from the regular group only.
+            // Get members from the space_member group only.
             space.groups.filter((g) => {
-              return g.kind === "regular";
+              return g.kind === "space_members";
             }),
             (group) =>
               includeAllMembers

@@ -464,7 +464,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await this.update({ name: newName });
     // For regular spaces that only have a single group, update
     // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
-    const regularGroups = this.groups.filter((g) => g.isRegular());
+    const regularGroups = this.groups.filter((g) => g.isSpaceMemberGroup());
     if (regularGroups.length === 1 && (this.isRegular() || this.isPublic())) {
       await regularGroups[0].updateName(auth, `Group for space ${newName}`);
     }
@@ -518,36 +518,24 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const { isRestricted } = params;
 
-    const regularGroups = this.groups.filter(
-      (group) => group.kind === "regular"
+    const spaceMembersGroups = this.groups.filter(
+      (group) => group.kind === "space_members"
     );
-
-    // Find member and editor groups
-    let memberGroup: GroupResource | undefined;
-    let editorGroup: GroupResource | undefined;
+    const spaceEditorsGroups = this.groups.filter(
+      (group) => group.kind === "space_editors"
+    );
 
     assert(
-      regularGroups.length === 1 || regularGroups.length === 2,
-      `Expected one or two regular groups for the space, but found ${regularGroups.length}.`
+      spaceMembersGroups.length === 1,
+      `Expected one space_members group for the space, but found ${spaceMembersGroups.length}.`
     );
-
-    for (const group of regularGroups) {
-      const groupSpace = await GroupSpaceModel.findOne({
-        where: {
-          groupId: group.id,
-          vaultId: this.id,
-        },
-      });
-      if (groupSpace) {
-        if (groupSpace.kind === "member") {
-          memberGroup = group;
-        } else if (groupSpace.kind === "editor") {
-          editorGroup = group;
-        }
-      }
-    }
-
-    assert(memberGroup, "Expected to find a member group for the space.");
+    assert(
+      spaceEditorsGroups.length <= 1,
+      `Expected at most one space_editors group for the space, but found ${spaceEditorsGroups.length}.`
+    );
+    // Find member and editor groups
+    const memberGroup = spaceMembersGroups[0];
+    let editorGroup = spaceEditorsGroups[0];
 
     const wasRestricted = this.groups.every((g) => !g.isGlobal());
 
@@ -615,7 +603,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             editorGroup = await GroupResource.makeNew(
               {
                 name: `Editors for space ${this.name}`,
-                kind: "regular",
+                kind: "space_editors",
                 workspaceId: this.workspaceId,
               },
               { transaction: t }
@@ -824,14 +812,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   private getDefaultSpaceGroup(): GroupResource {
-    const regularGroups = this.groups.filter(
-      (group) => group.kind === "regular"
+    const spaceMembersGroups = this.groups.filter(
+      (group) => group.kind === "space_members"
     );
     assert(
-      regularGroups.length === 1,
-      `Expected exactly one regular group for the space, but found ${regularGroups.length}.`
+      spaceMembersGroups.length === 1,
+      `Expected exactly one space_members group for the space, but found ${spaceMembersGroups.length}.`
     );
-    return regularGroups[0];
+    return spaceMembersGroups[0];
   }
 
   /**

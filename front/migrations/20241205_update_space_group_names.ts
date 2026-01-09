@@ -13,7 +13,7 @@ makeScript({}, async ({ execute }) => {
       `Found ${regularSpaces.length} regular spaces for workspace ${w.name}`
     );
     for (const space of regularSpaces) {
-      const regularGroups = space.groups.filter((g) => g.isRegular());
+      const regularGroups = space.groups.filter((g) => g.isSpaceMemberGroup());
       if (regularGroups.length === 1) {
         const group = regularGroups[0];
         if (execute) {

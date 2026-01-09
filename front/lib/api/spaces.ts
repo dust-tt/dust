@@ -383,7 +383,7 @@ export async function createSpaceAndGroup(
         {
           name: `${SPACE_GROUP_PREFIX} ${name}`,
           workspaceId: owner.id,
-          kind: "regular",
+          kind: "space_members",
         },
         { transaction: t }
       );
@@ -417,7 +417,7 @@ export async function createSpaceAndGroup(
           {
             name: `Editors for space ${name}`,
             workspaceId: owner.id,
-            kind: "regular",
+            kind: "space_editors",
           },
           { transaction: t }
         );

@@ -342,7 +342,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Use with care as this gives access to all groups in the workspace.
   static async internalFetchAllWorkspaceGroups({
     workspaceId,
-    groupKinds = ["global", "regular", "system", "provisioned"],
+    groupKinds = ["global", "space_members", "system", "provisioned"],
     transaction,
   }: {
     workspaceId: ModelId;
@@ -364,7 +364,12 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async listWorkspaceGroupsFromKey(
     key: KeyResource,
-    groupKinds: GroupKind[] = ["global", "regular", "system", "provisioned"]
+    groupKinds: GroupKind[] = [
+      "global",
+      "space_members",
+      "system",
+      "provisioned",
+    ]
   ): Promise<GroupResource[]> {
     let groups: GroupModel[] = [];
 
@@ -728,7 +733,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     options: { groupKinds?: GroupKind[] } = {}
   ): Promise<GroupResource[]> {
-    const { groupKinds = ["global", "regular", "provisioned"] } = options;
+    const { groupKinds = ["global", "space_members", "provisioned"] } = options;
     const groups = await this.baseFetch(auth, {
       where: {
         kind: {
@@ -793,7 +798,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     workspace,
     groupKinds = [
       "global",
-      "regular",
+      "space_members",
       "provisioned",
       "agent_editors",
       "skill_editors",
@@ -1072,16 +1077,20 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be added to regular, agent_editors, skill_editors or provisioned groups.
+    // Users can only be added to space_members, agent_editors, skill_editors or provisioned groups.
     if (
-      !["regular", "agent_editors", "skill_editors", "provisioned"].includes(
-        this.kind
-      )
+      ![
+        "space_members",
+        "space_editors",
+        "agent_editors",
+        "skill_editors",
+        "provisioned",
+      ].includes(this.kind)
     ) {
       return new Err(
         new DustError(
           "system_or_global_group",
-          "Users can only be added to regular, agent_editors, skill_editors or provisioned groups."
+          "Users can only be added to space_members, space_editors, agent_editors, skill_editors or provisioned groups."
         )
       );
     }
@@ -1194,16 +1203,20 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be removed from regular, agent_editors, skill_editors or provisioned groups.
+    // Users can only be removed from space_members, space_editors, agent_editors, skill_editors or provisioned groups.
     if (
-      !["regular", "agent_editors", "skill_editors", "provisioned"].includes(
-        this.kind
-      )
+      ![
+        "space_members",
+        "space_editors",
+        "agent_editors",
+        "skill_editors",
+        "provisioned",
+      ].includes(this.kind)
     ) {
       return new Err(
         new DustError(
           "system_or_global_group",
-          "Users can only be removed from regular, agent_editors, skill_editors or provisioned groups."
+          "Users can only be removed from space_members, space_editors, agent_editors, skill_editors or provisioned groups."
         )
       );
     }
@@ -1395,32 +1408,55 @@ export class GroupResource extends BaseResource<GroupModel> {
    * configuration
    */
   requestedPermissions(): ResourcePermission[] {
-    const userReadPermissions: RolePermission[] = [
-      {
-        role: "user",
-        permissions: ["read"],
-      },
-      {
-        role: "builder",
-        permissions: ["read"],
-      },
-    ];
+    if (this.kind === "agent_editors" || this.kind === "skill_editors") {
+      return [
+        {
+          groups: [
+            {
+              id: this.id,
+              permissions: ["read", "write"],
+            },
+          ],
+          roles: [
+            { role: "admin", permissions: ["read", "write", "admin"] },
+            {
+              role: "user",
+              permissions: ["read"],
+            },
+            {
+              role: "builder",
+              permissions: ["read"],
+            },
+          ],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
 
-    const isEditorGroup =
-      this.kind === "agent_editors" || this.kind === "skill_editors";
+    if (this.kind === "space_editors") {
+      return [
+        {
+          groups: [
+            {
+              id: this.id,
+              permissions: ["read", "write"],
+            },
+          ],
+          roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
 
     return [
       {
         groups: [
           {
             id: this.id,
-            permissions: isEditorGroup ? ["read", "write"] : ["read"],
+            permissions: ["read"],
           },
         ],
-        roles: [
-          { role: "admin", permissions: ["read", "write", "admin"] },
-          ...(isEditorGroup ? userReadPermissions : []),
-        ],
+        roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
         workspaceId: this.workspaceId,
       },
     ];
@@ -1442,8 +1478,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     return this.kind === "global";
   }
 
-  isRegular(): boolean {
-    return this.kind === "regular";
+  isSpaceMemberGroup(): boolean {
+    return this.kind === "space_members";
+  }
+
+  isSpaceEditorGroup(): boolean {
+    return this.kind === "space_editors";
   }
 
   isProvisioned(): boolean {

@@ -27,10 +27,14 @@ async function handler(
     case "GET":
       const workspace = auth.getNonNullableWorkspace();
 
-      // Filter out non-regular groups as we only want to allow conversations in project spaces (that are linked to regular groups)
+      // Filter out non-space_member groups as we only want to allow conversations in project spaces (that are linked to space_members groups)
       const allGroups = auth
         .groups()
-        .filter((g) => g.kind === "regular" && g.workspaceId === workspace.id);
+        .filter(
+          (g) =>
+            (g.kind === "space_members" || g.kind === "space_editors") &&
+            g.workspaceId === workspace.id
+        );
 
       const spaces = await SpaceResource.listForGroups(auth, allGroups);
 

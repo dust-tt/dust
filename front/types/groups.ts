@@ -11,7 +11,7 @@ import { isRoleType } from "./user";
  * global group: Contains all users from the workspace. Has access to the global
  * Space which holds all existing datasource created before spaces.
  *
- * regular group: Contains specific users added by workspace admins. Has access
+ * space_members group: Contains specific users added by workspace admins. Has access
  * to the list of spaces configured by workspace admins.
  *
  * agent_editors group: Group specific to represent agent editors, tied to an
@@ -25,7 +25,8 @@ import { isRoleType } from "./user";
  *  provisioned group: Contains all users from a provisioned group.
  */
 export const GROUP_KINDS = [
-  "regular",
+  "space_members",
+  "space_editors",
   "global",
   "system",
   "agent_editors",
@@ -63,7 +64,8 @@ export type GroupType = {
 
 export const GroupKindCodec = t.keyof({
   global: null,
-  regular: null,
+  space_members: null,
+  space_editors: null,
   agent_editors: null,
   skill_editors: null,
   system: null,
