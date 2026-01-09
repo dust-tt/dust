@@ -39,7 +39,8 @@ import {
 import { DataSourceQuotaExceededError } from "@connectors/lib/error";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { heartbeat } from "@connectors/lib/temporal";
-import logger, { getActivityLogger } from "@connectors/logger/logger";
+import type { Logger } from "@connectors/logger/logger";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -151,7 +152,7 @@ export async function syncOneFile({
     }
 
     const item = (await getItem(
-      logger,
+      localLogger,
       client,
       `${itemAPIPath}?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
     )) as DriveItem;
@@ -538,11 +539,13 @@ export async function deleteFolder({
   dataSourceConfig,
   internalId,
   deleteRootNode,
+  logger,
 }: {
   connectorId: number;
   dataSourceConfig: DataSourceConfig;
   internalId: string;
   deleteRootNode?: boolean;
+  logger: Logger;
 }) {
   const folder = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
@@ -588,10 +591,12 @@ export async function deleteFile({
   connectorId,
   dataSourceConfig,
   internalId,
+  logger,
 }: {
   connectorId: number;
   dataSourceConfig: DataSourceConfig;
   internalId: string;
+  logger: Logger;
 }) {
   const file = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
@@ -643,10 +648,12 @@ export async function recursiveNodeDeletion({
   nodeId,
   connectorId,
   dataSourceConfig,
+  logger,
 }: {
   nodeId: string;
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
+  logger: Logger;
 }): Promise<string[]> {
   await heartbeat();
   const node = await MicrosoftNodeResource.fetchByInternalId(
@@ -694,6 +701,7 @@ export async function recursiveNodeDeletion({
         connectorId,
         dataSourceConfig,
         internalId: node.internalId,
+        logger,
       });
       deletedFiles.push(node.internalId);
     } catch (error) {
@@ -709,6 +717,7 @@ export async function recursiveNodeDeletion({
         nodeId: child.internalId,
         connectorId,
         dataSourceConfig,
+        logger,
       });
       deletedFiles.push(...result);
     }
@@ -716,6 +725,7 @@ export async function recursiveNodeDeletion({
       connectorId,
       dataSourceConfig,
       internalId: node.internalId,
+      logger,
     });
     deletedFiles.push(node.internalId);
   }
