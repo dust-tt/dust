@@ -356,7 +356,7 @@ const collapseableStyles = cva(
       },
       isCollapsible: {
         true: cn(
-          "s-cursor-pointer",
+          "s-cursor-pointer s-mb-0.5",
           "hover:s-text-foreground dark:hover:s-text-foreground-night",
           "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
         ),
@@ -399,7 +399,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
         {action && (
           <div
             className={cn(
-              "s-absolute s-bottom-1 s-right-1.5 s-flex s-gap-1 s-transition-opacity",
+              "s-absolute s-right-1.5 s-top-3 s-flex s-gap-1 s-transition-opacity",
               actionOnHover
                 ? "s-opacity-0 hover:s-opacity-100 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
                 : "s-opacity-100"
