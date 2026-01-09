@@ -67,6 +67,21 @@ async function handler(
         });
       }
 
+      // Check for existing active skill with the same name.
+      const existingSkill = await SkillResource.fetchActiveByName(
+        auth,
+        skillResource.name
+      );
+      if (existingSkill) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `A skill with the name "${skillResource.name}" already exists.`,
+          },
+        });
+      }
+
       await skillResource.restore(auth);
 
       return res.status(200).json({ success: true });
