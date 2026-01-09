@@ -89,16 +89,16 @@ function ActionButtons({
     <div className="flex items-center gap-2">
       <Button
         type="button"
-        onClick={onClickKnowledge}
-        label="Add knowledge"
-        icon={BookOpenIcon}
+        onClick={onClickCapability}
+        label="Add capabilities"
+        icon={ToolsIcon}
         variant="primary"
       />
       <Button
         type="button"
-        onClick={onClickCapability}
-        label="Add capabilities"
-        icon={ToolsIcon}
+        onClick={onClickKnowledge}
+        label="Add knowledge"
+        icon={BookOpenIcon}
         variant="outline"
       />
     </div>
