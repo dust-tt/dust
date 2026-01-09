@@ -33,7 +33,7 @@ export const WhenCompetitorBetterSection: FC<
             {config.cards.map((card, index) => (
               <div
                 key={index}
-                className="flex flex-col rounded-2xl border border-amber-200 bg-amber-50 overflow-hidden"
+                className="flex flex-col overflow-hidden rounded-2xl border border-amber-200 bg-amber-50"
               >
                 {/* Header */}
                 <div className="border-b border-amber-200 bg-amber-100 px-6 py-4">
