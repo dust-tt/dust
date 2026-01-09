@@ -27,7 +27,9 @@ describe("validateTailwindCode", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.message).toContain("h-[600px]");
-      expect(result.error.message).toContain("Forbidden Tailwind arbitrary values");
+      expect(result.error.message).toContain(
+        "Forbidden Tailwind arbitrary values"
+      );
     }
   });
 
@@ -78,7 +80,9 @@ describe("validateTailwindCode", () => {
       // Should deduplicate - only h-[600px] should be in the examples list once
       // (though it may appear twice in the message: once in "detected: X" and once in the examples)
       expect(result.error.message).toContain("h-[600px]");
-      expect(result.error.message).toContain("Forbidden Tailwind arbitrary values");
+      expect(result.error.message).toContain(
+        "Forbidden Tailwind arbitrary values"
+      );
     }
   });
 
