@@ -165,14 +165,16 @@ The `front` project requires a Postgres database to run tests. dust-hive provide
 
 ```bash
 # From any cold environment, run front tests directly
-cd front && npm test
+cd front && NODE_ENV=test npm test
 
 # Run specific test file
-cd front && npm test lib/resources/user_resource.test.ts
+cd front && NODE_ENV=test npm test lib/resources/user_resource.test.ts
 
 # Run with verbose output
-cd front && npm test --reporter verbose path/to/test.test.ts
+cd front && NODE_ENV=test npm test --reporter verbose path/to/test.test.ts
 ```
+
+**Important**: You must set `NODE_ENV=test` when running tests. The test suite validates this and will error if NODE_ENV is not set to "test".
 
 **No need to warm the environment** - the shared test Postgres is always available.
 
@@ -184,6 +186,26 @@ cd front && npm test --reporter verbose path/to/test.test.ts
 | `dust-hive destroy` | Dropped |
 | `dust-hive up` | Shared Postgres started |
 | `dust-hive down` | Shared Postgres stopped |
+
+### Known limitations in cold environments
+
+Running front tests in cold environments currently has two limitations that cause test failures:
+
+**1. Redis not available (causes timeouts)**
+
+Cold environments don't have Redis running. While `lib/api/redis.ts` is mocked in tests, `lib/utils/redis_client.ts` (used by the rate limiter) is not. Tests that hit code paths using the rate limiter will hang for 5 seconds waiting for Redis, then timeout.
+
+*Workaround*: Run tests in a warm environment, or start Redis manually.
+
+*Proper fix*: dust-hive should provide a shared test Redis container (like the shared test Postgres) that starts with `dust-hive up`.
+
+**2. Plans table race condition (causes SequelizeUniqueConstraintError)**
+
+Many tests call `WorkspaceFactory.basic()` which calls `upsertProPlans()`. This does `findOne` → `create` which isn't atomic. When tests run in parallel, multiple tests see "plan doesn't exist" and all try to create it → unique constraint violation.
+
+*Workaround*: None currently.
+
+*Proper fix*: The front test setup (`vite.globalSetup.ts`) should call `upsertProPlans()` once after running the migration, before any tests start.
 
 ### Troubleshooting front tests
 
