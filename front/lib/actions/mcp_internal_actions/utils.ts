@@ -204,7 +204,7 @@ export function isJITMCPServerView(view: MCPServerViewType): boolean {
 // Includes protections against circular references and excessive depth.
 export function jsonToMarkdown<T = unknown>(
   data: T,
-  primaryKey: string,
+  primaryKey?: string,
   primaryKeyPrefix: string = "",
   indent: number = 0,
   visited: WeakSet<object> = new WeakSet(),
@@ -258,16 +258,22 @@ export function jsonToMarkdown<T = unknown>(
 
     visited.add(data);
     const result = data
-      .map((item) =>
-        jsonToMarkdown(
+      .map((item, index) => {
+        const itemMarkdown = jsonToMarkdown(
           item,
           primaryKey,
           primaryKeyPrefix,
           indent,
           visited,
           maxDepth
-        )
-      )
+        );
+        if (typeof item === "object" && item !== null && index > 0) {
+          return indent === 0
+            ? `\n---\n\n${itemMarkdown}`
+            : `\n${itemMarkdown}`;
+        }
+        return itemMarkdown;
+      })
       .join("\n");
     visited.delete(data);
     return result;
@@ -286,7 +292,7 @@ export function jsonToMarkdown<T = unknown>(
 
   // Check if this object has the primaryKey
   const dataAsRecord = data as Record<string, unknown>;
-  const hasPrimaryKey = dataAsRecord[primaryKey] !== undefined;
+  const hasPrimaryKey = primaryKey && dataAsRecord[primaryKey] !== undefined;
   let entriesToProcess = entries;
   let headerLine = "";
 
