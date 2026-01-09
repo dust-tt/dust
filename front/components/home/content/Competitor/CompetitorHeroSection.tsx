@@ -1,7 +1,6 @@
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
-import type { FC } from "react";
 
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import TrustedBy from "@app/components/home/TrustedBy";
@@ -17,12 +16,12 @@ interface CompetitorHeroSectionProps {
   trackingPrefix?: string;
 }
 
-export const CompetitorHeroSection: FC<CompetitorHeroSectionProps> = ({
+export function CompetitorHeroSection({
   config,
   competitorLogo,
   competitorName,
   trackingPrefix = "competitor",
-}) => {
+}: CompetitorHeroSectionProps) {
   return (
     <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-blue-50">
       <div className="mx-auto flex w-full max-w-7xl flex-col px-6 pb-12 pt-16 md:pb-16 md:pt-24">
@@ -73,7 +72,7 @@ export const CompetitorHeroSection: FC<CompetitorHeroSectionProps> = ({
 
             {/* CTAs */}
             <div className="flex flex-col gap-4 sm:flex-row">
-              <Link href={config.primaryCTA.href} shallow={true}>
+              <Link href={config.primaryCTA.href} shallow>
                 <Button
                   variant="highlight"
                   size="md"
@@ -85,7 +84,7 @@ export const CompetitorHeroSection: FC<CompetitorHeroSectionProps> = ({
                   )}
                 />
               </Link>
-              <Link href={config.secondaryCTA.href} shallow={true}>
+              <Link href={config.secondaryCTA.href} shallow>
                 <Button
                   variant="outline"
                   size="md"
@@ -105,4 +104,4 @@ export const CompetitorHeroSection: FC<CompetitorHeroSectionProps> = ({
       </div>
     </div>
   );
-};
+}

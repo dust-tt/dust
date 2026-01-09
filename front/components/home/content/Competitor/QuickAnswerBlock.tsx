@@ -1,6 +1,5 @@
 import { CheckIcon, XMarkIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
-import type { FC } from "react";
 
 import { Grid, H2 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
@@ -13,11 +12,11 @@ interface QuickAnswerBlockProps {
   competitorLogo?: string;
 }
 
-export const QuickAnswerBlock: FC<QuickAnswerBlockProps> = ({
+export function QuickAnswerBlock({
   config,
   competitorName,
   competitorLogo,
-}) => {
+}: QuickAnswerBlockProps) {
   const rows = config.rows;
   const title = config.title ?? "The Key Differences";
 
@@ -95,4 +94,4 @@ export const QuickAnswerBlock: FC<QuickAnswerBlockProps> = ({
       </Grid>
     </div>
   );
-};
+}

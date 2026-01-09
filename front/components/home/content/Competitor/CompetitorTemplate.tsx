@@ -137,11 +137,7 @@ export default function CompetitorTemplate({
 
       case "faq":
         return config.faq ? (
-          <FAQSection
-            key="faq"
-            config={config.faq}
-            competitorName={config.competitorDisplayName}
-          />
+          <FAQSection key="faq" config={config.faq} />
         ) : null;
 
       case "finalCTA":
@@ -149,7 +145,6 @@ export default function CompetitorTemplate({
           <FinalCTASection
             key="finalCTA"
             config={config.finalCTA}
-            competitorName={config.competitorDisplayName}
             trackingPrefix={prefix}
           />
         ) : null;
