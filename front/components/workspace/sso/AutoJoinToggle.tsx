@@ -168,6 +168,12 @@ export function AutoJoinToggle({
                 label="De-activate Auto-join"
                 size="sm"
                 variant="outline"
+                disabled={owner.ssoEnforced}
+                tooltip={
+                  owner.ssoEnforced
+                    ? "Auto-join is not available when SSO is enforced"
+                    : undefined
+                }
                 onClick={() => {
                   if (isUpgraded(plan)) {
                     setIsActivateAutoJoinOpened(true);
@@ -182,11 +188,13 @@ export function AutoJoinToggle({
                 size="sm"
                 variant="primary"
                 tooltip={
-                  domains.length === 0
-                    ? "Add a domain to enable Auto-join"
-                    : undefined
+                  owner.ssoEnforced
+                    ? "Auto-join is not available when SSO is enforced"
+                    : domains.length === 0
+                      ? "Add a domain to enable Auto-join"
+                      : undefined
                 }
-                disabled={!domains.length}
+                disabled={!domains.length || owner.ssoEnforced}
                 onClick={() => {
                   if (isUpgraded(plan)) {
                     setIsActivateAutoJoinOpened(true);
