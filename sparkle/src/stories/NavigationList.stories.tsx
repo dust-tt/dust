@@ -222,10 +222,10 @@ export const CollapsibleSection = () => {
 
   return (
     <div className="s-dark:bg-muted-background-night s-flex s-h-[800px] s-w-[240px] s-flex-col s-border-r s-border-border s-bg-muted-background">
-      <NavigationList className="s-relative s-h-full s-w-full s-py-2 dark:s-bg-muted-background-night">
+      <NavigationList className="s-relative s-h-full s-w-full dark:s-bg-muted-background-night">
         <NavigationListCollapsibleSection
           label="Inbox"
-          className="s-border-b s-border-t s-border-border s-bg-background s-px-2 s-pb-2 dark:s-bg-background-night"
+          className="s-border-b s-border-t s-border-border s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
           actionOnHover={false}
           action={
             <>
@@ -408,6 +408,7 @@ export const CollapsibleSection = () => {
                 <NavigationListCompactLabel
                   key={sectionIndex}
                   label={section.label}
+                  isSticky
                 />
                 {section.items.map((title, index) => {
                   const itemIndex = allItems.indexOf(title);

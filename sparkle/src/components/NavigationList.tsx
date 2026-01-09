@@ -291,7 +291,7 @@ const variantCompactStyles = cva(
     variants: {
       isSticky: {
         true: cn(
-          "s-sticky s-top-0 s-z-10 s-bg-background dark:s-bg-muted-background-night",
+          "s-sticky s-top-0 s-z-10 s-bg-muted-background dark:s-bg-muted-background-night",
           "s-border-border dark:s-border-border-night"
         ),
       },
@@ -340,9 +340,8 @@ interface NavigationListCollapsibleSectionProps extends React.HTMLAttributes<HTM
 
 const collapseableStyles = cva(
   cn(
-    "s-py-2 s-mt-2 s-px-2.5",
+    "s-py-2 s-px-2.5 s-w-full",
     "s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
-    "s-box-border s-flex s-items-center s-w-full s-gap-1.5",
     "s-select-none",
     "s-outline-none s-rounded-xl s-transition-colors s-duration-300",
     "data-[disabled]:s-pointer-events-none",
@@ -392,14 +391,14 @@ const NavigationListCollapsibleSection = React.forwardRef<
   ) => {
     const isCollapsible = type !== "static";
     const labelElement = (
-      <div className="s-group/menu-item s-relative">
+      <div className="s-group/menu-item s-relative s-mt-2 s-flex s-items-center s-justify-between s-gap-1">
         <div className={collapseableStyles({ variant, isCollapsible })}>
           {label}
         </div>
         {action && (
           <div
             className={cn(
-              "s-absolute s-right-1.5 s-top-3 s-flex s-gap-1 s-transition-opacity",
+              "s-m-1.5 s-flex s-gap-1 s-transition-opacity",
               actionOnHover
                 ? "s-opacity-0 hover:s-opacity-100 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
                 : "s-opacity-100"
