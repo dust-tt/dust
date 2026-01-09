@@ -15,6 +15,7 @@ import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial/index";
 import {
   CODE_LENGTH,
   isValidPhoneNumber,
+  maskPhoneNumber,
   RESEND_COOLDOWN_SECONDS,
 } from "@app/lib/plans/trial/phone";
 import logger from "@app/logger/logger";
@@ -217,7 +218,7 @@ export default function Verify({
   if (step === "code") {
     return (
       <CodeVerificationStep
-        maskedPhone={phoneNumber}
+        maskedPhone={maskPhoneNumber(phoneNumber)}
         code={code}
         error={codeError}
         resendCooldown={resendCooldown}
