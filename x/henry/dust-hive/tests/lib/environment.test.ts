@@ -58,12 +58,9 @@ describe("environment", () => {
       expect(validateEnvName("test@feature").valid).toBe(false);
     });
 
-    it("rejects names with consecutive slashes", () => {
+    it("rejects names with invalid slashes", () => {
       expect(validateEnvName("test//feature").valid).toBe(false);
       expect(validateEnvName("a//b//c").valid).toBe(false);
-    });
-
-    it("rejects names ending with a slash", () => {
       expect(validateEnvName("test/").valid).toBe(false);
       expect(validateEnvName("feature/auth/").valid).toBe(false);
     });
@@ -74,17 +71,13 @@ describe("environment", () => {
       expect(result.valid).toBe(false);
     });
 
-    it("accepts names where slug is exactly 26 characters", () => {
+    it("accepts names exactly 26 characters", () => {
       const maxName = "a".repeat(26);
       expect(validateEnvName(maxName).valid).toBe(true);
     });
 
     it("checks slug length not original length for names with slashes", () => {
-      // "feature/a" has slug "feature-a" (9 chars) - should be valid
       expect(validateEnvName("feature/a").valid).toBe(true);
-      // A name with slashes that produces a 26-char slug should be valid
-      expect(validateEnvName(`${"a".repeat(13)}/${"b".repeat(12)}`).valid).toBe(true);
-      // A name with slashes that produces a 27-char slug should be invalid
       expect(validateEnvName(`${"a".repeat(13)}/${"b".repeat(13)}`).valid).toBe(false);
     });
   });

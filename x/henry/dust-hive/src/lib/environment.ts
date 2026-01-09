@@ -2,7 +2,13 @@ import { mkdir, readdir, rm } from "node:fs/promises";
 import { z } from "zod";
 import { createTypeGuard } from "./errors";
 import { directoryExists } from "./fs";
-import { detectEnvFromCwd, DUST_HIVE_ENVS, getEnvDir, getInitializedMarkerPath, getMetadataPath } from "./paths";
+import {
+  DUST_HIVE_ENVS,
+  detectEnvFromCwd,
+  getEnvDir,
+  getInitializedMarkerPath,
+  getMetadataPath,
+} from "./paths";
 import type { PortAllocation } from "./ports";
 import { loadPortAllocation } from "./ports";
 
