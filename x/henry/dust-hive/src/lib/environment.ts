@@ -4,7 +4,7 @@ import { createTypeGuard } from "./errors";
 import { directoryExists } from "./fs";
 import {
   DUST_HIVE_ENVS,
-  detectEnvFromCwd,
+  DUST_HIVE_WORKTREES,
   getEnvDir,
   getInitializedMarkerPath,
   getMetadataPath,
@@ -177,12 +177,22 @@ export async function listEnvironments(): Promise<string[]> {
 
 // Detect environment name from current working directory
 // Returns the original name (with slashes) by loading metadata, or null if not in a worktree
-export async function detectEnvNameFromCwd(): Promise<string | null> {
-  const slug = detectEnvFromCwd();
+export async function detectEnvFromCwd(): Promise<string | null> {
+  const cwd = process.cwd();
+
+  // Check if cwd is under ~/dust-hive/{slug}/
+  if (!cwd.startsWith(`${DUST_HIVE_WORKTREES}/`)) {
+    return null;
+  }
+
+  // Extract slug (directory name) from path
+  const relativePath = cwd.slice(DUST_HIVE_WORKTREES.length + 1);
+  const slug = relativePath.split("/")[0];
   if (!slug) {
     return null;
   }
 
+  // Load metadata to get the original name (may contain slashes)
   const metadata = await loadMetadata(slug);
   return metadata?.name ?? null;
 }

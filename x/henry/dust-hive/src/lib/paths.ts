@@ -144,25 +144,3 @@ export async function findRepoRoot(startPath?: string): Promise<string | null> {
 
   return null;
 }
-
-// Detect if current working directory is inside a dust-hive worktree
-// Returns the environment name if found, null otherwise
-export function detectEnvFromCwd(): string | null {
-  const cwd = process.cwd();
-  const worktreesBase = DUST_HIVE_WORKTREES;
-
-  // Check if cwd is under ~/dust-hive/{name}/
-  if (!cwd.startsWith(`${worktreesBase}/`)) {
-    return null;
-  }
-
-  // Extract environment name from path
-  const relativePath = cwd.slice(worktreesBase.length + 1);
-  const envName = relativePath.split("/")[0];
-
-  if (!envName) {
-    return null;
-  }
-
-  return envName;
-}
