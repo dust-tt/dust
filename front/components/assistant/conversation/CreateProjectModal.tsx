@@ -68,7 +68,7 @@ export function CreateProjectModal({
 
     const createdSpace = await doCreate({
       name: trimmedName,
-      isRestricted: false,
+      isRestricted: true,
       managementMode: "manual",
       memberIds: user?.sId ? [user.sId] : [],
       spaceKind: "project",

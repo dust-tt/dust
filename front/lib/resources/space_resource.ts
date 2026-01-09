@@ -895,6 +895,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return this.isRegular() && !this.isOpen();
   }
 
+  isProjectAndRestricted() {
+    return this.isProject() && !this.groups.some((group) => group.isGlobal());
+  }
+
   isRegularAndOpen() {
     return this.isRegular() && this.isOpen();
   }
@@ -972,7 +976,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return {
       createdAt: this.createdAt.getTime(),
       groupIds: this.groups.map((group) => group.sId),
-      isRestricted: this.isRegularAndRestricted(),
+      isRestricted:
+        this.isRegularAndRestricted() || this.isProjectAndRestricted(),
 
       kind: this.kind,
       managementMode: this.managementMode,

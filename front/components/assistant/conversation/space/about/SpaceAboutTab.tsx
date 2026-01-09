@@ -10,6 +10,7 @@ import type {
   SpaceType,
   UserType,
 } from "@app/types";
+import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
 
 interface SpaceAboutTabProps {
   owner: LightWorkspaceType;
@@ -17,6 +18,7 @@ interface SpaceAboutTabProps {
   initialMembers: UserType[];
   initialGroups: GroupType[];
   initialManagementMode: "manual" | "group";
+  initialIsRestricted: boolean;
   planAllowsSCIM: boolean;
 }
 
@@ -26,6 +28,7 @@ export function SpaceAboutTab({
   initialMembers,
   initialGroups,
   initialManagementMode,
+  initialIsRestricted,
   planAllowsSCIM,
 }: SpaceAboutTabProps) {
   const [managementType, setManagementType] = useState<"manual" | "group">(
@@ -36,6 +39,8 @@ export function SpaceAboutTab({
   const [selectedGroups, setSelectedGroups] =
     useState<GroupType[]>(initialGroups);
   const [isSaving, setIsSaving] = useState(false);
+
+  const [isRestricted, setIsRestricted] = useState(initialIsRestricted);
 
   const isManual = !planAllowsSCIM || managementType === "manual";
   const doUpdate = useUpdateSpace({ owner });
@@ -89,14 +94,14 @@ export function SpaceAboutTab({
 
     if (planAllowsSCIM && managementType === "group") {
       await doUpdate(space, {
-        isRestricted: false,
+        isRestricted,
         groupIds: selectedGroups.map((group) => group.sId),
         managementMode: "group",
         name: space.name,
       });
     } else {
       await doUpdate(space, {
-        isRestricted: false,
+        isRestricted,
         memberIds: selectedMembers.map((member) => member.sId),
         managementMode: "manual",
         name: space.name,
@@ -116,17 +121,24 @@ export function SpaceAboutTab({
 
   return (
     <div className="flex w-full flex-col gap-y-4 px-4 py-8">
-      <RestrictedAccessBody
-        isManual={isManual}
-        planAllowsSCIM={planAllowsSCIM}
-        managementType={managementType}
-        owner={owner}
-        selectedMembers={selectedMembers}
-        selectedGroups={selectedGroups}
-        onManagementTypeChange={setManagementType}
-        onMembersUpdated={setSelectedMembers}
-        onGroupsUpdated={setSelectedGroups}
+      <RestrictedAccessHeader
+        isRestricted={isRestricted}
+        onToggle={() => setIsRestricted(!isRestricted)}
+        unrestrictedDescription="The project is accessible to everyone in the workspace."
       />
+      {isRestricted && (
+        <RestrictedAccessBody
+          isManual={isManual}
+          planAllowsSCIM={planAllowsSCIM}
+          managementType={managementType}
+          owner={owner}
+          selectedMembers={selectedMembers}
+          selectedGroups={selectedGroups}
+          onManagementTypeChange={setManagementType}
+          onMembersUpdated={setSelectedMembers}
+          onGroupsUpdated={setSelectedGroups}
+        />
+      )}
 
       <div className="flex justify-end gap-2 pt-4">
         <Button

@@ -33,6 +33,7 @@ import type {
   SpaceType,
   UserType,
 } from "@app/types";
+import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
 
 type MembersManagementType = "manual" | "group";
 
@@ -349,6 +350,8 @@ export function CreateOrEditSpaceModal({
                   setSelectedMembers([user, ...selectedMembers]);
                 }
               }}
+              unrestrictedDescription="Restricted access is disabled. The space is accessible to everyone in
+          the workspace."
             />
 
             {isRestricted && (
@@ -440,33 +443,6 @@ function SpaceDeleteSection({
         isDeleting={isDeleting}
       />
       <Separator />
-    </>
-  );
-}
-
-interface RestrictedAccessHeaderProps {
-  isRestricted: boolean;
-  onToggle: () => void;
-}
-
-function RestrictedAccessHeader({
-  isRestricted,
-  onToggle,
-}: RestrictedAccessHeaderProps) {
-  return (
-    <>
-      <div className="flex w-full items-center justify-between overflow-visible">
-        <Page.SectionHeader title="Restricted Access" />
-        <SliderToggle selected={isRestricted} onClick={onToggle} />
-      </div>
-      {isRestricted ? (
-        <span>Restricted access is active.</span>
-      ) : (
-        <span>
-          Restricted access is disabled. The space is accessible to everyone in
-          the workspace.
-        </span>
-      )}
     </>
   );
 }
