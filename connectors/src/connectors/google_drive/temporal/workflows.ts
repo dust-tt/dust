@@ -206,6 +206,8 @@ export async function googleDriveIncrementalSync(
       });
   }
 
+  let currentToken = nextPageToken;
+
   while (drivesToSync.length > 0) {
     const googleDrive = drivesToSync[0];
     if (!googleDrive) {
@@ -218,34 +220,35 @@ export async function googleDriveIncrementalSync(
         googleDrive.id,
         googleDrive.isShared,
         startSyncTs,
-        nextPageToken
+        currentToken
       );
 
-      let foldersToBrowse: string[] = [];
-
       if (syncRes) {
-        foldersToBrowse = syncRes.newFolders;
-        nextPageToken = syncRes.nextPageToken;
-      }
+        const foldersToBrowse = syncRes.newFolders;
 
-      if (foldersToBrowse.length > 0) {
-        await executeChild(googleDriveFullSync, {
-          workflowId: `googleDrive-newFolderSync-${startSyncTs}-${connectorId}`,
-          searchAttributes: {
-            connectorId: [connectorId],
-          },
-          args: [
-            {
-              connectorId: connectorId,
-              garbageCollect: false,
-              foldersToBrowse,
-              totalCount: 0,
-              startSyncTs: startSyncTs,
-              mimeTypeFilter: undefined,
+        if (foldersToBrowse.length > 0) {
+          await executeChild(googleDriveFullSync, {
+            workflowId: `googleDrive-newFolderSync-${startSyncTs}-${connectorId}`,
+            searchAttributes: {
+              connectorId: [connectorId],
             },
-          ],
-          memo: workflowInfo().memo,
-        });
+            args: [
+              {
+                connectorId: connectorId,
+                garbageCollect: false,
+                foldersToBrowse,
+                totalCount: 0,
+                startSyncTs: startSyncTs,
+                mimeTypeFilter: undefined,
+              },
+            ],
+            memo: workflowInfo().memo,
+          });
+        }
+
+        currentToken = syncRes.nextPageToken;
+      } else {
+        break;
       }
 
       // Will restart exactly where it was.
@@ -254,15 +257,15 @@ export async function googleDriveIncrementalSync(
           connectorId,
           startSyncTs,
           drivesToSync,
-          nextPageToken
+          currentToken
         );
       }
-    } while (nextPageToken);
+    } while (currentToken);
 
     // We have completed a drive, move to the next one.
     // Clear the nextPageToken to start from the beginning of the next drive.
     // Remove the drive from the list of drives to sync.
-    nextPageToken = undefined;
+    currentToken = undefined;
     drivesToSync.shift();
   }
 
@@ -339,6 +342,8 @@ export async function googleDriveIncrementalSyncPerDrive({
   startSyncTs: number;
   nextPageToken: string | undefined;
 }) {
+  let currentToken = nextPageToken;
+
   // Process all changes for this drive with pagination
   do {
     const syncRes = await incrementalSync(
@@ -346,34 +351,34 @@ export async function googleDriveIncrementalSyncPerDrive({
       driveId,
       isShared,
       startSyncTs,
-      nextPageToken
+      currentToken
     );
 
-    let foldersToBrowse: string[] = [];
-
     if (syncRes) {
-      foldersToBrowse = syncRes.newFolders;
-      nextPageToken = syncRes.nextPageToken;
-    }
+      const foldersToBrowse = syncRes.newFolders;
 
-    if (foldersToBrowse.length > 0) {
-      await executeChild(googleDriveFullSync, {
-        workflowId: `googleDrive-newFolders-${connectorId}-drive-${driveId}-${startSyncTs}`,
-        searchAttributes: {
-          connectorId: [connectorId],
-        },
-        args: [
-          {
-            connectorId: connectorId,
-            garbageCollect: false,
-            foldersToBrowse,
-            totalCount: 0,
-            startSyncTs: startSyncTs,
-            mimeTypeFilter: undefined,
+      if (foldersToBrowse.length > 0) {
+        await executeChild(googleDriveFullSync, {
+          workflowId: `googleDrive-newFolders-${connectorId}-drive-${driveId}-${startSyncTs}`,
+          searchAttributes: {
+            connectorId: [connectorId],
           },
-        ],
-        memo: workflowInfo().memo,
-      });
+          args: [
+            {
+              connectorId: connectorId,
+              garbageCollect: false,
+              foldersToBrowse,
+              totalCount: 0,
+              startSyncTs: startSyncTs,
+              mimeTypeFilter: undefined,
+            },
+          ],
+          memo: workflowInfo().memo,
+        });
+      }
+      currentToken = syncRes.nextPageToken;
+    } else {
+      break;
     }
 
     // Will restart exactly where it was.
@@ -383,10 +388,10 @@ export async function googleDriveIncrementalSyncPerDrive({
         driveId,
         isShared,
         startSyncTs,
-        nextPageToken,
+        nextPageToken: currentToken,
       });
     }
-  } while (nextPageToken);
+  } while (currentToken);
 }
 
 export function googleDriveIncrementalSyncPerDriveWorkflowId(
