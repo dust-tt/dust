@@ -36,11 +36,7 @@ export default [
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: [
-            "eslint.config.mjs",
-            "playground/postcss.config.cjs",
-            "playground/tailwind.config.cjs",
-          ],
+          allowDefaultProject: ["eslint.config.mjs"],
         },
         tsconfigRootDir: import.meta.dirname,
       },
@@ -155,15 +151,6 @@ export default [
       ],
     },
   },
-
-  // Allow require() in CommonJS config files
-  {
-    files: ["**/*.cjs"],
-    rules: {
-      "@typescript-eslint/no-require-imports": "off",
-    },
-  },
-
   // Prettier config (must be last)
   eslintConfigPrettier,
 ];
