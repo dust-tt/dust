@@ -136,9 +136,7 @@ export default function CompetitorTemplate({
         return null;
 
       case "faq":
-        return config.faq ? (
-          <FAQSection key="faq" config={config.faq} />
-        ) : null;
+        return config.faq ? <FAQSection key="faq" config={config.faq} /> : null;
 
       case "finalCTA":
         return config.finalCTA ? (
