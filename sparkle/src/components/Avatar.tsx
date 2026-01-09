@@ -42,7 +42,7 @@ const avatarVariants = cva(
         disabled: "s-opacity-50",
       },
       rounded: {
-        true: "s-rounded-full",
+        true: "s-rounded-full s-ring-[1px] s-ring-border-dark dark:s-ring-border-dark-night",
         false: "",
       },
     },

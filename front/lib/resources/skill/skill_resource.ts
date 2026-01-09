@@ -45,6 +45,7 @@ import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/regi
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -64,7 +65,13 @@ import type {
   ModelId,
   Result,
 } from "@app/types";
-import { Err, normalizeError, Ok, removeNulls } from "@app/types";
+import {
+  AGENT_GROUP_PREFIX,
+  Err,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
 import type {
   SkillStatus,
   SkillType,
@@ -255,16 +262,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       );
 
-      const editorGroup = await GroupResource.makeNewSkillEditorsGroup(
-        auth,
-        skill,
-        {
-          transaction,
-        }
-      );
+      const editorGroup = await this.makeNewSkillEditorsGroup(auth, skill, {
+        transaction,
+      });
 
       // MCP server configurations for the skill.
-
       await SkillMCPServerConfigurationModel.bulkCreate(
         mcpServerViews.map((mcpServerView) => ({
           workspaceId: owner.id,
@@ -292,6 +294,55 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         mcpServerViews,
       });
     });
+  }
+
+  /**
+   * Creates a new skill editors group for the given skill and adds the creating
+   * user to it.
+   */
+  private static async makeNewSkillEditorsGroup(
+    auth: Authenticator,
+    skill: SkillConfigurationModel,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<GroupResource> {
+    const user = auth.getNonNullableUser();
+    const workspace = auth.getNonNullableWorkspace();
+
+    assert(
+      skill.workspaceId === workspace.id,
+      "Unexpected: skill and workspace mismatch"
+    );
+
+    const defaultGroup = await GroupResource.makeNew(
+      {
+        workspaceId: workspace.id,
+        name: `${AGENT_GROUP_PREFIX} ${skill.name} (skill:${skill.id})`,
+        kind: "agent_editors",
+      },
+      { transaction }
+    );
+
+    await GroupMembershipModel.create(
+      {
+        groupId: defaultGroup.id,
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: new Date(),
+        status: "active" as const,
+      },
+      { transaction }
+    );
+
+    await GroupSkillModel.create(
+      {
+        groupId: defaultGroup.id,
+        skillConfigurationId: skill.id,
+        workspaceId: workspace.id,
+      },
+      { transaction }
+    );
+
+    return defaultGroup;
   }
 
   private static async baseFetch(
@@ -719,7 +770,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (s) => !enabledSkillIds.has(s.sId)
     );
 
-    // TODO(skills 2025-12-23): refactor to retrieve extended skills from baseFetch
     const augmentedEnabledSkills = await this.augmentSkillsWithExtendedSkills(
       auth,
       enabledSkills
@@ -1037,47 +1087,53 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (a, b) => b.version - a.version
     );
 
-    // Convert version models to SkillResource instances.
-    return concurrentExecutor(
-      sortedVersionModels,
-      async (versionModel) => {
-        // TODO(skills 2025-12-23): add caching on the MCP server views across versions.
-        const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
-          auth,
-          versionModel.mcpServerViewIds
-        );
-
-        const skill = new SkillResource(
-          this.model,
-          {
-            id: this.id,
-            workspaceId: workspace.id,
-            authorId: versionModel.authorId,
-            createdAt: versionModel.createdAt,
-            updatedAt: versionModel.updatedAt,
-            status: versionModel.status,
-            name: versionModel.name,
-            agentFacingDescription: versionModel.agentFacingDescription,
-            userFacingDescription: versionModel.userFacingDescription,
-            instructions: versionModel.instructions,
-            icon: versionModel.icon,
-            requestedSpaceIds: versionModel.requestedSpaceIds,
-            extendedSkillId: versionModel.extendedSkillId,
-          },
-          {
-            // We ignore data source configurations for historical versions.
-            // As when user saves we re-compute those from the nodes.
-            dataSourceConfigurations: [],
-            editorGroup: this.editorGroup ?? undefined,
-            mcpServerViews,
-            version: versionModel.version,
-          }
-        );
-        assert(isSkillResourceWithVersion(skill));
-        return skill;
-      },
-      { concurrency: 5 }
+    // Build map to cache MCPServerViewResource instances.
+    const allMcpServerViewIds = uniq(
+      sortedVersionModels.flatMap((model) => model.mcpServerViewIds)
     );
+    const allMcpServerViews = await MCPServerViewResource.fetchByModelIds(
+      auth,
+      allMcpServerViewIds
+    );
+    const mcpServerViewMap = new Map(
+      allMcpServerViews.map((view) => [view.id, view])
+    );
+
+    // Convert version models to SkillResource instances.
+    return sortedVersionModels.map((versionModel) => {
+      const mcpServerViews = removeNulls(
+        versionModel.mcpServerViewIds.map((id) => mcpServerViewMap.get(id))
+      );
+
+      const skill = new SkillResource(
+        this.model,
+        {
+          id: this.id,
+          workspaceId: workspace.id,
+          authorId: versionModel.authorId,
+          createdAt: versionModel.createdAt,
+          updatedAt: versionModel.updatedAt,
+          status: versionModel.status,
+          name: versionModel.name,
+          agentFacingDescription: versionModel.agentFacingDescription,
+          userFacingDescription: versionModel.userFacingDescription,
+          instructions: versionModel.instructions,
+          icon: versionModel.icon,
+          requestedSpaceIds: versionModel.requestedSpaceIds,
+          extendedSkillId: versionModel.extendedSkillId,
+        },
+        {
+          // We ignore data source configurations for historical versions.
+          // As when user saves we re-compute those from the nodes.
+          dataSourceConfigurations: [],
+          editorGroup: this.editorGroup ?? undefined,
+          mcpServerViews,
+          version: versionModel.version,
+        }
+      );
+      assert(isSkillResourceWithVersion(skill));
+      return skill;
+    });
   }
 
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
@@ -1164,6 +1220,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews,
       name,
       requestedSpaceIds,
+      status,
       userFacingDescription,
     }: {
       agentFacingDescription: string;
@@ -1173,6 +1230,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews: MCPServerViewResource[];
       name: string;
       requestedSpaceIds: ModelId[];
+      status?: SkillStatus;
       userFacingDescription: string;
     }
   ): Promise<void> {
@@ -1196,6 +1254,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           icon,
           requestedSpaceIds,
           authorId,
+          ...(status ? { status } : {}),
         },
         transaction
       );

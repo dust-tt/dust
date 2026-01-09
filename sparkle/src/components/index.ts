@@ -185,6 +185,8 @@ export {
   SheetTitle,
   SheetTrigger,
 } from "./Sheet";
+export type { SidebarLayoutProps, SidebarLayoutRef } from "./SidebarLayout";
+export { SidebarLayout } from "./SidebarLayout";
 export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
 export { FlexSplitButton } from "./SplitButton";

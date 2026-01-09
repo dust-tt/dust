@@ -1566,6 +1566,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       created: this.createdAt.getTime(),
       updated: this.updatedAt.getTime(),
       spaceId: this.space?.sId ?? null,
+      triggerId: this.triggerSId,
       hasError: this.hasError,
       id: this.id,
       // TODO(REQUESTED_SPACE_IDS 2025-10-24): Stop exposing this once all logic is centralized

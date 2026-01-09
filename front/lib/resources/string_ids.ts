@@ -58,6 +58,9 @@ export const RESOURCES_PREFIX = {
 
   // Skills.
   skill: "skl",
+
+  // Workspace verification.
+  workspace_verification_attempt: "wva",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

@@ -485,7 +485,7 @@ export async function createTemporalNamespaces(env: Environment): Promise<void> 
   const namespaces = getTemporalNamespaces(env.name);
 
   for (const ns of namespaces) {
-    const proc = Bun.spawn(["temporal", "operator", "namespace", "create", ns], {
+    const proc = Bun.spawn(["temporal", "operator", "namespace", "create", "-n", ns], {
       stdout: "pipe",
       stderr: "pipe",
     });

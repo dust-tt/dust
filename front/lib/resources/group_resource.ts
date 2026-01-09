@@ -14,8 +14,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
-import type { SkillConfigurationModel } from "@app/lib/models/skill";
-import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -127,58 +125,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       // Explicitly throw error to ensure rollback
       throw groupAgentResult.error;
     }
-
-    return defaultGroup;
-  }
-
-  /**
-   * Creates a new skill editors group for the given skill and adds the creating
-   * user to it.
-   */
-  // TODO(SKILLS 2025-12-11): Move this to SkillResource.
-  static async makeNewSkillEditorsGroup(
-    auth: Authenticator,
-    skill: SkillConfigurationModel,
-    { transaction }: { transaction?: Transaction } = {}
-  ) {
-    const user = auth.getNonNullableUser();
-    const workspace = auth.getNonNullableWorkspace();
-
-    if (skill.workspaceId !== workspace.id) {
-      throw new DustError(
-        "internal_error",
-        "Unexpected: skill and workspace mismatch"
-      );
-    }
-
-    const defaultGroup = await GroupResource.makeNew(
-      {
-        workspaceId: workspace.id,
-        name: `${AGENT_GROUP_PREFIX} ${skill.name} (skill:${skill.id})`,
-        kind: "agent_editors",
-      },
-      { transaction }
-    );
-
-    await GroupMembershipModel.create(
-      {
-        groupId: defaultGroup.id,
-        userId: user.id,
-        workspaceId: workspace.id,
-        startAt: new Date(),
-        status: "active" as const,
-      },
-      { transaction }
-    );
-
-    await GroupSkillModel.create(
-      {
-        groupId: defaultGroup.id,
-        skillConfigurationId: skill.id,
-        workspaceId: workspace.id,
-      },
-      { transaction }
-    );
 
     return defaultGroup;
   }

@@ -282,6 +282,7 @@ export type ConversationWithoutContentType = {
   sId: string;
   title: string | null;
   spaceId: string | null;
+  triggerId: string | null;
   depth: number;
 
   // Ideally, this property should be moved to the ConversationType.
@@ -293,7 +294,6 @@ export type ConversationWithoutContentType = {
  * messages).
  */
 export type ConversationType = ConversationWithoutContentType & {
-  triggerId: string | null;
   owner: WorkspaceType;
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];

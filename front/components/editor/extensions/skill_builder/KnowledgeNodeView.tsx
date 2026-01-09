@@ -175,14 +175,11 @@ function KnowledgeSearchComponent({
 
   const spaceIds = useMemo(() => spaces.map((s) => s.sId), [spaces]);
 
-  const isDisabled = !searchQuery || searchQuery.length < 2;
-
   const { knowledgeResults: searchResults, isSearchLoading } = useUnifiedSearch(
     {
       owner,
       query: searchQuery,
       pageSize: 10,
-      disabled: isDisabled,
       spaceIds,
       // Tables can't be attached to a skill.
       viewType: "document",
@@ -281,7 +278,9 @@ function KnowledgeSearchComponent({
   const handleInput = useCallback((e: React.FormEvent<HTMLSpanElement>) => {
     const text = e.currentTarget.textContent ?? "";
     setSearchQuery(text);
-    setIsOpen(text.trim().length > 0);
+    if (text.trim().length > 0) {
+      setIsOpen(true);
+    }
   }, []);
 
   // Auto-focus when component mounts.
@@ -308,6 +307,9 @@ function KnowledgeSearchComponent({
   // Reset selected index when items change.
   useEffect(() => {
     setSelectedIndex(0);
+    if (knowledgeItems.length > 0) {
+      setIsOpen(true);
+    }
   }, [knowledgeItems.length]);
 
   // Delete empty node helper.
@@ -325,6 +327,14 @@ function KnowledgeSearchComponent({
   // Handle keyboard navigation.
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // Escape always cancels and deletes the node (search mode exits entirely).
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        onCancel();
+        return;
+      }
+
       if (!isOpen) {
         return;
       }
@@ -346,18 +356,10 @@ function KnowledgeSearchComponent({
         e.preventDefault();
         e.stopPropagation();
         handleItemSelect(selectedIndex);
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        onCancel();
       }
     },
     [isOpen, selectedIndex, knowledgeItems.length, handleItemSelect, onCancel]
   );
-
-  const handleBlur = useCallback(() => {
-    deleteIfEmpty(50);
-  }, [deleteIfEmpty]);
 
   const handleInteractOutside = useCallback(() => {
     setIsOpen(false);
@@ -379,7 +381,6 @@ function KnowledgeSearchComponent({
         ref={contentRef}
         onKeyDown={handleKeyDown}
         onInput={handleInput}
-        onBlur={handleBlur}
         data-placeholder="Search for knowledge..."
       />
 
@@ -483,6 +484,17 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
     [deleteNode]
   );
 
+  const handleCancel = useCallback(() => {
+    deleteNode();
+    // Return focus to the editor after the node is removed from the DOM.
+    // We need to wait for the next event loop tick for TipTap to process the deletion.
+    queueMicrotask(() => {
+      if (editor && !editor.isDestroyed) {
+        editor.chain().focus().run();
+      }
+    });
+  }, [deleteNode, editor]);
+
   const handleSelect = useCallback(
     (item: KnowledgeItem) => {
       updateAttributes({
@@ -490,11 +502,12 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
       });
 
       // Return focus to the editor after selection and add a space.
-      setTimeout(() => {
-        if (editor) {
+      // Wait for the next event loop tick for TipTap to process the attribute update.
+      queueMicrotask(() => {
+        if (editor && !editor.isDestroyed) {
           editor.chain().focus().insertContent(" ").run();
         }
-      }, 10);
+      });
     },
     [updateAttributes, editor]
   );
@@ -518,7 +531,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
     <NodeViewWrapper className="inline">
       <KnowledgeSearchComponent
         onSelect={handleSelect}
-        onCancel={deleteNode}
+        onCancel={handleCancel}
         clientRect={clientRect}
       />
     </NodeViewWrapper>

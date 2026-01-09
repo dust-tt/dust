@@ -606,6 +606,8 @@ export async function syncDeltaForRootNodesInDrive({
     throw new Error(`Connector ${connectorId} not found`);
   }
 
+  const logger = getActivityLogger(connector);
+
   const providerConfig =
     await MicrosoftConfigurationResource.fetchByConnectorId(connectorId);
 
@@ -630,7 +632,6 @@ export async function syncDeltaForRootNodesInDrive({
   let node = nodes[0];
 
   if (nodes.length !== rootNodeIds.length || !node) {
-    const logger = getActivityLogger(connector);
     logger.error(
       {
         connectorId,
@@ -645,7 +646,6 @@ export async function syncDeltaForRootNodesInDrive({
 
   const client = await getMicrosoftClient(connector.connectionId);
 
-  const logger = getActivityLogger(connector);
   logger.info({ connectorId, rootNodeIds }, "Syncing delta for node");
 
   // Goes through pagination to return all delta results. This is because delta
@@ -776,6 +776,7 @@ export async function syncDeltaForRootNodesInDrive({
           connectorId,
           internalId,
           dataSourceConfig,
+          logger,
         });
         if (isDeleted) {
           deleted++;
@@ -811,6 +812,7 @@ export async function syncDeltaForRootNodesInDrive({
           dataSourceConfig,
           internalId,
           deleteRootNode: true,
+          logger,
         });
         if (isDeleted) {
           deleted++;
@@ -1382,6 +1384,7 @@ export async function microsoftDeletionActivity({
   if (!connector) {
     return [];
   }
+  const logger = getActivityLogger(connector);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const results = await concurrentExecutor(
@@ -1402,6 +1405,7 @@ export async function microsoftDeletionActivity({
         nodeId,
         connectorId,
         dataSourceConfig,
+        logger,
       });
     },
     { concurrency: DELETE_CONCURRENCY }
@@ -1532,12 +1536,14 @@ export async function microsoftGarbageCollectionActivity({
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                logger,
               });
             } else if (!rootNodeIds.includes(node.internalId)) {
               await deleteFolder({
                 connectorId,
                 dataSourceConfig,
                 internalId: node.internalId,
+                logger,
               });
             }
             break;
@@ -1560,6 +1566,7 @@ export async function microsoftGarbageCollectionActivity({
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                logger,
               });
             }
             break;
@@ -1582,6 +1589,7 @@ export async function microsoftGarbageCollectionActivity({
                 connectorId,
                 internalId: node.internalId,
                 dataSourceConfig,
+                logger,
               });
             }
             break;
@@ -1758,12 +1766,14 @@ async function scrubRemovedFolders({
         connectorId: connector.id,
         internalId: node.internalId,
         dataSourceConfig,
+        logger,
       });
     } else if (node.nodeType === "folder") {
       await recursiveNodeDeletion({
         nodeId: node.internalId,
         connectorId: connector.id,
         dataSourceConfig,
+        logger,
       });
     }
   }
@@ -1893,6 +1903,7 @@ export async function processDeltaChangesFromGCS({
           connectorId,
           internalId,
           dataSourceConfig,
+          logger,
         });
         if (isDeleted) {
           deleted++;
@@ -1924,6 +1935,7 @@ export async function processDeltaChangesFromGCS({
               connectorId,
               internalId,
               dataSourceConfig,
+              logger,
             });
             if (isDeleted) {
               deleted++;
@@ -1944,6 +1956,7 @@ export async function processDeltaChangesFromGCS({
           dataSourceConfig,
           internalId,
           deleteRootNode: true,
+          logger,
         });
         if (isDeleted) {
           deleted++;
