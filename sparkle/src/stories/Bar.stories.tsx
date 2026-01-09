@@ -29,12 +29,12 @@ export const BasicBarHeader: Story = {
   },
 };
 
-export const BarHeaderWithSubtitle = () => {
+export const BarHeaderWithDescription = () => {
   return (
     <Bar
       position="top"
       title="My Custom Skill"
-      subtitle={
+      description={
         <div className="s-flex s-items-center s-gap-1 s-text-sm">
           <p className="s-text-muted-foreground dark:s-text-muted-foreground-night">
             Based on
