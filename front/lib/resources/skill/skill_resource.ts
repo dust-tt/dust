@@ -1346,7 +1346,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
   ): {
     toDelete: SkillDataSourceConfigurationModel[];
-    toUpsert: Array<CreationAttributes<SkillDataSourceConfigurationModel>>;
+    toUpsert: CreationAttributes<SkillDataSourceConfigurationModel>[];
   } {
     // Group attached knowledge by data source view ID with all node IDs in parentsIn.
     const desiredConfigsByDataSourceViewId = attachedKnowledge.reduce<
@@ -1376,9 +1376,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }, {});
 
     const toDelete: SkillDataSourceConfigurationModel[] = [];
-    const toUpsert: Array<
-      CreationAttributes<SkillDataSourceConfigurationModel>
-    > = [];
+    const toUpsert: CreationAttributes<SkillDataSourceConfigurationModel>[] =
+      [];
 
     // Track which dataSourceViewIds need to be recreated.
     const toRecreate = new Set<ModelId>();
