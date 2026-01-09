@@ -1,6 +1,8 @@
 import {
   CodeBlock,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   DocumentIcon,
 } from "@dust-tt/sparkle";
 
@@ -51,21 +53,20 @@ export function MCPConversationCatFileDetails({
     >
       {viewType === "sidebar" && (
         <div className="flex flex-col gap-4 pl-6 pt-4">
-          <CollapsibleComponent
-            rootProps={{ defaultOpen: false }}
-            triggerChildren={
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger>
               <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                 Preview
               </span>
-            }
-            contentChildren={
+            </CollapsibleTrigger>
+            <CollapsibleContent>
               <div className="py-2">
                 <CodeBlock className="language-text max-h-32 overflow-y-auto">
                   {truncatedContent}
                 </CodeBlock>
               </div>
-            }
-          />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       )}
     </ActionDetailsWrapper>

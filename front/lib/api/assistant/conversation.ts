@@ -1722,15 +1722,17 @@ async function isMessagesLimitReached(
     };
   }
 
-  // Accounting for each mention separately.
+  // Accounting for each agent mention separately. Human mentions don't cost
+  // anything (no LLM call) so we don't count them toward the limit.
   // The return value won't account for the parallel calls depending on network timing
   // but we are fine with a little bit of overusage.
   // For free plans, don't multiply by activeSeats to prevent increased limits with more users.
   const effectiveMaxMessages = isFreePlan(plan.code)
     ? maxMessages
     : maxMessages * activeSeats;
+  const agentMentions = mentions.filter(isAgentMention);
   const remainingMentions = await Promise.all(
-    mentions.map(() =>
+    agentMentions.map(() =>
       rateLimiter({
         key: makeAgentMentionsRateLimitKeyForWorkspace(
           owner,

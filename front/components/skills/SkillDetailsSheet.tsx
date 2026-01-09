@@ -2,7 +2,6 @@ import {
   ArrowPathIcon,
   Button,
   ContentMessage,
-  Icon,
   InformationCircleIcon,
   Sheet,
   SheetContainer,
@@ -19,6 +18,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
 
 import { ResourceAvatar } from "@app/components/resources/resources_icons";
+import { ExtendedSkillBadge } from "@app/components/skills/ExtendedSkillBadge";
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
@@ -52,7 +52,7 @@ export function SkillDetailsSheet({
         </VisuallyHidden>
         {skill && (
           <>
-            <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
+            <SheetHeader>
               <DescriptionSection
                 skill={skill}
                 owner={owner}
@@ -159,18 +159,7 @@ const DescriptionSection = ({
           {skill.name}
         </h2>
         {skill.relations.extendedSkill && (
-          <div className="flex items-center gap-1 text-base">
-            <p className="text-muted-foreground dark:text-muted-foreground-night">
-              Based on
-            </p>
-            <Icon
-              visual={getSkillIcon(skill.relations.extendedSkill.icon)}
-              size="xs"
-            />
-            <p className="text-foreground dark:text-foreground-night">
-              {skill.relations.extendedSkill.name}
-            </p>
-          </div>
+          <ExtendedSkillBadge extendedSkill={skill.relations.extendedSkill} />
         )}
 
         {editedDate && (

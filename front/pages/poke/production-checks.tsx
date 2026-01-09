@@ -2,7 +2,9 @@ import {
   Button,
   Chip,
   ClipboardIcon,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   PlayIcon,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -342,12 +344,10 @@ function HistoryRunRow({ run, checkName }: HistoryRunRowProps) {
   }
 
   return (
-    <CollapsibleComponent
-      rootProps={{ defaultOpen: false }}
-      triggerProps={{ className: "gap-3" }}
-      triggerChildren={rowContent}
-      contentChildren={detailsContent}
-    />
+    <Collapsible defaultOpen={false}>
+      <CollapsibleTrigger className="gap-3">{rowContent}</CollapsibleTrigger>
+      <CollapsibleContent>{detailsContent}</CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -490,12 +490,12 @@ function ProductionCheckCard({
         getStatusCardClasses(check.status)
       )}
     >
-      <CollapsibleComponent
-        rootProps={{ defaultOpen: false }}
-        triggerProps={{ className: "gap-3" }}
-        triggerChildren={triggerContent}
-        contentChildren={detailsContent}
-      />
+      <Collapsible defaultOpen={false}>
+        <CollapsibleTrigger className="gap-3">
+          {triggerContent}
+        </CollapsibleTrigger>
+        <CollapsibleContent>{detailsContent}</CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

@@ -109,7 +109,7 @@ export function KnowledgeFooter() {
 
   return (
     <Collapsible open={isOpen} onOpenChange={setOpen}>
-      <CollapsibleTrigger isOpen={isOpen}>
+      <CollapsibleTrigger>
         <span className="heading-sm text-muted-foreground">
           Selection ({field.value.in.length} item
           {pluralize(field.value.in.length)})
