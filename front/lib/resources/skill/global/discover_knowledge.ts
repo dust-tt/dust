@@ -25,7 +25,7 @@ export const discoverKnowledgeSkill = {
   sId: "discover_knowledge",
   name: "Discover Knowledge",
   userFacingDescription:
-    "Searches across all your company documents and data warehouses to surface the information you need.",
+    "Search across all your company documents and data warehouses to surface the information you need.",
   agentFacingDescription:
     "Search documents, browse folder hierarchies, read file contents, and query data warehouse tables with SQL.",
   instructions: DISCOVER_KNOWLEDGE_INSTRUCTIONS,

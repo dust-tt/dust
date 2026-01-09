@@ -5,7 +5,7 @@ export const framesSkill = {
   sId: "frames",
   name: "Frames",
   userFacingDescription:
-    "Turns insights into interactive dashboards and presentations your team can explore, customize, and share. Living documents that adapt to different stakeholders.",
+    "Turn insights into interactive dashboards and presentations your team can explore, customize, and share. Living documents that adapt to different stakeholders.",
   agentFacingDescription:
     "Create interactive visualizations, charts, dashboards, and presentations as executable React components.",
   instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
