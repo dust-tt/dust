@@ -15,7 +15,19 @@ import type {
   VerificationErrorType,
 } from "@app/types/workspace_verification";
 
-function getStatusCodeForError(type: VerificationErrorType): number {
+export const E164PhoneNumber = t.refinement(
+  t.string,
+  (s) => /^\+[1-9]\d{1,14}$/.test(s),
+  "E164PhoneNumber"
+);
+
+export const OtpCode = t.refinement(
+  t.string,
+  (s) => /^\d{6}$/.test(s),
+  "OtpCode"
+);
+
+export function getStatusCodeForError(type: VerificationErrorType): number {
   switch (type) {
     case "rate_limit_error":
       return 429;
@@ -28,12 +40,6 @@ function getStatusCodeForError(type: VerificationErrorType): number {
       assertNever(type);
   }
 }
-
-const E164PhoneNumber = t.refinement(
-  t.string,
-  (s) => /^\+[1-9]\d{1,14}$/.test(s),
-  "E164PhoneNumber"
-);
 
 const PostStartVerificationRequestBody = t.type({
   phoneNumber: E164PhoneNumber,
