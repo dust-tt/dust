@@ -230,7 +230,7 @@ export function GroupConversationView({
       {/* Tabs */}
       <Tabs
         defaultValue="conversations"
-        className="s-flex s-flex-1 s-flex-col s-pt-3"
+        className="s-flex s-min-h-0 s-flex-1 s-flex-col s-pt-3"
       >
         <TabsList>
           <TabsTrigger
