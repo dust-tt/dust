@@ -254,6 +254,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable slack notifications",
     stage: "dust_only",
   },
+  agent_bound_loop_rendering: {
+    description:
+      "When rendering conversations for agents, only show the current agent's agentic loop. Other agents' messages are shown as user messages with system tags.",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

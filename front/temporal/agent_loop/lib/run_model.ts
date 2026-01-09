@@ -72,7 +72,7 @@ export async function runModel(
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
-  }
+  },
 ): Promise<{
   actions: AgentActionsEvent["actions"];
   runId: string;
@@ -97,7 +97,7 @@ export async function runModel(
   // Compute the citations offset by summing citations allocated to all past actions for this message.
   const citationsRefsOffset = originalAgentMessage.actions.reduce(
     (total, action) => total + (action.citationsAllocated || 0),
-    0
+    0,
   );
 
   const now = Date.now();
@@ -125,7 +125,7 @@ export async function runModel(
       message: string;
       metadata: Record<string, string | number | boolean> | null;
     },
-    dustRunId?: string
+    dustRunId?: string,
   ): Promise<void> {
     // Check if this is a multi_actions_error that hit max retries
     const logMessage = `Agent error: ${error.message}`;
@@ -134,7 +134,7 @@ export async function runModel(
       {
         error,
       },
-      logMessage
+      logMessage,
     );
 
     await updateResourceAndPublishEvent(auth, {
@@ -189,13 +189,13 @@ export async function runModel(
         agentConfiguration,
         conversation,
         attachments,
-      }
+      },
     );
 
     const clientSideMCPActionConfigurations =
       await createClientSideMCPServerConfigurations(
         auth,
-        userMessage.context.clientSideMCPServerIds
+        userMessage.context.clientSideMCPServerIds,
       );
 
     const { enabledSkills, equippedSkills } =
@@ -208,7 +208,7 @@ export async function runModel(
 
     const dataSourceConfigurations = await getSkillDataSourceConfigurations(
       auth,
-      { skills: enabledSkills }
+      { skills: enabledSkills },
     );
 
     const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
@@ -230,8 +230,8 @@ export async function runModel(
           agentMessage,
           clientSideActionConfigurations: clientSideMCPActionConfigurations,
         },
-        { jitServers, skillServers }
-      )
+        { jitServers, skillServers },
+      ),
     );
 
     return {
@@ -248,7 +248,7 @@ export async function runModel(
       {
         error: mcpToolsListingError,
       },
-      "Error listing MCP tools."
+      "Error listing MCP tools.",
     );
   }
 
@@ -266,7 +266,7 @@ export async function runModel(
   }
 
   const agentsList = agentConfiguration.instructions?.includes(
-    "{ASSISTANTS_LIST}"
+    "{ASSISTANTS_LIST}",
   )
     ? await getAgentConfigurationsForView({
         auth,
@@ -277,7 +277,7 @@ export async function runModel(
 
   let memoriesContext: string | undefined;
   const hasAgentMemoryAction = agentConfiguration.actions.some((action) =>
-    isServerSideMCPServerConfigurationWithName(action, "agent_memory")
+    isServerSideMCPServerConfigurationWithName(action, "agent_memory"),
   );
   if (
     globalAgentInjectsMemory(agentConfiguration.sId) &&
@@ -318,7 +318,7 @@ export async function runModel(
       name: s.name,
       description: s.description,
       inputSchema: s.inputSchema,
-    }))
+    })),
   );
 
   // Turn the conversation into a digest that can be presented to the model.
@@ -333,13 +333,15 @@ export async function runModel(
           prompt: promptText,
           tools,
           allowedTokenCount: model.contextSize - model.generationTokensCount,
-        })
-      )
+          agentConfiguration,
+          featureFlags,
+        }),
+      ),
   );
 
   if (modelConversationRes.isErr()) {
     const categorizedError = categorizeConversationRenderErrorMessage(
-      modelConversationRes.error
+      modelConversationRes.error,
     );
     if (categorizedError) {
       await publishAgentError({
@@ -365,7 +367,7 @@ export async function runModel(
   // Temporarily adding this to check if we can consider contents property only in llms
   const unexpectedMessage =
     modelConversationRes.value.modelConversation.messages.find(
-      (m) => m.role === "assistant" && !m.contents && m.content
+      (m) => m.role === "assistant" && !m.contents && m.content,
     );
   if (unexpectedMessage) {
     logger.error(
@@ -374,7 +376,7 @@ export async function runModel(
         agentMessageId: agentMessage.sId,
         step,
       },
-      "Found assistant message with legacy content field instead of contents array"
+      "Found assistant message with legacy content field instead of contents array",
     );
   }
 
@@ -400,7 +402,7 @@ export async function runModel(
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
-    getDelimitersConfiguration({ agentConfiguration })
+    getDelimitersConfiguration({ agentConfiguration }),
   );
 
   const traceContext: LLMTraceContext = {
@@ -420,7 +422,7 @@ export async function runModel(
     // Custom trace input: show only the last user message instead of full conversation.
     getTraceInput: (conv) => {
       const lastUserMessage = conv.messages.findLast(
-        (msg) => msg.role === "user"
+        (msg) => msg.role === "user",
       );
       return lastUserMessage?.content
         .filter(isTextContent)
@@ -439,7 +441,7 @@ export async function runModel(
         conversationId: conversation.sId,
         workspaceId: conversation.owner.sId,
       },
-      "LLM is null in runModel, cannot proceed."
+      "LLM is null in runModel, cannot proceed.",
     );
 
     return null;
@@ -461,7 +463,7 @@ export async function runModel(
         modelConversationRes.value.modelConversation.messages.length,
       toolCount: specifications.length,
     },
-    "[LLM stream] Starting (agent loop)"
+    "[LLM stream] Starting (agent loop)",
   );
 
   if (
@@ -524,14 +526,14 @@ export async function runModel(
               message: getUserFacingLLMErrorMessage(type, metadata),
               metadata: null,
             },
-            errorDustRunId
+            errorDustRunId,
           );
           return null;
         }
 
         // Throw to let Temporal handle the retry via its retry policy.
         throw new Error(
-          `LLM error (${type}): ${getUserFacingLLMErrorMessage(type, metadata)}`
+          `LLM error (${type}): ${getUserFacingLLMErrorMessage(type, metadata)}`,
         );
       }
       case "shouldReturnNull":
@@ -554,7 +556,7 @@ export async function runModel(
     auth,
     conversation,
     agentMessage.sId,
-    agentMessage.version
+    agentMessage.version,
   );
   if (message?.agentMessage?.status === "cancelled") {
     logger.info("Agent message cancelled, stopping");
@@ -590,7 +592,7 @@ export async function runModel(
         {
           modelId: model.modelId,
         },
-        "No content generated by the agent."
+        "No content generated by the agent.",
       );
     }
 
@@ -608,7 +610,7 @@ export async function runModel(
       completionDurationMs: getCompletionDuration(
         agentMessage.created,
         completedTs,
-        agentMessage.actions
+        agentMessage.actions,
       ),
       prunedContext: agentMessageRow.prunedContext ?? false,
     } satisfies AgentMessageType;
@@ -639,7 +641,7 @@ export async function runModel(
     {
       elapsed: Date.now() - now,
     },
-    "[ASSISTANT_TRACE] Action inputs generation"
+    "[ASSISTANT_TRACE] Action inputs generation",
   );
 
   // Inject a single newline boundary if we streamed visible content in this iteration
@@ -688,7 +690,7 @@ export async function runModel(
     ]);
 
     let action = availableActions.find((ac) =>
-      actionNamesFromLLM.includes(ac.name)
+      actionNamesFromLLM.includes(ac.name),
     );
 
     if (!action) {
@@ -706,7 +708,7 @@ export async function runModel(
       const mcpServerView =
         await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
-          "missing_action_catcher"
+          "missing_action_catcher",
         );
 
       // Could happen if the internal server has not already been added
@@ -726,12 +728,12 @@ export async function runModel(
           actionName: a.name,
           availableActions: availableActions.map((a) => a.name),
         },
-        "Model attempted to run an action that is not part of the agent configuration but we'll try to catch it."
+        "Model attempted to run an action that is not part of the agent configuration but we'll try to catch it.",
       );
 
       assert(
         mcpServerView.internalMCPServerId,
-        "Internal MCP server ID is null"
+        "Internal MCP server ID is null",
       );
 
       // Catch-all action.
