@@ -150,7 +150,7 @@ export default function SkillBuilder({
               className="mx-4"
               title={
                 (skill ? `Edit skill ${skill.name}` : "Create new skill") +
-                (extendedSkill ? ` - extending ${extendedSkill.name}` : "")
+                (extendedSkill ? ` - based on ${extendedSkill.name}` : "")
               }
               rightActions={
                 <Button
@@ -164,15 +164,17 @@ export default function SkillBuilder({
 
             <ScrollArea className="flex-1">
               <div className="mx-auto space-y-10 p-4 2xl:max-w-5xl">
-                <div>
-                  <h2 className="heading-lg text-foreground dark:text-foreground-night">
-                    Create new skill
-                  </h2>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Create a package of instructions, tools and knowledge that
-                    agents can share.
-                  </p>
-                </div>
+                {!extendedSkill && (
+                  <div>
+                    <h2 className="heading-lg text-foreground dark:text-foreground-night">
+                      Create new skill
+                    </h2>
+                    <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      Create a package of instructions and tools that agents can
+                      share.
+                    </p>
+                  </div>
+                )}
                 <SkillBuilderRequestedSpacesSection />
                 <SkillBuilderAgentFacingDescriptionSection />
                 <SkillBuilderInstructionsSection skill={skill} />
