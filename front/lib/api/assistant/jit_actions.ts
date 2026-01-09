@@ -4,11 +4,9 @@ import {
   DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+  DEFAULT_PROJECT_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type {
-  MCPServerConfigurationType,
-  ServerSideMCPServerConfigurationType,
-} from "@app/lib/actions/mcp";
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
@@ -32,12 +30,13 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
-  AgentConfigurationType,
   ConversationWithoutContentType,
+  LightAgentConfigurationType,
 } from "@app/types";
 import { CoreAPI } from "@app/types";
 
@@ -48,12 +47,12 @@ export async function getJITServers(
     conversation,
     attachments,
   }: {
-    agentConfiguration: AgentConfigurationType;
+    agentConfiguration: LightAgentConfigurationType;
     conversation: ConversationWithoutContentType;
     attachments: ConversationAttachmentType[];
   }
-): Promise<MCPServerConfigurationType[]> {
-  const jitServers: MCPServerConfigurationType[] = [];
+): Promise<ServerSideMCPServerConfigurationType[]> {
+  const jitServers: ServerSideMCPServerConfigurationType[] = [];
 
   // Get the conversation MCP server views (aka Tools)
   const conversationMCPServerViews =
@@ -191,6 +190,57 @@ export async function getJITServers(
     }
   }
 
+  if (featureFlags.includes("projects") && conversation.spaceId) {
+    const projectDatasourceView = await getProjectContextDataSourceView(
+      auth,
+      conversation
+    );
+
+    const retrievalView =
+      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+        auth,
+        "search"
+      );
+
+    assert(
+      retrievalView,
+      "MCP server view not found for search. Ensure auto tools are created."
+    );
+
+    if (projectDatasourceView) {
+      const dataSources: DataSourceConfiguration[] = [
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          dataSourceViewId: projectDatasourceView.sId,
+          filter: {
+            parents: null,
+            tags: null,
+          },
+        },
+      ];
+
+      // add search server for the folder
+      const projectFilesServer: ServerSideMCPServerConfigurationType = {
+        id: -1,
+        sId: generateRandomModelSId(),
+        type: "mcp_server_configuration",
+        name: DEFAULT_PROJECT_SEARCH_ACTION_NAME,
+        description: `Semantic search over the project context`,
+        dataSources,
+        tables: null,
+        childAgentId: null,
+        timeFrame: null,
+        jsonSchema: null,
+        secretName: null,
+        additionalConfiguration: {},
+        mcpServerViewId: retrievalView.sId,
+        dustAppConfiguration: null,
+        internalMCPServerId: retrievalView.mcpServerId,
+      };
+
+      jitServers.push(projectFilesServer);
+    }
+  }
   // Add schedules_management MCP server if this is an onboarding conversation
   // user is not always defined (API triggered agent loop)
   const userResource = auth.user();
@@ -642,4 +692,36 @@ async function getTablesFromMultiSheetSpreadsheet(
 
   // Children of multi-sheet spreadsheets are exclusively tables.
   return searchResult.value.nodes.map((n) => n.node_id);
+}
+
+/**
+ * Get the project context datasource view for a conversation's space (if any).
+ * Returns null if the conversation not in a space or no project context datasource exists.
+ */
+export async function getProjectContextDataSourceView(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<DataSourceViewResource | null> {
+  if (!conversation.spaceId) {
+    // Conversation not in a space (private conversation).
+    return null;
+  }
+
+  // Fetch space.
+  const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+  if (!space) {
+    logger.warn(
+      {
+        conversationId: conversation.sId,
+        spaceId: conversation.spaceId,
+      },
+      "Space not found for conversation"
+    );
+    return null;
+  }
+
+  // Try to fetch the project context datasource.
+  const view = await DataSourceViewResource.fetchByProjectId(auth, space.id);
+
+  return view ?? null;
 }
