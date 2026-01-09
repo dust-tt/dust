@@ -2,6 +2,7 @@ import type { Meta } from "@storybook/react";
 import React, { useEffect, useState } from "react";
 
 import { ActionInboxIcon } from "@sparkle/icons/actions";
+import type { NavigationListItemStatus } from "@sparkle/components/NavigationList";
 import {
   Avatar,
   Button,
@@ -12,7 +13,6 @@ import {
   NavigationList,
   NavigationListItem,
   NavigationListItemAction,
-  NavigationListItemStatus,
   NavigationListCollapsibleSection,
   NavigationListLabel,
   PencilSquareIcon,
@@ -96,17 +96,17 @@ export const Demo = () => {
               {section.items.map((title, index) => {
                 const itemIndex = allItems.indexOf(title);
                 // Add status based on index for demonstration
-                const getStatus = (idx: number) => {
+                const getStatus = (idx: number): NavigationListItemStatus => {
                   if (idx % 7 === 0) {
-                    return NavigationListItemStatus.Error;
+                    return "error";
                   }
                   if (idx % 5 === 0) {
-                    return NavigationListItemStatus.Unread;
+                    return "unread";
                   }
                   if (idx % 3 === 0) {
-                    return NavigationListItemStatus.Blocked;
+                    return "blocked";
                   }
-                  return NavigationListItemStatus.Idle;
+                  return "idle";
                 };
                 return (
                   <NavigationListItem
@@ -139,17 +139,17 @@ export const Demo = () => {
               {section.items.map((title, index) => {
                 const itemIndex = allItems.indexOf(title);
                 // Add status based on index for demonstration.
-                const getStatus = (idx: number) => {
+                const getStatus = (idx: number): NavigationListItemStatus => {
                   if (idx % 7 === 0) {
-                    return NavigationListItemStatus.Error;
+                    return "error";
                   }
                   if (idx % 5 === 0) {
-                    return NavigationListItemStatus.Unread;
+                    return "unread";
                   }
                   if (idx % 3 === 0) {
-                    return NavigationListItemStatus.Blocked;
+                    return "blocked";
                   }
-                  return NavigationListItemStatus.Idle;
+                  return "idle";
                 };
                 return (
                   <NavigationListItem
@@ -249,11 +249,19 @@ export const CollapsibleSection = () => {
           }
         >
           {getRandomTitles(6).map((title, index) => {
-            const statuses: Array<NavigationListItemStatus | number> = [
-              NavigationListItemStatus.Idle,
-              NavigationListItemStatus.Unread,
-              NavigationListItemStatus.Blocked,
-              NavigationListItemStatus.Error,
+            const statuses: NavigationListItemStatus[] = [
+              "idle",
+              "unread",
+              "blocked",
+              "error",
+              "idle",
+              "idle",
+            ];
+            const counts: Array<number | undefined> = [
+              undefined,
+              undefined,
+              undefined,
+              undefined,
               5,
               12,
             ];
@@ -263,6 +271,7 @@ export const CollapsibleSection = () => {
                 href={index % 2 === 0 ? "#" : undefined}
                 selected={index === selectedIndex}
                 status={statuses[index % 6]}
+                count={counts[index % 6]}
                 onClick={(e) => {
                   if (!e.defaultPrevented) {
                     e.preventDefault();
@@ -354,7 +363,7 @@ export const CollapsibleSection = () => {
               icon={SpaceOpenIcon}
               label="Company"
               href="#"
-              status={3}
+              count={3}
               onClick={(e) => {
                 e.preventDefault();
               }}
@@ -362,7 +371,7 @@ export const CollapsibleSection = () => {
             <NavigationListItem
               icon={SpaceOpenIcon}
               label="Design"
-              status={8}
+              count={8}
               href="#"
               onClick={(e) => {
                 e.preventDefault();
