@@ -12,8 +12,8 @@ import type { ServiceName } from "../lib/services";
 import { isDockerRunning } from "../lib/state";
 import { deleteBranch, hasUncommittedChanges, removeWorktree } from "../lib/worktree";
 
-async function cleanupZellijSession(envName: string): Promise<void> {
-  const sessionName = `dust-hive-${envName}`;
+async function cleanupZellijSession(slug: string): Promise<void> {
+  const sessionName = `dust-hive-${slug}`;
 
   // Kill session first (stops it)
   const killProc = Bun.spawn(["zellij", "kill-session", sessionName], {
@@ -86,7 +86,7 @@ async function destroySingleEnvironment(
 
   // Clean up zellij session
   logger.step("Cleaning up zellij session...");
-  await cleanupZellijSession(env.name);
+  await cleanupZellijSession(env.slug);
 
   // Force cleanup any orphaned processes on service ports
   const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {

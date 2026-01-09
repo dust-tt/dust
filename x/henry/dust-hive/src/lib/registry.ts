@@ -80,7 +80,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     needsNvm: true,
     needsEnvSh: true,
     buildCommand: (env) =>
-      `TEMPORAL_NAMESPACE=dust-hive-${env.name}-connectors npx tsx src/start.ts -p ${env.ports.connectors}`,
+      `TEMPORAL_NAMESPACE=dust-hive-${env.slug}-connectors npx tsx src/start.ts -p ${env.ports.connectors}`,
     portKey: "connectors",
   },
   "front-workers": {

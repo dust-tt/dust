@@ -282,7 +282,7 @@ async function createSessionInBackground(sessionName: string, layoutPath: string
 export const openCommand = withEnvironment("open", async (env, options: OpenOptions = {}) => {
   const worktreePath = getWorktreeDir(env.name);
   const envShPath = getEnvFilePath(env.name);
-  const sessionName = `dust-hive-${env.name}`;
+  const sessionName = `dust-hive-${env.slug}`;
 
   // Detect if running inside zellij to avoid nesting
   const inZellij = process.env["ZELLIJ"] !== undefined;

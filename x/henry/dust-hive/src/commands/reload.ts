@@ -6,7 +6,7 @@ import { getZellijLayoutPath } from "../lib/paths";
 import { openCommand } from "./open";
 
 export const reloadCommand = withEnvironment("reload", async (env) => {
-  const sessionName = `dust-hive-${env.name}`;
+  const sessionName = `dust-hive-${env.slug}`;
 
   logger.step("Killing existing session...");
 

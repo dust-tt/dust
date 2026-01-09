@@ -7,6 +7,7 @@ import {
   createEnvironment,
   deleteEnvironmentDir,
   environmentExists,
+  getEnvSlug,
   validateEnvName,
 } from "../lib/environment";
 import { logger } from "../lib/logger";
@@ -218,6 +219,7 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   // Phase 3: Start SDK
   const env: Environment = {
     name,
+    slug: getEnvSlug(name),
     metadata,
     ports,
     initialized: false,

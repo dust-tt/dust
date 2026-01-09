@@ -506,7 +506,7 @@ export async function createTemporalNamespaces(env: Environment): Promise<void> 
   logger.step("Creating Temporal search attributes...");
 
   for (const config of TEMPORAL_NAMESPACE_CONFIG) {
-    const namespace = `dust-hive-${env.name}${config.suffix}`;
+    const namespace = `dust-hive-${env.slug}${config.suffix}`;
     for (const attrName of config.searchAttributes) {
       const attrType = SEARCH_ATTRIBUTES[attrName];
       await createSearchAttribute(namespace, attrName, attrType);

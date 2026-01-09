@@ -3,6 +3,12 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { isErrnoException } from "./errors";
 
+// Local slug function to avoid circular import with environment.ts
+// Converts "/" to "-" for use in file paths
+function toSlug(name: string): string {
+  return name.replace(/\//g, "-");
+}
+
 // dust-hive project root (where this package lives)
 export const DUST_HIVE_ROOT = resolve(dirname(import.meta.path), "../..");
 
@@ -38,11 +44,11 @@ export const SEED_USER_PATH = join(DUST_HIVE_HOME, "seed-user.json");
 
 // Per-environment paths
 export function getEnvDir(name: string): string {
-  return join(DUST_HIVE_ENVS, name);
+  return join(DUST_HIVE_ENVS, toSlug(name));
 }
 
 export function getWorktreeDir(name: string): string {
-  return join(DUST_HIVE_WORKTREES, name);
+  return join(DUST_HIVE_WORKTREES, toSlug(name));
 }
 
 export function getEnvFilePath(name: string): string {
