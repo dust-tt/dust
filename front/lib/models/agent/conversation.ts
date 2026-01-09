@@ -790,6 +790,7 @@ export class MentionModel extends WorkspaceAwareModel<MentionModel> {
   declare message: NonAttribute<MessageModel>;
 
   declare status: MentionStatusType;
+  declare dismissed: boolean | null;
 }
 
 MentionModel.init(
@@ -820,6 +821,11 @@ MentionModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "approved",
+    },
+    dismissed: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
     },
   },
   {
