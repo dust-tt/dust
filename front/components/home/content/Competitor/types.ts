@@ -89,18 +89,18 @@ export interface Testimonial {
   metric?: string;
 }
 
+// Shared CTA button configuration
+export interface CTAConfig {
+  label: string;
+  href: string;
+}
+
 // Hero section config
 export interface HeroConfig {
   title: string;
   subtitle: string;
-  primaryCTA: {
-    label: string;
-    href: string;
-  };
-  secondaryCTA: {
-    label: string;
-    href: string;
-  };
+  primaryCTA: CTAConfig;
+  secondaryCTA: CTAConfig;
   socialProofLogos: string[];
 }
 
@@ -162,14 +162,8 @@ export type DiscoveryQuestionsConfig = TitledSection & {
 export interface FinalCTAConfig {
   title: string;
   subtitle?: string;
-  primaryCTA: {
-    label: string;
-    href: string;
-  };
-  secondaryCTA: {
-    label: string;
-    href: string;
-  };
+  primaryCTA: CTAConfig;
+  secondaryCTA: CTAConfig;
   trustText?: string;
   socialProofLogos?: string[];
 }

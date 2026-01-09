@@ -1,4 +1,5 @@
 import { CheckIcon, DashIcon, XMarkIcon } from "@dust-tt/sparkle";
+import type { ComponentType } from "react";
 
 import { Grid, H2 } from "@app/components/home/ContentComponents";
 
@@ -21,27 +22,36 @@ interface FeatureIndicatorProps {
   status: FeatureStatus;
 }
 
-function FeatureIndicator({ status }: FeatureIndicatorProps) {
-  switch (status) {
-    case "yes":
-      return (
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100">
-          <CheckIcon className="h-5 w-5 text-green-600" />
-        </div>
-      );
-    case "partial":
-      return (
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
-          <DashIcon className="h-5 w-5 text-amber-600" />
-        </div>
-      );
-    case "no":
-      return (
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
-          <XMarkIcon className="h-5 w-5 text-gray-400" />
-        </div>
-      );
+const FEATURE_STATUS_CONFIG: Record<
+  FeatureStatus,
+  {
+    Icon: ComponentType<{ className?: string }>;
+    bgColor: string;
+    iconColor: string;
   }
+> = {
+  yes: {
+    Icon: CheckIcon,
+    bgColor: "bg-green-100",
+    iconColor: "text-green-600",
+  },
+  partial: {
+    Icon: DashIcon,
+    bgColor: "bg-amber-100",
+    iconColor: "text-amber-600",
+  },
+  no: { Icon: XMarkIcon, bgColor: "bg-gray-100", iconColor: "text-gray-400" },
+};
+
+function FeatureIndicator({ status }: FeatureIndicatorProps) {
+  const { Icon, bgColor, iconColor } = FEATURE_STATUS_CONFIG[status];
+  return (
+    <div
+      className={`flex h-8 w-8 items-center justify-center rounded-full ${bgColor}`}
+    >
+      <Icon className={`h-5 w-5 ${iconColor}`} />
+    </div>
+  );
 }
 
 export function FeatureComparisonTable({
