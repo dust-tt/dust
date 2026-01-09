@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
+import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type {
   GroupType,
@@ -10,7 +11,6 @@ import type {
   SpaceType,
   UserType,
 } from "@app/types";
-import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
 
 interface SpaceAboutTabProps {
   owner: LightWorkspaceType;

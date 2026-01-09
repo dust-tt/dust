@@ -8,7 +8,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SliderToggle,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import * as React from "react";
@@ -17,6 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmContext } from "@app/components/Confirm";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
+import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
 import { useGroups } from "@app/lib/swr/groups";
 import {
   useCreateSpace,
@@ -33,7 +33,6 @@ import type {
   SpaceType,
   UserType,
 } from "@app/types";
-import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
 
 type MembersManagementType = "manual" | "group";
 
