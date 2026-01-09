@@ -51,17 +51,12 @@ const logger = mainLogger.child(
 const ADMIN_GROUP_NAME = "dust-admins";
 const BUILDER_GROUP_NAME = "dust-builders";
 
-const SCIM_ENTERPRISE_USER_SCHEMA =
-  "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User";
+// WorkOS custom attributes to sync to user metadata.
+// These are normalized by WorkOS and can come from SCIM or SSO.
+const CUSTOM_ATTRIBUTES_TO_SYNC = ["job_title", "department_name"] as const;
+type CustomAttributeKey = (typeof CUSTOM_ATTRIBUTES_TO_SYNC)[number];
 
-const SCIM_ATTRIBUTES_TO_SYNC = [
-  "department",
-  "division",
-  "organization",
-] as const;
-type ScimAttributeKey = (typeof SCIM_ATTRIBUTES_TO_SYNC)[number];
-
-const SCIM_METADATA_KEY_PREFIX = "scim:";
+const WORKOS_METADATA_KEY_PREFIX = "workos:";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -696,39 +691,21 @@ async function handleUserRemovedFromGroup(
   });
 }
 
-// Extracts SCIM Enterprise User extension attributes from DirectoryUser.
-// Checks both rawAttributes (SCIM extension schema) and customAttributes (mapped attributes).
-function extractScimAttributes(
+// Extracts WorkOS custom attributes from DirectoryUser.
+function extractCustomAttributes(
   directoryUser: DirectoryUser
-): Record<ScimAttributeKey, string | null> {
-  const result: Record<ScimAttributeKey, string | null> = {
-    department: null,
-    division: null,
-    organization: null,
+): Record<CustomAttributeKey, string | null> {
+  const result: Record<CustomAttributeKey, string | null> = {
+    job_title: null,
+    department_name: null,
   };
 
-  const { rawAttributes } = directoryUser;
-  if (isRecord(rawAttributes)) {
-    const enterpriseExtension = rawAttributes[SCIM_ENTERPRISE_USER_SCHEMA];
-    if (isRecord(enterpriseExtension)) {
-      for (const attr of SCIM_ATTRIBUTES_TO_SYNC) {
-        const value = enterpriseExtension[attr];
-        if (typeof value === "string" && value.trim() !== "") {
-          result[attr] = value.trim();
-        }
-      }
-    }
-  }
-
-  // Fallback to customAttributes if not in rawAttributes.
   const { customAttributes } = directoryUser;
   if (isRecord(customAttributes)) {
-    for (const attr of SCIM_ATTRIBUTES_TO_SYNC) {
-      if (result[attr] === null) {
-        const value = customAttributes[attr];
-        if (typeof value === "string" && value.trim() !== "") {
-          result[attr] = value.trim();
-        }
+    for (const attr of CUSTOM_ATTRIBUTES_TO_SYNC) {
+      const value = customAttributes[attr];
+      if (typeof value === "string" && value.trim() !== "") {
+        result[attr] = value.trim();
       }
     }
   }
@@ -736,16 +713,16 @@ function extractScimAttributes(
   return result;
 }
 
-// Syncs SCIM attributes to UserMetadataModel.
-// Stores attributes with workspace scope and "scim:" prefix.
+// Syncs WorkOS custom attributes to UserMetadataModel.
+// Stores attributes with workspace scope and "workos:" prefix.
 // Removes attributes that are no longer present in the directory.
-async function syncScimAttributesToUserMetadata(
+async function syncCustomAttributesToUserMetadata(
   user: UserResource,
   workspace: LightWorkspaceType,
-  attributes: Record<ScimAttributeKey, string | null>
+  attributes: Record<CustomAttributeKey, string | null>
 ): Promise<void> {
-  for (const attr of SCIM_ATTRIBUTES_TO_SYNC) {
-    const metadataKey = `${SCIM_METADATA_KEY_PREFIX}${attr}`;
+  for (const attr of CUSTOM_ATTRIBUTES_TO_SYNC) {
+    const metadataKey = `${WORKOS_METADATA_KEY_PREFIX}${attr}`;
     const value = attributes[attr];
 
     if (value !== null) {
@@ -757,7 +734,7 @@ async function syncScimAttributesToUserMetadata(
           attribute: attr,
           value,
         },
-        "Synced SCIM attribute to user metadata"
+        "Synced WorkOS custom attribute to user metadata"
       );
     } else {
       // Remove attribute if no longer present in directory.
@@ -769,28 +746,28 @@ async function syncScimAttributesToUserMetadata(
         });
         logger.info(
           { userId: user.sId, workspaceId: workspace.sId, attribute: attr },
-          "Removed SCIM attribute from user metadata"
+          "Removed WorkOS custom attribute from user metadata"
         );
       }
     }
   }
 }
 
-// Clears all SCIM attributes for a user in a workspace.
+// Clears all WorkOS custom attributes for a user in a workspace.
 // Called when the user is deleted from the directory.
-async function clearScimAttributesFromUserMetadata(
+async function clearCustomAttributesFromUserMetadata(
   user: UserResource,
   workspace: LightWorkspaceType
 ): Promise<void> {
-  for (const attr of SCIM_ATTRIBUTES_TO_SYNC) {
+  for (const attr of CUSTOM_ATTRIBUTES_TO_SYNC) {
     await user.deleteMetadata({
-      key: `${SCIM_METADATA_KEY_PREFIX}${attr}`,
+      key: `${WORKOS_METADATA_KEY_PREFIX}${attr}`,
       workspaceId: workspace.id,
     });
   }
   logger.info(
     { userId: user.sId, workspaceId: workspace.sId },
-    "Cleared SCIM attributes from user metadata"
+    "Cleared WorkOS custom attributes from user metadata"
   );
 }
 
@@ -825,12 +802,12 @@ async function handleCreateOrUpdateWorkOSUser(
     forceNameUpdate: !!(workOSUser.firstName && workOSUser.lastName),
   });
 
-  // Sync SCIM attributes from directory user.
-  const scimAttributes = extractScimAttributes(event);
-  await syncScimAttributesToUserMetadata(
+  // Sync WorkOS custom attributes from directory user.
+  const customAttributes = extractCustomAttributes(event);
+  await syncCustomAttributesToUserMetadata(
     createdOrUpdatedUser,
     workspace,
-    scimAttributes
+    customAttributes
   );
 
   const membership =
@@ -879,8 +856,8 @@ async function handleDeleteWorkOSUser(
     );
   }
 
-  // Clear SCIM attributes before revoking membership.
-  await clearScimAttributesFromUserMetadata(user, workspace);
+  // Clear WorkOS custom attributes before revoking membership.
+  await clearCustomAttributesFromUserMetadata(user, workspace);
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const groups = await GroupResource.listUserGroupsInWorkspace({
