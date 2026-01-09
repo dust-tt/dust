@@ -24,7 +24,7 @@ export const UseCaseFitGuide: FC<UseCaseFitGuideProps> = ({
 
           <div className="grid gap-6 md:grid-cols-2">
             {/* Dust Use Cases */}
-            <div className="rounded-2xl border-2 border-green-200 bg-green-50 overflow-hidden">
+            <div className="overflow-hidden rounded-2xl border-2 border-green-200 bg-green-50">
               <div className="border-b border-green-200 bg-green-100 px-6 py-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-white">
@@ -52,7 +52,7 @@ export const UseCaseFitGuide: FC<UseCaseFitGuideProps> = ({
             </div>
 
             {/* Competitor Use Cases */}
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 overflow-hidden">
+            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
               <div className="border-b border-gray-200 bg-gray-100 px-6 py-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-400 text-white">

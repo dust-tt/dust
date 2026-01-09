@@ -118,7 +118,6 @@ export interface FeatureComparisonConfig {
   rows: FeatureComparisonRow[];
 }
 
-
 // When competitor better section config
 export interface WhenCompetitorBetterConfig {
   title: string;

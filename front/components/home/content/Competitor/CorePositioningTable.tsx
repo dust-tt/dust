@@ -63,16 +63,16 @@ export const CorePositioningTable: FC<CorePositioningTableProps> = ({
             {config.rows.map((row, index) => (
               <div
                 key={index}
-                className="rounded-xl border border-gray-200 overflow-hidden"
+                className="overflow-hidden rounded-xl border border-gray-200"
               >
-                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
                   <span className="text-sm font-semibold text-gray-900">
                     {row.dimension}
                   </span>
                 </div>
                 <div className="divide-y divide-gray-200">
                   <div className="px-4 py-3">
-                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
                       {competitorName}
                     </span>
                     <p className="mt-1 text-sm text-gray-600">
@@ -80,7 +80,7 @@ export const CorePositioningTable: FC<CorePositioningTableProps> = ({
                     </p>
                   </div>
                   <div className="bg-green-50/50 px-4 py-3">
-                    <span className="text-xs font-medium text-green-600 uppercase tracking-wide">
+                    <span className="text-xs font-medium uppercase tracking-wide text-green-600">
                       Dust
                     </span>
                     <p className="mt-1 text-sm text-gray-700">{row.dust}</p>

@@ -45,8 +45,7 @@ function generateSoftwareSchema() {
       price: "29",
       priceCurrency: "USD",
       priceValidUntil: "2026-12-31",
-      description:
-        "14-day free trial, transparent pricing from $29/user/month",
+      description: "14-day free trial, transparent pricing from $29/user/month",
     },
     aggregateRating: {
       "@type": "AggregateRating",
@@ -159,10 +158,6 @@ export default function CompetitorTemplate({
       case "socialProof":
       case "integrationComparison":
       case "discoveryQuestions":
-        return null;
-
-      default:
-        console.warn(`Unknown section type: ${sectionType}`);
         return null;
     }
   };

@@ -25,7 +25,7 @@ export const CompetitorHeroSection: FC<CompetitorHeroSectionProps> = ({
 }) => {
   return (
     <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-blue-50">
-      <div className="mx-auto flex w-full max-w-7xl flex-col px-6 pt-16 pb-12 md:pt-24 md:pb-16">
+      <div className="mx-auto flex w-full max-w-7xl flex-col px-6 pb-12 pt-16 md:pb-16 md:pt-24">
         <Grid>
           <div
             className={classNames(
