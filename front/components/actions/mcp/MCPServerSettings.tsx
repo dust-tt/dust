@@ -1,7 +1,7 @@
 import { Button, Chip, LoginIcon, XMarkIcon } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 
-import { ConnectMCPServerDialog } from "@app/components/actions/mcp/ConnectMCPServerDialog";
+import { ConnectMCPServerDialog } from "@app/components/actions/mcp/create/ConnectMCPServerDialog";
 import {
   OAUTH_USE_CASE_TO_DESCRIPTION,
   OAUTH_USE_CASE_TO_LABEL,

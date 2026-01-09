@@ -10,11 +10,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
 import { useController, useForm, useWatch } from "react-hook-form";
 
+import { submitConnectMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitConnectMCPServerDialogForm";
+import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
+import { mcpServerOAuthFormSchema } from "@app/components/actions/mcp/forms/types";
+import { getConnectMCPServerDialogDefaultValues } from "@app/components/actions/mcp/forms/utils";
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
-import { submitConnectMCPServerDialogForm } from "@app/components/actions/mcp/submitConnectMCPServerDialogForm";
-import { getConnectMCPServerDialogDefaultValues } from "@app/components/actions/mcp/transformConnectMCPServerDialogForm";
-import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/types";
-import { mcpServerOAuthFormSchema } from "@app/components/actions/mcp/types";
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,

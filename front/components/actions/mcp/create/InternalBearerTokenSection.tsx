@@ -7,7 +7,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useController, useFormContext } from "react-hook-form";
 
-import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/types";
+import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 
 export function InternalBearerTokenSection() {
   const form = useFormContext<CreateMCPServerDialogFormValues>();

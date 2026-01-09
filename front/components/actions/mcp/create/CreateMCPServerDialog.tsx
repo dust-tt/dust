@@ -15,10 +15,12 @@ import { InternalBearerTokenSection } from "@app/components/actions/mcp/create/I
 import { RemoteMCPServerConfigurationSection } from "@app/components/actions/mcp/create/RemoteMCPServerConfigurationSection";
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import { submitCreateMCPServerDialogForm } from "@app/components/actions/mcp/submitCreateMCPServerDialogForm";
-import { getCreateMCPServerDialogDefaultValues } from "@app/components/actions/mcp/transformCreateMCPServerDialogForm";
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/types";
 import { createMCPServerDialogFormSchema } from "@app/components/actions/mcp/types";
-import { handleCreateMCPServerDialogSubmitError } from "@app/components/actions/mcp/utils";
+import {
+  getCreateMCPServerDialogDefaultValues,
+  handleCreateMCPServerDialogSubmitError,
+} from "@app/components/actions/mcp/utils";
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,

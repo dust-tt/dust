@@ -1,7 +1,15 @@
 import type { UseFormReturn } from "react-hook-form";
 
 import { CreateMCPServerDialogSubmitError } from "@app/components/actions/mcp/submitCreateMCPServerDialogForm";
-import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/types";
+import type {
+  CreateMCPServerDialogFormValues,
+  MCPServerOAuthFormValues,
+} from "@app/components/actions/mcp/types";
+import {
+  createMCPServerDialogFormSchema,
+  mcpServerOAuthFormSchema,
+} from "@app/components/actions/mcp/types";
+import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { OAUTH_PROVIDER_NAMES } from "@app/types";
 
 export function handleCreateMCPServerDialogSubmitError({
@@ -93,4 +101,25 @@ export function handleCreateMCPServerDialogSubmitError({
       return;
     }
   }
+}
+
+export function getConnectMCPServerDialogDefaultValues(): MCPServerOAuthFormValues {
+  return mcpServerOAuthFormSchema.parse({});
+}
+
+export function getCreateMCPServerDialogDefaultValues(
+  defaultServerConfig?: DefaultRemoteMCPServerConfig
+): CreateMCPServerDialogFormValues {
+  // RHF initializes field values from defaultValues not from the zod resolver. Zod defaults apply when the schema
+  // is parsed
+  const values = createMCPServerDialogFormSchema.parse({});
+
+  if (defaultServerConfig?.url) {
+    values.remoteServerUrl = defaultServerConfig.url;
+  }
+  if (defaultServerConfig) {
+    values.authMethod = defaultServerConfig.authMethod ?? values.authMethod;
+  }
+
+  return values;
 }
