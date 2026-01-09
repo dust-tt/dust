@@ -1050,7 +1050,9 @@ IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specifi
           permalink: (match) => match.permalink,
           text: (match) => {
             const hasReplies = match.reply_count && match.reply_count > 0;
-            const prefix = hasReplies ? `[Thread: ${match.ts}]` : `[Message: ${match.ts}]`;
+            const prefix = hasReplies
+              ? `[Thread: ${match.ts}]`
+              : `[Message: ${match.ts}]`;
             return `${prefix} From ${match.authorName} in ${displayName}: ${match.text ?? ""}`;
           },
           id: (match) => match.ts ?? "",
