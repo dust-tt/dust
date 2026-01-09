@@ -7,6 +7,10 @@ import {
   REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/types";
 import {
+  validateTailwindCode,
+  validateTypeScriptSyntax,
+} from "@app/lib/api/files/content_validation";
+import {
   getFileContent,
   getUpdatedContentAndOccurrences,
 } from "@app/lib/api/files/utils";
@@ -35,63 +39,6 @@ import {
   normalizeError,
   Ok,
 } from "@app/types";
-
-// Regular expressions to capture the value inside a className attribute.
-// We check both double and single quotes separately to handle mixed usage.
-const classNameDoubleQuoteRegex = /className\s*=\s*"([^"]*)"/g;
-const classNameSingleQuoteRegex = /className\s*=\s*'([^']*)'/g;
-
-// Regular expression to capture Tailwind arbitrary values:
-// Matches a word boundary, then one or more lowercase letters or hyphens,
-// followed by a dash, an opening bracket, one or more non-']' characters, and a closing bracket.
-const arbitraryRegex = /\b[a-z-]+-\[[^\]]+\]/g;
-
-/**
- * Validates that the generated code doesn't contain Tailwind arbitrary values.
- *
- * Arbitrary values like h-[600px], w-[800px], bg-[#ff0000] cause visualization failures
- * because they're not included in our pre-built CSS. This validation fails fast with
- * a clear error message that gets exposed to the user, allowing them to retry which
- * provides the error details to the model for correction.
- */
-function validateTailwindCode(code: string): Result<undefined, Error> {
-  const matches: string[] = [];
-
-  // Check double-quoted className attributes
-  let classMatch: RegExpExecArray | null = null;
-  while ((classMatch = classNameDoubleQuoteRegex.exec(code)) !== null) {
-    const classContent = classMatch[1];
-    if (classContent) {
-      // Find all matching arbitrary values within the class attribute's value.
-      const arbitraryMatches = classContent.match(arbitraryRegex) ?? [];
-      matches.push(...arbitraryMatches);
-    }
-  }
-
-  // Check single-quoted className attributes
-  while ((classMatch = classNameSingleQuoteRegex.exec(code)) !== null) {
-    const classContent = classMatch[1];
-    if (classContent) {
-      // Find all matching arbitrary values within the class attribute's value.
-      const arbitraryMatches = classContent.match(arbitraryRegex) ?? [];
-      matches.push(...arbitraryMatches);
-    }
-  }
-
-  // If we found any, remove duplicates and throw an error with up to three examples.
-  if (matches.length > 0) {
-    const uniqueMatches = Array.from(new Set(matches));
-    const examples = uniqueMatches.slice(0, 3).join(", ");
-    return new Err(
-      new Error(
-        `Forbidden Tailwind arbitrary values detected: ${examples}. ` +
-          `Arbitrary values like h-[600px], w-[800px], bg-[#ff0000] are not allowed. ` +
-          `Use predefined classes like h-96, w-full, bg-red-500 instead, or use the style prop for specific values.`
-      )
-    );
-  }
-  return new Ok(undefined);
-}
 
 function validateFileTitle({
   fileName,
@@ -142,10 +89,20 @@ export async function createClientExecutableFile(
     createdByAgentConfigurationId?: string;
   }
 ): Promise<Result<FileResource, { tracked: boolean; message: string }>> {
-  const validationResult = validateTailwindCode(content);
-  if (validationResult.isErr()) {
+  // Validate Tailwind classes.
+  const tailwindValidation = validateTailwindCode(content);
+  if (tailwindValidation.isErr()) {
     return new Err({
-      message: validationResult.error.message,
+      message: tailwindValidation.error.message,
+      tracked: false,
+    });
+  }
+
+  // Validate TypeScript/JSX syntax.
+  const syntaxValidation = validateTypeScriptSyntax(content);
+  if (syntaxValidation.isErr()) {
+    return new Err({
+      message: syntaxValidation.error.message,
       tracked: false,
     });
   }
@@ -270,10 +227,19 @@ export async function editClientExecutableFile(
   }
 
   // Validate the Tailwind classes in the resulting code.
-  const validationResult = validateTailwindCode(updatedContent);
-  if (validationResult.isErr()) {
+  const tailwindValidation = validateTailwindCode(updatedContent);
+  if (tailwindValidation.isErr()) {
     return new Err({
-      message: validationResult.error.message,
+      message: tailwindValidation.error.message,
+      tracked: false,
+    });
+  }
+
+  // Validate TypeScript/JSX syntax in the resulting code.
+  const syntaxValidation = validateTypeScriptSyntax(updatedContent);
+  if (syntaxValidation.isErr()) {
+    return new Err({
+      message: syntaxValidation.error.message,
       tracked: false,
     });
   }
@@ -785,6 +751,23 @@ export async function revertClientExecutableFileChanges(
       createFileAction,
       editAndRenameActionsToApply
     );
+
+    // Validate the reverted content before uploading.
+    const tailwindValidation = validateTailwindCode(revertedContent);
+    if (tailwindValidation.isErr()) {
+      return new Err({
+        message: `Reverted content has validation errors: ${tailwindValidation.error.message}`,
+        tracked: false,
+      });
+    }
+
+    const syntaxValidation = validateTypeScriptSyntax(revertedContent);
+    if (syntaxValidation.isErr()) {
+      return new Err({
+        message: `Reverted content has syntax errors: ${syntaxValidation.error.message}`,
+        tracked: false,
+      });
+    }
 
     // Apply the reverted file name if it differs from the current name
     if (fileResource.fileName !== revertedFileName) {

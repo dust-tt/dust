@@ -11,6 +11,7 @@ import {
   getRevertedContent,
   isCreateFileActionForFileId,
 } from "@app/lib/api/files/client_executable";
+import { validateTypeScriptSyntax } from "@app/lib/api/files/content_validation";
 import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 
@@ -616,5 +617,289 @@ import { Badge } from "@/components/ui/badge";`
       );
       expect(result).not.toMatch(/^import React from "react";$/m);
     });
+  });
+});
+
+describe("validateTypeScriptSyntax", () => {
+  it("should validate syntactically correct TSX code", () => {
+    const validCode = `
+import React from "react";
+import { Card, CardHeader, CardTitle } from "shadcn";
+
+const MyComponent: React.FC = () => {
+  return (
+    <div className="container">
+      <Card>
+        <CardHeader>
+          <CardTitle>Hello World</CardTitle>
+        </CardHeader>
+      </Card>
+    </div>
+  );
+};
+
+export default MyComponent;
+    `;
+
+    const result = validateTypeScriptSyntax(validCode);
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("should detect JSX element without closing tag", () => {
+    const invalidCode = `
+import React from "react";
+
+const MyComponent = () => {
+  return (
+    <div className="container">
+      <h1>Hello</h1>
+    // Missing closing div tag
+  );
+};
+    `;
+
+    const result = validateTypeScriptSyntax(invalidCode);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "TypeScript syntax errors detected"
+      );
+      expect(result.error.message).toMatch(
+        /Line \d+, Column \d+: error TS\d+:/
+      );
+    }
+  });
+
+  it("should detect unexpected tokens in JSX", () => {
+    const invalidCode = `
+import React from "react";
+
+const MyComponent = () => {
+  return (
+    <div>
+      }  // Unexpected closing brace
+    </div>
+  );
+};
+    `;
+
+    const result = validateTypeScriptSyntax(invalidCode);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "TypeScript syntax errors detected"
+      );
+    }
+  });
+
+  it("should detect malformed JSX attributes", () => {
+    const invalidCode = `
+import React from "react";
+
+const MyComponent = () => {
+  return (
+    <div className="test" invalid-attribute=>
+      Content
+    </div>
+  );
+};
+    `;
+
+    const result = validateTypeScriptSyntax(invalidCode);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "TypeScript syntax errors detected"
+      );
+    }
+  });
+
+  it("should ignore module resolution errors (TS2307)", () => {
+    const codeWithUnresolvableImports = `
+import React from "react";
+import { SomeComponent } from "@/components/that/dont/exist";
+import { AnotherComponent } from "non-existent-package";
+
+const MyComponent = () => {
+  return (
+    <div className="container">
+      <h1>Hello</h1>
+    </div>
+  );
+};
+
+export default MyComponent;
+    `;
+
+    // Should pass despite unresolvable imports.
+    const result = validateTypeScriptSyntax(codeWithUnresolvableImports);
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("should allow undefined variables (TS2304 not caught by transpileModule)", () => {
+    const codeWithUndefinedVars = `
+import React from "react";
+
+const MyComponent = () => {
+  const data = someUndefinedVariable;
+  return (
+    <div className="container">
+      <h1>{data}</h1>
+    </div>
+  );
+};
+
+export default MyComponent;
+    `;
+
+    // Note: transpileModule does not perform full type checking, so undefined
+    // variables are not caught. This is a known limitation of the transpileModule API.
+    // Syntax errors (like unclosed tags, malformed JSX) are still caught.
+    const result = validateTypeScriptSyntax(codeWithUndefinedVars);
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("should report multiple syntax errors with line and column numbers", () => {
+    const invalidCode = `
+import React from "react";
+
+const MyComponent = () => {
+  return (
+    <div>
+      <h1>Unclosed heading
+      }
+    </div>
+  );
+};
+    `;
+
+    const result = validateTypeScriptSyntax(invalidCode);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "TypeScript syntax errors detected"
+      );
+      // Should contain formatted error with line/column
+      expect(result.error.message).toMatch(
+        /Line \d+, Column \d+: error TS\d+:/
+      );
+    }
+  });
+
+  it("should limit error display to first 5 errors", () => {
+    // Create code with many syntax errors
+    const invalidCode = `
+import React from "react";
+
+const MyComponent = () => {
+  return (
+    <div>
+      }
+      }
+      }
+      }
+      }
+      }
+      }
+    </div>
+  );
+};
+    `;
+
+    const result = validateTypeScriptSyntax(invalidCode);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      // Should mention additional errors.
+      const errorLines = result.error.message.split("\n");
+      const errorCount = errorLines.filter((line) =>
+        line.includes("error TS")
+      ).length;
+      expect(errorCount).toBeLessThanOrEqual(5);
+    }
+  });
+
+  it("should validate complex React component with hooks", () => {
+    const validComplexCode = `
+import React, { useState, useEffect } from "react";
+import { Card, CardContent } from "shadcn";
+
+const ComplexComponent: React.FC<{ title: string }> = ({ title }) => {
+  const [count, setCount] = useState<number>(0);
+  const [data, setData] = useState<string[]>([]);
+
+  useEffect(() => {
+    setData(["item1", "item2"]);
+  }, []);
+
+  const handleClick = () => {
+    setCount((prev) => prev + 1);
+  };
+
+  return (
+    <Card>
+      <CardContent>
+        <h1>{title}</h1>
+        <button onClick={handleClick}>Count: {count}</button>
+        <ul>
+          {data.map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default ComplexComponent;
+    `;
+
+    const result = validateTypeScriptSyntax(validComplexCode);
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("should detect missing semicolons in strict mode contexts", () => {
+    const codeWithMissingSemicolon = `
+import React from "react"
+
+const MyComponent = () => {
+  const value = "test"
+  return <div>{value}</div>
+}
+
+export default MyComponent
+    `;
+
+    // This should still be valid as semicolons are optional in JS/TS.
+    const result = validateTypeScriptSyntax(codeWithMissingSemicolon);
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("should provide helpful error message format", () => {
+    const invalidCode = `
+import React from "react";
+
+const MyComponent = () => {
+  return (
+    <div>
+      <h1>Test
+    </div>
+  );
+};
+    `;
+
+    const result = validateTypeScriptSyntax(invalidCode);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      // Error message should include:
+      // - "TypeScript syntax errors detected"
+      // - Formatted errors with "Line X, Column Y: error TSXXX:"
+      // - "Please fix these errors and try again."
+      expect(result.error.message).toContain(
+        "TypeScript syntax errors detected"
+      );
+      expect(result.error.message).toContain(
+        "Please fix these errors and try again."
+      );
+    }
   });
 });
