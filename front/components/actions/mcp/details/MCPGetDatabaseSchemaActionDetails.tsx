@@ -1,4 +1,10 @@
-import { CodeBlock, CollapsibleComponent, TableIcon } from "@dust-tt/sparkle";
+import {
+  CodeBlock,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  TableIcon,
+} from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
@@ -52,14 +58,13 @@ function DatabaseSchemaSection({
   schemas: DatabaseSchemaResourceType[];
 }) {
   return (
-    <CollapsibleComponent
-      rootProps={{ defaultOpen: false }}
-      triggerChildren={
+    <Collapsible defaultOpen={false}>
+      <CollapsibleTrigger>
         <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
           Database Schema
         </span>
-      }
-      contentChildren={
+      </CollapsibleTrigger>
+      <CollapsibleContent>
         <div className="py-2">
           {schemas.map((schema, idx) => (
             <CodeBlock
@@ -71,8 +76,8 @@ function DatabaseSchemaSection({
             </CodeBlock>
           ))}
         </div>
-      }
-    />
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -82,14 +87,13 @@ function ExampleRowsSection({
   examples: ExampleRowsResourceType[];
 }) {
   return (
-    <CollapsibleComponent
-      rootProps={{ defaultOpen: false }}
-      triggerChildren={
+    <Collapsible defaultOpen={false}>
+      <CollapsibleTrigger>
         <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
           Sample Data
         </span>
-      }
-      contentChildren={
+      </CollapsibleTrigger>
+      <CollapsibleContent>
         <div className="py-2">
           {examples.map((example, idx) => (
             <CodeBlock
@@ -101,7 +105,7 @@ function ExampleRowsSection({
             </CodeBlock>
           ))}
         </div>
-      }
-    />
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

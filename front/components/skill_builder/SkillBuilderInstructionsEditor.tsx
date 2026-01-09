@@ -16,6 +16,9 @@ import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_bui
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
+const INSTRUCTIONS_FIELD_NAME = "instructions";
+const ATTACHED_KNOWLEDGE_FIELD_NAME = "attachedKnowledge";
+
 const editorVariants = cva(
   [
     "overflow-auto border rounded-xl px-3 pt-2 pb-8 resize-y min-h-60 max-h-[1024px]",
@@ -56,15 +59,17 @@ export function SkillBuilderInstructionsEditor({
   isInstructionDiffMode = false,
 }: SkillBuilderInstructionsEditorProps) {
   const { field: instructionsField, fieldState: instructionsFieldState } =
-    useController<SkillBuilderFormData, "instructions">({
-      name: "instructions",
+    useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
+      name: INSTRUCTIONS_FIELD_NAME,
     });
   const {
     field: attachedKnowledgeField,
     fieldState: attachedKnowledgeFieldState,
-  } = useController<SkillBuilderFormData, "attachedKnowledge">({
-    name: "attachedKnowledge",
-  });
+  } = useController<SkillBuilderFormData, typeof ATTACHED_KNOWLEDGE_FIELD_NAME>(
+    {
+      name: ATTACHED_KNOWLEDGE_FIELD_NAME,
+    }
+  );
 
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
@@ -214,19 +219,21 @@ export function SkillBuilderInstructionsEditor({
   }, [isInstructionDiffMode, compareVersion, editor]);
 
   return (
-    <div className="relative space-y-1 p-px">
-      <SkillInstructionsEditorContent editor={editor} isReadOnly={false} />
+    <div className="space-y-1 p-px">
+      <div className="relative">
+        <SkillInstructionsEditorContent editor={editor} isReadOnly={false} />
 
-      {/* Floating Add Knowledge Button */}
-      <Button
-        size="xs"
-        variant="ghost"
-        icon={AttachmentIcon}
-        onClick={handleAddKnowledge}
-        className="absolute bottom-2 left-2"
-        tooltip="Add knowledge"
-        disabled={!editor}
-      />
+        {/* Floating Add Knowledge Button */}
+        <Button
+          size="xs"
+          variant="ghost"
+          icon={AttachmentIcon}
+          onClick={handleAddKnowledge}
+          className="absolute bottom-2 left-2"
+          tooltip="Add knowledge"
+          disabled={!editor}
+        />
+      </div>
 
       {instructionsFieldState.error && (
         <div className="dark:text-warning-night ml-2 text-xs text-warning">

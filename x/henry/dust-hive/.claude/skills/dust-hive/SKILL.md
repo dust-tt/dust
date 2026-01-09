@@ -86,10 +86,12 @@ dust-hive forward status
 |---------|-------------|
 | `dust-hive spawn [--name NAME]` | Create new environment |
 | `dust-hive warm [NAME]` | Start docker + all services |
-| `dust-hive cool [NAME]` | Stop services, keep SDK |
+| `dust-hive cool [NAME]` | Pause services + docker, keep SDK (fast restart) |
 | `dust-hive start [NAME]` | Resume stopped environment |
-| `dust-hive stop [NAME]` | Full stop of environment |
+| `dust-hive stop [NAME]` | Full stop + remove docker containers |
 | `dust-hive destroy NAME` | Remove environment completely |
+
+> **cool vs stop**: `cool` pauses Docker containers (faster re-warm), `stop` removes them (clean slate).
 
 ### Development
 | Command | Description |

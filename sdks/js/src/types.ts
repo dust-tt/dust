@@ -692,7 +692,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "vanta_tool"
   | "xai_feature"
-  | "reactions"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

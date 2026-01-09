@@ -186,6 +186,7 @@ async function generateConversationTitle(
       conversation: conv,
       prompt: prompt,
       specifications,
+      forceToolCall: FUNCTION_NAME,
     },
     {
       context: {

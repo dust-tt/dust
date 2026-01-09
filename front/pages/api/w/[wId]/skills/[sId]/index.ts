@@ -11,6 +11,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { AttachedKnowledgeSchema } from "@app/pages/api/w/[wId]/skills";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -270,6 +271,16 @@ async function handler(
       // When saving a suggested skill, automatically activate it.
       const shouldActivate = skillResource.status === "suggested";
 
+      if (shouldActivate) {
+        logger.info(
+          {
+            skillId: skillResource.sId,
+            workspaceId: owner.sId,
+          },
+          "Suggested skill accepted"
+        );
+      }
+
       await skillResource.updateSkill(auth, {
         agentFacingDescription: body.agentFacingDescription,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
@@ -297,6 +308,16 @@ async function handler(
             message: "Only editors can delete this skill.",
           },
         });
+      }
+
+      if (skillResource.status === "suggested") {
+        logger.info(
+          {
+            skillId: skillResource.sId,
+            workspaceId: owner.sId,
+          },
+          "Suggested skill rejected"
+        );
       }
 
       await skillResource.archive(auth);

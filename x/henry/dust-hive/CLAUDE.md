@@ -56,7 +56,7 @@ src/
 ├── forward-daemon.ts  # TCP forwarder daemon (ports 3000,3001,3002,3006 → env)
 ├── commands/          # Command implementations (all MVP commands complete)
 │   ├── cache.ts       # Cache management (show cache status)
-│   ├── cool.ts        # Stop services, keep SDK
+│   ├── cool.ts        # Pause services + docker, keep SDK
 │   ├── destroy.ts     # Remove environment
 │   ├── doctor.ts      # Prerequisite checking
 │   ├── forward.ts     # OAuth port forwarding management
@@ -152,9 +152,9 @@ tests/
 |---------|-------------|
 | `spawn` | Create environment (worktree + symlinks + SDK watch); supports --warm, --no-attach, --wait |
 | `warm` | Start docker + all services (auto-forwards port 3000, supports --no-forward/--force-ports) |
-| `cool` | Stop services, keep SDK watch |
+| `cool` | Pause services + docker, keep SDK (fast restart) |
 | `start [NAME]` | Resume stopped env (start SDK watch) |
-| `stop [NAME]` | Full stop of env (stop all services + docker) |
+| `stop [NAME]` | Full stop + remove docker containers |
 | `destroy` | Remove environment |
 | `open` | Attach to zellij session |
 | `reload` | Kill and reopen zellij session |
