@@ -81,7 +81,14 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   await setCacheSource(env.metadata.repoRoot);
 
   // Check if SDK is running (should be in cold state)
-  const sdkRunning = await isServiceRunning(env.name, "sdk");
+  // Retry a few times since there may be a small race window after spawn
+  // (especially on slower filesystems like GCP devbox)
+  let sdkRunning = false;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    sdkRunning = await isServiceRunning(env.name, "sdk");
+    if (sdkRunning) break;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
   if (!sdkRunning) {
     return Err(new CommandError("SDK watch is not running. Run 'dust-hive start' first."));
   }
