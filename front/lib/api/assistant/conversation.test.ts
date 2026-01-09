@@ -11,6 +11,7 @@ import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/eve
 import { Authenticator } from "@app/lib/auth";
 import { MentionModel } from "@app/lib/models/agent/conversation";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import * as rateLimiterModule from "@app/lib/utils/rate_limiter";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
@@ -1076,6 +1077,17 @@ describe("postUserMessage rate limiting", () => {
       throw new Error("Failed to fetch conversation");
     }
     conversation = fetchedConversationResult.value;
+
+    // Update the plan to have a message limit (default is -1 which skips rate limiting)
+    const subscription = await SubscriptionModel.findOne({
+      where: { workspaceId: workspace.id },
+    });
+    if (subscription?.planId) {
+      await PlanModel.update(
+        { maxMessages: 1000, maxMessagesTimeframe: "day" },
+        { where: { id: subscription.planId } }
+      );
+    }
 
     vi.clearAllMocks();
 
