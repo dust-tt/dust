@@ -6,7 +6,7 @@ export const geminiConfig: CompetitorPageConfig = {
   competitorLogo: "/static/landing/compare/gemini.svg",
 
   seo: {
-    title: "Gemini Enterprise Alternative for Multi-Model AI Agents | Dust",
+    title: "Best Gemini Enterprise Alternative for Multi-Model AI Agents | Dust",
     description:
       "Compare Dust to Gemini Enterprise. Deploy AI agents accessible from Slack, Teams, Chrome with 20+ integrations, multi-model flexibility, and no-code automation. Trusted by Clay, Vanta, Qonto.",
   },
@@ -24,7 +24,8 @@ export const geminiConfig: CompetitorPageConfig = {
   },
 
   hero: {
-    title: "The Best Gemini Enterprise Alternative for Multi-Model AI Agents",
+    title:
+      "The Best Gemini Enterprise Alternative for Multi-Model AI Agents",
     subtitle:
       "Deploy AI agents that work everywhere your teams do—not just inside Google's ecosystem",
     primaryCTA: {
@@ -49,13 +50,12 @@ export const geminiConfig: CompetitorPageConfig = {
       {
         label: "Model flexibility",
         dust: "OpenAI, Anthropic, Gemini, Mistral—your choice",
-        competitor: "No code agents locked to Gemini models only",
+        competitor: "Locked to Gemini models only",
       },
       {
         label: "Data connections",
         dust: "20+ integrations: GitHub, Notion, HubSpot, Zendesk, Snowflake",
-        competitor:
-          "No code agents can mainly access Google Suite + M365 + Atlassian, missing critical tools",
+        competitor: "Google Suite + M365 only, missing critical tools",
       },
       {
         label: "Automation",
@@ -83,7 +83,8 @@ export const geminiConfig: CompetitorPageConfig = {
       },
       {
         feature: "No-code automation",
-        description: "Triggers, webhooks, conditional workflows without coding",
+        description:
+          "Triggers, webhooks, conditional workflows without coding",
         dust: "yes",
         competitor: "no",
       },
@@ -101,7 +102,8 @@ export const geminiConfig: CompetitorPageConfig = {
       },
       {
         feature: "Multi-agent orchestration",
-        description: "Parallel, sequential, conditional logic across agents",
+        description:
+          "Parallel, sequential, conditional logic across agents",
         dust: "yes",
         competitor: "partial",
       },
@@ -169,7 +171,7 @@ export const geminiConfig: CompetitorPageConfig = {
         icon: "shield",
         title: "Proven reliability at scale",
         description:
-          '2,000+ organizations trust Dust. Clay calls it "most impactful software." Gemini customers report reliability issues—one Google AE admitted "the product just doesn\'t work."',
+          "2,000+ organizations trust Dust. Clay calls it \"most impactful software.\" Gemini customers report reliability issues—one Google AE admitted \"the product just doesn't work.\"",
       },
     ],
   },
@@ -204,8 +206,7 @@ export const geminiConfig: CompetitorPageConfig = {
           "Yes. Dust provides all of Gemini Enterprise's core capabilities—AI agents, data connections, no-code builder, enterprise security—plus critical advantages: custom agents callable from Slack, Teams, Chrome, Excel; multi-model flexibility (OpenAI, Anthropic, Gemini, Mistral); true no-code automation; and broader ecosystem including GitHub, Notion, HubSpot, Zendesk, Snowflake.",
       },
       {
-        question:
-          "Can Dust agents be called from Google Workspace like Gemini?",
+        question: "Can Dust agents be called from Google Workspace like Gemini?",
         answer:
           "Yes—and from everywhere else. Dust agents are accessible via Chrome extension (works in Gmail, Google Docs), Google Sheets add-on, Excel add-on, Slack bot, Microsoft Teams bot, and Zendesk extension. Gemini only allows generic Gemini in Google Workspace; custom agents are trapped in a separate platform.",
       },
@@ -232,7 +233,7 @@ export const geminiConfig: CompetitorPageConfig = {
       {
         question: "Why are customers leaving Gemini Enterprise for Dust?",
         answer:
-          'Customers report: reliability issues (404 errors, connectors failing), custom agents not accessible from Gmail/Slack/Teams, limited ecosystem beyond Google tools, and Python ADK required for automation. Hobbynote chose Dust as "working product vs vaporware" after evaluating Gemini.',
+          "Customers report: reliability issues (404 errors, connectors failing), custom agents not accessible from Gmail/Slack/Teams, limited ecosystem beyond Google tools, and Python ADK required for automation. Hobbynote chose Dust as \"working product vs vaporware\" after evaluating Gemini.",
       },
       {
         question: "Can I try Dust before committing?",
