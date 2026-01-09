@@ -64,17 +64,7 @@ export function SpaceKnowledgeTab({
     return (
       <div className="flex w-full items-center justify-center p-8">
         <div className="text-center text-muted-foreground dark:text-muted-foreground-night">
-          Loading project data source...
-        </div>
-      </div>
-    );
-  }
-
-  if (!projectDataSourceView) {
-    return (
-      <div className="flex w-full items-center justify-center p-8">
-        <div className="text-center text-muted-foreground dark:text-muted-foreground-night">
-          No project data source found
+          Loading project knowledge...
         </div>
       </div>
     );
@@ -103,19 +93,27 @@ export function SpaceKnowledgeTab({
           disabled={projectFileUpload.isProcessingFiles}
         />
       </div>
-      <SpaceDataSourceViewContentList
-        canReadInSpace={canReadInSpace}
-        canWriteInSpace={canWriteInSpace}
-        connector={null}
-        dataSourceView={projectDataSourceView}
-        isAdmin={isAdmin}
-        onSelect={() => {}}
-        owner={owner}
-        plan={plan}
-        space={space}
-        systemSpace={systemSpace}
-        useCaseForDocument={"project_context"}
-      />
+      {projectDataSourceView ? (
+        <SpaceDataSourceViewContentList
+          canReadInSpace={canReadInSpace}
+          canWriteInSpace={canWriteInSpace}
+          connector={null}
+          dataSourceView={projectDataSourceView}
+          isAdmin={isAdmin}
+          onSelect={() => {}}
+          owner={owner}
+          plan={plan}
+          space={space}
+          systemSpace={systemSpace}
+          useCaseForDocument={"project_context"}
+        />
+      ) : (
+        <div className="flex w-full items-center justify-center p-8">
+          <div className="text-center text-muted-foreground dark:text-muted-foreground-night">
+            No project knowledge, add files to get started!
+          </div>
+        </div>
+      )}
     </>
   );
 }
