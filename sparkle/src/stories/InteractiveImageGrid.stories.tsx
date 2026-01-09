@@ -76,3 +76,38 @@ export const InteractiveImageExample = () => (
     </div>
   </div>
 );
+
+export const InteractiveImageWithRemove = () => {
+  const [removed, setRemoved] = React.useState(false);
+
+  return (
+    <div className="s-flex s-flex-col s-gap-8">
+      <div>
+        <h2 className="s-mb-2">
+          With onRemove callback (hover to see X button, no download button)
+        </h2>
+        {removed ? (
+          <div className="s-flex s-h-24 s-w-24 s-items-center s-justify-center s-rounded-2xl s-bg-muted s-text-muted-foreground">
+            Removed!
+            <button
+              className="s-ml-2 s-text-primary-600 s-underline"
+              onClick={() => setRemoved(false)}
+            >
+              Reset
+            </button>
+          </div>
+        ) : (
+          <InteractiveImageGrid
+            size="sm"
+            images={images.slice(1, 2)}
+            onRemove={() => setRemoved(true)}
+          />
+        )}
+      </div>
+      <div>
+        <h2 className="s-mb-2">Without onRemove (hover to see download button, no X button)</h2>
+        <InteractiveImageGrid size="sm" images={images.slice(1, 2)} />
+      </div>
+    </div>
+  );
+};
