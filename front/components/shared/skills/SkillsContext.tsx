@@ -39,7 +39,7 @@ export const SkillsProvider = ({ owner, children }: SkillsProviderProps) => {
 
   const value: SkillsContextType = useMemo(() => {
     return {
-      skills,
+      skills: skills.sort((a, b) => a.name.localeCompare(b.name)),
       isSkillsLoading,
       isSkillsError,
     };

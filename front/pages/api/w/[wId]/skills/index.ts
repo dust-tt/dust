@@ -253,11 +253,8 @@ async function handler(
         ? await SkillResource.fetchById(auth, body.extendedSkillId)
         : null;
 
-      // Only global skills can be extended
-      if (
-        extendedSkill !== null &&
-        (extendedSkill === null || !extendedSkill.isExtendable)
-      ) {
+      // Only global skills can be extended.
+      if (extendedSkill !== null && !extendedSkill.isExtendable) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
