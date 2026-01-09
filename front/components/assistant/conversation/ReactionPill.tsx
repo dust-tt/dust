@@ -1,4 +1,4 @@
-import { Chip, Tooltip } from "@dust-tt/sparkle";
+import { Button, Tooltip } from "@dust-tt/sparkle";
 
 interface ReactionPillProps {
   emoji: string;
@@ -34,14 +34,12 @@ export function ReactionPill({
       label={tooltipLabel}
       side="top"
       trigger={
-        <Chip
+        <Button
+          label={`${emoji} ${count}`}
           size="xs"
-          color={hasCurrentUserReacted ? "highlight" : "primary"}
+          variant={hasCurrentUserReacted ? "primary" : "outline"}
           onClick={onClick}
-        >
-          <span>{emoji}</span>
-          <span className="text-xs font-medium">{count}</span>
-        </Chip>
+        />
       }
     />
   );

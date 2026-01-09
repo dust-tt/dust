@@ -264,7 +264,12 @@ export function UserMessage({
         <ConversationMessageContainer
           messageType={isCurrentUser ? "me" : "user"}
           type="user"
-          className={isCurrentUser ? "ml-auto" : undefined}
+          className={cn(
+            isCurrentUser ? "ml-auto" : undefined,
+            "relative",
+            "s-pb-6",
+            "s-pb-4"
+          )}
           ref={userMessageHoveredRef}
         >
           <ConversationMessageAvatar
@@ -311,20 +316,20 @@ export function UserMessage({
                   isLastMessage={isLastMessage}
                 />
               )}
-              <ActionMenu
-                isDeleted={isDeleted}
-                showActions={showActions}
-                isUserMessageHovered={isUserMessageHovered}
-                message={message}
-                onReactionToggle={onReactionToggle}
-                reactionsEnabled={reactionsEnabled}
-                handleEditMessage={handleEditMessage}
-                handleDeleteMessage={handleDeleteMessage}
-                canDelete={canDelete}
-                canEdit={canEdit}
-              />
             </ConversationMessageContent>
           </div>
+          <ActionMenu
+            isDeleted={isDeleted}
+            showActions={showActions}
+            isUserMessageHovered={isUserMessageHovered}
+            message={message}
+            onReactionToggle={onReactionToggle}
+            reactionsEnabled={reactionsEnabled}
+            handleEditMessage={handleEditMessage}
+            handleDeleteMessage={handleDeleteMessage}
+            canDelete={canDelete}
+            canEdit={canEdit}
+          />
         </ConversationMessageContainer>
       )}
 
@@ -432,7 +437,7 @@ function ActionMenu({
     : [];
 
   return (
-    <div className="relative -mb-3.5 flex translate-y-1/2 flex-wrap items-center gap-1">
+    <div className="absolute -bottom-3.5 left-2.5 flex flex-wrap items-center gap-1">
       {!isDeleted && reactionsEnabled && (
         <>
           <MessageReactions
