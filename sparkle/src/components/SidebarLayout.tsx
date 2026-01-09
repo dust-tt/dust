@@ -1,3 +1,5 @@
+// This component is a work in ProgressEvent. Not ready for production.
+
 import "../styles/allotment.css";
 
 import { Allotment } from "allotment";
