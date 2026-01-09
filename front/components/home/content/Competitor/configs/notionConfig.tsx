@@ -90,8 +90,7 @@ export const notionConfig: CompetitorPageConfig = {
       },
       {
         feature: "Scheduled triggers",
-        description:
-          "Autonomous execution: daily queries, automated workflows",
+        description: "Autonomous execution: daily queries, automated workflows",
         dust: "yes",
         competitor: "no",
       },
