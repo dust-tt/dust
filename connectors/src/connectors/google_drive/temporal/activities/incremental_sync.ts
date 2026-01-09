@@ -53,7 +53,16 @@ export async function incrementalSync(
     driveId: driveId,
     runInstance: uuid4(),
   });
-
+  localLogger.info(
+    {
+      connectorId,
+      driveId,
+      isSharedDrive,
+      startSyncTs,
+      nextPageToken,
+    },
+    "Starting incremental sync"
+  );
   const redisCli = await redisClient({
     origin: "google_drive_incremental_sync",
   });
