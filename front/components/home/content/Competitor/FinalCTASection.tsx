@@ -1,6 +1,5 @@
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
-import type { FC } from "react";
 
 import { Grid, H2, P } from "@app/components/home/ContentComponents";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
@@ -9,14 +8,13 @@ import type { FinalCTAConfig } from "./types";
 
 interface FinalCTASectionProps {
   config: FinalCTAConfig;
-  competitorName?: string;
   trackingPrefix?: string;
 }
 
-export const FinalCTASection: FC<FinalCTASectionProps> = ({
+export function FinalCTASection({
   config,
   trackingPrefix = "competitor",
-}) => {
+}: FinalCTASectionProps) {
   return (
     <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-blue-50 py-12 md:py-16">
       <div className="mx-auto max-w-7xl px-6">
@@ -34,7 +32,7 @@ export const FinalCTASection: FC<FinalCTASectionProps> = ({
                 )}
 
                 <div className="mb-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                  <Link href={config.primaryCTA.href} shallow={true}>
+                  <Link href={config.primaryCTA.href} shallow>
                     <Button
                       variant="highlight"
                       size="md"
@@ -46,7 +44,7 @@ export const FinalCTASection: FC<FinalCTASectionProps> = ({
                       )}
                     />
                   </Link>
-                  <Link href={config.secondaryCTA.href} shallow={true}>
+                  <Link href={config.secondaryCTA.href} shallow>
                     <Button
                       variant="outline"
                       size="md"
@@ -71,4 +69,4 @@ export const FinalCTASection: FC<FinalCTASectionProps> = ({
       </div>
     </div>
   );
-};
+}

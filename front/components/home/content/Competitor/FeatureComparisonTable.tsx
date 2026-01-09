@@ -1,6 +1,5 @@
 import { CheckIcon, DashIcon, XMarkIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
-import type { FC } from "react";
 
 import { Grid, H2 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
@@ -13,8 +12,11 @@ interface FeatureComparisonTableProps {
   competitorLogo?: string;
 }
 
-// Simple visual indicator
-const FeatureIndicator: FC<{ status: FeatureStatus }> = ({ status }) => {
+interface FeatureIndicatorProps {
+  status: FeatureStatus;
+}
+
+function FeatureIndicator({ status }: FeatureIndicatorProps) {
   switch (status) {
     case "yes":
       return (
@@ -35,13 +37,13 @@ const FeatureIndicator: FC<{ status: FeatureStatus }> = ({ status }) => {
         </div>
       );
   }
-};
+}
 
-export const FeatureComparisonTable: FC<FeatureComparisonTableProps> = ({
+export function FeatureComparisonTable({
   config,
   competitorName,
   competitorLogo,
-}) => {
+}: FeatureComparisonTableProps) {
   const rows = config.rows;
 
   return (
@@ -116,4 +118,4 @@ export const FeatureComparisonTable: FC<FeatureComparisonTableProps> = ({
       </Grid>
     </div>
   );
-};
+}

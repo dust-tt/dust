@@ -27,9 +27,20 @@ export interface IntegrationComparisonRow {
   winner: ComparisonWinner;
 }
 
-// Benefit card for WhyChoose section (simplified)
+// Valid icon types for benefit cards
+export type BenefitIconType =
+  | "rocket"
+  | "users"
+  | "dollar"
+  | "chart"
+  | "sparkles"
+  | "chat"
+  | "clock"
+  | "shield";
+
+// Benefit card for WhyChoose section
 export interface BenefitCard {
-  icon: string;
+  icon: BenefitIconType;
   title: string;
   description: string;
 }
@@ -93,6 +104,15 @@ export interface HeroConfig {
   socialProofLogos: string[];
 }
 
+// Base section types for composition
+interface TitledSection {
+  title: string;
+}
+
+interface OptionallyTitledSection {
+  title?: string;
+}
+
 // Quick answer row (data-driven comparison)
 export interface QuickAnswerRow {
   label: string;
@@ -100,59 +120,43 @@ export interface QuickAnswerRow {
   competitor: string;
 }
 
-// Quick answer block config (data-driven, no JSX)
-export interface QuickAnswerConfig {
-  title?: string;
+// Section configs using type composition
+export type QuickAnswerConfig = OptionallyTitledSection & {
   rows: QuickAnswerRow[];
-}
+};
 
-// Core positioning section config
-export interface CorePositioningConfig {
-  title: string;
+export type CorePositioningConfig = TitledSection & {
   rows: CorePositioningRow[];
-}
+};
 
-// Feature comparison section config
-export interface FeatureComparisonConfig {
-  title: string;
+export type FeatureComparisonConfig = TitledSection & {
   rows: FeatureComparisonRow[];
-}
+};
 
-// When competitor better section config
-export interface WhenCompetitorBetterConfig {
-  title: string;
+export type WhenCompetitorBetterConfig = TitledSection & {
   cards: CompetitorAdvantageCard[];
-}
+};
 
-// Social proof section config
 export interface SocialProofConfig {
   testimonials: Testimonial[];
 }
 
-// Integration comparison section config
-export interface IntegrationComparisonConfig {
-  title: string;
+export type IntegrationComparisonConfig = TitledSection & {
   rows: IntegrationComparisonRow[];
-}
+};
 
-// Use case fit section config
-export interface UseCaseFitConfig {
-  title: string;
+export type UseCaseFitConfig = TitledSection & {
   dustUseCases: UseCaseFitItem[];
   competitorUseCases: UseCaseFitItem[];
-}
+};
 
-// FAQ section config
-export interface FAQSectionConfig {
-  title: string;
+export type FAQSectionConfig = TitledSection & {
   items: FAQItem[];
-}
+};
 
-// Discovery questions section config
-export interface DiscoveryQuestionsConfig {
-  title: string;
+export type DiscoveryQuestionsConfig = TitledSection & {
   questions: DiscoveryQuestion[];
-}
+};
 
 // Final CTA section config
 export interface FinalCTAConfig {
@@ -178,10 +182,9 @@ export interface SEOConfig {
 }
 
 // Metrics section config
-export interface MetricsConfig {
-  title?: string;
+export type MetricsConfig = OptionallyTitledSection & {
   metrics: Metric[];
-}
+};
 
 // Section types for layout ordering
 export type SectionType =

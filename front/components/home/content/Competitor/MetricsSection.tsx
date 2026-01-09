@@ -1,5 +1,3 @@
-import type { FC } from "react";
-
 import { Grid, H2 } from "@app/components/home/ContentComponents";
 
 interface Metric {
@@ -13,10 +11,10 @@ interface MetricsSectionProps {
   metrics: Metric[];
 }
 
-export const MetricsSection: FC<MetricsSectionProps> = ({
+export function MetricsSection({
   title = "Why teams choose Dust",
   metrics,
-}) => {
+}: MetricsSectionProps) {
   return (
     <div className="py-12 md:py-20">
       <div className="container px-4">
@@ -48,4 +46,4 @@ export const MetricsSection: FC<MetricsSectionProps> = ({
       </div>
     </div>
   );
-};
+}

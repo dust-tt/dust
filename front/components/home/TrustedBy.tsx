@@ -191,13 +191,10 @@ const LOGO_SETS = {
 } as const;
 
 type LogoSetKey = keyof typeof LOGO_SETS;
-type RegionKey = "us" | "eu";
-
 type SizeKey = "default" | "large";
 
 interface TrustedByProps {
   logoSet?: LogoSetKey;
-  region?: RegionKey;
   size?: SizeKey;
 }
 

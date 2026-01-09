@@ -1,5 +1,3 @@
-import type { FC } from "react";
-
 import { Grid } from "@app/components/home/ContentComponents";
 import { FAQ } from "@app/components/home/FAQ";
 
@@ -7,10 +5,9 @@ import type { FAQSectionConfig } from "./types";
 
 interface FAQSectionProps {
   config: FAQSectionConfig;
-  competitorName: string;
 }
 
-export const FAQSection: FC<FAQSectionProps> = ({ config }) => {
+export function FAQSection({ config }: FAQSectionProps) {
   return (
     <div className="py-12 md:py-16">
       <Grid>
@@ -20,4 +17,4 @@ export const FAQSection: FC<FAQSectionProps> = ({ config }) => {
       </Grid>
     </div>
   );
-};
+}
