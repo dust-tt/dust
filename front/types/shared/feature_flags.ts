@@ -195,10 +195,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slab MCP server",
     stage: "on_demand",
   },
-  vanta_tool: {
-    description: "Vanta MCP tool for security and compliance testing",
-    stage: "dust_only",
-  },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
