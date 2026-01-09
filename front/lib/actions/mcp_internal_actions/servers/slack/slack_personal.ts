@@ -598,7 +598,11 @@ async function createServer(
               usersMentioned,
             });
 
-            const matches = await slackSearch(searchQuery, accessToken, includeBots);
+            const matches = await slackSearch(
+              searchQuery,
+              accessToken,
+              includeBots
+            );
 
             if (matches.length === 0) {
               return new Ok([
