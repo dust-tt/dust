@@ -111,7 +111,6 @@ export function getRichMentionsWithStatusForMessage(
             return {
               ...toRichUserMentionType(mentionedUser),
               status: m.status,
-              userConversationAccessStatus: "accessible",
             };
           }
         } else {

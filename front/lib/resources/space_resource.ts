@@ -892,11 +892,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   isRegularAndRestricted() {
-    return this.isRegular() && !this.groups.some((group) => group.isGlobal());
+    return this.isRegular() && !this.isOpen();
   }
 
   isRegularAndOpen() {
-    return this.isRegular() && this.groups.some((group) => group.isGlobal());
+    return this.isRegular() && this.isOpen();
+  }
+
+  isOpen() {
+    return this.groups.some((group) => group.isGlobal());
   }
 
   isPublic() {

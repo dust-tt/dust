@@ -2,7 +2,6 @@ import {
   Button,
   CheckIcon,
   ContentMessage,
-  ExclamationCircleIcon,
   Icon,
   InformationCircleIcon,
   XMarkIcon,
@@ -22,7 +21,12 @@ import type {
 interface MentionValidationRequired {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
-  pendingMention: RichMentionWithStatus;
+  mention: Extract<
+    RichMentionWithStatus,
+    {
+      status: "pending";
+    }
+  >;
   conversationId: string;
   message: VirtuosoMessage;
 }
@@ -30,7 +34,7 @@ interface MentionValidationRequired {
 export function MentionValidationRequired({
   triggeringUser,
   owner,
-  pendingMention,
+  mention,
   conversationId,
   message,
 }: MentionValidationRequired) {
@@ -50,7 +54,7 @@ export function MentionValidationRequired({
   const handleReject = async () => {
     setIsSubmitting(true);
     try {
-      await validateMention(pendingMention, "rejected");
+      await validateMention(mention, "rejected");
     } finally {
       setIsSubmitting(false);
     }
@@ -59,7 +63,7 @@ export function MentionValidationRequired({
   const handleApprove = async () => {
     setIsSubmitting(true);
     try {
-      await validateMention(pendingMention, "approved");
+      await validateMention(mention, "approved");
     } finally {
       setIsSubmitting(false);
     }
@@ -67,37 +71,6 @@ export function MentionValidationRequired({
 
   if (!isTriggeredByCurrentUser) {
     return null;
-  }
-
-  // Check if this is a user mention without conversation access
-  const cannotAccessConversation =
-    pendingMention.type === "user" &&
-    pendingMention.userConversationAccessStatus !== "accessible";
-
-  if (cannotAccessConversation) {
-    // Show warning message without approve/reject buttons
-    return (
-      <ContentMessage variant="warning" className="my-3 w-full max-w-full">
-        <div className="flex items-center gap-2">
-          <Icon visual={ExclamationCircleIcon} className="hidden sm:block" />
-          <div>
-            <span className="font-semibold">{pendingMention.label}</span>{" "}
-            doesn't have access to this conversation's spaces and won't be able
-            to view it nor be invited.
-          </div>
-          <div className="ml-auto">
-            <Button
-              label="Dismiss"
-              variant="outline"
-              size="xs"
-              icon={XMarkIcon}
-              disabled={isSubmitting}
-              onClick={handleReject}
-            />
-          </div>
-        </div>
-      </ContentMessage>
-    );
   }
 
   // Original behavior for users who can access
@@ -111,15 +84,14 @@ export function MentionValidationRequired({
               <span className="font-semibold">
                 @{message.configuration.name}
               </span>{" "}
-              mentioned{" "}
-              <span className="font-semibold">{pendingMention.label}</span>. Do
-              you want to invite them? They'll see the full history and be able
-              to reply.
+              mentioned <span className="font-semibold">{mention.label}</span>.
+              Do you want to invite them? They'll see the full history and be
+              able to reply.
             </>
           ) : (
             <>
-              Invite <b>{pendingMention.label}</b> to this conversation? They'll
-              see the full history and be able to reply.
+              Invite <b>{mention.label}</b> to this conversation? They'll see
+              the full history and be able to reply.
             </>
           )}
         </div>

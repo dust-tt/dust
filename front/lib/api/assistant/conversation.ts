@@ -700,30 +700,21 @@ export async function postUserMessage(
       });
     }
 
-    const agentMessages = await createAgentMessages(auth, {
-      conversation,
-      metadata: {
-        type: "create",
-        mentions,
-        agentConfigurations,
-        skipToolsValidation,
-        nextMessageRank,
-        userMessage: userMessageWithoutMentions,
-      },
-      transaction: t,
-    });
+    const { agentMessages, richMentions: agentRichMentions } =
+      await createAgentMessages(auth, {
+        conversation,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations,
+          skipToolsValidation,
+          nextMessageRank,
+          userMessage: userMessageWithoutMentions,
+        },
+        transaction: t,
+      });
 
-    for (const agentMessage of agentMessages) {
-      const agentRichMention: RichMentionWithStatus = {
-        type: "agent",
-        id: agentMessage.configuration.sId,
-        label: agentMessage.configuration.name,
-        pictureUrl: agentMessage.configuration.pictureUrl,
-        description: agentMessage.configuration.description,
-        status: "approved",
-      };
-      richMentions.push(agentRichMention);
-    }
+    richMentions.push(...agentRichMentions);
 
     const userMessage = {
       ...userMessageWithoutMentions,
@@ -975,7 +966,7 @@ export async function editUserMessage(
             return isAgentMessageType(latestVersion);
           });
 
-        let agentMessages: AgentMessageType[] = [];
+        const agentMessages: AgentMessageType[] = [];
 
         // Only create agent messages if there are no agent messages after the edited user message
         if (!hasAgentMessagesAfter) {
@@ -987,7 +978,10 @@ export async function editUserMessage(
               transaction: t,
             })) ?? -1) + 1;
 
-          agentMessages = await createAgentMessages(auth, {
+          const {
+            agentMessages: newAgentMessages,
+            richMentions: agentRichMentions,
+          } = await createAgentMessages(auth, {
             conversation,
             metadata: {
               type: "create",
@@ -1000,17 +994,8 @@ export async function editUserMessage(
             transaction: t,
           });
 
-          for (const agentMessage of agentMessages) {
-            const agentRichMention: RichMentionWithStatus = {
-              type: "agent",
-              id: agentMessage.configuration.sId,
-              label: agentMessage.configuration.name,
-              pictureUrl: agentMessage.configuration.pictureUrl,
-              description: agentMessage.configuration.description,
-              status: "approved",
-            };
-            richMentions.push(agentRichMention);
-          }
+          richMentions.push(...agentRichMentions);
+          agentMessages.push(...newAgentMessages);
         }
         const userMessage = {
           ...userMessageWithoutMentions,
@@ -1214,7 +1199,7 @@ export async function retryAgentMessage(
         );
       }
 
-      const agentMessages = await createAgentMessages(auth, {
+      const { agentMessages } = await createAgentMessages(auth, {
         conversation,
         metadata: {
           type: "retry",
@@ -1546,7 +1531,7 @@ export async function softDeleteAgentMessage(
     return new Err(new ConversationError("message_deletion_not_authorized"));
   }
 
-  const agentMessages = await withTransaction(async (t) => {
+  const { agentMessages } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
     return createAgentMessages(auth, {

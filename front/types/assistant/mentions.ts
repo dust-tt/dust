@@ -63,7 +63,6 @@ export interface RichAgentMentionInConversation extends RichAgentMention {
  */
 export interface RichUserMention extends BaseRichMention {
   type: "user";
-  userConversationAccessStatus?: "accessible" | "restricted";
 }
 
 export interface RichUserMentionInConversation extends RichUserMention {
