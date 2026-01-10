@@ -4,6 +4,7 @@ import {
   Card,
   NavigationList,
   NavigationListLabel,
+  Spinner,
 } from "@dust-tt/sparkle";
 import uniqBy from "lodash/uniqBy";
 import moment from "moment";
@@ -182,6 +183,7 @@ interface SpaceConversationsTabProps {
   owner: WorkspaceType;
   user: UserType;
   conversations: ConversationType[];
+  isConversationsLoading: boolean;
   spaceInfo: {
     name: string;
   } | null;
@@ -197,6 +199,7 @@ export function SpaceConversationsTab({
   owner,
   user,
   conversations,
+  isConversationsLoading,
   spaceInfo,
   onSubmit,
 }: SpaceConversationsTabProps) {
@@ -219,6 +222,14 @@ export function SpaceConversationsTab({
   const unreadConversations = useMemo(() => {
     return conversations.filter((c) => c.unread);
   }, [conversations]);
+
+  if (isConversationsLoading) {
+    return (
+      <div className="flex items-center justify-center">
+        <Spinner size="xs" />
+      </div>
+    );
+  }
 
   return (
     <DropzoneContainer
