@@ -116,11 +116,17 @@ export type AgenticMessageData = {
 };
 
 export type RichMentionWithStatus =
-  | (RichMention & { status: "pending" })
-  | (RichMention & { status: "approved" })
-  | (RichMention & { status: "rejected" })
-  | (RichMention & { status: "user_restricted_by_conversation_access" })
-  | (RichMention & { status: "agent_restricted_by_space_usage" });
+  | (RichMention & { dismissed: boolean; status: "pending" })
+  | (RichMention & { dismissed: boolean; status: "approved" })
+  | (RichMention & { dismissed: boolean; status: "rejected" })
+  | (RichMention & {
+      dismissed: boolean;
+      status: "user_restricted_by_conversation_access";
+    })
+  | (RichMention & {
+      dismissed: boolean;
+      status: "agent_restricted_by_space_usage";
+    });
 
 export type UserMessageType = {
   id: ModelId;

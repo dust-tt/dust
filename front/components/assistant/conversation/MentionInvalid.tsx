@@ -8,6 +8,7 @@ import {
 import { useMemo, useState } from "react";
 
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
+import { useDismissMention } from "@app/lib/swr/mentions";
 import { useUser } from "@app/lib/swr/user";
 import type {
   LightWorkspaceType,
@@ -33,9 +34,18 @@ interface MentionInvalidProps {
 export function MentionInvalid({
   triggeringUser,
   mention,
+  owner,
+  conversationId,
+  message,
 }: MentionInvalidProps) {
   const { user } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { dismissMention } = useDismissMention({
+    workspaceId: owner.sId,
+    conversationId,
+    messageId: message.sId,
+  });
 
   const isTriggeredByCurrentUser = useMemo(
     () => !triggeringUser || triggeringUser.sId === user?.sId,
@@ -45,13 +55,13 @@ export function MentionInvalid({
   const handleDismiss = async () => {
     setIsSubmitting(true);
     try {
-      //TODO: Implement dismiss action
+      await dismissMention(mention);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!isTriggeredByCurrentUser) {
+  if (!isTriggeredByCurrentUser || mention.dismissed) {
     return null;
   }
 

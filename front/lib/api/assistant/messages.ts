@@ -103,6 +103,7 @@ export function getRichMentionsWithStatusForMessage(
             return {
               ...toRichAgentMentionType(agentConfiguration),
               status: m.status,
+              dismissed: m.dismissed ?? false,
             };
           }
         } else if (m.userId) {
@@ -111,6 +112,7 @@ export function getRichMentionsWithStatusForMessage(
             return {
               ...toRichUserMentionType(mentionedUser),
               status: m.status,
+              dismissed: m.dismissed ?? false,
             };
           }
         } else {
