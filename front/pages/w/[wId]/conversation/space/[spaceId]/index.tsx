@@ -7,7 +7,6 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  ToolsIcon,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -22,9 +21,9 @@ import { ConversationLayout } from "@app/components/assistant/conversation/Conve
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/SpaceConversationsTab";
 import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
-import { SpaceToolsTab } from "@app/components/assistant/conversation/space/SpaceToolsTab";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
+import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
@@ -57,7 +56,6 @@ export interface ProjectLayoutProps {
   canReadInSpace: boolean;
   canWriteInSpace: boolean;
   plan: PlanType;
-  space: SpaceType;
   systemSpace: SpaceType;
 }
 
@@ -112,7 +110,6 @@ export const getServerSideProps =
         subscription,
         systemSpace,
         plan,
-        space: space.toJSON(),
         canWriteInSpace,
         canReadInSpace,
         baseUrl: config.getClientFacingUrl(),
@@ -131,7 +128,6 @@ export default function SpaceConversations({
   plan,
   canWriteInSpace,
   canReadInSpace,
-  space,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const createConversationWithMessage = useCreateConversationWithMessage({
     owner,
@@ -139,16 +135,18 @@ export default function SpaceConversations({
   });
   const router = useRouter();
   const activeConversationId = useActiveConversationId();
+  const spaceId = useActiveSpaceId();
   const sendNotification = useSendNotification();
   const { spaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
-    spaceId: space.sId,
+    spaceId: spaceId,
   });
 
-  const { conversations, mutateConversations } = useSpaceConversations({
-    workspaceId: owner.sId,
-    spaceId: space.sId,
-  });
+  const { conversations, isConversationsLoading, mutateConversations } =
+    useSpaceConversations({
+      workspaceId: owner.sId,
+      spaceId: spaceId,
+    });
 
   const planAllowsSCIM = subscription.plan.limits.users.isSCIMAllowed;
   const { groups } = useGroups({
@@ -221,7 +219,7 @@ export default function SpaceConversations({
           contentFragments,
           selectedMCPServerViewIds,
         },
-        spaceId: space.sId,
+        spaceId,
       });
 
       setIsSubmitting(false);
@@ -270,7 +268,7 @@ export default function SpaceConversations({
     [
       isSubmitting,
       owner,
-      space.sId,
+      spaceId,
       setPlanLimitReached,
       sendNotification,
       router,
@@ -312,7 +310,7 @@ export default function SpaceConversations({
           </ContentMessage>
         </div>
 
-        <div className="heading-xl text-xl">{space.name}</div>
+        <div className="heading-xl text-xl">{spaceInfo?.name ?? "..."}</div>
 
         <Tabs
           value={currentTab}
@@ -329,7 +327,6 @@ export default function SpaceConversations({
               label="Knowledge"
               icon={BookOpenIcon}
             />
-            <TabsTrigger value="tools" label="Tools" icon={ToolsIcon} />
             <TabsTrigger
               value="about"
               label="About this project"
@@ -342,43 +339,46 @@ export default function SpaceConversations({
               owner={owner}
               user={user}
               conversations={conversations}
-              spaceInfo={space}
+              isConversationsLoading={isConversationsLoading}
+              spaceInfo={spaceInfo}
               onSubmit={handleConversationCreation}
             />
           </TabsContent>
 
           <TabsContent value="knowledge">
-            <SpaceKnowledgeTab
-              owner={owner}
-              space={space}
-              systemSpace={systemSpace}
-              plan={plan}
-              isAdmin={isAdmin}
-              canReadInSpace={canReadInSpace}
-              canWriteInSpace={canWriteInSpace}
-            />
-          </TabsContent>
-
-          <TabsContent value="tools">
-            <SpaceToolsTab />
+            {spaceInfo && (
+              <SpaceKnowledgeTab
+                owner={owner}
+                space={spaceInfo}
+                systemSpace={systemSpace}
+                plan={plan}
+                isAdmin={isAdmin}
+                canReadInSpace={canReadInSpace}
+                canWriteInSpace={canWriteInSpace}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="about">
-            <SpaceAboutTab
-              owner={owner}
-              space={space}
-              initialMembers={spaceInfo?.members ?? []}
-              planAllowsSCIM={planAllowsSCIM}
-              initialGroups={
-                planAllowsSCIM &&
-                space.groupIds &&
-                space.groupIds.length > 0 &&
-                groups
-                  ? groups.filter((group) => space.groupIds.includes(group.sId))
-                  : []
-              }
-              initialManagementMode={space.managementMode || "manual"}
-            />
+            {spaceInfo && (
+              <SpaceAboutTab
+                owner={owner}
+                space={spaceInfo}
+                initialMembers={spaceInfo.members ?? []}
+                planAllowsSCIM={planAllowsSCIM}
+                initialGroups={
+                  planAllowsSCIM &&
+                  spaceInfo.groupIds &&
+                  spaceInfo.groupIds.length > 0 &&
+                  groups
+                    ? groups.filter((group) =>
+                        spaceInfo.groupIds.includes(group.sId)
+                      )
+                    : []
+                }
+                initialManagementMode={spaceInfo.managementMode}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>

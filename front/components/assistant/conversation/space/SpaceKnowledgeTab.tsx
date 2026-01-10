@@ -1,4 +1,4 @@
-import { Button, CloudArrowUpIcon } from "@dust-tt/sparkle";
+import { Button, CloudArrowUpIcon, EmptyCTA } from "@dust-tt/sparkle";
 import React, { useRef } from "react";
 
 import { SpaceDataSourceViewContentList } from "@app/components/spaces/SpaceDataSourceViewContentList";
@@ -81,37 +81,54 @@ export function SpaceKnowledgeTab({
           style={{ display: "none" }}
           onChange={handleFileChange}
         />
-        <Button
-          variant="primary"
-          label={
-            projectFileUpload.isProcessingFiles
-              ? "Uploading..."
-              : "Upload Files"
-          }
-          icon={CloudArrowUpIcon}
-          onClick={handleUploadClick}
-          disabled={projectFileUpload.isProcessingFiles}
-        />
       </div>
       {projectDataSourceView ? (
-        <SpaceDataSourceViewContentList
-          canReadInSpace={canReadInSpace}
-          canWriteInSpace={canWriteInSpace}
-          connector={null}
-          dataSourceView={projectDataSourceView}
-          isAdmin={isAdmin}
-          onSelect={() => {}}
-          owner={owner}
-          plan={plan}
-          space={space}
-          systemSpace={systemSpace}
-          useCaseForDocument={"project_context"}
-        />
+        <>
+          <div className="my-2 flex justify-end">
+            <Button
+              variant="primary"
+              label={
+                projectFileUpload.isProcessingFiles
+                  ? "Uploading..."
+                  : "Upload Files"
+              }
+              icon={CloudArrowUpIcon}
+              onClick={handleUploadClick}
+              disabled={projectFileUpload.isProcessingFiles}
+            />
+          </div>
+          <SpaceDataSourceViewContentList
+            canReadInSpace={canReadInSpace}
+            canWriteInSpace={canWriteInSpace}
+            connector={null}
+            dataSourceView={projectDataSourceView}
+            isAdmin={isAdmin}
+            onSelect={() => {}}
+            owner={owner}
+            plan={plan}
+            space={space}
+            systemSpace={systemSpace}
+            useCaseForDocument={"project_context"}
+          />
+        </>
       ) : (
         <div className="flex w-full items-center justify-center p-8">
-          <div className="text-center text-muted-foreground dark:text-muted-foreground-night">
-            No project knowledge, add files to get started!
-          </div>
+          <EmptyCTA
+            message="No project knowledge, add files to get started!"
+            action={
+              <Button
+                variant="primary"
+                label={
+                  projectFileUpload.isProcessingFiles
+                    ? "Uploading..."
+                    : "Upload Files"
+                }
+                icon={CloudArrowUpIcon}
+                onClick={handleUploadClick}
+                disabled={projectFileUpload.isProcessingFiles}
+              />
+            }
+          />
         </div>
       )}
     </>
