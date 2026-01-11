@@ -13,6 +13,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { FairUsageModal } from "@app/components/FairUsageModal";
+import { isFreePlan } from "@app/lib/plans/plan_codes";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -103,7 +104,23 @@ function getLimitPromptForCode(
       };
 
     case "message_limit": {
-      if (subscription.trialing) {
+      if (isFreePlan(subscription.plan.code)) {
+        return {
+          title: "Dust trial message limit reached",
+          validateLabel: "Subscribe to Dust",
+          onValidate: () => {
+            void router.push(`/w/${owner.sId}/subscribe`);
+          },
+          children: (
+            <>
+              <Page.P>
+                You have reached the message limit under the trial. You can
+                subscribe to a paid plan to continue using Dust.
+              </Page.P>
+            </>
+          ),
+        };
+      } else if (subscription.trialing) {
         return {
           title: "Fair usage limit reached",
           validateLabel: "Manage your subscription",
@@ -126,15 +143,19 @@ function getLimitPromptForCode(
           ),
         };
       } else {
+        const isFree = isFreePlan(subscription.plan.code);
+        const limitDescription = isFree
+          ? "100 messages total for the past 24 hours"
+          : "100 messages per user for the past 24 hours";
         return {
           title: "Message quota exceeded",
           validateLabel: "Ok",
           children: (
             <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               We've paused messaging for your workspace due to our fair usage
-              policy. Your workspace has reached its shared limit of 100
-              messages per user for the past 24 hours. This total limit is
-              collectively shared by all users in the workspace. Check our{" "}
+              policy. Your workspace has reached its shared limit of{" "}
+              {limitDescription}. This total limit is collectively shared by all
+              users in the workspace. Check our{" "}
               <Hoverable
                 variant="highlight"
                 onClick={() => displayFairUseModal()}
