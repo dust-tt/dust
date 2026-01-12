@@ -30,7 +30,6 @@ import {
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -48,11 +47,6 @@ import type {
   UserType,
 } from "@app/types";
 import { ConversationError, Err, normalizeError, Ok } from "@app/types";
-import type { UnreadTrigger } from "@app/types/notification_preferences";
-import {
-  CONVERSATION_NOTIFICATION_METADATA_KEYS,
-  isUnreadTrigger,
-} from "@app/types/notification_preferences";
 
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
@@ -836,115 +830,38 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
-   * Marks conversation as unread for other participants based on their preferences.
-   *
-   * Logic for each participant:
-   * - "all_messages" preference (default): always mark as unread
-   * - "only_mentions" preference: mark as unread only if:
-   *   - They are mentioned in the message (when messageId provided), OR
-   *   - They are the only participant in the conversation (single-participant exception)
+   * Marks conversation as unread for other participants (excluding the sender).
    */
   static async markAsUnreadForOtherParticipants(
     auth: Authenticator,
     {
       conversation,
       excludedUser,
-      messageId,
       transaction,
     }: {
       conversation: ConversationWithoutContentType;
       excludedUser?: UserType;
-      messageId: string;
       transaction?: Transaction;
     }
   ) {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Get all participants (for total count and filtering).
-    const allParticipants = await ConversationParticipantModel.findAll({
-      where: {
-        conversationId: conversation.id,
-        workspaceId,
-      },
-      attributes: ["userId", "unread"],
-      transaction,
-    });
+    const whereClause: WhereOptions<
+      InferAttributes<ConversationParticipantModel>
+    > = {
+      conversationId: conversation.id,
+      workspaceId,
+      unread: false,
+    };
 
-    const totalParticipantCount = allParticipants.length;
-
-    // Filter to participants we might mark as unread (excluding sender, only unread=false).
-    const participants = allParticipants.filter(
-      (p) => !p.unread && (!excludedUser || p.userId !== excludedUser.id)
-    );
-
-    if (participants.length === 0) {
-      return new Ok([0]);
-    }
-
-    const userIds = participants.map((p) => p.userId);
-
-    // Get preferences for all participants.
-    const preferences = await UserMetadataModel.findAll({
-      where: {
-        userId: { [Op.in]: userIds },
-        key: CONVERSATION_NOTIFICATION_METADATA_KEYS.unreadTrigger,
-      },
-      attributes: ["userId", "value"],
-      transaction,
-    });
-
-    const preferenceMap = new Map<number, UnreadTrigger>();
-    for (const pref of preferences) {
-      if (isUnreadTrigger(pref.value)) {
-        preferenceMap.set(pref.userId, pref.value);
-      }
-    }
-
-    // Get mentioned user IDs from the message.
-    const message = await MessageModel.findOne({
-      where: { sId: messageId, workspaceId },
-      attributes: ["id"],
-      transaction,
-    });
-    assert(message, `Unexpected: could not find message ${messageId}`);
-
-    const mentions = await MentionModel.findAll({
-      where: {
-        messageId: message.id,
-        workspaceId,
-        userId: { [Op.ne]: null },
-        status: "approved",
-      },
-      attributes: ["userId"],
-      transaction,
-    });
-    const mentionedUserIds = new Set(
-      mentions.map((m) => m.userId).filter((id): id is number => id !== null)
-    );
-
-    // Filter participants based on preferences.
-    const eligibleUserIds = userIds.filter((userId) => {
-      const trigger = preferenceMap.get(userId) ?? "all_messages";
-      if (trigger === "all_messages") {
-        return true;
-      }
-      // "only_mentions": mark if mentioned OR if only participant.
-      return mentionedUserIds.has(userId) || totalParticipantCount === 1;
-    });
-
-    if (eligibleUserIds.length === 0) {
-      return new Ok([0]);
+    if (excludedUser) {
+      whereClause.userId = { [Op.ne]: excludedUser.id };
     }
 
     const updated = await ConversationParticipantModel.update(
       { unread: true },
       {
-        where: {
-          conversationId: conversation.id,
-          workspaceId,
-          userId: { [Op.in]: eligibleUserIds },
-          unread: false,
-        },
+        where: whereClause,
         transaction,
       }
     );

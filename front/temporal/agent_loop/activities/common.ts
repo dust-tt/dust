@@ -152,7 +152,6 @@ async function processEventForUnreadState(
     // No excluded user because the message is created by the agent.
     await ConversationResource.markAsUnreadForOtherParticipants(auth, {
       conversation,
-      messageId: event.messageId,
     });
 
     // Publish the agent message done event that will be handled on the client-side.

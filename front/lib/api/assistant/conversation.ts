@@ -685,7 +685,7 @@ export async function postUserMessage(
     await ConversationResource.markAsUnreadForOtherParticipants(auth, {
       conversation,
       excludedUser: user?.toJSON(),
-      messageId: userMessageWithoutMentions.sId,
+      transaction: t,
     });
 
     // TODO(mentionsv2) here we fetch the conversation again to trigger the notification.
@@ -943,7 +943,7 @@ export async function editUserMessage(
       await ConversationResource.markAsUnreadForOtherParticipants(auth, {
         conversation,
         excludedUser: user?.toJSON(),
-        messageId: userMessageWithoutMentions.sId,
+        transaction: t,
       });
 
       const richMentions = await createUserMentions(auth, {
