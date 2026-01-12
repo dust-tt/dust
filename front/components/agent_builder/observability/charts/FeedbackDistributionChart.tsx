@@ -30,6 +30,7 @@ import { formatShortDate } from "@app/lib/utils/timestamps";
 interface FeedbackDistributionChartProps {
   workspaceId: string;
   agentConfigurationId: string;
+  isCustomAgent: boolean;
 }
 
 function zeroFactory(timestamp: number) {
@@ -44,6 +45,7 @@ function zeroFactory(timestamp: number) {
 export function FeedbackDistributionChart({
   workspaceId,
   agentConfigurationId,
+  isCustomAgent,
 }: FeedbackDistributionChartProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
   const {
@@ -60,20 +62,21 @@ export function FeedbackDistributionChart({
     workspaceId,
     agentConfigurationId,
     days: period,
-    disabled: !workspaceId || !agentConfigurationId,
+    disabled: !workspaceId || !agentConfigurationId || !isCustomAgent,
   });
 
   const legendItems = legendFromConstant(
     FEEDBACK_DISTRIBUTION_LEGEND,
     FEEDBACK_DISTRIBUTION_PALETTE,
     {
-      includeVersionMarker: mode === "timeRange" && versionMarkers.length > 0,
+      includeVersionMarker:
+        isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
     }
   );
 
   const filteredData = filterTimeSeriesByVersionWindow(
     feedbackDistribution,
-    mode,
+    isCustomAgent ? mode : "timeRange",
     selectedVersion,
     versionMarkers
   );
@@ -150,7 +153,9 @@ export function FeedbackDistributionChart({
           strokeWidth={2}
           dot={false}
         />
-        <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
+        {isCustomAgent && (
+          <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
+        )}
       </LineChart>
     </ChartContainer>
   );

@@ -18,6 +18,7 @@ import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 interface SharedObservabilityFilterSelectorProps {
   workspaceId: string;
   agentConfigurationId: string;
+  isCustomAgent: boolean;
 }
 
 function getVersionValue(versionMarker: AgentVersionMarker) {
@@ -36,6 +37,7 @@ function getVersionValue(versionMarker: AgentVersionMarker) {
 export function SharedObservabilityFilterSelector({
   workspaceId,
   agentConfigurationId,
+  isCustomAgent,
 }: SharedObservabilityFilterSelectorProps) {
   const {
     mode,
@@ -50,7 +52,7 @@ export function SharedObservabilityFilterSelector({
     workspaceId,
     agentConfigurationId,
     days: period,
-    disabled: false,
+    disabled: !isCustomAgent,
   });
 
   useEffect(() => {
@@ -66,40 +68,22 @@ export function SharedObservabilityFilterSelector({
 
   return (
     <div className="flex items-center gap-3">
-      <ButtonsSwitchList defaultValue={mode} size="xs">
-        <ButtonsSwitch
-          value="timeRange"
-          label="Time range"
-          onClick={() => setMode("timeRange")}
-        />
-        <ButtonsSwitch
-          value="version"
-          label="Version"
-          onClick={() => setMode("version")}
-        />
-      </ButtonsSwitchList>
+      {isCustomAgent && (
+        <ButtonsSwitchList defaultValue={mode} size="xs">
+          <ButtonsSwitch
+            value="timeRange"
+            label="Time range"
+            onClick={() => setMode("timeRange")}
+          />
+          <ButtonsSwitch
+            value="version"
+            label="Version"
+            onClick={() => setMode("version")}
+          />
+        </ButtonsSwitchList>
+      )}
 
-      {mode === "timeRange" ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              label={`${period} days`}
-              size="xs"
-              variant="outline"
-              isSelect
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {OBSERVABILITY_TIME_RANGE.map((p) => (
-              <DropdownMenuItem
-                key={p}
-                label={`${p} days`}
-                onClick={() => setPeriod(p)}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : (
+      {isCustomAgent && mode === "version" ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -123,6 +107,26 @@ export function SharedObservabilityFilterSelector({
                 key={marker.version}
                 label={getVersionValue(marker)}
                 onClick={() => setSelectedVersion(marker)}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              label={`${period} days`}
+              size="xs"
+              variant="outline"
+              isSelect
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {OBSERVABILITY_TIME_RANGE.map((p) => (
+              <DropdownMenuItem
+                key={p}
+                label={`${p} days`}
+                onClick={() => setPeriod(p)}
               />
             ))}
           </DropdownMenuContent>
