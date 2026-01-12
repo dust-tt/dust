@@ -173,11 +173,18 @@ UserMetadataModel.belongsTo(WorkspaceModel, {
 export class UserToolApprovalModel extends WorkspaceAwareModel<UserToolApprovalModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+
   declare userId: ForeignKey<UserModel["id"]>;
   declare mcpServerId: string;
   declare toolName: string;
+
+  // For medium-stake tools, we tie the approval to an agent, and eventually to arg-values couples.
+  // For low-stake tools, these can be null.
   declare agentId: string | null;
   declare argsAndValues: Record<string, string> | null;
+
+  // MD5 hash of argsAndValues for quick lookup and uniqueness constraint
+  declare argsAndValuesMD5: string | null;
 }
 
 UserToolApprovalModel.init(
@@ -210,11 +217,17 @@ UserToolApprovalModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    argsAndValuesMD5: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "user_tool_approval",
     sequelize: frontSequelize,
     indexes: [
+      { fields: ["userId"], concurrently: true },
       { fields: ["workspaceId", "userId"], concurrently: true },
       {
         fields: [
@@ -223,7 +236,7 @@ UserToolApprovalModel.init(
           "mcpServerId",
           "toolName",
           "agentId",
-          "argsAndValues",
+          "argsAndValuesMD5",
         ],
         unique: true,
         name: "user_tool_approvals_unique_idx",

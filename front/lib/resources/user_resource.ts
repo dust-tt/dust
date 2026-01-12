@@ -1,6 +1,9 @@
 import { escape } from "html-escaper";
+import fromPairs from "lodash/fromPairs";
+import sortBy from "lodash/sortBy";
 import type {
   Attributes,
+  CreationAttributes,
   ModelStatic,
   Transaction,
   WhereOptions,
@@ -22,7 +25,7 @@ import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightWorkspaceType, ModelId, Result, UserType } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, md5, normalizeError, Ok } from "@app/types";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
 
 export interface SearchMembersPaginationParams {
@@ -516,24 +519,14 @@ export class UserResource extends BaseResource<UserModel> {
       toolName,
       agentId = null,
       argsAndValues = null,
-    }: {
-      mcpServerId: string;
-      toolName: string;
-      agentId?: string | null;
-      argsAndValues?: Record<string, string> | null;
-    }
+    }: Pick<
+      CreationAttributes<UserToolApprovalModel>,
+      "mcpServerId" | "toolName" | "agentId" | "argsAndValues"
+    >
   ): Promise<void> {
     // Sort keys to ensure consistent JSONB storage for unique constraint.
     const sortedArgsAndValues = argsAndValues
-      ? Object.keys(argsAndValues)
-          .sort()
-          .reduce(
-            (acc, key) => {
-              acc[key] = argsAndValues[key];
-              return acc;
-            },
-            {} as Record<string, string>
-          )
+      ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
       : null;
 
     await UserToolApprovalModel.upsert({
@@ -543,6 +536,7 @@ export class UserResource extends BaseResource<UserModel> {
       toolName,
       agentId,
       argsAndValues: sortedArgsAndValues,
+      argsAndValuesMD5: md5(JSON.stringify(sortedArgsAndValues)),
     });
   }
 
@@ -553,23 +547,13 @@ export class UserResource extends BaseResource<UserModel> {
       toolName,
       agentId = null,
       argsAndValues = null,
-    }: {
-      mcpServerId: string;
-      toolName: string;
-      agentId?: string | null;
-      argsAndValues?: Record<string, string> | null;
-    }
+    }: Pick<
+      CreationAttributes<UserToolApprovalModel>,
+      "mcpServerId" | "toolName" | "agentId" | "argsAndValues"
+    >
   ): Promise<boolean> {
     const sortedArgsAndValues = argsAndValues
-      ? Object.keys(argsAndValues)
-          .sort()
-          .reduce(
-            (acc, key) => {
-              acc[key] = argsAndValues[key];
-              return acc;
-            },
-            {} as Record<string, string>
-          )
+      ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
       : null;
 
     const whereClause: WhereOptions<UserToolApprovalModel> = {
@@ -578,9 +562,8 @@ export class UserResource extends BaseResource<UserModel> {
       mcpServerId,
       toolName,
       agentId,
-      argsAndValues: sortedArgsAndValues,
+      argsAndValuesMD5: md5(JSON.stringify(sortedArgsAndValues)),
     };
-
     const approval = await UserToolApprovalModel.findOne({
       where: whereClause,
     });

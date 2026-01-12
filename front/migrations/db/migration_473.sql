@@ -1,17 +1,17 @@
 -- Migration created on Jan 12, 2026
 CREATE TABLE IF NOT EXISTS "user_tool_approvals" (
-    "createdAt" timestamp WITH time zone NOT NULL,
-    "updatedAt" timestamp WITH time zone NOT NULL,
+    "createdAt" timestamp with time zone NOT NULL,
+    "updatedAt" timestamp with time zone NOT NULL,
     "mcpServerId" varchar(255) NOT NULL,
     "toolName" varchar(255) NOT NULL,
     "agentId" varchar(255) DEFAULT NULL,
     "argsAndValues" jsonb DEFAULT NULL,
+    "argsAndValuesMD5" varchar(255) DEFAULT NULL,
     "workspaceId" bigint NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "id" bigserial,
     "userId" bigint NOT NULL REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     PRIMARY KEY ("id")
 );
-
-CREATE UNIQUE INDEX "user_tool_approvals_unique_idx" ON "user_tool_approvals" ("workspaceId", "userId", "mcpServerId", "toolName", "agentId", "argsAndValues");
+CREATE UNIQUE INDEX "user_tool_approvals_unique_idx" ON "user_tool_approvals" ("workspaceId", "userId", "mcpServerId", "toolName", "agentId", "argsAndValuesMD5");
+CREATE INDEX CONCURRENTLY "user_tool_approvals_user_id" ON "user_tool_approvals" ("userId");
 CREATE INDEX CONCURRENTLY "user_tool_approvals_workspace_id_user_id" ON "user_tool_approvals" ("workspaceId", "userId");
-
