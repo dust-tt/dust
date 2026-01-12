@@ -40,6 +40,7 @@ export function KnowledgeChip({ node, title, onRemove }: KnowledgeChipProps) {
       label={title}
       icon={{ visual: icon }}
       target="_blank"
+      href={node.sourceUrl ?? undefined}
       color="white"
       onRemove={onRemove}
       size="xs"
