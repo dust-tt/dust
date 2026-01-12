@@ -5,11 +5,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { UserType, WithAPIErrorResponse } from "@app/types";
-import { assertNever, isString } from "@app/types";
+import { assertNever, isBuilder, isString } from "@app/types";
 
 const PatchSkillEditorsRequestBodySchema = t.intersection([
   t.type({}),
@@ -123,6 +124,33 @@ async function handler(
       const usersToAddResources = await UserResource.fetchByIds(addEditorIds);
       const usersToRemoveResources =
         await UserResource.fetchByIds(removeEditorIds);
+
+      // Validate that users being added are builders/admins
+      const owner = auth.getNonNullableWorkspace();
+
+      const nonBuilders: string[] = [];
+      for (const userResource of usersToAddResources) {
+        const role = await MembershipResource.getActiveRoleForUserInWorkspace({
+          user: userResource,
+          workspace: owner,
+        });
+
+        const userWorkspace = { ...owner, role };
+        if (!isBuilder(userWorkspace)) {
+          nonBuilders.push(userResource.sId);
+        }
+      }
+
+      if (nonBuilders.length > 0) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: `Only builders and admins can be added as skill editors. The following users are not builders: ${nonBuilders.join(", ")}`,
+          },
+        });
+      }
+
       const usersToAdd = usersToAddResources.map((u) => u.toJSON());
       const usersToRemove = usersToRemoveResources.map((u) => u.toJSON());
 
