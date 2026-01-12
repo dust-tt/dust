@@ -3,6 +3,7 @@ import { TEMPORAL_PORT, findRepoRoot } from "../lib/paths";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { isTemporalServerRunning, startTemporalServer } from "../lib/temporal-server";
 import { isTestPostgresRunning, startTestPostgres } from "../lib/test-postgres";
+import { isTestRedisRunning, startTestRedis } from "../lib/test-redis";
 import {
   getCurrentBranch,
   getMainRepoPath,
@@ -97,6 +98,24 @@ async function startTestPostgresIfNeeded(): Promise<Result<void>> {
   return Ok(undefined);
 }
 
+// Start shared test Redis if not already running
+async function startTestRedisIfNeeded(): Promise<Result<void>> {
+  logger.step("Starting shared test Redis...");
+  const testRedisRunning = await isTestRedisRunning();
+
+  if (testRedisRunning) {
+    logger.info("Test Redis already running");
+    return Ok(undefined);
+  }
+
+  const result = await startTestRedis();
+  if (!result.success) {
+    return Err(new CommandError(result.error ?? "Failed to start test Redis"));
+  }
+  logger.success("Test Redis started (port 6479)");
+  return Ok(undefined);
+}
+
 export async function upCommand(options: UpOptions = {}): Promise<Result<void>> {
   const repoRoot = await findRepoRoot();
   if (!repoRoot) {
@@ -131,6 +150,12 @@ export async function upCommand(options: UpOptions = {}): Promise<Result<void>> 
   const testPgResult = await startTestPostgresIfNeeded();
   if (!testPgResult.ok) {
     return testPgResult;
+  }
+
+  // Start shared test Redis
+  const testRedisResult = await startTestRedisIfNeeded();
+  if (!testRedisResult.ok) {
+    return testRedisResult;
   }
 
   // Create/attach main session
