@@ -444,7 +444,7 @@ export async function googleDriveFullSyncV2({
   // Upsert shared with me folder
   await upsertSharedWithMeFolder(connectorId);
 
-  // Track pending folder changes that arrive after sync completes (Sets for O(1) lookup)
+  // Track pending folder changes that arrive after sync completes.
   const addedFoldersForNextRun = new Set<string>();
   const removedFoldersForNextRun = new Set<string>();
   let syncCompleted = false;
@@ -644,7 +644,7 @@ export async function googleDriveFullSyncV2({
     });
   }
 
-  // If folders were added during sync or GC, restart workflow to handle them
+  // If folders were added during GC, restart a new workflow to handle them
   if (addedFoldersForNextRun.size > 0) {
     // Restart workflow to sync newly added folders
     // GC will automatically clean up removed folders based on lastSeenTs
