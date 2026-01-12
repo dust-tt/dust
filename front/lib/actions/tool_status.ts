@@ -1,11 +1,10 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentMessageType, Result } from "@app/types";
 import { assertNever, Err, isString, Ok } from "@app/types";
-
-import { isServerSideMCPToolConfiguration } from "./types/guards";
 
 export interface ToolInputContext {
   agentId: string;
@@ -255,10 +254,6 @@ export async function setUserApprovedToolWithArgs({
   approvalHoldingArgs: string[];
   toolInputs: Record<string, unknown>;
 }): Promise<Result<void, Error>> {
-  if (!mcpServerId || !toolName || !agentId) {
-    return new Err(Error("mcpServerId, toolName, and agentId are required"));
-  }
-
   const argValues = extractApprovalHoldingArgValues(
     approvalHoldingArgs,
     toolInputs

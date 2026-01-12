@@ -169,13 +169,6 @@ UserMetadataModel.belongsTo(WorkspaceModel, {
   foreignKey: { name: "workspaceId", allowNull: true },
 });
 
-/**
- * Stores user approvals for MCP tools.
- *
- * Supports two approval types:
- * - Low stake: Tool-level approval (agentId = NULL, argsAndValues = NULL)
- * - Medium stake: Per-agent, per-argument-values approval (agentId and argsAndValues set)
- */
 export class UserToolApprovalModel extends BaseModel<UserToolApprovalModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
