@@ -13,5 +13,4 @@ CREATE TABLE IF NOT EXISTS "user_tool_approvals" (
 );
 
 CREATE UNIQUE INDEX "user_tool_approvals_unique_idx" ON "user_tool_approvals" ("workspaceId", "userId", "mcpServerId", "toolName", "agentId", "argsAndValues");
-CREATE INDEX CONCURRENTLY "user_tool_approvals_workspace_id" ON "user_tool_approvals" ("workspaceId");
-CREATE INDEX CONCURRENTLY "user_tool_approvals_user_id" ON "user_tool_approvals" ("userId");
+CREATE INDEX CONCURRENTLY "user_tool_approvals_workspace_id_user_id" ON "user_tool_approvals" ("workspaceId", "userId");

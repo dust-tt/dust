@@ -5,6 +5,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type { UserProviderType } from "@app/types";
+import { WorkspaceAwareModel } from "../wrappers/workspace_models";
 
 export class UserModel extends BaseModel<UserModel> {
   declare createdAt: CreationOptional<Date>;
@@ -169,11 +170,10 @@ UserMetadataModel.belongsTo(WorkspaceModel, {
   foreignKey: { name: "workspaceId", allowNull: true },
 });
 
-export class UserToolApprovalModel extends BaseModel<UserToolApprovalModel> {
+export class UserToolApprovalModel extends WorkspaceAwareModel<UserToolApprovalModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare userId: ForeignKey<UserModel["id"]>;
-  declare workspaceId: ForeignKey<WorkspaceModel["id"]>;
   declare mcpServerId: string;
   declare toolName: string;
   declare agentId: string | null;
@@ -215,8 +215,7 @@ UserToolApprovalModel.init(
     modelName: "user_tool_approval",
     sequelize: frontSequelize,
     indexes: [
-      { fields: ["workspaceId"], concurrently: true },
-      { fields: ["userId"], concurrently: true },
+      { fields: ["workspaceId", "userId"], concurrently: true },
       {
         fields: [
           "workspaceId",
