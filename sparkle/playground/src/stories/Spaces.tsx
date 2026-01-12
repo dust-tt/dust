@@ -52,6 +52,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ConversationView } from "../components/ConversationView";
 import { GroupConversationView } from "../components/GroupConversationView";
+import { InboxView } from "../components/InboxView";
 import { InputBar } from "../components/InputBar";
 import {
   type Agent,
@@ -122,6 +123,10 @@ function DustMain() {
   >("new-conversation");
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [previousSpaceId, setPreviousSpaceId] = useState<string | null>(null);
+  const [selectedView, setSelectedView] = useState<
+    "inbox" | "space" | "conversation" | null
+  >(null);
+  const [cameFromInbox, setCameFromInbox] = useState<boolean>(false);
   const [conversationsWithMessages, setConversationsWithMessages] = useState<
     Conversation[]
   >([]);
@@ -582,8 +587,13 @@ function DustMain() {
               <NavigationListItem
                 label="Inbox"
                 icon={InboxIcon}
+                selected={selectedView === "inbox"}
                 onClick={() => {
-                  console.log("Selected Inbox");
+                  setSelectedView("inbox");
+                  setSelectedSpaceId(null);
+                  setSelectedConversationId(null);
+                  setPreviousSpaceId(null);
+                  setCameFromInbox(false);
                 }}
               />
               <NavigationListItem
@@ -595,6 +605,7 @@ function DustMain() {
                   setPreviousSpaceId(null);
                   setSelectedConversationId("new-conversation");
                   setSelectedSpaceId(null);
+                  setSelectedView(null);
                 }}
               />
             </>
@@ -676,7 +687,8 @@ function DustMain() {
                   space.id.charCodeAt(space.id.length - 1) % 2 === 0;
                 // Deterministically assign count to some spaces based on space ID
                 const spaceIndex = space.id.charCodeAt(space.id.length - 1);
-                const count = spaceIndex % 3 === 0 ? (spaceIndex % 9) + 1 : undefined;
+                const count =
+                  spaceIndex % 3 === 0 ? (spaceIndex % 9) + 1 : undefined;
                 return (
                   <NavigationListItem
                     key={space.id}
@@ -714,6 +726,8 @@ function DustMain() {
                     onClick={() => {
                       setSelectedSpaceId(space.id);
                       setSelectedConversationId(null);
+                      setSelectedView("space");
+                      setCameFromInbox(false);
                     }}
                   />
                 );
@@ -1056,6 +1070,7 @@ function DustMain() {
                         setPreviousSpaceId(null);
                         setSelectedConversationId(conversation.id);
                         setSelectedSpaceId(null);
+                        setSelectedView("conversation");
                       }}
                     />
                   ))}
@@ -1075,6 +1090,7 @@ function DustMain() {
                         setPreviousSpaceId(null);
                         setSelectedConversationId(conversation.id);
                         setSelectedSpaceId(null);
+                        setSelectedView("conversation");
                       }}
                     />
                   ))}
@@ -1094,6 +1110,7 @@ function DustMain() {
                         setPreviousSpaceId(null);
                         setSelectedConversationId(conversation.id);
                         setSelectedSpaceId(null);
+                        setSelectedView("conversation");
                       }}
                     />
                   ))}
@@ -1113,6 +1130,7 @@ function DustMain() {
                         setPreviousSpaceId(null);
                         setSelectedConversationId(conversation.id);
                         setSelectedSpaceId(null);
+                        setSelectedView("conversation");
                       }}
                     />
                   ))}
@@ -1130,8 +1148,15 @@ function DustMain() {
     if (previousSpaceId) {
       setSelectedSpaceId(previousSpaceId);
       setSelectedConversationId(null);
+      setSelectedView("space");
+      setCameFromInbox(false);
       // Optionally clear previousSpaceId, or keep it for future navigation
       // setPreviousSpaceId(null);
+    } else if (cameFromInbox) {
+      // Return to inbox if we came from there
+      setSelectedView("inbox");
+      setSelectedConversationId(null);
+      setCameFromInbox(false);
     }
   };
 
@@ -1148,10 +1173,25 @@ function DustMain() {
         users={mockUsers}
         agents={mockAgents}
         conversationsWithMessages={conversationsWithMessages}
-        showBackButton={!!previousSpaceId}
+        showBackButton={!!previousSpaceId || cameFromInbox}
         onBack={handleConversationBack}
       />
-    ) : // Priority 2: Show space view if a space is selected
+    ) : // Priority 2: Show inbox view if inbox is selected
+    selectedView === "inbox" ? (
+      <InboxView
+        spaces={spaces}
+        conversations={allConversations}
+        users={mockUsers}
+        agents={mockAgents}
+        onConversationClick={(conversation) => {
+          // Store that we came from inbox before navigating to conversation
+          setPreviousSpaceId(null);
+          setSelectedView("conversation");
+          setSelectedConversationId(conversation.id);
+          setCameFromInbox(true);
+        }}
+      />
+    ) : // Priority 3: Show space view if a space is selected
     selectedSpace && selectedSpaceId ? (
       <GroupConversationView
         space={selectedSpace}
@@ -1161,14 +1201,15 @@ function DustMain() {
         onConversationClick={(conversation) => {
           // Store the current space ID before navigating to conversation
           setPreviousSpaceId(selectedSpaceId);
+          setSelectedView("conversation");
           setSelectedConversationId(conversation.id);
           // Keep selectedSpaceId set so the space NavigationItem stays selected
         }}
       />
     ) : (
-      // Priority 3: Show welcome/new conversation view
+      // Priority 4: Show welcome/new conversation view
       <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
-        <div className="s-flex s-w-full s-max-w-3xl s-flex-col s-gap-6 s-px-4 s-py-8">
+        <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
           <div className="s-heading-2xl s-text-foreground">
             Welcome, Edouard!{" "}
           </div>
