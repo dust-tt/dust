@@ -219,7 +219,7 @@ export function AgentBuilderInstructionsEditor({
 
   useEffect(() => {
     editorRef.current = editor;
-    if (editor) {
+    if (editor && !editor.isDestroyed) {
       editor.commands.focus("end");
     }
   }, [editor]);
@@ -250,7 +250,7 @@ export function AgentBuilderInstructionsEditor({
   }, [editor, displayError]);
 
   useEffect(() => {
-    if (!editor || field.value === undefined) {
+    if (!editor || field.value === undefined || editor.isDestroyed) {
       return;
     }
 
@@ -270,7 +270,7 @@ export function AgentBuilderInstructionsEditor({
   }, [editor, field.value]);
 
   useEffect(() => {
-    if (!editor) {
+    if (!editor || editor.isDestroyed) {
       return;
     }
 

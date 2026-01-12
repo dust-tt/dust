@@ -81,7 +81,8 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
 
     updateAttributes({ isCollapsed: newCollapsed });
 
-    if (editor.isFocused) {
+    // Safety check for Safari: ensure editor and docView are available
+    if (editor.isFocused && !editor.isDestroyed) {
       editor.commands.focus();
     }
   };
@@ -390,7 +391,10 @@ export const InstructionBlockExtension =
           }
 
           this.editor.view.dispatch(tr);
-          this.editor.commands.focus();
+          // Safety check for Safari: ensure editor and docView are available
+          if (!this.editor.isDestroyed) {
+            this.editor.commands.focus();
+          }
           return true;
         },
         /**
@@ -464,7 +468,10 @@ export const InstructionBlockExtension =
           tr.setSelection(TextSelection.create(tr.doc, posAfterBlock + 1));
 
           this.editor.view.dispatch(tr);
-          this.editor.commands.focus();
+          // Safety check for Safari: ensure editor and docView are available
+          if (!this.editor.isDestroyed) {
+            this.editor.commands.focus();
+          }
           return true;
         },
       };
