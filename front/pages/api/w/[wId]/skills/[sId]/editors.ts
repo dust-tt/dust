@@ -1,7 +1,6 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import isString from "lodash/isString";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -10,7 +9,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { UserType, WithAPIErrorResponse } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, isString } from "@app/types";
 
 const PatchSkillEditorsRequestBodySchema = t.intersection([
   t.type({}),
