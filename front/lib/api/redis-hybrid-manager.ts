@@ -37,6 +37,11 @@ class RedisHybridManager {
   private CHANNEL_PREFIX = "channel:";
   private STREAM_PREFIX = "stream:";
 
+  // Track active subscriptions for monitoring.
+  private activeSubscriptionCount = 0;
+  // Track concurrent history fetches to identify overload.
+  private concurrentHistoryFetches = 0;
+
   private constructor() {}
 
   public static getInstance(): RedisHybridManager {
@@ -261,6 +266,8 @@ class RedisHybridManager {
     history: EventPayload[];
     unsubscribe: () => void;
   }> {
+    const subscribeStartMs = Date.now();
+
     const subscriptionClient = await this.getSubscriptionClient();
     const streamClient = await this.getStreamAndPublishClient();
     const streamName = this.getStreamName(channelName);
@@ -302,6 +309,15 @@ class RedisHybridManager {
     // Immediately add the real callback to the subscribers map
     this.subscribers.get(pubSubChannelName)!.add(callback);
 
+    // Track active subscription count for monitoring.
+    this.activeSubscriptionCount++;
+    statsDClient.gauge(
+      "sse.active_subscriptions",
+      this.activeSubscriptionCount
+    );
+    // Track subscription rate (increment counter to get rate per second).
+    statsDClient.increment("sse.subscription_established", 1);
+
     // Append the events during history fetch to the history, if any
     if (eventsDuringHistoryFetch.length > 0) {
       for (const event of eventsDuringHistoryFetch) {
@@ -321,6 +337,13 @@ class RedisHybridManager {
       callback("close");
     }
 
+    // Track total subscription establishment time.
+    const subscribeDurationMs = Date.now() - subscribeStartMs;
+    statsDClient.timing(
+      "sse.subscription.total_duration_ms",
+      subscribeDurationMs
+    );
+
     return {
       history,
       unsubscribe: async () => {
@@ -328,6 +351,13 @@ class RedisHybridManager {
         if (subscribers) {
           callback("close");
           subscribers.delete(callback);
+
+          // Track active subscription count for monitoring.
+          this.activeSubscriptionCount--;
+          statsDClient.gauge(
+            "sse.active_subscriptions",
+            this.activeSubscriptionCount
+          );
 
           if (subscribers.size === 0) {
             // No more subscribers for this channel
@@ -384,7 +414,11 @@ class RedisHybridManager {
     streamName: string,
     lastEventId: string = "0-0"
   ): Promise<{ events: EventPayload[]; hasMore: boolean }> {
-    const hasLastEventId = lastEventId !== "0-0";
+    this.concurrentHistoryFetches++;
+    statsDClient.gauge(
+      "sse.history.concurrent_fetches",
+      this.concurrentHistoryFetches
+    );
 
     try {
       const result = await streamClient
@@ -404,10 +438,8 @@ class RedisHybridManager {
             const eventCount = finalEvents.length;
             const hasMore = eventCount >= HISTORY_FETCH_COUNT;
 
-            // Track event replay (only when client reconnects with lastEventId)
-            if (hasLastEventId && eventCount > 0) {
-              statsDClient.histogram("sse.history.events_replayed", eventCount);
-            }
+            // Track all event replays, including from-beginning fetches during deployment.
+            statsDClient.histogram("sse.history.events_replayed", eventCount);
 
             return {
               events: finalEvents,
@@ -427,7 +459,13 @@ class RedisHybridManager {
         },
         "Error fetching history from stream"
       );
-      return Promise.resolve({ events: [], hasMore: false });
+      return await Promise.resolve({ events: [], hasMore: false });
+    } finally {
+      this.concurrentHistoryFetches--;
+      statsDClient.gauge(
+        "sse.history.concurrent_fetches",
+        this.concurrentHistoryFetches
+      );
     }
   }
 
