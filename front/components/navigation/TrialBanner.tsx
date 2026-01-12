@@ -64,7 +64,7 @@ export function SubscriptionEndBanner({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-4 px-4 py-2",
+        "flex items-center justify-between gap-4 px-4 py-3",
         "bg-sky-50 dark:bg-sky-50-night"
       )}
     >
