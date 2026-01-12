@@ -136,22 +136,6 @@ describe("GET /api/w/[wId]/skills", () => {
     expect(skillNames).not.toContain("Archived Skill");
   });
 
-  it("should return 403 when user is not a builder", async () => {
-    const { req, res, workspace } = await setupTest("GET", "user");
-
-    req.query = { ...req.query, wId: workspace.sId };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toMatchObject({
-      error: {
-        type: "app_auth_error",
-        message: "User is not a builder.",
-      },
-    });
-  });
-
   it("should return 403 when skills feature flag is not enabled", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",

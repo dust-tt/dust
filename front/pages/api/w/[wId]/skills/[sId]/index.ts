@@ -15,7 +15,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { AttachedKnowledgeSchema } from "@app/pages/api/w/[wId]/skills";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isBuilder, isString } from "@app/types";
+import { isString } from "@app/types";
 import type {
   SkillType,
   SkillWithRelationsType,
@@ -83,16 +83,6 @@ async function handler(
       api_error: {
         type: "app_auth_error",
         message: "Skill builder is not enabled for this workspace.",
-      },
-    });
-  }
-
-  if (!isBuilder(owner)) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "User is not a builder.",
       },
     });
   }
