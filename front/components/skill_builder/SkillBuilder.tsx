@@ -169,8 +169,9 @@ export default function SkillBuilder({
                 {skill?.status === "suggested" && (
                   <ContentMessage
                     title="This is a generated skill suggestion"
-                    variant="warning"
+                    variant="primary"
                     icon={InformationCircleIcon}
+                    size="lg"
                   >
                     This skill was automatically generated based on your
                     workspace's agent configurations. We recommend reviewing and
