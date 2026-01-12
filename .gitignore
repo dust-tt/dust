@@ -23,4 +23,8 @@ front/.npm-cache
 AGENTS.local.md
 CLAUDE.local.md
 
+# Direnv
+.direnv/
+.envrc
+.envrc.local
 
