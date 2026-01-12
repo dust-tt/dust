@@ -183,6 +183,7 @@ WebCrawlerFolderModel.init(
       {
         unique: true,
         fields: ["urlMd5", "connectorId", "webcrawlerConfigurationId"],
+        name: "webcrawler_folders_url_md5_connector_id_webcrawler_configuratio",
       },
       {
         unique: true,
@@ -258,6 +259,7 @@ WebCrawlerPageModel.init(
       {
         unique: true,
         fields: ["urlMd5", "connectorId", "webcrawlerConfigurationId"],
+        name: "webcrawler_pages_url_md5_connector_id_webcrawler_configuration_",
       },
       {
         unique: true,
