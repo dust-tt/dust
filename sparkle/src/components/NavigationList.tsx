@@ -163,14 +163,14 @@ const NavigationListItem = React.forwardRef<
             onMouseDown={handleMouseDown}
             onMouseUp={() => setIsPressed(false)}
           >
-            {icon && <Icon visual={icon} size="sm" />}
+            {icon && <Icon visual={icon} size="xs" className="s-m-0.5" />}
             {avatar}
             {label && (
               <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8">
                 {label}
               </span>
             )}
-            {counterValue !== undefined && (
+            {counterValue && (
               <Counter
                 value={counterValue}
                 size="xs"
@@ -212,13 +212,13 @@ const NavigationListItemAction = React.forwardRef<
       ref={ref}
       data-sidebar="menu-action"
       className={cn(
-        "s-absolute s-right-1.5 s-top-1 s-opacity-0 s-transition-opacity",
+        "s-absolute s-right-2 s-top-1.5 s-opacity-0 s-transition-opacity",
         "s-opacity-0 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100 group-data-[selected=true]/menu-item:s-opacity-100",
         className
       )}
       {...props}
     >
-      <Button size="mini" icon={MoreIcon} variant="ghost" />
+      <Button size="xmini" icon={MoreIcon} variant="ghost" />
     </div>
   );
 });
@@ -232,7 +232,7 @@ const variantStyles = cva("", {
     },
     isSticky: {
       true: cn(
-        "s-sticky s-top-0 s-bg-background dark:s-bg-muted-background-night",
+        "s-sticky s-top-0 s-z-10 s-bg-background dark:s-bg-muted-background-night",
         "s-border-border dark:s-border-border-night"
       ),
     },
@@ -333,9 +333,8 @@ interface NavigationListCollapsibleSectionProps extends React.HTMLAttributes<HTM
 
 const collapseableStyles = cva(
   cn(
-    "s-py-2 s-mt-2 s-px-2.5",
+    "s-py-2 s-px-2.5 s-w-full s-flex-1 s-text-left s-w-full",
     "s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
-    "s-box-border s-flex s-items-center s-w-full s-gap-1.5",
     "s-select-none",
     "s-outline-none s-rounded-xl s-transition-colors s-duration-300",
     "data-[disabled]:s-pointer-events-none",
@@ -349,7 +348,7 @@ const collapseableStyles = cva(
       },
       isCollapsible: {
         true: cn(
-          "s-cursor-pointer",
+          "s-cursor-pointer s-mb-0.5",
           "hover:s-text-foreground dark:hover:s-text-foreground-night",
           "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
         ),
@@ -362,20 +361,6 @@ const collapseableStyles = cva(
     },
   }
 );
-
-function isRefObject<T>(
-  ref: React.Ref<T> | undefined
-): ref is React.MutableRefObject<T | null> {
-  return ref != null && typeof ref !== "function" && "current" in ref;
-}
-
-function assignRef<T>(ref: React.Ref<T> | undefined, value: T | null): void {
-  if (typeof ref === "function") {
-    ref(value);
-  } else if (isRefObject(ref)) {
-    ref.current = value;
-  }
-}
 
 const NavigationListCollapsibleSection = React.forwardRef<
   HTMLDivElement | React.ElementRef<typeof Collapsible>,
@@ -399,14 +384,14 @@ const NavigationListCollapsibleSection = React.forwardRef<
   ) => {
     const isCollapsible = type !== "static";
     const labelElement = (
-      <div className="s-group/menu-item s-relative">
+      <div className="s-group/menu-item s-relative s-mt-2 s-flex s-flex-1 s-items-center s-justify-start s-gap-1">
         <div className={collapseableStyles({ variant, isCollapsible })}>
           {label}
         </div>
         {action && (
           <div
             className={cn(
-              "s-absolute s-bottom-1 s-right-1.5 s-flex s-gap-1 s-transition-opacity",
+              "s-m-1.5 s-flex s-gap-1 s-pr-0.5 s-transition-opacity",
               actionOnHover
                 ? "s-opacity-0 hover:s-opacity-100 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
                 : "s-opacity-100"
@@ -422,14 +407,8 @@ const NavigationListCollapsibleSection = React.forwardRef<
     );
 
     if (type === "static") {
-      const divRef = React.useCallback(
-        (node: HTMLDivElement | null) => {
-          assignRef(ref, node);
-        },
-        [ref]
-      );
       return (
-        <div ref={divRef} className={className} {...props}>
+        <div ref={ref} className={className} {...props}>
           {labelElement}
           <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
         </div>
@@ -446,7 +425,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
     if (type === "collapseAndScroll") {
       return (
         <Collapsible ref={ref} className={className} {...collapsibleProps}>
-          <CollapsibleTrigger asChild>{labelElement}</CollapsibleTrigger>
+          <CollapsibleTrigger hideChevron>{labelElement}</CollapsibleTrigger>
           <CollapsibleContent>
             <ScrollArea>
               <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
@@ -460,7 +439,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
     // type === "collapse" (default collapsible behavior)
     return (
       <Collapsible ref={ref} className={className} {...collapsibleProps}>
-        <CollapsibleTrigger asChild>{labelElement}</CollapsibleTrigger>
+        <CollapsibleTrigger hideChevron>{labelElement}</CollapsibleTrigger>
         <CollapsibleContent>
           <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
         </CollapsibleContent>

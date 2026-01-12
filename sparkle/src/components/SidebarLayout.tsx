@@ -210,14 +210,14 @@ export const SidebarLayout = React.forwardRef<
       {/* Allotment CSS variables for resize border customization */}
       <style>{`
         :root {
-          --focus-border: ${customColors.gray[400]}; /* border.focus.DEFAULT */
-          --separator-border: ${customColors.gray[100]}; /* border.dark.DEFAULT */
+          --focus-border: linear-gradient(to bottom, ${customColors.gray[100]}, ${customColors.blue[400]}, ${customColors.gray[100]}); /* border.focus.DEFAULT */
+          --separator-border: transparent; /* border.dark.DEFAULT */
           --sash-size: 8px;
           --sash-hover-size: 2px;
         }
         .s-dark {
-          --focus-border: ${customColors.blue[600]}; /* border.focus.night */
-          --separator-border: ${customColors.gray[700]}; /* border.dark.night */
+          --focus-border: linear-gradient(to bottom, ${customColors.gray[900]}, ${customColors.blue[600]}, ${customColors.gray[900]}); /* border.focus.night */
+          --separator-border: transparent; /* border.dark.night */
         }
         .allotment-module_splitView__L-yRc.allotment-module_separatorBorder__x-rDS
           > .allotment-module_splitViewContainer__rQnVa

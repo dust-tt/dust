@@ -42,7 +42,7 @@ const avatarVariants = cva(
         disabled: "s-opacity-50",
       },
       rounded: {
-        true: "s-rounded-full s-ring-[1px] s-ring-border-dark dark:s-ring-border-dark-night",
+        true: "s-rounded-full s-ring-[1px] s-ring-border-dark/50 dark:s-ring-border-dark-night/50",
         false: "",
       },
     },
@@ -265,6 +265,7 @@ interface AvatarStackProps {
   hasMagnifier?: boolean;
   tooltipTriggerAsChild?: boolean;
   orientation?: "horizontal" | "vertical";
+  onTop?: "first" | "last";
 }
 
 const sizeClassesPx: Record<AvatarStackSizeType, number> = {
@@ -280,17 +281,26 @@ Avatar.Stack = function ({
   hasMagnifier = true,
   tooltipTriggerAsChild = false,
   orientation = "horizontal",
+  onTop = "last",
 }: AvatarStackProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   // Get visible avatars and calculate remaining count
   const shouldShowAll = !nbVisibleItems || avatars.length <= nbVisibleItems;
-  const visibleAvatars = shouldShowAll
-    ? avatars
-    : avatars.slice(0, nbVisibleItems - 1);
-  const remainingCount = shouldShowAll
-    ? 0
-    : avatars.length - (nbVisibleItems - 1);
+  const isFirstOnTop = onTop === "first";
+
+  const maxVisible = shouldShowAll
+    ? avatars.length
+    : isFirstOnTop
+      ? nbVisibleItems
+      : nbVisibleItems - 1;
+
+  const visibleAvatars = isFirstOnTop
+    ? avatars.slice(0, maxVisible).reverse()
+    : avatars.slice(0, maxVisible);
+
+  const remainingCount =
+    shouldShowAll || isFirstOnTop ? 0 : avatars.length - maxVisible;
 
   // Get all names for tooltip
   const avatarNames = avatars
@@ -340,7 +350,13 @@ Avatar.Stack = function ({
           <div
             className={cn(
               "s-flex",
-              orientation === "vertical" ? "s-flex-col" : "s-flex-row"
+              onTop === "first"
+                ? orientation === "vertical"
+                  ? "s-flex-col-reverse s-justify-end"
+                  : "s-flex-row-reverse s-justify-end"
+                : orientation === "vertical"
+                  ? "s-flex-col"
+                  : "s-flex-row"
             )}
             onMouseEnter={() => visibleAvatars.length > 1 && setIsHovered(true)}
             onMouseLeave={() =>
@@ -362,7 +378,7 @@ Avatar.Stack = function ({
             {visibleAvatars.map((avatarProps, i) => (
               <div
                 key={i}
-                className="s-cursor-pointer s-drop-shadow-md"
+                className="s-cursor-pointer"
                 style={{
                   [orientation === "vertical" ? "height" : "width"]: isHovered
                     ? orientation === "vertical"
@@ -378,7 +394,9 @@ Avatar.Stack = function ({
                   <div
                     style={{
                       transform: `scale(${
-                        1 - (visibleAvatars.length - i) * 0.06
+                        onTop === "first"
+                          ? 1 - (visibleAvatars.length - 1 - i) * 0.06
+                          : 1 - (visibleAvatars.length - i) * 0.06
                       })`,
                     }}
                   >
@@ -391,7 +409,7 @@ Avatar.Stack = function ({
             ))}
             {remainingCount > 0 && (
               <div
-                className="s-cursor-pointer s-drop-shadow-md"
+                className="s-cursor-pointer"
                 style={{
                   [orientation === "vertical" ? "height" : "width"]: isHovered
                     ? orientation === "vertical"

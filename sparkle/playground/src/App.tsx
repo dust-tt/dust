@@ -1,4 +1,4 @@
-import { Button } from "@dust-tt/sparkle";
+import { ListGroup, ListItem } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 // Automatically discover all story files
@@ -28,17 +28,19 @@ function StoryList({
         <p className="s-copy-lg s-mb-8 s-text-muted-foreground">
           Select a playground to explore
         </p>
-        <div className="s-flex s-flex-col s-items-center s-gap-3">
-          {stories.map((story) => (
-            <Button
+        <ListGroup>
+          {stories.map((story, index) => (
+            <ListItem
               key={story.name}
-              label={story.name}
               onClick={() => onSelectStory(story.name)}
-              size="md"
-              variant="primary"
-            />
+              hasSeparator={index < stories.length - 1}
+            >
+              <div className="s-text-foreground dark:s-text-foreground-night">
+                {story.name}
+              </div>
+            </ListItem>
           ))}
-        </div>
+        </ListGroup>
       </div>
     </div>
   );
