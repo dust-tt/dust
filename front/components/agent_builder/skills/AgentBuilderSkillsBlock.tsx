@@ -36,7 +36,11 @@ import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MC
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { getSkillIcon } from "@app/lib/skill";
+import {
+  getSkillIcon,
+  SKILL_AVATAR_BACKGROUND_COLOR,
+  SKILL_AVATAR_ICON_COLOR,
+} from "@app/lib/skill";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 
 interface SkillCardProps {
@@ -66,7 +70,12 @@ function SkillCard({ skill, onRemove, onClick }: SkillCardProps) {
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          <ResourceAvatar icon={SkillIcon} size="xs" />
+          <ResourceAvatar
+            icon={SkillIcon}
+            size="xs"
+            backgroundColor={SKILL_AVATAR_BACKGROUND_COLOR}
+            iconColor={SKILL_AVATAR_ICON_COLOR}
+          />
           <span className="truncate">{skill.name}</span>
         </div>
 

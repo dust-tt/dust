@@ -64,7 +64,7 @@ export function SkillBuilderRequestedSpacesSection() {
           Spaces
         </h3>
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Set what data the skill can access and who can use it.
+          Sets what knowledge and tools the skill can access.
         </p>
       </div>
       {nonGlobalSpacesUsedInActions.length > 0 && (
