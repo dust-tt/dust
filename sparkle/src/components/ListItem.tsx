@@ -4,7 +4,7 @@ import React, { ReactNode } from "react";
 import { cn } from "@sparkle/lib/utils";
 
 const listItemVariants = cva(
-  "s-group s-flex s-w-full s-flex-row s-gap-3 s-px-3 s-py-3",
+  "s-group s-flex s-w-full s-flex-row s-gap-3 s-p-3",
   {
     variants: {
       itemsAlignment: {
