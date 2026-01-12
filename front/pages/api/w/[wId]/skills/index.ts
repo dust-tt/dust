@@ -78,16 +78,6 @@ async function handler(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  if (!isBuilder(owner)) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "User is not a builder.",
-      },
-    });
-  }
-
   const featureFlags = await getFeatureFlags(owner);
   if (!featureFlags.includes("skills")) {
     return apiError(req, res, {
@@ -155,6 +145,16 @@ async function handler(
     }
 
     case "POST": {
+      if (!isBuilder(owner)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: "User is not a builder.",
+          },
+        });
+      }
+
       const user = auth.getNonNullableUser();
 
       const bodyValidation = PostSkillRequestBodySchema.decode(req.body);
