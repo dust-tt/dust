@@ -1,5 +1,4 @@
 import { Avatar, Chip, cn, Markdown, Page } from "@dust-tt/sparkle";
-import isString from "lodash/isString";
 
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection";
@@ -7,7 +6,11 @@ import { AssistantToolsSection } from "@app/components/assistant/details/tabs/Ag
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { AgentConfigurationType, WorkspaceType } from "@app/types";
-import { GLOBAL_AGENTS_SID, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import {
+  GLOBAL_AGENTS_SID,
+  isString,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@app/types";
 
 export function AgentInfoTab({
   agentConfiguration,
