@@ -411,20 +411,20 @@ export function googleDriveFolderSyncWorkflowId(
  * to enable parallel processing. This is the gradual migration version that runs
  * alongside the legacy googleDriveFullSync workflow.
  *
- * @param initialFolderIds - Pass `null` to sync all folders from DB, or specific folder IDs to sync only those.
+ * @param foldersToBrowse - Pass `null` to sync all folders from DB, or specific folder IDs to sync only those.
  */
 export async function googleDriveFullSyncV2({
   connectorId,
   garbageCollect = true,
   startSyncTs = undefined,
   mimeTypeFilter,
-  initialFolderIds = null,
+  foldersToBrowse = null,
 }: {
   connectorId: ModelId;
   garbageCollect: boolean;
   startSyncTs: number | undefined;
   mimeTypeFilter?: string[];
-  initialFolderIds?: string[] | null;
+  foldersToBrowse?: string[] | null;
 }) {
   // Initialize sync timestamp
   if (!startSyncTs) {
@@ -435,10 +435,10 @@ export async function googleDriveFullSyncV2({
   // Populate sync tokens before starting
   await populateSyncTokens(connectorId);
 
-  // Get folders to sync - use initialFolderIds if provided, otherwise fetch all from DB
+  // Get folders to sync - use foldersToBrowse if provided, otherwise fetch all from DB
   const folderIds =
-    initialFolderIds !== null
-      ? initialFolderIds
+    foldersToBrowse !== null
+      ? foldersToBrowse
       : await getFoldersToSync(connectorId);
 
   // Upsert shared with me folder
@@ -461,10 +461,14 @@ export async function googleDriveFullSyncV2({
 
   // Helper to start a child workflow for a folder (does not wait for completion)
   const launchFolderWorkflow = async (folderId: string) => {
-    const childWorkflowId = googleDriveFolderSyncWorkflowId(connectorId, folderId);
+    const childWorkflowId = googleDriveFolderSyncWorkflowId(
+      connectorId,
+      folderId
+    );
 
     const handle = await startChild(googleDriveFolderSync, {
       workflowId: childWorkflowId,
+      // This is only in the case we add/remove/re-add a folder to the sync list, and workflow has not been cancelled yet.
       workflowIdReusePolicy: "TERMINATE_IF_RUNNING",
       searchAttributes: { connectorId: [connectorId] },
       args: [
@@ -649,7 +653,7 @@ export async function googleDriveFullSyncV2({
       garbageCollect: true,
       startSyncTs: undefined,
       mimeTypeFilter,
-      initialFolderIds: [...addedFoldersForNextRun],
+      foldersToBrowse: [...addedFoldersForNextRun],
     });
   } else if (removedFoldersForNextRun.size > 0) {
     // Only removals, just re-launch GC to clean them up

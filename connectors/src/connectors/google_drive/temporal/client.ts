@@ -99,48 +99,29 @@ export async function launchGoogleDriveFullSyncWorkflow(
 
   // Helper to start the workflow
   const startWorkflow = async () => {
-    if (useParallelSync) {
-      await client.workflow.start(googleDriveFullSyncV2, {
-        args: [
-          {
-            connectorId,
-            garbageCollect: true,
-            startSyncTs: undefined,
-            mimeTypeFilter,
-            initialFolderIds: addedFolderIds,
-          },
-        ],
-        taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
-        workflowId,
-        searchAttributes: {
-          connectorId: [connectorId],
-        },
-        memo: {
+    const workflowFn = useParallelSync
+      ? googleDriveFullSyncV2
+      : googleDriveFullSync;
+    await client.workflow.start(workflowFn, {
+      args: [
+        {
           connectorId,
+          garbageCollect: true,
+          startSyncTs: undefined,
+          foldersToBrowse: addedFolderIds,
+          totalCount: 0,
+          mimeTypeFilter,
         },
-      });
-    } else {
-      await client.workflow.start(googleDriveFullSync, {
-        args: [
-          {
-            connectorId,
-            garbageCollect: true,
-            startSyncTs: undefined,
-            foldersToBrowse: addedFolderIds,
-            totalCount: 0,
-            mimeTypeFilter,
-          },
-        ],
-        taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
-        workflowId,
-        searchAttributes: {
-          connectorId: [connectorId],
-        },
-        memo: {
-          connectorId,
-        },
-      });
-    }
+      ],
+      taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
+      workflowId,
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      memo: {
+        connectorId,
+      },
+    });
   };
 
   try {
