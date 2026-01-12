@@ -1,3 +1,5 @@
+import isString from "lodash/isString";
+
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
@@ -64,21 +66,20 @@ export async function getExecutionStatusFromConfig(
       ) {
         return { status: "blocked_validation_required" };
       }
+      const { agentId, toolInputs } = context;
+      const argumentsRequiringApproval =
+        actionConfiguration.argumentsRequiringApproval ?? [];
+      const argsAndValues = extractArgRequiringApprovalValues(
+        argumentsRequiringApproval,
+        toolInputs
+      );
 
-      const userHasApproved = false;
-      /**
-       *  const { agentId, toolInputs } = context;
-       *  const argumentsRequiringApproval =
-       *     actionConfiguration.argumentsRequiringApproval ?? [];
-       *  const userHasApproved = await hasUserApprovedToolWithArgs({
-       *    user,
-       *    mcpServerId: actionConfiguration.toolServerId,
-       *    toolName: actionConfiguration.name,
-       *    agentId,
-       *    argumentsRequiringApproval,
-       *    toolInputs,
-       *  });
-       */
+      const userHasApproved = await user.hasApprovedTool(auth, {
+        mcpServerId: actionConfiguration.toolServerId,
+        toolName: actionConfiguration.name,
+        agentId,
+        argsAndValues,
+      });
 
       if (userHasApproved) {
         return { status: "ready_allowed_implicitly" };
@@ -113,6 +114,7 @@ export async function setUserAlwaysApprovedTool({
     functionCallName
   );
 
+  // TODO(adrien): move from metadata to tool approvals table
   /**
     await user.createToolApproval(auth, {
       mcpServerId,
@@ -144,7 +146,6 @@ export async function hasUserAlwaysApprovedTool({
 
 // Extracts the values of the approval-requiring arguments from the tool inputs,
 // converting them to strings for storage. Skips any arguments that are not provided.
-/** 
 function extractArgRequiringApprovalValues(
   argumentsRequiringApproval: string[],
   toolInputs: Record<string, unknown>
@@ -170,4 +171,3 @@ function extractArgRequiringApprovalValues(
 
   return result;
 }
-*/
