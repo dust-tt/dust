@@ -9,14 +9,14 @@ ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
 
 # Build SDK (shared by both front-nextjs and workers)
-WORKDIR /sdks/js
+WORKDIR /app/sdks/js
 COPY /sdks/js/package*.json ./
-COPY /sdks/js/ .
 RUN npm ci
+COPY /sdks/js/ .
 RUN npm run build
 
 # Install front dependencies and copy source (shared by both)
-WORKDIR /app
+WORKDIR /app/front
 COPY /front/package*.json ./
 RUN npm ci
 COPY /front .
@@ -79,7 +79,7 @@ RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
         --release-version=$COMMIT_HASH \
         --service=$NEXT_PUBLIC_DATADOG_SERVICE-browser && \
         npx --yes @datadog/datadog-ci sourcemaps upload ./.next/server \
-        --minified-path-prefix=/app/.next/server/ \
+        --minified-path-prefix=/app/front/.next/server/ \
         --repository-url=https://github.com/dust-tt/dust \
         --project-path=front \
         --release-version=$COMMIT_HASH \
@@ -103,18 +103,18 @@ RUN apt-get update && \
   apt-get install -y redis-tools postgresql-client libjemalloc2 && \
   rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+WORKDIR /app/front
 
 # Copy Next.js standalone output from Next.js-specific build
-COPY --from=front-nextjs-build /app/.next/standalone ./
-COPY --from=front-nextjs-build /app/.next/static ./.next/static
-COPY --from=front-nextjs-build /app/public ./public
+COPY --from=front-nextjs-build /app/front/.next/standalone ./
+COPY --from=front-nextjs-build /app/front/.next/static ./.next/static
+COPY --from=front-nextjs-build /app/front/public ./public
 # Copy admin directory (contains prestop.sh and other scripts)
-COPY --from=base-deps /app/admin ./admin
+COPY --from=base-deps /app/front/admin ./admin
 # Copy scripts directory
-COPY --from=base-deps /app/scripts ./scripts
+COPY --from=base-deps /app/front/scripts ./scripts
 # Copy built SDK from base dependencies (maintain absolute path for symlink resolution)
-COPY --from=base-deps /sdks /sdks
+COPY --from=base-deps /app/sdks /app/sdks
 
 # Re-declare build args needed at runtime
 ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
@@ -138,17 +138,17 @@ RUN apt-get update && \
   apt-get install -y redis-tools postgresql-client libjemalloc2 && \
   rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+WORKDIR /app/front
 
 # Copy worker assets from workers-specific build
-COPY --from=workers-build /app/dist ./dist
+COPY --from=workers-build /app/front/dist ./dist
 # Copy full dependencies from base dependencies (includes all node_modules)
-COPY --from=base-deps /app/node_modules ./node_modules
-COPY --from=base-deps /app/package.json ./package.json
+COPY --from=base-deps /app/front/node_modules ./node_modules
+COPY --from=base-deps /app/front/package.json ./package.json
 # Copy scripts directory
-COPY --from=base-deps /app/scripts ./scripts
+COPY --from=base-deps /app/front/scripts ./scripts
 # Copy built SDK that workers depend on (maintain absolute path for symlink resolution)
-COPY --from=base-deps /sdks/js /sdks/js
+COPY --from=base-deps /app/sdks /app/sdks
 
 # Re-declare build arg needed at runtime
 ARG NEXT_PUBLIC_VIZ_URL
