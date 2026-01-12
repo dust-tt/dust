@@ -78,12 +78,12 @@ export default function DustPlatform() {
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={<>Dust Apps: Expand your agents' capabilities</>}
+            title={<>Custom Webhooks: Connect agents to your workflow</>}
             content={[
               <>
-                Orchestrate complex workflows by calling models, APIs, executing
-                code, or consulting data sources. Build custom actions, chain
-                models, or even call into your own infrastructure.
+                Build webhook endpoints to trigger agents from any external
+                system. Receive events from GitHub, Jira, Slack, or your own
+                services with full company context.
               </>,
             ]}
           >
@@ -93,16 +93,13 @@ export default function DustPlatform() {
               className={classNames("relative")}
             >
               <Div3D depth={-20}>
-                <img src="/static/landing/apps/apps1.png" />
+                <img src="/static/landing/webhooks/Webhooks.png" />
               </Div3D>
               <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/apps/apps2.png" />
+                <img src="/static/landing/webhooks/Webhooks3.png" />
               </Div3D>
               <Div3D depth={15} className="absolute top-0">
-                <img src="/static/landing/apps/apps3.png" />
-              </Div3D>
-              <Div3D depth={60} className="absolute top-0">
-                <img src="/static/landing/apps/apps4.png" />
+                <img src="/static/landing/webhooks/Webhooks2.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>

@@ -10,6 +10,7 @@ import { restoreTerminal, selectMultipleEnvironments } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import type { ServiceName } from "../lib/services";
 import { isDockerRunning } from "../lib/state";
+import { dropTestDatabase } from "../lib/test-postgres";
 import { deleteBranch, hasUncommittedChanges, removeWorktree } from "../lib/worktree";
 
 async function cleanupZellijSession(envName: string): Promise<void> {
@@ -115,6 +116,15 @@ async function destroySingleEnvironment(
 
   // Stop Docker and remove volumes
   await cleanupDocker(env.name);
+
+  // Drop test database
+  logger.step("Dropping test database...");
+  const testDbResult = await dropTestDatabase(env.name);
+  if (testDbResult.success) {
+    logger.success("Test database dropped");
+  } else {
+    logger.warn(`Could not drop test database: ${testDbResult.error}`);
+  }
 
   // Remove git worktree
   logger.step("Removing git worktree...");

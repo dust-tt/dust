@@ -126,7 +126,7 @@ async function handler(
           async (sc) => {
             const usage = await sc.fetchUsage(auth);
             const editors = await sc.listEditors(auth);
-            const author = await sc.fetchAuthor(auth);
+            const editedByUser = await sc.fetchEditedByUser(auth);
             const extendedSkill = sc.extendedSkillId
               ? await SkillResource.fetchById(auth, sc.extendedSkillId)
               : null;
@@ -136,7 +136,7 @@ async function handler(
               relations: {
                 usage,
                 editors: editors ? editors.map((e) => e.toJSON()) : null,
-                author: author ? author.toJSON() : null,
+                editedByUser: editedByUser ? editedByUser.toJSON() : null,
                 extendedSkill: extendedSkill
                   ? extendedSkill.toJSON(auth)
                   : null,
@@ -253,11 +253,8 @@ async function handler(
         ? await SkillResource.fetchById(auth, body.extendedSkillId)
         : null;
 
-      // Only global skills can be extended
-      if (
-        extendedSkill !== null &&
-        (extendedSkill === null || !extendedSkill.isExtendable)
-      ) {
+      // Only global skills can be extended.
+      if (extendedSkill !== null && !extendedSkill.isExtendable) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -275,7 +272,7 @@ async function handler(
           agentFacingDescription: body.agentFacingDescription,
           userFacingDescription: body.userFacingDescription,
           instructions: body.instructions,
-          authorId: user.id,
+          editedBy: user.id,
           requestedSpaceIds,
           extendedSkillId: body.extendedSkillId,
         },

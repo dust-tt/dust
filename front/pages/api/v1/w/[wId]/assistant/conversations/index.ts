@@ -429,7 +429,7 @@ async function handler(
             api_error: {
               type: "invalid_request_error",
               message:
-                "This origin is not allowed. See documentation to fix to an allowed origin.",
+                "This origin is not allowed. Remove the origin from the context property.",
             },
           });
         }

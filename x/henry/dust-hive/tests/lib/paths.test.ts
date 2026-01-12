@@ -1,4 +1,5 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import {
@@ -7,6 +8,7 @@ import {
   DUST_HIVE_HOME,
   DUST_HIVE_WORKTREES,
   DUST_HIVE_ZELLIJ,
+  findRepoRoot,
   getDockerOverridePath,
   getEnvDir,
   getEnvFilePath,
@@ -149,6 +151,49 @@ describe("paths", () => {
       expect(getInitializedMarkerPath(envName).startsWith(baseDir)).toBe(true);
       expect(getPidPath(envName, "front").startsWith(baseDir)).toBe(true);
       expect(getLogPath(envName, "front").startsWith(baseDir)).toBe(true);
+    });
+  });
+
+  describe("findRepoRoot", () => {
+    const testDir = "/tmp/dust-hive-test-findRepoRoot";
+    const fakeRepoDir = join(testDir, "fake-repo");
+    const subDir = join(fakeRepoDir, "subdir");
+    const realRepoDir = join(testDir, "real-repo");
+    const realSubDir = join(realRepoDir, "subdir");
+
+    beforeAll(async () => {
+      // Clean up any previous test artifacts
+      await rm(testDir, { recursive: true, force: true });
+
+      // Create fake repo with only .git/info/exclude (no HEAD)
+      await mkdir(join(fakeRepoDir, ".git", "info"), { recursive: true });
+      await writeFile(join(fakeRepoDir, ".git", "info", "exclude"), "*.log\n");
+      await mkdir(subDir, { recursive: true });
+
+      // Create real repo with .git/HEAD
+      await mkdir(join(realRepoDir, ".git"), { recursive: true });
+      await writeFile(join(realRepoDir, ".git", "HEAD"), "ref: refs/heads/main\n");
+      await mkdir(realSubDir, { recursive: true });
+    });
+
+    afterAll(async () => {
+      await rm(testDir, { recursive: true, force: true });
+    });
+
+    it("skips .git directories without HEAD file", async () => {
+      // From a subdir with fake .git above, should return null (no valid repo found)
+      const result = await findRepoRoot(subDir);
+      expect(result).toBe(null);
+    });
+
+    it("finds real git repo with HEAD file", async () => {
+      const result = await findRepoRoot(realSubDir);
+      expect(result).toBe(realRepoDir);
+    });
+
+    it("finds real git repo from repo root", async () => {
+      const result = await findRepoRoot(realRepoDir);
+      expect(result).toBe(realRepoDir);
     });
   });
 });

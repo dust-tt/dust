@@ -1,3 +1,4 @@
+import parsePhoneNumber from "libphonenumber-js";
 import { isValidPhoneNumber as libIsValidPhoneNumber } from "react-phone-number-input";
 
 export const CODE_LENGTH = 6;
@@ -21,18 +22,21 @@ export function isValidPhoneNumber(phone: string): boolean {
 }
 
 /**
- * Masks a phone number for display, showing only the first and last two digits.
+ * Masks a phone number for display, showing only the last two digits.
+ * @param phone - Phone number in E.164 format (e.g., "+33612345678")
+ * @returns Masked phone number (e.g., "+33 ********78")
  */
-export function maskPhoneNumber(countryCode: string, phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length < 3) {
-    return `${countryCode} ${digits}`;
+export function maskPhoneNumber(phone: string): string {
+  const parsed = parsePhoneNumber(phone);
+  if (!parsed) {
+    return phone;
   }
-  const first = digits[0];
-  const last = digits.slice(-2);
-  const middleLength = digits.length - 3;
-  const masked = "** ".repeat(Math.ceil(middleLength / 2)).trim();
-  return `${countryCode} ${first} ${masked} ${last}`;
+
+  const national = parsed.nationalNumber;
+  const lastDigits = national.slice(-2);
+  const masked = "*".repeat(Math.max(0, national.length - 2)) + lastDigits;
+
+  return `+${parsed.countryCallingCode} ${masked}`;
 }
 
 /**

@@ -8,14 +8,28 @@ export const setQueryParam = (
   const q = router.query;
   q[key] = value;
 
-  void router.push(
-    {
-      pathname: router.pathname,
-      query: q,
-    },
-    undefined,
-    { shallow: true }
-  );
+  // Preserve the hash when updating query params
+  const hash = window.location.hash;
+
+  void router
+    .push(
+      {
+        pathname: router.pathname,
+        query: q,
+      },
+      undefined,
+      { shallow: true }
+    )
+    .then(() => {
+      // Restore hash after router.push (Next.js doesn't preserve it)
+      if (hash && window.location.hash !== hash) {
+        window.history.replaceState(
+          null,
+          "",
+          `${window.location.pathname}${window.location.search}${hash}`
+        );
+      }
+    });
 };
 
 export const parseQueryString = (url: string) => {
@@ -72,5 +86,5 @@ export const getSpaceConversationsRoute = (
   workspaceId: string,
   spaceId: string
 ) => {
-  return `/w/${workspaceId}/conversation/space/${spaceId}#conversations`;
+  return `/w/${workspaceId}/conversation/space/${spaceId}`;
 };

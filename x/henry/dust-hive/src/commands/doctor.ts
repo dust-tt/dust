@@ -132,6 +132,26 @@ async function checkCargo(): Promise<CheckResult> {
   };
 }
 
+async function checkCmake(): Promise<CheckResult> {
+  const version = await getCommandVersion("cmake");
+  return {
+    name: "CMake",
+    ok: version !== null,
+    message: version ?? "Not found",
+    fix: getInstallInstructions("cmake"),
+  };
+}
+
+async function checkProtobuf(): Promise<CheckResult> {
+  const version = await getCommandVersion("protoc");
+  return {
+    name: "Protobuf",
+    ok: version !== null,
+    message: version ?? "Not found",
+    fix: getInstallInstructions("protobuf"),
+  };
+}
+
 async function checkSccache(): Promise<CheckResult> {
   const version = await getCommandVersion("sccache");
   if (!version) {
@@ -236,6 +256,8 @@ async function runAllChecks(): Promise<CheckResult[]> {
     await checkTemporalCli(),
     await checkNvm(),
     await checkCargo(),
+    await checkCmake(),
+    await checkProtobuf(),
     await checkSccache(),
     await checkRepo(),
     await checkConfig(),

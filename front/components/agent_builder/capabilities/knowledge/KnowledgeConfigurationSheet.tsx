@@ -1,10 +1,9 @@
 import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
 import {
   Avatar,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  CollapsibleComponent,
-  Icon,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   MultiPageSheet,
   MultiPageSheetContent,
 } from "@dust-tt/sparkle";
@@ -254,7 +253,6 @@ function KnowledgeConfigurationSheetContent({
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
   const { setValue, getValues, setFocus } =
     useFormContext<CapabilityFormData>();
-  const [isAdvancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -409,28 +407,13 @@ function KnowledgeConfigurationSheetContent({
           {/* Advanced Settings collapsible section */}
           {mcpServerView?.serverType === "internal" &&
             mcpServerView.server.name === SEARCH_SERVER_NAME && (
-              <CollapsibleComponent
-                rootProps={{
-                  defaultOpen: isAdvancedSettingsOpen,
-                  onOpenChange: setAdvancedSettingsOpen,
-                }}
-                triggerChildren={
-                  <>
-                    <Icon
-                      visual={
-                        isAdvancedSettingsOpen
-                          ? ChevronDownIcon
-                          : ChevronRightIcon
-                      }
-                      size="sm"
-                    />
-                    <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
-                      Advanced Settings
-                    </h3>
-                  </>
-                }
-                contentProps={{ className: "m-1" }}
-                contentChildren={
+              <Collapsible>
+                <CollapsibleTrigger>
+                  <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
+                    Advanced Settings
+                  </h3>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="m-1">
                   <CustomCheckboxSection
                     title="Enable exploratory search mode"
                     description="Allow the agent to navigate the selected Data Sources like a filesystem (list folders, browse files, explore hierarchies). Best for complex tasks with large datasets where thoroughness matters more than speed."
@@ -438,8 +421,8 @@ function KnowledgeConfigurationSheetContent({
                     selectedMCPServerView={mcpServerView ?? undefined}
                     configurationKey={ADVANCED_SEARCH_SWITCH}
                   />
-                }
-              />
+                </CollapsibleContent>
+              </Collapsible>
             )}
 
           <SelectedDataSources />

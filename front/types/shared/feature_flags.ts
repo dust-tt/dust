@@ -195,10 +195,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slab MCP server",
     stage: "on_demand",
   },
-  vanta_tool: {
-    description: "Vanta MCP tool for security and compliance testing",
-    stage: "dust_only",
-  },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
@@ -220,10 +216,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   projects: {
     description: "Enable use Spaces as Projects",
-    stage: "dust_only",
-  },
-  reactions: {
-    description: "Enable reactions (like thumbs up) on messages and items",
     stage: "dust_only",
   },
   databricks_tool: {

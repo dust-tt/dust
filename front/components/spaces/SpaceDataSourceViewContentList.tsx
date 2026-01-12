@@ -64,6 +64,7 @@ import type {
   ContentNodesViewType,
   DataSourceViewContentNode,
   DataSourceViewType,
+  FileUseCase,
   LightWorkspaceType,
   PlanType,
   SpaceType,
@@ -265,6 +266,7 @@ interface SpaceDataSourceViewContentListProps {
   plan: PlanType;
   space: SpaceType;
   systemSpace: SpaceType;
+  useCaseForDocument?: FileUseCase;
 }
 
 export const SpaceDataSourceViewContentList = ({
@@ -279,6 +281,7 @@ export const SpaceDataSourceViewContentList = ({
   plan,
   space,
   systemSpace,
+  useCaseForDocument,
 }: SpaceDataSourceViewContentListProps) => {
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
@@ -699,6 +702,7 @@ export const SpaceDataSourceViewContentList = ({
           owner={owner}
           plan={plan}
           onSave={onSaveAction}
+          useCaseForDocument={useCaseForDocument}
         />
       </DropzoneContainer>
     </FileDropProvider>

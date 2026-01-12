@@ -47,6 +47,7 @@ cli
   .command("spawn [name]", "Create a new environment")
   .alias("s")
   .option("-n, --name <name>", "Environment name")
+  .option("-b, --branch-name <branch>", "Git branch name (default: [prefix]<name>)")
   .option("-O, --no-open", "Do not open zellij session after spawn")
   .option("-A, --no-attach", "Create zellij session but don't attach to it")
   .option("-w, --warm", "Open zellij with a warm tab running dust-hive warm")
@@ -61,6 +62,7 @@ cli
       name: string | undefined,
       options: {
         name?: string;
+        branchName?: string;
         open?: boolean;
         attach?: boolean;
         warm?: boolean;
@@ -78,6 +80,7 @@ cli
       const resolvedName = name ?? options.name;
       const spawnOptions: {
         name?: string;
+        branchName?: string;
         noOpen?: boolean;
         noAttach?: boolean;
         warm?: boolean;
@@ -87,6 +90,9 @@ cli
       } = {};
       if (resolvedName !== undefined) {
         spawnOptions.name = resolvedName;
+      }
+      if (options.branchName) {
+        spawnOptions.branchName = options.branchName;
       }
       if (options.open === false) {
         spawnOptions.noOpen = true;

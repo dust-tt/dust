@@ -101,6 +101,9 @@ const CONVERSATIONS_PER_PAGE = 10;
 
 export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const router = useRouter();
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
 
   const { setSidebarOpen } = useContext(SidebarContext);
 
@@ -109,9 +112,19 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
       workspaceId: owner.sId,
     });
 
+  const hasSpaceConversations = hasFeature("projects");
+
+  const { summary, mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: !hasSpaceConversations },
+  });
+
   useEffect(() => {
     const handleConversationsUpdated = () => {
       void mutateConversations();
+      if (hasSpaceConversations) {
+        void mutateSpaceSummary();
+      }
     };
     window.addEventListener(
       CONVERSATIONS_UPDATED_EVENT,
@@ -123,17 +136,13 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         handleConversationsUpdated
       );
     };
-  }, [mutateConversations]);
+  }, [hasSpaceConversations, mutateConversations, mutateSpaceSummary]);
 
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedConversations, setSelectedConversations] = useState<
     ConversationWithoutContentType[]
   >([]);
   const doDelete = useDeleteConversation(owner);
-
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
 
   const {
     hideTriggeredConversations,
@@ -145,13 +154,6 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 
   const isRestrictedFromAgentCreation =
     hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
-
-  const hasSpaceConversations = hasFeature("projects");
-
-  const { summary } = useSpaceConversationsSummary({
-    workspaceId: owner.sId,
-    options: { disabled: !hasSpaceConversations },
-  });
 
   const [showDeleteDialog, setShowDeleteDialog] = useState<
     "all" | "selection" | null

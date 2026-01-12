@@ -1,6 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -9,17 +6,13 @@ import {
   activatePhoneTrial,
   isWorkspaceEligibleForTrial,
 } from "@app/lib/plans/trial";
-import { isValidVerificationCode } from "@app/lib/plans/trial/phone";
+import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type PostTrialVerifyResponseBody = {
   success: boolean;
 };
-
-const PostTrialVerifyRequestBody = t.type({
-  code: t.string,
-});
 
 async function handler(
   req: NextApiRequest,
@@ -50,26 +43,14 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      const bodyValidation = PostTrialVerifyRequestBody.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const hasVerifiedPhone =
+        await WorkspaceVerificationAttemptResource.hasVerifiedPhone(auth);
+      if (!hasVerifiedPhone) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
-          },
-        });
-      }
-
-      const { code } = bodyValidation.right;
-
-      if (!isValidVerificationCode(code)) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid verification code. Please try again.",
+            message: "This workspace does not have a verified phone number.",
           },
         });
       }

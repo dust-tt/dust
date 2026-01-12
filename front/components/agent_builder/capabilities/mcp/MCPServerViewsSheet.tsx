@@ -48,6 +48,8 @@ import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/sh
 import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { SecretSection } from "@app/components/agent_builder/capabilities/shared/SecretSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
+import { TOP_MCP_SERVER_VIEWS } from "@app/components/agent_builder/capabilities/shared/types";
 import type { ConfigurationPagePageId } from "@app/components/agent_builder/types";
 import {
   getDefaultMCPAction,
@@ -63,25 +65,8 @@ import type {
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-
-const TOP_MCP_SERVER_VIEWS = [
-  "web_search_&_browse",
-  "image_generation",
-  AGENT_MEMORY_SERVER_NAME,
-  "deep_dive",
-  "interactive_content",
-  "slack",
-  "gmail",
-  "google_calendar",
-];
-
-export type SelectedTool = {
-  view: MCPServerViewTypeWithLabel;
-  configuredAction?: BuilderAction;
-};
 
 export type SheetMode =
   | { type: "add" }

@@ -20,6 +20,7 @@ import {
   isContentFragmentType,
   isDevelopment,
   isUserMessageType,
+  normalizeError,
   Ok,
 } from "@app/types";
 import type { NotificationPreferencesDelay } from "@app/types/notification_preferences";
@@ -47,13 +48,13 @@ export const shouldSendNotificationForAgentAnswer = (
   switch (userMessageOrigin) {
     case "web":
     case "extension":
+    case "cli":
+    case "cli_programmatic":
       return true;
     case "onboarding_conversation":
       // Internal bootstrap conversations shouldn't trigger unread notifications.
       return false;
     case "api":
-    case "cli":
-    case "cli_programmatic":
     case "email":
     case "excel":
     case "gsheet":
@@ -474,20 +475,19 @@ export const triggerConversationUnreadNotifications = async (
           };
         })
       );
-      if (r.status !== 200) {
+      if (r.status <= 200 && r.status >= 300) {
         return new Err({
           name: "dust_error",
           code: "internal_server_error",
-          message: "Failed to trigger conversation unread notification",
+          message: `Failed to trigger conversation unread notification due to network error: ${r.status} ${r.statusText}`,
         });
       }
       return new Ok(undefined);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       return new Err({
         name: "dust_error",
         code: "internal_server_error",
-        message: "Failed to trigger conversation unread notification",
+        message: `Failed to trigger conversation unread notification due to unknwon error: ${normalizeError(error).message}`,
       });
     }
   }

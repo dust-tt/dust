@@ -3,9 +3,9 @@ import {
   CitationClose,
   CitationDescription,
   CitationIcons,
-  CitationImage,
   CitationTitle,
   Icon,
+  InteractiveImageGrid,
   Tooltip,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
@@ -48,11 +48,9 @@ export function AttachmentCitation({
       </div>
     );
 
-  const previewImageUrl =
+  const isImage =
     attachmentCitation.type === "file" &&
-    isSupportedImageContentType(attachmentCitation.contentType)
-      ? `${attachmentCitation.sourceUrl}?action=view`
-      : undefined;
+    isSupportedImageContentType(attachmentCitation.contentType);
 
   const isLoading =
     attachmentCitation.type === "file" && attachmentCitation.isUploading;
@@ -74,6 +72,29 @@ export function AttachmentCitation({
         href: attachmentCitation.sourceUrl ?? undefined,
       };
 
+  // For image attachments, use InteractiveImageGrid for better preview UX
+  if (isImage && attachmentCitation.type === "file") {
+    const imageUrl = `${attachmentCitation.sourceUrl}?action=view`;
+    const downloadUrl = `${attachmentCitation.sourceUrl}?action=download`;
+
+    return (
+      <InteractiveImageGrid
+        size="sm"
+        images={[
+          {
+            imageUrl,
+            downloadUrl,
+            alt: attachmentCitation.title,
+            title: attachmentCitation.title,
+            isLoading,
+          },
+        ]}
+        onClose={attachmentCitation.onRemove}
+      />
+    );
+  }
+
+  // For non-image attachments, use the standard Citation component
   return (
     <>
       <Tooltip
@@ -92,7 +113,6 @@ export function AttachmentCitation({
               )
             }
           >
-            {previewImageUrl && <CitationImage imgSrc={previewImageUrl} />}
             <CitationIcons>{attachmentCitation.visual}</CitationIcons>
             <CitationTitle className="truncate text-ellipsis">
               {attachmentCitation.title}

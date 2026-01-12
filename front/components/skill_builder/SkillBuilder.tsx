@@ -1,11 +1,4 @@
-import {
-  BarFooter,
-  BarHeader,
-  Button,
-  cn,
-  ScrollArea,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { BarFooter, BarHeader, Button, cn, ScrollArea } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
@@ -27,6 +20,7 @@ import {
   transformSkillTypeToFormData,
 } from "@app/components/skill_builder/skillFormData";
 import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
+import { ExtendedSkillBadge } from "@app/components/skills/ExtendedSkillBadge";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
@@ -148,17 +142,17 @@ export default function SkillBuilder({
             <BarHeader
               variant="default"
               className="mx-4"
-              title={
-                (skill ? `Edit skill ${skill.name}` : "Create new skill") +
-                (extendedSkill ? ` - based on ${extendedSkill.name}` : "")
+              title={skill ? `Edit skill ${skill.name}` : "Create new skill"}
+              description={
+                extendedSkill ? (
+                  <ExtendedSkillBadge
+                    extendedSkill={extendedSkill}
+                    className="text-sm"
+                  />
+                ) : undefined
               }
               rightActions={
-                <Button
-                  icon={XMarkIcon}
-                  onClick={handleCancel}
-                  variant="ghost"
-                  type="button"
-                />
+                <BarHeader.ButtonBar variant="close" onClose={handleCancel} />
               }
             />
 

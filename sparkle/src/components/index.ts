@@ -33,7 +33,6 @@ export * from "./Citation";
 export { default as CollapseButton } from "./CollapseButton";
 export {
   Collapsible,
-  CollapsibleComponent,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./Collapsible";

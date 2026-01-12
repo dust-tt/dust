@@ -43,7 +43,7 @@ export const discoverToolsSkill = {
   sId: "discover_tools",
   name: "Discover Tools",
   userFacingDescription:
-    "Discover and enable additional tools for specialized tasks.",
+    "Automatically discover and activate specialized tools as needed. Extend your agent's capabilities on-demand without manual configuration.",
   agentFacingDescription:
     "List available toolsets and enable them for the current conversation.",
   fetchInstructions: async (auth: Authenticator, spaceIds: string[]) => {

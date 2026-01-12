@@ -180,7 +180,7 @@ function generateLayout(
     ? `    tab name="warm" {
         pane {
             cwd "${kdlEscape(worktreePath)}"
-            command "sh"
+            command "bash"
             args "-c" "${kdlEscape(warmCommand)}"
             start_suspended false
         }
@@ -199,7 +199,7 @@ ${tabTemplate}
     tab name="${kdlEscape(envName)}" focus=true {
         pane {
             cwd "${kdlEscape(worktreePath)}"
-            command "sh"
+            command "bash"
             args "-c" "${kdlEscape(shellCommand)}"
             start_suspended false
         }
@@ -457,7 +457,7 @@ export async function openMainSession(
       await createSessionInBackground(sessionName, layoutPath);
     }
 
-    // Switch to session
+    // Switch to session using zellij-switch plugin
     logger.info(`Switching to session '${sessionName}'...`);
     const switchProc = Bun.spawn(
       [

@@ -3,12 +3,13 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const rootDir = path.resolve(__dirname, "..");
+const playgroundDir = path.resolve(__dirname, "..");
+const sparkleDir = path.resolve(playgroundDir, "..");
 const sourcePath = path.resolve(
-  rootDir,
+  sparkleDir,
   "node_modules/allotment/dist/style.css"
 );
-const destPath = path.resolve(rootDir, "src/styles/allotment.css");
+const destPath = path.resolve(sparkleDir, "src/styles/allotment.css");
 
 try {
   // Check if source exists

@@ -30,6 +30,12 @@ export const TEMPORAL_PID_PATH = join(DUST_HIVE_HOME, "temporal.pid");
 export const TEMPORAL_LOG_PATH = join(DUST_HIVE_HOME, "temporal.log");
 export const TEMPORAL_PORT = 7233;
 
+// Shared test Postgres paths (global, not per-env)
+export const TEST_POSTGRES_CONTAINER_NAME = "dust-hive-test-postgres";
+export const TEST_POSTGRES_PORT = 5433;
+export const TEST_POSTGRES_USER = "test";
+export const TEST_POSTGRES_PASSWORD = "test";
+
 // Main zellij session
 export const MAIN_SESSION_NAME = "dust-hive-main";
 
@@ -87,7 +93,33 @@ export function getWatchScriptPath(): string {
   return join(DUST_HIVE_SCRIPTS, "watch-logs.sh");
 }
 
-// Find repo root by looking for .git directory
+// Check if a .git path represents a valid git repository
+// Returns true for: real git repos (.git/HEAD exists) or worktrees (.git is a file)
+async function isValidGitDir(gitPath: string): Promise<boolean> {
+  try {
+    const gitStat = await stat(gitPath);
+    if (gitStat.isFile()) {
+      // Worktree: .git is a file pointing to the main repo
+      return true;
+    }
+    if (gitStat.isDirectory()) {
+      // Real repo: must have .git/HEAD
+      try {
+        await stat(join(gitPath, "HEAD"));
+        return true;
+      } catch {
+        // .git directory exists but no HEAD - not a valid repo
+        // (e.g., just .git/info/exclude for local ignores)
+        return false;
+      }
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+// Find repo root by looking for valid .git directory or file
 export async function findRepoRoot(startPath?: string): Promise<string | null> {
   let current = resolve(startPath ?? process.cwd());
 
@@ -95,7 +127,12 @@ export async function findRepoRoot(startPath?: string): Promise<string | null> {
     const gitPath = join(current, ".git");
     try {
       await stat(gitPath);
-      return current;
+      // Found .git, but verify it's a real git repo
+      if (await isValidGitDir(gitPath)) {
+        return current;
+      }
+      // Not a valid git repo, continue traversing up
+      current = dirname(current);
     } catch (error) {
       if (!isErrnoException(error) || error.code !== "ENOENT") {
         throw error;

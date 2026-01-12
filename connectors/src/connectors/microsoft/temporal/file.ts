@@ -534,18 +534,31 @@ const getParentId = cacheWithRedis(
   }
 );
 
+export type MicrosoftFolderDeletionReason =
+  | "delta_sync_deleted"
+  | "gc_not_found"
+  | "gc_marked_deleted"
+  | "gc_outside_sync_scope"
+  | "gc_drive_not_found"
+  | "gc_drive_removed_from_selection"
+  | "user_deselected"
+  | "moved_out_of_sync_scope"
+  | "recursive_cleanup";
+
 export async function deleteFolder({
   connectorId,
   dataSourceConfig,
   internalId,
   deleteRootNode,
   logger,
+  reason,
 }: {
   connectorId: number;
   dataSourceConfig: DataSourceConfig;
   internalId: string;
   deleteRootNode?: boolean;
   logger: Logger;
+  reason: MicrosoftFolderDeletionReason;
 }) {
   const folder = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
@@ -560,6 +573,7 @@ export async function deleteFolder({
     {
       connectorId,
       folder,
+      reason,
     },
     `Deleting Microsoft folder.`
   );
@@ -649,11 +663,13 @@ export async function recursiveNodeDeletion({
   connectorId,
   dataSourceConfig,
   logger,
+  reason,
 }: {
   nodeId: string;
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   logger: Logger;
+  reason: MicrosoftFolderDeletionReason;
 }): Promise<string[]> {
   await heartbeat();
   const node = await MicrosoftNodeResource.fetchByInternalId(
@@ -718,6 +734,7 @@ export async function recursiveNodeDeletion({
         connectorId,
         dataSourceConfig,
         logger,
+        reason: "recursive_cleanup",
       });
       deletedFiles.push(...result);
     }
@@ -726,6 +743,7 @@ export async function recursiveNodeDeletion({
       dataSourceConfig,
       internalId: node.internalId,
       logger,
+      reason,
     });
     deletedFiles.push(node.internalId);
   }

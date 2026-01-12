@@ -111,5 +111,8 @@ export function filterTriggeredConversations(
   if (!hideTriggered) {
     return conversations;
   }
-  return conversations.filter((c) => c.triggerId === null);
+
+  return conversations.filter(
+    (c) => c.triggerId === null || c.unread || c.actionRequired
+  );
 }

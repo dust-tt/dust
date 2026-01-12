@@ -26,6 +26,7 @@ import { setQueryParam } from "@app/lib/utils/router";
 import type {
   DataSourceViewContentNode,
   DataSourceViewType,
+  FileUseCase,
   PlanType,
   SpaceType,
   WorkspaceType,
@@ -59,6 +60,7 @@ type ContentActionsProps = {
   plan: PlanType;
   owner: WorkspaceType;
   onSave: (action?: ContentActionKey) => void;
+  useCaseForDocument?: FileUseCase;
 };
 
 export type ContentActionsRef = {
@@ -80,6 +82,7 @@ export const ContentActions = React.forwardRef<
       owner,
       plan,
       onSave,
+      useCaseForDocument,
     }: ContentActionsProps,
     ref
   ) => {
@@ -139,6 +142,7 @@ export const ContentActions = React.forwardRef<
           owner={owner}
           totalNodesCount={totalNodesCount}
           plan={plan}
+          useCaseForDocument={useCaseForDocument}
         />
         <DocumentOrTableDeleteDialog
           dataSourceView={dataSourceView}

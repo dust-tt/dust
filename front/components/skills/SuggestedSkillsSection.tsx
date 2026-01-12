@@ -9,7 +9,9 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
+import { useState } from "react";
 
+import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { getSkillIcon } from "@app/lib/skill";
 import { useUpdateSkillEditors } from "@app/lib/swr/skill_editors";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
@@ -30,6 +32,7 @@ function SuggestedSkillCard({
   user,
 }: SuggestedSkillCardProps) {
   const router = useRouter();
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
   const updateSkillEditors = useUpdateSkillEditors({
     owner,
     skillId: skill.sId,
@@ -41,43 +44,52 @@ function SuggestedSkillCard({
   };
 
   return (
-    <Card
-      variant="primary"
-      onClick={onMoreInfoClick}
-      action={
-        <CardActionButton
-          size="mini"
-          icon={XMarkIcon}
-          onClick={
-            (e) => e.stopPropagation() // TODO(skills) remove the skill suggestion
-          }
-        />
-      }
-    >
-      <div className="flex h-full w-full flex-col justify-between gap-3">
-        <div className="flex flex-col">
-          <div className="mb-2 flex items-center gap-2">
-            <Avatar icon={getSkillIcon(skill.icon)} size="sm" />
-            <span className="text-sm font-medium">{skill.name}</span>
-          </div>
-          <p className="line-clamp-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-            {skill.userFacingDescription}
-          </p>
-        </div>
-        <div>
-          <Button
-            size="xs"
-            variant="outline"
-            icon={PlusIcon}
-            label="Add skill" // TODO(skills): decide if this is the right label
+    <>
+      <ArchiveSkillDialog
+        skill={skill}
+        isOpen={isArchiveDialogOpen}
+        onClose={() => setIsArchiveDialogOpen(false)}
+        owner={owner}
+      />
+      <Card
+        variant="primary"
+        onClick={onMoreInfoClick}
+        action={
+          <CardActionButton
+            size="mini"
+            icon={XMarkIcon}
             onClick={(e) => {
               e.stopPropagation();
-              void handleAddSkillClick();
+              setIsArchiveDialogOpen(true);
             }}
           />
+        }
+      >
+        <div className="flex h-full w-full flex-col justify-between gap-3">
+          <div className="flex flex-col">
+            <div className="mb-2 flex items-center gap-2">
+              <Avatar icon={getSkillIcon(skill.icon)} size="sm" />
+              <span className="text-sm font-medium">{skill.name}</span>
+            </div>
+            <p className="line-clamp-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {skill.userFacingDescription}
+            </p>
+          </div>
+          <div>
+            <Button
+              size="xs"
+              variant="outline"
+              icon={PlusIcon}
+              label="Add skill" // TODO(skills): decide if this is the right label
+              onClick={(e) => {
+                e.stopPropagation();
+                void handleAddSkillClick();
+              }}
+            />
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+    </>
   );
 }
 

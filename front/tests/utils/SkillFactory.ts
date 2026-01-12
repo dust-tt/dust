@@ -29,13 +29,13 @@ export class SkillFactory {
       overrides.userFacingDescription ?? "Test skill user facing description";
     const instructions = overrides.instructions ?? "Test skill instructions";
     const status = overrides.status ?? "active";
-    const authorId = overrides.status === "suggested" ? null : user.id;
+    const editedBy = overrides.status === "suggested" ? null : user.id;
     const requestedSpaceIds = overrides.requestedSpaceIds ?? [];
 
     return SkillResource.makeNew(
       auth,
       {
-        authorId,
+        editedBy,
         agentFacingDescription,
         userFacingDescription,
         instructions,

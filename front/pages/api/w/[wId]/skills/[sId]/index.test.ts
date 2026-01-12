@@ -517,7 +517,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
     });
 
     expect(suggestedSkill.status).toBe("suggested");
-    expect(suggestedSkill.authorId).toBeNull();
+    expect(suggestedSkill.editedBy).toBeNull();
 
     req.query = { wId: workspace.sId, sId: suggestedSkill.sId };
     req.body = {
@@ -536,7 +536,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
     const data = res._getJSONData();
     expect(data).toHaveProperty("skill");
     expect(data.skill.status).toBe("active");
-    expect(data.skill.authorId).toBe(requestUser.id);
+    expect(data.skill.editedBy).toBe(requestUser.id);
 
     const updatedSkill = await SkillResource.fetchById(
       adminAuth,
@@ -544,7 +544,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.status).toBe("active");
-    expect(updatedSkill?.authorId).toBe(requestUser.id);
+    expect(updatedSkill?.editedBy).toBe(requestUser.id);
 
     const where: WhereOptions<SkillVersionModel> = {
       workspaceId: workspace.id,
@@ -554,7 +554,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
       where,
     });
     expect(versions).toHaveLength(1);
-    expect(versions[0].authorId).toBeNull();
+    expect(versions[0].editedBy).toBeNull();
   });
 });
 
@@ -588,6 +588,36 @@ describe("DELETE /api/w/[wId]/skills/[sId]", () => {
         message: "The skill you're trying to access was not found.",
       },
     });
+  });
+
+  it("should successfully archive a suggested skill", async () => {
+    const { req, res, requestUserAuth, workspace } = await setupTest({
+      requestUserRole: "admin",
+      method: "DELETE",
+    });
+
+    // Create a suggested skill
+    const suggestedSkill = await SkillFactory.create(requestUserAuth, {
+      name: "Suggested Skill To Archive",
+      status: "suggested",
+    });
+
+    expect(suggestedSkill.status).toBe("suggested");
+
+    req.query = { ...req.query, wId: workspace.sId, sId: suggestedSkill.sId };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({ success: true });
+
+    // Verify the skill is now archived
+    const archivedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      suggestedSkill.sId
+    );
+    expect(archivedSkill).not.toBeNull();
+    expect(archivedSkill?.status).toBe("archived");
   });
 });
 

@@ -1,5 +1,7 @@
 import {
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessageInline,
   Label,
   Markdown,
@@ -30,20 +32,19 @@ export function RecentWebhookRequests({
   const defaultOpen = true;
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <CollapsibleComponent
-      rootProps={{ defaultOpen, onOpenChange: setIsOpen }}
-      triggerChildren={
+    <Collapsible defaultOpen={defaultOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger>
         <Label className="cursor-pointer">Request history</Label>
-      }
-      contentChildren={
+      </CollapsibleTrigger>
+      <CollapsibleContent>
         <RecentWebhookRequestsContent
           isOpen={isOpen}
           owner={owner}
           agentConfigurationId={agentConfigurationId}
           trigger={trigger}
         />
-      }
-    />
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -120,9 +121,8 @@ function RecentWebhookRequestsContent({
       <div className="flex flex-col px-4">
         {webhookRequests.map((request, idx) => (
           <div key={request.id}>
-            <CollapsibleComponent
-              rootProps={{ defaultOpen: false }}
-              triggerChildren={
+            <Collapsible defaultOpen={false}>
+              <CollapsibleTrigger>
                 <div className="my-2 flex w-full items-center justify-between gap-4">
                   {moment(new Date(request.timestamp)).calendar(undefined, {
                     sameDay: "[Today at] LTS",
@@ -131,9 +131,9 @@ function RecentWebhookRequestsContent({
                   })}
                   <WebhookRequestStatusBadge status={request.status} />
                 </div>
-              }
-              contentChildren={
-                request.payload ? (
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                {request.payload ? (
                   <div className="rounded">
                     <pre className="max-h-64 overflow-auto text-xs">
                       <Markdown
@@ -146,9 +146,9 @@ function RecentWebhookRequestsContent({
                   <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     No payload available.
                   </p>
-                )
-              }
-            />
+                )}
+              </CollapsibleContent>
+            </Collapsible>
             {idx < webhookRequests.length - 1 && <Separator />}
           </div>
         ))}

@@ -513,6 +513,34 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return dataSourceViews[0] ?? null;
   }
 
+  static async fetchByProjectId(
+    auth: Authenticator,
+    projectId: ModelId
+  ): Promise<DataSourceViewResource | null> {
+    // Fetch the data source view associated with the datasource that is associated with the conversation.
+    const dataSource = await DataSourceResource.fetchByProjectId(
+      auth,
+      projectId
+    );
+    if (!dataSource) {
+      return null;
+    }
+
+    const dataSourceViews = await this.baseFetch(
+      auth,
+      {},
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          kind: "default",
+          dataSourceId: dataSource.id,
+        },
+      }
+    );
+
+    return dataSourceViews[0] ?? null;
+  }
+
   static async search(
     auth: Authenticator,
     searchParams: {

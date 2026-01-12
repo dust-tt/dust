@@ -15,6 +15,7 @@ import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial/index";
 import {
   CODE_LENGTH,
   isValidPhoneNumber,
+  maskPhoneNumber,
   RESEND_COOLDOWN_SECONDS,
 } from "@app/lib/plans/trial/phone";
 import logger from "@app/logger/logger";
@@ -65,13 +66,13 @@ export default function Verify({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("phone");
+  const [isLoading, setIsLoading] = useState(false);
 
   const [phoneNumber, setPhoneNumber] = useState("");
   const [countryCode, setCountryCode] = useState<Country>(initialCountryCode);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(""));
-  const [codeError, setCodeError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -107,45 +108,90 @@ export default function Verify({
       return;
     }
 
-    // TODO: Integrate with SMS service.
-    setResendCooldown(RESEND_COOLDOWN_SECONDS);
-    setStep("code");
-  };
+    setIsLoading(true);
+    const e164Phone = phoneNumber;
+    let response: Response;
+    try {
+      response = await clientFetch(`/api/w/${owner.sId}/verification/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: e164Phone }),
+      });
+    } catch {
+      setPhoneError("Unexpected error. Please try again.");
+      return;
+    } finally {
+      setIsLoading(false);
+    }
 
-  const handleResendCode = async () => {
-    if (resendCooldown > 0) {
+    if (!response.ok) {
+      const data = await response.json();
+      if (data.error?.type === "rate_limit_error" && data.error?.retryAfter) {
+        const waitSeconds = Math.max(
+          0,
+          data.error.retryAfter - Math.floor(Date.now() / 1000)
+        );
+        setResendCooldown(waitSeconds);
+        const waitMinutes = Math.ceil(waitSeconds / 60);
+        setPhoneError(
+          `Too many verification attempts. Please try again in ${waitMinutes} minute${waitMinutes > 1 ? "s" : ""}.`
+        );
+        return;
+      }
+      setPhoneError(data.error?.message ?? "Failed to send code");
       return;
     }
 
-    // TODO: Integrate with SMS service.
     setResendCooldown(RESEND_COOLDOWN_SECONDS);
-    setCode(Array(CODE_LENGTH).fill(""));
-    inputRefs.current[0]?.focus();
+    setStep("code");
   };
 
   const handleVerifyCode = async () => {
     const fullCode = code.join("");
     if (fullCode.length !== CODE_LENGTH) {
-      setCodeError("Please enter the full 6-digit code.");
+      setPhoneError("Please enter the full 6-digit code.");
       return;
     }
 
+    setIsLoading(true);
+    setPhoneError(null);
     try {
-      const response = await clientFetch(`/api/w/${owner.sId}/trial/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: fullCode }),
-      });
+      const e164Phone = phoneNumber;
 
-      if (response.ok) {
-        await router.push(`/w/${owner.sId}/welcome`);
+      const verifyResponse = await clientFetch(
+        `/api/w/${owner.sId}/verification/validate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phoneNumber: e164Phone, code: fullCode }),
+        }
+      );
+
+      if (!verifyResponse.ok) {
+        const data = await verifyResponse.json();
+        setPhoneError(data.error?.message ?? "Invalid code");
         return;
       }
 
-      const data = await response.json();
-      setCodeError(data.error?.message ?? "Invalid verification code.");
+      const trialResponse = await clientFetch(
+        `/api/w/${owner.sId}/trial/start`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (!trialResponse.ok) {
+        const data = await trialResponse.json();
+        setPhoneError(data.api_error?.message ?? "Failed to start trial");
+        return;
+      }
+
+      void router.push(`/w/${owner.sId}/welcome`);
     } catch {
-      setCodeError("An error occurred. Please try again.");
+      setPhoneError("Network error. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -157,7 +203,7 @@ export default function Verify({
       newCode[index] = digit;
       return newCode;
     });
-    setCodeError(null);
+    setPhoneError(null);
 
     if (digit && index < CODE_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
@@ -189,7 +235,7 @@ export default function Verify({
         });
         return newCode;
       });
-      setCodeError(null);
+      setPhoneError(null);
 
       const nextIndex = Math.min(digits.length, CODE_LENGTH - 1);
       inputRefs.current[nextIndex]?.focus();
@@ -211,22 +257,23 @@ export default function Verify({
   const handleBack = () => {
     setStep("phone");
     setCode(Array(CODE_LENGTH).fill(""));
-    setCodeError(null);
+    setPhoneError(null);
   };
 
   if (step === "code") {
     return (
       <CodeVerificationStep
-        maskedPhone={phoneNumber}
+        maskedPhone={maskPhoneNumber(phoneNumber)}
         code={code}
-        error={codeError}
+        error={phoneError}
         resendCooldown={resendCooldown}
         inputRefs={inputRefs}
+        isLoading={isLoading}
         onCodeChange={handleCodeChange}
         onCodeKeyDown={handleCodeKeyDown}
         onCodePaste={handleCodePaste}
         onBack={handleBack}
-        onResend={handleResendCode}
+        onResend={handleSendCode}
         onVerify={handleVerifyCode}
       />
     );
@@ -237,6 +284,7 @@ export default function Verify({
       phoneNumber={phoneNumber}
       countryCode={countryCode}
       error={phoneError}
+      isLoading={isLoading}
       onPhoneNumberChange={handlePhoneNumberChange}
       onCountryCodeChange={handleCountryCodeChange}
       onSubmit={handleSendCode}
@@ -248,8 +296,9 @@ interface PhoneInputStepProps {
   phoneNumber: string;
   countryCode: Country;
   error: string | null;
+  isLoading: boolean;
+  onCountryCodeChange: (code?: Country) => void;
   onPhoneNumberChange: (phone: string) => void;
-  onCountryCodeChange: (countryCode?: Country) => void;
   onSubmit: () => void;
 }
 
@@ -257,6 +306,7 @@ function PhoneInputStep({
   phoneNumber,
   countryCode,
   error,
+  isLoading,
   onPhoneNumberChange,
   onCountryCodeChange,
   onSubmit,
@@ -292,7 +342,8 @@ function PhoneInputStep({
                   <Button
                     onClick={onSubmit}
                     variant="primary"
-                    label="Send code"
+                    label={isLoading ? "Sending..." : "Send code"}
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -310,6 +361,7 @@ interface CodeVerificationStepProps {
   error: string | null;
   resendCooldown: number;
   inputRefs: React.MutableRefObject<(HTMLInputElement | null)[]>;
+  isLoading: boolean;
   onCodeChange: (index: number, value: string) => void;
   onCodeKeyDown: (
     index: number,
@@ -327,6 +379,7 @@ function CodeVerificationStep({
   error,
   resendCooldown,
   inputRefs,
+  isLoading,
   onCodeChange,
   onCodeKeyDown,
   onCodePaste,
@@ -364,7 +417,12 @@ function CodeVerificationStep({
               </div>
 
               <div className="flex items-center justify-between">
-                <Button variant="ghost" label="Back" onClick={onBack} />
+                <Button
+                  variant="ghost"
+                  label="Back"
+                  onClick={onBack}
+                  disabled={isLoading}
+                />
                 <div className="flex gap-3">
                   <Button
                     variant="outline"
@@ -374,13 +432,13 @@ function CodeVerificationStep({
                         : "Resend code"
                     }
                     onClick={onResend}
-                    disabled={resendCooldown > 0}
+                    disabled={resendCooldown > 0 || isLoading}
                   />
                   <Button
                     variant="primary"
-                    label="Verify now"
+                    label={isLoading ? "Verifying..." : "Verify now"}
                     onClick={onVerify}
-                    disabled={code.some((digit) => !digit)}
+                    disabled={isLoading}
                   />
                 </div>
               </div>

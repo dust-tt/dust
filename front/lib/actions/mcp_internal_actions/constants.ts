@@ -601,13 +601,10 @@ export const INTERNAL_MCP_SERVERS = {
       search_messages: "never_ask",
       semantic_search_messages: "never_ask",
       list_users: "never_ask",
-      list_public_channels: "never_ask",
-      list_channels: "never_ask",
-      list_joined_channels: "never_ask",
+      search_channels: "never_ask",
       list_threads: "never_ask",
       read_thread_messages: "never_ask",
       get_user: "never_ask",
-      get_channel_details: "never_ask",
 
       // Write operations - low stakes
       post_message: "low",
@@ -1415,11 +1412,9 @@ export const INTERNAL_MCP_SERVERS = {
   vanta: {
     id: 44,
     availability: "manual",
-    allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("vanta_tool");
-    },
-    isPreview: true,
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       list_tests: "never_ask",
       list_test_entities: "never_ask",
@@ -1449,7 +1444,7 @@ export const INTERNAL_MCP_SERVERS = {
         supported_use_cases: ["platform_actions"] as const,
       },
       icon: "VantaLogo",
-      documentationUrl: null,
+      documentationUrl: "https://docs.dust.tt/docs/vanta",
       instructions: null,
     },
   },

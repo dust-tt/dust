@@ -19,6 +19,7 @@ import { Err, normalizeError, Ok } from "@app/types";
 // Constants for Slack API limits and pagination.
 export const SLACK_API_PAGE_SIZE = 100;
 export const MAX_CHANNELS_LIMIT = 500;
+export const MAX_CHANNEL_SEARCH_RESULTS = 20;
 export const MAX_THREAD_MESSAGES = 200;
 export const DEFAULT_THREAD_MESSAGES = 20;
 export const SLACK_THREAD_LISTING_LIMIT = 100;
@@ -49,16 +50,9 @@ export const getSlackClient = async (accessToken?: string) => {
   });
 };
 
-type GetPublicChannelsArgs = {
-  mcpServerId: string;
-  slackClient: WebClient;
-};
-
 type GetChannelsArgs = {
-  mcpServerId: string;
   slackClient: WebClient;
-  types?: string;
-  memberOnly?: boolean;
+  scope: "public" | "joined";
 };
 
 type ChannelWithIdAndName = Omit<Channel, "id" | "name"> & {
@@ -72,27 +66,63 @@ export type MinimalChannelInfo = {
   name: string;
   created: number;
   creator: string;
-  is_channel: boolean;
-  is_private: boolean;
+  updated?: number;
+  channel_types: string[];
   is_member: boolean;
+  purpose?: {
+    value: string;
+    creator: string;
+    last_set: number;
+  };
+  topic?: {
+    value: string;
+    creator: string;
+    last_set: number;
+  };
   previous_names: string[];
-  num_members?: number;
-  topic?: string;
 };
 
 // Clean channel payload to keep only essential fields.
 export function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
+  const typeFlags: Array<[boolean | undefined, string]> = [
+    [channel.is_channel, "public channel"],
+    [channel.is_group, "private group"],
+    [channel.is_mpim, "multi-person direct message"],
+    [channel.is_im, "direct message"],
+    [channel.is_private, "private"],
+    [channel.is_archived, "archived"],
+    [channel.is_general, "general"],
+    [channel.is_shared, "shared workspace"],
+    [channel.is_ext_shared, "externally shared"],
+  ];
+  // Push 1 channel_types list with clearer description instead of pushing 9 boolean per channel in the LLM context.
+  const channel_types = typeFlags
+    .filter(([flag]) => flag)
+    .map(([, label]) => label);
+
   return {
     id: channel.id ?? "",
     name: channel.name ?? "",
     created: channel.created ?? 0,
     creator: channel.creator ?? "",
-    is_channel: channel.is_channel ?? false,
-    is_private: channel.is_private ?? false,
+    updated: channel.updated,
+    channel_types: channel_types,
     is_member: channel.is_member ?? false,
+    purpose: channel.purpose
+      ? {
+          value: channel.purpose.value ?? "",
+          creator: channel.purpose.creator ?? "",
+          last_set: channel.purpose.last_set ?? 0,
+        }
+      : undefined,
+    topic: channel.topic
+      ? {
+          value: channel.topic.value ?? "",
+          creator: channel.topic.creator ?? "",
+          last_set: channel.topic.last_set ?? 0,
+        }
+      : undefined,
     previous_names: channel.previous_names ?? [],
-    num_members: channel.num_members,
-    topic: channel.topic?.value,
   };
 }
 
@@ -138,27 +168,43 @@ export function cleanUserGroupPayload(
   };
 }
 
-export const getPublicChannels = async ({
+export const getChannels = async ({
   slackClient,
-}: GetPublicChannelsArgs): Promise<ChannelWithIdAndName[]> => {
+  scope,
+}: GetChannelsArgs): Promise<ChannelWithIdAndName[]> => {
   const channels: Channel[] = [];
-
   let cursor: string | undefined = undefined;
+
   do {
-    const response = await slackClient.conversations.list({
-      cursor,
-      limit: SLACK_API_PAGE_SIZE,
-      exclude_archived: true,
-      types: "public_channel",
-    });
+    // Choose the right endpoint based on scope
+    const response: {
+      ok?: boolean;
+      channels?: Channel[];
+      response_metadata?: { next_cursor?: string };
+    } =
+      scope === "joined"
+        ? await slackClient.users.conversations({
+            cursor,
+            limit: SLACK_API_PAGE_SIZE,
+            exclude_archived: true,
+            types: "public_channel,private_channel,im,mpim",
+          })
+        : await slackClient.conversations.list({
+            cursor,
+            limit: SLACK_API_PAGE_SIZE,
+            exclude_archived: true,
+            types: "public_channel",
+          });
+
     if (!response.ok) {
-      throw new Error("Failed to list public channels");
+      throw new Error(`Failed to list ${scope} channels`);
     }
+
     channels.push(...(response.channels ?? []));
     cursor = response.response_metadata?.next_cursor;
 
     // We can't handle a huge list of channels, and even if we could, it would be unusable.
-    // in the UI. So we arbitrarily cap it to MAX_CHANNELS_LIMIT channels.
+    // So we arbitrarily cap it to MAX_CHANNELS_LIMIT channels.
     if (channels.length >= MAX_CHANNELS_LIMIT) {
       logger.warn(
         `Channel list truncated after reaching over ${MAX_CHANNELS_LIMIT} channels.`
@@ -177,56 +223,16 @@ export const getPublicChannels = async ({
     .sort((a, b) => a.name.localeCompare(b.name));
 };
 
-export const getChannels = async ({
-  slackClient,
-  types = "public_channel",
-  memberOnly = false,
-}: GetChannelsArgs): Promise<ChannelWithIdAndName[]> => {
-  const channels: Channel[] = [];
-
-  let cursor: string | undefined = undefined;
-  do {
-    const response = await slackClient.conversations.list({
-      cursor,
-      limit: SLACK_API_PAGE_SIZE,
-      exclude_archived: true,
-      types,
-    });
-    if (!response.ok) {
-      throw new Error("Failed to list channels");
-    }
-    channels.push(...(response.channels ?? []));
-    cursor = response.response_metadata?.next_cursor;
-
-    // We can't handle a huge list of channels, and even if we could, it would be unusable.
-    // in the UI. So we arbitrarily cap it to MAX_CHANNELS_LIMIT channels.
-    if (channels.length >= MAX_CHANNELS_LIMIT) {
-      logger.warn(
-        `Channel list truncated after reaching over ${MAX_CHANNELS_LIMIT} channels.`
-      );
-      break;
-    }
-  } while (cursor);
-
-  let filteredChannels = channels.filter((c) => !!c.id && !!c.name);
-
-  // Filter by membership if requested.
-  if (memberOnly) {
-    filteredChannels = filteredChannels.filter((c) => c.is_member);
-  }
-
-  return filteredChannels
-    .map((c) => ({
-      ...c,
-      id: c.id!,
-      name: c.name!,
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-};
-
 export const getCachedPublicChannels = cacheWithRedis(
-  getPublicChannels,
-  ({ mcpServerId }: GetPublicChannelsArgs) => mcpServerId,
+  async ({
+    slackClient,
+  }: {
+    slackClient: WebClient;
+    mcpServerId: string;
+  }): Promise<ChannelWithIdAndName[]> => {
+    return getChannels({ slackClient, scope: "public" });
+  },
+  ({ mcpServerId }: { mcpServerId: string }) => mcpServerId,
   {
     ttlMs: CHANNEL_CACHE_TTL_MS,
   }
@@ -237,11 +243,9 @@ export const getCachedPublicChannels = cacheWithRedis(
 export async function resolveChannelId({
   channelNameOrId,
   accessToken,
-  mcpServerId,
 }: {
   channelNameOrId: string;
   accessToken: string;
-  mcpServerId: string;
 }): Promise<string | null> {
   const slackClient = await getSlackClient(accessToken);
   const searchString = channelNameOrId
@@ -264,12 +268,10 @@ export async function resolveChannelId({
     }
   }
 
-  // Search by name in public channels, private channels, and DMs.
+  // Search by name in all joined channels (public, private, DMs).
   const channels = await getChannels({
-    mcpServerId,
     slackClient,
-    types: "public_channel,private_channel,im,mpim",
-    memberOnly: false,
+    scope: "joined",
   });
 
   const channel = channels.find(
@@ -450,7 +452,225 @@ export async function hasSlackScope(
   );
 }
 
-// Post message function.
+// Helper function to filter channels by substring matching on name, topic, and purpose.
+function filterChannels(
+  channels: ChannelWithIdAndName[],
+  query: string,
+  limit: number = MAX_CHANNEL_SEARCH_RESULTS
+): ChannelWithIdAndName[] {
+  if (!query || query.trim() === "") {
+    return channels
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, limit);
+  }
+
+  const queryLower = query.toLowerCase();
+
+  const matched = channels.filter((c) => {
+    const nameMatch = c.name.toLowerCase().includes(queryLower);
+    const topicMatch =
+      c.topic?.value?.toLowerCase().includes(queryLower) ?? false;
+    const purposeMatch =
+      c.purpose?.value?.toLowerCase().includes(queryLower) ?? false;
+    return nameMatch || topicMatch || purposeMatch;
+  });
+
+  return matched.sort((a, b) => a.name.localeCompare(b.name)).slice(0, limit);
+}
+
+async function searchAndProcessChannels(
+  slackClient: WebClient,
+  scope: "joined" | "public",
+  query: string,
+  contextMessage: string
+): Promise<{
+  result: Ok<Array<{ type: "text"; text: string }>>;
+  count: number;
+}> {
+  const channels = await getChannels({ slackClient, scope });
+  const matched = filterChannels(channels, query);
+  const cleaned = matched.map(cleanChannelPayload);
+  const markdown = cleaned.map(formatChannelAsMarkdown).join("\n");
+  return {
+    result: new Ok([
+      {
+        type: "text" as const,
+        text: `Found ${cleaned.length} channel(s) ${contextMessage}:\n\n${markdown}`,
+      },
+    ]),
+    count: cleaned.length,
+  };
+}
+
+function formatChannelAsMarkdown(c: MinimalChannelInfo): string {
+  return [
+    `- **#${c.name}**`,
+    `  - ID: ${c.id}`,
+    `  - Created: ${c.created}`,
+    `  - Creator: ${c.creator}`,
+    `  - Updated: ${c.updated ?? ""}`,
+    `  - Channel types: ${c.channel_types.join(", ")}`,
+    `  - Member: ${c.is_member ? "Yes" : "No"}`,
+    `  - Purpose: ${c.purpose?.value ?? ""}`,
+    `  - Topic: ${c.topic?.value ?? ""}`,
+    `  - Previous names: ${c.previous_names.length > 0 ? c.previous_names.join(", ") : ""}`,
+  ].join("\n");
+}
+
+// Execute search_channels: automatically detects channel IDs vs text search.
+export async function executeSearchChannels(
+  query: string,
+  scope: "auto" | "joined" | "all",
+  {
+    accessToken,
+  }: {
+    accessToken: string;
+  }
+): Promise<Ok<Array<{ type: "text"; text: string }>> | Err<MCPError>> {
+  const slackClient = await getSlackClient(accessToken);
+
+  // Auto-detect if query looks like a channel ID (e.g., C01234ABCD, D01234ABCD, G01234ABCD)
+  const cleanedQuery = query.replace(/^[#@]/, "");
+  const detectedChannelId = /^[CDG][A-Z0-9]{8,}$/.test(cleanedQuery);
+
+  // Channel ID lookup: direct API call to conversations.info
+  if (detectedChannelId) {
+    try {
+      const response = await slackClient.conversations.info({
+        channel: cleanedQuery,
+      });
+
+      if (response.ok && response.channel) {
+        const c = cleanChannelPayload(response.channel);
+        return new Ok([
+          {
+            type: "text" as const,
+            text: formatChannelAsMarkdown(c),
+          },
+        ]);
+      }
+    } catch (error) {
+      return new Err(
+        new MCPError(`Channel not found: ${query}. Error: ${error}`)
+      );
+    }
+
+    return new Err(new MCPError(`Channel not found: ${query}`));
+  }
+
+  // Search lookup.
+  // Scope="auto": search in joined channels; if no match fallback in all public channels.
+  if (scope === "auto") {
+    const { result: joinedResult, count: joinedCount } =
+      await searchAndProcessChannels(
+        slackClient,
+        "joined",
+        query,
+        "in your joined channels"
+      );
+
+    if (joinedCount > 0) {
+      return joinedResult;
+    }
+
+    // Fallback to all public channels.
+    const { result: publicResult } = await searchAndProcessChannels(
+      slackClient,
+      "public",
+      query,
+      "in public workspace channels"
+    );
+    return publicResult;
+  }
+
+  // Scope="joined": search all public, private, im and mpim joined channels.
+  if (scope === "joined") {
+    const { result } = await searchAndProcessChannels(
+      slackClient,
+      "joined",
+      query,
+      "in your joined channels"
+    );
+    return result;
+  }
+
+  // Scope="all": search all public channels.
+  const { result } = await searchAndProcessChannels(
+    slackClient,
+    "public",
+    query,
+    "in public workspace channels"
+  );
+  return result;
+}
+
+// Used by slack_bot
+export async function executeListPublicChannels(
+  nameFilter: string | undefined,
+  accessToken: string,
+  mcpServerId: string
+) {
+  const slackClient = await getSlackClient(accessToken);
+  const channels = await getCachedPublicChannels({
+    mcpServerId,
+    slackClient,
+  });
+
+  if (nameFilter) {
+    const normalizedNameFilter = removeDiacritics(nameFilter.toLowerCase());
+    const filteredChannels = channels.filter(
+      (channel) =>
+        removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
+          normalizedNameFilter
+        ) ||
+        removeDiacritics(channel.topic?.value?.toLowerCase() ?? "").includes(
+          normalizedNameFilter
+        )
+    );
+
+    if (filteredChannels.length > 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            filteredChannels.map(cleanChannelPayload),
+            null,
+            2
+          ),
+        },
+      ]);
+    }
+
+    // No channels found matching the filter
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
+      },
+      {
+        type: "text" as const,
+        text: JSON.stringify(channels.map(cleanChannelPayload), null, 2),
+      },
+    ]);
+  }
+
+  // No filter provided, return all channels
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `The workspace has ${channels.length} channels`,
+    },
+    {
+      type: "text" as const,
+      text: JSON.stringify(channels.map(cleanChannelPayload), null, 2),
+    },
+  ]);
+}
+
 export async function executePostMessage(
   auth: Authenticator,
   agentLoopContext: AgentLoopContextType,
@@ -851,134 +1071,6 @@ export async function executeGetUser({
   ]);
 }
 
-export async function executeListPublicChannels(
-  nameFilter: string | undefined,
-  accessToken: string,
-  mcpServerId: string
-) {
-  const slackClient = await getSlackClient(accessToken);
-  const channels = await getCachedPublicChannels({
-    mcpServerId,
-    slackClient,
-  });
-
-  if (nameFilter) {
-    const normalizedNameFilter = removeDiacritics(nameFilter.toLowerCase());
-    const filteredChannels = channels.filter(
-      (channel) =>
-        removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
-          normalizedNameFilter
-        ) ||
-        removeDiacritics(channel.topic?.value?.toLowerCase() ?? "").includes(
-          normalizedNameFilter
-        )
-    );
-
-    // Early return if we found a channel.
-    if (filteredChannels.length > 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
-        },
-        {
-          type: "text" as const,
-          text: JSON.stringify(
-            filteredChannels.map(cleanChannelPayload),
-            null,
-            2
-          ),
-        },
-      ]);
-    }
-  }
-  if (nameFilter) {
-    return new Ok([
-      {
-        type: "text" as const,
-        text: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
-      },
-      {
-        type: "text" as const,
-        text: JSON.stringify(channels.map(cleanChannelPayload), null, 2),
-      },
-    ]);
-  }
-
-  return new Ok([
-    {
-      type: "text" as const,
-      text: `The workspace has ${channels.length} channels`,
-    },
-    {
-      type: "text" as const,
-      text: JSON.stringify(channels.map(cleanChannelPayload), null, 2),
-    },
-  ]);
-}
-
-export async function executeListChannels(
-  nameFilter: string | undefined,
-  accessToken: string,
-  mcpServerId: string
-) {
-  const slackClient = await getSlackClient(accessToken);
-  const channels = await getChannels({
-    mcpServerId,
-    slackClient,
-    types: "public_channel,private_channel",
-    memberOnly: false,
-  });
-
-  return buildFilteredListResponse<ChannelWithIdAndName, MinimalChannelInfo>(
-    channels,
-    nameFilter,
-    (channel, normalizedFilter) =>
-      removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
-        normalizedFilter
-      ) ||
-      removeDiacritics(channel.topic?.value?.toLowerCase() ?? "").includes(
-        normalizedFilter
-      ),
-    (count, hasFilter, filterText) =>
-      hasFilter
-        ? `The workspace has ${count} channels containing "${filterText}"`
-        : `The workspace has ${count} channels`,
-    cleanChannelPayload
-  );
-}
-
-export async function executeListJoinedChannels(
-  nameFilter: string | undefined,
-  accessToken: string,
-  mcpServerId: string
-) {
-  const slackClient = await getSlackClient(accessToken);
-  const channels = await getChannels({
-    mcpServerId,
-    slackClient,
-    types: "public_channel,private_channel",
-    memberOnly: true,
-  });
-
-  return buildFilteredListResponse<ChannelWithIdAndName, MinimalChannelInfo>(
-    channels,
-    nameFilter,
-    (channel, normalizedFilter) =>
-      removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
-        normalizedFilter
-      ) ||
-      removeDiacritics(channel.topic?.value?.toLowerCase() ?? "").includes(
-        normalizedFilter
-      ),
-    (count, hasFilter, filterText) =>
-      hasFilter
-        ? `You are a member of ${count} channels containing "${filterText}"`
-        : `You are a member of ${count} channels`,
-    cleanChannelPayload
-  );
-}
-
 export async function executeReadThreadMessages({
   channel,
   threadTs,
@@ -987,7 +1079,6 @@ export async function executeReadThreadMessages({
   oldest,
   latest,
   accessToken,
-  mcpServerId,
 }: {
   channel: string;
   threadTs: string;
@@ -996,7 +1087,6 @@ export async function executeReadThreadMessages({
   oldest: string | undefined;
   latest: string | undefined;
   accessToken: string;
-  mcpServerId: string;
 }) {
   const slackClient = await getSlackClient(accessToken);
 
@@ -1004,7 +1094,6 @@ export async function executeReadThreadMessages({
   const channelId = await resolveChannelId({
     channelNameOrId: channel,
     accessToken,
-    mcpServerId,
   });
   if (!channelId) {
     return new Err(
