@@ -11,7 +11,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import { isOldFreePlan } from "@app/lib/plans/plan_codes";
+import { isFreeTrialPhonePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
@@ -47,6 +47,12 @@ export default function Subscribe({
   const { subscriptions } = useWorkspaceSubscriptions({
     owner,
   });
+
+  // We treat user as being in free trial if they don't have any non free subs,
+  // regardless of whether they're active or not.
+  const isInFreePhoneTrial = !subscriptions.some(
+    (sub) => !isFreeTrialPhonePlan(sub.plan.code)
+  );
 
   const [billingPeriod, setBillingPeriod] =
     React.useState<BillingPeriod>("monthly");
@@ -120,12 +126,27 @@ export default function Subscribe({
                 <Page.Header
                   icon={CreditCardIcon}
                   title={
-                    noPreviousSubscription
-                      ? "Start your free trial"
-                      : "Resume your subscription"
+                    isInFreePhoneTrial
+                      ? "Subscribe to a paid plan"
+                      : noPreviousSubscription
+                        ? "Start your free trial"
+                        : "Resume your subscription"
                   }
                 />
-                {!noPreviousSubscription ? (
+                {isInFreePhoneTrial ? (
+                  <>
+                    <Page.P>
+                      <span className="font-bold">
+                        You're currently on a free trial.
+                      </span>
+                    </Page.P>
+                    <Page.P>
+                      To continue using Dust after your trial ends, subscribe to
+                      a paid plan. Select your preferred billing option to get
+                      started.
+                    </Page.P>
+                  </>
+                ) : !noPreviousSubscription ? (
                   <>
                     <Page.P>
                       <span className="font-bold">
@@ -185,12 +206,10 @@ export default function Subscribe({
                   variant="primary"
                   label={
                     !noPreviousSubscription
-                      ? billingPeriod === "monthly"
-                        ? "Resume with monthly billing"
-                        : "Resume with yearly billing"
-                      : billingPeriod === "monthly"
-                        ? "Start your trial with monthly billing"
-                        : "Start your trial with yearly billing"
+                      ? isInFreePhoneTrial
+                        ? `Subscribe with ${billingPeriod} billing`
+                        : `Resume with ${billingPeriod} billing`
+                      : `Start your trial with ${billingPeriod} billing`
                   }
                   icon={CreditCardIcon}
                   size="sm"
