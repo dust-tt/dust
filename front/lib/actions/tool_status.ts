@@ -109,12 +109,11 @@ export async function setUserAlwaysApprovedTool({
   mcpServerId: string;
   functionCallName: string;
 }) {
-  if (!mcpServerId) {
-    throw new Error("mcpServerId is required");
-  }
-
   if (!functionCallName) {
     throw new Error("functionCallName is required");
+  }
+  if (!mcpServerId) {
+    throw new Error("mcpServerId is required");
   }
 
   await user.upsertMetadataArray(
@@ -180,8 +179,8 @@ function extractArgRequiringApprovalValues(
     } else if (typeof value === "number" || typeof value === "boolean") {
       result[argName] = String(value);
     } else {
-      // For objects/arrays, use stable JSON representation
-      result[argName] = JSON.stringify(value);
+      // For objects/arrays, we do not support approval. Skip them.
+      continue;
     }
   }
 
