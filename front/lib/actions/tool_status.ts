@@ -4,7 +4,7 @@ import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards"
 import type { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentMessageType, Result } from "@app/types";
-import { assertNever, Err, isString, Ok } from "@app/types";
+import { assertNever, isString, Ok } from "@app/types";
 
 export interface ToolInputContext {
   agentId: string;
@@ -107,13 +107,6 @@ export async function setUserAlwaysApprovedTool({
   mcpServerId: string;
   functionCallName: string;
 }) {
-  if (!functionCallName) {
-    throw new Error("functionCallName is required");
-  }
-  if (!mcpServerId) {
-    throw new Error("mcpServerId is required");
-  }
-
   await user.upsertMetadataArray(
     getToolsValidationKey(mcpServerId),
     functionCallName
@@ -139,14 +132,6 @@ export async function hasUserAlwaysApprovedTool({
   mcpServerId: string;
   functionCallName: string;
 }) {
-  if (!mcpServerId) {
-    throw new Error("mcpServerId is required");
-  }
-
-  if (!functionCallName) {
-    throw new Error("functionCallName is required");
-  }
-
   const metadata = await user.getMetadataAsArray(
     getToolsValidationKey(mcpServerId)
   );
