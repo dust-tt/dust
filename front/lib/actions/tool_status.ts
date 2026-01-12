@@ -217,12 +217,6 @@ export async function hasUserApprovedToolWithArgs({
   approvalHoldingArgs: string[];
   toolInputs: Record<string, unknown>;
 }): Promise<Result<boolean, Error>> {
-  if (!mcpServerId || !toolName || !agentId) {
-    return new Err(
-      new Error("mcpServerId, toolName, and agentId are required")
-    );
-  }
-
   const argValues = extractApprovalHoldingArgValues(
     approvalHoldingArgs,
     toolInputs
