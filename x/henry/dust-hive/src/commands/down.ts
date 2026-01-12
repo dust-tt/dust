@@ -7,6 +7,7 @@ import { Ok, type Result } from "../lib/result";
 import { getStateInfo, isDockerRunning } from "../lib/state";
 import { stopTemporalServer } from "../lib/temporal-server";
 import { stopTestPostgres } from "../lib/test-postgres";
+import { stopTestRedis } from "../lib/test-redis";
 
 interface DownOptions {
   force?: boolean;
@@ -89,6 +90,17 @@ async function stopTestPostgresAndLog(): Promise<void> {
   }
 }
 
+// Stop test Redis and log result
+async function stopTestRedisAndLog(): Promise<void> {
+  logger.step("Stopping test Redis...");
+  const result = await stopTestRedis();
+  if (result.wasRunning) {
+    logger.success("Test Redis stopped");
+  } else {
+    logger.info("Test Redis was not running");
+  }
+}
+
 // Show confirmation prompt and return whether to proceed
 async function confirmStopAll(envNames: string[], sessions: string[]): Promise<boolean> {
   console.log();
@@ -101,6 +113,7 @@ async function confirmStopAll(envNames: string[], sessions: string[]): Promise<b
   }
   console.log("  - Temporal server");
   console.log("  - Shared test Postgres");
+  console.log("  - Shared test Redis");
   console.log();
 
   return confirm("Are you sure you want to stop all dust-hive services?", false);
@@ -124,6 +137,9 @@ async function executeStopAll(envNames: string[], sessions: string[]): Promise<v
   // Stop test postgres
   await stopTestPostgresAndLog();
 
+  // Stop test Redis
+  await stopTestRedisAndLog();
+
   // Kill all zellij sessions
   if (sessions.length > 0) {
     logger.step(`Killing ${sessions.length} zellij session(s)...`);
@@ -144,6 +160,7 @@ export async function downCommand(options: DownOptions = {}): Promise<Result<voi
     logger.info("No dust-hive environments or sessions to stop.");
     await stopTemporalAndLog();
     await stopTestPostgresAndLog();
+    await stopTestRedisAndLog();
     return Ok(undefined);
   }
 

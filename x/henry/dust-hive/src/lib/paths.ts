@@ -36,6 +36,10 @@ export const TEST_POSTGRES_PORT = 5433;
 export const TEST_POSTGRES_USER = "test";
 export const TEST_POSTGRES_PASSWORD = "test";
 
+// Shared test Redis paths (global, not per-env)
+export const TEST_REDIS_CONTAINER_NAME = "dust-hive-test-redis";
+export const TEST_REDIS_PORT = 6479;
+
 // Main zellij session
 export const MAIN_SESSION_NAME = "dust-hive-main";
 

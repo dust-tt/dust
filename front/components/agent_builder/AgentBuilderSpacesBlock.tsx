@@ -159,7 +159,7 @@ export function AgentBuilderSpacesBlock() {
             Spaces
           </h2>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Set what data and tools the agent can access and who can use it.
+            Set what knowledge and capabilities the agent can access.
           </p>
         </div>
         <Button
