@@ -1842,7 +1842,7 @@ export const INTERNAL_MCP_SERVERS = {
       update_entity: "low",
       get_configuration: "never_ask",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
