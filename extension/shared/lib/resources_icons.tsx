@@ -175,5 +175,3 @@ export const getIcon = (
 
   return InternalActionIcons[icon];
 };
-
-export { ProductboardLogo, SalesforceLogo };
