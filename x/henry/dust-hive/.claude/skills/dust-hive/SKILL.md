@@ -48,6 +48,17 @@ pwd | grep -q "$HOME/dust-hive/" && echo "In dust-hive environment"
 
 The `detectEnvFromCwd()` function in `src/lib/paths.ts` detects the environment name from the current working directory.
 
+## Automatic Environment Loading (direnv)
+
+Each dust-hive worktree contains a `.envrc` file that automatically loads the environment variables when you `cd` into the directory. This is powered by [direnv](https://direnv.net/).
+
+**What this means:**
+- Environment variables (ports, database URIs, API keys, etc.) are automatically available in your shell
+- No need to manually source `env.sh` or set environment variables
+- Variables like `FRONT_DATABASE_URI`, `CORE_API`, `CONNECTORS_API` are pre-configured for the environment's port range
+
+**Prerequisites:** direnv must be installed and hooked into your shell. Run `dust-hive doctor` to verify.
+
 ## Environment States
 
 | State | Description | What's Running |
@@ -221,6 +232,7 @@ If front tests fail with database connection errors:
 └── zellij/              # Zellij layouts
 
 ~/dust-hive/{NAME}/      # Git worktrees
+└── .envrc               # direnv config (sources env.sh automatically)
 ```
 
 ## Troubleshooting
