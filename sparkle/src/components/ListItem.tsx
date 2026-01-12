@@ -93,20 +93,46 @@ export function ListGroup({ children, className }: ListGroupProps) {
   );
 }
 
+const listItemSectionVariants = cva(
+  "s-pb-2 s-pt-6 s-font-semibold s-tracking-wide s-text-muted-foreground dark:s-text-muted-foreground-night",
+  {
+    variants: {
+      size: {
+        xs: "s-text-xs s-uppercase",
+        sm: "s-text-sm",
+      },
+    },
+    defaultVariants: {
+      size: "xs",
+    },
+  }
+);
+
 type ListItemSectionProps = {
   children: ReactNode;
   className?: string;
+  size?: "xs" | "sm";
+  action?: ReactNode;
 };
 
-export function ListItemSection({ children, className }: ListItemSectionProps) {
+export function ListItemSection({
+  children,
+  className,
+  size = "xs",
+  action,
+}: ListItemSectionProps) {
   return (
     <h3
       className={cn(
-        "s-pb-2 s-pt-6 s-text-xs s-font-semibold s-uppercase s-tracking-wide s-text-muted-foreground dark:s-text-muted-foreground-night",
+        listItemSectionVariants({ size }),
+        "s-flex s-items-center s-justify-between",
         className
       )}
     >
-      {children}
+      <div className="s-flex s-items-center s-gap-1 s-overflow-hidden s-text-ellipsis">
+        {children}
+      </div>
+      <div className="s-flex s-gap-1">{action}</div>
     </h3>
   );
 }

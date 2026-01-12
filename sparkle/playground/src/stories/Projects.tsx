@@ -970,7 +970,7 @@ function DustMain() {
     ) : (
       // Priority 3: Show welcome/new conversation view
       <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
-        <div className="s-flex s-w-full s-max-w-3xl s-flex-col s-gap-6 s-px-4 s-py-8">
+        <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
           <div className="s-heading-2xl s-text-foreground">
             Welcome, Edouard!{" "}
           </div>

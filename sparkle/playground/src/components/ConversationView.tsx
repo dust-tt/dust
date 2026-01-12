@@ -252,8 +252,8 @@ export function ConversationView({
                 <div
                   className={
                     isFromLocutor
-                      ? "s-flex s-w-full s-max-w-3xl s-justify-end"
-                      : "s-flex s-w-full s-max-w-3xl s-justify-start"
+                      ? "s-flex s-w-full s-max-w-4xl s-justify-end"
+                      : "s-flex s-w-full s-max-w-4xl s-justify-start"
                   }
                 >
                   <ConversationMessage

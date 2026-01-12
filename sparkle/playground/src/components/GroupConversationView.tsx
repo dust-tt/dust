@@ -264,7 +264,7 @@ export function GroupConversationView({
         {/* Conversations Tab */}
         <TabsContent value="conversations">
           <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto">
-            <div className="s-mx-auto s-flex s-w-full s-max-w-3xl s-flex-col s-gap-6 s-py-8">
+            <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-py-8">
               {/* New conversation section */}
               <div className="s-flex s-flex-col s-gap-3">
                 <h2 className="s-heading-base s-text-foreground dark:s-text-foreground-night">
