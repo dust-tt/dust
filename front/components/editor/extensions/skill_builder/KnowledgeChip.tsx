@@ -15,12 +15,18 @@ type KnowledgeNode = Omit<DataSourceViewContentNode, "dataSourceViews"> & {
 };
 
 interface KnowledgeChipProps {
+  color?: React.ComponentProps<typeof AttachmentChip>["color"];
   node: KnowledgeNode;
   onRemove?: () => void;
   title: string;
 }
 
-export function KnowledgeChip({ node, title, onRemove }: KnowledgeChipProps) {
+export function KnowledgeChip({
+  color = "white",
+  node,
+  title,
+  onRemove,
+}: KnowledgeChipProps) {
   const icon =
     isWebsite(node.dataSourceView.dataSource) ||
     isFolder(node.dataSourceView.dataSource)
@@ -41,7 +47,7 @@ export function KnowledgeChip({ node, title, onRemove }: KnowledgeChipProps) {
       icon={{ visual: icon }}
       target="_blank"
       href={node.sourceUrl ?? undefined}
-      color="white"
+      color={color}
       onRemove={onRemove}
       size="xs"
     />
