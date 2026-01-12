@@ -1,4 +1,4 @@
-import { Button, DustLogo } from "@dust-tt/sparkle";
+import { Button, DustLogo, LoginIcon } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
@@ -19,6 +19,7 @@ import {
   shouldCheckGeolocation,
 } from "@app/lib/cookies";
 import { useGeolocation } from "@app/lib/swr/geo";
+import { useUser } from "@app/lib/swr/user";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
 
@@ -41,6 +42,8 @@ export default function LandingLayout({
     gtmTrackingId,
     utmParams,
   } = pageProps;
+
+  const { user } = useUser();
 
   const [cookies, setCookie] = useCookies([DUST_COOKIES_ACCEPTED], {
     doNotParse: true,
@@ -121,27 +124,44 @@ export default function LandingLayout({
           </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              label="Sign in"
-              onClick={withTracking(
-                TRACKING_AREAS.NAVIGATION,
-                "sign_in",
-                () => {
-                  // eslint-disable-next-line react-hooks/immutability
-                  window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
-                }
-              )}
-            />
-            <UTMButton
-              href="/home/contact"
-              className="hidden xs:inline-flex"
-              variant="highlight"
-              size="sm"
-              label="Contact sales"
-              onClick={withTracking(TRACKING_AREAS.NAVIGATION, "contact_sales")}
-            />
+            {user ? (
+              <Button
+                variant="highlight"
+                size="sm"
+                label="Open Dust"
+                icon={LoginIcon}
+                onClick={() => {
+                  window.location.href = "/";
+                }}
+              />
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label="Sign in"
+                  onClick={withTracking(
+                    TRACKING_AREAS.NAVIGATION,
+                    "sign_in",
+                    () => {
+                      // eslint-disable-next-line react-hooks/immutability
+                      window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
+                    }
+                  )}
+                />
+                <UTMButton
+                  href="/home/contact"
+                  className="hidden xs:inline-flex"
+                  variant="highlight"
+                  size="sm"
+                  label="Contact sales"
+                  onClick={withTracking(
+                    TRACKING_AREAS.NAVIGATION,
+                    "contact_sales"
+                  )}
+                />
+              </>
+            )}
           </div>
         </div>
       </ScrollingHeader>
