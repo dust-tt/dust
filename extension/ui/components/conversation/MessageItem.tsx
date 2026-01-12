@@ -7,7 +7,7 @@ import {
   AttachmentCitation,
   contentFragmentToAttachmentCitation,
 } from "@app/ui/components/conversation/AttachmentCitation";
-import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";
+import type { FeedbackSelectorBaseProps } from "@app/ui/components/conversation/FeedbackSelector";
 import { UserMessage } from "@app/ui/components/conversation/UserMessage";
 import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import type {
@@ -82,7 +82,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return null;
     }
 
-    const messageFeedbackWithSubmit: FeedbackSelectorProps = {
+    const messageFeedbackWithSubmit: FeedbackSelectorBaseProps = {
       feedback: messageFeedback
         ? {
             thumb: messageFeedback.thumbDirection,

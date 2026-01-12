@@ -1,22 +1,22 @@
 import { Page } from "@dust-tt/sparkle";
 
 import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
-import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
 
 interface FeedbackSelectorPopoverContentProps {
-  agentMessageToRender: LightAgentMessageType;
   owner: LightWorkspaceType;
+  agentConfigurationId: string;
   isGlobalAgent: boolean;
 }
 
 export function FeedbackSelectorPopoverContent({
   owner,
-  agentMessageToRender,
+  agentConfigurationId,
   isGlobalAgent,
 }: FeedbackSelectorPopoverContentProps) {
   const { agentLastAuthor } = useAgentConfigurationLastAuthor({
     workspaceId: owner.sId,
-    agentConfigurationId: agentMessageToRender.configuration.sId,
+    agentConfigurationId,
   });
 
   if (isGlobalAgent) {

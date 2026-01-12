@@ -2,7 +2,6 @@ import {
   Button,
   Checkbox,
   Chip,
-  cn,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -15,7 +14,7 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect } from "react";
+import React from "react";
 
 export type ThumbReaction = "up" | "down";
 
@@ -25,7 +24,7 @@ export type FeedbackType = {
   isConversationShared: boolean;
 };
 
-export interface FeedbackSelectorProps {
+export interface FeedbackSelectorBaseProps {
   feedback: FeedbackType | null;
   onSubmitThumb: (
     p: FeedbackType & {
@@ -33,7 +32,10 @@ export interface FeedbackSelectorProps {
     }
   ) => Promise<void>;
   isSubmittingThumb: boolean;
-  getPopoverInfo?: () => JSX.Element | null;
+}
+
+export interface FeedbackSelectorProps extends FeedbackSelectorBaseProps {
+  isGlobalAgent: boolean;
 }
 
 const FEEDBACK_PREDEFINED_ANSWERS = [
@@ -54,7 +56,7 @@ export function FeedbackSelector({
   feedback,
   onSubmitThumb,
   isSubmittingThumb,
-  getPopoverInfo,
+  isGlobalAgent,
 }: FeedbackSelectorProps) {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [localFeedbackContent, setLocalFeedbackContent] = React.useState<
@@ -62,36 +64,28 @@ export function FeedbackSelector({
   >(null);
   const [selectedPredefinedAnswer, setSelectedPredefinedAnswer] =
     React.useState<FeedbackPredefinedAnswerType | null>(null);
-  const [popOverInfo, setPopoverInfo] = React.useState<JSX.Element | null>(
-    null
-  );
   const [isConversationShared, setIsConversationShared] = React.useState(
     feedback?.isConversationShared ?? false
   );
 
-  useEffect(() => {
-    if (isDialogOpen) {
-      if (getPopoverInfo) {
-        setPopoverInfo(getPopoverInfo());
-      }
-    }
-  }, [isDialogOpen, getPopoverInfo]);
+  const dialogPopoverInfo = isDialogOpen ? (
+    <div className="mb-4 mt-2 flex flex-col gap-2">
+      <Page.P variant="secondary">
+        {isGlobalAgent
+          ? "Submitting feedback will help Dust improve your global agents."
+          : "Your feedback is available to editors of the agent."}
+      </Page.P>
+    </div>
+  ) : null;
 
-  const handleTextAreaChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setLocalFeedbackContent(e.target.value);
-    },
-    []
-  );
-
-  const closePopover = useCallback(() => {
+  const closePopover = () => {
     setIsDialogOpen(false);
     setSelectedPredefinedAnswer(null);
     setLocalFeedbackContent(null);
     setIsConversationShared(false);
-  }, []);
+  };
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = async () => {
     const details = localFeedbackContent?.trim() ?? "";
     const predefinedAnswer = selectedPredefinedAnswer?.trim() ?? "";
 
@@ -106,15 +100,9 @@ export function FeedbackSelector({
       isConversationShared,
     });
     closePopover();
-  }, [
-    closePopover,
-    onSubmitThumb,
-    localFeedbackContent,
-    isConversationShared,
-    selectedPredefinedAnswer,
-  ]);
+  };
 
-  const handleThumbUp = useCallback(async () => {
+  const handleThumbUp = async () => {
     const shouldRemoveExistingFeedback = feedback?.thumb === "up";
     await onSubmitThumb({
       thumb: "up",
@@ -122,9 +110,9 @@ export function FeedbackSelector({
       feedbackContent: null,
       isConversationShared: false,
     });
-  }, [feedback?.thumb, onSubmitThumb]);
+  };
 
-  const handleThumbDown = useCallback(async () => {
+  const handleThumbDown = async () => {
     const shouldRemoveExistingFeedback = feedback?.thumb === "down";
     if (shouldRemoveExistingFeedback) {
       await onSubmitThumb({
@@ -140,7 +128,7 @@ export function FeedbackSelector({
     setLocalFeedbackContent(null);
     setIsConversationShared(true);
     setIsDialogOpen(true);
-  }, [feedback?.thumb, onSubmitThumb]);
+  };
 
   const canSubmit =
     !!selectedPredefinedAnswer || (localFeedbackContent?.trim() ?? "") !== "";
@@ -155,11 +143,7 @@ export function FeedbackSelector({
           disabled={isSubmittingThumb}
           onClick={handleThumbUp}
           icon={HandThumbUpIcon}
-          className={
-            feedback?.thumb === "up"
-              ? "text-muted-foreground dark:text-muted-foreground-night"
-              : ""
-          }
+          className="text-muted-foreground dark:text-muted-foreground-night"
         />
         <Button
           tooltip="Report an issue with this answer"
@@ -168,11 +152,7 @@ export function FeedbackSelector({
           disabled={isSubmittingThumb}
           onClick={handleThumbDown}
           icon={HandThumbDownIcon}
-          className={
-            feedback?.thumb === "down"
-              ? "text-muted-foreground dark:text-muted-foreground-night"
-              : ""
-          }
+          className="text-muted-foreground dark:text-muted-foreground-night"
         />
       </div>
 
@@ -182,7 +162,6 @@ export function FeedbackSelector({
           if (!open) {
             closePopover();
           }
-          setIsDialogOpen(open);
         }}
       >
         <DialogContent>
@@ -204,16 +183,8 @@ export function FeedbackSelector({
                       <Chip
                         key={answer}
                         size="xs"
-                        color="primary"
+                        color={isSelected ? "info" : "primary"}
                         label={answer}
-                        className={cn(
-                          "s-whitespace-nowrap",
-                          isSubmittingThumb &&
-                            "s-cursor-not-allowed s-opacity-50",
-                          isSelected
-                            ? "s-border-transparent s-bg-foreground s-text-background dark:s-bg-foreground-night dark:s-text-background-night"
-                            : undefined
-                        )}
                         onClick={
                           isSubmittingThumb
                             ? undefined
@@ -231,10 +202,12 @@ export function FeedbackSelector({
                   resize="vertical"
                   rows={3}
                   value={localFeedbackContent ?? ""}
-                  onChange={handleTextAreaChange}
+                  onChange={(e) => {
+                    setLocalFeedbackContent(e.target.value);
+                  }}
                 />
 
-                {popOverInfo}
+                {dialogPopoverInfo}
 
                 <div className="bg-muted-background dark:bg-muted-background-night border-border dark:border-border-night rounded-lg border p-3">
                   <div className="flex items-center gap-2">

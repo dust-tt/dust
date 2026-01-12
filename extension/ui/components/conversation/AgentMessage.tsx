@@ -9,7 +9,7 @@ import type {
 import { messageReducer } from "@app/ui/components/agents/state/messageReducer";
 import { ActionValidationContext } from "@app/ui/components/conversation/ActionValidationProvider";
 import { AgentMessageActions } from "@app/ui/components/conversation/AgentMessageActions";
-import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";
+import type { FeedbackSelectorBaseProps } from "@app/ui/components/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/ui/components/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/ui/components/conversation/GenerationContextProvider";
 import { MCPServerAuthRequired } from "@app/ui/components/conversation/MCPServerAuthRequired";
@@ -67,7 +67,6 @@ import {
   FaviconIcon,
   InformationCircleIcon,
   Markdown,
-  Page,
   Popover,
   useCopyToClipboard,
   useSendNotification,
@@ -85,22 +84,6 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { visit } from "unist-util-visit";
-
-export const FeedbackSelectorPopoverContent = ({
-  isGlobalAgent,
-}: {
-  isGlobalAgent: boolean;
-}) => {
-  return (
-    <div className="mb-4 mt-2 flex flex-col gap-2">
-      <Page.P variant="secondary">
-        {isGlobalAgent
-          ? "Submitting feedback will help Dust improve your global agents."
-          : "Your feedback is available to editors of the agent."}
-      </Page.P>
-    </div>
-  );
-};
 
 export function visualizationDirective() {
   return (tree: any) => {
@@ -192,7 +175,7 @@ interface AgentMessageProps {
   isLastMessage: boolean;
   message: AgentMessagePublicType;
   userAndAgentMessages: (UserMessageType | AgentMessagePublicType)[];
-  messageFeedback: FeedbackSelectorProps;
+  messageFeedback: FeedbackSelectorBaseProps;
   owner: LightWorkspaceType;
   user: StoredUser;
 }
@@ -491,11 +474,6 @@ export function AgentMessage({
 
   const isGlobalAgent = message.configuration.id === -1;
 
-  const PopoverContent = useCallback(
-    () => <FeedbackSelectorPopoverContent isGlobalAgent={isGlobalAgent} />,
-    [isGlobalAgent]
-  );
-
   async function handleCopyToClipboard() {
     const messageContent = agentMessageToRender.content || "";
     let footnotesMarkdown = "";
@@ -604,9 +582,7 @@ export function AgentMessage({
   );
 
   const showFeedbackSection = useMemo(
-    () =>
-      showButtons &&
-      agentMessageToRender.configuration.status !== "draft",
+    () => showButtons && agentMessageToRender.configuration.status !== "draft",
     [showButtons, agentMessageToRender.configuration.status]
   );
 
@@ -653,7 +629,7 @@ export function AgentMessage({
           <FeedbackSelector
             key="feedback-selector"
             {...messageFeedback}
-            getPopoverInfo={PopoverContent}
+            isGlobalAgent={isGlobalAgent}
           />
         );
       }
@@ -670,7 +646,7 @@ export function AgentMessage({
     isRetryHandlerProcessing,
     shouldStream,
     messageFeedback,
-    PopoverContent,
+    isGlobalAgent,
   ]);
 
   const renderName = useCallback(
