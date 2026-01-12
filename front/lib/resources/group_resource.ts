@@ -1024,6 +1024,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         | "unauthorized"
         | "user_not_found"
         | "user_already_member"
+        | "group_requirements_not_met"
         | "system_or_global_group"
       >
     >
@@ -1081,6 +1082,20 @@ export class GroupResource extends BaseResource<GroupModel> {
         new DustError(
           "system_or_global_group",
           "Users can only be added to regular, agent_editors, skill_editors or provisioned groups."
+        )
+      );
+    }
+
+    if (
+      this.kind === "skill_editors" &&
+      workspaceMemberships.some((member) => !member.isBuilder)
+    ) {
+      return new Err(
+        new DustError(
+          "group_requirements_not_met",
+          userIds.length === 1
+            ? "Cannot add: user is not a builder in the workspace"
+            : "Cannot add: some users are not builders in the workspace"
         )
       );
     }
@@ -1248,6 +1263,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         | "user_not_found"
         | "user_not_member"
         | "user_already_member"
+        | "group_requirements_not_met"
         | "system_or_global_group"
       >
     >

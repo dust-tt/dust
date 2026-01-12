@@ -5,12 +5,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { UserType, WithAPIErrorResponse } from "@app/types";
-import { assertNever, isBuilder, isString } from "@app/types";
+import { assertNever, isString } from "@app/types";
 
 const PatchSkillEditorsRequestBodySchema = t.intersection([
   t.type({}),
@@ -125,25 +124,6 @@ async function handler(
       const usersToRemoveResources =
         await UserResource.fetchByIds(removeEditorIds);
 
-      const owner = auth.getNonNullableWorkspace();
-      for (const userResource of usersToAddResources) {
-        const role = await MembershipResource.getActiveRoleForUserInWorkspace({
-          user: userResource,
-          workspace: owner,
-        });
-
-        const userWorkspace = { ...owner, role };
-        if (!isBuilder(userWorkspace)) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "workspace_auth_error",
-              message: "Only builders can be added as skill editors.",
-            },
-          });
-        }
-      }
-
       const usersToAdd = usersToAddResources.map((u) => u.toJSON());
       const usersToRemove = usersToRemoveResources.map((u) => u.toJSON());
 
@@ -182,6 +162,14 @@ async function handler(
                 type: "workspace_auth_error",
                 message:
                   "You are not authorized to add members to the skill editors group.",
+              },
+            });
+          case "group_requirements_not_met":
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message: "Only builders can be added to skill editors.",
               },
             });
           case "system_or_global_group":
