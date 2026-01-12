@@ -546,6 +546,36 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  async hasApprovedTool(
+    auth: Authenticator,
+    {
+      mcpServerId,
+      toolName,
+      agentId = null,
+      argsAndValues = null,
+    }: {
+      mcpServerId: string;
+      toolName: string;
+      agentId?: string | null;
+      argsAndValues?: Record<string, string> | null;
+    }
+  ): Promise<boolean> {
+    const whereClause: WhereOptions<UserToolApprovalModel> = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      userId: this.id,
+      mcpServerId,
+      toolName,
+      agentId,
+      argsAndValues,
+    };
+
+    const approval = await UserToolApprovalModel.findOne({
+      where: whereClause,
+    });
+
+    return approval !== null;
+  }
+
   fullName(): string {
     return [this.firstName, this.lastName].filter(Boolean).join(" ");
   }
