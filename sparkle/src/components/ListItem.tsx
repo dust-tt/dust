@@ -1,6 +1,41 @@
+import { cva } from "class-variance-authority";
 import React, { ReactNode } from "react";
 
 import { cn } from "@sparkle/lib/utils";
+
+const listItemVariants = cva(
+  "s-group s-flex s-w-full s-flex-row s-gap-3 s-px-3 s-py-3",
+  {
+    variants: {
+      itemsAlignment: {
+        start: "s-items-start",
+        center: "s-items-center",
+      },
+      hasSeparator: {
+        true: "s-border-b s-border-border dark:s-border-border-night",
+        false: "",
+      },
+      hasSeparatorIfLast: {
+        true: "",
+        false: "last:s-border-none",
+      },
+      interactive: {
+        true: cn(
+          "s-cursor-pointer s-transition s-duration-200",
+          "hover:s-bg-muted-background dark:hover:s-bg-muted-background-night",
+          "active:s-bg-primary-100 dark:active:s-bg-primary-100-night"
+        ),
+        false: "",
+      },
+    },
+    defaultVariants: {
+      itemsAlignment: "start",
+      hasSeparator: true,
+      hasSeparatorIfLast: false,
+      interactive: false,
+    },
+  }
+);
 
 type ListItemProps = {
   children: ReactNode;
@@ -24,16 +59,13 @@ export function ListItem({
   return (
     <div
       className={cn(
-        `s-group/${groupName} s-flex s-w-full s-flex-row s-gap-3 s-px-3 s-py-3`,
-        itemsAlignment === "start" ? "s-items-start" : "s-items-center",
-        hasSeparator && "s-border-b s-border-border dark:s-border-border-night",
-        !hasSeparatorIfLast && "last:s-border-none",
-        onClick &&
-          cn(
-            "s-cursor-pointer s-transition s-duration-200",
-            "hover:s-bg-muted-background dark:hover:s-bg-muted-background-night",
-            "active:s-bg-primary-100 dark:active:s-bg-primary-100-night"
-          ),
+        listItemVariants({
+          itemsAlignment,
+          hasSeparator,
+          hasSeparatorIfLast,
+          interactive: !!onClick,
+        }),
+        `s-group/${groupName}`,
         className
       )}
       onClick={onClick}

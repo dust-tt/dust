@@ -408,11 +408,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
 
     if (type === "static") {
       return (
-        <div
-          ref={ref as React.Ref<HTMLDivElement>}
-          className={className}
-          {...props}
-        >
+        <div ref={ref} className={className} {...props}>
           {labelElement}
           <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
         </div>
