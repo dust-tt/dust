@@ -3,8 +3,8 @@ import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import type { AgentMessageType, Result } from "@app/types";
-import { assertNever, isString, Ok } from "@app/types";
+import type { AgentMessageType } from "@app/types";
+import { assertNever } from "@app/types";
 
 export interface ToolInputContext {
   agentId: string;
@@ -65,19 +65,20 @@ export async function getExecutionStatusFromConfig(
         return { status: "blocked_validation_required" };
       }
 
-      const { agentId, toolInputs } = context;
-
-      const argumentsRequiringApproval =
-        actionConfiguration.argumentsRequiringApproval ?? [];
-
-      const userHasApproved = await hasUserApprovedToolWithArgs({
-        user,
-        mcpServerId: actionConfiguration.toolServerId,
-        toolName: actionConfiguration.name,
-        agentId,
-        argumentsRequiringApproval,
-        toolInputs,
-      });
+      const userHasApproved = false;
+      /**
+       *  const { agentId, toolInputs } = context;
+       *  const argumentsRequiringApproval =
+       *     actionConfiguration.argumentsRequiringApproval ?? [];
+       *  const userHasApproved = await hasUserApprovedToolWithArgs({
+       *    user,
+       *    mcpServerId: actionConfiguration.toolServerId,
+       *    toolName: actionConfiguration.name,
+       *    agentId,
+       *    argumentsRequiringApproval,
+       *    toolInputs,
+       *  });
+       */
 
       if (userHasApproved) {
         return { status: "ready_allowed_implicitly" };
@@ -141,24 +142,9 @@ export async function hasUserAlwaysApprovedTool({
   );
 }
 
-// For agent-scoped, argument-value-scoped approvals, we build a unique key
-// based on the MCP server ID, tool name, and argument values.
-// The argument key-value pairs are sorted to ensure consistent ordering.
-function buildArgApprovalKey(
-  mcpServerId: string,
-  toolName: string,
-  args: Record<string, string>
-): string {
-  const sortedPairs = Object.entries(args)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => `${key}:${value}`)
-    .join(":");
-
-  return `argApprovals:${mcpServerId}:${toolName}:${sortedPairs}`;
-}
-
 // Extracts the values of the approval-requiring arguments from the tool inputs,
 // converting them to strings for storage. Skips any arguments that are not provided.
+/** 
 function extractArgRequiringApprovalValues(
   argumentsRequiringApproval: string[],
   toolInputs: Record<string, unknown>
@@ -184,77 +170,4 @@ function extractArgRequiringApprovalValues(
 
   return result;
 }
-
-// Checks if the user has approved this specific tool with these specific
-// argument values for this specific agent.
-export async function hasUserApprovedToolWithArgs({
-  user,
-  mcpServerId,
-  toolName,
-  agentId,
-  argumentsRequiringApproval,
-  toolInputs,
-}: {
-  user: UserResource;
-  mcpServerId: string;
-  toolName: string;
-  agentId: string;
-  argumentsRequiringApproval: string[];
-  toolInputs: Record<string, unknown>;
-}): Promise<Result<boolean, Error>> {
-  const argValues = extractArgRequiringApprovalValues(
-    argumentsRequiringApproval,
-    toolInputs
-  );
-
-  // If no approval-requiring args have values, fall back to tool-level check
-  if (Object.keys(argValues).length === 0) {
-    return new Ok(false);
-  }
-
-  const key = buildArgApprovalKey(mcpServerId, toolName, argValues);
-  const approvedAgents = await user.getMetadataAsArray(key);
-
-  return new Ok(approvedAgents.includes(agentId));
-}
-
-export async function setUserApprovedToolWithArgs({
-  user,
-  mcpServerId,
-  toolName,
-  agentId,
-  argumentsRequiringApproval,
-  toolInputs,
-}: {
-  user: UserResource;
-  mcpServerId: string;
-  toolName: string;
-  agentId: string;
-  argumentsRequiringApproval: string[];
-  toolInputs: Record<string, unknown>;
-}): Promise<Result<void, Error>> {
-  const argValues = extractArgRequiringApprovalValues(
-    argumentsRequiringApproval,
-    toolInputs
-  );
-
-  // If no approval-requiring args have values, don't store anything.
-  if (Object.keys(argValues).length === 0) {
-    return new Ok(undefined);
-  }
-
-  // Write to legacy metadata storage.
-  const key = buildArgApprovalKey(mcpServerId, toolName, argValues);
-  await user.upsertMetadataArray(key, agentId);
-
-  /**
-    await user.createToolApproval(auth, {
-      mcpServerId,
-      toolName,
-      agentId,
-      argsAndValues: argValues,
-    });
-  */
-
-  return new Ok(undefined);
-}
+*/
