@@ -24,15 +24,21 @@ import type {
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 import { useAgentMcpConfigurations } from "@app/lib/swr/assistants";
 
+interface ToolUsageChartProps {
+  workspaceId: string;
+  agentConfigurationId: string;
+  isCustomAgent: boolean;
+}
+
 export function ToolUsageChart({
   workspaceId,
   agentConfigurationId,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-}) {
+  isCustomAgent,
+}: ToolUsageChartProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
-  const [toolMode, setToolMode] = useState<ToolChartModeType>("version");
+  const [toolMode, setToolMode] = useState<ToolChartModeType>(
+    isCustomAgent ? "version" : "step"
+  );
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
 
   const { configurations: mcpConfigurations } = useAgentMcpConfigurations({
@@ -95,18 +101,20 @@ export function ToolUsageChart({
       errorMessage={errorMessage}
       emptyMessage={chartData.length === 0 ? emptyMessage : undefined}
       additionalControls={
-        <ButtonsSwitchList defaultValue={toolMode} size="xs">
-          <ButtonsSwitch
-            value="version"
-            label="By version"
-            onClick={() => setToolMode("version")}
-          />
-          <ButtonsSwitch
-            value="step"
-            label="By step"
-            onClick={() => setToolMode("step")}
-          />
-        </ButtonsSwitchList>
+        isCustomAgent ? (
+          <ButtonsSwitchList defaultValue={toolMode} size="xs">
+            <ButtonsSwitch
+              value="version"
+              label="By version"
+              onClick={() => setToolMode("version")}
+            />
+            <ButtonsSwitch
+              value="step"
+              label="By step"
+              onClick={() => setToolMode("step")}
+            />
+          </ButtonsSwitchList>
+        ) : undefined
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
@@ -153,7 +161,8 @@ export function ToolUsageChart({
             boxShadow: "none",
           }}
         />
-        {mode === "version" &&
+        {isCustomAgent &&
+          mode === "version" &&
           toolMode === "version" &&
           selectedVersion &&
           chartData.length > 0 && (

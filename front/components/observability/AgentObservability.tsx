@@ -206,6 +206,7 @@ export function AgentObservability({
         <ToolUsageChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
         />
         <Separator />
         <LatencyChart
