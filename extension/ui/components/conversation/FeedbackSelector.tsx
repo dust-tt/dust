@@ -1,7 +1,6 @@
 import {
   Button,
   Checkbox,
-  Chip,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -180,10 +179,10 @@ export function FeedbackSelector({
                   {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => {
                     const isSelected = selectedPredefinedAnswer === answer;
                     return (
-                      <Chip
+                      <Button
                         key={answer}
                         size="xs"
-                        color={isSelected ? "info" : "primary"}
+                        color={isSelected ? "primary" : "outline"}
                         label={answer}
                         onClick={
                           isSubmittingThumb

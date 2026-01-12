@@ -1,7 +1,7 @@
 import {
+  Button,
   ButtonGroup,
   Checkbox,
-  Chip,
   cn,
   Dialog,
   DialogContainer,
@@ -199,10 +199,10 @@ export function FeedbackSelector({
                   {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => {
                     const isSelected = selectedPredefinedAnswer === answer;
                     return (
-                      <Chip
+                      <Button
                         key={answer}
                         size="xs"
-                        color={isSelected ? "info" : "primary"}
+                        color={isSelected ? "primary" : "outline"}
                         label={answer}
                         onClick={
                           isSubmittingThumb
@@ -219,7 +219,7 @@ export function FeedbackSelector({
                 <TextArea
                   placeholder="Share details (optional)"
                   resize="vertical"
-                  rows={4}
+                  rows={5}
                   value={localFeedbackContent ?? ""}
                   onChange={(e) => {
                     setLocalFeedbackContent(e.target.value);
