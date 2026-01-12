@@ -45,7 +45,7 @@ async function handler(
     });
   }
 
-  const { toolId } = req.body;
+  const { toolId, language } = req.body;
 
   if (!isString(toolId) || !isInternalMCPServerName(toolId)) {
     return apiError(req, res, {
@@ -65,7 +65,10 @@ async function handler(
 
   const conversation = conversationRes.value;
 
-  const followUpPrompt = buildOnboardingFollowUpPrompt(toolId);
+  const followUpPrompt = buildOnboardingFollowUpPrompt(
+    toolId,
+    isString(language) ? language : null
+  );
 
   const messageRes = await postUserMessage(auth, {
     conversation,

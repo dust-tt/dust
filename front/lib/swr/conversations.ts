@@ -1009,12 +1009,18 @@ export function usePostOnboardingFollowUp({
         return false;
       }
       try {
+        // Get user's preferred language from browser settings.
+        const language =
+          typeof navigator !== "undefined"
+            ? navigator.language?.split("-")[0]
+            : null;
+
         const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/onboarding-followup`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ toolId }),
+            body: JSON.stringify({ toolId, language }),
           }
         );
 
