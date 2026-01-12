@@ -125,10 +125,7 @@ async function handler(
       const usersToRemoveResources =
         await UserResource.fetchByIds(removeEditorIds);
 
-      // Validate that users being added are builders/admins
       const owner = auth.getNonNullableWorkspace();
-
-      const nonBuilders: string[] = [];
       for (const userResource of usersToAddResources) {
         const role = await MembershipResource.getActiveRoleForUserInWorkspace({
           user: userResource,
@@ -137,18 +134,14 @@ async function handler(
 
         const userWorkspace = { ...owner, role };
         if (!isBuilder(userWorkspace)) {
-          nonBuilders.push(userResource.sId);
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: `Only builders and admins can be added as skill editors.`,
+            },
+          });
         }
-      }
-
-      if (nonBuilders.length > 0) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message: `Only builders and admins can be added as skill editors. The following users are not builders: ${nonBuilders.join(", ")}`,
-          },
-        });
       }
 
       const usersToAdd = usersToAddResources.map((u) => u.toJSON());
