@@ -6,7 +6,7 @@ export const notionConfig: CompetitorPageConfig = {
   competitorLogo: "/static/landing/compare/notion.svg",
 
   seo: {
-    title: "Best Notion AI Alternative for Enterprise Teams | Dust",
+    title: "Notion AI Alternative for Enterprise Teams | Dust",
     description:
       "Compare Dust to Notion AI. Cross-platform AI agents with write actions, data warehouse queries, multi-agent orchestration, and 20+ integrations. From $29/user.",
   },

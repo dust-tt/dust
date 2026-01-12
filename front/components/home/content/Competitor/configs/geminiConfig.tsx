@@ -6,8 +6,7 @@ export const geminiConfig: CompetitorPageConfig = {
   competitorLogo: "/static/landing/compare/gemini.svg",
 
   seo: {
-    title:
-      "Best Gemini Enterprise Alternative for Multi-Model AI Agents | Dust",
+    title: "Gemini Enterprise Alternative for Multi-Model AI Agents | Dust",
     description:
       "Compare Dust to Gemini Enterprise. Deploy AI agents accessible from Slack, Teams, Chrome with 20+ integrations, multi-model flexibility, and no-code automation. Trusted by Clay, Vanta, Qonto.",
   },

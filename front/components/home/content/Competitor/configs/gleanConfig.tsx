@@ -6,7 +6,7 @@ export const gleanConfig: CompetitorPageConfig = {
   competitorLogo: "/static/landing/compare/glean.svg",
 
   seo: {
-    title: "Best Glean Alternative for AI Agent Workflows | Dust",
+    title: "Glean Alternative for AI Agent Workflows | Dust",
     description:
       "Compare Dust to Glean for enterprise AI. Agent-first platform with 70-90% adoption, transparent pricing from $29/user, multi-agent orchestration, and proven ROI. Trusted by Clay, Vanta, Qonto.",
   },

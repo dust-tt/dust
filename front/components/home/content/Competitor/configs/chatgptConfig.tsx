@@ -6,7 +6,7 @@ export const chatgptConfig: CompetitorPageConfig = {
   competitorLogo: "/static/landing/compare/chatgpt.svg",
 
   seo: {
-    title: "Best ChatGPT Enterprise Alternative for AI Agents at Work | Dust",
+    title: "ChatGPT Enterprise Alternative for AI Agents at Work | Dust",
     description:
       "Compare Dust to ChatGPT Enterprise. Multi-model platform with agent orchestration, 200+ actions, SOC 2 security, and true collaboration. Trusted by Clay, Vanta, Qonto.",
   },
@@ -24,8 +24,7 @@ export const chatgptConfig: CompetitorPageConfig = {
   },
 
   hero: {
-    title:
-      "The Best ChatGPT Enterprise Alternative for Companies That Need a Future-Proof Custom AI Infrastructure",
+    title: "The Best ChatGPT Enterprise Alternative for AI Agents at Work",
     subtitle:
       "Deploy AI agents that orchestrate workflows, take actions, and collaborate—across Slack, your CRM, support tools, and everywhere your team works",
     primaryCTA: {
