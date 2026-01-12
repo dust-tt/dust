@@ -260,7 +260,7 @@ async function createSuggestedSkills(
               userFacingDescription: skill.description_for_humans,
               instructions: skill.instructions,
               status: "suggested",
-              authorId: null,
+              editedBy: null,
               requestedSpaceIds: [],
               icon: null,
               extendedSkillId: null,
