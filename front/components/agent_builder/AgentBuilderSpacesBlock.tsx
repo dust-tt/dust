@@ -1,5 +1,6 @@
 import {
   Button,
+  ContentMessage,
   PlanetIcon,
   Sheet,
   SheetContainer,
@@ -20,7 +21,7 @@ import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { SpaceType } from "@app/types";
-import { removeNulls } from "@app/types";
+import { pluralize, removeNulls } from "@app/types";
 
 export function AgentBuilderSpacesBlock() {
   const { setValue } = useFormContext<AgentBuilderFormData>();
@@ -168,6 +169,19 @@ export function AgentBuilderSpacesBlock() {
           onClick={handleOpenSheet}
         />
       </div>
+      {nonGlobalSpacesWithRestrictions.length > 0 && (
+        <div className="mb-4 w-full">
+          <ContentMessage variant="golden" size="lg">
+            Based on your selection of knowledge and capabilities, this agent
+            can only be used by users with access to space
+            {pluralize(nonGlobalSpacesWithRestrictions.length)} :{" "}
+            <strong>
+              {nonGlobalSpacesWithRestrictions.map((v) => v.name).join(", ")}
+            </strong>
+            .
+          </ContentMessage>
+        </div>
+      )}
       <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
 
       <Sheet open={isSheetOpen} onOpenChange={handleCloseSheet}>
