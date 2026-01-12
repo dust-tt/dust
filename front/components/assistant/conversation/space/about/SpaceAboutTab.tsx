@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
+import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type {
   GroupType,
@@ -17,6 +18,7 @@ interface SpaceAboutTabProps {
   initialMembers: UserType[];
   initialGroups: GroupType[];
   initialManagementMode: "manual" | "group";
+  initialIsRestricted: boolean;
   planAllowsSCIM: boolean;
 }
 
@@ -26,6 +28,7 @@ export function SpaceAboutTab({
   initialMembers,
   initialGroups,
   initialManagementMode,
+  initialIsRestricted,
   planAllowsSCIM,
 }: SpaceAboutTabProps) {
   const [managementType, setManagementType] = useState<"manual" | "group">(
@@ -37,11 +40,16 @@ export function SpaceAboutTab({
     useState<GroupType[]>(initialGroups);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [isRestricted, setIsRestricted] = useState(initialIsRestricted);
+
   const isManual = !planAllowsSCIM || managementType === "manual";
   const doUpdate = useUpdateSpace({ owner });
 
   const hasChanges = useMemo(() => {
     if (managementType !== initialManagementMode) {
+      return true;
+    }
+    if (isRestricted !== initialIsRestricted) {
       return true;
     }
 
@@ -65,6 +73,8 @@ export function SpaceAboutTab({
     initialMembers,
     selectedGroups,
     initialGroups,
+    isRestricted,
+    initialIsRestricted,
   ]);
 
   const canSave = useMemo(() => {
@@ -89,14 +99,14 @@ export function SpaceAboutTab({
 
     if (planAllowsSCIM && managementType === "group") {
       await doUpdate(space, {
-        isRestricted: false,
+        isRestricted,
         groupIds: selectedGroups.map((group) => group.sId),
         managementMode: "group",
         name: space.name,
       });
     } else {
       await doUpdate(space, {
-        isRestricted: false,
+        isRestricted,
         memberIds: selectedMembers.map((member) => member.sId),
         managementMode: "manual",
         name: space.name,
@@ -111,22 +121,30 @@ export function SpaceAboutTab({
     planAllowsSCIM,
     selectedGroups,
     selectedMembers,
+    isRestricted,
     space,
   ]);
 
   return (
     <div className="flex w-full flex-col gap-y-4 px-4 py-8">
-      <RestrictedAccessBody
-        isManual={isManual}
-        planAllowsSCIM={planAllowsSCIM}
-        managementType={managementType}
-        owner={owner}
-        selectedMembers={selectedMembers}
-        selectedGroups={selectedGroups}
-        onManagementTypeChange={setManagementType}
-        onMembersUpdated={setSelectedMembers}
-        onGroupsUpdated={setSelectedGroups}
+      <RestrictedAccessHeader
+        isRestricted={isRestricted}
+        onToggle={() => setIsRestricted(!isRestricted)}
+        unrestrictedDescription="The project is accessible to everyone in the workspace."
       />
+      {isRestricted && (
+        <RestrictedAccessBody
+          isManual={isManual}
+          planAllowsSCIM={planAllowsSCIM}
+          managementType={managementType}
+          owner={owner}
+          selectedMembers={selectedMembers}
+          selectedGroups={selectedGroups}
+          onManagementTypeChange={setManagementType}
+          onMembersUpdated={setSelectedMembers}
+          onGroupsUpdated={setSelectedGroups}
+        />
+      )}
 
       <div className="flex justify-end gap-2 pt-4">
         <Button

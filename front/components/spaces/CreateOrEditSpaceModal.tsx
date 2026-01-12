@@ -8,7 +8,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SliderToggle,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import * as React from "react";
@@ -17,6 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmContext } from "@app/components/Confirm";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
+import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
 import { useGroups } from "@app/lib/swr/groups";
 import {
   useCreateSpace,
@@ -349,6 +349,8 @@ export function CreateOrEditSpaceModal({
                   setSelectedMembers([user, ...selectedMembers]);
                 }
               }}
+              unrestrictedDescription="Restricted access is disabled. The space is accessible to everyone in
+          the workspace."
             />
 
             {isRestricted && (
@@ -440,33 +442,6 @@ function SpaceDeleteSection({
         isDeleting={isDeleting}
       />
       <Separator />
-    </>
-  );
-}
-
-interface RestrictedAccessHeaderProps {
-  isRestricted: boolean;
-  onToggle: () => void;
-}
-
-function RestrictedAccessHeader({
-  isRestricted,
-  onToggle,
-}: RestrictedAccessHeaderProps) {
-  return (
-    <>
-      <div className="flex w-full items-center justify-between overflow-visible">
-        <Page.SectionHeader title="Restricted Access" />
-        <SliderToggle selected={isRestricted} onClick={onToggle} />
-      </div>
-      {isRestricted ? (
-        <span>Restricted access is active.</span>
-      ) : (
-        <span>
-          Restricted access is disabled. The space is accessible to everyone in
-          the workspace.
-        </span>
-      )}
     </>
   );
 }

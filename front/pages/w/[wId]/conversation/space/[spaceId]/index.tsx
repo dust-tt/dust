@@ -378,7 +378,7 @@ export default function SpaceConversations({
               <SpaceAboutTab
                 owner={owner}
                 space={spaceInfo}
-                initialMembers={spaceInfo.members ?? []}
+                initialMembers={spaceInfo.members}
                 planAllowsSCIM={planAllowsSCIM}
                 initialGroups={
                   planAllowsSCIM &&
@@ -391,6 +391,7 @@ export default function SpaceConversations({
                     : []
                 }
                 initialManagementMode={spaceInfo.managementMode}
+                initialIsRestricted={spaceInfo.isRestricted}
               />
             )}
           </TabsContent>

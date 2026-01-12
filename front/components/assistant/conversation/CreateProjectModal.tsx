@@ -3,10 +3,13 @@ import {
   Dialog,
   DialogContainer,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   Input,
+  Label,
+  SliderToggle,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
@@ -31,6 +34,7 @@ export function CreateProjectModal({
 }: CreateProjectModalProps) {
   const [projectName, setProjectName] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isRestricted, setIsRestricted] = useState(false);
 
   const doCreate = useCreateSpace({ owner });
   const { user } = useUser();
@@ -68,7 +72,7 @@ export function CreateProjectModal({
 
     const createdSpace = await doCreate({
       name: trimmedName,
-      isRestricted: false,
+      isRestricted,
       managementMode: "manual",
       memberIds: user?.sId ? [user.sId] : [],
       spaceKind: "project",
@@ -88,6 +92,7 @@ export function CreateProjectModal({
     }
   }, [
     projectName,
+    isRestricted,
     doCreate,
     handleClose,
     sendNotification,
@@ -111,6 +116,11 @@ export function CreateProjectModal({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create a new Project</DialogTitle>
+          <DialogDescription>
+            Unrestricted projects are accessible to all the members of the
+            workspace. Restricted projects allow you to control who can access
+            them.
+          </DialogDescription>
         </DialogHeader>
         <DialogContainer>
           <div className="flex w-full flex-col gap-y-4">
@@ -124,6 +134,13 @@ export function CreateProjectModal({
               onKeyDown={handleKeyPress}
               autoFocus
             />
+            <div className="flex w-full items-center justify-between">
+              <Label>Restricted Access</Label>
+              <SliderToggle
+                selected={isRestricted}
+                onClick={() => setIsRestricted(!isRestricted)}
+              />
+            </div>
           </div>
         </DialogContainer>
         <DialogFooter>
