@@ -96,7 +96,7 @@ export default function AppContentLayout({
       />
       <div
         className={cn(
-          "relative flex h-full w-full flex-1 flex-col overflow-hidden",
+          "relative h-full w-full flex-1 overflow-hidden",
           "bg-background text-foreground",
           "dark:bg-background-night dark:text-foreground-night"
         )}
