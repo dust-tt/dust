@@ -147,6 +147,7 @@ function buildOnboardingPrompt(options: {
   favoritePlatforms: FavoritePlatform[];
   configuredTools: InternalMCPServerNameType[];
   username: string;
+  language: string | null;
 }): string {
   const tools = getToolsForOnboarding(
     options.favoritePlatforms,
@@ -205,9 +206,13 @@ function buildOnboardingPrompt(options: {
         suggestedTopToolNames
       );
 
+  const languageInstruction = options.language
+    ? `\n## LANGUAGE\n\nYou MUST respond in ${options.language}. All your messages, including greetings, instructions, and button labels, must be in ${options.language}.\n`
+    : "";
+
   return `<dust_system>
 You are onboarding a brand-new user to Dust.
-${userContext}
+${languageInstruction}${userContext}
 
 ## CRITICAL RULES
 
@@ -412,14 +417,21 @@ const TOOL_TASK_SUGGESTIONS: Record<string, string> = {
 
 const DEFAULT_AUTO_QUERY_GUIDANCE = `Automatically explore this tool to see what data is available. Present 1-2 specific examples of what you found.`;
 
-export function buildOnboardingFollowUpPrompt(toolId: string): string {
+export function buildOnboardingFollowUpPrompt(
+  toolId: string,
+  language: string | null
+): string {
   const queryGuidance =
     TOOL_TASK_SUGGESTIONS[toolId] ?? DEFAULT_AUTO_QUERY_GUIDANCE;
   const toolName = asDisplayName(toolId);
 
+  const languageInstruction = language
+    ? `\n**IMPORTANT:** You MUST respond in ${language}. All your messages must be in ${language}.\n`
+    : "";
+
   return `<dust_system>
 The user just connected ${toolName}.
-
+${languageInstruction}
 **Immediately use the ${toolId} tool** to fetch real data and show personalized suggestions.
 
 Query guidance: ${queryGuidance}
@@ -430,7 +442,10 @@ Briefly confirm the connection (one line + emoji), share what you found, end wit
 
 export async function createOnboardingConversationIfNeeded(
   auth: Authenticator,
-  { force }: { force?: boolean } = { force: false }
+  { force, language }: { force?: boolean; language?: string | null } = {
+    force: false,
+    language: null,
+  }
 ): Promise<Result<string | null, APIErrorWithStatusCode>> {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -540,6 +555,7 @@ export async function createOnboardingConversationIfNeeded(
     favoritePlatforms,
     configuredTools,
     username: userJson.username,
+    language: language ?? null,
   });
 
   const context: UserMessageContext = {

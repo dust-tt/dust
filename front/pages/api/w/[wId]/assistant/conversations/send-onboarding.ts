@@ -5,6 +5,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 export type PostSendOnboardingResponseBody = {
   conversationSId: string;
@@ -29,8 +30,16 @@ async function handler(
 
   switch (req.method) {
     case "POST":
+      // Accept language from body (for testing) or fall back to Accept-Language header.
+      const bodyLanguage = req.body?.language;
+      const acceptLanguage = req.headers["accept-language"];
+      const language = isString(bodyLanguage)
+        ? bodyLanguage
+        : (acceptLanguage?.split(",")[0]?.split("-")[0] ?? null);
+
       const result = await createOnboardingConversationIfNeeded(auth, {
         force: true,
+        language,
       });
 
       if (result.isErr()) {
