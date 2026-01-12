@@ -80,21 +80,9 @@ export function CreateMCPServerDialog({
     name: "authCredentials",
   });
 
-  const remoteServerUrl = useWatch({
+  const [remoteServerUrl, sharedSecret, useCase, oauthFormValid] = useWatch({
     control: form.control,
-    name: "remoteServerUrl",
-  });
-  const sharedSecret = useWatch({
-    control: form.control,
-    name: "sharedSecret",
-  });
-  const useCase = useWatch({
-    control: form.control,
-    name: "useCase",
-  });
-  const oauthFormValid = useWatch({
-    control: form.control,
-    name: "oauthFormValid",
+    name: ["remoteServerUrl", "sharedSecret", "useCase", "oauthFormValid"],
   });
 
   const [

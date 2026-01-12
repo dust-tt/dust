@@ -10,7 +10,7 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
-import { useController, useFormContext, useWatch } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
@@ -46,29 +46,21 @@ export function MCPServerOAuthConnexion({
   documentationUrl,
 }: MCPServerOauthConnexionProps) {
   const form = useFormContext<MCPServerOAuthFormValues>();
-  const {
-    field: { onChange: onUseCaseChange },
-  } = useController({
+  const { field: useCaseField } = useController({
     control: form.control,
     name: "useCase",
   });
-  const {
-    field: { onChange: onAuthCredentialsChange },
-  } = useController({
+  const { field: authCredentialsField } = useController({
     control: form.control,
     name: "authCredentials",
   });
-  const {
-    field: { onChange: onOauthFormValidChange },
-  } = useController({
+  const { field: oauthFormValidField } = useController({
     control: form.control,
     name: "oauthFormValid",
   });
-  const useCase = useWatch({ control: form.control, name: "useCase" });
-  const authCredentials = useWatch({
-    control: form.control,
-    name: "authCredentials",
-  });
+
+  const useCase = useCaseField.value;
+  const authCredentials = authCredentialsField.value;
   const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
 
   useEffect(() => {
@@ -76,11 +68,11 @@ export function MCPServerOAuthConnexion({
       return;
     }
     if (authorization.supported_use_cases.includes("personal_actions")) {
-      onUseCaseChange("personal_actions");
+      useCaseField.onChange("personal_actions");
     } else if (authorization.supported_use_cases.length > 0) {
-      onUseCaseChange(authorization.supported_use_cases[0]);
+      useCaseField.onChange(authorization.supported_use_cases[0]);
     }
-  }, [authorization.supported_use_cases, onUseCaseChange, useCase]);
+  }, [authorization.supported_use_cases, useCaseField, useCase]);
 
   useEffect(() => {
     if (useCase) {
@@ -104,12 +96,12 @@ export function MCPServerOAuthConnexion({
             }
             nextCredentials[key] = inputData.value ?? "";
           }
-          onAuthCredentialsChange(nextCredentials);
+          authCredentialsField.onChange(nextCredentials);
         }
       };
       void fetchCredentialInputs();
     }
-  }, [authorization.provider, onAuthCredentialsChange, useCase]);
+  }, [authorization.provider, authCredentialsField, useCase]);
 
   // We check if the form is valid.
   useEffect(() => {
@@ -118,7 +110,7 @@ export function MCPServerOAuthConnexion({
     }
 
     if (!inputs) {
-      onOauthFormValidChange(!!useCase);
+      oauthFormValidField.onChange(!!useCase);
       return;
     }
 
@@ -142,8 +134,8 @@ export function MCPServerOAuthConnexion({
       }
     }
 
-    onOauthFormValidChange(isFormValid && !!useCase);
-  }, [authCredentials, inputs, onOauthFormValidChange, useCase]);
+    oauthFormValidField.onChange(isFormValid && !!useCase);
+  }, [authCredentials, inputs, oauthFormValidField, useCase]);
 
   const supportsPersonalActions =
     authorization.supported_use_cases.includes("personal_actions");
@@ -175,7 +167,7 @@ export function MCPServerOAuthConnexion({
                 )}
                 onClick={
                   supportsPersonalActions
-                    ? () => onUseCaseChange("personal_actions")
+                    ? () => useCaseField.onChange("personal_actions")
                     : undefined
                 }
               >
@@ -222,7 +214,7 @@ export function MCPServerOAuthConnexion({
                 )}
                 onClick={
                   supportsPlatformActions
-                    ? () => onUseCaseChange("platform_actions")
+                    ? () => useCaseField.onChange("platform_actions")
                     : undefined
                 }
               >
@@ -284,7 +276,7 @@ export function MCPServerOAuthConnexion({
                           ...(authCredentials ?? {}),
                         };
                         nextCredentials[key] = e.target.value;
-                        onAuthCredentialsChange(nextCredentials);
+                        authCredentialsField.onChange(nextCredentials);
                       }}
                       message={inputData.helpMessage}
                       messageStatus={

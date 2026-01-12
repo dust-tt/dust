@@ -5,12 +5,7 @@ import {
   SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
-import {
-  useController,
-  useFieldArray,
-  useFormContext,
-  useWatch,
-} from "react-hook-form";
+import { useController, useFieldArray, useFormContext } from "react-hook-form";
 
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
@@ -32,17 +27,13 @@ export function CustomHeadersConfigurationSection({
     control: form.control,
     name: "useCustomHeaders",
   });
-
-  const { replace: replaceCustomHeaders } = useFieldArray({
-    control: form.control,
-    name: "customHeaders",
-  });
+  const { fields: customHeaders, replace: replaceCustomHeaders } =
+    useFieldArray({
+      control: form.control,
+      name: "customHeaders",
+    });
 
   const useCustomHeaders = useCustomHeadersField.value;
-  const customHeaders = useWatch({
-    control: form.control,
-    name: "customHeaders",
-  });
 
   const showToggle =
     !defaultServerConfig &&

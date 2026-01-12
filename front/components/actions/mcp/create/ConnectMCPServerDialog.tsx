@@ -58,19 +58,14 @@ export function ConnectMCPServerDialog({
     shouldUnregister: false,
   });
 
-  const {
-    field: { onChange: onAuthCredentialsChange },
-  } = useController({
+  const { field: authCredentialsField } = useController({
     control: form.control,
     name: "authCredentials",
   });
-  const useCase = useWatch({
+
+  const [useCase, oauthFormValid] = useWatch({
     control: form.control,
-    name: "useCase",
-  });
-  const oauthFormValid = useWatch({
-    control: form.control,
-    name: "oauthFormValid",
+    name: ["useCase", "oauthFormValid"],
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -122,7 +117,7 @@ export function ConnectMCPServerDialog({
               provider: "mcp",
               supported_use_cases: ["platform_actions", "personal_actions"],
             });
-            onAuthCredentialsChange({
+            authCredentialsField.onChange({
               ...discoverOAuthMetadataRes.value.connectionMetadata,
             });
             setRemoteMCPServerOAuthDiscoveryDone(true);
@@ -147,7 +142,7 @@ export function ConnectMCPServerDialog({
     serverType,
     remoteMCPServerOAuthDiscoveryDone,
     discoverOAuthMetadata,
-    onAuthCredentialsChange,
+    authCredentialsField,
     sendNotification,
   ]);
 
