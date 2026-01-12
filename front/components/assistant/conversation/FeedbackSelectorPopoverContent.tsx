@@ -1,4 +1,4 @@
-import { Page } from "@dust-tt/sparkle";
+import { Avatar, Page } from "@dust-tt/sparkle";
 
 import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
 import type { LightWorkspaceType } from "@app/types";
@@ -39,11 +39,7 @@ export function FeedbackSelectorPopoverContent({
           </span>
           <span className="inline-flex items-center gap-2">
             {agentLastAuthor.image && (
-              <img
-                src={agentLastAuthor.image}
-                alt={agentLastAuthor.firstName}
-                className="h-8 w-8 rounded-full"
-              />
+              <Avatar visual={agentLastAuthor.image} size="sm" />
             )}
             <span className="font-medium text-foreground dark:text-foreground-night">
               {`${agentLastAuthor.firstName} ${agentLastAuthor.lastName}`}
