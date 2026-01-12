@@ -19,6 +19,7 @@ export function SkillEditorsSheet() {
       editors={editors || []}
       onEditorsChange={onChange}
       description="People who can use and edit the skill."
+      buildersOnly
     />
   );
 }
