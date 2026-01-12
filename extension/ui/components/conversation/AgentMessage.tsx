@@ -583,7 +583,9 @@ export function AgentMessage({
   );
 
   const showFeedbackSection = useMemo(
-    () => showButtons && agentMessageToRender.configuration.status !== "draft",
+    () =>
+      showButtons &&
+      agentMessageToRender.configuration.status !== "draft",
     [showButtons, agentMessageToRender.configuration.status]
   );
 

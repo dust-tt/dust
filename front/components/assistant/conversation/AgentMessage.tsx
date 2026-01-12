@@ -81,7 +81,6 @@ import type {
 } from "@app/types";
 import {
   assertNever,
-  isGlobalAgentId,
   isInteractiveContentFileContentType,
   isSupportedImageContentType,
 } from "@app/types";
