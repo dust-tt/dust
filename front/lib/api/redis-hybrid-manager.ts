@@ -5,10 +5,13 @@ import { createClient } from "redis";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 
 type EventCallback = (event: EventPayload | "close") => void;
 
-const HISTORY_FETCH_COUNT = 256;
+// Conservative value to prevent memory spikes during deployment reconnection bursts.
+// Clients automatically paginate if more history is needed.
+const HISTORY_FETCH_COUNT = 50;
 
 export type EventPayload = {
   id: string;
@@ -381,8 +384,10 @@ class RedisHybridManager {
     streamName: string,
     lastEventId: string = "0-0"
   ): Promise<{ events: EventPayload[]; hasMore: boolean }> {
+    const hasLastEventId = lastEventId !== "0-0";
+
     try {
-      return await streamClient
+      const result = await streamClient
         .xRead(
           { key: streamName, id: lastEventId },
           { COUNT: HISTORY_FETCH_COUNT }
@@ -395,13 +400,24 @@ class RedisHybridManager {
                 message: { payload: message.message["payload"] },
               }))
             );
+
+            const eventCount = finalEvents.length;
+            const hasMore = eventCount >= HISTORY_FETCH_COUNT;
+
+            // Track event replay (only when client reconnects with lastEventId)
+            if (hasLastEventId && eventCount > 0) {
+              statsDClient.histogram("sse.history.events_replayed", eventCount);
+            }
+
             return {
               events: finalEvents,
-              hasMore: finalEvents.length >= HISTORY_FETCH_COUNT,
+              hasMore,
             };
           }
           return { events: [], hasMore: false };
         });
+
+      return result;
     } catch (error) {
       logger.error(
         {
