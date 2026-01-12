@@ -10,8 +10,11 @@ import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import type { DataSourceViewContentNode } from "@app/lib/swr/search";
 
-type KnowledgeNode = Omit<DataSourceViewContentNode, "dataSourceViews"> & {
-  dataSourceView: DataSourceViewContentNode["dataSourceViews"][0];
+type KnowledgeNode = Omit<
+  DataSourceViewContentNode,
+  "dataSourceViews" | "dataSource"
+> & {
+  dataSourceView: DataSourceViewContentNode["dataSourceViews"][number];
 };
 
 interface KnowledgeChipProps {
