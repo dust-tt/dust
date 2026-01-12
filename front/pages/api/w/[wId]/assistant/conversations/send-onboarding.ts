@@ -30,7 +30,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      // Accept language from body or fall back to Accept-Language header.
+      // Accept language from body (for testing) or fall back to Accept-Language header.
       const bodyLanguage = req.body?.language;
       const acceptLanguage = req.headers["accept-language"];
       const language = isString(bodyLanguage)

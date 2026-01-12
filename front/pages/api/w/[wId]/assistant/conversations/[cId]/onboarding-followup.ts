@@ -45,7 +45,7 @@ async function handler(
     });
   }
 
-  const { toolId, language } = req.body;
+  const { toolId } = req.body;
 
   if (!isString(toolId) || !isInternalMCPServerName(toolId)) {
     return apiError(req, res, {
@@ -65,10 +65,11 @@ async function handler(
 
   const conversation = conversationRes.value;
 
-  const followUpPrompt = buildOnboardingFollowUpPrompt(
-    toolId,
-    isString(language) ? language : null
-  );
+  // Extract user's preferred language from Accept-Language header.
+  const acceptLanguage = req.headers["accept-language"];
+  const language = acceptLanguage?.split(",")[0]?.split("-")[0] ?? null;
+
+  const followUpPrompt = buildOnboardingFollowUpPrompt(toolId, language);
 
   const messageRes = await postUserMessage(auth, {
     conversation,
