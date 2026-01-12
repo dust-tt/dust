@@ -124,6 +124,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "outlook_calendar",
   "outlook",
   "primitive_types_debugger",
+  "productboard",
   "common_utilities",
   "jit_testing",
   "run_agent",
@@ -1820,6 +1821,49 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "ActionTableIcon",
       documentationUrl: "https://docs.dust.tt/docs/databricks",
       instructions: null,
+    },
+  },
+  productboard: {
+    id: 46,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("productboard_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      get_note: "never_ask",
+      query_notes: "never_ask",
+      create_note: "low",
+      update_note: "low",
+      query_entities: "never_ask",
+      get_relationships: "never_ask",
+      create_entity: "low",
+      update_entity: "low",
+      get_configuration: "never_ask",
+    },
+    tools_approval_holding_arguments: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "productboard",
+      version: "1.0.0",
+      description: "Manage productboard entities and notes.",
+      authorization: {
+        provider: "productboard" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "ProductboardLogo",
+      documentationUrl: null,
+      instructions:
+        "Productboard uses a configuration-driven API. Always start by calling get_configuration to understand available fields.\n\n" +
+        "Typical workflow:\n" +
+        "1. Call get_configuration to retrieve configuration for the entity type you're working with (notes or entities)\n" +
+        "2. Parse the configuration to understand available fields, their types, constraints, and allowed operations\n" +
+        "3. Use the configuration to validate and structure your requests:\n" +
+        "   - When creating/updating notes: check required fields, field types, and allowed operations (set, clear, addItems, removeItems)\n" +
+        "   - When creating/updating entities: check required fields and field types for the specific entity type\n" +
+        "4. Make your tool calls (create_note, update_note, create_entity, update_entity, query_notes, query_entities)",
     },
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
