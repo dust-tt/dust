@@ -1,8 +1,9 @@
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
+import { ContactForm } from "@app/components/home/ContactForm";
 import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
-import HubSpotForm from "@app/components/home/HubSpotForm";
+import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
@@ -21,6 +22,16 @@ export default function Contact() {
   const router = useRouter();
   const companyName =
     typeof router.query.company === "string" ? router.query.company : null;
+  const prefillEmail =
+    typeof router.query.email === "string" ? router.query.email : undefined;
+  const prefillHeadcount =
+    typeof router.query.company_headcount_form === "string"
+      ? router.query.company_headcount_form
+      : undefined;
+  const prefillRegion =
+    typeof router.query.headquarters_region === "string"
+      ? router.query.headquarters_region
+      : undefined;
 
   const subtitle = companyName ? (
     <>
@@ -48,13 +59,15 @@ export default function Contact() {
           hasCTA={false}
           subtitle={subtitle}
         />
-        <div className="grid grid-cols-12 items-start sm:gap-8 md:gap-y-12">
-          <div className="col-span-12 flex flex-col justify-end gap-12 sm:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">
-            <div className="w-full max-w-150">
-              <HubSpotForm />
-            </div>
+        <Grid>
+          <div className="col-span-12 sm:col-span-12 md:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">
+            <ContactForm
+              prefillEmail={prefillEmail}
+              prefillHeadcount={prefillHeadcount}
+              prefillRegion={prefillRegion}
+            />
           </div>
-        </div>
+        </Grid>
         <TrustedBy />
       </div>
     </UTMPageWrapper>
