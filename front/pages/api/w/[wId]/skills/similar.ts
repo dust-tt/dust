@@ -7,7 +7,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isBuilder, isString } from "@app/types";
+import { isString } from "@app/types";
 
 export type GetSimilarSkillsResponseBody = {
   similar_skills: string[];
@@ -19,16 +19,6 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-
-  if (!isBuilder(owner)) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "User is not a builder.",
-      },
-    });
-  }
 
   const featureFlags = await getFeatureFlags(owner);
   if (!featureFlags.includes("skills")) {
