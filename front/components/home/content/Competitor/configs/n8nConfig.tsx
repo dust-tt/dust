@@ -6,7 +6,7 @@ export const n8nConfig: CompetitorPageConfig = {
   competitorLogo: "/static/landing/compare/n8n.svg",
 
   seo: {
-    title: "Best n8n Alternative for Enterprise AI Agents | Dust",
+    title: "n8n Alternative for Enterprise AI Agents | Dust",
     description:
       "Compare Dust to n8n. Enterprise AI agents anyone can build with natural language. Native semantic search, 50+ integrations, SOC 2 security, distributed everywhere teams work. Trusted by Clay, Vanta, Qonto.",
   },

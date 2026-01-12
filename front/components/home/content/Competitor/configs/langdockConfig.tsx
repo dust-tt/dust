@@ -6,7 +6,7 @@ export const langdockConfig: CompetitorPageConfig = {
   competitorLogo: "/static/landing/compare/langdock.svg",
 
   seo: {
-    title: "Best Langdock Alternative for Enterprise AI Agents | Dust",
+    title: "Langdock Alternative for Enterprise AI Agents | Dust",
     description:
       "Compare Dust to Langdock. Superior semantic search, AI everywhere you work, real-time collaboration, and predictable pricing. Trusted by Clay, Vanta, Qonto. 14-day free trial.",
   },
