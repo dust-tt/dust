@@ -13,8 +13,14 @@ Each environment gets its own:
 Install these before using dust-hive:
 
 ```bash
-# Bun (runtime)
+# Bun (runtime for dust-hive itself)
 curl -fsSL https://bun.sh/install | bash
+
+# nvm (Node version manager for front/connectors)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+
+# Rust toolchain (for core/oauth)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Zellij (terminal multiplexer)
 brew install zellij
@@ -28,9 +34,14 @@ brew install temporal
 # direnv (auto-load environment variables)
 brew install direnv
 
-# sccache (Rust compilation cache - speeds up builds across worktrees)
+# Build dependencies
+brew install cmake protobuf
+
+# sccache (optional - Rust compilation cache, speeds up rebuilds)
 brew install sccache
 ```
+
+> **Linux users**: Also install `lsof` if not already available (`sudo apt install lsof`)
 
 ### direnv setup
 
