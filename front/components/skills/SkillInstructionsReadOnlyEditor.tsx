@@ -25,10 +25,21 @@ export function SkillInstructionsReadOnlyEditor({
   });
 
   useEffect(() => {
-    if (editor && onKnowledgeItemsChange) {
+    if (!editor || !onKnowledgeItemsChange) {
+      return;
+    }
+
+    const updateItems = () => {
       const items = editorService.getKnowledgeItems();
       onKnowledgeItemsChange(items);
-    }
+    };
+
+    updateItems();
+    editor.on("update", updateItems);
+
+    return () => {
+      editor.off("update", updateItems);
+    };
   }, [editor, editorService, onKnowledgeItemsChange]);
 
   return (
