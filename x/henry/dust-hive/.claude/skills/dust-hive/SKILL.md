@@ -77,8 +77,8 @@ dust-hive forward status
 ### Managed Services (Global)
 | Command | Description |
 |---------|-------------|
-| `dust-hive up [-a]` | Start temporal + test postgres + sync + main session |
-| `dust-hive down [-f]` | Stop everything (all envs, temporal, test postgres, sessions) |
+| `dust-hive up [-a]` | Start temporal + test postgres + test redis + sync + main session |
+| `dust-hive down [-f]` | Stop everything (all envs, temporal, test postgres, test redis, sessions) |
 | `dust-hive temporal start/stop/status` | Control temporal server |
 
 ### Environment Lifecycle
@@ -153,37 +153,40 @@ curl -sf http://localhost:10001/             # core
 
 ## Running Front Tests in Cold Environments
 
-The `front` project requires a Postgres database to run tests. dust-hive provides a **shared test Postgres** container that allows running front tests without warming up the full environment. This is useful for any agent making changes to front that needs to verify tests pass.
+The `front` project requires a Postgres database and Redis to run tests. dust-hive provides **shared test containers** that allow running front tests without warming up the full environment. This is useful for any agent making changes to front that needs to verify tests pass.
 
 ### How it works
 
 - A shared Postgres container runs on port **5433** (started by `dust-hive up`)
+- A shared Redis container runs on port **6479** (started by `dust-hive up`)
 - Each environment gets its own test database: `dust_front_test_{env_name}`
-- `TEST_FRONT_DATABASE_URI` is already set in each environment's `env.sh`
+- `TEST_FRONT_DATABASE_URI` and `TEST_REDIS_URI` are already set in each environment's `env.sh`
 
 ### Running front tests in a cold environment
 
+**IMPORTANT**: You must set `NODE_ENV=test` when running front tests.
+
 ```bash
 # From any cold environment, run front tests directly
-cd front && npm test
+cd front && NODE_ENV=test npm test
 
 # Run specific test file
-cd front && npm test lib/resources/user_resource.test.ts
+cd front && NODE_ENV=test npm test lib/resources/user_resource.test.ts
 
 # Run with verbose output
-cd front && npm test --reporter verbose path/to/test.test.ts
+cd front && NODE_ENV=test npm test --reporter verbose path/to/test.test.ts
 ```
 
-**No need to warm the environment** - the shared test Postgres is always available.
+**No need to warm the environment** - the shared test Postgres and Redis are always available.
 
-### Test database lifecycle
+### Test infrastructure lifecycle
 
-| Action | Test Database |
-|--------|---------------|
-| `dust-hive spawn` | Created (`dust_front_test_{env_name}`) |
-| `dust-hive destroy` | Dropped |
-| `dust-hive up` | Shared Postgres started |
-| `dust-hive down` | Shared Postgres stopped |
+| Action | Test Postgres | Test Redis |
+|--------|---------------|------------|
+| `dust-hive spawn` | Database created (`dust_front_test_{env_name}`) | N/A (shared) |
+| `dust-hive destroy` | Database dropped | N/A (shared) |
+| `dust-hive up` | Container started (port 5433) | Container started (port 6479) |
+| `dust-hive down` | Container stopped | Container stopped |
 
 ### Troubleshooting front tests
 

@@ -72,8 +72,8 @@ src/
 │   ├── stop.ts        # Stop all services in environment
 │   ├── sync.ts        # Pull main, rebuild binaries, refresh deps
 │   ├── temporal.ts    # Temporal server subcommands
-│   ├── up.ts          # Start managed services (temporal + main session)
-│   ├── down.ts        # Stop all envs, temporal, and zellij sessions
+│   ├── up.ts          # Start managed services (temporal + test postgres + test redis + main session)
+│   ├── down.ts        # Stop all envs, temporal, test postgres, test redis, and sessions
 │   ├── url.ts         # Print front URL
 │   └── warm.ts        # Start docker + all services
 └── lib/               # Shared utilities
@@ -142,8 +142,8 @@ tests/
 
 | Command | Description |
 |---------|-------------|
-| `up [-a]` | Start temporal + sync + create main session (from main repo, requires clean main branch) |
-| `down [-f]` | Stop all envs, temporal, and zellij sessions (requires confirmation or --force) |
+| `up [-a]` | Start temporal + test postgres + test redis + sync + create main session (from main repo, requires clean main branch) |
+| `down [-f]` | Stop all envs, temporal, test postgres, test redis, and sessions (requires confirmation or --force) |
 | `temporal start/stop/restart/status` | Direct temporal server control |
 
 ### Environment Commands

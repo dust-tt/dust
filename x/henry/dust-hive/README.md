@@ -75,7 +75,7 @@ This runs `dust-hive sync` to update dependencies, starts the Temporal server as
 ## Quick Start
 
 ```bash
-# Start managed services (temporal + main session)
+# Start managed services (temporal + test postgres + test redis + main session)
 dust-hive up
 
 # Create a new environment
@@ -104,8 +104,8 @@ dust-hive down
 
 | Command | Description |
 |---------|-------------|
-| `up [-a\|--attach]` | Start temporal + sync + create main session (from main repo) |
-| `down [-f\|--force]` | Stop all environments, temporal, and zellij sessions |
+| `up [-a\|--attach]` | Start temporal + test postgres + test redis + sync + create main session (from main repo) |
+| `down [-f\|--force]` | Stop all envs, temporal, test postgres, test redis, and sessions |
 | `temporal start` | Start Temporal server only |
 | `temporal stop` | Stop Temporal server only |
 | `temporal restart` | Restart Temporal server |

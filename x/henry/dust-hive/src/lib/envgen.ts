@@ -2,6 +2,7 @@ import { CONFIG_ENV_PATH, getEnvFilePath } from "./paths";
 import type { PortAllocation } from "./ports";
 import { getTemporalEnvExports } from "./temporal";
 import { getTestDatabaseUri } from "./test-postgres";
+import { getTestRedisUri } from "./test-redis";
 
 // Generate env.sh content for an environment
 export function generateEnvSh(name: string, ports: PortAllocation): string {
@@ -49,6 +50,9 @@ export OAUTH_DATABASE_URI=postgres://dev:dev@localhost:${ports.postgres}/dust_oa
 
 # === Test Database URI (shared test postgres on port 5433) ===
 export TEST_FRONT_DATABASE_URI=${getTestDatabaseUri(name)}
+
+# === Test Redis URI (shared test redis on port 6479) ===
+export TEST_REDIS_URI=${getTestRedisUri()}
 
 # === Service URIs ===
 export REDIS_URI=redis://localhost:${ports.redis}

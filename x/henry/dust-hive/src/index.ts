@@ -173,7 +173,7 @@ cli
   });
 
 cli
-  .command("up", "Start managed services (temporal + main session)")
+  .command("up", "Start managed services (temporal + test postgres + test redis + main session)")
   .option("-a, --attach", "Attach to main zellij session")
   .option("-f, --force", "Force rebuild even if no changes detected")
   .option("-C, --compact", "Use compact zellij layout (bar at bottom)")
@@ -188,7 +188,7 @@ cli
   });
 
 cli
-  .command("down", "Stop all dust-hive services")
+  .command("down", "Stop all envs, temporal, test postgres, test redis, and sessions")
   .option("-f, --force", "Skip confirmation prompt")
   .action(async (options: { force?: boolean }) => {
     await prepareAndRun(downCommand({ force: Boolean(options.force) }));
