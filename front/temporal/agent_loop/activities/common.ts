@@ -211,7 +211,26 @@ export async function notifyWorkflowError(
   { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
   error: Error
 ): Promise<void> {
-  const authResult = await AuthenticatorClass.fromJSON(authType);
+  let authResult = await AuthenticatorClass.fromJSON(authType);
+
+  // If subscription changed while the message was running, get a fresh auth with the current
+  // subscription and continue gracefully.
+  if (authResult.isErr() && authResult.error.code === "subscription_mismatch") {
+    logger.info(
+      {
+        workspaceId: authType.workspaceId,
+        originalSubscriptionId: authType.subscriptionId,
+      },
+      "Subscription changed while message was running, using fresh auth in notifyWorkflowError"
+    );
+
+    // Retry without the subscriptionId constraint to get the current subscription.
+    authResult = await AuthenticatorClass.fromJSON({
+      ...authType,
+      subscriptionId: null,
+    });
+  }
+
   if (authResult.isErr()) {
     throw new Error(
       `Failed to deserialize authenticator: ${authResult.error.code}`
