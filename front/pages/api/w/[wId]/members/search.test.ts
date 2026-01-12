@@ -318,10 +318,7 @@ describe("GET /api/w/[wId]/members/search", () => {
       role: "admin",
     });
 
-    const users = await Promise.all([
-      UserFactory.basic(),
-      UserFactory.basic(),
-    ]);
+    const users = await Promise.all([UserFactory.basic(), UserFactory.basic()]);
 
     await Promise.all([
       MembershipFactory.associate(workspace, users[0], { role: "builder" }),
@@ -346,10 +343,7 @@ describe("GET /api/w/[wId]/members/search", () => {
       role: "admin",
     });
 
-    const users = await Promise.all([
-      UserFactory.basic(),
-      UserFactory.basic(),
-    ]);
+    const users = await Promise.all([UserFactory.basic(), UserFactory.basic()]);
 
     await Promise.all([
       MembershipFactory.associate(workspace, users[0], { role: "builder" }),
