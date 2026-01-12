@@ -291,5 +291,8 @@
     "fs": false,
     "dgram": false,
     "child_process": false
+  },
+  "overrides": {
+    "whatwg-url": "^14.0.0"
   }
 }
