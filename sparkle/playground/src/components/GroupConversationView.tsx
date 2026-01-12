@@ -386,14 +386,17 @@ export function GroupConversationView({
                                         </div>
                                       )}
                                       <div className="s-heading-xs s-flex s-items-center s-gap-2 s-pt-2 s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                        {Math.floor(Math.random() * 8) + 1}{" "}
-                                        replies
                                         <Avatar.Stack
                                           avatars={avatarProps}
                                           nbVisibleItems={3}
                                           onTop="first"
                                           size="xs"
                                         />
+                                        {Math.floor(Math.random() * 8) + 1}{" "}
+                                        replies.
+                                        <span className="s-font-normal">
+                                          Last from @seb 5 minutes ago.
+                                        </span>
                                       </div>
                                     </div>
                                   </ListItem>
