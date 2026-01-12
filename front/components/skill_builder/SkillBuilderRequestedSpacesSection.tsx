@@ -70,8 +70,8 @@ export function SkillBuilderRequestedSpacesSection() {
       {nonGlobalSpacesUsedInActions.length > 0 && (
         <div className="mb-4 w-full">
           <ContentMessage variant="golden" size="lg">
-            Based on your selection, this skill can only be used by users with
-            access to space
+            Based on your selection of knowledge and tools, this skill can only
+            be used by users with access to space
             {pluralize(nonGlobalSpacesUsedInActions.length)} :{" "}
             <strong>
               {nonGlobalSpacesUsedInActions.map((v) => v.name).join(", ")}

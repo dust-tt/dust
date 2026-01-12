@@ -172,8 +172,8 @@ export function AgentBuilderSpacesBlock() {
       {nonGlobalSpacesWithRestrictions.length > 0 && (
         <div className="mb-4 w-full">
           <ContentMessage variant="golden" size="lg">
-            Based on your selection, this agent can only be used by users with
-            access to space
+            Based on your selection of knowledge and capabilities, this agent
+            can only be used by users with access to space
             {pluralize(nonGlobalSpacesWithRestrictions.length)} :{" "}
             <strong>
               {nonGlobalSpacesWithRestrictions.map((v) => v.name).join(", ")}
