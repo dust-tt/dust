@@ -18,6 +18,10 @@ import { isRoleType } from "./user";
  *  agent. Has special permissions: not restricted only to admins. Users can
  *  create, and members of the group can update it.
  *
+ * skill_editors group: Group specific to represent skill editors, tied to a
+ *  skill. Has special permissions: not restricted only to admins. Users can
+ *  create, and members of the group can update it.
+ *
  *  provisioned group: Contains all users from a provisioned group.
  */
 export const GROUP_KINDS = [
@@ -25,6 +29,7 @@ export const GROUP_KINDS = [
   "global",
   "system",
   "agent_editors",
+  "skill_editors",
   "provisioned",
 ] as const;
 export type GroupKind = (typeof GROUP_KINDS)[number];
@@ -43,6 +48,10 @@ export function isAgentEditorGroupKind(value: GroupKind): boolean {
   return value === "agent_editors";
 }
 
+export function isSkillEditorGroupKind(value: GroupKind): boolean {
+  return value === "skill_editors";
+}
+
 export type GroupType = {
   id: ModelId;
   name: string;
@@ -56,6 +65,7 @@ export const GroupKindCodec = t.keyof({
   global: null,
   regular: null,
   agent_editors: null,
+  skill_editors: null,
   system: null,
   provisioned: null,
 });
@@ -112,5 +122,6 @@ export function getHeaderFromRole(role: RoleType | undefined) {
 }
 
 export const AGENT_GROUP_PREFIX = "Group for Agent";
+export const SKILL_GROUP_PREFIX = "Group for Skill";
 export const SPACE_GROUP_PREFIX = "Group for space";
 export const GLOBAL_SPACE_NAME = "Company Data";

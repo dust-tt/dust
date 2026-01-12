@@ -66,11 +66,11 @@ import type {
   Result,
 } from "@app/types";
 import {
-  AGENT_GROUP_PREFIX,
   Err,
   normalizeError,
   Ok,
   removeNulls,
+  SKILL_GROUP_PREFIX,
 } from "@app/types";
 import type {
   SkillStatus,
@@ -316,8 +316,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const defaultGroup = await GroupResource.makeNew(
       {
         workspaceId: workspace.id,
-        name: `${AGENT_GROUP_PREFIX} ${skill.name} (skill:${skill.id})`,
-        kind: "agent_editors",
+        name: `${SKILL_GROUP_PREFIX} ${skill.name} (skill:${skill.id})`,
+        kind: "skill_editors",
       },
       { transaction }
     );
