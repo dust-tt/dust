@@ -37,7 +37,6 @@ import {
 const isWorkflowRunning = async (handle: WorkflowHandle): Promise<boolean> => {
   try {
     const description = await handle.describe();
-    // Workflow is running if it's in one of these states
     return description.status.name === "RUNNING";
   } catch (e) {
     if (!(e instanceof WorkflowNotFoundError)) {
@@ -108,7 +107,6 @@ export async function launchGoogleDriveFullSyncWorkflow(
             garbageCollect: true,
             startSyncTs: undefined,
             mimeTypeFilter,
-            folderWorkflowCounters: {},
             initialFolderIds: addedFolderIds,
           },
         ],

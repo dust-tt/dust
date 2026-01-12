@@ -401,15 +401,9 @@ export async function googleDriveFolderSync({
 
 export function googleDriveFolderSyncWorkflowId(
   connectorId: ModelId,
-  folderId: string,
-  folderWorkflowCounters: Record<string, number>
+  folderId: string
 ): string {
-  // Increment counter for this folder to get a unique workflow ID.
-  // This is to avoid conflicts when starting/stopping workflow multiple times.
-  const counter = (folderWorkflowCounters[folderId] || 0) + 1;
-  folderWorkflowCounters[folderId] = counter;
-
-  return `googleDrive-fullSync-${connectorId}-folder-${folderId}-${counter}`;
+  return `googleDrive-fullSync-${connectorId}-folder-${folderId}`;
 }
 
 /**
@@ -424,14 +418,12 @@ export async function googleDriveFullSyncV2({
   garbageCollect = true,
   startSyncTs = undefined,
   mimeTypeFilter,
-  folderWorkflowCounters = {},
   initialFolderIds = null,
 }: {
   connectorId: ModelId;
   garbageCollect: boolean;
   startSyncTs: number | undefined;
   mimeTypeFilter?: string[];
-  folderWorkflowCounters?: Record<string, number>;
   initialFolderIds?: string[] | null;
 }) {
   // Initialize sync timestamp
@@ -469,14 +461,11 @@ export async function googleDriveFullSyncV2({
 
   // Helper to start a child workflow for a folder (does not wait for completion)
   const launchFolderWorkflow = async (folderId: string) => {
-    const childWorkflowId = googleDriveFolderSyncWorkflowId(
-      connectorId,
-      folderId,
-      folderWorkflowCounters
-    );
+    const childWorkflowId = googleDriveFolderSyncWorkflowId(connectorId, folderId);
 
     const handle = await startChild(googleDriveFolderSync, {
       workflowId: childWorkflowId,
+      workflowIdReusePolicy: "TERMINATE_IF_RUNNING",
       searchAttributes: { connectorId: [connectorId] },
       args: [
         {
@@ -660,7 +649,6 @@ export async function googleDriveFullSyncV2({
       garbageCollect: true,
       startSyncTs: undefined,
       mimeTypeFilter,
-      folderWorkflowCounters: {},
       initialFolderIds: [...addedFoldersForNextRun],
     });
   } else if (removedFoldersForNextRun.size > 0) {
