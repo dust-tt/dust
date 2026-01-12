@@ -116,6 +116,12 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     status: "built",
     isDeletable: false,
   },
+  dust_project: {
+    name: "Dust Project",
+    connectorProvider: "dust_project",
+    status: "preview",
+    isDeletable: false,
+  },
 };
 
 const WEBHOOK_BASED_CONNECTORS: ConnectorProvider[] = ["slack", "github"];
@@ -173,6 +179,7 @@ export const isConnectorProviderAllowedForPlan = (
     case "zendesk":
     case "bigquery":
     case "gong":
+    case "dust_project":
       return true;
     default:
       assertNever(provider);
@@ -202,6 +209,7 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "salesforce":
     case "snowflake":
     case "webcrawler":
+    case "dust_project": //TODO(project): maybe re-evaluate this for dust_project
       return false;
     default:
       assertNever(provider);
@@ -217,6 +225,7 @@ export const isBotIntegration = (provider: ConnectorProvider): boolean => {
       return true;
     case "bigquery":
     case "confluence":
+    case "dust_project":
     case "github":
     case "gong":
     case "google_drive":
@@ -258,31 +267,4 @@ export function getDefaultDataSourceDescription(
   return suffix
     ? `Managed Data Source for ${provider} (${suffix})`
     : `Managed Data Source for ${provider}`;
-}
-
-export function isConnectorTypeTrackable(
-  connectorType: ConnectorProvider
-): boolean {
-  switch (connectorType) {
-    case "google_drive":
-    case "github":
-    case "notion":
-    case "microsoft":
-    case "microsoft_bot":
-    case "confluence":
-    case "intercom":
-    case "webcrawler":
-    case "snowflake":
-    case "zendesk":
-    case "bigquery":
-    case "salesforce":
-    case "gong":
-      return true;
-    case "slack":
-    case "slack_bot":
-    case "discord_bot":
-      return false;
-    default:
-      assertNever(connectorType);
-  }
 }

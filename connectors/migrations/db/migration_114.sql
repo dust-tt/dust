@@ -47,4 +47,4 @@ CREATE UNIQUE INDEX "dust_project_conversations_connector_id_conversation_id" ON
 
 CREATE INDEX "dust_project_conversations_connector_id_last_message_at" ON "dust_project_conversations" ("connectorId", "lastMessageAt");
 
-CREATE INDEX "dust_project_conversations_connector_id_project_id_conversation_id" ON "dust_project_conversations" ("connectorId", "projectId", "conversationId");
+CREATE INDEX "dust_project_conversations_connector_id_project_id_conversation" ON "dust_project_conversations" ("connectorId", "projectId", "conversationId");

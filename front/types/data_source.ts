@@ -10,6 +10,7 @@ export const CONNECTOR_PROVIDERS = [
   "bigquery",
   "confluence",
   "discord_bot",
+  "dust_project",
   "github",
   "gong",
   "google_drive",

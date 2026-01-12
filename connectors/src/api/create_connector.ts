@@ -175,7 +175,8 @@ const _createConnectorAPIHandler = async (
       case "microsoft":
       case "microsoft_bot":
       case "salesforce":
-      case "gong": {
+      case "gong":
+      case "dust_project": {
         connectorRes = await createConnector({
           connectorProvider: req.params.connector_provider,
           params: {
@@ -189,11 +190,6 @@ const _createConnectorAPIHandler = async (
           },
         });
         break;
-      }
-
-      case "dust_project": {
-        //TODO(project): implement this
-        throw new Error("Dust project connector is not implemented yet");
       }
 
       default:

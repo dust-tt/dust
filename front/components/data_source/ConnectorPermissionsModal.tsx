@@ -1106,6 +1106,8 @@ export function ConnectorPermissionsModal({
             return null;
           case "discord_bot":
             return null;
+          case "dust_project":
+            return null;
           default:
             assertNever(c.type);
         }
