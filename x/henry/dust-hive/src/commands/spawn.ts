@@ -126,16 +126,12 @@ source "${envShPath}"
   await Bun.write(envrcPath, envrcContent);
 
   // Run direnv allow on the worktree directory (ignore if direnv not installed)
-  try {
-    const proc = Bun.spawn(["direnv", "allow", worktreePath], {
-      cwd: worktreePath,
-      stdout: "ignore",
-      stderr: "ignore",
-    });
-    await proc.exited;
-  } catch {
-    // direnv not installed, ignore
-  }
+  const proc = Bun.spawn(["direnv", "allow", worktreePath], {
+    cwd: worktreePath,
+    stdout: "ignore",
+    stderr: "ignore",
+  });
+  await proc.exited;
 }
 
 // Phase 2: Create worktree and install dependencies
