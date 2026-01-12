@@ -1,4 +1,5 @@
 import {
+  ArrowRightIcon,
   Avatar,
   Button,
   CheckIcon,
@@ -19,6 +20,7 @@ interface InboxViewProps {
   users: User[];
   agents: Agent[];
   onConversationClick?: (conversation: Conversation) => void;
+  onSpaceClick?: (space: Space) => void;
 }
 
 // Helper function to get random participants for a conversation
@@ -100,6 +102,7 @@ export function InboxView({
   users,
   agents,
   onConversationClick,
+  onSpaceClick,
 }: InboxViewProps) {
   // Filter conversations that have a spaceId and are "unread" (for demo, use recent conversations)
   const unreadConversations = useMemo(() => {
@@ -152,12 +155,12 @@ export function InboxView({
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background s-px-6">
       <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto">
-        <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-py-8">
+        <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-py-4">
           <h2 className="s-mb-4 s-mt-6 s-text-2xl s-font-semibold s-text-foreground dark:s-text-foreground-night">
             Inbox
           </h2>
           {spacesWithUnread.length > 0 ? (
-            <div className="s-flex s-flex-col s-gap-3">
+            <div className="s-flex s-flex-col">
               {spacesWithUnread.map((space) => {
                 const spaceConversations =
                   conversationsBySpace.get(space.id) || [];
@@ -172,13 +175,25 @@ export function InboxView({
                           <Button
                             label="Mark as read"
                             icon={CheckIcon}
-                            size="xs"
-                            variant="outline"
+                            size="sm"
+                            variant="ghost-secondary"
                           />
                         }
                       >
-                        Activity in{" "}
-                        <span className="s-italic">"{space.name}"</span>
+                        <Button
+                          size="sm"
+                          variant="ghost-secondary"
+                          label={`Activity in "${space.name}"`}
+                          onClick={() => onSpaceClick?.(space)}
+                        />
+                        {/* Activity in{" "}
+                        <span className="s-italic">"{space.name}"</span> */}
+                        {/* <Button
+                          size="xmini"
+                          variant="ghost-secondary"
+                          icon={ArrowRightIcon}
+                          className="s-ml-2"
+                        /> */}
                       </ListItemSection>
                       <ListGroup>
                         {spaceConversations.map((conversation) => {
