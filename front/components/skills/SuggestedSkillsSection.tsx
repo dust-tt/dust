@@ -3,7 +3,6 @@ import {
   Button,
   Card,
   CardActionButton,
-  CardGrid,
   PlusIcon,
   SparklesIcon,
   XMarkIcon,
@@ -69,7 +68,7 @@ function SuggestedSkillCard({
           <div className="flex flex-col">
             <div className="mb-2 flex items-center gap-2">
               <Avatar icon={getSkillIcon(skill.icon)} size="sm" />
-              <span className="text-sm font-medium">{skill.name}</span>
+              <span className="truncate text-sm font-medium">{skill.name}</span>
             </div>
             <p className="line-clamp-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
               {skill.userFacingDescription}
@@ -116,17 +115,19 @@ export function SuggestedSkillsSection({
         Suggested skills
         <SparklesIcon className="h-4 w-4" />
       </h4>
-      <CardGrid>
+      <div className="flex gap-2 overflow-x-auto">
         {skills.map((skill) => (
-          <SuggestedSkillCard
-            key={skill.sId}
-            skill={skill}
-            onMoreInfoClick={() => onSkillClick(skill)}
-            owner={owner}
-            user={user}
-          />
+          <div key={skill.sId} className="max-w-80 flex-shrink-0">
+            <SuggestedSkillCard
+              key={skill.sId}
+              skill={skill}
+              onMoreInfoClick={() => onSkillClick(skill)}
+              owner={owner}
+              user={user}
+            />
+          </div>
         ))}
-      </CardGrid>
+      </div>
     </div>
   );
 }
