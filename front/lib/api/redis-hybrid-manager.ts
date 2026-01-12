@@ -574,6 +574,15 @@ class RedisHybridManager {
       },
     };
   }
+
+  /**
+   * Ping Redis to check connectivity.
+   * Used by startup probe to verify Redis is accessible before accepting traffic.
+   */
+  public async ping(): Promise<void> {
+    const client = await this.getStreamAndPublishClient();
+    await client.ping();
+  }
 }
 
 export const getRedisHybridManager = () => {
