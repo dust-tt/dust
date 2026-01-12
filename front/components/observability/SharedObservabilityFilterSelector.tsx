@@ -83,27 +83,7 @@ export function SharedObservabilityFilterSelector({
         </ButtonsSwitchList>
       )}
 
-      {mode === "timeRange" || !isCustomAgent ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              label={`${period} days`}
-              size="xs"
-              variant="outline"
-              isSelect
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {OBSERVABILITY_TIME_RANGE.map((p) => (
-              <DropdownMenuItem
-                key={p}
-                label={`${p} days`}
-                onClick={() => setPeriod(p)}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : (
+      {isCustomAgent && mode === "version" ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -127,6 +107,26 @@ export function SharedObservabilityFilterSelector({
                 key={marker.version}
                 label={getVersionValue(marker)}
                 onClick={() => setSelectedVersion(marker)}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              label={`${period} days`}
+              size="xs"
+              variant="outline"
+              isSelect
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {OBSERVABILITY_TIME_RANGE.map((p) => (
+              <DropdownMenuItem
+                key={p}
+                label={`${p} days`}
+                onClick={() => setPeriod(p)}
               />
             ))}
           </DropdownMenuContent>

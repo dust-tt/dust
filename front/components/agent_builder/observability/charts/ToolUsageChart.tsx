@@ -101,7 +101,7 @@ export function ToolUsageChart({
       errorMessage={errorMessage}
       emptyMessage={chartData.length === 0 ? emptyMessage : undefined}
       additionalControls={
-        isCustomAgent ? (
+        isCustomAgent && (
           <ButtonsSwitchList defaultValue={toolMode} size="xs">
             <ButtonsSwitch
               value="version"
@@ -114,7 +114,7 @@ export function ToolUsageChart({
               onClick={() => setToolMode("step")}
             />
           </ButtonsSwitchList>
-        ) : undefined
+        )
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
