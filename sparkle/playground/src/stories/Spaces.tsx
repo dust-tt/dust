@@ -674,12 +674,16 @@ function DustMain() {
                 // Deterministically assign open or restricted status based on space ID
                 const isRestricted =
                   space.id.charCodeAt(space.id.length - 1) % 2 === 0;
+                // Deterministically assign count to some spaces based on space ID
+                const spaceIndex = space.id.charCodeAt(space.id.length - 1);
+                const count = spaceIndex % 3 === 0 ? (spaceIndex % 9) + 1 : undefined;
                 return (
                   <NavigationListItem
                     key={space.id}
                     label={space.name}
                     icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
                     selected={space.id === selectedSpaceId}
+                    count={count}
                     moreMenu={
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

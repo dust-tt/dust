@@ -129,7 +129,7 @@ const NavigationListItem = React.forwardRef<
     };
 
     const shouldShowStatusDot = status !== "idle";
-    const shouldShowCounter = count !== undefined && count > 0;
+    const counterValue = count && count > 0 ? count : undefined;
 
     return (
       <div
@@ -170,9 +170,9 @@ const NavigationListItem = React.forwardRef<
                 {label}
               </span>
             )}
-            {shouldShowCounter && (
+            {counterValue && (
               <Counter
-                value={count}
+                value={counterValue}
                 size="xs"
                 variant="outline"
                 className={cn(
@@ -363,7 +363,7 @@ const collapseableStyles = cva(
 );
 
 const NavigationListCollapsibleSection = React.forwardRef<
-  React.ElementRef<typeof Collapsible>,
+  HTMLDivElement | React.ElementRef<typeof Collapsible>,
   NavigationListCollapsibleSectionProps
 >(
   (
