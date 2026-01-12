@@ -175,6 +175,19 @@ function DustMain() {
     return [...conversationsWithMessages, ...mockConversations];
   }, [conversationsWithMessages]);
 
+  // Calculate unread count for Inbox (same logic as InboxView)
+  const unreadCount = useMemo(() => {
+    const now = new Date();
+    const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+
+    return allConversations.filter((conv) => {
+      // Must have a spaceId
+      if (!conv.spaceId) return false;
+      // For demo: consider conversations updated in the last 2 days as "unread"
+      return conv.updatedAt >= twoDaysAgo;
+    }).length;
+  }, [allConversations]);
+
   const filteredConversations = useMemo(() => {
     if (!searchText.trim()) {
       return allConversations;
@@ -588,6 +601,7 @@ function DustMain() {
                 label="Inbox"
                 icon={InboxIcon}
                 selected={selectedView === "inbox"}
+                count={unreadCount > 0 ? unreadCount : undefined}
                 onClick={() => {
                   setSelectedView("inbox");
                   setSelectedSpaceId(null);
@@ -1189,6 +1203,12 @@ function DustMain() {
           setSelectedView("conversation");
           setSelectedConversationId(conversation.id);
           setCameFromInbox(true);
+        }}
+        onSpaceClick={(space) => {
+          setSelectedSpaceId(space.id);
+          setSelectedView("space");
+          setSelectedConversationId(null);
+          setCameFromInbox(false);
         }}
       />
     ) : // Priority 3: Show space view if a space is selected
