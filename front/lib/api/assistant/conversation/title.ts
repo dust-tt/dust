@@ -1,5 +1,3 @@
-import clone from "lodash/clone";
-
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
@@ -59,27 +57,9 @@ export async function ensureConversationTitle(
     return conversation.title;
   }
 
-  // If the last message is a function call without tool output,
-  // We strip it for title generation otherwise the model will throw.
-  const conversationContent = clone(conversation.content);
-  const lastConversationBatch =
-    conversationContent[conversationContent.length - 1];
-  const lastConversationBatchMessage =
-    lastConversationBatch[lastConversationBatch.length - 1];
-  if (lastConversationBatchMessage?.type === "agent_message") {
-    while (
-      lastConversationBatchMessage.contents[
-        lastConversationBatchMessage.contents.length - 1
-      ]?.content.type === "function_call"
-    ) {
-      lastConversationBatchMessage.contents =
-        lastConversationBatchMessage.contents.slice(0, -1);
-    }
-  }
-
   const titleRes = await generateConversationTitle(auth, {
     ...conversation,
-    content: [...conversationContent, [userMessage]],
+    content: [...conversation.content, [userMessage]],
   });
 
   if (titleRes.isErr()) {
