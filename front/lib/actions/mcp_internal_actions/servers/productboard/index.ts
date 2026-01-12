@@ -44,12 +44,7 @@ function createServer(
 
   server.tool(
     "create_note",
-    `Create a note in Productboard to capture customer feedback, insights, or support conversations.
-
-**Workflow:**
-1. Call \`get_configuration\` with \`entity_type='simple'\` or \`entity_type='conversation'\` to discover available fields
-2. Build \`fields\` object with required and optional fields from configuration
-3. Build \`relationships\` array to link to customers or product entities`,
+    "Create a note in Productboard to capture customer feedback, insights, or support conversations.",
 
     {
       type: z
@@ -108,7 +103,7 @@ function createServer(
         return new Ok([
           {
             type: "text" as const,
-            text: `Note created with id ${result.value.id}. View in Productboard: ${result.value.links.self}`,
+            text: `Note created with id ${result.value.id}. API endpoint: ${result.value.links.self} (Note: This is an API endpoint for programmatic access, not a user-facing link to view the note)`,
           },
         ]);
       }
@@ -117,35 +112,7 @@ function createServer(
 
   server.tool(
     "update_note",
-    `Update an existing note in Productboard.
-
-**Update Methods:**
-1. **Field Updates**: Use \`fields\` object to replace entire field values
-2. **Patch Operations**: Use \`patch\` array for granular updates (set, clear, addItems, removeItems)
-
-**Field-Specific Patch Operation Support:**
-- **owner**: set, clear
-- **tags**: set, clear, addItems, removeItems
-- **archived**: set
-- **processed**: set
-- **name**: set
-- **content** (simple): set
-- **content** (conversation): set, addItems, removeItems
-
-**Operation Rules:**
-- Cannot combine \`set\`/\`clear\` with \`addItems\`/\`removeItems\` on the same field
-- Cannot combine both \`set\` and \`clear\` on the same field
-- Can combine \`addItems\` and \`removeItems\` together on the same field
-
-**Known Limitations:**
-- Notes with content linked to features cannot have content updated (422 error)
-- Unarchiving a note (archived=false) automatically sets it to processed
-
-**Examples:**
-- Field update: \`{fields: {name: "New name", tags: [{name: "tag1"}]}}\`
-- Patch set: \`{patch: [{op: "set", path: "name", value: "New name"}]}\`
-- Patch addItems: \`{patch: [{op: "addItems", path: "tags", value: [{name: "new-tag"}]}]}\`
-- Patch clear: \`{patch: [{op: "clear", path: "owner"}]}\``,
+    "Update an existing note in Productboard. Use the fields object for simple updates or the patch array for granular operations.",
     {
       note_id: z.string().uuid().describe("UUID of the note to update"),
 
@@ -221,7 +188,7 @@ function createServer(
         return new Ok([
           {
             type: "text" as const,
-            text: `Note updated with id ${result.value.id}. View in Productboard: ${result.value.links.self}`,
+            text: `Note updated with id ${result.value.id}`,
           },
         ]);
       }
@@ -543,12 +510,7 @@ function createServer(
 
   server.tool(
     "create_entity",
-    `Create an entity in Productboard (products, components, features, initiatives, etc.).
-
-**Workflow:**
-1. Call \`get_configuration\` with \`entity_type\` to discover available fields
-2. Build \`fields\` object with required and optional fields from configuration
-3. Build \`relationships\` array to link to parent entities or other relationships`,
+    "Create an entity in Productboard (products, components, features, initiatives, etc.)",
     {
       type: z
         .enum([
@@ -621,7 +583,7 @@ function createServer(
         return new Ok([
           {
             type: "text" as const,
-            text: `Entity created with id ${result.value.id}. View in Productboard: ${result.value.links.self}`,
+            text: `Entity created with id ${result.value.id}. API endpoint: ${result.value.links.self} (Note: This is an API endpoint for programmatic access, not a user-facing link to view the entity)`,
           },
         ]);
       }
@@ -630,26 +592,7 @@ function createServer(
 
   server.tool(
     "update_entity",
-    `Update an existing entity in Productboard.
-
-**Update Methods:**
-- **Field Updates**: Replace entire field values using the \`fields\` object
-- **Patch Operations**: Perform granular updates using the \`patch\` array with operations (\`set\`, \`clear\`, \`addItems\`, \`removeItems\`)
-
-**Patch Operations:**
-- \`set\`: Set or replace a field value
-- \`clear\`: Clear/erase a field value
-- \`addItems\`: Add items to a list-type field (e.g., tags, teams)
-- \`removeItems\`: Remove items from a list-type field
-
-**Operation Compatibility Rules (for each field):**
-- Cannot combine \`set\`/\`clear\` with \`addItems\`/\`removeItems\` operations on the same field
-- Cannot combine both \`set\` and \`clear\` operations on the same field
-- Can combine \`addItems\` and \`removeItems\` together on the same field (for array operations)
-
-**Workflow:**
-1. Call \`get_configuration\` with \`entity_type\` to discover which fields can be updated and what operations are allowed
-2. Use \`fields\` for simple full replacements or \`patch\` for granular operations`,
+    "Update an existing entity in Productboard. Use the fields object for simple updates or the patch array for granular operations.",
     {
       entity_id: z.string().uuid().describe("UUID of the entity to update"),
 
@@ -725,7 +668,7 @@ function createServer(
         return new Ok([
           {
             type: "text" as const,
-            text: `Entity with id ${result.value.id} updated successfully. View in Productboard: ${result.value.links.self}`,
+            text: `Entity with id ${result.value.id} updated successfully.`,
           },
         ]);
       }
@@ -790,16 +733,7 @@ Use to understand how entities are connected in the product hierarchy.`,
 
   server.tool(
     "get_configuration",
-    `Get configuration for a specific entity type in this workspace.
-
-Productboard has a flexible data model - available fields vary by workspace.
-Call this to discover:
-- What fields the entity type supports
-- Required vs optional fields  
-- Field types and constraints
-- Allowed operations (set, clear, addItems, removeItems)
-
-**Use before creating/updating** to understand what fields you can use.`,
+    "Get configuration for a specific entity type in this workspace. This is REQUIRED before creating or updating any entity or note. Returns available fields, required vs optional fields, field types, constraints, and allowed operations.",
     {
       entity_type: z
         .enum([

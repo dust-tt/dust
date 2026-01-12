@@ -316,9 +316,22 @@ export class ProductboardClient {
       return new Err(result.error);
     }
 
+    let pageCursor: string | null = null;
+    if (result.value.links?.next) {
+      try {
+        const url = new URL(result.value.links.next);
+        const cursor = url.searchParams.get("pageCursor");
+        if (cursor) {
+          pageCursor = cursor;
+        }
+      } catch {
+        pageCursor = null;
+      }
+    }
+
     return new Ok({
       notes: result.value.data,
-      pageCursor: result.value.pageCursor ?? null,
+      pageCursor,
       totalResults: result.value.totalResults,
     });
   }
@@ -448,7 +461,7 @@ export class ProductboardClient {
           pageCursor = cursor;
         }
       } catch {
-        pageCursor = result.value.links.next;
+        pageCursor = null;
       }
     }
 
@@ -604,7 +617,7 @@ export class ProductboardClient {
           pageCursor = cursor;
         }
       } catch {
-        pageCursor = result.value.links.next;
+        pageCursor = null;
       }
     }
 

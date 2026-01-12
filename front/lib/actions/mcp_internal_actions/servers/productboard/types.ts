@@ -303,7 +303,11 @@ export const ProductboardConfigurationsResponseSchema = z.object({
 
 export const ProductboardNotesListResponseSchema = z.object({
   data: z.array(ProductboardNoteResponseSchema.shape.data),
-  pageCursor: z.string().nullable().optional(),
+  links: z
+    .object({
+      next: z.string().nullable().optional(),
+    })
+    .optional(),
   totalResults: z.number().optional(),
 });
 

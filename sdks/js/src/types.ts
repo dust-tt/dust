@@ -691,7 +691,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slideshow"
   | "usage_data_api"
   | "xai_feature"
-  | "productboard_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
