@@ -14,6 +14,7 @@ import {
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
+import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import {
   DEEP_DIVE_NAME,
@@ -1827,10 +1828,8 @@ export const INTERNAL_MCP_SERVERS = {
     id: 46,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("productboard_tool");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       get_note: "never_ask",
       query_notes: "never_ask",
@@ -1854,16 +1853,8 @@ export const INTERNAL_MCP_SERVERS = {
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
       },
       icon: "ProductboardLogo",
-      documentationUrl: null,
-      instructions:
-        "Productboard uses a configuration-driven API. Always start by calling get_configuration to understand available fields.\n\n" +
-        "Typical workflow:\n" +
-        "1. Call get_configuration to retrieve configuration for the entity type you're working with (notes or entities)\n" +
-        "2. Parse the configuration to understand available fields, their types, constraints, and allowed operations\n" +
-        "3. Use the configuration to validate and structure your requests:\n" +
-        "   - When creating/updating notes: check required fields, field types, and allowed operations (set, clear, addItems, removeItems)\n" +
-        "   - When creating/updating entities: check required fields and field types for the specific entity type\n" +
-        "4. Make your tool calls (create_note, update_note, create_entity, update_entity, query_notes, query_entities)",
+      documentationUrl: "https://docs.dust.tt/docs/productboard",
+      instructions: PRODUCTBOARD_SERVER_INSTRUCTIONS,
     },
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
