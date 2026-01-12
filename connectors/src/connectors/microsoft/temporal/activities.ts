@@ -1731,6 +1731,18 @@ async function isOutsideRootNodes({
     });
   } while (parentInternalId !== null);
 
+  logger.info(
+    {
+      driveItemId: driveItem.id,
+      driveItemName: driveItem.name,
+      rootNodeIds,
+      internalId: getDriveItemInternalId(driveItem),
+      driveInternalId: getDriveInternalIdFromItem(driveItem),
+      parentInternalId: getParentReferenceInternalId(driveItem.parentReference),
+    },
+    "Item is outside of root nodes"
+  );
+
   return true;
 }
 
