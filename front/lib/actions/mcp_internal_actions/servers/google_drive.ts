@@ -364,10 +364,6 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       spreadsheetId: z
         .string()
         .describe("The ID of the spreadsheet to retrieve."),
-      includeGridData: z
-        .boolean()
-        .default(false)
-        .describe("Whether to include grid data in the response."),
     },
     withToolLogging(
       auth,
@@ -375,7 +371,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         toolNameForMonitoring: GOOGLE_DRIVE_TOOL_NAME,
         agentLoopContext,
       },
-      async ({ spreadsheetId, includeGridData }, { authInfo }) => {
+      async ({ spreadsheetId }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
           return new Err(
@@ -386,7 +382,6 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         try {
           const res = await sheets.spreadsheets.get({
             spreadsheetId,
-            includeGridData,
           });
 
           return new Ok([
