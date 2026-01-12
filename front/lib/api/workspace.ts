@@ -17,6 +17,7 @@ import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/works
 import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
@@ -235,8 +236,9 @@ export async function searchMembers(
     total = results.value.total;
   }
 
-  const usersWithWorkspace = await Promise.all(
-    users.map(async (u) => {
+  const usersWithWorkspace = await concurrentExecutor(
+    users,
+    async (u) => {
       const [m] = u.memberships ?? [];
       let role: RoleType = "none";
       let groups: string[] | undefined;
@@ -272,7 +274,8 @@ export async function searchMembers(
         workspace: { ...owner, role, groups, flags: null },
         origin,
       };
-    })
+    },
+    { concurrency: 5 }
   );
 
   let filteredUsers = usersWithWorkspace;
@@ -281,7 +284,7 @@ export async function searchMembers(
   }
 
   return {
-    members: removeNulls(filteredUsers),
+    members: filteredUsers,
     total: options.buildersOnly ? filteredUsers.length : total,
   };
 }
