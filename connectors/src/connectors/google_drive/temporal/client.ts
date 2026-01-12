@@ -316,7 +316,6 @@ export async function signalFolderRemoval(
   }));
 
   try {
-    // Try to get handle to existing workflow
     const handle = client.workflow.getHandle(workflowId);
     const workflowRunning = await isWorkflowRunning(handle);
 

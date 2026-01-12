@@ -830,7 +830,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    return launchGoogleDriveFullSyncWorkflow(this.connectorId, fromTs, null);
+    return launchGoogleDriveFullSyncWorkflow(this.connectorId, fromTs);
   }
 
   async configure(): Promise<Result<void, Error>> {
