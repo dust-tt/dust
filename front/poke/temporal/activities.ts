@@ -53,7 +53,10 @@ import {
   LabsTranscriptsConfigurationModel,
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
-import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
+import {
+  UserMetadataModel,
+  UserToolApprovalModel,
+} from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -735,6 +738,17 @@ export async function deleteWorkspaceUserMetadataActivity({
   logger.info(
     { workspaceId, deletedCount },
     "Deleted workspace-scoped user metadata"
+  );
+
+  const deleteCountApproval = await UserToolApprovalModel.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+
+  logger.info(
+    { workspaceId, deleteCountApproval },
+    "Deleted workspace-scoped user tool approvals"
   );
 }
 

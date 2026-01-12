@@ -183,8 +183,8 @@ export class UserToolApprovalModel extends WorkspaceAwareModel<UserToolApprovalM
   declare agentId: string | null;
   declare argsAndValues: Record<string, string> | null;
 
-  // MD5 hash of argsAndValues for quick lookup and uniqueness constraint
-  declare argsAndValuesMD5: string | null;
+  // Md5 hash of argsAndValues for quick lookup and uniqueness constraint
+  declare argsAndValuesMd5: string | null;
 }
 
 UserToolApprovalModel.init(
@@ -217,7 +217,7 @@ UserToolApprovalModel.init(
       allowNull: true,
       defaultValue: null,
     },
-    argsAndValuesMD5: {
+    argsAndValuesMd5: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
@@ -236,7 +236,7 @@ UserToolApprovalModel.init(
           "mcpServerId",
           "toolName",
           "agentId",
-          "argsAndValuesMD5",
+          "argsAndValuesMd5",
         ],
         unique: true,
         name: "user_tool_approvals_unique_idx",

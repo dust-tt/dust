@@ -474,11 +474,19 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   async deleteAllMetadata() {
-    return UserMetadataModel.destroy({
+    await UserMetadataModel.destroy({
       where: {
         userId: this.id,
       },
     });
+
+    await UserToolApprovalModel.destroy({
+      where: {
+        userId: this.id,
+      },
+    });
+
+    return;
   }
 
   async getToolValidations(): Promise<
@@ -536,7 +544,7 @@ export class UserResource extends BaseResource<UserModel> {
       toolName,
       agentId,
       argsAndValues: sortedArgsAndValues,
-      argsAndValuesMD5: md5(JSON.stringify(sortedArgsAndValues)),
+      argsAndValuesMd5: md5(JSON.stringify(sortedArgsAndValues)),
     });
   }
 
@@ -562,7 +570,7 @@ export class UserResource extends BaseResource<UserModel> {
       mcpServerId,
       toolName,
       agentId,
-      argsAndValuesMD5: md5(JSON.stringify(sortedArgsAndValues)),
+      argsAndValuesMd5: md5(JSON.stringify(sortedArgsAndValues)),
     };
     const approval = await UserToolApprovalModel.findOne({
       where: whereClause,

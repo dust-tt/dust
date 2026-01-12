@@ -6,12 +6,12 @@ CREATE TABLE IF NOT EXISTS "user_tool_approvals" (
     "toolName" varchar(255) NOT NULL,
     "agentId" varchar(255) DEFAULT NULL,
     "argsAndValues" jsonb DEFAULT NULL,
-    "argsAndValuesMD5" varchar(255) DEFAULT NULL,
+    "argsAndValuesMd5" varchar(255) DEFAULT NULL,
     "workspaceId" bigint NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "id" bigserial,
     "userId" bigint NOT NULL REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX "user_tool_approvals_unique_idx" ON "user_tool_approvals" ("workspaceId", "userId", "mcpServerId", "toolName", "agentId", "argsAndValuesMD5");
+CREATE UNIQUE INDEX "user_tool_approvals_unique_idx" ON "user_tool_approvals" ("workspaceId", "userId", "mcpServerId", "toolName", "agentId", "argsAndValuesMd5");
 CREATE INDEX CONCURRENTLY "user_tool_approvals_user_id" ON "user_tool_approvals" ("userId");
 CREATE INDEX CONCURRENTLY "user_tool_approvals_workspace_id_user_id" ON "user_tool_approvals" ("workspaceId", "userId");
