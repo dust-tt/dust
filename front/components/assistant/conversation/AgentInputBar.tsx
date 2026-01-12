@@ -1,6 +1,7 @@
 import {
-  ArrowDownDashIcon,
+  ArrowDownIcon,
   ArrowPathIcon,
+  ArrowUpIcon,
   Button,
   ContentMessageAction,
   ContentMessageInline,
@@ -11,7 +12,7 @@ import {
   useVirtuosoLocation,
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -22,6 +23,7 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import {
   isHandoverUserMessage,
+  isHiddenMessage,
   isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
@@ -98,31 +100,107 @@ export const AgentInputBar = ({
     return lastUserMessage.richMentions;
   }, [draftAgent, lastUserMessage]);
 
-  const { bottomOffset } = useVirtuosoLocation();
-  const distanceUntilButtonVisible = 100;
-  const showScrollToBottomButton = bottomOffset >= distanceUntilButtonVisible;
+  const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
+
+  // Calculate positions and determine which user messages are navigable.
+  const {
+    canScrollUp,
+    canScrollDown,
+    scrollToPreviousUserMessage,
+    scrollToNextUserMessage,
+  } = useMemo(() => {
+    const allMessages = methods.data.get();
+
+    // Find indices of visible (non-hidden) user messages.
+    const userMessageIndices: number[] = [];
+    for (let i = 0; i < allMessages.length; i++) {
+      const msg = allMessages[i];
+      if (isUserMessage(msg) && !isHiddenMessage(msg)) {
+        userMessageIndices.push(i);
+      }
+    }
+
+    // Calculate positions by accumulating heights.
+    const positions: { top: number; bottom: number }[] = [];
+    let accumulatedHeight = 0;
+    for (const msg of allMessages) {
+      const height = methods.height(msg);
+      positions.push({
+        top: accumulatedHeight,
+        bottom: accumulatedHeight + height,
+      });
+      accumulatedHeight += height;
+    }
+
+    // Convert listOffset to positive scroll position.
+    // listOffset is negative when scrolled down (distance from list top to viewport top).
+    const viewportTop = -listOffset;
+    const viewportMiddle = viewportTop + visibleListHeight / 2;
+
+    // Find user messages fully above viewport (for arrow up).
+    const fullyAboveIndices = userMessageIndices.filter(
+      (idx) => positions[idx] && positions[idx].bottom <= viewportTop
+    );
+
+    // Find user messages whose top is below viewport middle (for arrow down).
+    const belowMiddleIndices = userMessageIndices.filter(
+      (idx) => positions[idx] && positions[idx].top >= viewportMiddle
+    );
+
+    const canUp = fullyAboveIndices.length > 0;
+    const canDown = belowMiddleIndices.length > 0 || bottomOffset > 0;
+
+    return {
+      canScrollUp: canUp,
+      canScrollDown: canDown,
+      scrollToPreviousUserMessage: () => {
+        if (fullyAboveIndices.length > 0) {
+          // Scroll to the last user message that's fully above (closest to current view).
+          const targetIndex = fullyAboveIndices[fullyAboveIndices.length - 1];
+          methods.scrollToItem({
+            index: targetIndex,
+            align: "start",
+            behavior: "smooth",
+          });
+        }
+      },
+      scrollToNextUserMessage: () => {
+        if (belowMiddleIndices.length > 0) {
+          // Scroll to the first user message below middle.
+          const targetIndex = belowMiddleIndices[0];
+          methods.scrollToItem({
+            index: targetIndex,
+            align: "start",
+            behavior: "smooth",
+          });
+        } else if (bottomOffset > 0) {
+          // No more user messages below, but there's content - scroll to bottom.
+          methods.scrollToItem({
+            index: "LAST",
+            align: "end",
+            behavior:
+              bottomOffset < MAX_DISTANCE_FOR_SMOOTH_SCROLL
+                ? "smooth"
+                : "instant",
+          });
+        }
+      },
+    };
+  }, [methods, listOffset, visibleListHeight, bottomOffset]);
+
   const showClearButton =
     context.agentBuilderContext?.resetConversation &&
     generatingMessages.length > 0;
   const showStopButton = generatingMessages.length > 0;
   const blockedActions = getBlockedActions(context.user.sId);
 
-  // Keep blockedActionIndex in sync when blockedActions array changes
+  // Keep blockedActionIndex in sync when blockedActions array changes.
   useEffect(() => {
-    // Clamp index to valid range: [0, length-1] when non-empty, or 0 when empty
+    // Clamp index to valid range: [0, length-1] when non-empty, or 0 when empty.
     if (blockedActionIndex >= blockedActions.length) {
       setBlockedActionIndex(Math.max(0, blockedActions.length - 1));
     }
   }, [blockedActionIndex, blockedActions.length]);
-
-  const scrollToBottom = useCallback(() => {
-    methods.scrollToItem({
-      index: "LAST",
-      align: "end",
-      behavior:
-        bottomOffset < MAX_DISTANCE_FOR_SMOOTH_SCROLL ? "smooth" : "instant",
-    });
-  }, [bottomOffset, methods]);
 
   const [isStopping, setIsStopping] = useState<boolean>(false);
 
@@ -165,7 +243,7 @@ export const AgentInputBar = ({
   return (
     <div
       className={
-        "relative z-20 mx-auto flex max-h-dvh w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4"
+        "max-h-dvh relative z-20 mx-auto flex w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4"
       }
     >
       <div
@@ -175,13 +253,18 @@ export const AgentInputBar = ({
           top: "-2em",
         }}
       >
-        {showScrollToBottomButton && (
-          <Button
-            icon={ArrowDownDashIcon}
-            variant="outline"
-            onClick={scrollToBottom}
-          />
-        )}
+        <Button
+          icon={ArrowUpIcon}
+          variant="outline"
+          onClick={scrollToPreviousUserMessage}
+          disabled={!canScrollUp}
+        />
+        <Button
+          icon={ArrowDownIcon}
+          variant="outline"
+          onClick={scrollToNextUserMessage}
+          disabled={!canScrollDown}
+        />
 
         {showClearButton && (
           <Button
@@ -206,7 +289,7 @@ export const AgentInputBar = ({
         <ContentMessageInline
           icon={InformationCircleIcon}
           variant="primary"
-          className="mb-5 flex max-h-dvh w-full"
+          className="max-h-dvh mb-5 flex w-full"
         >
           <span className="font-bold">
             {blockedActions.length} manual action
