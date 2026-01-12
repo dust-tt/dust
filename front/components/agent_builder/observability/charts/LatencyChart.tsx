@@ -83,13 +83,17 @@ function LatencyTooltip(
   );
 }
 
+interface LatencyChartProps {
+  workspaceId: string;
+  agentConfigurationId: string;
+  isCustomAgent: boolean;
+}
+
 export function LatencyChart({
   workspaceId,
   agentConfigurationId,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-}) {
+  isCustomAgent,
+}: LatencyChartProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
 
   const {
@@ -100,15 +104,15 @@ export function LatencyChart({
     workspaceId,
     agentConfigurationId,
     period,
-    mode,
-    filterVersion: selectedVersion?.version,
+    mode: isCustomAgent ? mode : "timeRange",
+    filterVersion: isCustomAgent ? selectedVersion?.version : undefined,
   });
 
   const { versionMarkers } = useAgentVersionMarkers({
     workspaceId,
     agentConfigurationId,
     days: period,
-    disabled: !workspaceId || !agentConfigurationId,
+    disabled: !workspaceId || !agentConfigurationId || !isCustomAgent,
   });
 
   const data = useMemo(() => {
@@ -123,7 +127,8 @@ export function LatencyChart({
   }, [rawData, mode, period]);
 
   const legendItems = legendFromConstant(LATENCY_LEGEND, LATENCY_PALETTE, {
-    includeVersionMarker: mode === "timeRange" && versionMarkers.length > 0,
+    includeVersionMarker:
+      isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
   });
 
   return (
@@ -206,7 +211,9 @@ export function LatencyChart({
           stroke="currentColor"
           dot={false}
         />
-        <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
+        {isCustomAgent && (
+          <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
+        )}
       </LineChart>
     </ChartContainer>
   );

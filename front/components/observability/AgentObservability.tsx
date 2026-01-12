@@ -45,7 +45,10 @@ export function AgentObservability({
     workspaceId,
     agentConfigurationId,
     period,
-    version: mode === "version" ? selectedVersion?.version : undefined,
+    version:
+      isCustomAgent && mode === "version"
+        ? selectedVersion?.version
+        : undefined,
   });
 
   const shouldShowMessagesPerActiveUser =
@@ -187,11 +190,13 @@ export function AgentObservability({
         <UsageMetricsChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
         />
         <Separator />
         <SourceChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
         />
         {featureFlags.includes("agent_tool_outputs_analytics") && (
           <>
@@ -199,6 +204,7 @@ export function AgentObservability({
             <DatasourceRetrievalTreemapChart
               workspaceId={workspaceId}
               agentConfigurationId={agentConfigurationId}
+              isCustomAgent={isCustomAgent}
             />
           </>
         )}
@@ -212,6 +218,7 @@ export function AgentObservability({
         <LatencyChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
         />
       </TabContentChildSectionLayout>
     </TabContentLayout>

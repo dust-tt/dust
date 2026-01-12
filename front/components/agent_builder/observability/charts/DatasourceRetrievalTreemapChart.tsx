@@ -79,11 +79,13 @@ function TreemapContent({
 interface DatasourceRetrievalTreemapChartProps {
   workspaceId: string;
   agentConfigurationId: string;
+  isCustomAgent: boolean;
 }
 
 export function DatasourceRetrievalTreemapChart({
   workspaceId,
   agentConfigurationId,
+  isCustomAgent,
 }: DatasourceRetrievalTreemapChartProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
 
@@ -96,7 +98,10 @@ export function DatasourceRetrievalTreemapChart({
     workspaceId,
     agentConfigurationId,
     days: period,
-    version: mode === "version" ? selectedVersion?.version : undefined,
+    version:
+      isCustomAgent && mode === "version"
+        ? selectedVersion?.version
+        : undefined,
   });
 
   const { treemapData, legendItems } = useMemo(() => {
