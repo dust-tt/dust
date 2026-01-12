@@ -174,7 +174,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     expect(res._getJSONData()).toEqual({
       error: {
         type: "app_auth_error",
-        message: "User is not a builder.",
+        message: "Only editors can modify this skill.",
       },
     });
   });
@@ -571,7 +571,7 @@ describe("DELETE /api/w/[wId]/skills/[sId]", () => {
     expect(res._getJSONData()).toEqual({
       error: {
         type: "app_auth_error",
-        message: "User is not a builder.",
+        message: "Only editors can delete this skill.",
       },
     });
   });
