@@ -23,13 +23,14 @@ import {
 } from "@app/types";
 
 export const OAUTH_USE_CASE_TO_LABEL: Record<MCPOAuthUseCase, string> = {
-  platform_actions: "Shared",
-  personal_actions: "Individual",
+  platform_actions: "Shared account",
+  personal_actions: "Personal accounts",
 };
 
 export const OAUTH_USE_CASE_TO_DESCRIPTION: Record<MCPOAuthUseCase, string> = {
-  platform_actions: "All members use the credentials you provide now.",
-  personal_actions: "Each member connects their own account.",
+  platform_actions: "All members will use the credentials you provide here.",
+  personal_actions:
+    "Each member logs in with their own credentials when they use the tool.",
 };
 
 type MCPServerOauthConnexionProps = {
