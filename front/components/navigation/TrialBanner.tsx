@@ -5,17 +5,22 @@ import { useMemo, useRef } from "react";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import type { SubscriptionType } from "@app/types";
 
-const TRIAL_BANNER_DISPLAY_THRESHOLD_DAYS = 30;
-const THRESHOLD_MS = TRIAL_BANNER_DISPLAY_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
+const SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS = 30;
+const THRESHOLD_MS =
+  SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-interface TrialBannerProps {
+interface SubscriptionEndBannerProps {
   owner: { sId: string };
   subscription: SubscriptionType;
 }
 
-export function TrialBanner({ owner, subscription }: TrialBannerProps) {
+export function SubscriptionEndBanner({
+  owner,
+  subscription,
+}: SubscriptionEndBannerProps) {
   const endDate = subscription.endDate;
+  const isTrial = isFreePlan(subscription.plan.code);
 
   // Capture initial timestamp in a ref to avoid re-computation on re-renders.
   // This is intentionally not reactive - the banner state is stable for the session.
@@ -27,53 +32,70 @@ export function TrialBanner({ owner, subscription }: TrialBannerProps) {
       return null;
     }
 
-    if (!isFreePlan(subscription.plan.code)) {
-      return null;
-    }
-
     const now = nowRef.current;
 
     if (endDate > now + THRESHOLD_MS) {
       return null;
     }
 
-    const hasTrialEnded = endDate < now;
+    const hasEnded = endDate < now;
     const daysRemaining = Math.max(0, Math.ceil((endDate - now) / DAY_MS));
 
-    return { hasTrialEnded, daysRemaining };
-  }, [endDate, subscription.plan.code]);
+    return { hasEnded, daysRemaining };
+  }, [endDate]);
 
   if (!bannerState) {
     return null;
   }
 
-  const { hasTrialEnded, daysRemaining } = bannerState;
+  const { hasEnded, daysRemaining } = bannerState;
 
-  const title = hasTrialEnded
-    ? "Heads up, your trial has ended"
-    : `Heads up, your trial ends in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}`;
+  let title: string;
+  if (isTrial) {
+    title = hasEnded
+      ? "Heads up, your trial has ended"
+      : `Heads up, your trial ends in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}`;
+  } else {
+    title = hasEnded
+      ? "Heads up, your subscription has ended"
+      : `Heads up, your subscription ends in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}`;
+  }
 
   return (
     <div
       className={cn(
         "flex items-center justify-between gap-4 px-4 py-2",
-        "bg-sky-50 dark:bg-sky-950"
+        "bg-sky-50 dark:bg-sky-50-night"
       )}
     >
       <div className="flex flex-col text-sm">
-        <span className="font-semibold text-sky-900 dark:text-sky-100">
+        <span
+          className={cn(
+            "font-semibold",
+            "text-sky-900 dark:text-sky-900-night"
+          )}
+        >
           {title}
         </span>
-        <span className="text-sky-800 dark:text-sky-200">
-          When your trial wraps up, your connections and team member access will
-          be removed. Subscribe now to keep everything.
+        <span className="text-sky-800 dark:text-sky-800-night">
+          When your {isTrial ? "trial" : "subscription"} wraps up, your
+          connections and team member access will be removed. Subscribe now to
+          keep everything.
         </span>
       </div>
       <Link
         href={`/w/${owner.sId}/subscribe`}
         className="shrink-0 no-underline"
       >
-        <Button label="Subscribe to Dust" variant="primary" size="sm" />
+        <Button
+          label="Subscribe to Dust"
+          className={cn(
+            "bg-sky-600 dark:bg-sky-600-night",
+            "dark:text-white-night text-white",
+            "hover:bg-sky-700 dark:hover:bg-sky-700-night"
+          )}
+          size="sm"
+        />
       </Link>
     </div>
   );

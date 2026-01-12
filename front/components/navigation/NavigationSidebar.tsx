@@ -14,13 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, {
-  useCallback,
-  useContext,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import type { SidebarNavigation } from "@app/components/navigation/config";
@@ -30,10 +24,7 @@ import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingC
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
 import type { AppStatus } from "@app/lib/api/status";
-import {
-  FREE_TRIAL_PHONE_PLAN_CODE,
-  isFreePlan,
-} from "@app/lib/plans/plan_codes";
+import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useTrialMessageUsage } from "@app/lib/swr/trial_message_usage";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -103,27 +94,10 @@ export const NavigationSidebar = React.forwardRef<
 
   const { appStatus } = useAppStatus();
 
-  const hasIncidentBanner =
-    appStatus?.dustStatus !== null || appStatus?.providersStatus !== null;
-  const endDate = subscription.endDate;
-  const thresholdMs = 30 * 24 * 60 * 60 * 1000;
-  // Capture initial timestamp in a ref to avoid re-computation on re-renders.
-  // eslint-disable-next-line react-hooks/purity
-  const nowRef = useRef(Date.now());
-  // Show subscription end banner for paid plans only (free plans use the new TrialBanner).
-  const showSubscriptionEndBanner =
-    !hasIncidentBanner &&
-    endDate !== null &&
-    endDate < nowRef.current + thresholdMs &&
-    !isFreePlan(subscription.plan.code);
-
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
       <div className="flex flex-col gap-2 pt-3">
         {appStatus && <AppStatusBanner appStatus={appStatus} />}
-        {showSubscriptionEndBanner && (
-          <SubscriptionEndBanner endDate={endDate} />
-        )}
         {subscription.paymentFailingSince && isAdmin(owner) && (
           <SubscriptionPastDueBanner />
         )}
@@ -323,35 +297,6 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   }
 
   return null;
-}
-
-function SubscriptionEndBanner({ endDate }: { endDate: number }) {
-  const formattedEndDate = new Date(endDate).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  return (
-    <StatusBanner
-      variant="info"
-      title={`Subscription ending on ${formattedEndDate}`}
-      description={
-        <>
-          Your connections and member access will be removed after this date.
-          Details{" "}
-          <Link
-            href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
-            target="_blank"
-            className="underline"
-          >
-            here
-          </Link>
-          .
-        </>
-      }
-    />
-  );
 }
 
 function SubscriptionPastDueBanner() {
