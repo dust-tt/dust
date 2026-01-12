@@ -48,6 +48,8 @@ import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/sh
 import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { SecretSection } from "@app/components/agent_builder/capabilities/shared/SecretSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
+import { TOP_MCP_SERVER_VIEWS } from "@app/components/agent_builder/capabilities/shared/types";
 import type { ConfigurationPagePageId } from "@app/components/agent_builder/types";
 import {
   getDefaultMCPAction,
@@ -56,33 +58,15 @@ import {
 import { ConfirmContext } from "@app/components/Confirm";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-import type { MCPServerConfigurationType } from "@app/components/shared/tools_picker/types";
-import { useBuilderContext } from "@app/components/shared/useBuilderContext";
+import type {
+  BuilderAction,
+  MCPServerConfigurationType,
+} from "@app/components/shared/tools_picker/types";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-
-const TOP_MCP_SERVER_VIEWS = [
-  "web_search_&_browse",
-  "image_generation",
-  AGENT_MEMORY_SERVER_NAME,
-  "deep_dive",
-  "interactive_content",
-  "slack",
-  "gmail",
-  "google_calendar",
-];
-
-export type SelectedTool = {
-  type: "MCP";
-  view: MCPServerViewTypeWithLabel;
-  configuredAction?: BuilderAction;
-};
 
 export type SheetMode =
   | { type: "add" }
@@ -107,7 +91,6 @@ function isMCPActionWithConfiguration(
   action: BuilderAction
 ): action is MCPActionWithConfiguration {
   return (
-    action.type === "MCP" &&
     action.configuration !== null &&
     action.configuration !== undefined &&
     typeof action.configuration === "object" &&
@@ -135,10 +118,8 @@ export function MCPServerViewsSheet({
   getAgentInstructions,
   filterMCPServerViews,
 }: MCPServerViewsSheetProps) {
-  const { owner } = useBuilderContext();
   const confirm = React.useContext(ConfirmContext);
   const sendNotification = useSendNotification();
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const {
     mcpServerViews: allMcpServerViews,
     mcpServerViewsWithKnowledge,
@@ -170,7 +151,6 @@ export function MCPServerViewsSheet({
       const selectedServerIds = new Set<string>();
       for (const action of actions) {
         if (
-          action.type === "MCP" &&
           action.configuration &&
           action.configuration.mcpServerViewId &&
           !action.configurationRequired
@@ -204,11 +184,9 @@ export function MCPServerViewsSheet({
   }, [mcpServerViewsWithoutKnowledge, filterMCPServerViews]);
 
   const selectableTopMCPServerViews = useMemo(() => {
-    const filteredList = topMCPServerViews.filter(
+    return topMCPServerViews.filter(
       (view) => !shouldFilterServerView(view, selectedActions)
     );
-
-    return filteredList;
   }, [topMCPServerViews, selectedActions, shouldFilterServerView]);
 
   const selectableNonTopMCPServerViews = useMemo(
@@ -305,18 +283,12 @@ export function MCPServerViewsSheet({
   const toggleToolSelection = useCallback((tool: SelectedTool) => {
     setSelectedToolsInSheet((prev) => {
       const isAlreadySelected = prev.some((selected) => {
-        if (tool.type === "MCP" && selected.type === "MCP") {
-          return tool.view.sId === selected.view.sId;
-        }
-        return false;
+        return tool.view.sId === selected.view.sId;
       });
 
       if (isAlreadySelected) {
         return prev.filter((selected) => {
-          if (tool.type === "MCP" && selected.type === "MCP") {
-            return tool.view.sId !== selected.view.sId;
-          }
-          return true;
+          return tool.view.sId !== selected.view.sId;
         });
       }
 
@@ -325,8 +297,8 @@ export function MCPServerViewsSheet({
   }, []);
 
   function onClickMCPServer(mcpServerView: MCPServerViewTypeWithLabel) {
-    const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
-    const requirements = getMCPServerRequirements(mcpServerView, featureFlags);
+    const tool = { view: mcpServerView } satisfies SelectedTool;
+    const requirements = getMCPServerRequirements(mcpServerView);
 
     if (!requirements.noRequirement) {
       const action = getDefaultMCPAction(mcpServerView);
@@ -358,7 +330,7 @@ export function MCPServerViewsSheet({
   const handleAddSelectedTools = useCallback(() => {
     // Validate any configured tools before adding
     for (const tool of selectedToolsInSheet) {
-      if (tool.type === "MCP" && tool.configuredAction) {
+      if (tool.configuredAction) {
         const validation = validateMCPActionConfiguration(
           tool.configuredAction,
           tool.view
@@ -395,7 +367,7 @@ export function MCPServerViewsSheet({
 
   // Memoize default values to prevent form recreation
   const defaultFormValues = useMemo<MCPFormData>(() => {
-    if (configurationTool?.type === "MCP") {
+    if (configurationTool) {
       return {
         name: configurationTool.name ?? "",
         description: configurationTool.description ?? "",
@@ -416,11 +388,8 @@ export function MCPServerViewsSheet({
   });
 
   const requirements = useMemo(
-    () =>
-      mcpServerView
-        ? getMCPServerRequirements(mcpServerView, featureFlags)
-        : null,
-    [mcpServerView, featureFlags]
+    () => (mcpServerView ? getMCPServerRequirements(mcpServerView) : null),
+    [mcpServerView]
   );
 
   // Stable form reset handler - no form dependency to prevent re-renders
@@ -473,11 +442,8 @@ export function MCPServerViewsSheet({
             onItemClick={onClickMCPServer}
             selectedToolsInSheet={selectedToolsInSheet}
             onToolDetailsClick={(tool) => {
-              if (tool.type === "MCP") {
-                handleToolInfoClick(tool.view);
-              }
+              handleToolInfoClick(tool.view);
             }}
-            featureFlags={featureFlags}
           />
         </>
       ),
@@ -583,11 +549,6 @@ export function MCPServerViewsSheet({
     }
 
     try {
-      // Ensure we're working with an MCP action
-      if (configurationTool.type !== "MCP") {
-        throw new Error("Expected MCP action for configuration save");
-      }
-
       const isNewActionOrNameChanged = shouldGenerateUniqueName(
         mode,
         defaultFormValues,

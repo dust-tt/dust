@@ -4,7 +4,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { createRegularSpaceAndGroup } from "@app/lib/api/spaces";
+import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -15,6 +15,7 @@ const PostSpaceRequestBodySchema = t.intersection([
   t.type({
     isRestricted: t.boolean,
     name: t.string,
+    spaceKind: t.union([t.literal("regular"), t.literal("project")]),
   }),
   t.union([
     t.type({
@@ -119,10 +120,7 @@ async function handler(
         });
       }
 
-      const spaceRes = await createRegularSpaceAndGroup(
-        auth,
-        bodyValidation.right
-      );
+      const spaceRes = await createSpaceAndGroup(auth, bodyValidation.right);
       if (spaceRes.isErr()) {
         switch (spaceRes.error.code) {
           case "limit_reached":

@@ -108,6 +108,7 @@ export function getContentNodeFromCoreNode(
     parentInternalIds: coreNode.parents,
     type: coreNode.node_type,
     expandable: isExpandable(coreNode, viewType),
+    childrenCount: coreNode.children_count,
     mimeType: coreNode.mime_type,
     preventSelection:
       // In data_warehouse view, all nodes are selectable (databases, schemas, tables)

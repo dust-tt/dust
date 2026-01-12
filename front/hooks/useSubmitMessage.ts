@@ -59,7 +59,8 @@ export function useSubmitMessage({
                   url: contentFragment.url,
                   context: {
                     timezone:
-                      Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+                      Intl.DateTimeFormat().resolvedOptions().timeZone ||
+                      "Etc/UTC",
                     profilePictureUrl: user.image,
                   },
                 }),
@@ -80,7 +81,8 @@ export function useSubmitMessage({
                   nodeDataSourceViewId: contentFragment.dataSourceView.sId,
                   context: {
                     timezone:
-                      Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+                      Intl.DateTimeFormat().resolvedOptions().timeZone ||
+                      "Etc/UTC",
                     profilePictureUrl: user.image,
                   },
                 }),
@@ -115,7 +117,7 @@ export function useSubmitMessage({
             content: input,
             context: {
               timezone:
-                Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+                Intl.DateTimeFormat().resolvedOptions().timeZone || "Etc/UTC",
               profilePictureUrl: user.image,
               clientSideMCPServerIds,
             },

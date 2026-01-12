@@ -25,7 +25,6 @@ import {
   TableHeaderBlock,
 } from "@sparkle/components/markdown/TableBlock";
 import {
-  preprocessDollarSigns,
   preserveLineBreaks,
   sanitizeContent,
 } from "@sparkle/components/markdown/utils";
@@ -83,7 +82,7 @@ export function Markdown({
     if (compactSpacing) {
       sanitized = preserveLineBreaks(sanitized);
     }
-    return preprocessDollarSigns(sanitized);
+    return sanitized;
   }, [content, compactSpacing]);
 
   // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
@@ -233,7 +232,7 @@ export function Markdown({
     () => [
       remarkDirective,
       remarkGfm,
-      [remarkMath, { singleDollarTextMath: true }],
+      [remarkMath, { singleDollarTextMath: false }],
       ...(additionalMarkdownPlugins || []),
       showUnsupportedDirective,
     ],

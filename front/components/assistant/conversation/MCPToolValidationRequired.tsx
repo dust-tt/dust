@@ -3,7 +3,9 @@ import {
   Checkbox,
   CheckIcon,
   CodeBlockWithExtendedSupport,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessage,
   Label,
   XMarkIcon,
@@ -38,7 +40,8 @@ export function MCPToolValidationRequired({
   const [neverAskAgain, setNeverAskAgain] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { removeCompletedAction } = useBlockedActionsContext();
+  const { removeCompletedAction, isActionPulsing, stopPulsingAction } =
+    useBlockedActionsContext();
   const { validateAction, isValidating } = useValidateAction({
     owner,
     conversationId,
@@ -50,6 +53,8 @@ export function MCPToolValidationRequired({
     [blockedAction.userId, user?.sId]
   );
 
+  const isPulsing = isActionPulsing(blockedAction.actionId);
+
   const icon = blockedAction.metadata.icon
     ? getIcon(blockedAction.metadata.icon)
     : undefined;
@@ -58,6 +63,9 @@ export function MCPToolValidationRequired({
     blockedAction?.inputs && Object.keys(blockedAction.inputs).length > 0;
 
   const handleValidation = async (approved: MCPValidationOutputType) => {
+    // Stop pulsing immediately when user takes action
+    stopPulsingAction(blockedAction.actionId);
+
     setErrorMessage(null);
 
     const result = await validateAction({
@@ -97,18 +105,18 @@ export function MCPToolValidationRequired({
       {isTriggeredByCurrentUser ? (
         <>
           {hasDetails && (
-            <CollapsibleComponent
-              triggerChildren={
+            <Collapsible>
+              <CollapsibleTrigger>
                 <span className="my-2 font-medium">Details</span>
-              }
-              contentChildren={
+              </CollapsibleTrigger>
+              <CollapsibleContent>
                 <div className="max-h-80 overflow-auto bg-muted dark:bg-muted-night">
                   <CodeBlockWithExtendedSupport className="language-json">
                     {JSON.stringify(blockedAction.inputs, null, 2)}
                   </CodeBlockWithExtendedSupport>
                 </div>
-              }
-            />
+              </CollapsibleContent>
+            </Collapsible>
           )}
           {errorMessage && (
             <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
@@ -136,6 +144,7 @@ export function MCPToolValidationRequired({
               size="xs"
               icon={XMarkIcon}
               disabled={isValidating}
+              isPulsing={isPulsing}
               onClick={() => void handleValidation("rejected")}
             />
             <Button
@@ -144,6 +153,7 @@ export function MCPToolValidationRequired({
               size="xs"
               icon={CheckIcon}
               disabled={isValidating}
+              isPulsing={isPulsing}
               onClick={() => void handleValidation("approved")}
             />
           </div>

@@ -32,7 +32,7 @@ import {
   iterateOverSchemaPropertiesRecursive,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
-import type { WhitelistableFeature, WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types";
 import { assertNever, isString, removeNulls } from "@app/types";
 
 function getDataSourceURI(config: DataSourceConfiguration): string {
@@ -492,8 +492,7 @@ export interface MCPServerRequirements {
 }
 
 export function getMCPServerRequirements(
-  mcpServerView: MCPServerViewType | null | undefined,
-  featureFlags?: WhitelistableFeature[]
+  mcpServerView: MCPServerViewType | null | undefined
 ): MCPServerRequirements {
   if (!mcpServerView) {
     return {
@@ -607,24 +606,18 @@ export function getMCPServerRequirements(
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
     })
-  )
-    .map(([key, schema]) => {
-      const defaultValue = extractSchemaDefault(schema);
-      assert(
-        defaultValue === null || typeof defaultValue === "boolean",
-        `Value stored does not have the correct type, expected boolean, got ${typeof defaultValue}.`
-      );
-      return {
-        key,
-        description: schema.description,
-        default: defaultValue,
-      };
-    })
-    // Exclude useSummary if the user doesn't have the web_summarization feature flag.
-    .filter(
-      ({ key }) =>
-        key !== "useSummary" || featureFlags?.includes("web_summarization")
+  ).map(([key, schema]) => {
+    const defaultValue = extractSchemaDefault(schema);
+    assert(
+      defaultValue === null || typeof defaultValue === "boolean",
+      `Value stored does not have the correct type, expected boolean, got ${typeof defaultValue}.`
     );
+    return {
+      key,
+      description: schema.description,
+      default: defaultValue,
+    };
+  });
 
   const requiredEnums: MCPServerRequirements["requiredEnums"] =
     Object.fromEntries(

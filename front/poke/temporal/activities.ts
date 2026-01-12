@@ -23,7 +23,6 @@ import {
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
-import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
@@ -32,6 +31,7 @@ import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -53,15 +53,19 @@ import {
   LabsTranscriptsConfigurationModel,
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
+import {
+  UserMetadataModel,
+  UserToolApprovalModel,
+} from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { TagResource } from "@app/lib/resources/tags_resource";
-import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -406,21 +410,6 @@ export const deleteRemoteMCPServersActivity = async ({
   }
 };
 
-export const deleteTrackersActivity = async ({
-  workspaceId,
-}: {
-  workspaceId: string;
-}) => {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const trackers = await TrackerConfigurationResource.listByWorkspace(auth, {
-    includeDeleted: true,
-  });
-
-  for (const tracker of trackers) {
-    await tracker.delete(auth, { hardDelete: true });
-  }
-};
-
 export async function deleteMembersActivity({
   workspaceId,
 }: {
@@ -659,11 +648,7 @@ export async function deleteWorkspaceActivity({
       workspaceId: workspace.id,
     },
   });
-  await FeatureFlagModel.destroy({
-    where: {
-      workspaceId: workspace.id,
-    },
-  });
+  await FeatureFlagResource.deleteAllForWorkspace(auth);
   await AgentMemoryResource.deleteAllForWorkspace(auth);
   await OnboardingTaskResource.deleteAllForWorkspace(auth);
   await RemoteMCPServerToolMetadataModel.destroy({
@@ -671,6 +656,7 @@ export async function deleteWorkspaceActivity({
   });
   await CreditResource.deleteAllForWorkspace(auth);
   await ProgrammaticUsageConfigurationResource.deleteAllForWorkspace(auth);
+  await WorkspaceVerificationAttemptResource.deleteAllForWorkspace(auth);
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 
@@ -723,6 +709,47 @@ export async function deleteTagsActivity({
   for (const tag of tags) {
     await tag.delete(auth);
   }
+}
+
+export async function deleteWorkspaceUserMetadataActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const workspace = await WorkspaceModel.findOne({
+    where: { sId: workspaceId },
+  });
+
+  if (!workspace) {
+    logger.warn(
+      { workspaceId },
+      "Workspace not found, skipping user metadata deletion"
+    );
+    return;
+  }
+
+  // Delete all workspace-scoped user metadata
+  const deletedCount = await UserMetadataModel.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+
+  logger.info(
+    { workspaceId, deletedCount },
+    "Deleted workspace-scoped user metadata"
+  );
+
+  const deleteCountApproval = await UserToolApprovalModel.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+
+  logger.info(
+    { workspaceId, deleteCountApproval },
+    "Deleted workspace-scoped user tool approvals"
+  );
 }
 
 export async function deleteWorkOSOrganization({

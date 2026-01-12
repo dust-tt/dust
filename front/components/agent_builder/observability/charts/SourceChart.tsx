@@ -13,11 +13,13 @@ import { useAgentContextOrigin } from "@app/lib/swr/assistants";
 interface SourceChartProps {
   workspaceId: string;
   agentConfigurationId: string;
+  isCustomAgent: boolean;
 }
 
 export function SourceChart({
   workspaceId,
   agentConfigurationId,
+  isCustomAgent,
 }: SourceChartProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
 
@@ -27,13 +29,13 @@ export function SourceChart({
       agentConfigurationId,
       days: period,
       version:
-        mode === "version" && selectedVersion
+        isCustomAgent && mode === "version" && selectedVersion
           ? selectedVersion.version
           : undefined,
       disabled:
         !workspaceId ||
         !agentConfigurationId ||
-        (mode === "version" && !selectedVersion),
+        (isCustomAgent && mode === "version" && !selectedVersion),
     });
 
   const total = contextOrigin.total;
@@ -63,7 +65,7 @@ export function SourceChart({
       <PieChart>
         <Tooltip
           cursor={false}
-          wrapperStyle={{ outline: "none" }}
+          wrapperStyle={{ outline: "none", zIndex: 50 }}
           content={({ active }) => {
             if (!active || data.length === 0) {
               return null;

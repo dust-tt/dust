@@ -1,7 +1,12 @@
 import { cva, VariantProps } from "class-variance-authority";
 import React from "react";
 
-import { Avatar, Button, CitationGrid, IconButton } from "@sparkle/components";
+import {
+  Avatar,
+  Button,
+  ConversationMessageContent,
+  IconButton,
+} from "@sparkle/components";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,9 +57,9 @@ interface ConversationMessageProps
   type: ConversationMessageType;
 }
 
-export type ConversationMessageType = "user" | "agent";
+type ConversationMessageType = "user" | "agent";
 
-export interface ConversationMessageAction {
+interface ConversationMessageAction {
   icon: React.ComponentType | React.ReactNode;
   label: string;
   onClick: () => void;
@@ -142,37 +147,6 @@ export const ConversationMessage = React.forwardRef<
 
 ConversationMessage.displayName = "ConversationMessage";
 
-interface ConversationMessageContentProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-  citations?: React.ReactElement[];
-  type: ConversationMessageType;
-}
-
-export const ConversationMessageContent = React.forwardRef<
-  HTMLDivElement,
-  ConversationMessageContentProps
->(({ children, citations, className, ...props }, ref) => {
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "s-flex s-flex-col s-gap-3 @sm/conversation:s-gap-4",
-        className
-      )}
-      {...props}
-    >
-      <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
-        {children}
-      </div>
-      {citations && citations.length > 0 && (
-        <CitationGrid>{citations}</CitationGrid>
-      )}
-    </div>
-  );
-});
-
-ConversationMessageContent.displayName = "ConversationMessageContent";
-
 interface ConversationMessageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   actions?: ConversationMessageAction[];
   avatarUrl?: string | React.ReactNode;
@@ -185,7 +159,7 @@ interface ConversationMessageHeaderProps extends React.HTMLAttributes<HTMLDivEle
   renderName: (name: string | null) => React.ReactNode;
 }
 
-export const ConversationMessageHeader = React.forwardRef<
+const ConversationMessageHeader = React.forwardRef<
   HTMLDivElement,
   ConversationMessageHeaderProps
 >(

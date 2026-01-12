@@ -30,6 +30,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Export and Import agents to/from YAML format",
     stage: "dust_only",
   },
+  agent_tool_outputs_analytics: {
+    description:
+      "Store agent tool outputs (e.g., retrieved documents) in Elasticsearch for analytics",
+    stage: "dust_only",
+  },
   ashby_tool: {
     description: "Ashby tool for ATS integration",
     stage: "on_demand",
@@ -91,11 +96,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   labs_mcp_actions_dashboard: {
     description: "MCP actions dashboard in Labs section",
     stage: "on_demand",
-  },
-  labs_trackers: {
-    description:
-      "Tracker feature. Check with Henry or eng oncall before activating to a new workspace.",
-    stage: "rolling_out",
   },
   labs_transcripts: {
     description: "Transcript feature (Labs)",
@@ -160,10 +160,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Monday MCP tool",
     stage: "rolling_out",
   },
-  freshservice_tool: {
-    description: "Freshservice MCP tool",
-    stage: "rolling_out",
-  },
   front_tool: {
     description:
       "Front MCP tool for managing support conversations, messages, and customer interactions.",
@@ -199,14 +195,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slab MCP server",
     stage: "on_demand",
   },
-  vanta_tool: {
-    description: "Vanta MCP tool for security and compliance testing",
-    stage: "dust_only",
-  },
-  web_summarization: {
-    description: "AI-powered web page summarization in the web browser tool",
-    stage: "on_demand",
-  },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
@@ -232,6 +220,15 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   databricks_tool: {
     description: "Databricks MCP tool",
+    stage: "on_demand",
+  },
+  phone_trial_paywall: {
+    description: "Phone verification during trial sign-up",
+    stage: "dust_only",
+  },
+  productboard_tool: {
+    description:
+      "Productboard MCP tool for customer feedback management and feature planning",
     stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;

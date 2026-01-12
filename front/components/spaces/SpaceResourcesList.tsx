@@ -71,7 +71,7 @@ export interface RowData {
   workspaceId: string;
   isAdmin: boolean;
   isLoading?: boolean;
-  buttonOnClick?: (e: MouseEvent) => void;
+  buttonOnClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onClick?: () => void;
   menuItems?: MenuItem[]; // changed from moreMenuItems
 }

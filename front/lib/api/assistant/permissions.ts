@@ -1,22 +1,20 @@
+import uniq from "lodash/uniq";
+
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { getAvailabilityOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
-import type {
-  UnsavedMCPServerConfigurationType,
-  UnsavedServerSideMCPServerConfigurationType,
-} from "@app/lib/actions/types/agent";
+import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type {
   CombinedResourcePermissions,
   ContentFragmentInputWithContentNode,
   ModelId,
 } from "@app/types";
-import { assertNever, removeNulls } from "@app/types";
+import { removeNulls } from "@app/types";
 
 export function getDataSourceViewIdsFromActions(
   actions: UnsavedMCPServerConfigurationType[]
@@ -59,69 +57,35 @@ export function groupsFromRequestedPermissions(
   );
 }
 
-export async function getAgentConfigurationRequirementsFromActions(
+export async function getAgentConfigurationRequirementsFromCapabilities(
   auth: Authenticator,
-  params: {
+  {
+    actions,
+    skills,
+    ignoreSpaces,
+  }: {
     actions: UnsavedMCPServerConfigurationType[];
+    skills: SkillResource[];
     ignoreSpaces?: SpaceResource[];
   }
 ): Promise<{ requestedSpaceIds: ModelId[] }> {
-  const { actions, ignoreSpaces } = params;
-  const ignoreSpaceIds = new Set(ignoreSpaces?.map((space) => space.sId));
+  const ignoreSpaceModelIds = new Set(ignoreSpaces?.map((space) => space.id));
 
+  // Collect DataSourceView permissions by space.
   const dsViews = await DataSourceViewResource.fetchByIds(
     auth,
     getDataSourceViewIdsFromActions(actions)
   );
-  // Map spaceId to its group requirements.
-  const spacePermissions = new Set<string>();
-
-  // Collect DataSourceView permissions by space.
-  for (const view of dsViews) {
-    const { sId: spaceId } = view.space;
-    if (ignoreSpaceIds?.has(spaceId)) {
-      continue;
-    }
-
-    spacePermissions.add(spaceId);
-  }
+  const dsViewRequirements = dsViews.map((view) => view.space.id);
 
   // Collect MCPServerView permissions by space.
-  const mcpServerViews = await MCPServerViewResource.fetchByIds(
-    auth,
-    actions
-      .filter((action) => isServerSideMCPServerConfiguration(action))
-      .map(
-        (action) =>
-          (action as ServerSideMCPServerConfigurationType).mcpServerViewId
-      )
-  );
-
-  for (const view of mcpServerViews) {
-    const { sId: spaceId } = view.space;
-    if (ignoreSpaceIds?.has(spaceId)) {
-      continue;
-    }
-
-    // We skip the permissions for internal tools as they are automatically available to all users.
-    // This mimic the previous behavior of generic internal tools (search etc..).
-    if (view.serverType === "internal") {
-      const availability = getAvailabilityOfInternalMCPServerById(
-        view.mcpServerId
-      );
-      switch (availability) {
-        case "auto":
-        case "auto_hidden_builder":
-          continue;
-        case "manual":
-          break;
-        default:
-          assertNever(availability);
-      }
-    }
-
-    spacePermissions.add(spaceId);
-  }
+  const mcpServerViewRequirements =
+    await MCPServerViewResource.listSpaceRequirementsByIds(
+      auth,
+      actions
+        .filter(isServerSideMCPServerConfiguration)
+        .map((action) => action.mcpServerViewId)
+    );
 
   // Collect Dust App permissions by space.
   const dustAppIds = removeNulls(
@@ -129,52 +93,24 @@ export async function getAgentConfigurationRequirementsFromActions(
       .filter(isServerSideMCPServerConfiguration)
       .map((action) => action.dustAppConfiguration?.appId)
   );
+  let dustAppRequirements: ModelId[] = [];
 
   if (dustAppIds.length > 0) {
     const dustApps = await AppResource.fetchByIds(auth, dustAppIds);
-
-    for (const app of dustApps) {
-      const { sId: spaceId } = app.space;
-      if (ignoreSpaceIds?.has(spaceId)) {
-        continue;
-      }
-
-      spacePermissions.add(spaceId);
-    }
+    dustAppRequirements = dustApps.map((app) => app.space.id);
   }
 
-  // Convert Map to array of arrays, filtering out empty sets.
-  return {
-    requestedSpaceIds: removeNulls(
-      Array.from(spacePermissions).map(getResourceIdFromSId)
-    ),
-  };
-}
+  // Collect Skill permissions by space.
+  const skillRequirements = skills.flatMap((skill) => skill.requestedSpaceIds);
 
-export async function getRequestedSpaceIdsFromMCPServerViewIds(
-  auth: Authenticator,
-  mcpServerViewIds: string[]
-): Promise<ModelId[]> {
-  // create dummy actions to reuse existing logic.
-  // we only need the space ids based on the MCP server views so other fields can be empty.
-  const actions: UnsavedServerSideMCPServerConfigurationType[] =
-    mcpServerViewIds.map((mcpServerViewId) => ({
-      type: "mcp_server_configuration" as const,
-      mcpServerViewId,
-      name: "",
-      description: "",
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      timeFrame: null,
-      jsonSchema: null,
-      additionalConfiguration: {},
-      dustAppConfiguration: null,
-      secretName: null,
-    }));
-  const { requestedSpaceIds } =
-    await getAgentConfigurationRequirementsFromActions(auth, { actions });
-  return requestedSpaceIds;
+  const requestedSpaceIds = uniq([
+    ...dsViewRequirements,
+    ...mcpServerViewRequirements,
+    ...dustAppRequirements,
+    ...skillRequirements,
+  ]).filter((id) => !ignoreSpaceModelIds.has(id));
+
+  return { requestedSpaceIds };
 }
 
 export async function getContentFragmentGroupIds(

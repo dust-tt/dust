@@ -12,8 +12,8 @@ import config from "@app/lib/api/config";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
 import { getWorkOSSession } from "@app/lib/api/workos/user";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
 import {
@@ -1199,10 +1199,8 @@ export const getFeatureFlags = memoizer.sync({
     if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
       return [...WHITELISTABLE_FEATURES];
     } else {
-      const res = await FeatureFlagModel.findAll({
-        where: { workspaceId: workspace.id },
-      });
-      return res.map((flag) => flag.name);
+      const flags = await FeatureFlagResource.listForWorkspace(workspace);
+      return flags.map((flag) => flag.name);
     }
   },
 

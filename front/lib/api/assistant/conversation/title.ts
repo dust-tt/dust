@@ -1,5 +1,3 @@
-import clone from "lodash/clone";
-
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
@@ -8,24 +6,15 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import type {
-  ConversationType,
-  ModelIdType,
-  ModelProviderIdType,
-  Result,
-  UserMessageType,
-} from "@app/types";
+import type { ConversationType, Result, UserMessageType } from "@app/types";
 import {
   ConversationError,
   Err,
-  getLargeNonAnthropicWhitelistedModel,
-  GPT_4O_MINI_MODEL_ID,
+  getSmallWhitelistedModel,
   Ok,
 } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
-
-const MIN_GENERATION_TOKENS = 1024;
 
 export async function ensureConversationTitleFromAgentLoop(
   authType: AuthenticatorType,
@@ -68,27 +57,9 @@ export async function ensureConversationTitle(
     return conversation.title;
   }
 
-  // If the last message is a function call without tool output,
-  // We strip it for title generation otherwise the model will throw.
-  const conversationContent = clone(conversation.content);
-  const lastConversationBatch =
-    conversationContent[conversationContent.length - 1];
-  const lastConversationBatchMessage =
-    lastConversationBatch[lastConversationBatch.length - 1];
-  if (lastConversationBatchMessage?.type === "agent_message") {
-    while (
-      lastConversationBatchMessage.contents[
-        lastConversationBatchMessage.contents.length - 1
-      ]?.content.type === "function_call"
-    ) {
-      lastConversationBatchMessage.contents =
-        lastConversationBatchMessage.contents.slice(0, -1);
-    }
-  }
-
   const titleRes = await generateConversationTitle(auth, {
     ...conversation,
-    content: [...conversationContent, [userMessage]],
+    content: [...conversation.content, [userMessage]],
   });
 
   if (titleRes.isErr()) {
@@ -120,9 +91,6 @@ export async function ensureConversationTitle(
   return title;
 }
 
-const PROVIDER_ID: ModelProviderIdType = "openai";
-const MODEL_ID: ModelIdType = GPT_4O_MINI_MODEL_ID;
-
 const FUNCTION_NAME = "update_title";
 
 const specifications: AgentActionSpecification[] = [
@@ -148,20 +116,24 @@ async function generateConversationTitle(
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getLargeNonAnthropicWhitelistedModel(owner);
+  const model = getSmallWhitelistedModel(owner);
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate title")
     );
   }
 
+  const prompt =
+    "Generate a concise conversation title (3-8 words) based on the user's message and context. " +
+    "The title should capture the main topic or request without being too generic.";
+
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel(auth, {
     conversation,
     model,
-    prompt: "", // There is no prompt for title generation.
+    prompt,
     tools: "",
-    allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
+    allowedTokenCount: model.contextSize - model.generationTokensCount,
     excludeActions: true,
     excludeImages: true,
   });
@@ -185,17 +157,16 @@ async function generateConversationTitle(
   const res = await runMultiActionsAgent(
     auth,
     {
-      providerId: PROVIDER_ID,
-      modelId: MODEL_ID,
+      providerId: model.providerId,
+      modelId: model.modelId,
       functionCall: FUNCTION_NAME,
       useCache: false,
     },
     {
       conversation: conv,
-      prompt:
-        "Generate a concise conversation title (3-8 words) based on the user's message and context. " +
-        "The title should capture the main topic or request without being too generic.",
+      prompt: prompt,
       specifications,
+      forceToolCall: FUNCTION_NAME,
     },
     {
       context: {

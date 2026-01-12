@@ -4,7 +4,13 @@ import React from "react";
 import { visit } from "unist-util-visit";
 
 export function PastedAttachmentBlock({ title }: { title: string }) {
-  return <AttachmentChip label={title} icon={PaperclipIcon} />;
+  return (
+    <AttachmentChip
+      label={title}
+      icon={{ visual: PaperclipIcon }}
+      color="highlight"
+    />
+  );
 }
 
 export function pastedAttachmentDirective() {

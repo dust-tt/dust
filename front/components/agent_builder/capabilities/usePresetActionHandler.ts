@@ -81,9 +81,7 @@ export function usePresetActionHandler({
 
       if (!allowsMultiple) {
         const toolAlreadyAdded = fields.some(
-          (field) =>
-            field.type === "MCP" &&
-            field.configuration?.mcpServerViewId === mcpServerView.sId
+          (field) => field.configuration?.mcpServerViewId === mcpServerView.sId
         );
 
         if (toolAlreadyAdded) {

@@ -1,5 +1,4 @@
 import { TextArea } from "@dust-tt/sparkle";
-import { useFormContext } from "react-hook-form";
 
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 
@@ -22,8 +21,6 @@ export function DescriptionSection({
   maxLength,
   triggerValidationOnChange = false,
 }: DescriptionSectionProps) {
-  const { formState } = useFormContext();
-
   return (
     <BaseFormFieldSection
       title={title}
@@ -31,7 +28,7 @@ export function DescriptionSection({
       fieldName={DESCRIPTION_FIELD_NAME}
       triggerValidationOnChange={triggerValidationOnChange}
     >
-      {({ registerRef, registerProps, onChange, errorMessage }) => (
+      {({ registerRef, registerProps, onChange, errorMessage, fieldState }) => (
         <>
           {label && <label className="text-sm font-medium">{label}</label>}
           <TextArea
@@ -39,9 +36,9 @@ export function DescriptionSection({
             placeholder={placeholder}
             rows={4}
             maxLength={maxLength}
-            showErrorLabel={formState.isSubmitted || formState.isDirty}
+            showErrorLabel={fieldState.isDirty || fieldState.isTouched}
             error={
-              formState.isSubmitted || formState.isDirty
+              fieldState.isDirty || fieldState.isTouched
                 ? errorMessage
                 : undefined
             }

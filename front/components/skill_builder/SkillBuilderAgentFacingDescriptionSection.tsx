@@ -3,6 +3,7 @@ import type { ChangeEvent } from "react";
 import { useCallback, useState } from "react";
 
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import { SKILL_BUILDER_AGENT_DESCRIPTION_BLUR_EVENT } from "@app/components/skill_builder/events";
 import { SimilarSkillsDisplay } from "@app/components/skill_builder/SimilarSkillsDisplay";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
@@ -15,14 +16,13 @@ const DEBOUNCE_DELAY_MS = 250;
 const MIN_DESCRIPTION_LENGTH = 10;
 
 export function SkillBuilderAgentFacingDescriptionSection() {
-  const { owner, skillConfigurationId } = useSkillBuilderContext();
+  const { owner, skillId } = useSkillBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const isSimilarSkillsEnabled = hasFeature("skills_similar_display");
 
   const { getSimilarSkills } = useSimilarSkills({ owner });
   const { skills } = useSkills({
     owner,
-    disabled: !isSimilarSkillsEnabled,
   });
 
   const [similarSkills, setSimilarSkills] = useState<SkillType[]>([]);
@@ -30,10 +30,6 @@ export function SkillBuilderAgentFacingDescriptionSection() {
 
   const fetchSimilarSkills = useCallback(
     async (description: string, signal: AbortSignal) => {
-      if (!isSimilarSkillsEnabled) {
-        return;
-      }
-
       if (description.length < MIN_DESCRIPTION_LENGTH) {
         setSimilarSkills([]);
         setIsLoading(false);
@@ -50,14 +46,13 @@ export function SkillBuilderAgentFacingDescriptionSection() {
           const similarSkillIdsSet = new Set(similarSkillIds);
           const matchedSkills = skills.filter(
             (skill) =>
-              similarSkillIdsSet.has(skill.sId) &&
-              skill.sId !== skillConfigurationId
+              similarSkillIdsSet.has(skill.sId) && skill.sId !== skillId
           );
           setSimilarSkills(matchedSkills);
         }
       }
     },
-    [getSimilarSkills, isSimilarSkillsEnabled, skillConfigurationId, skills]
+    [getSimilarSkills, skillId, skills]
   );
 
   const triggerSimilarSkillsFetch = useDebounceWithAbort(fetchSimilarSkills, {
@@ -70,14 +65,12 @@ export function SkillBuilderAgentFacingDescriptionSection() {
       formOnChange: (e: ChangeEvent<HTMLTextAreaElement>) => void
     ) => {
       formOnChange(e);
-      if (isSimilarSkillsEnabled) {
-        const value = e.target.value;
-        // Set loading immediately when description is long enough
-        setIsLoading(value.length >= MIN_DESCRIPTION_LENGTH);
-        triggerSimilarSkillsFetch(value);
-      }
+      const value = e.target.value;
+      // Set loading immediately when description is long enough
+      setIsLoading(value.length >= MIN_DESCRIPTION_LENGTH);
+      triggerSimilarSkillsFetch(value);
     },
-    [triggerSimilarSkillsFetch, isSimilarSkillsEnabled]
+    [triggerSimilarSkillsFetch]
   );
 
   return (
@@ -91,11 +84,18 @@ export function SkillBuilderAgentFacingDescriptionSection() {
           <TextArea
             ref={registerRef}
             placeholder="When should this skill be used? What is this skill good for?"
-            className="min-h-24"
+            className="h-40 text-base placeholder:italic placeholder:text-gray-400"
+            resize="vertical"
             onChange={(e) => handleDescriptionChange(e, onChange)}
             error={hasError ? errorMessage : undefined}
             showErrorLabel={hasError}
             {...registerProps}
+            onBlur={() => {
+              registerProps.onBlur();
+              window.dispatchEvent(
+                new CustomEvent(SKILL_BUILDER_AGENT_DESCRIPTION_BLUR_EVENT)
+              );
+            }}
           />
           {isSimilarSkillsEnabled && (
             <SimilarSkillsDisplay

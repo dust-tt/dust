@@ -5,10 +5,13 @@ import { createClient } from "redis";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 
 type EventCallback = (event: EventPayload | "close") => void;
 
-const HISTORY_FETCH_COUNT = 256;
+// Conservative value to prevent memory spikes during deployment reconnection bursts.
+// Clients automatically paginate if more history is needed.
+const HISTORY_FETCH_COUNT = 50;
 
 export type EventPayload = {
   id: string;
@@ -33,6 +36,11 @@ class RedisHybridManager {
 
   private CHANNEL_PREFIX = "channel:";
   private STREAM_PREFIX = "stream:";
+
+  // Track active subscriptions for monitoring.
+  private activeSubscriptionCount = 0;
+  // Track concurrent history fetches to identify overload.
+  private concurrentHistoryFetches = 0;
 
   private constructor() {}
 
@@ -258,6 +266,8 @@ class RedisHybridManager {
     history: EventPayload[];
     unsubscribe: () => void;
   }> {
+    const subscribeStartMs = Date.now();
+
     const subscriptionClient = await this.getSubscriptionClient();
     const streamClient = await this.getStreamAndPublishClient();
     const streamName = this.getStreamName(channelName);
@@ -299,6 +309,15 @@ class RedisHybridManager {
     // Immediately add the real callback to the subscribers map
     this.subscribers.get(pubSubChannelName)!.add(callback);
 
+    // Track active subscription count for monitoring.
+    this.activeSubscriptionCount++;
+    statsDClient.gauge(
+      "sse.active_subscriptions",
+      this.activeSubscriptionCount
+    );
+    // Track subscription rate (increment counter to get rate per second).
+    statsDClient.increment("sse.subscription_established", 1);
+
     // Append the events during history fetch to the history, if any
     if (eventsDuringHistoryFetch.length > 0) {
       for (const event of eventsDuringHistoryFetch) {
@@ -318,6 +337,13 @@ class RedisHybridManager {
       callback("close");
     }
 
+    // Track total subscription establishment time.
+    const subscribeDurationMs = Date.now() - subscribeStartMs;
+    statsDClient.timing(
+      "sse.subscription.total_duration_ms",
+      subscribeDurationMs
+    );
+
     return {
       history,
       unsubscribe: async () => {
@@ -325,6 +351,13 @@ class RedisHybridManager {
         if (subscribers) {
           callback("close");
           subscribers.delete(callback);
+
+          // Track active subscription count for monitoring.
+          this.activeSubscriptionCount--;
+          statsDClient.gauge(
+            "sse.active_subscriptions",
+            this.activeSubscriptionCount
+          );
 
           if (subscribers.size === 0) {
             // No more subscribers for this channel
@@ -381,8 +414,14 @@ class RedisHybridManager {
     streamName: string,
     lastEventId: string = "0-0"
   ): Promise<{ events: EventPayload[]; hasMore: boolean }> {
+    this.concurrentHistoryFetches++;
+    statsDClient.gauge(
+      "sse.history.concurrent_fetches",
+      this.concurrentHistoryFetches
+    );
+
     try {
-      return await streamClient
+      const result = await streamClient
         .xRead(
           { key: streamName, id: lastEventId },
           { COUNT: HISTORY_FETCH_COUNT }
@@ -395,13 +434,22 @@ class RedisHybridManager {
                 message: { payload: message.message["payload"] },
               }))
             );
+
+            const eventCount = finalEvents.length;
+            const hasMore = eventCount >= HISTORY_FETCH_COUNT;
+
+            // Track all event replays, including from-beginning fetches during deployment.
+            statsDClient.histogram("sse.history.events_replayed", eventCount);
+
             return {
               events: finalEvents,
-              hasMore: finalEvents.length >= HISTORY_FETCH_COUNT,
+              hasMore,
             };
           }
           return { events: [], hasMore: false };
         });
+
+      return result;
     } catch (error) {
       logger.error(
         {
@@ -411,7 +459,13 @@ class RedisHybridManager {
         },
         "Error fetching history from stream"
       );
-      return Promise.resolve({ events: [], hasMore: false });
+      return await Promise.resolve({ events: [], hasMore: false });
+    } finally {
+      this.concurrentHistoryFetches--;
+      statsDClient.gauge(
+        "sse.history.concurrent_fetches",
+        this.concurrentHistoryFetches
+      );
     }
   }
 

@@ -106,10 +106,6 @@ function createServer(
       spreadsheetId: z
         .string()
         .describe("The ID of the spreadsheet to retrieve."),
-      includeGridData: z
-        .boolean()
-        .default(false)
-        .describe("Whether to include grid data in the response."),
     },
     withToolLogging(
       auth,
@@ -117,7 +113,7 @@ function createServer(
         toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
         agentLoopContext,
       },
-      async ({ spreadsheetId, includeGridData }, { authInfo }) => {
+      async ({ spreadsheetId }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
           return new Err(
@@ -128,7 +124,6 @@ function createServer(
         try {
           const res = await sheets.spreadsheets.get({
             spreadsheetId,
-            includeGridData,
           });
 
           return new Ok([

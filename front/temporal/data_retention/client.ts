@@ -25,13 +25,17 @@ export async function launchDataRetentionWorkflow(): Promise<
   return new Ok(undefined);
 }
 
-export async function stopDataRetentionWorkflow() {
+export async function stopDataRetentionWorkflow({
+  stopReason,
+}: {
+  stopReason: string;
+}) {
   const client = await getTemporalClientForFrontNamespace();
 
   try {
     const handle: WorkflowHandle<typeof dataRetentionWorkflow> =
       client.workflow.getHandle("data-retention-workflow");
-    await handle.terminate();
+    await handle.terminate(stopReason);
   } catch (e) {
     logger.error(
       {

@@ -143,9 +143,8 @@ export default function MCPActionsDashboard({
                           variant="outline"
                           icon={ExternalLinkIcon}
                           onClick={() => handleAgentSelect(agent.sId)}
-                        >
-                          View Actions
-                        </Button>
+                          label="View Actions"
+                        />
                       </div>
                     }
                   >

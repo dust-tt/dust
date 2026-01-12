@@ -1,4 +1,4 @@
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 
 interface GenerateUniqueActionNameParams {
@@ -36,8 +36,7 @@ export function generateUniqueActionName({
     (action) => action.name === newActionName
   );
   let isNameUsedInNonSavedActions = selectedToolsInSheet.some(
-    (action) =>
-      action.type === "MCP" && action.configuredAction?.name === newActionName
+    (action) => action.configuredAction?.name === newActionName
   );
 
   while (isNameUsedInAddedActions || isNameUsedInNonSavedActions) {
@@ -47,8 +46,7 @@ export function generateUniqueActionName({
       (action) => action.name === newActionName
     );
     isNameUsedInNonSavedActions = selectedToolsInSheet.some(
-      (action) =>
-        action.type === "MCP" && action.configuredAction?.name === newActionName
+      (action) => action.configuredAction?.name === newActionName
     );
   }
 

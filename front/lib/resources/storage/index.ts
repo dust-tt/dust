@@ -25,13 +25,29 @@ function sequelizeLogger(message: string) {
 // prevents silent precision loss when handling large integers from the database.
 // Throws an assertion error if a BIGINT value exceeds JavaScript's safe integer
 // limits.
-types.setTypeParser(types.builtins.INT8, function (val: unknown) {
+function parseBigIntToSafeNumber(val: string): number {
   assert(
     Number.isSafeInteger(Number(val)),
     `Found a value stored as a BIGINT that is not a safe integer: ${val}`
   );
   return Number(val);
-});
+}
+
+// Reference: https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L55
+const INT8_OID = 20;
+const INT8_ARRAY_OID = 1016;
+
+// Override parser for single BIGINT values.
+types.setTypeParser(INT8_OID, parseBigIntToSafeNumber);
+
+// Override parser for BIGINT arrays.
+// By default, pg-types returns arrays of strings for BIGINT[].
+// We get the default array parser, then map each element through our safe
+// number parser to ensure all values are validated and converted to JavaScript numbers.
+const parseBigIntegerArray = types.getTypeParser(INT8_ARRAY_OID);
+types.setTypeParser(INT8_ARRAY_OID, (val: string) =>
+  parseBigIntegerArray(val).map(parseBigIntToSafeNumber)
+);
 
 export const statsDClient = getStatsDClient();
 

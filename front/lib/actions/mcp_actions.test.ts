@@ -1,5 +1,6 @@
 import { assert, describe, expect, it } from "vitest";
 
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   getPrefixedToolName,
@@ -262,7 +263,7 @@ describe("makeToolsWithStakesAndTimeout", () => {
   it("should process internal MCP server with google_calendar", () => {
     const metadata: {
       toolName: string;
-      permission: "high" | "low" | "never_ask";
+      permission: MCPToolStakeLevelType;
       enabled: boolean;
     }[] = [
       {
@@ -300,7 +301,7 @@ describe("makeToolsWithStakesAndTimeout", () => {
   it("should process remote MCP server", () => {
     const metadata: {
       toolName: string;
-      permission: "high" | "low" | "never_ask";
+      permission: MCPToolStakeLevelType;
       enabled: boolean;
     }[] = [
       {

@@ -1,5 +1,6 @@
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
+  ClipboardIcon,
   DataTable,
   EyeIcon,
   PencilSquareIcon,
@@ -27,8 +28,101 @@ type RowData = {
   editors: UserType[] | null;
   usage: AgentsUsageType;
   updatedAt: number | null;
+  createdAt: number | null;
   onClick: () => void;
   menuItems: MenuItem[];
+};
+
+const nameColumn = {
+  header: "Name",
+  accessorKey: "name",
+  cell: (info: CellContext<RowData, string>) => {
+    const SkillAvatar = getSkillAvatarIcon(info.row.original.icon);
+
+    return (
+      <DataTable.CellContent>
+        <div className="flex flex-row items-center gap-2 py-3">
+          <div>
+            <SkillAvatar />
+          </div>
+          <div className="flex min-w-0 grow flex-col">
+            <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
+              {info.getValue()}
+            </div>
+            <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {info.row.original.description}
+            </div>
+          </div>
+        </div>
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "w-40 @lg:w-full",
+  },
+};
+
+const editorsColumn = {
+  header: "Editors",
+  accessorKey: "editors",
+  cell: (info: CellContext<RowData, UserType[]>) => {
+    const editors = info.getValue();
+    const items = editors
+      ? editors.map((editor) => ({
+          name: editor.fullName,
+          visual: editor.image,
+        }))
+      : // Only dust managed skills should have no editors
+        [
+          {
+            name: "Dust",
+            visual: DUST_AVATAR_URL,
+          },
+        ];
+    return <DataTable.CellContent avatarStack={{ items, nbVisibleItems: 4 }} />;
+  },
+  meta: {
+    className: "hidden @sm:w-32 @sm:table-cell",
+  },
+};
+
+const usedByColumn = (onAgentClick: (agentId: string) => void) => ({
+  header: "Used by",
+  accessorKey: "usage",
+  cell: (info: CellContext<RowData, AgentsUsageType>) => (
+    <DataTable.CellContent>
+      <UsedByButton usage={info.getValue()} onItemClick={onAgentClick} />
+    </DataTable.CellContent>
+  ),
+  meta: {
+    className: "hidden @sm:w-24 @sm:table-cell",
+  },
+});
+
+const lastEditedColumn = {
+  header: "Last Edited",
+  accessorKey: "updatedAt",
+  cell: (info: CellContext<RowData, number | null>) => {
+    const value = info.getValue();
+    return (
+      <DataTable.BasicCellContent
+        tooltip={value ? formatTimestampToFriendlyDate(value, "long") : ""}
+        label={value ? formatTimestampToFriendlyDate(value, "compact") : ""}
+      />
+    );
+  },
+  meta: { className: "hidden @sm:w-32 @sm:table-cell" },
+};
+
+const menuColumn = {
+  header: "",
+  accessorKey: "menuItems",
+  cell: (info: CellContext<RowData, MenuItem[]>) => {
+    return <DataTable.MoreButton menuItems={info.getValue()} />;
+  },
+  meta: {
+    className: "w-14",
+  },
 };
 
 const getTableColumns = (onAgentClick: (agentId: string) => void) => {
@@ -42,95 +136,11 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
    */
 
   return [
-    {
-      header: "Name",
-      accessorKey: "name",
-      cell: (info: CellContext<RowData, string>) => {
-        const SkillAvatar = getSkillAvatarIcon(info.row.original.icon);
-
-        return (
-          <DataTable.CellContent>
-            <div className="flex flex-row items-center gap-2 py-3">
-              <div>
-                <SkillAvatar />
-              </div>
-              <div className="flex min-w-0 grow flex-col">
-                <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
-                  {info.getValue()}
-                </div>
-                <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  {info.row.original.description}
-                </div>
-              </div>
-            </div>
-          </DataTable.CellContent>
-        );
-      },
-      meta: {
-        className: "w-40 @lg:w-full",
-      },
-    },
-    {
-      header: "Editors",
-      accessorKey: "editors",
-      cell: (info: CellContext<RowData, UserType[]>) => {
-        const editors = info.getValue();
-        const items = editors
-          ? editors.map((editor) => ({
-              name: editor.fullName,
-              visual: editor.image,
-            }))
-          : // Only dust managed skills should have no editors
-            [
-              {
-                name: "Dust",
-                visual: DUST_AVATAR_URL,
-              },
-            ];
-        return (
-          <DataTable.CellContent avatarStack={{ items, nbVisibleItems: 4 }} />
-        );
-      },
-      meta: {
-        className: "hidden @sm:w-32 @sm:table-cell",
-      },
-    },
-    {
-      header: "Used by",
-      accessorKey: "usage",
-      cell: (info: CellContext<RowData, AgentsUsageType>) => (
-        <DataTable.CellContent>
-          <UsedByButton usage={info.getValue()} onItemClick={onAgentClick} />
-        </DataTable.CellContent>
-      ),
-      meta: {
-        className: "hidden @sm:w-24 @sm:table-cell",
-      },
-    },
-    {
-      header: "Last Edited",
-      accessorKey: "updatedAt",
-      cell: (info: CellContext<RowData, number | null>) => {
-        const value = info.getValue();
-        return (
-          <DataTable.BasicCellContent
-            tooltip={value ? formatTimestampToFriendlyDate(value, "long") : ""}
-            label={value ? formatTimestampToFriendlyDate(value, "compact") : ""}
-          />
-        );
-      },
-      meta: { className: "hidden @sm:w-32 @sm:table-cell" },
-    },
-    {
-      header: "",
-      accessorKey: "menuItems",
-      cell: (info: CellContext<RowData, MenuItem[]>) => {
-        return <DataTable.MoreButton menuItems={info.getValue()} />;
-      },
-      meta: {
-        className: "w-14",
-      },
-    },
+    nameColumn,
+    usedByColumn(onAgentClick),
+    editorsColumn,
+    lastEditedColumn,
+    menuColumn,
   ];
 };
 
@@ -161,6 +171,7 @@ export function SkillsTable({
         editors: skill.relations.editors,
         usage: skill.relations.usage,
         updatedAt: skill.updatedAt,
+        createdAt: skill.createdAt,
         onClick: () => {
           onSkillClick(skill);
         },
@@ -185,6 +196,22 @@ export function SkillsTable({
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
                     onSkillClick(skill);
+                  },
+                  kind: "item" as const,
+                },
+                {
+                  label: "Customize (New)",
+                  icon: ClipboardIcon,
+                  disabled: !skill.isExtendable,
+                  onClick: (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    void router.push(
+                      getSkillBuilderRoute(
+                        owner.sId,
+                        "new",
+                        `extends=${skill.sId}`
+                      )
+                    );
                   },
                   kind: "item" as const,
                 },
@@ -216,7 +243,7 @@ export function SkillsTable({
         <ArchiveSkillDialog
           owner={owner}
           isOpen={true}
-          skillConfiguration={skillToArchive}
+          skill={skillToArchive}
           onClose={() => {
             setSkillToArchive(null);
           }}

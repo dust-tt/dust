@@ -165,6 +165,20 @@ export async function workspaceRelocateFrontWorkflow({
       },
     ],
   });
+
+  // 4) Recreate Elasticsearch indices in the destination region.
+  await executeChild(workspaceRelocateFrontEsIndexationWorkflow, {
+    workflowId: `workspaceRelocateFrontEsIndexationWorkflow-${workspaceId}`,
+    searchAttributes: parentSearchAttributes,
+    args: [
+      {
+        sourceRegion,
+        destRegion,
+        workspaceId,
+      },
+    ],
+    memo,
+  });
 }
 
 export async function workspaceRelocateFrontTableWorkflow({
@@ -284,6 +298,17 @@ export async function workspaceRelocateFrontFileStorageWorkflow({
       await sleep("1m");
     }
   }
+}
+
+export async function workspaceRelocateFrontEsIndexationWorkflow({
+  destRegion,
+  workspaceId,
+}: RelocationWorkflowBase) {
+  const destinationRegionActivities =
+    getFrontDestinationRegionActivities(destRegion);
+
+  // Recreate user search index.
+  await destinationRegionActivities.recreateUserSearchIndex({ workspaceId });
 }
 
 /**

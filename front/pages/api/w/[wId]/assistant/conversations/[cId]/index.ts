@@ -87,8 +87,10 @@ async function handler(
     }
 
     case "DELETE": {
+      const { forceDelete } = req.query;
       const result = await deleteOrLeaveConversation(auth, {
         conversationId: cId,
+        forceDelete: forceDelete === "true",
       });
       if (result.isErr()) {
         return apiErrorForConversation(req, res, result.error);

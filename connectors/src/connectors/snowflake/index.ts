@@ -151,7 +151,10 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
         )
       );
     }
-    await stopSnowflakeSyncWorkflow(c.id);
+    await stopSnowflakeSyncWorkflow({
+      connectorId: c.id,
+      stopReason: "Stopped to update connector configuration",
+    });
     await c.update({ connectionId });
     // We reset all the remote tables "lastUpsertedAt" to null, to force the tables to be
     // upserted again (to update their remoteDatabaseSecret).
@@ -187,8 +190,15 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
-  async stop(): Promise<Result<undefined, Error>> {
-    const stopRes = await stopSnowflakeSyncWorkflow(this.connectorId);
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
+    const stopRes = await stopSnowflakeSyncWorkflow({
+      connectorId: this.connectorId,
+      stopReason: reason,
+    });
     if (stopRes.isErr()) {
       return stopRes;
     }

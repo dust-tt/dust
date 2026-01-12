@@ -4,9 +4,10 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isBuilder } from "@app/types";
+import { isString } from "@app/types";
 
 export type GetSimilarSkillsResponseBody = {
   similar_skills: string[];
@@ -19,16 +20,6 @@ async function handler(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  if (!isBuilder(owner)) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "User is not a builder.",
-      },
-    });
-  }
-
   const featureFlags = await getFeatureFlags(owner);
   if (!featureFlags.includes("skills")) {
     return apiError(req, res, {
@@ -40,21 +31,11 @@ async function handler(
     });
   }
 
-  if (!featureFlags.includes("skills_similar_display")) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "Similar skills display is not enabled for this workspace.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "POST": {
       const { naturalDescription } = req.body;
 
-      if (!naturalDescription || typeof naturalDescription !== "string") {
+      if (!isString(naturalDescription)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -67,6 +48,10 @@ async function handler(
       const result = await getSimilarSkills(auth, { naturalDescription });
 
       if (result.isErr()) {
+        logger.error(
+          { error: result.error, workspaceId: owner.sId },
+          "Error fetching similar skills"
+        );
         return apiError(req, res, {
           status_code: 500,
           api_error: {
@@ -74,6 +59,25 @@ async function handler(
             message: result.error.message,
           },
         });
+      }
+      const similarSkills = result.value.similar_skills;
+      if (similarSkills.length > 0) {
+        logger.info(
+          {
+            workspaceId: owner.sId,
+            naturalDescription: naturalDescription,
+            similarSkills: similarSkills,
+          },
+          `Successfully fetched ${similarSkills.length} similar skills`
+        );
+      } else {
+        logger.info(
+          {
+            workspaceId: owner.sId,
+            naturalDescription: naturalDescription,
+          },
+          "No similar skills found"
+        );
       }
 
       return res.status(200).json(result.value);

@@ -7,7 +7,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ParsedUrlQuery } from "querystring";
 import type { ComponentType } from "react";
@@ -19,15 +18,9 @@ import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHea
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import type { ActionApp } from "@app/lib/registry";
-import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
+import { useApps } from "@app/lib/swr/apps";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
-import type {
-  AppType,
-  LightWorkspaceType,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
+import type { AppType, LightWorkspaceType, SpaceType } from "@app/types";
 import { isString } from "@app/types";
 
 type RowData = {
@@ -66,87 +59,6 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
   ];
 };
 
-// A column is added for internal Dust apps, that are used to power Dust product.
-// registryApp contains the list of all these Dust apps, that are expected to live in this space.
-// For standard apps, if registryApps is not set, column is not displayed.
-const getDustAppsColumns = (
-  owner: WorkspaceType,
-  registryApps: ActionApp[]
-): ColumnDef<RowData, string> => ({
-  id: "status",
-  cell: (info: CellContext<RowData, string>) => {
-    const { app } = info.row.original;
-    const registryApp = Object.values(registryApps).find(
-      (a) => a.appId === app.sId
-    );
-    if (!registryApp) {
-      return (
-        <DataTable.CellContent>
-          <span>No registry app</span>
-        </DataTable.CellContent>
-      );
-    }
-    return (
-      <DataTable.CellContent>
-        <AppHashChecker owner={owner} app={app} registryApp={registryApp} />
-      </DataTable.CellContent>
-    );
-  },
-  accessorFn: (row: RowData) => row.name,
-});
-
-type AppHashCheckerProps = {
-  owner: LightWorkspaceType;
-  app: AppType;
-  registryApp: ActionApp;
-};
-
-const AppHashChecker = ({ owner, app, registryApp }: AppHashCheckerProps) => {
-  const { run, isRunError } = useSavedRunStatus(owner, app, (data) => {
-    switch (data?.run?.status?.run) {
-      case "running":
-        return 100;
-      default:
-        return 0;
-    }
-  });
-
-  if (
-    registryApp.appHash &&
-    run?.app_hash &&
-    registryApp.appHash !== run.app_hash
-  ) {
-    return (
-      <span>
-        Inconsistent hashes,{" "}
-        <Link
-          className="text-highlight"
-          href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/specification?hash=${registryApp.appHash}`}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-        >
-          compare
-        </Link>
-      </span>
-    );
-  }
-
-  if (isRunError) {
-    return <span>Error: {isRunError.error?.message}</span>;
-  }
-
-  if (!run) {
-    return <span>No run found</span>;
-  }
-
-  if (run?.status.run === "errored") {
-    return <span>Run failed</span>;
-  }
-
-  return "";
-};
-
 const hasAppsModalQuery = (
   query: ParsedUrlQuery
 ): query is ParsedUrlQuery & { modal: string } =>
@@ -157,7 +69,6 @@ interface SpaceAppsListProps {
   onSelect: (sId: string) => void;
   owner: LightWorkspaceType;
   space: SpaceType;
-  registryApps?: ActionApp[] | null;
 }
 
 export const SpaceAppsList = ({
@@ -165,7 +76,6 @@ export const SpaceAppsList = ({
   isBuilder,
   space,
   onSelect,
-  registryApps,
 }: SpaceAppsListProps) => {
   const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
@@ -221,10 +131,6 @@ export const SpaceAppsList = ({
   }
 
   const columns = getTableColumns();
-  if (registryApps) {
-    columns.push(getDustAppsColumns(owner, registryApps));
-  }
-
   const isEmpty = rows.length === 0;
 
   const actionButtons = (

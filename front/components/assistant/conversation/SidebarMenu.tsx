@@ -1,18 +1,15 @@
 import {
-  Avatar,
   BracesIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
   Checkbox,
-  CollapsibleComponent,
-  ContactsRobotIcon,
   DocumentIcon,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
-  DropdownMenuSearchbar,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -22,10 +19,10 @@ import {
   MagicIcon,
   MoreIcon,
   NavigationList,
+  NavigationListCollapsibleSection,
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
-  PencilSquareIcon,
   PlusIcon,
   RobotIcon,
   SearchInput,
@@ -52,22 +49,24 @@ import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
+import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { SpacesList } from "@app/components/assistant/conversation/sidebar/SpacesList";
+import { ProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
 import {
+  filterTriggeredConversations,
   getGroupConversationsByDate,
   getGroupConversationsByUnreadAndActionRequired,
 } from "@app/components/assistant/conversation/utils";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
+import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { SKILL_ICON } from "@app/lib/skill";
-import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useConversations,
   useSpaceConversationsSummary,
@@ -80,7 +79,7 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
-import { isBuilder } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 
 type AgentSidebarMenuProps = {
   owner: WorkspaceType;
@@ -102,26 +101,9 @@ const CONVERSATIONS_PER_PAGE = 10;
 
 export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const router = useRouter();
-
-  const agentsSearchInputRef = useRef<HTMLInputElement>(null);
-  const [searchText, setSearchText] = useState("");
-  // Use the same hook as the input bar and the new conversation page to avoid concurrent calls to getAgentConfigurations.
-  const { agentConfigurations } = useUnifiedAgentConfigurations({
+  const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const editableAgents = useMemo(
-    () => agentConfigurations.filter((agent) => agent.canEdit),
-    [agentConfigurations]
-  );
-  const filteredAgents = useMemo(
-    () =>
-      editableAgents
-        .filter((agent) =>
-          agent.name.toLowerCase().includes(searchText.toLowerCase().trim())
-        )
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [editableAgents, searchText]
-  );
 
   const { setSidebarOpen } = useContext(SidebarContext);
 
@@ -130,9 +112,19 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
       workspaceId: owner.sId,
     });
 
+  const hasSpaceConversations = hasFeature("projects");
+
+  const { summary, mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: !hasSpaceConversations },
+  });
+
   useEffect(() => {
     const handleConversationsUpdated = () => {
       void mutateConversations();
+      if (hasSpaceConversations) {
+        void mutateSpaceSummary();
+      }
     };
     window.addEventListener(
       CONVERSATIONS_UPDATED_EVENT,
@@ -144,7 +136,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         handleConversationsUpdated
       );
     };
-  }, [mutateConversations]);
+  }, [hasSpaceConversations, mutateConversations, mutateSpaceSummary]);
 
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedConversations, setSelectedConversations] = useState<
@@ -152,27 +144,24 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   >([]);
   const doDelete = useDeleteConversation(owner);
 
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const {
+    hideTriggeredConversations,
+    setHideTriggeredConversations,
+    isLoading: isHideTriggeredLoading,
+  } = useHideTriggeredConversations();
 
   const hasSkills = hasFeature("skills");
 
   const isRestrictedFromAgentCreation =
     hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
 
-  const hasSpaceConversations = hasFeature("projects");
-
-  const { summary } = useSpaceConversationsSummary({
-    workspaceId: owner.sId,
-    options: { disabled: !hasSpaceConversations },
-  });
-
   const [showDeleteDialog, setShowDeleteDialog] = useState<
     "all" | "selection" | null
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [titleFilter, setTitleFilter] = useState<string>("");
+  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
+    useState(false);
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
@@ -290,7 +279,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
       // We have more conversations to show.
       conversations.length > conversationsPage * CONVERSATIONS_PER_PAGE &&
       // The entry is different from the previous one to avoid multiple calls for the same intersection.
-      entry != previousEntry.current
+      entry !== previousEntry.current
     ) {
       previousEntry.current = entry;
       nextPage();
@@ -311,11 +300,23 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     }
   }, [setSidebarOpen, router, setAnimate]);
 
+  const hasTriggeredConversations = useMemo(
+    () => conversations.some((c) => c.triggerId !== null),
+    [conversations]
+  );
+
+  const filteredConversations = useMemo(() => {
+    return filterTriggeredConversations(
+      conversations,
+      hideTriggeredConversations
+    );
+  }, [conversations, hideTriggeredConversations]);
+
   const conversationsList = useMemo(() => {
     return (
       <NavigationListWithInbox
         ref={ref}
-        conversations={conversations}
+        conversations={filteredConversations}
         conversationsPage={conversationsPage}
         titleFilter={titleFilter}
         isMultiSelect={isMultiSelect}
@@ -327,7 +328,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     );
   }, [
     ref,
-    conversations,
+    filteredConversations,
     conversationsPage,
     titleFilter,
     isMultiSelect,
@@ -347,6 +348,11 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         type={showDeleteDialog || "all"}
         selectedCount={selectedConversations.length}
+      />
+      <CreateProjectModal
+        isOpen={isCreateProjectModalOpen}
+        onClose={() => setIsCreateProjectModalOpen(false)}
+        owner={owner}
       />
       <div className="relative flex grow flex-col">
         <div className="flex h-0 min-h-full w-full">
@@ -443,90 +449,46 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                             </DropdownMenuSubContent>
                           </DropdownMenuPortal>
                         </DropdownMenuSub>
-                        {editableAgents.length > 0 && (
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger
-                              icon={PencilSquareIcon}
-                              label="Edit agent"
-                            />
-                            <DropdownMenuPortal>
-                              <DropdownMenuSubContent className="pointer-events-auto">
-                                <DropdownMenuSearchbar
-                                  ref={agentsSearchInputRef}
-                                  name="search"
-                                  value={searchText}
-                                  onChange={setSearchText}
-                                  placeholder="Search"
-                                />
-                                {filteredAgents.map((agent) => (
-                                  <DropdownMenuItem
-                                    key={agent.sId}
-                                    href={getAgentBuilderRoute(
-                                      owner.sId,
-                                      agent.sId
-                                    )}
-                                    truncateText
-                                    label={agent.name}
-                                    icon={() => (
-                                      <Avatar
-                                        size="sm"
-                                        visual={agent.pictureUrl}
-                                      />
-                                    )}
-                                  />
-                                ))}
-                              </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                          </DropdownMenuSub>
-                        )}
+                        <DropdownMenuItem
+                          href={getAgentBuilderRoute(owner.sId, "manage")}
+                          icon={RobotIcon}
+                          label="Manage agents"
+                          data-gtm-label="assistantManagementButton"
+                          data-gtm-location="sidebarMenu"
+                          onClick={withTracking(
+                            TRACKING_AREAS.BUILDER,
+                            "manage_agents"
+                          )}
+                        />
                       </>
                     )}
-                    {!isBuilder(owner) ? null : hasSkills ? (
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger
-                          icon={ContactsRobotIcon}
-                          label="Manage"
+                    {hasSkills && isBuilder(owner) && (
+                      <>
+                        <DropdownMenuLabel>Skills</DropdownMenuLabel>
+                        <DropdownMenuItem
+                          href={getSkillBuilderRoute(owner.sId, "new")}
+                          icon={PlusIcon}
+                          label="New skill"
                         />
-                        <DropdownMenuPortal>
-                          <DropdownMenuSubContent className="pointer-events-auto">
-                            <DropdownMenuItem
-                              href={getAgentBuilderRoute(owner.sId, "manage")}
-                              icon={RobotIcon}
-                              label="Agents"
-                            />
-                            <DropdownMenuItem
-                              href={getSkillBuilderRoute(owner.sId, "manage")}
-                              icon={SKILL_ICON}
-                              label="Skills"
-                            />
-                          </DropdownMenuSubContent>
-                        </DropdownMenuPortal>
-                      </DropdownMenuSub>
-                    ) : (
-                      <DropdownMenuItem
-                        href={getAgentBuilderRoute(owner.sId, "manage")}
-                        icon={ContactsRobotIcon}
-                        label="Manage agents"
-                        data-gtm-label="assistantManagementButton"
-                        data-gtm-location="sidebarMenu"
-                        onClick={withTracking(
-                          TRACKING_AREAS.BUILDER,
-                          "manage_agents"
-                        )}
-                      />
+                        <DropdownMenuItem
+                          href={getSkillBuilderRoute(owner.sId, "manage")}
+                          icon={SKILL_ICON}
+                          label="Manage skills"
+                        />
+                      </>
                     )}
                     <DropdownMenuLabel>Conversations</DropdownMenuLabel>
                     <DropdownMenuItem
                       label="Edit conversations"
                       onClick={toggleMultiSelect}
                       icon={ListCheckIcon}
-                      disabled={conversations.length === 0}
+                      disabled={filteredConversations.length === 0}
                     />
                     <DropdownMenuItem
                       label="Clear conversation history"
                       onClick={() => setShowDeleteDialog("all")}
                       icon={TrashIcon}
-                      disabled={conversations.length === 0}
+                      disabled={filteredConversations.length === 0}
                     />
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -537,36 +499,69 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                 Error loading conversations
               </Label>
             )}
-            <>
-              {hasSpaceConversations && summary.length > 0 ? (
-                <div className="overflow-y-auto">
-                  <CollapsibleComponent
-                    rootProps={{ defaultOpen: summary.length <= 5 }}
-                    triggerChildren={
-                      <div className="text-sm text-foreground dark:text-foreground-night">
-                        Projects
-                      </div>
-                    }
-                    contentChildren={
-                      <SpacesList owner={owner} summary={summary} />
-                    }
-                  />
-                  <CollapsibleComponent
-                    rootProps={{
-                      defaultOpen: true,
-                    }}
-                    triggerChildren={
-                      <div className="text-sm text-foreground dark:text-foreground-night">
-                        My conversations
-                      </div>
-                    }
-                    contentChildren={conversationsList}
-                  />
-                </div>
-              ) : (
-                conversationsList
-              )}
-            </>
+            {hasSpaceConversations ? (
+              <div className="overflow-y-auto">
+                <NavigationListCollapsibleSection
+                  label="Projects"
+                  defaultOpen
+                  action={
+                    isAdmin(owner) ? (
+                      <Button
+                        size="xs"
+                        icon={PlusIcon}
+                        label="New"
+                        variant="ghost"
+                        // aria-label="Create new project"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsCreateProjectModalOpen(true);
+                        }}
+                      />
+                    ) : null
+                  }
+                >
+                  <div className="mt-0.5 px-3 sm:flex sm:flex-col sm:gap-0.5">
+                    {summary.length > 0 ? (
+                      <ProjectsList owner={owner} summary={summary} />
+                    ) : (
+                      <NavigationListItem
+                        label="Create a Project"
+                        icon={PlusIcon}
+                        onClick={() => setIsCreateProjectModalOpen(true)}
+                      />
+                    )}
+                  </div>
+                </NavigationListCollapsibleSection>
+
+                <NavigationListCollapsibleSection
+                  label="My conversations"
+                  defaultOpen
+                  action={
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="xs" icon={MoreIcon} variant="ghost" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuCheckboxItem
+                          label="Hide triggered conversations"
+                          checked={hideTriggeredConversations}
+                          onCheckedChange={setHideTriggeredConversations}
+                          disabled={
+                            isHideTriggeredLoading || !hasTriggeredConversations
+                          }
+                        />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  }
+                >
+                  {conversationsList}
+                </NavigationListCollapsibleSection>
+              </div>
+            ) : (
+              conversationsList
+            )}
+
             <StackedInAppBanners owner={owner} />
           </div>
         </div>
@@ -731,54 +726,50 @@ const ConversationListItem = memo(
         ? "New Conversation"
         : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
-    return (
-      <>
-        {isMultiSelect ? (
-          <div className="flex items-center px-2 py-2">
-            <Checkbox
-              id={`conversation-${conversation.sId}`}
-              className="bg-background dark:bg-background-night"
-              checked={selectedConversations.includes(conversation)}
-              onCheckedChange={() => toggleConversationSelection(conversation)}
-            />
-            <Label
-              htmlFor={`conversation-${conversation.sId}`}
-              className="copy-sm ml-2 text-muted-foreground dark:text-muted-foreground-night"
-            >
-              {conversationLabel}
-            </Label>
-          </div>
-        ) : (
-          <NavigationListItem
-            selected={router.query.cId === conversation.sId}
-            status={getConversationDotStatus(conversation)}
-            label={conversationLabel}
-            href={getConversationRoute(owner.sId, conversation.sId)}
-            shallow
-            moreMenu={
-              <ConversationMenu
-                activeConversationId={conversation.sId}
-                conversation={conversation}
-                owner={owner}
-                trigger={<NavigationListItemAction />}
-                isConversationDisplayed={router.query.cId === conversation.sId}
-                isOpen={isMenuOpen}
-                onOpenChange={handleMenuOpenChange}
-                triggerPosition={menuTriggerPosition}
-              />
-            }
-            onContextMenu={handleRightClick}
-            onClick={async () => {
-              // Side bar is the floating sidebar that appears when the screen is small.
-              if (sidebarOpen) {
-                setSidebarOpen(false);
-                // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
-                await new Promise((resolve) => setTimeout(resolve, 600));
-              }
-            }}
+    return isMultiSelect ? (
+      <div className="flex items-center px-2 py-2">
+        <Checkbox
+          id={`conversation-${conversation.sId}`}
+          className="bg-background dark:bg-background-night"
+          checked={selectedConversations.includes(conversation)}
+          onCheckedChange={() => toggleConversationSelection(conversation)}
+        />
+        <Label
+          htmlFor={`conversation-${conversation.sId}`}
+          className="copy-sm ml-2 text-muted-foreground dark:text-muted-foreground-night"
+        >
+          {conversationLabel}
+        </Label>
+      </div>
+    ) : (
+      <NavigationListItem
+        selected={router.query.cId === conversation.sId}
+        status={getConversationDotStatus(conversation)}
+        label={conversationLabel}
+        href={getConversationRoute(owner.sId, conversation.sId)}
+        shallow
+        moreMenu={
+          <ConversationMenu
+            activeConversationId={conversation.sId}
+            conversation={conversation}
+            owner={owner}
+            trigger={<NavigationListItemAction />}
+            isConversationDisplayed={router.query.cId === conversation.sId}
+            isOpen={isMenuOpen}
+            onOpenChange={handleMenuOpenChange}
+            triggerPosition={menuTriggerPosition}
           />
-        )}
-      </>
+        }
+        onContextMenu={handleRightClick}
+        onClick={async () => {
+          // Side bar is the floating sidebar that appears when the screen is small.
+          if (sidebarOpen) {
+            setSidebarOpen(false);
+            // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
+            await new Promise((resolve) => setTimeout(resolve, 600));
+          }
+        }}
+      />
     );
   }
 );

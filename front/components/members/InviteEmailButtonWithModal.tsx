@@ -67,7 +67,7 @@ export function InviteEmailButtonWithModal({
   owner: WorkspaceType;
   prefillText: string;
   perSeatPricing: SubscriptionPerSeatPricing | null;
-  onInviteClick: (event: MouseEvent) => void;
+  onInviteClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const { inviteEmailsList, emailError } =

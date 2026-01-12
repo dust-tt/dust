@@ -137,7 +137,6 @@ export function getDefaultMCPAction(
 
   return {
     id: uniqueId(),
-    type: "MCP",
     configuration,
     // Ensure default name always matches validation regex (^[a-z0-9_]+$)
     name: sanitizedName,
@@ -176,7 +175,6 @@ export type AgentBuilderMCPServerConfiguration = {
 };
 
 export type AgentBuilderMCPConfiguration = {
-  type: "MCP";
   configuration: AgentBuilderMCPServerConfiguration;
   name: string;
   description: string;
@@ -194,7 +192,6 @@ export function getDefaultMCPServerActionConfiguration(
   const requirements = getMCPServerRequirements(mcpServerView);
 
   return {
-    type: "MCP",
     configuration: {
       mcpServerViewId: mcpServerView?.sId ?? "not-a-valid-sId",
       dataSourceConfigurations: null,

@@ -667,7 +667,7 @@ const InputBarContainer = ({
                     icon={TextIcon}
                     size={buttonSize}
                     className="flex sm:hidden"
-                    onClick={setIsToolbarOpen}
+                    onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                   />
                   {actions.includes("attachment") && (
                     <>

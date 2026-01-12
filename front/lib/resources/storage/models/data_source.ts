@@ -87,6 +87,11 @@ DataSourceModel.init(
       { fields: ["workspaceId", "vaultId"] },
       { fields: ["workspaceId", "conversationId"], unique: true },
       { fields: ["dustAPIProjectId"] },
+      {
+        fields: ["conversationId"],
+        name: "data_sources_conversation_id",
+        concurrently: true,
+      },
     ],
   }
 );

@@ -39,7 +39,8 @@ import {
 import { DataSourceQuotaExceededError } from "@connectors/lib/error";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { heartbeat } from "@connectors/lib/temporal";
-import logger, { getActivityLogger } from "@connectors/logger/logger";
+import type { Logger } from "@connectors/logger/logger";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -151,7 +152,7 @@ export async function syncOneFile({
     }
 
     const item = (await getItem(
-      logger,
+      localLogger,
       client,
       `${itemAPIPath}?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
     )) as DriveItem;
@@ -533,16 +534,31 @@ const getParentId = cacheWithRedis(
   }
 );
 
+export type MicrosoftFolderDeletionReason =
+  | "delta_sync_deleted"
+  | "gc_not_found"
+  | "gc_marked_deleted"
+  | "gc_outside_sync_scope"
+  | "gc_drive_not_found"
+  | "gc_drive_removed_from_selection"
+  | "user_deselected"
+  | "moved_out_of_sync_scope"
+  | "recursive_cleanup";
+
 export async function deleteFolder({
   connectorId,
   dataSourceConfig,
   internalId,
   deleteRootNode,
+  logger,
+  reason,
 }: {
   connectorId: number;
   dataSourceConfig: DataSourceConfig;
   internalId: string;
   deleteRootNode?: boolean;
+  logger: Logger;
+  reason: MicrosoftFolderDeletionReason;
 }) {
   const folder = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
@@ -557,6 +573,7 @@ export async function deleteFolder({
     {
       connectorId,
       folder,
+      reason,
     },
     `Deleting Microsoft folder.`
   );
@@ -588,10 +605,12 @@ export async function deleteFile({
   connectorId,
   dataSourceConfig,
   internalId,
+  logger,
 }: {
   connectorId: number;
   dataSourceConfig: DataSourceConfig;
   internalId: string;
+  logger: Logger;
 }) {
   const file = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
@@ -643,10 +662,14 @@ export async function recursiveNodeDeletion({
   nodeId,
   connectorId,
   dataSourceConfig,
+  logger,
+  reason,
 }: {
   nodeId: string;
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
+  logger: Logger;
+  reason: MicrosoftFolderDeletionReason;
 }): Promise<string[]> {
   await heartbeat();
   const node = await MicrosoftNodeResource.fetchByInternalId(
@@ -694,6 +717,7 @@ export async function recursiveNodeDeletion({
         connectorId,
         dataSourceConfig,
         internalId: node.internalId,
+        logger,
       });
       deletedFiles.push(node.internalId);
     } catch (error) {
@@ -709,6 +733,8 @@ export async function recursiveNodeDeletion({
         nodeId: child.internalId,
         connectorId,
         dataSourceConfig,
+        logger,
+        reason: "recursive_cleanup",
       });
       deletedFiles.push(...result);
     }
@@ -716,6 +742,8 @@ export async function recursiveNodeDeletion({
       connectorId,
       dataSourceConfig,
       internalId: node.internalId,
+      logger,
+      reason,
     });
     deletedFiles.push(node.internalId);
   }

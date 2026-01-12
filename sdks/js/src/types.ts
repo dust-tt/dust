@@ -641,6 +641,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "agent_management_tool"
   | "agent_to_yaml"
+  | "agent_tool_outputs_analytics"
   | "anthropic_vertex_fallback"
   | "ashby_tool"
   | "claude_4_5_opus_feature"
@@ -658,14 +659,12 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_quick_global_agent"
   | "dust_oai_global_agent"
   | "fireworks_new_model_feature"
-  | "freshservice_tool"
   | "front_tool"
   | "google_sheets_tool"
   | "hootl_subscriptions"
   | "http_client_tool"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
-  | "labs_trackers"
   | "labs_transcripts"
   | "legacy_dust_apps"
   | "monday_tool"
@@ -675,6 +674,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
+  | "phone_trial_paywall"
   | "restrict_agents_publishing"
   | "salesforce_synced_queries"
   | "salesforce_tool_write"
@@ -690,9 +690,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_message_splitting"
   | "slideshow"
   | "usage_data_api"
-  | "vanta_tool"
-  | "web_summarization"
   | "xai_feature"
+  | "productboard_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -766,6 +765,7 @@ const AgentActionTypeSchema = z.object({
   id: ModelIdSchema,
   sId: z.string(),
   createdAt: z.number(),
+  updatedAt: z.number(),
   mcpServerId: z.string().nullable(),
   internalMCPServerName: z.string().nullable(),
   toolName: z.string(),
@@ -775,6 +775,7 @@ const AgentActionTypeSchema = z.object({
   status: z.string(),
   params: z.record(z.any()),
   step: z.number(),
+  executionDurationMs: z.number().nullable(),
   citationsAllocated: z.number(),
   output: CallToolResultSchema.shape.content.nullable(),
   generatedFiles: z.array(ActionGeneratedFileSchema),
@@ -1133,7 +1134,9 @@ export type ConversationMessageReactionsType = z.infer<
   typeof ConversationMessageReactionsSchema
 >;
 
-const MCPStakeLevelSchema = z.enum(["low", "high", "never_ask"]).optional();
+const MCPStakeLevelSchema = z
+  .enum(["low", "medium", "high", "never_ask"])
+  .optional();
 
 const MCPValidationMetadataSchema = z.object({
   agentName: z.string(),
@@ -1764,7 +1767,7 @@ export type DustAPICredentials = {
 };
 
 const SpaceKindSchema = FlexibleEnumSchema<
-  "regular" | "global" | "system" | "public" | "conversations"
+  "regular" | "global" | "system" | "public" | "conversations" | "project"
 >();
 
 const SpaceTypeSchema = z.object({
@@ -2686,6 +2689,7 @@ const FileTypeUseCaseSchema = FlexibleEnumSchema<
   | "upsert_table"
   // See also front/types/files.ts.
   | "folders_document"
+  | "project_context"
 >();
 
 export const FileTypeSchema = z.object({
@@ -2889,6 +2893,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTimeIcon"
   | "AsanaLogo"
   | "AshbyLogo"
+  | "ToolsIcon"
   | "CanvaLogo"
   | "CommandLineIcon"
   | "ConfluenceLogo"
@@ -2901,6 +2906,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GitlabLogo"
   | "GmailLogo"
   | "GoogleSpreadsheetLogo"
+  | "GuruLogo"
   | "HubspotLogo"
   | "JiraLogo"
   | "LinearLogo"
@@ -2911,11 +2917,14 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "MondayLogo"
   | "NotionLogo"
   | "OpenaiLogo"
+  | "ProductboardLogo"
+  | "PuzzleIcon"
   | "SalesforceLogo"
   | "SlackLogo"
   | "StripeLogo"
   | "SupabaseLogo"
   | "ValTownLogo"
+  | "VantaLogo"
   | "ZendeskLogo"
 >();
 
@@ -3309,6 +3318,7 @@ export type RemoteMCPToolStakeLevelPublicType =
   (typeof REMOTE_MCP_TOOL_STAKE_LEVELS)[number];
 const MCP_TOOL_STAKE_LEVELS = [
   ...REMOTE_MCP_TOOL_STAKE_LEVELS,
+  "medium",
   "never_ask",
 ] as const;
 export type MCPToolStakeLevelPublicType =

@@ -44,7 +44,7 @@ export default function SpaceFolderModal({
       owner,
       spaceId: space.sId,
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      dataSourceViewId: dataSourceViewId || undefined,
+      dataSourceViewId: dataSourceViewId || null,
       disabled: !dataSourceViewId,
     });
 

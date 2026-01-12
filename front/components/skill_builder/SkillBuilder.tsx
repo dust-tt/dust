@@ -1,11 +1,4 @@
-import {
-  BarFooter,
-  BarHeader,
-  Button,
-  cn,
-  ScrollArea,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { BarFooter, BarHeader, Button, cn, ScrollArea } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
@@ -22,26 +15,26 @@ import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/S
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
 import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
-import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
 import {
   getDefaultSkillFormData,
-  transformSkillConfigurationToFormData,
-} from "@app/components/skill_builder/transformSkillConfiguration";
+  transformSkillTypeToFormData,
+} from "@app/components/skill_builder/skillFormData";
+import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
+import { ExtendedSkillBadge } from "@app/components/skills/ExtendedSkillBadge";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useSkillTools } from "@app/lib/swr/actions";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 interface SkillBuilderProps {
-  skillConfiguration?: SkillType;
+  skill?: SkillType;
   extendedSkill?: SkillType;
 }
 
 export default function SkillBuilder({
-  skillConfiguration,
+  skill,
   extendedSkill,
 }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
@@ -49,26 +42,21 @@ export default function SkillBuilder({
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
 
-  const { actions, isActionsLoading } = useSkillTools(
-    owner,
-    skillConfiguration?.sId ?? null
-  );
-
   const { editors } = useSkillEditors({
     owner,
-    skillConfigurationId: skillConfiguration?.sId ?? null,
+    skillId: skill?.sId ?? null,
   });
 
   const defaultValues = useMemo(() => {
-    if (skillConfiguration) {
-      return transformSkillConfigurationToFormData(skillConfiguration);
+    if (skill) {
+      return transformSkillTypeToFormData(skill);
     }
 
     return getDefaultSkillFormData({
       user,
       extendedSkillId: extendedSkill?.sId ?? null,
     });
-  }, [skillConfiguration, user, extendedSkill]);
+  }, [skill, user, extendedSkill]);
 
   const form = useForm<SkillBuilderFormData>({
     resolver: zodResolver(skillBuilderFormSchema),
@@ -79,18 +67,17 @@ export default function SkillBuilder({
     },
   });
 
-  // Populate editors and tools reactively
+  // Populate editors reactively
   useEffect(() => {
     const currentValues = form.getValues();
 
     form.reset({
       ...currentValues,
-      tools: actions,
-      editors: skillConfiguration || editors.length > 0 ? editors : [user],
+      editors: skill || editors.length > 0 ? editors : [user],
     });
-  }, [isActionsLoading, actions, editors, form, user, skillConfiguration]);
+  }, [editors, form, user, skill]);
 
-  const isCreatingNew = !skillConfiguration;
+  const isCreatingNew = !skill;
   const { isDirty } = form.formState;
 
   useNavigationLock(isDirty && !isSaving);
@@ -101,9 +88,7 @@ export default function SkillBuilder({
     const result = await submitSkillBuilderForm({
       formData: data,
       owner,
-      skillConfigurationId: !isCreatingNew
-        ? skillConfiguration?.sId
-        : undefined,
+      skillId: !isCreatingNew ? skill?.sId : undefined,
       currentEditors: editors,
     });
 
@@ -148,7 +133,7 @@ export default function SkillBuilder({
       <FormProvider form={form} asForm={false}>
         <div
           className={cn(
-            "h-dvh flex flex-row",
+            "flex h-dvh flex-row",
             "bg-background text-foreground",
             "dark:bg-background-night dark:text-foreground-night"
           )}
@@ -157,37 +142,25 @@ export default function SkillBuilder({
             <BarHeader
               variant="default"
               className="mx-4"
-              title={
-                (skillConfiguration
-                  ? `Edit skill ${skillConfiguration.name}`
-                  : "Create new skill") +
-                (extendedSkill ? ` - extending ${extendedSkill.name}` : "")
+              title={skill ? `Edit skill ${skill.name}` : "Create new skill"}
+              description={
+                extendedSkill ? (
+                  <ExtendedSkillBadge
+                    extendedSkill={extendedSkill}
+                    className="text-sm"
+                  />
+                ) : undefined
               }
               rightActions={
-                <Button
-                  icon={XMarkIcon}
-                  onClick={handleCancel}
-                  variant="ghost"
-                  type="button"
-                />
+                <BarHeader.ButtonBar variant="close" onClose={handleCancel} />
               }
             />
 
             <ScrollArea className="flex-1">
               <div className="mx-auto space-y-10 p-4 2xl:max-w-5xl">
-                <div>
-                  <h2 className="heading-lg text-foreground dark:text-foreground-night">
-                    Create new skill
-                  </h2>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Create a custom capability for specific tasks
-                  </p>
-                </div>
                 <SkillBuilderRequestedSpacesSection />
                 <SkillBuilderAgentFacingDescriptionSection />
-                <SkillBuilderInstructionsSection
-                  skillConfiguration={skillConfiguration}
-                />
+                <SkillBuilderInstructionsSection skill={skill} />
                 <SkillBuilderToolsSection />
                 <SkillBuilderSettingsSection />
               </div>

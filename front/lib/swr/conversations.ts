@@ -309,7 +309,7 @@ export function useConversationSkills({
   const conversationSkillsFetcher: Fetcher<FetchConversationSkillsResponse> =
     fetcher;
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
     conversationId
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/skills`
       : null,
@@ -318,11 +318,9 @@ export function useConversationSkills({
   );
 
   return {
-    conversationSkills: data
-      ? data.skills
-      : emptyArray<FetchConversationSkillsResponse["skills"][number]>(),
-    isConversationSkillsLoading: !error && !data,
-    isConversationSkillsError: error,
+    conversationSkills: data?.skills ?? emptyArray(),
+    isConversationSkillsLoading: !options?.disabled && isLoading,
+    isConversationSkillsError: !!error,
     mutateConversationSkills: mutate,
   };
 }
@@ -733,7 +731,7 @@ export function useAgentMessageSkills({
 }) {
   const skillsFetcher: Fetcher<GetAgentMessageSkillsResponseBody> = fetcher;
 
-  const { data, error, isLoading } = useSWRWithDefaults(
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
     conversation && messageId
       ? `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${messageId}/skills`
       : null,
@@ -744,7 +742,8 @@ export function useAgentMessageSkills({
   return {
     skills: data?.skills ?? emptyArray(),
     isSkillsLoading: !options?.disabled && isLoading,
-    isSkillsError: error,
+    isSkillsError: !!error,
+    mutateSkills: mutate,
   };
 }
 
@@ -864,9 +863,9 @@ export function useConversationMarkAsRead({
   };
 }
 
-type ConversationParticipationOption = "join" | "leave" | "delete";
+export type ConversationParticipationOption = "join" | "leave" | "delete";
 
-export const useConversationParticipationOption = ({
+export const useConversationParticipationOptions = ({
   ownerId,
   conversationId,
   userId,
@@ -882,13 +881,11 @@ export const useConversationParticipationOption = ({
     workspaceId: ownerId,
     options: { disabled },
   });
-  const [option, setOption] = useState<ConversationParticipationOption | null>(
-    null
-  );
+  const [options, setOptions] = useState<ConversationParticipationOption[]>([]);
 
   useEffect(() => {
     if (conversationParticipants === undefined) {
-      setOption(null);
+      setOptions([]);
       return;
     }
     const isUserParticipating =
@@ -900,12 +897,24 @@ export const useConversationParticipationOption = ({
     const isLastParticipant =
       isUserParticipating && conversationParticipants?.users.length === 1;
 
-    setOption(
-      isLastParticipant ? "delete" : isUserParticipating ? "leave" : "join"
-    );
+    const isConversationCreator =
+      userId !== null &&
+      conversationParticipants?.users.find(
+        (participant) => participant.sId === userId && participant.isCreator
+      );
+
+    if (isLastParticipant) {
+      setOptions(["delete"]);
+    } else if (isConversationCreator) {
+      setOptions(["leave", "delete"]);
+    } else if (isUserParticipating) {
+      setOptions(["leave"]);
+    } else {
+      setOptions(["join"]);
+    }
   }, [conversationParticipants, userId]);
 
-  return option;
+  return options;
 };
 
 export const useJoinConversation = ({

@@ -23,9 +23,9 @@ import { useCallback, useMemo, useState } from "react";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
 import { usePurchaseCredits } from "@app/lib/swr/credits";
-import type { StripePricingData } from "@app/lib/types/stripe/pricing";
 import { assertNever } from "@app/types";
 import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
+import type { StripePricingData } from "@app/types/stripe/pricing";
 
 type PurchaseState = "idle" | "processing" | "success" | "redirect" | "error";
 
@@ -262,7 +262,7 @@ export function BuyCreditDialog({
                 Credits amount
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-[11px] text-muted-foreground dark:text-muted-foreground-night">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
                   $
                 </span>
                 <Input

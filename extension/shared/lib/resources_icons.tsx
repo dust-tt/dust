@@ -37,6 +37,7 @@ import {
   GitlabLogo,
   GmailLogo,
   GoogleSpreadsheetLogo,
+  GuruLogo,
   HubspotLogo,
   JiraLogo,
   LinearLogo,
@@ -47,11 +48,13 @@ import {
   MondayLogo,
   NotionLogo,
   OpenaiLogo,
+  ProductboardLogo,
   SalesforceLogo,
   SlackLogo,
   StripeLogo,
   SupabaseLogo,
   ValTownLogo,
+  VantaLogo,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentProps, ComponentType } from "react";
@@ -115,6 +118,7 @@ export const InternalActionIcons = {
   GitlabLogo,
   GmailLogo,
   GoogleSpreadsheetLogo,
+  GuruLogo,
   HubspotLogo,
   JiraLogo,
   LinearLogo,
@@ -129,7 +133,9 @@ export const InternalActionIcons = {
   SlackLogo,
   StripeLogo,
   SupabaseLogo,
+  ProductboardLogo,
   ValTownLogo,
+  VantaLogo,
   ZendeskLogo,
 };
 

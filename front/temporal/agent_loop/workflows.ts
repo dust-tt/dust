@@ -31,7 +31,11 @@ import type {
 } from "@app/types/assistant/agent_run";
 
 const toolActivityStartToCloseTimeout = `${DEFAULT_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1} minutes`;
-export const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60_000;
+
+const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
+const MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
+
+const RUN_MODEL_MAX_RETRIES = 10;
 
 import {
   OpenTelemetryInboundInterceptor,
@@ -49,7 +53,12 @@ export const interceptors: WorkflowInterceptorsFactory = () => ({
 const { runModelAndCreateActionsActivity } = proxyActivities<
   typeof runModelAndCreateWrapperActivities
 >({
-  startToCloseTimeout: "5 minutes",
+  startToCloseTimeout: "10 minutes",
+  heartbeatTimeout: MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
+  retry: {
+    maximumAttempts: RUN_MODEL_MAX_RETRIES,
+    backoffCoefficient: 1,
+  },
 });
 
 const { runToolActivity } = proxyActivities<typeof runToolActivities>({
@@ -128,10 +137,6 @@ export async function agentLoopWorkflow({
 }) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  let childWorkflowHandle: ChildWorkflowHandle<
-    typeof agentLoopConversationTitleWorkflow
-  > | null = null;
-
   // Allow cancellation of in-flight activities via signal-triggered scope cancellation.
   let cancelRequested = false;
   const executionScope = new CancellationScope();
@@ -142,37 +147,15 @@ export async function agentLoopWorkflow({
   });
 
   try {
-    // If conversation title is not set, launch a child workflow to generate the conversation title in
-    // the background. If a workflow with the same ID is already running, ignore the error and
-    // continue. Do not wait for the child workflow to complete at this point.
-    // This is to avoid blocking the main workflow.
-    if (!agentLoopArgs.conversationTitle) {
-      try {
-        childWorkflowHandle = await startChild(
-          agentLoopConversationTitleWorkflow,
-          {
-            workflowId: makeAgentLoopConversationTitleWorkflowId(
-              authType,
-              agentLoopArgs
-            ),
-            searchAttributes: parentSearchAttributes,
-            args: [{ authType, agentLoopArgs }],
-            memo,
-          }
-        );
-      } catch (err) {
-        if (!(err instanceof WorkflowExecutionAlreadyStartedError)) {
-          throw err;
-        }
-      }
-    }
-
     const { agentMessageId, conversationId } = agentLoopArgs;
 
     await executionScope.run(async () => {
       const runIds: string[] = [];
       const syncStartTime = Date.now();
       let currentStep = startStep;
+      let childWorkflowHandle: ChildWorkflowHandle<
+        typeof agentLoopConversationTitleWorkflow
+      > | null = null;
 
       await logAgentLoopPhaseStartActivity({
         authType,
@@ -211,6 +194,30 @@ export async function agentLoopWorkflow({
           stepStartTime,
         });
 
+        // After the first step completes, launch title generation in the background.
+        // We wait until the first step so the agent has at least one response in the database,
+        // otherwise the title model would only see the user's question without context.
+        if (i === startStep && !agentLoopArgs.conversationTitle) {
+          try {
+            childWorkflowHandle = await startChild(
+              agentLoopConversationTitleWorkflow,
+              {
+                workflowId: makeAgentLoopConversationTitleWorkflowId(
+                  authType,
+                  agentLoopArgs
+                ),
+                searchAttributes: parentSearchAttributes,
+                args: [{ authType, agentLoopArgs }],
+                memo,
+              }
+            );
+          } catch (err) {
+            if (!(err instanceof WorkflowExecutionAlreadyStartedError)) {
+              throw err;
+            }
+          }
+        }
+
         if (!shouldContinue) {
           break;
         }
@@ -232,11 +239,11 @@ export async function agentLoopWorkflow({
       await CancellationScope.nonCancellable(async () => {
         await finalizeSuccessfulAgentLoopActivity(authType, agentLoopArgs);
       });
-    });
 
-    if (childWorkflowHandle) {
-      await childWorkflowHandle.result();
-    }
+      if (childWorkflowHandle) {
+        await childWorkflowHandle.result();
+      }
+    });
   } catch (err) {
     const workflowError = err instanceof Error ? err : new Error(String(err));
 

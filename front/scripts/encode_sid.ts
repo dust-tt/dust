@@ -8,7 +8,6 @@ const RESOURCE_TYPES = [
   "space",
   "data_source",
   "data_source_view",
-  "tracker",
   "template",
   "extension",
   "mcp_server_connection",

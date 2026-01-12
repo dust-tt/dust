@@ -2,7 +2,7 @@ import isEqual from "lodash/isEqual";
 import type { WhereOptions } from "sequelize";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
+import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -93,12 +93,11 @@ async function updateAgentRequestedSpaceIds(
     // Calculate the correct group IDs from actions
     // Note: You may see workspace_isolation_violation warnings in logs - these are benign
     // monitoring warnings, not actual errors. The auth parameter ensures proper scoping.
-    const newRequirements = await getAgentConfigurationRequirementsFromActions(
-      auth,
-      {
+    const newRequirements =
+      await getAgentConfigurationRequirementsFromCapabilities(auth, {
         actions: agentConfiguration.actions,
-      }
-    );
+        skills: [],
+      });
 
     const currentRequestedSpaceIds = agentConfiguration.requestedSpaceIds.map(
       (spaceSId) => {

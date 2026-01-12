@@ -12,7 +12,6 @@ export type LabsTranscriptsProviderType =
 
 export const labsFeatures = [
   "transcripts",
-  "trackers",
   "mcp_actions",
   "transcription",
 ] as const;

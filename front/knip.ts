@@ -9,7 +9,11 @@ const config: KnipConfig = {
     "mailing/**/*.{ts,js}",
     "next-sitemap.config.js",
   ],
-  ignoreFiles: ["**/vite.config.js", "**/esbuild.worker.ts"],
+  ignoreFiles: [
+    "**/vite.config.js",
+    "**/esbuild.worker.ts",
+    "components/home/content/Product/BlogSection.tsx", // Temporarily disabled due to broken blog.dust.tt images
+  ],
   project: ["**/*.{js,jsx,ts,tsx}"],
   rules: {
     binaries: "off",

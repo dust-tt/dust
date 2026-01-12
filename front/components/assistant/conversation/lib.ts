@@ -33,6 +33,7 @@ export function createPlaceholderUserMessage({
     mentions: mentions.map((mention) => toMentionType(mention)),
     richMentions: mentions.map((mention) => ({
       ...mention,
+      dismissed: false,
       status: "approved",
     })),
     user,
@@ -49,6 +50,7 @@ export function createPlaceholderUserMessage({
       username,
       origin: "web",
     },
+    reactions: [],
     contentFragments: [
       ...(contentFragments?.uploaded ?? []).map(
         (cf) =>
@@ -162,6 +164,8 @@ export function createPlaceholderAgentMessage({
     generatedFiles: [],
     actions: [],
     richMentions: [],
+    completionDurationMs: null,
+    reactions: [],
 
     streaming: {
       agentState: "placeholder",

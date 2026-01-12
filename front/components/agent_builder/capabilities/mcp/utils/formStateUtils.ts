@@ -26,7 +26,7 @@ export function createFormResetHandler(
         return;
       }
 
-      if (configurationTool?.type === "MCP") {
+      if (configurationTool) {
         // Edit mode: reset with existing tool data
         form.reset({
           name: configurationTool.name ?? "",

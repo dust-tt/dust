@@ -284,6 +284,8 @@ async function searchCallback(
         id: doc.document_id,
         source: {
           provider: dataSourceView.dataSource.connectorProvider ?? undefined,
+          data_source_id: dataSourceView.dataSource.sId,
+          data_source_view_id: dataSourceView.sId,
         },
         tags: doc.tags,
         ref: refs.shift() as string,

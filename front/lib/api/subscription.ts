@@ -24,6 +24,7 @@ export async function restoreWorkspaceAfterSubscription(auth: Authenticator) {
   }
   const scrubCancelRes = await terminateScheduleWorkspaceScrubWorkflow({
     workspaceId: owner.sId,
+    stopReason: "Workspace subscription activated/reactivated",
   });
   if (scrubCancelRes.isErr()) {
     logger.error(

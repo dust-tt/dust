@@ -20,6 +20,7 @@ import type {
   ContentNode,
   ContentNodeType,
   DataSourceViewContentNode,
+  SpaceType,
 } from "@app/types";
 import { isConnectorProvider } from "@app/types";
 import { assertNever } from "@app/types";
@@ -130,4 +131,19 @@ export function getLocationForDataSourceViewContentNode(
   }
 
   return `${providerName} › ... › ${node.parentTitle}`;
+}
+
+export function getLocationForDataSourceViewContentNodeWithSpace(
+  node: DataSourceViewContentNode,
+  spacesMap?: Record<string, SpaceType>
+) {
+  const { spaceId } = node.dataSourceView;
+
+  // Get space name if available.
+  const spaceName = spacesMap?.[spaceId]?.name;
+  const locationWithoutSpace = getLocationForDataSourceViewContentNode(node);
+
+  return spaceName
+    ? `${spaceName} › ${locationWithoutSpace}`
+    : locationWithoutSpace;
 }

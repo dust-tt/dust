@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 
-const RECONNECT_DELAY = 5000; // 5 seconds.
+const RECONNECT_DELAY_BASE_MS = 3000; // 3 seconds base delay
+const RECONNECT_DELAY_JITTER_MS = 5000; // +0-5 seconds random jitter
 const MAX_RECONNECT_ATTEMPTS = 10;
 
 /**
@@ -149,14 +150,18 @@ export function useEventSource(
         return;
       }
 
+      // Add jitter to prevent synchronized reconnection bursts during deployment.
+      const reconnectDelayMs =
+        RECONNECT_DELAY_BASE_MS + Math.random() * RECONNECT_DELAY_JITTER_MS;
+
       console.error(
-        `Connection error. Attempting to reconnect in ${RECONNECT_DELAY}ms`
+        `Connection error. Attempting to reconnect in ${Math.round(reconnectDelayMs)}ms`
       );
 
-      // Set timeout to reconnect after a delay.
+      // Set timeout to reconnect after a jittered delay.
       reconnectTimeoutRef.current = setTimeout(() => {
         setReconnectCounter((c) => c + 1);
-      }, RECONNECT_DELAY);
+      }, reconnectDelayMs);
     };
 
     return source;

@@ -256,6 +256,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       "system",
       "global",
       "regular",
+      "project",
       "public",
     ];
 
@@ -457,7 +458,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     params: {
       name: string;
       isRestricted: boolean;
-      conversationsEnabled: boolean;
     } & (
       | { memberIds: string[]; managementMode: "manual" }
       | { groupIds: string[]; managementMode: "group" }
@@ -485,9 +485,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       );
     }
 
-    if (!this.isRegular()) {
+    if (!this.isRegular() && !this.isProject()) {
       return new Err(
-        new DustError("unauthorized", "Only regular spaces can have members.")
+        new DustError(
+          "unauthorized",
+          "Only projects and regular spaces can have members."
+        )
       );
     }
 
@@ -518,12 +521,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return withTransaction(async (t) => {
       // Update managementMode if provided
       const { managementMode } = params;
-
-      if (params.conversationsEnabled && this.isRegular()) {
-        await this.update({ conversationsEnabled: true }, t);
-      } else {
-        await this.update({ conversationsEnabled: false }, t);
-      }
 
       // If the space should be restricted and was not restricted before, remove the global group.
       if (!wasRestricted && isRestricted) {
@@ -890,13 +887,24 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   isRegular() {
     return this.kind === "regular";
   }
+  isProject() {
+    return this.kind === "project";
+  }
 
   isRegularAndRestricted() {
-    return this.isRegular() && !this.groups.some((group) => group.isGlobal());
+    return this.isRegular() && !this.isOpen();
+  }
+
+  isProjectAndRestricted() {
+    return this.isProject() && !this.groups.some((group) => group.isGlobal());
   }
 
   isRegularAndOpen() {
-    return this.isRegular() && this.groups.some((group) => group.isGlobal());
+    return this.isRegular() && this.isOpen();
+  }
+
+  isOpen() {
+    return this.groups.some((group) => group.isGlobal());
   }
 
   isPublic() {
@@ -912,10 +920,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       this.isSystem() ||
       this.isConversations()
     );
-  }
-
-  areConversationsEnabled() {
-    return this.conversationsEnabled;
   }
 
   // Serialization.
@@ -972,8 +976,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return {
       createdAt: this.createdAt.getTime(),
       groupIds: this.groups.map((group) => group.sId),
-      isRestricted: this.isRegularAndRestricted(),
-      conversationsEnabled: this.conversationsEnabled,
+      isRestricted:
+        this.isRegularAndRestricted() || this.isProjectAndRestricted(),
+
       kind: this.kind,
       managementMode: this.managementMode,
       name: this.name,

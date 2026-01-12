@@ -3,7 +3,9 @@ import {
   ActionIcons,
   Button,
   CloudArrowLeftRightIcon,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessage,
   ExclamationCircleIcon,
   IconPicker,
@@ -137,9 +139,11 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
       </div>
 
       {!mcpServer.authorization && (
-        <CollapsibleComponent
-          triggerChildren={<div className="heading-lg">Advanced Settings</div>}
-          contentChildren={
+        <Collapsible>
+          <CollapsibleTrigger>
+            <div className="heading-lg">Advanced Settings</div>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
             <div className="space-y-2">
               <Input
                 {...form.register("sharedSecret")}
@@ -153,25 +157,25 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                 Bearer token in the headers.
               </p>
             </div>
-          }
-        />
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
-      <CollapsibleComponent
-        triggerChildren={
+      <Collapsible>
+        <CollapsibleTrigger>
           <div className="heading-lg">
             Networking & Headers ({headerFields.length})
           </div>
-        }
-        contentChildren={
+        </CollapsibleTrigger>
+        <CollapsibleContent>
           <div className="space-y-2">
             <McpServerHeaders
               headers={headerFields.map(({ key, value }) => ({ key, value }))}
               onHeadersChange={(rows) => replace(rows)}
             />
           </div>
-        }
-      />
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

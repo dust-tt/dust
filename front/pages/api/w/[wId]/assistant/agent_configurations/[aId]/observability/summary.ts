@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -9,13 +10,14 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 export type GetAgentSummaryResponseBody = {
   summaryText: string;
 };
 
 const QuerySchema = z.object({
-  days: z.coerce.number().positive().optional(),
+  days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
 });
 
 async function handler(
@@ -25,7 +27,7 @@ async function handler(
 ) {
   const owner = auth.getNonNullableWorkspace();
 
-  if (typeof req.query.aId !== "string") {
+  if (!isString(req.query.aId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -89,12 +91,11 @@ async function handler(
       });
 
       if (summaryResult.isErr()) {
-        const e = summaryResult.error;
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Failed to generate observability summary: ${e.message}`,
+            message: `Failed to generate observability summary: ${fromError(summaryResult.error).toString()}`,
           },
         });
       }

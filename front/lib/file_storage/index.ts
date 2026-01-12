@@ -2,6 +2,7 @@ import type { Bucket } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
 import type formidable from "formidable";
 import fs from "fs";
+import isNumber from "lodash/isNumber";
 import { pipeline } from "stream/promises";
 
 import config from "@app/lib/file_storage/config";
@@ -143,6 +144,41 @@ export class FileStorage {
     const [files] = await this.bucket.getFiles({ prefix, maxResults });
 
     return files;
+  }
+
+  async getSortedFileVersions({
+    filePath,
+    maxResults,
+  }: {
+    filePath: string;
+    maxResults?: number;
+  }) {
+    try {
+      const [files] = await this.bucket.getFiles({
+        prefix: filePath,
+        versions: true,
+        maxResults,
+      });
+
+      // Filter to only the exact file path and sort by generation (newest first)
+      // Generation represents the version order in GCS
+      // can be string or number per GCS types, though in practice it seems to always be a number
+      const versions = files
+        .filter((file) => file.name === filePath)
+        .sort((a, b) => {
+          const genA = isNumber(a.metadata.generation)
+            ? a.metadata.generation
+            : Number(a.metadata.generation ?? 0);
+          const genB = isNumber(b.metadata.generation)
+            ? b.metadata.generation
+            : Number(b.metadata.generation ?? 0);
+          return genB - genA;
+        });
+
+      return versions;
+    } catch {
+      return [];
+    }
   }
 
   get name() {

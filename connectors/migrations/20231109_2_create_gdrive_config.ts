@@ -14,6 +14,7 @@ async function main() {
       pdfEnabled: false,
       csvEnabled: false,
       largeFilesEnabled: false,
+      useParallelSync: false,
     });
     console.log(
       `Created config for connector ${config.connectorId} with id ${config.id} and pdfEnabled ${config.pdfEnabled}`

@@ -19,6 +19,7 @@ import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
+import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -334,6 +335,21 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     });
   }
 
+  static async listBySpaceIds(
+    auth: Authenticator,
+    spaceIds: string[],
+    { includeGlobalSpace = false }: { includeGlobalSpace?: boolean } = {}
+  ) {
+    const requestedSpaces = await SpaceResource.fetchByIds(auth, spaceIds);
+
+    if (includeGlobalSpace) {
+      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+      requestedSpaces.push(globalSpace);
+    }
+
+    return this.listBySpaces(auth, requestedSpaces);
+  }
+
   static async listAssistantDefaultSelected(auth: Authenticator) {
     const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
     assert(globalGroup.isOk(), "Failed to fetch global group");
@@ -477,6 +493,34 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     const dataSource = await DataSourceResource.fetchByConversation(
       auth,
       conversation
+    );
+    if (!dataSource) {
+      return null;
+    }
+
+    const dataSourceViews = await this.baseFetch(
+      auth,
+      {},
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          kind: "default",
+          dataSourceId: dataSource.id,
+        },
+      }
+    );
+
+    return dataSourceViews[0] ?? null;
+  }
+
+  static async fetchByProjectId(
+    auth: Authenticator,
+    projectId: ModelId
+  ): Promise<DataSourceViewResource | null> {
+    // Fetch the data source view associated with the datasource that is associated with the conversation.
+    const dataSource = await DataSourceResource.fetchByProjectId(
+      auth,
+      projectId
     );
     if (!dataSource) {
       return null;
@@ -775,6 +819,14 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     });
 
     await AgentTablesQueryConfigurationTableModel.destroy({
+      where: {
+        dataSourceViewId: this.id,
+        workspaceId,
+      },
+      transaction,
+    });
+
+    await SkillDataSourceConfigurationModel.destroy({
       where: {
         dataSourceViewId: this.id,
         workspaceId,

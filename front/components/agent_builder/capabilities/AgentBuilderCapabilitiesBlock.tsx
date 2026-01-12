@@ -79,8 +79,7 @@ export function AgentBuilderCapabilitiesBlock({
     const mcpServerView = mcpServerViewsWithKnowledge.find(
       (view) => view.sId === action.configuration?.mcpServerViewId
     );
-    const isDataSourceSelectionRequired =
-      action.type === "MCP" && Boolean(mcpServerView);
+    const isDataSourceSelectionRequired = Boolean(mcpServerView);
 
     if (isDataSourceSelectionRequired) {
       setKnowledgeAction({ action, index });
@@ -213,7 +212,7 @@ export function AgentBuilderCapabilitiesBlock({
                   key={field.id}
                   action={field}
                   onRemove={() => remove(index)}
-                  onEdit={() => handleActionEdit(field, index)}
+                  onClick={() => handleActionEdit(field, index)}
                 />
               ))}
             </CardGrid>

@@ -5,6 +5,7 @@ import { Op } from "sequelize";
 import {
   listWorkOSOrganizationsWithDomain,
   removeWorkOSOrganizationDomain,
+  removeWorkOSOrganizationDomainFromOrganization,
 } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
@@ -286,12 +287,30 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
       const [otherOrganizationWithDomain] = otherOrganizationsWithDomain;
       if (otherOrganizationWithDomain) {
-        return new Err(
-          new Error(
-            `Domain ${domain} already associated with organization ` +
-              `${otherOrganizationWithDomain.id} - ${otherOrganizationWithDomain.metadata.region}`
-          )
-        );
+        if (dropExistingDomain) {
+          logger.info(
+            {
+              domain,
+              organizationId: otherOrganizationWithDomain.id,
+            },
+            "Dropping existing domain"
+          );
+
+          // Delete the domain from WorkOS.
+          await removeWorkOSOrganizationDomainFromOrganization(
+            otherOrganizationWithDomain,
+            {
+              domain,
+            }
+          );
+        } else {
+          return new Err(
+            new Error(
+              `Domain ${domain} already associated with organization ` +
+                `${otherOrganizationWithDomain.id} - ${otherOrganizationWithDomain.metadata.region}`
+            )
+          );
+        }
       }
     }
 
@@ -325,7 +344,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async updateMetadata(
     id: ModelId,
-    metadata: Record<string, string | number | boolean | object>
+    metadata: Record<string, string | number | boolean | object> | null
   ): Promise<Result<void, Error>> {
     return this.updateByModelIdAndCheckExistence(id, { metadata });
   }

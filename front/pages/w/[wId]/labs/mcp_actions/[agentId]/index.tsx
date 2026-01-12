@@ -245,9 +245,8 @@ export default function AgentMCPActions({
                                     action.messageId
                                   )
                                 }
-                              >
-                                View Conversation
-                              </Button>
+                                label="View Conversation"
+                              />
                             )}
                           </div>
                         }

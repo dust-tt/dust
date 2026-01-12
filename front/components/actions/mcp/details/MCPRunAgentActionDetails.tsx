@@ -3,7 +3,9 @@ import {
   Avatar,
   Button,
   CitationGrid,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessage,
   ExternalLinkIcon,
   Markdown,
@@ -251,7 +253,8 @@ export function MCPRunAgentActionDetails({
                       <AttachmentChip
                         key={id}
                         label={getMcpServerViewDisplayName(mcpServerView)}
-                        icon={getIcon(mcpServerView.server.icon)}
+                        icon={{ visual: getIcon(mcpServerView.server.icon) }}
+                        color="highlight"
                       />
                     );
                   })}
@@ -284,14 +287,13 @@ export function MCPRunAgentActionDetails({
                     />
                   </div>
                 )}
-                <CollapsibleComponent
-                  rootProps={{ defaultOpen: true }}
-                  triggerChildren={
+                <Collapsible defaultOpen={true}>
+                  <CollapsibleTrigger>
                     <span className="p-1 text-sm font-semibold text-foreground dark:text-foreground-night">
                       @{childAgent.name}'s Answer
                     </span>
-                  }
-                  contentChildren={
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
                     <div className="flex flex-col gap-4">
                       {chainOfThought && (
                         <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
@@ -360,8 +362,8 @@ export function MCPRunAgentActionDetails({
                         </div>
                       )}
                     </div>
-                  }
-                />
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             )}
             {generatedFiles.length > 0 && (

@@ -131,7 +131,7 @@ function ArrayFormField({
           )}
         </h3>
         <Button
-          variant="secondary"
+          variant="outline"
           size="xs"
           label="Add Item"
           onClick={() => {
@@ -171,7 +171,7 @@ function ArrayFormField({
             <div className="mb-2 flex items-center justify-between">
               <span className="text-xs font-medium">Item {index + 1}</span>
               <Button
-                variant="secondary"
+                variant="outline"
                 size="xs"
                 label="Remove"
                 onClick={() => remove(index)}
@@ -502,13 +502,13 @@ export default function EmailTemplatesPreview() {
             <h2 className="text-xl font-semibold">Email Preview</h2>
             <div className="flex gap-2">
               <Button
-                variant={previewMode === "desktop" ? "primary" : "secondary"}
+                variant={previewMode === "desktop" ? "primary" : "outline"}
                 size="xs"
                 label="Desktop"
                 onClick={() => setPreviewMode("desktop")}
               />
               <Button
-                variant={previewMode === "mobile" ? "primary" : "secondary"}
+                variant={previewMode === "mobile" ? "primary" : "outline"}
                 size="xs"
                 label="Mobile"
                 onClick={() => setPreviewMode("mobile")}

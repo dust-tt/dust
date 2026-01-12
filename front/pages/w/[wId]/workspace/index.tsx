@@ -9,8 +9,6 @@ import { CapabilitiesSection } from "@app/components/workspace/settings/Capabili
 import { IntegrationsSection } from "@app/components/workspace/settings/IntegrationsSection";
 import { ModelSelectionSection } from "@app/components/workspace/settings/ModelSelectionSection";
 import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
-import type { RegionType } from "@app/lib/api/regions/config";
-import { config as regionConfig } from "@app/lib/api/regions/config";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -31,7 +29,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   microsoftBotDataSource: DataSourceType | null;
   discordBotDataSource: DataSourceType | null;
   systemSpace: SpaceType;
-  region: RegionType;
 }>(async (_, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -65,7 +62,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       microsoftBotDataSource: microsoftBotDataSource?.toJSON() ?? null,
       discordBotDataSource: discordBotDataSource?.toJSON() ?? null,
       systemSpace: systemSpace.toJSON(),
-      region: regionConfig.getCurrentRegion(),
     },
   };
 });
@@ -78,7 +74,6 @@ export default function WorkspaceAdmin({
   microsoftBotDataSource,
   discordBotDataSource,
   systemSpace,
-  region,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
@@ -97,11 +92,7 @@ export default function WorkspaceAdmin({
         <Page.Vertical align="stretch" gap="md">
           <WorkspaceNameEditor owner={owner} />
         </Page.Vertical>
-        <ModelSelectionSection
-          owner={owner}
-          plan={subscription.plan}
-          region={region}
-        />
+        <ModelSelectionSection owner={owner} plan={subscription.plan} />
         <CapabilitiesSection
           owner={owner}
           showRestrictAgentsPublishing={featureFlags.includes(

@@ -4,7 +4,15 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  EDIT_IMAGE_TOOL_NAME,
+  GENERATE_IMAGE_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  EditImageInputSchema,
+  GenerateImageInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -266,42 +274,14 @@ function createServer(
   const server = makeInternalMCPServer("image_generation");
 
   server.tool(
-    "generate_image",
+    GENERATE_IMAGE_TOOL_NAME,
     "Generate an image from text descriptions. The more detailed and specific your prompt is, the" +
       " better the result will be. You can customize the output through various parameters to" +
       " match your needs.",
-    {
-      prompt: z
-        .string()
-        .max(4000)
-        .describe(
-          "A text description of the desired image. The maximum length is 32000 characters."
-        ),
-      name: z
-        .string()
-        .max(64)
-        .describe(
-          "The filename that will be used to save the generated image. Must be 64 characters or less."
-        ),
-      quality: z
-        .enum(["auto", "low", "medium", "high"])
-        .optional()
-        .default("auto")
-        .describe(
-          "The quality of the generated image. Must be one of auto, low, medium, or high. Auto" +
-            " will automatically choose the best quality for the size."
-        ),
-      size: z
-        .enum(["1024x1024", "1536x1024", "1024x1536"])
-        .optional()
-        .default("1024x1024")
-        .describe(
-          "The size of the generated image. Must be one of 1024x1024, 1536x1024, or 1024x1536"
-        ),
-    },
+    GenerateImageInputSchema.shape,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "generate_image", agentLoopContext },
+      { toolNameForMonitoring: GENERATE_IMAGE_TOOL_NAME, agentLoopContext },
       async ({ prompt, name, quality, size }, { sendNotification, _meta }) => {
         const workspace = auth.getNonNullableWorkspace();
 
@@ -421,47 +401,14 @@ function createServer(
   );
 
   server.tool(
-    "edit_image",
+    EDIT_IMAGE_TOOL_NAME,
     "Edit an existing image using text instructions. Provide the file ID of an image from Dust" +
       " file storage and describe the changes you want to make. The tool preserves the original" +
       " image's aspect ratio by default, but you can optionally change it.",
-    {
-      imageFileId: z
-        .string()
-        .describe(
-          "The ID of the image file to edit (e.g. fil_abc1234) from conversation attachments. Must be a valid image file (PNG, JPEG, etc.)."
-        ),
-      editPrompt: z
-        .string()
-        .max(4000)
-        .describe(
-          "A text description of the desired edits. Be specific about what should change and what should remain unchanged. The maximum length is 4000 characters."
-        ),
-      outputName: z
-        .string()
-        .max(64)
-        .describe(
-          "The filename that will be used to save the edited image. Must be 64 characters or less."
-        ),
-      quality: z
-        .enum(["auto", "low", "medium", "high"])
-        .optional()
-        .default("auto")
-        .describe(
-          "The quality of the edited image. Must be one of auto, low, medium, or high. Auto" +
-            " will automatically choose the best quality."
-        ),
-      aspectRatio: z
-        .enum(["1:1", "3:2", "2:3"])
-        .optional()
-        .describe(
-          "Optional aspect ratio override for the edited image. If not specified, preserves the" +
-            " original image's aspect ratio. Must be one of 1:1, 3:2, or 2:3."
-        ),
-    },
+    EditImageInputSchema.shape,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "edit_image", agentLoopContext },
+      { toolNameForMonitoring: EDIT_IMAGE_TOOL_NAME, agentLoopContext },
       async (
         {
           imageFileId: inputImageFileId,

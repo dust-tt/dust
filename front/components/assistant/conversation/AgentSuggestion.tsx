@@ -160,7 +160,7 @@ export function AgentSuggestion({
   }
 
   return (
-    <div className="flex flex-col items-start gap-6">
+    <div className="mt-4 flex flex-col items-start gap-6">
       <Page.SectionHeader
         title="Best-matching Agents"
         description="Selected based on agents' descriptions, names, and available tools."

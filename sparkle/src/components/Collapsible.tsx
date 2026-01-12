@@ -67,7 +67,7 @@ export interface CollapsibleTriggerProps
     React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger>,
     Omit<VariantProps<typeof labelVariants>, "disabled"> {
   label?: string;
-  isOpen?: boolean;
+  hideChevron?: boolean;
 }
 
 const CollapsibleTrigger = React.forwardRef<
@@ -80,7 +80,7 @@ const CollapsibleTrigger = React.forwardRef<
       children,
       className,
       disabled = false,
-      isOpen = false,
+      hideChevron = false,
       variant = "primary",
       ...props
     },
@@ -97,20 +97,26 @@ const CollapsibleTrigger = React.forwardRef<
         )}
         {...props}
       >
-        <span
-          className={cn(
-            "s-transition-transform s-duration-200",
-            chevronVariants({ variant, disabled })
-          )}
-        >
-          <Icon
-            visual={isOpen ? ChevronDownIcon : ChevronRightIcon}
-            size="sm"
-          />
-        </span>
-        {children ? (
-          children
-        ) : (
+        {!hideChevron && (
+          <span
+            className={cn(
+              "s-transition-transform s-duration-200",
+              chevronVariants({ variant, disabled })
+            )}
+          >
+            <Icon
+              visual={ChevronRightIcon}
+              size="sm"
+              className="s-block group-data-[state=open]/col:s-hidden"
+            />
+            <Icon
+              visual={ChevronDownIcon}
+              size="sm"
+              className="s-hidden group-data-[state=open]/col:s-block"
+            />
+          </span>
+        )}
+        {children ?? (
           <span className={labelVariants({ variant, disabled })}>{label}</span>
         )}
       </CollapsiblePrimitive.Trigger>
@@ -148,52 +154,9 @@ const CollapsibleContent = React.forwardRef<
     )}
     {...props}
   >
-    <div className="s-py-2">{children}</div>
+    {children}
   </CollapsiblePrimitive.Content>
 ));
 CollapsibleContent.displayName = "CollapsibleContent";
 
-export interface CollapsibleComponentProps {
-  rootProps?: Omit<CollapsibleProps, "children" | "open">;
-  triggerProps?: Omit<CollapsibleTriggerProps, "children" | "defaultOpen">;
-  triggerChildren?: React.ReactNode;
-  contentProps?: Omit<CollapsibleContentProps, "children">;
-  contentChildren?: React.ReactNode;
-}
-
-const CollapsibleComponent = React.forwardRef<
-  React.ElementRef<typeof CollapsiblePrimitive.Root>,
-  CollapsibleComponentProps
->(
-  (
-    { rootProps, triggerProps, triggerChildren, contentProps, contentChildren },
-    ref
-  ) => {
-    const [open, setOpen] = React.useState(!!rootProps?.defaultOpen);
-    return (
-      <Collapsible
-        ref={ref}
-        {...rootProps}
-        open={open}
-        onOpenChange={(open) => {
-          setOpen(open);
-          rootProps?.onOpenChange?.(open);
-        }}
-      >
-        <CollapsibleTrigger {...triggerProps} isOpen={open}>
-          {triggerChildren}
-        </CollapsibleTrigger>
-        <CollapsibleContent {...contentProps}>
-          {contentChildren}
-        </CollapsibleContent>
-      </Collapsible>
-    );
-  }
-);
-
-export {
-  Collapsible,
-  CollapsibleComponent,
-  CollapsibleContent,
-  CollapsibleTrigger,
-};
+export { Collapsible, CollapsibleContent, CollapsibleTrigger };

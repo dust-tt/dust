@@ -31,14 +31,12 @@ export function ChartsTooltip({
     return null;
   }
 
-  // Only show a tooltip when a specific tool segment is hovered.
   if (!hoveredTool) {
     return null;
   }
 
   const typed = payload.filter(isToolChartUsagePayload);
   const filtered = typed.filter((p) => p.name === hoveredTool);
-
   if (filtered.length === 0) {
     return null;
   }
@@ -50,6 +48,15 @@ export function ChartsTooltip({
   if (!data || (data.count ?? 0) <= 0) {
     return null;
   }
+
+  const totalCount =
+    toolPayload.payload?.total ??
+    Object.values(toolPayload.payload?.values ?? {}).reduce(
+      (sum, d) => sum + (d?.count ?? 0),
+      0
+    );
+  const percentOfTotal =
+    totalCount > 0 ? Math.round((data.count / totalCount) * 100) : 0;
 
   const colorClassName = getIndexedColor(toolName, topTools);
 
@@ -84,29 +91,31 @@ export function ChartsTooltip({
     return (
       <div
         role="tooltip"
-        className="min-w-32 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl dark:border-border-night/50 dark:bg-background-night"
+        className="flex max-h-60 min-w-32 flex-col overflow-hidden rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl dark:border-border-night/50 dark:bg-background-night"
       >
         <div className="mb-2 flex items-center gap-2">
           <LegendDot className={colorClassName} />
           <Label>{toolName}</Label>
           <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
-            ({data.percent}%)
+            ({percentOfTotal}%)
           </span>
         </div>
-        <div className="space-y-1.5">
-          {breakdownRows.map((b) => (
-            <div key={b.label} className="flex items-center gap-2">
-              <span className="text-muted-foreground dark:text-muted-foreground-night">
-                {b.label}
-              </span>
-              <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
-                {b.value}
-              </span>
-              <span className="text-muted-foreground dark:text-muted-foreground-night">
-                ({b.percent}%)
-              </span>
-            </div>
-          ))}
+        <div className="flex-1 overflow-y-auto pr-1">
+          <div className="space-y-1.5">
+            {breakdownRows.map((b) => (
+              <div key={b.label} className="flex items-center gap-2">
+                <span className="text-muted-foreground dark:text-muted-foreground-night">
+                  {b.label}
+                </span>
+                <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
+                  {b.value}
+                </span>
+                <span className="text-muted-foreground dark:text-muted-foreground-night">
+                  ({b.percent}%)
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -115,22 +124,24 @@ export function ChartsTooltip({
   return (
     <div
       role="tooltip"
-      className="min-w-32 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl dark:border-border-night/50 dark:bg-background-night"
+      className="flex max-h-60 min-w-32 flex-col overflow-hidden rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl dark:border-border-night/50 dark:bg-background-night"
     >
       <div className="mb-1.5 flex items-center gap-2">
         <LegendDot className={colorClassName} />
         <Label>{toolName}</Label>
         <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
-          ({data.percent}%)
+          ({percentOfTotal}%)
         </span>
       </div>
-      <div className="flex items-center gap-2">
-        <span className="text-muted-foreground dark:text-muted-foreground-night">
-          {toolName}
-        </span>
-        <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
-          {data.count}
-        </span>
+      <div className="flex-1 overflow-y-auto pr-1">
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground dark:text-muted-foreground-night">
+            {toolName}
+          </span>
+          <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
+            {data.count}
+          </span>
+        </div>
       </div>
     </div>
   );

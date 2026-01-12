@@ -25,7 +25,7 @@ export class MicrosoftToolsOAuthProvider implements BaseOAuthStrategyProvider {
     if (useCase === "bot") {
       extraConfig = {
         scope:
-          "Sites.Read.All Files.Read.All User.Read Chat.Read Team.ReadBasic.All Channel.ReadBasic.All Organization.Read.All offline_access",
+          "Sites.Read.All Files.Read.All User.Read User.ReadBasic.All Chat.Read Team.ReadBasic.All Channel.ReadBasic.All Organization.Read.All offline_access",
       };
     }
 

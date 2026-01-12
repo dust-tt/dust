@@ -1,0 +1,5 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "ignoredBuildStep": "if [ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ]; then git diff --quiet $VERCEL_GIT_PREVIOUS_SHA $VERCEL_GIT_COMMIT_SHA -- sparkle/playground && exit 0 || exit 1; else exit 1; fi"
+}

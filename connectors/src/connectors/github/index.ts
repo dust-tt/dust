@@ -147,7 +147,11 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     return new Ok(c.id.toString());
   }
 
-  async stop(): Promise<Result<undefined, Error>> {
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
     try {
       const connector = await ConnectorResource.fetchById(this.connectorId);
 
@@ -169,7 +173,10 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         webhooksEnabledAt: null,
       });
 
-      await terminateAllWorkflowsForConnectorId(this.connectorId);
+      await terminateAllWorkflowsForConnectorId({
+        connectorId: this.connectorId,
+        stopReason: reason,
+      });
 
       return new Ok(undefined);
     } catch (err) {

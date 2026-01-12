@@ -25,8 +25,8 @@ jobs:
     name: Test Shard ${{ matrix.shardIndex }} of ${{ matrix.shardTotal }}
     strategy:
       matrix:
-        shardIndex: [ 1, 2, 3 ]
-        shardTotal: [ 3 ]
+        shardIndex: [1, 2, 3]
+        shardTotal: [3]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -43,14 +43,14 @@ jobs:
         with:
           postgresql docker image: mirror.gcr.io/postgres
           postgresql version: "14.13"
-          postgresql db: front_test
+          postgresql db: front_test_shard_${{ matrix.shardIndex }}
           postgresql user: test
           postgresql password: test
           postgresql port: 5433
       - name: Run Tests
         working-directory: front
         env:
-          FRONT_DATABASE_URI: "postgres://test:test@localhost:5433/front_test"
+          FRONT_DATABASE_URI: "postgres://test:test@localhost:5433/front_test_shard_${{ matrix.shardIndex }}"
           REDIS_CACHE_URI: "redis://localhost:5434"
           REDIS_URI: "redis://localhost:5434"
           NODE_ENV: test

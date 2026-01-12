@@ -1,11 +1,7 @@
 import { DEFAULT_AGENT_ROUTER_ACTION_NAME } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
-import {
-  autoInternalMCPServerNameToSId,
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
@@ -27,6 +23,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { buildDiscoverToolsInstructions } from "@app/lib/resources/skill/global/discover_tools";
 import { timeAgoFrom } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
@@ -155,35 +152,8 @@ A dataSourceId typically starts with the prefix "dts_".
 </data_warehouses_guidelines>`,
 
   toolsets: (availableToolsets: MCPServerViewResource[]) => {
-    const toolsetsList = availableToolsets
-      // Sort by display name to ensure consistent order for LLM cache optimization.
-      .sort((a, b) => {
-        const aView = a.toJSON();
-        const bView = b.toJSON();
-        return getMcpServerViewDisplayName(aView).localeCompare(
-          getMcpServerViewDisplayName(bView)
-        );
-      })
-      .map((toolset) => {
-        const mcpServerView = toolset.toJSON();
-        const sId = mcpServerView.sId;
-        const displayName = getMcpServerViewDisplayName(mcpServerView);
-        const description = getMcpServerViewDescription(mcpServerView);
-        return `- **${displayName}** (toolsetId: \`${sId}\`): ${description}`;
-      })
-      .join("\n");
-
-    return `<toolsets_guidelines>
-The "toolsets" tools allow listing and enabling additional tools.
-
-<available_toolsets>
-${toolsetsList.length > 0 ? toolsetsList : "No additional toolsets are currently available."}
-</available_toolsets>
-
-When encountering any request that might benefit from specialized tools, review the available toolsets above.
-Enable relevant toolsets using \`toolsets__enable\` with the toolsetId (shown in backticks) before attempting to fulfill the request.
-Never assume or reply that you cannot do something before checking if there's a relevant toolset available.
-</toolsets_guidelines>`;
+    const instructions = buildDiscoverToolsInstructions(availableToolsets);
+    return `<toolsets_guidelines>${instructions}</toolsets_guidelines>`;
   },
 
   help: `<dust_platform_support_guidelines>
@@ -351,7 +321,10 @@ function _getDustLikeGlobalAgent(
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
 
-  const description = "An agent with context on your company data.";
+  const description = `Dust is your general purpose agent. It has access to all of your company data and tools available in the Company space. Dust can help you:
+- Find and analyze data across your company knowledge
+- Research topics by searching the web
+- Create content like documents, presentations, images, and dashboards`;
   const pictureUrl = DUST_AVATAR_URL;
 
   let isPreferredModel = false;

@@ -276,6 +276,7 @@ export const IntercomCommandSchema = t.type({
   majorCommand: t.literal("intercom"),
   command: t.union([
     t.literal("force-resync-articles"),
+    t.literal("force-resync-all-conversations"),
     t.literal("check-conversation"),
     t.literal("fetch-conversation"),
     t.literal("fetch-articles"),
@@ -292,7 +293,7 @@ export const IntercomCommandSchema = t.type({
     day: t.union([t.string, t.undefined]),
     helpCenterId: t.union([t.number, t.undefined]),
     conversationsSlidingWindow: t.union([t.number, t.undefined]),
-    teamId: t.union([t.string, t.undefined]),
+    teamId: t.union([t.number, t.undefined]),
     closedAfter: t.union([t.number, t.undefined]),
     state: t.union([
       t.union([t.literal("open"), t.literal("closed")]),
@@ -383,6 +384,13 @@ export const IntercomSearchConversationsResponseSchema = t.type({
 
 export type IntercomSearchConversationsResponseType = t.TypeOf<
   typeof IntercomSearchConversationsResponseSchema
+>;
+
+export const IntercomForceResyncAllConversationsResponseSchema = t.type({
+  workflowId: t.string,
+});
+export type IntercomForceResyncAllConversationsResponseType = t.TypeOf<
+  typeof IntercomForceResyncAllConversationsResponseSchema
 >;
 
 /**

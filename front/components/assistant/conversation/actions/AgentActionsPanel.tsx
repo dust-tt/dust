@@ -44,7 +44,7 @@ function AgentActionsPanelContent({
 }: AgentActionsPanelContentProps) {
   const [currentStreamingStep, setCurrentStreamingStep] = useState(1);
 
-  const { skills } = useAgentMessageSkills({
+  const { skills, mutateSkills } = useAgentMessageSkills({
     conversation,
     owner,
     messageId,
@@ -72,14 +72,19 @@ function AgentActionsPanelContent({
 
   useEffect(() => {
     if (
-      fullAgentMessage?.type === "agent_message" &&
-      fullAgentMessage?.status === "created" &&
-      !!fullAgentMessage.chainOfThought
+      fullAgentMessage.type !== "agent_message" ||
+      !fullAgentMessage.chainOfThought
     ) {
+      return;
+    }
+
+    if (fullAgentMessage.status === "created") {
       // eslint-disable-next-line react-hooks/immutability
       isFreshMountWithContent.current = true;
+    } else if (fullAgentMessage.status === "succeeded") {
+      void mutateSkills();
     }
-  }, [fullAgentMessage, isFreshMountWithContent]);
+  }, [fullAgentMessage, isFreshMountWithContent, mutateSkills]);
 
   const steps =
     fullAgentMessage?.type === "agent_message"
@@ -251,7 +256,7 @@ function AgentActionsPanelContent({
       </div>
       {skills.length > 0 && (
         <div className="flex flex-col gap-4 border-t border-separator bg-background p-4 dark:border-separator-night dark:bg-background-night">
-          <span className="text-sm">Enabled skills</span>
+          <span className="text-sm">Skills used</span>
           <div className="flex flex-wrap items-center gap-1">
             {skills.map((skill) => (
               <Chip

@@ -31,7 +31,10 @@ export function AgentFeedback({
     workspaceId: owner.sId,
     agentConfigurationId,
     period,
-    version: mode === "version" ? selectedVersion?.version : undefined,
+    version:
+      allowReactions && mode === "version"
+        ? selectedVersion?.version
+        : undefined,
   });
 
   return (
@@ -41,6 +44,7 @@ export function AgentFeedback({
         <SharedObservabilityFilterSelector
           workspaceId={owner.sId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={allowReactions}
         />
       }
     >
@@ -73,6 +77,7 @@ export function AgentFeedback({
         <FeedbackDistributionChart
           workspaceId={owner.sId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={allowReactions}
         />
       </TabContentChildSectionLayout>
 

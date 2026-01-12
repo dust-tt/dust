@@ -1,4 +1,3 @@
-import mermaid from "mermaid";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   amber,
@@ -176,7 +175,13 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
   const graphRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (graphRef.current) {
+    const renderMermaid = async () => {
+      if (!graphRef.current) {
+        return;
+      }
+
+      const mermaid = (await import("mermaid")).default;
+
       mermaid.initialize({
         startOnLoad: false,
         theme: "base",
@@ -278,8 +283,10 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
       });
 
       graphRef.current.textContent = chart;
-      void mermaid.run(undefined);
-    }
+      await mermaid.run(undefined);
+    };
+
+    void renderMermaid();
   }, [chart]);
 
   return (
@@ -352,6 +359,7 @@ export function CodeBlockWithExtendedSupport({
     if (language === "mermaid") {
       const checkValidMermaid = async () => {
         try {
+          const mermaid = (await import("mermaid")).default;
           await mermaid.parse(validChildrenContent);
           setIsValidMermaid(true);
           setShowMermaid(true);

@@ -116,7 +116,10 @@ export default function SpaceSideBarMenu({
     return <></>;
   }
 
-  const sortedGroupedSpaces = groupSpacesForDisplay(spaces).filter(
+  const sortedGroupedSpaces = groupSpacesForDisplay(
+    // Remove project spaces from the sidebar menu as they are handled differently.
+    spaces.filter((space) => space.kind !== "project")
+  ).filter(
     ({ section, spaces }) => section !== "system" || spaces.length !== 0
   );
 

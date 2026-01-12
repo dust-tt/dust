@@ -77,4 +77,22 @@ export class SpaceFactory {
       []
     );
   }
+
+  static async project(workspace: WorkspaceType) {
+    const name = "project " + faker.string.alphanumeric(8);
+    const group = await GroupResource.makeNew({
+      name: `Group for space ${name}`,
+      workspaceId: workspace.id,
+      kind: "regular",
+    });
+
+    return SpaceResource.makeNew(
+      {
+        name,
+        kind: "project",
+        workspaceId: workspace.id,
+      },
+      [group]
+    );
+  }
 }

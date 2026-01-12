@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -10,9 +11,10 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 const QuerySchema = z.object({
-  days: z.coerce.number().positive().optional(),
+  days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
   version: z.string().optional(),
 });
 
@@ -28,7 +30,7 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetLatencyResponse>>,
   auth: Authenticator
 ) {
-  if (typeof req.query.aId !== "string") {
+  if (!isString(req.query.aId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -76,7 +78,7 @@ async function handler(
         });
       }
 
-      const days = q.data.days ?? DEFAULT_PERIOD_DAYS;
+      const days = q.data.days;
 
       const owner = auth.getNonNullableWorkspace();
 
@@ -93,12 +95,11 @@ async function handler(
       ] as const);
 
       if (latencyResult.isErr()) {
-        const e = latencyResult.error;
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Failed to retrieve usage metrics: ${e.message}`,
+            message: `Failed to retrieve usage metrics: ${fromError(latencyResult.error).toString()}`,
           },
         });
       }

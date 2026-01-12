@@ -3517,3 +3517,183 @@ describe("markAsActionRequired", () => {
     }
   });
 });
+
+describe("ConversationResource.isConversationCreator", () => {
+  let auth: Authenticator;
+  let conversationId: string;
+  let conversation: ConversationWithoutContentType;
+
+  beforeEach(async () => {
+    const workspace = await WorkspaceFactory.basic();
+    await GroupResource.makeDefaultsForWorkspace(workspace);
+
+    const user = await UserFactory.basic();
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test agent for conversation",
+    });
+
+    const convo = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date()],
+    });
+
+    conversationId = convo.sId;
+    conversation = convo;
+
+    // Add the creator as a participant (ConversationFactory doesn't do this automatically)
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+    });
+  });
+
+  afterEach(async () => {
+    await destroyConversation(auth, { conversationId });
+  });
+
+  it("should return true when user is the creator (first participant)", async () => {
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    assert(conversationResource, "Conversation resource not found");
+
+    const result = await conversationResource.isConversationCreator(auth);
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe(true);
+    }
+  });
+
+  it("should return false when user is not the creator", async () => {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Create a second user who joins the conversation later
+    const user2 = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user2, { role: "user" });
+    const user2Auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user2.sId,
+      workspace.sId
+    );
+
+    // Add a small delay to ensure different createdAt timestamps
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Add the second user as a participant
+    await ConversationResource.upsertParticipation(user2Auth, {
+      conversation,
+      action: "posted",
+      user: user2Auth.getNonNullableUser().toJSON(),
+    });
+
+    const conversationResource = await ConversationResource.fetchById(
+      user2Auth,
+      conversationId
+    );
+    assert(conversationResource, "Conversation resource not found");
+
+    // Check from user2's perspective - they should not be the creator
+    const result = await conversationResource.isConversationCreator(user2Auth);
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe(false);
+    }
+  });
+
+  it("should correctly identify creator among multiple participants", async () => {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Create two more users
+    const user2 = await UserFactory.basic();
+    const user3 = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user2, { role: "user" });
+    await MembershipFactory.associate(workspace, user3, { role: "user" });
+
+    const user2Auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user2.sId,
+      workspace.sId
+    );
+    const user3Auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user3.sId,
+      workspace.sId
+    );
+
+    // Add both users as participants (with some delay to ensure different timestamps)
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await ConversationResource.upsertParticipation(user2Auth, {
+      conversation,
+      action: "posted",
+      user: user2Auth.getNonNullableUser().toJSON(),
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await ConversationResource.upsertParticipation(user3Auth, {
+      conversation,
+      action: "posted",
+      user: user3Auth.getNonNullableUser().toJSON(),
+    });
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    assert(conversationResource, "Conversation resource not found");
+
+    // Check that first user is still the creator
+    const result1 = await conversationResource.isConversationCreator(auth);
+    expect(result1.isOk()).toBe(true);
+    if (result1.isOk()) {
+      expect(result1.value).toBe(true);
+    }
+
+    // Check that second and third users are not creators
+    const result2 = await conversationResource.isConversationCreator(user2Auth);
+    expect(result2.isOk()).toBe(true);
+    if (result2.isOk()) {
+      expect(result2.value).toBe(false);
+    }
+
+    const result3 = await conversationResource.isConversationCreator(user3Auth);
+    expect(result3.isOk()).toBe(true);
+    if (result3.isOk()) {
+      expect(result3.value).toBe(false);
+    }
+  });
+
+  it("should return error when conversation has no participants", async () => {
+    const { ConversationParticipantModel } =
+      await import("@app/lib/models/agent/conversation");
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    assert(conversationResource, "Conversation resource not found");
+
+    // Remove all participants (edge case)
+    await ConversationParticipantModel.destroy({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    const result = await conversationResource.isConversationCreator(auth);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        "No participants found for conversation"
+      );
+    }
+  });
+});

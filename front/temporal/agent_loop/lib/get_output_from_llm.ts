@@ -11,6 +11,53 @@ import type {
 } from "@app/temporal/agent_loop/lib/types";
 import { Err, Ok } from "@app/types";
 
+const LLM_HEARTBEAT_INTERVAL_MS = 10_000;
+
+// Wraps an async iterator and ensures heartbeat() is called at regular intervals
+// even when the source is slow to yield values.
+async function* withPeriodicHeartbeat<T>(
+  stream: AsyncIterator<T>
+): AsyncGenerator<T> {
+  let nextPromise = stream.next();
+  let streamExhausted = false;
+
+  while (!streamExhausted) {
+    const result = await Promise.race([
+      nextPromise
+        .then((value) => ({ type: "stream" as const, value }))
+        .catch((error) => {
+          // Rethrow to ensure errors are not swallowed
+          throw error;
+        }),
+      new Promise<{ type: "heartbeat" }>((resolve) =>
+        setTimeout(
+          () => resolve({ type: "heartbeat" }),
+          LLM_HEARTBEAT_INTERVAL_MS
+        )
+      ),
+    ]);
+
+    heartbeat();
+
+    if (result.type === "heartbeat") {
+      // Heartbeat won the race, but nextPromise is still pending
+      // Continue racing with the same nextPromise
+      continue;
+    }
+
+    // Stream value arrived
+    const streamResult = result.value;
+
+    if (streamResult.done) {
+      streamExhausted = true;
+      break;
+    }
+
+    yield streamResult.value;
+    nextPromise = stream.next();
+  }
+}
+
 export async function getOutputFromLLMStream(
   auth: Authenticator,
   {
@@ -42,22 +89,17 @@ export async function getOutputFromLLMStream(
   let generation = "";
   let nativeChainOfThought = "";
 
-  for await (const event of events) {
+  for await (const event of withPeriodicHeartbeat(events)) {
     timeToFirstEvent = Date.now() - start;
     if (event.type === "error") {
       await flushParserTokens();
       return new Err({
         type: "shouldRetryMessage",
-        message: event.content.message,
+        content: event.content,
       });
     }
 
-    // Heartbeat & sleep allow the activity to be cancelled, e.g. on a "Stop
-    // agent" request. Upon experimentation, both are needed to ensure the
-    // activity receives the cancellation signal. The delay until which is the
-    // signal is received is governed by heartbeat
-    // [throttling](https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling).
-    heartbeat();
+    // Sleep allows the activity to be cancelled, e.g. on a "Stop agent" request.
     try {
       await sleep(1);
     } catch (err) {
@@ -195,7 +237,11 @@ export async function getOutputFromLLMStream(
   if (contents.length === 0 && actions.length === 0) {
     return new Err({
       type: "shouldRetryMessage",
-      message: "Agent execution didn't complete.",
+      content: {
+        type: "unknown_error",
+        message: "Agent execution didn't complete.",
+        isRetryable: true,
+      },
     });
   }
 

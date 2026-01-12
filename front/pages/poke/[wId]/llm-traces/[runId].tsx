@@ -158,7 +158,7 @@ const LLMTracePage = ({ owner, runId }: LLMTracePageProps) => {
         <div className="flex space-x-2">
           <Button
             label={isCopiedJSON ? "Copied!" : "Copy JSON"}
-            variant="secondary"
+            variant="outline"
             size="sm"
             icon={isCopiedJSON ? ClipboardCheckIcon : ClipboardIcon}
             onClick={() => copyJSON(JSON.stringify(trace, null, 2))}

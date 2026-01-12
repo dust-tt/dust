@@ -1,7 +1,5 @@
 import React from "react";
 
 export const DeletedMessage = () => (
-  <div className="italic text-muted-foreground dark:text-muted-foreground-night">
-    This message has been deleted
-  </div>
+  <div className="text-faint dark:text-faint-night">Message was deleted</div>
 );

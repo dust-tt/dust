@@ -31,14 +31,14 @@ export const AgentMessageCompletionStatus = ({
   let timeString: null | string = null;
 
   // If we have a completed timestamp, we can show the duration.
-  if (agentMessage.completedTs !== null) {
+  if (agentMessage.completionDurationMs !== null) {
     let statusText = "Completed in";
     if (agentMessage.status === "failed") {
       statusText = "Errored after";
     } else if (agentMessage.status === "cancelled") {
       statusText = "Cancelled after";
     }
-    const completedInMs = agentMessage.completedTs - agentMessage.created;
+    const completedInMs = agentMessage.completionDurationMs;
     timeString = formatDurationString(completedInMs);
     displayText = statusText;
   }

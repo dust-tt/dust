@@ -587,6 +587,7 @@ export const OAuthProviderSchema = FlexibleEnumSchema<
   | "mcp"
   | "mcp_static"
   | "vanta"
+  | "productboard"
 >();
 
 // Internal tool output.

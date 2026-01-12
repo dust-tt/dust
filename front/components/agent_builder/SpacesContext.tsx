@@ -6,6 +6,7 @@ import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 interface SpacesContextType {
+  owner: LightWorkspaceType;
   spaces: SpaceType[];
   isSpacesLoading: boolean;
   isSpacesError: boolean;
@@ -44,11 +45,12 @@ export const SpacesProvider = ({ owner, children }: SpacesProviderProps) => {
 
   const value: SpacesContextType = useMemo(
     () => ({
+      owner,
       spaces,
       isSpacesLoading,
       isSpacesError,
     }),
-    [spaces, isSpacesLoading, isSpacesError]
+    [owner, spaces, isSpacesLoading, isSpacesError]
   );
 
   return (

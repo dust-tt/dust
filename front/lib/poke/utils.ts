@@ -98,11 +98,13 @@ export async function mcpServerViewToPokeJSON(
     };
   });
 
-  delete json.server.developerSecretSelectionDescription;
-  delete json.server.developerSecretSelection;
-
   return {
     ...json,
+    server: {
+      ...json.server,
+      developerSecretSelectionDescription: null,
+      developerSecretSelection: null,
+    },
     link: workspace
       ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/spaces/${mcpServerView.space.sId}/mcp_server_views/${mcpServerView.sId}`
       : null,

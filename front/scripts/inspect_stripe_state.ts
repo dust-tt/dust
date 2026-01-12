@@ -6,11 +6,11 @@ import {
 } from "@app/lib/plans/stripe";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { makeScript } from "@app/scripts/helpers";
 import {
   isStripeInvoiceEvent,
   isStripeSubscriptionEvent,
-} from "@app/lib/types/stripe/events";
-import { makeScript } from "@app/scripts/helpers";
+} from "@app/types/stripe/events";
 
 async function inspectFromEvent(eventId: string, logger: any) {
   const stripe = getStripeClient();

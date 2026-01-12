@@ -38,6 +38,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
+import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -90,6 +91,9 @@ import {
   toMentionType,
 } from "@app/types";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
+
+// Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
+const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
 
 /**
  * Conversation Creation, update and deletion
@@ -183,15 +187,18 @@ export async function updateConversationTitle(
 
 /**
  * Delete-or-Leave:
- * - If the user is the last participant: perform a soft-delete
+ * - If forceDelete is true and the user is the conversation creator: perform a soft-delete
+ * - If forceDelete is false and the user is the last participant: perform a soft-delete
  * - Otherwise just remove the user from the participants
  */
 export async function deleteOrLeaveConversation(
   auth: Authenticator,
   {
     conversationId,
+    forceDelete = false,
   }: {
     conversationId: string;
+    forceDelete?: boolean;
   }
 ): Promise<Result<{ success: true }, Error>> {
   const conversation = await ConversationResource.fetchById(
@@ -210,15 +217,36 @@ export async function deleteOrLeaveConversation(
   if (!user) {
     return new Err(new Error("User not authenticated."));
   }
+
+  let isConversationCreator = false;
+  const isCreatorRes = await conversation.isConversationCreator(auth);
+  if (!isCreatorRes.isErr()) {
+    isConversationCreator = isCreatorRes.value;
+  }
+
   const leaveRes = await conversation.leaveConversation(auth);
   if (leaveRes.isErr()) {
     return new Err(leaveRes.error);
   }
 
-  // If the user was the last member, soft-delete the conversation.
-  if (leaveRes.value.affectedCount === 0 && leaveRes.value.wasLastMember) {
+  // If the user was the last member or it was a delete by the conversation creator, soft-delete the conversation.
+  if (
+    (leaveRes.value.affectedCount === 0 && leaveRes.value.wasLastMember) ||
+    (forceDelete && isConversationCreator)
+  ) {
+    auditLog(
+      {
+        author: user.toJSON(),
+        workspaceId: conversation.workspaceId,
+        conversationId,
+        wasLastMember: leaveRes.value.wasLastMember,
+        isConversationCreator,
+      },
+      "Conversation soft-deleted"
+    );
     await conversation.updateVisibilityToDeleted();
   }
+
   return new Ok({ success: true });
 }
 
@@ -453,8 +481,6 @@ export function isUserMessageContextValid(
 
   switch (context.origin) {
     case "api":
-    case "slack": // TODO: should not be allowed
-    case "web": // TODO: should not be allowed
       return true;
     case "excel":
     case "gsheet":
@@ -475,12 +501,14 @@ export function isUserMessageContextValid(
     case "raycast":
       return authMethod === "oauth" && userAgent === "undici";
     case "email":
+    case "slack":
     case "slack_workflow":
     case "teams":
     case "transcript":
     case "triggered":
     case "triggered_programmatic":
     case "onboarding_conversation":
+    case "web":
       return false;
     default:
       assertNever(context.origin);
@@ -532,21 +560,9 @@ export async function postUserMessage(
   }
 
   // Check plan and rate limit.
-  const messageLimit = await isMessagesLimitReached(auth, {
-    mentions,
-    context,
-  });
-  if (messageLimit.isLimitReached && messageLimit.limitType) {
-    return new Err({
-      status_code: 403,
-      api_error: {
-        type: "plan_message_limit_exceeded",
-        message:
-          messageLimit.limitType === "plan_message_limit_exceeded"
-            ? "The message limit for this plan has been exceeded."
-            : "The rate limit for this workspace has been exceeded.",
-      },
-    });
+  const limitResult = await checkMessagesLimit(auth, { mentions, context });
+  if (limitResult.isErr()) {
+    return limitResult;
   }
 
   // `getAgentConfiguration` checks that we're only pulling a configuration from the
@@ -684,30 +700,21 @@ export async function postUserMessage(
       });
     }
 
-    const agentMessages = await createAgentMessages(auth, {
-      conversation,
-      metadata: {
-        type: "create",
-        mentions,
-        agentConfigurations,
-        skipToolsValidation,
-        nextMessageRank,
-        userMessage: userMessageWithoutMentions,
-      },
-      transaction: t,
-    });
+    const { agentMessages, richMentions: agentRichMentions } =
+      await createAgentMessages(auth, {
+        conversation,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations,
+          skipToolsValidation,
+          nextMessageRank,
+          userMessage: userMessageWithoutMentions,
+        },
+        transaction: t,
+      });
 
-    for (const agentMessage of agentMessages) {
-      const agentRichMention: RichMentionWithStatus = {
-        type: "agent",
-        id: agentMessage.configuration.sId,
-        label: agentMessage.configuration.name,
-        pictureUrl: agentMessage.configuration.pictureUrl,
-        description: agentMessage.configuration.description,
-        status: "approved",
-      };
-      richMentions.push(agentRichMention);
-    }
+    richMentions.push(...agentRichMentions);
 
     const userMessage = {
       ...userMessageWithoutMentions,
@@ -959,7 +966,7 @@ export async function editUserMessage(
             return isAgentMessageType(latestVersion);
           });
 
-        let agentMessages: AgentMessageType[] = [];
+        const agentMessages: AgentMessageType[] = [];
 
         // Only create agent messages if there are no agent messages after the edited user message
         if (!hasAgentMessagesAfter) {
@@ -971,7 +978,10 @@ export async function editUserMessage(
               transaction: t,
             })) ?? -1) + 1;
 
-          agentMessages = await createAgentMessages(auth, {
+          const {
+            agentMessages: newAgentMessages,
+            richMentions: agentRichMentions,
+          } = await createAgentMessages(auth, {
             conversation,
             metadata: {
               type: "create",
@@ -984,17 +994,8 @@ export async function editUserMessage(
             transaction: t,
           });
 
-          for (const agentMessage of agentMessages) {
-            const agentRichMention: RichMentionWithStatus = {
-              type: "agent",
-              id: agentMessage.configuration.sId,
-              label: agentMessage.configuration.name,
-              pictureUrl: agentMessage.configuration.pictureUrl,
-              description: agentMessage.configuration.description,
-              status: "approved",
-            };
-            richMentions.push(agentRichMention);
-          }
+          richMentions.push(...agentRichMentions);
+          agentMessages.push(...newAgentMessages);
         }
         const userMessage = {
           ...userMessageWithoutMentions,
@@ -1117,6 +1118,35 @@ export async function retryAgentMessage(
     message: AgentMessageType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
+  // Find the parent user message to get the original context for rate limiting.
+  // This ensures retries are counted with the same origin (web vs programmatic) as the original.
+  const parentUserMessage = conversation.content
+    .flat()
+    .find(
+      (m): m is UserMessageType =>
+        isUserMessageType(m) && m.sId === message.parentMessageId
+    );
+
+  if (!parentUserMessage) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Could not find the parent user message for this retry.",
+      },
+    });
+  }
+
+  // Check plan and rate limit before retrying.
+  const mentions = [{ configurationId: message.configuration.sId }];
+  const limitResult = await checkMessagesLimit(auth, {
+    mentions,
+    context: parentUserMessage.context,
+  });
+  if (limitResult.isErr()) {
+    return limitResult;
+  }
+
   let agentMessageResult: {
     agentMessage: AgentMessageType;
   } | null = null;
@@ -1169,7 +1199,7 @@ export async function retryAgentMessage(
         );
       }
 
-      const agentMessages = await createAgentMessages(auth, {
+      const { agentMessages } = await createAgentMessages(auth, {
         conversation,
         metadata: {
           type: "retry",
@@ -1501,7 +1531,7 @@ export async function softDeleteAgentMessage(
     return new Err(new ConversationError("message_deletion_not_authorized"));
   }
 
-  const agentMessages = await withTransaction(async (t) => {
+  const { agentMessages } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
     return createAgentMessages(auth, {
@@ -1530,9 +1560,38 @@ export async function softDeleteAgentMessage(
   return new Ok({ success: true });
 }
 
-export interface MessageLimit {
+interface MessageLimit {
   isLimitReached: boolean;
   limitType: "rate_limit_error" | "plan_message_limit_exceeded" | null;
+}
+
+async function checkMessagesLimit(
+  auth: Authenticator,
+  {
+    mentions,
+    context,
+  }: {
+    mentions: MentionType[];
+    context: UserMessageContext;
+  }
+): Promise<Result<void, APIErrorWithStatusCode>> {
+  const messageLimit = await isMessagesLimitReached(auth, {
+    mentions,
+    context,
+  });
+  if (messageLimit.isLimitReached && messageLimit.limitType) {
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: "plan_message_limit_exceeded",
+        message:
+          messageLimit.limitType === "plan_message_limit_exceeded"
+            ? "The message limit for this plan has been exceeded."
+            : "The rate limit for this workspace has been exceeded.",
+      },
+    });
+  }
+  return new Ok(undefined);
 }
 
 async function isMessagesLimitReached(
@@ -1561,11 +1620,13 @@ async function isMessagesLimitReached(
         0
       ) / 1_000_000;
 
-    // Rate limit: creditDollarAmount messages per minute.
     // Minimum of 1 to allow at least some messages even with very low credits.
     const maxMessagesPerMinute = Math.max(
       1,
-      Math.floor(totalRemainingCreditsDollars)
+      Math.floor(
+        totalRemainingCreditsDollars /
+          PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE
+      )
     );
 
     const remainingMessages = await rateLimiter({
@@ -1646,17 +1707,23 @@ async function isMessagesLimitReached(
     };
   }
 
-  // Accounting for each mention separately.
+  // Accounting for each agent mention separately. Human mentions don't cost
+  // anything (no LLM call) so we don't count them toward the limit.
   // The return value won't account for the parallel calls depending on network timing
   // but we are fine with a little bit of overusage.
+  // For free phone plans, don't multiply by activeSeats to prevent increased limits with more users.
+  const effectiveMaxMessages = isFreeTrialPhonePlan(plan.code)
+    ? maxMessages
+    : maxMessages * activeSeats;
+  const agentMentions = mentions.filter(isAgentMention);
   const remainingMentions = await Promise.all(
-    mentions.map(() =>
+    agentMentions.map(() =>
       rateLimiter({
         key: makeAgentMentionsRateLimitKeyForWorkspace(
           owner,
           maxMessagesTimeframe
         ),
-        maxPerTimeframe: maxMessages * activeSeats,
+        maxPerTimeframe: effectiveMaxMessages,
         timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
         logger,
       })
@@ -1664,7 +1731,10 @@ async function isMessagesLimitReached(
   );
   // We let the user talk to all agents if any of the rate limiter answered "ok".
   // Subsequent calls to this function would block the user anyway.
-  const isLimitReached = remainingMentions.filter((r) => r > 0).length === 0;
+  // If remainingMentions is empty, don't block the call (user mention scenario).
+  const isLimitReached =
+    remainingMentions.length > 0 &&
+    remainingMentions.filter((r) => r > 0).length === 0;
   return {
     isLimitReached,
     limitType: isLimitReached ? "plan_message_limit_exceeded" : null,

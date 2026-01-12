@@ -30,8 +30,8 @@ export const SearchWithNodesInputSchema = SearchInputSchema.extend({
     .array(z.string())
     .describe(
       "Array of exact content node IDs to search within. These are the 'nodeId' values from " +
-        "previous search results, which can be folders or files. All children of the designated " +
-        "nodes will be searched. If not provided, all available files and folders will be searched."
+        "previous search results. All children of the designated nodes will be searched. " +
+        "If not provided, all available nodes will be searched."
     )
     .optional(),
 });
@@ -125,16 +125,6 @@ export const WebbrowseInputSchema = z.object({
     .boolean()
     .optional()
     .describe("If true, also retrieve outgoing links from the page."),
-  useSummary: ConfigurableToolInputSchemas[
-    INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN
-  ]
-    .describe(
-      "Summarize web pages using an AI agent before returning content. When enabled, provides concise summaries instead of full page content."
-    )
-    .default({
-      value: false,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
-    }),
 });
 
 export type WebbrowseInputType = z.infer<typeof WebbrowseInputSchema>;
@@ -273,4 +263,84 @@ export function isSkillEnableInputType(
   input: Record<string, unknown>
 ): input is SkillEnableInputType {
   return SkillEnableInputSchema.safeParse(input).success;
+}
+
+export const GenerateImageInputSchema = z.object({
+  prompt: z
+    .string()
+    .max(4000)
+    .describe(
+      "A text description of the desired image. The maximum length is 32000 characters."
+    ),
+  name: z
+    .string()
+    .max(64)
+    .describe(
+      "The filename that will be used to save the generated image. Must be 64 characters or less."
+    ),
+  quality: z
+    .enum(["auto", "low", "medium", "high"])
+    .optional()
+    .default("auto")
+    .describe(
+      "The quality of the generated image. Must be one of auto, low, medium, or high. Auto" +
+        " will automatically choose the best quality for the size."
+    ),
+  size: z
+    .enum(["1024x1024", "1536x1024", "1024x1536"])
+    .optional()
+    .default("1024x1024")
+    .describe(
+      "The size of the generated image. Must be one of 1024x1024, 1536x1024, or 1024x1536"
+    ),
+});
+
+export type GenerateImageInputType = z.infer<typeof GenerateImageInputSchema>;
+
+export function isGenerateImageInputType(
+  input: Record<string, unknown>
+): input is GenerateImageInputType {
+  return GenerateImageInputSchema.safeParse(input).success;
+}
+
+export const EditImageInputSchema = z.object({
+  imageFileId: z
+    .string()
+    .describe(
+      "The ID of the image file to edit (e.g. fil_abc1234) from conversation attachments. Must be a valid image file (PNG, JPEG, etc.)."
+    ),
+  editPrompt: z
+    .string()
+    .max(4000)
+    .describe(
+      "A text description of the desired edits. Be specific about what should change and what should remain unchanged. The maximum length is 4000 characters."
+    ),
+  outputName: z
+    .string()
+    .max(64)
+    .describe(
+      "The filename that will be used to save the edited image. Must be 64 characters or less."
+    ),
+  quality: z
+    .enum(["auto", "low", "medium", "high"])
+    .optional()
+    .default("auto")
+    .describe(
+      "The quality of the edited image. Must be one of auto, low, medium, or high. Auto" +
+        " will automatically choose the best quality."
+    ),
+  aspectRatio: z
+    .enum(["1:1", "3:2", "2:3"])
+    .optional()
+    .describe(
+      "Optional aspect ratio override for the edited image. If not specified, preserves the" +
+        " original image's aspect ratio. Must be one of 1:1, 3:2, or 2:3."
+    ),
+});
+export type EditImageInputType = z.infer<typeof EditImageInputSchema>;
+
+export function isEditImageInputType(
+  input: Record<string, unknown>
+): input is EditImageInputType {
+  return EditImageInputSchema.safeParse(input).success;
 }

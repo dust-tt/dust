@@ -96,7 +96,6 @@
     "zod-validation-error": "^3.5.4"
   },
   "devDependencies": {
-    "@typescript/native-preview": "^7.0.0-dev.20251201.1",
     "@types/eslint": "^8.56.10",
     "@types/gunzip-maybe": "^1.4.2",
     "@types/lodash": "^4.17.7",
@@ -107,20 +106,21 @@
     "@types/yargs": "^17.0.32",
     "@typescript-eslint/eslint-plugin": "^8.48.0",
     "@typescript-eslint/parser": "^8.48.0",
-    "esbuild": "^0.27.0",
+    "@typescript/native-preview": "^7.0.0-dev.20260105.1",
+    "esbuild": "^0.27.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "eslint-plugin-unused-imports": "^4.3.0",
-    "knip": "^5.71.0",
+    "knip": "^5.80.0",
     "lint-staged": "^16.1.6",
     "prettier": "^3.7.4",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
-    "tsx": "^4.10.2",
-    "typescript": "^5.4.5",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.0",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.16"
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}": [

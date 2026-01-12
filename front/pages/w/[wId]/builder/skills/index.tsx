@@ -17,6 +17,7 @@ import { AgentSidebarMenu } from "@app/components/assistant/conversation/Sidebar
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillsTable } from "@app/components/skills/SkillsTable";
+import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
@@ -60,7 +61,7 @@ const SKILL_MANAGER_TABS = [
   },
 ] as const;
 
-type SkillManagerTabType = (typeof SKILL_MANAGER_TABS)[number]["id"];
+export type SkillManagerTabType = (typeof SKILL_MANAGER_TABS)[number]["id"];
 
 function isValidTab(tab: string): tab is SkillManagerTabType {
   return SKILL_MANAGER_TABS.some((t) => t.id === tab);
@@ -70,6 +71,10 @@ function getSkillSearchString(skill: SkillWithRelationsType): string {
   const skillEditorNames =
     skill.relations.editors?.map((e) => e.fullName) ?? [];
   return [skill.name].concat(skillEditorNames).join(" ").toLowerCase();
+}
+
+function sortSkillsByName(skills: SkillWithRelationsType[]) {
+  return [...skills].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -142,12 +147,24 @@ export default function WorkspaceSkills({
     disabled: activeTab !== "archived",
   });
 
-  const skillsByTab = useMemo(
-    () => ({
-      active: activeSkills,
-      editable_by_me: activeSkills.filter((s) => s.canWrite),
-      default: activeSkills.filter((s) => !s.relations.editors),
-      archived: archivedSkills,
+  const {
+    skillsWithRelations: suggestedSkills,
+    isSkillsWithRelationsLoading: isSuggestedLoading,
+  } = useSkillsWithRelations({
+    owner,
+    status: "suggested",
+    disabled: activeTab !== "active",
+  });
+
+  const skillsByTab = useMemo(() => {
+    const sortedActiveSkills = sortSkillsByName(activeSkills);
+    const sortedArchivedSkills = sortSkillsByName(archivedSkills);
+
+    return {
+      active: sortedActiveSkills,
+      editable_by_me: sortedActiveSkills.filter((s) => s.canWrite),
+      default: sortedActiveSkills.filter((s) => !s.relations.editors),
+      archived: sortedArchivedSkills,
       search: activeSkills
         .filter((s) =>
           subFilter(skillSearch.toLowerCase(), getSkillSearchString(s))
@@ -159,11 +176,10 @@ export default function WorkspaceSkills({
             getSkillSearchString(b)
           )
         ),
-    }),
-    [activeSkills, archivedSkills, skillSearch]
-  );
+    };
+  }, [activeSkills, archivedSkills, skillSearch]);
 
-  const isLoading = isActiveLoading || isArchivedLoading;
+  const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 
   const visibleTabs = useMemo(() => {
     return !isEmptyString(skillSearch)
@@ -198,14 +214,12 @@ export default function WorkspaceSkills({
 
   return (
     <>
-      {!!selectedSkill && (
-        <SkillDetailsSheet
-          skill={selectedSkill}
-          onClose={() => setSelectedSkill(null)}
-          user={user}
-          owner={owner}
-        />
-      )}
+      <SkillDetailsSheet
+        skill={selectedSkill}
+        onClose={() => setSelectedSkill(null)}
+        user={user}
+        owner={owner}
+      />
 
       <AgentDetails
         owner={owner}
@@ -222,7 +236,11 @@ export default function WorkspaceSkills({
           <title>Dust - Manage Skills</title>
         </Head>
         <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
-          <Page.Header title="Manage Skills" icon={SKILL_ICON} />
+          <Page.Header
+            title="Manage Skills"
+            icon={SKILL_ICON}
+            description="Reusable packages of instructions and tools that agents can share."
+          />
           <Page.Vertical gap="md" align="stretch">
             <div className="flex flex-row gap-2">
               <SearchInput
@@ -263,12 +281,22 @@ export default function WorkspaceSkills({
                   <Spinner size="lg" />
                 </div>
               ) : (
-                <SkillsTable
-                  owner={owner}
-                  skills={skillsByTab[activeTab]}
-                  onSkillClick={setSelectedSkill}
-                  onAgentClick={setAgentId}
-                />
+                <>
+                  {activeTab === "active" && suggestedSkills.length > 0 && (
+                    <SuggestedSkillsSection
+                      skills={sortSkillsByName(suggestedSkills)}
+                      onSkillClick={setSelectedSkill}
+                      owner={owner}
+                      user={user}
+                    />
+                  )}
+                  <SkillsTable
+                    owner={owner}
+                    skills={skillsByTab[activeTab]}
+                    onSkillClick={setSelectedSkill}
+                    onAgentClick={setAgentId}
+                  />
+                </>
               )}
             </div>
           </Page.Vertical>

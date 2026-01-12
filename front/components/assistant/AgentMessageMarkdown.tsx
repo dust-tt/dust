@@ -29,6 +29,7 @@ export const AgentMessageMarkdown = ({
   additionalMarkdownComponents = {} as Components,
   isLastMessage = false,
   isStreaming = false,
+  isInstructions = false,
   textColor,
   compactSpacing,
   forcedTextSize,
@@ -38,6 +39,7 @@ export const AgentMessageMarkdown = ({
   content: string;
   isLastMessage?: boolean;
   isStreaming?: boolean;
+  isInstructions?: boolean;
   additionalMarkdownComponents?: Components;
   textColor?: string;
   compactSpacing?: boolean;
@@ -45,10 +47,9 @@ export const AgentMessageMarkdown = ({
   canCopyQuotes?: boolean;
 }) => {
   // Preprocess content to handle instruction blocks
-  const processedContent = React.useMemo(
-    () => preprocessInstructionBlocks(content),
-    [content]
-  );
+  const processedContentIfIsInstructions = React.useMemo(() => {
+    return isInstructions ? preprocessInstructionBlocks(content) : content;
+  }, [content, isInstructions]);
 
   const markdownComponents: Components = React.useMemo(
     () => ({
@@ -63,8 +64,8 @@ export const AgentMessageMarkdown = ({
     [owner, additionalMarkdownComponents]
   );
 
-  const additionalMarkdownPlugins = React.useMemo(
-    () => [
+  const additionalMarkdownPlugins = React.useMemo(() => {
+    const directives = [
       agentMentionDirective,
       userMentionDirective,
       getCiteDirective(),
@@ -72,14 +73,16 @@ export const AgentMessageMarkdown = ({
       imgDirective,
       toolDirective,
       quickReplyDirective,
-      instructionBlockDirective,
-    ],
-    []
-  );
+    ];
+
+    return isInstructions
+      ? [...directives, instructionBlockDirective]
+      : directives;
+  }, [isInstructions]);
 
   return (
     <Markdown
-      content={processedContent}
+      content={processedContentIfIsInstructions}
       additionalMarkdownComponents={markdownComponents}
       additionalMarkdownPlugins={additionalMarkdownPlugins}
       isLastMessage={isLastMessage}

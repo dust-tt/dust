@@ -19,6 +19,7 @@ export default defineConfig(
     ignores: [
       "eslint.config.ts",
       "**/*.config.js",
+      ".prettierrc.js",
       "**/node_modules/**",
       "**/.next/**",
       "**/out/**",

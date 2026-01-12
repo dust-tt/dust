@@ -1,67 +1,81 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useWatch } from "react-hook-form";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
+  AgentBuilderFormData,
   AgentBuilderSkillsType,
   MCPFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type {
-  CapabilitiesSheetMode,
-  SelectedTool,
-  ToolConfigurationMode,
-} from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
-import { TOP_MCP_SERVER_VIEWS } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import {
   generateUniqueActionName,
   nameToStorageFormat,
 } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
+import { TOP_MCP_SERVER_VIEWS } from "@app/components/agent_builder/capabilities/shared/types";
+import type {
+  ConfigurationState,
+  SheetState,
+} from "@app/components/agent_builder/skills/types";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-import { useBuilderContext } from "@app/components/shared/useBuilderContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { doesSkillTriggerSelectSpaces } from "@app/lib/skill";
-import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 function isGlobalSkillWithSpaceSelection(skill: SkillType): boolean {
   return doesSkillTriggerSelectSpaces(skill.sId);
 }
 
+export const useSkillSpaceSelection = () => {
+  const agentBuilderFormAdditionalSpaces = useWatch<
+    AgentBuilderFormData,
+    "additionalSpaces"
+  >({
+    name: "additionalSpaces",
+  });
+
+  const [localSelectedSpaces, setLocalSelectedSpaces] = useState<string[]>([]);
+
+  const resetLocalState = useCallback(() => {
+    setLocalSelectedSpaces(agentBuilderFormAdditionalSpaces);
+  }, [agentBuilderFormAdditionalSpaces]);
+
+  useEffect(() => {
+    // When agent builder form spaces change, make sure local state is updated
+    resetLocalState();
+  }, [agentBuilderFormAdditionalSpaces, resetLocalState]);
+
+  return {
+    localSelectedSpaces,
+    setLocalSelectedSpaces,
+    resetLocalState,
+  };
+};
+
 type UseSkillSelectionProps = {
-  onModeChange: (mode: CapabilitiesSheetMode | null) => void;
+  onStateChange: (state: SheetState) => void;
   alreadyAddedSkillIds: Set<string>;
-  initialAdditionalSpaces: string[];
   searchQuery: string;
 };
+
 export const useSkillSelection = ({
-  onModeChange,
+  onStateChange,
   alreadyAddedSkillIds,
-  initialAdditionalSpaces,
   searchQuery,
 }: UseSkillSelectionProps) => {
-  const { owner } = useAgentBuilderContext();
-
   const [localSelectedSkills, setLocalSelectedSkills] = useState<
     AgentBuilderSkillsType[]
   >([]);
-  const [localAdditionalSpaces, setLocalAdditionalSpaces] = useState<string[]>(
-    initialAdditionalSpaces
-  );
 
-  // Draft state for space selection (only committed on save)
-  const [draftSelectedSpaces, setDraftSelectedSpaces] = useState<string[]>(
-    localAdditionalSpaces
-  );
+  const resetLocalState = useCallback(() => {
+    setLocalSelectedSkills([]);
+  }, []);
 
-  const { skillsWithRelations, isSkillsWithRelationsLoading } =
-    useSkillsWithRelations({
-      owner,
-      status: "active",
-    });
+  const { skills, isSkillsLoading } = useSkillsContext();
 
   const selectedSkillIds = useMemo(
     () => new Set(localSelectedSkills.map((s) => s.sId)),
@@ -69,7 +83,7 @@ export const useSkillSelection = ({
   );
 
   const filteredSkills = useMemo(() => {
-    const notAlreadyAddedSkills = skillsWithRelations.filter(
+    const notAlreadyAddedSkills = skills.filter(
       (skill) => !alreadyAddedSkillIds.has(skill.sId)
     );
 
@@ -82,7 +96,13 @@ export const useSkillSelection = ({
         skill.name.toLowerCase().includes(query) ||
         skill.userFacingDescription.toLowerCase().includes(query)
     );
-  }, [skillsWithRelations, searchQuery, alreadyAddedSkillIds]);
+  }, [skills, searchQuery, alreadyAddedSkillIds]);
+
+  const unselectSkill = useCallback((skill: AgentBuilderSkillsType) => {
+    setLocalSelectedSkills((prev) =>
+      prev.filter((selected) => skill.sId !== selected.sId)
+    );
+  }, []);
 
   const handleSkillToggle = useCallback(
     (skill: SkillType) => {
@@ -94,8 +114,8 @@ export const useSkillSelection = ({
       }
 
       if (isGlobalSkillWithSpaceSelection(skill)) {
-        onModeChange({
-          pageId: "skill_space_selection",
+        onStateChange({
+          state: "space-selection",
           capability: skill,
         });
         return;
@@ -111,13 +131,11 @@ export const useSkillSelection = ({
         },
       ]);
     },
-    [selectedSkillIds, onModeChange, setLocalSelectedSkills]
+    [selectedSkillIds, onStateChange, setLocalSelectedSkills]
   );
 
   const handleSpaceSelectionSave = useCallback(
     (skill: SkillType) => {
-      // Commit draft spaces to actual state
-      setLocalAdditionalSpaces(draftSelectedSpaces);
       // Add the skill
       setLocalSelectedSkills((prev) => [
         ...prev,
@@ -128,44 +146,39 @@ export const useSkillSelection = ({
           icon: skill.icon,
         },
       ]);
-      onModeChange({ pageId: "selection" });
+      onStateChange({ state: "selection" });
     },
-    [
-      onModeChange,
-      setLocalSelectedSkills,
-      setLocalAdditionalSpaces,
-      draftSelectedSpaces,
-    ]
+    [onStateChange, setLocalSelectedSkills]
   );
 
   return {
     localSelectedSkills,
-    localAdditionalSpaces,
+    unselectSkill,
     handleSkillToggle,
     filteredSkills,
-    isSkillsLoading: isSkillsWithRelationsLoading,
+    isSkillsLoading,
     selectedSkillIds,
     handleSpaceSelectionSave,
-    draftSelectedSpaces,
-    setDraftSelectedSpaces,
+    resetLocalState,
   };
 };
 
 export const useToolSelection = ({
   selectedActions,
-  onModeChange,
+  onStateChange,
   searchQuery,
 }: {
   selectedActions: BuilderAction[];
-  onModeChange: (mode: CapabilitiesSheetMode | null) => void;
+  onStateChange: (state: SheetState) => void;
   searchQuery: string;
 }) => {
-  const { owner } = useBuilderContext();
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-
   const [localSelectedTools, setLocalSelectedTools] = useState<SelectedTool[]>(
     []
   );
+
+  const resetLocalState = useCallback(() => {
+    setLocalSelectedTools([]);
+  }, []);
 
   const selectedMCPServerViewIds = useMemo(() => {
     return new Set(localSelectedTools.map((t) => t.view.sId));
@@ -183,7 +196,6 @@ export const useToolSelection = ({
       const selectedServerIds = new Set<string>();
       for (const action of actions) {
         if (
-          action.type === "MCP" &&
           action.configuration &&
           action.configuration.mcpServerViewId &&
           !action.configurationRequired
@@ -216,11 +228,11 @@ export const useToolSelection = ({
           );
         });
 
-    const topViews = mcpServerViewsWithoutKnowledge.filter(
-      (view) => !TOP_MCP_SERVER_VIEWS.includes(view.server.name)
-    );
-    const nonTopViews = mcpServerViewsWithoutKnowledge.filter((view) =>
+    const topViews = mcpServerViewsWithoutKnowledge.filter((view) =>
       TOP_MCP_SERVER_VIEWS.includes(view.server.name)
+    );
+    const nonTopViews = mcpServerViewsWithoutKnowledge.filter(
+      (view) => !TOP_MCP_SERVER_VIEWS.includes(view.server.name)
     );
 
     return {
@@ -234,21 +246,25 @@ export const useToolSelection = ({
     isSelectedMCPServerView,
   ]);
 
+  const unselectTool = useCallback((tool: SelectedTool) => {
+    setLocalSelectedTools((prev) =>
+      prev.filter((selected) => tool.view.sId !== selected.view.sId)
+    );
+  }, []);
+
   const handleToolToggle = useCallback(
     (mcpServerView: MCPServerViewTypeWithLabel) => {
-      const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
-      const requirements = getMCPServerRequirements(
-        mcpServerView,
-        featureFlags
-      );
+      const tool = { view: mcpServerView } satisfies SelectedTool;
+      const requirements = getMCPServerRequirements(mcpServerView);
 
       if (!requirements.noRequirement) {
         const action = getDefaultMCPAction(mcpServerView);
 
-        onModeChange({
-          pageId: "tool_configuration",
+        onStateChange({
+          state: "configuration",
           capability: action,
           mcpServerView,
+          index: null,
         });
         return;
       }
@@ -256,41 +272,36 @@ export const useToolSelection = ({
       // No configuration required, add to selected tools
       setLocalSelectedTools((prev) => {
         const isAlreadySelected = prev.some((selected) => {
-          if (tool.type === "MCP" && selected.type === "MCP") {
-            return tool.view.sId === selected.view.sId;
-          }
-          return false;
+          return tool.view.sId === selected.view.sId;
         });
 
         if (isAlreadySelected) {
           return prev.filter((selected) => {
-            if (tool.type === "MCP" && selected.type === "MCP") {
-              return tool.view.sId !== selected.view.sId;
-            }
-            return true;
+            return tool.view.sId !== selected.view.sId;
           });
         }
 
         return [...prev, tool];
       });
     },
-    [featureFlags, onModeChange]
+    [onStateChange]
   );
 
   const handleToolInfoClick = useCallback(
     (mcpServerView: MCPServerViewType) => {
       const action = getDefaultMCPAction(mcpServerView);
-      onModeChange({
-        pageId: "tool_info",
+      onStateChange({
+        state: "info",
+        kind: "tool",
         capability: action,
         hasPreviousPage: true,
       });
     },
-    [onModeChange]
+    [onStateChange]
   );
 
   const handleToolConfigurationSave = useCallback(
-    (mode: ToolConfigurationMode) => (formData: MCPFormData) => {
+    (configState: ConfigurationState) => (formData: MCPFormData) => {
       const newActionName = generateUniqueActionName({
         baseName: nameToStorageFormat(formData.name),
         existingActions: selectedActions,
@@ -298,23 +309,20 @@ export const useToolSelection = ({
       });
 
       const configuredAction: BuilderAction = {
-        ...mode.capability,
+        ...configState.capability,
         name: newActionName,
         description: formData.description,
         configuration: formData.configuration,
       };
 
       const updatedTool: SelectedTool = {
-        type: "MCP",
-        view: mode.mcpServerView,
+        view: configState.mcpServerView,
         configuredAction,
       };
 
       setLocalSelectedTools((prev) => {
         const existingToolIndex = prev.findIndex(
-          (tool) =>
-            tool.type === "MCP" &&
-            tool.configuredAction?.name === configuredAction.name
+          (tool) => tool.configuredAction?.name === configuredAction.name
         );
 
         if (existingToolIndex !== -1) {
@@ -326,13 +334,14 @@ export const useToolSelection = ({
         }
       });
 
-      onModeChange({ pageId: "selection" });
+      onStateChange({ state: "selection" });
     },
-    [selectedActions, localSelectedTools, onModeChange]
+    [selectedActions, localSelectedTools, onStateChange]
   );
 
   return {
     localSelectedTools,
+    unselectTool,
     handleToolToggle,
     handleToolInfoClick,
     filteredMCPServerViews,
@@ -340,5 +349,6 @@ export const useToolSelection = ({
     selectedMCPServerViewIds,
     allMcpServerViews,
     handleToolConfigurationSave,
+    resetLocalState,
   };
 };

@@ -33,7 +33,11 @@ export function PastedAttachmentComponent({
           fileId && onInlineText && textContent ? "cursor-pointer" : undefined
         }
       >
-        <AttachmentChip label={displayTitle} icon={DoubleQuotesIcon} />
+        <AttachmentChip
+          label={displayTitle}
+          icon={{ visual: DoubleQuotesIcon }}
+          color="highlight"
+        />
       </div>
     </NodeViewWrapper>
   );

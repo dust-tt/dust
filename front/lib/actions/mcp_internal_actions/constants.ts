@@ -33,25 +33,46 @@ import type {
 import { Err, Ok } from "@app/types";
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
+export const USE_SUMMARY_SWITCH = "useSummary";
 
 export const SEARCH_TOOL_NAME = "semantic_search";
 export const INCLUDE_TOOL_NAME = "retrieve_recent_documents";
+export const PROCESS_TOOL_NAME = "extract_information_from_documents";
+
 export const WEBSEARCH_TOOL_NAME = "websearch";
 export const WEBBROWSER_TOOL_NAME = "webbrowser";
+
 export const QUERY_TABLES_TOOL_NAME = "query_tables";
+
 export const GET_DATABASE_SCHEMA_TOOL_NAME = "get_database_schema";
 export const EXECUTE_DATABASE_QUERY_TOOL_NAME = "execute_database_query";
-export const PROCESS_TOOL_NAME = "extract_information_from_documents";
+
 export const CREATE_AGENT_TOOL_NAME = "create_agent";
+
 export const FIND_TAGS_TOOL_NAME = "find_tags";
 export const FILESYSTEM_CAT_TOOL_NAME = "cat";
 export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
+
 export const DATA_WAREHOUSES_LIST_TOOL_NAME = "list";
 export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
 export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
 export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
+
+export const AGENT_MEMORY_RETRIEVE_TOOL_NAME = "retrieve";
+export const AGENT_MEMORY_RECORD_TOOL_NAME = "record_entries";
+export const AGENT_MEMORY_ERASE_TOOL_NAME = "erase_entries";
+export const AGENT_MEMORY_EDIT_TOOL_NAME = "edit_entries";
+export const AGENT_MEMORY_COMPACT_TOOL_NAME = "compact_memory";
+
+export const TOOLSETS_ENABLE_TOOL_NAME = "enable";
+export const TOOLSETS_LIST_TOOL_NAME = "list";
+
+export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
+
+export const GENERATE_IMAGE_TOOL_NAME = "generate_image";
+export const EDIT_IMAGE_TOOL_NAME = "edit_image";
 
 export const SEARCH_SERVER_NAME = "search";
 
@@ -103,6 +124,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "outlook_calendar",
   "outlook",
   "primitive_types_debugger",
+  "productboard",
   "common_utilities",
   "jit_testing",
   "run_agent",
@@ -162,6 +184,7 @@ export const INTERNAL_MCP_SERVERS = {
       search_advanced: "never_ask",
       get_issue: "never_ask",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -184,6 +207,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -204,6 +228,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -223,6 +248,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -281,6 +307,7 @@ export const INTERNAL_MCP_SERVERS = {
       update_deal: "high",
       remove_association: "high",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -303,6 +330,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -322,6 +350,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -344,6 +373,7 @@ export const INTERNAL_MCP_SERVERS = {
     },
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -385,6 +415,7 @@ export const INTERNAL_MCP_SERVERS = {
       update_row_database: "low",
       update_schema_database: "low",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -407,6 +438,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -426,6 +458,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -457,6 +490,7 @@ export const INTERNAL_MCP_SERVERS = {
       read_attachment: "never_ask",
       update_object: "high",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -484,6 +518,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_messages: "never_ask",
       create_reply_draft: "low",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -517,6 +552,7 @@ export const INTERNAL_MCP_SERVERS = {
       check_availability: "never_ask",
       get_user_timezones: "never_ask",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -542,6 +578,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -565,13 +602,10 @@ export const INTERNAL_MCP_SERVERS = {
       search_messages: "never_ask",
       semantic_search_messages: "never_ask",
       list_users: "never_ask",
-      list_public_channels: "never_ask",
-      list_channels: "never_ask",
-      list_joined_channels: "never_ask",
+      search_channels: "never_ask",
       list_threads: "never_ask",
       read_thread_messages: "never_ask",
       get_user: "never_ask",
-      get_channel_details: "never_ask",
 
       // Write operations - low stakes
       post_message: "low",
@@ -579,12 +613,14 @@ export const INTERNAL_MCP_SERVERS = {
       add_reaction: "low",
       remove_reaction: "low",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "slack",
       version: "1.0.0",
-      description: "Slack tools for searching and posting messages.",
+      description:
+        "Slack tools for searching and posting messages. Works with your personal Slack account and supports all common Slack operations.",
       authorization: {
         provider: "slack_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
@@ -592,7 +628,7 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "SlackLogo",
       documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
       instructions:
-        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message." +
+        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
         "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
         "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
     },
@@ -620,6 +656,7 @@ export const INTERNAL_MCP_SERVERS = {
       rename_worksheet: "low",
       move_worksheet: "low",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -675,6 +712,7 @@ export const INTERNAL_MCP_SERVERS = {
       delete_item: "high",
       delete_group: "high",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -698,6 +736,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -743,6 +782,7 @@ export const INTERNAL_MCP_SERVERS = {
       delete_issue_link: "low",
       upload_attachment: "low",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -765,6 +805,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -794,6 +835,7 @@ export const INTERNAL_MCP_SERVERS = {
       create_contact: "high",
       update_contact: "high",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -828,6 +870,7 @@ export const INTERNAL_MCP_SERVERS = {
       check_availability: "never_ask",
       check_self_availability: "never_ask",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -849,10 +892,8 @@ export const INTERNAL_MCP_SERVERS = {
     id: 26,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("freshservice_tool");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       // Read operations - never ask
       list_tickets: "never_ask",
@@ -894,6 +935,7 @@ export const INTERNAL_MCP_SERVERS = {
       request_service_approval: "low",
       create_solution_article: "high",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -905,7 +947,7 @@ export const INTERNAL_MCP_SERVERS = {
         provider: "freshservice" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
       },
-      documentationUrl: null,
+      documentationUrl: "https://docs.dust.tt/docs/freshservice",
       instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
     },
   },
@@ -922,6 +964,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_spreadsheet: "never_ask",
       get_worksheet: "never_ask",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -947,6 +990,7 @@ export const INTERNAL_MCP_SERVERS = {
     },
     isPreview: true,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -962,13 +1006,11 @@ export const INTERNAL_MCP_SERVERS = {
   deep_dive: {
     id: 29,
     availability: "auto",
-    isRestricted: ({ isDeepDiveDisabled }) => {
-      // If the workspace has disable the deep dive agent, the tool is not available.
-      return isDeepDiveDisabled;
-    },
+    isRestricted: ({ isDeepDiveDisabled }) => isDeepDiveDisabled,
     allowMultipleInstances: false,
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -988,7 +1030,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("slack_bot_mcp");
     },
-    isPreview: false,
+    isPreview: true,
     tools_stakes: {
       list_public_channels: "never_ask" as const,
       list_users: "never_ask" as const,
@@ -1000,12 +1042,14 @@ export const INTERNAL_MCP_SERVERS = {
       add_reaction: "low" as const,
       remove_reaction: "low" as const,
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "slack_bot",
       version: "1.0.0",
-      description: "Post messages and reactions as the workspace Dust bot.",
+      description:
+        "Specialized Slack bot integration for posting messages as the workspace bot. Limited to channels where the bot has been added.",
       authorization: {
         provider: "slack" as const,
         supported_use_cases: ["platform_actions"] as const,
@@ -1013,7 +1057,9 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "SlackLogo",
       documentationUrl: null,
       instructions:
-        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message." +
+        "The Slack bot must be explicitly added to a channel before it can post messages or read history. " +
+        "Direct messages and search operations are not supported. " +
+        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
         "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
         "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
     },
@@ -1030,6 +1076,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_completions_usage: "low",
       get_organization_costs: "low",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1050,7 +1097,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("confluence_tool");
     },
-    isPreview: false,
+    isPreview: true,
     tools_stakes: {
       // Read operations - never ask
       get_current_user: "never_ask",
@@ -1062,6 +1109,7 @@ export const INTERNAL_MCP_SERVERS = {
       create_page: "low",
       update_page: "low",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1087,6 +1135,7 @@ export const INTERNAL_MCP_SERVERS = {
       text_to_speech: "low",
       text_to_dialogue: "low",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -1112,6 +1161,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_file_content: "never_ask",
       upload_file: "high",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1144,6 +1194,7 @@ export const INTERNAL_MCP_SERVERS = {
       list_messages: "never_ask",
       post_message: "low",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1171,6 +1222,7 @@ export const INTERNAL_MCP_SERVERS = {
       generate_music: "low",
       generate_sound_effects: "low",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -1197,6 +1249,7 @@ export const INTERNAL_MCP_SERVERS = {
       create_worksheet: "low",
       clear_range: "high",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1227,6 +1280,7 @@ export const INTERNAL_MCP_SERVERS = {
       websearch: "never_ask",
       webbrowser: "never_ask",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1250,13 +1304,15 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("ashby_tool");
     },
-    isPreview: false,
+    isPreview: true,
     tools_stakes: {
       search_candidates: "never_ask",
       get_report_data: "never_ask",
       get_interview_feedback: "never_ask",
+      get_candidate_notes: "never_ask",
       create_candidate_note: "high",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1284,6 +1340,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_tasks: "never_ask",
       get_actions: "never_ask",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1308,6 +1365,7 @@ export const INTERNAL_MCP_SERVERS = {
       search_tickets: "never_ask",
       draft_reply: "low", // Low because it's a draft.
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1339,6 +1397,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_topics: "never_ask",
       get_post_metadata: "never_ask",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1354,11 +1413,9 @@ export const INTERNAL_MCP_SERVERS = {
   vanta: {
     id: 44,
     availability: "manual",
-    allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("vanta_tool");
-    },
-    isPreview: true,
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       list_tests: "never_ask",
       list_test_entities: "never_ask",
@@ -1375,6 +1432,7 @@ export const INTERNAL_MCP_SERVERS = {
       list_risks: "never_ask",
       list_vulnerabilities: "never_ask",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1386,8 +1444,8 @@ export const INTERNAL_MCP_SERVERS = {
         provider: "vanta" as const,
         supported_use_cases: ["platform_actions"] as const,
       },
-      icon: "ActionScanIcon",
-      documentationUrl: null,
+      icon: "VantaLogo",
+      documentationUrl: "https://docs.dust.tt/docs/vanta",
       instructions: null,
     },
   },
@@ -1400,6 +1458,7 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("dev_mcp_actions");
     },
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1420,6 +1479,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -1439,6 +1499,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
     serverInfo: {
@@ -1458,6 +1519,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1480,6 +1542,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1503,6 +1566,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_stakes: {
       create_agent: "high",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1522,6 +1586,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     isRestricted: undefined,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1541,6 +1606,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     isRestricted: undefined,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1572,6 +1638,7 @@ export const INTERNAL_MCP_SERVERS = {
       search_vals: "never_ask",
       list_val_files: "never_ask",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1594,6 +1661,7 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("dev_mcp_actions");
     },
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1613,6 +1681,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     isRestricted: undefined,
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1654,6 +1723,7 @@ export const INTERNAL_MCP_SERVERS = {
       update_conversation_status: "high",
       assign_conversation: "high",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -1683,14 +1753,14 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("skills");
     },
     tools_stakes: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "skill_management",
       version: "1.0.0",
       description: "",
-      // TODO(skill): Add proper skill icon here once in ActionsIcons
-      icon: "ActionLightbulbIcon",
+      icon: "PuzzleIcon",
       authorization: null,
       documentationUrl: null,
       instructions: null,
@@ -1709,6 +1779,7 @@ export const INTERNAL_MCP_SERVERS = {
       update_schedule: "high",
       delete_schedule: "high",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1735,6 +1806,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_stakes: {
       list_warehouses: "never_ask",
     },
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1749,6 +1821,49 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "ActionTableIcon",
       documentationUrl: "https://docs.dust.tt/docs/databricks",
       instructions: null,
+    },
+  },
+  productboard: {
+    id: 46,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("productboard_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      get_note: "never_ask",
+      query_notes: "never_ask",
+      create_note: "low",
+      update_note: "low",
+      query_entities: "never_ask",
+      get_relationships: "never_ask",
+      create_entity: "low",
+      update_entity: "low",
+      get_configuration: "never_ask",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "productboard",
+      version: "1.0.0",
+      description: "Manage productboard entities and notes.",
+      authorization: {
+        provider: "productboard" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "ProductboardLogo",
+      documentationUrl: null,
+      instructions:
+        "Productboard uses a configuration-driven API. Always start by calling get_configuration to understand available fields.\n\n" +
+        "Typical workflow:\n" +
+        "1. Call get_configuration to retrieve configuration for the entity type you're working with (notes or entities)\n" +
+        "2. Parse the configuration to understand available fields, their types, constraints, and allowed operations\n" +
+        "3. Use the configuration to validate and structure your requests:\n" +
+        "   - When creating/updating notes: check required fields, field types, and allowed operations (set, clear, addItems, removeItems)\n" +
+        "   - When creating/updating entities: check required fields and field types for the specific entity type\n" +
+        "4. Make your tool calls (create_note, update_note, create_entity, update_entity, query_notes, query_entities)",
     },
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
@@ -1766,6 +1881,10 @@ export const INTERNAL_MCP_SERVERS = {
       | undefined;
     isPreview: boolean;
     tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
+    // Defines which arguments require per-agent approval for "medium" stake tools.
+    // When a tool has "medium" stake, the user must approve the specific combination
+    // of (agent, tool, argument values) before the tool can execute.
+    tools_arguments_requiring_approval: Record<string, string[]> | undefined;
     tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
     timeoutMs: number | undefined;
     requiresBearerToken?: boolean;

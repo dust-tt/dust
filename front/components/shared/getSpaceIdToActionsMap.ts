@@ -1,7 +1,6 @@
 import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { assertNever } from "@app/types";
 
 type ActionType = AgentBuilderMCPConfigurationWithId | BuilderAction;
 
@@ -17,44 +16,36 @@ export const getSpaceIdToActionsMap = (
       }
     };
 
-    const actionType = action.type;
-
-    switch (actionType) {
-      case "MCP":
-        if (action.configuration.dataSourceConfigurations) {
-          Object.values(action.configuration.dataSourceConfigurations).forEach(
-            (config) => {
-              if (config) {
-                addActionToSpace(config.dataSourceView.spaceId);
-              }
-            }
-          );
-        }
-
-        if (action.configuration.tablesConfigurations) {
-          Object.values(action.configuration.tablesConfigurations).forEach(
-            (config) => {
-              if (config) {
-                addActionToSpace(config.dataSourceView.spaceId);
-              }
-            }
-          );
-        }
-
-        if (action.configuration.mcpServerViewId) {
-          const mcpServerView = mcpServerViews.find(
-            (v) => v.sId === action.configuration.mcpServerViewId
-          );
-
-          if (mcpServerView && mcpServerView.server.availability === "manual") {
-            addActionToSpace(mcpServerView.spaceId);
+    if (action.configuration.dataSourceConfigurations) {
+      Object.values(action.configuration.dataSourceConfigurations).forEach(
+        (config) => {
+          if (config) {
+            addActionToSpace(config.dataSourceView.spaceId);
           }
         }
-        break;
-
-      default:
-        assertNever(actionType);
+      );
     }
+
+    if (action.configuration.tablesConfigurations) {
+      Object.values(action.configuration.tablesConfigurations).forEach(
+        (config) => {
+          if (config) {
+            addActionToSpace(config.dataSourceView.spaceId);
+          }
+        }
+      );
+    }
+
+    if (action.configuration.mcpServerViewId) {
+      const mcpServerView = mcpServerViews.find(
+        (v) => v.sId === action.configuration.mcpServerViewId
+      );
+
+      if (mcpServerView && mcpServerView.server.availability === "manual") {
+        addActionToSpace(mcpServerView.spaceId);
+      }
+    }
+
     return acc;
   }, {});
 };

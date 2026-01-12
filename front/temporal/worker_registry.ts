@@ -13,10 +13,6 @@ import { runProductionChecksWorker } from "@app/temporal/production_checks/worke
 import { runRelocationWorker } from "@app/temporal/relocation/worker";
 import { runRemoteToolsSyncWorker } from "@app/temporal/remote_tools/worker";
 import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
-import {
-  runTrackerNotificationWorker,
-  runTrackerWorker,
-} from "@app/temporal/tracker/worker";
 import { runAgentTriggerWorker } from "@app/temporal/triggers/common/worker";
 import { runAgentTriggerWebhookWorker } from "@app/temporal/triggers/webhook/worker";
 import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
@@ -31,7 +27,6 @@ export type WorkerName =
   | "analytics_queue"
   | "credit_alerts"
   | "data_retention"
-  | "document_tracker"
   | "es_indexation_queue"
   | "hard_delete"
   | "labs"
@@ -43,7 +38,6 @@ export type WorkerName =
   | "relocation"
   | "remote_tools_sync"
   | "scrub_workspace_queue"
-  | "tracker_notification"
   | "update_workspace_usage"
   | "upsert_queue"
   | "upsert_table_queue"
@@ -56,7 +50,6 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   analytics_queue: runAnalyticsWorker,
   credit_alerts: runCreditAlertsWorker,
   data_retention: runDataRetentionWorker,
-  document_tracker: runTrackerWorker,
   hard_delete: runHardDeleteWorker,
   labs: runLabsTranscriptsWorker,
   mentions_count: runMentionsCountWorker,
@@ -67,7 +60,6 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   relocation: runRelocationWorker,
   remote_tools_sync: runRemoteToolsSyncWorker,
   scrub_workspace_queue: runScrubWorkspaceQueueWorker,
-  tracker_notification: runTrackerNotificationWorker,
   update_workspace_usage: runUpdateWorkspaceUsageWorker,
   upsert_queue: runUpsertQueueWorker,
   upsert_table_queue: runUpsertTableQueueWorker,

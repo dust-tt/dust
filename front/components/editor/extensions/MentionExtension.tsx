@@ -226,12 +226,31 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
     return parentPlugins ? [...parentPlugins, addedPlugin] : [addedPlugin];
   },
 
-  // Override Backspace behavior so it removes a single character from the
-  // mention label and converts the chip back to typed text (which re-triggers
-  // the @-suggestion dropdown).
   addKeyboardShortcuts() {
+    // Shared command to jump to end of line
+    const jumpToEndOfLine = () =>
+      this.editor.commands.command(({ state, dispatch }) => {
+        const { selection } = state;
+        const { $from } = selection;
+
+        // Find the end position of the current line
+        const endPos = $from.end();
+
+        if (dispatch) {
+          const tr = state.tr.setSelection(
+            TextSelection.create(state.doc, endPos)
+          );
+          dispatch(tr);
+        }
+
+        return true;
+      });
+
     return {
       ...this.parent?.(),
+      // Override Backspace behavior so it removes a single character from the
+      // mention label and converts the chip back to typed text (which re-triggers
+      // the @-suggestion dropdown).
       Backspace: () =>
         this.editor.commands.command(({ tr, state, dispatch }) => {
           const { selection } = state;
@@ -272,6 +291,9 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
 
           return handled;
         }),
+      // Handle Cmd+ArrowRight (Mac) / Ctrl+ArrowRight (Windows/Linux) and End key to jump to end of line
+      "Mod-ArrowRight": jumpToEndOfLine,
+      End: jumpToEndOfLine,
     };
   },
 });

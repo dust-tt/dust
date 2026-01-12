@@ -4,7 +4,10 @@ import { escape } from "html-escaper";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  jsonToMarkdown,
+  makeInternalMCPServer,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -55,6 +58,15 @@ interface MessageDetail {
   data?: GmailMessage;
   messageId?: string;
   error?: string;
+}
+
+// Typeguard for GmailMessage
+function isGmailMessage(data: unknown): data is GmailMessage {
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+  const obj = data as Record<string, unknown>;
+  return typeof obj.id === "string";
 }
 
 function createServer(
@@ -350,7 +362,7 @@ function createServer(
           result.messages ?? [],
           async (message: { id: string }) => {
             const messageResponse = await fetchFromGmail(
-              `/gmail/v1/users/me/messages/${message.id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date&metadataHeaders=Message-ID&metadataHeaders=In-Reply-To&metadataHeaders=References`,
+              `/gmail/v1/users/me/messages/${message.id}?format=full`,
               accessToken,
               { method: "GET" }
             );
@@ -365,54 +377,60 @@ function createServer(
             }
 
             const messageData = await messageResponse.json();
+
+            if (!isGmailMessage(messageData)) {
+              return {
+                success: false,
+                messageId: message.id,
+                error: "Invalid message format received from Gmail API",
+              };
+            }
+
+            // Extract headers for easy access
+            const headers = messageData.payload?.headers ?? [];
+            const from = getHeaderValue(headers, "From");
+            const to = getHeaderValue(headers, "To");
+            const cc = getHeaderValue(headers, "Cc");
+            const subject = getHeaderValue(headers, "Subject");
+            const date = getHeaderValue(headers, "Date");
+
+            // Decode the full email body
+            const body = decodeMessageBody(messageData.payload);
+
             return {
               success: true,
-              data: messageData,
+              data: {
+                id: messageData.id,
+                threadId: messageData.threadId,
+                labelIds: messageData.labelIds,
+                from,
+                to,
+                cc,
+                subject,
+                date,
+                body,
+              },
             };
           },
           { concurrency: 10 }
         );
 
-        // Separate successful and failed message details
+        // Extract successful message details
         const successfulMessages = messageDetails
           .filter((detail: MessageDetail) => detail.success)
           .map((detail: MessageDetail) => detail.data);
 
-        const failedMessages = messageDetails
-          .filter((detail: MessageDetail) => !detail.success)
-          .map((detail: MessageDetail) => ({
-            messageId: detail.messageId,
-            error: detail.error,
-          }));
-
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        const totalRequested = result.messages?.length || 0;
-        const totalSuccessful = successfulMessages.length;
-        const totalFailed = failedMessages.length;
-
-        let message = "Messages fetched successfully";
-        if (totalFailed > 0) {
-          message = `Messages fetched with ${totalFailed} failures out of ${totalRequested} total messages`;
-        }
+        const markdownOutput = jsonToMarkdown(
+          successfulMessages,
+          "id",
+          "Mail id"
+        );
 
         return new Ok([
-          { type: "text" as const, text: message },
+          { type: "text" as const, text: "Messages fetched successfully" },
           {
             type: "text" as const,
-            text: JSON.stringify(
-              {
-                messages: successfulMessages,
-                failedMessages,
-                summary: {
-                  totalRequested,
-                  totalSuccessful,
-                  totalFailed,
-                },
-                nextPageToken: result.nextPageToken,
-              },
-              null,
-              2
-            ),
+            text: markdownOutput,
           },
         ]);
       }

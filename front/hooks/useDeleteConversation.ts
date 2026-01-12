@@ -18,14 +18,15 @@ export function useDeleteConversation(owner: LightWorkspaceType) {
 
   return useCallback(
     async (
-      conversation: ConversationWithoutContentType | null
+      conversation: ConversationWithoutContentType | null,
+      forceDelete: boolean = false
     ): Promise<boolean> => {
       if (!conversation) {
         return false;
       }
 
       const res = await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}`,
+        `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}?forceDelete=${forceDelete}`,
         {
           method: "DELETE",
         }

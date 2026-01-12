@@ -128,9 +128,13 @@ export async function terminateWorkflow(workflowId: string, reason?: string) {
   return false;
 }
 
-export async function terminateAllWorkflowsForConnectorId(
-  connectorId: ModelId
-) {
+export async function terminateAllWorkflowsForConnectorId({
+  connectorId,
+  stopReason,
+}: {
+  connectorId: ModelId;
+  stopReason: string;
+}) {
   const client = await getTemporalClient();
 
   const workflowInfos = client.workflow.list({
@@ -152,7 +156,7 @@ export async function terminateAllWorkflowsForConnectorId(
 
     const workflowHandle = client.workflow.getHandle(handle.workflowId);
     try {
-      await workflowHandle.terminate();
+      await workflowHandle.terminate(stopReason);
     } catch (err) {
       // Intentionally ignore errors that indicate the workflow no longer exists.
       if (err instanceof WorkflowNotFoundError) {

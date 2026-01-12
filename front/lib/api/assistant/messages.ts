@@ -7,6 +7,7 @@ import {
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
@@ -62,6 +63,26 @@ import type {
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 
+export function getCompletionDuration(
+  created: number,
+  completedTs: number | null,
+  actions: AgentMCPActionWithOutputType[]
+) {
+  if (!completedTs) {
+    return null;
+  }
+  // Estimate wait time for the agent message by checking the difference
+  // between action execution duration and full completion time.
+  const waitTime = actions.reduce(
+    (acc, a) =>
+      a.executionDurationMs
+        ? acc + a.updatedAt - a.createdAt - a.executionDurationMs
+        : acc,
+    0
+  );
+  return completedTs - created - waitTime;
+}
+
 export function getRichMentionsWithStatusForMessage(
   messageId: ModelId,
   mentionRows: MentionModel[],
@@ -82,14 +103,16 @@ export function getRichMentionsWithStatusForMessage(
             return {
               ...toRichAgentMentionType(agentConfiguration),
               status: m.status,
+              dismissed: m.dismissed ?? false,
             };
           }
         } else if (m.userId) {
-          const mentionnedUser = usersById.get(m.userId);
-          if (mentionnedUser) {
+          const mentionedUser = usersById.get(m.userId);
+          if (mentionedUser) {
             return {
-              ...toRichUserMentionType(mentionnedUser),
+              ...toRichUserMentionType(mentionedUser),
               status: m.status,
+              dismissed: m.dismissed ?? false,
             };
           }
         } else {
@@ -227,6 +250,10 @@ async function batchRenderUserMessages(
     agentConfigurations.map((a) => [a.sId, a])
   );
 
+  const reactionsByMessageId = await getMessagesReactions(auth, {
+    messageIds: userMessages.map((m) => m.id),
+  });
+
   return userMessages.map((message) => {
     if (!message.userMessage) {
       throw new Error(
@@ -298,6 +325,7 @@ async function batchRenderUserMessages(
               originMessageId: userMessage.agenticOriginMessageId,
             }
           : undefined,
+      reactions: reactionsByMessageId[message.id] ?? [],
     } satisfies UserMessageType;
   });
 }
@@ -398,6 +426,10 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   // Create maps for efficient lookups
   const messagesBySId = new Map(messages.map((m) => [m.sId, m]));
   const messagesById = new Map(messages.map((m) => [m.id, m]));
+
+  const reactionsByMessageId = await getMessagesReactions(auth, {
+    messageIds: agentMessages.map((m) => m.id),
+  });
 
   // The only async part here is the content parsing, but it's "fake async" as the content parsing is not doing
   // any IO or network. We need it to be async as we want to re-use the async generators for the content parsing.
@@ -573,12 +605,14 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         agentConfigurationsById
       );
 
+      const created = message.createdAt.getTime();
+      const completedTs = agentMessage.completedAt?.getTime() ?? null;
       const m = {
         id: message.id,
         agentMessageId: agentMessage.id,
         sId: message.sId,
-        created: message.createdAt.getTime(),
-        completedTs: agentMessage.completedAt?.getTime() ?? null,
+        created,
+        completedTs,
         type: "agent_message" as const,
         visibility: message.visibility,
         version: message.version,
@@ -600,6 +634,12 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         skipToolsValidation: agentMessage.skipToolsValidation,
         modelInteractionDurationMs: agentMessage.modelInteractionDurationMs,
         richMentions,
+        completionDurationMs: getCompletionDuration(
+          created,
+          completedTs,
+          actions
+        ),
+        reactions: reactionsByMessageId[message.id] ?? [],
       } satisfies AgentMessageType;
 
       if (viewType === "full") {

@@ -6,7 +6,7 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import {
   InternalActionIcons,
   isCustomResourceIconType,
@@ -14,14 +14,12 @@ import {
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import type { WhitelistableFeature } from "@app/types";
 
 export interface MCPServerCardProps {
   view: MCPServerViewTypeWithLabel;
   isSelected: boolean;
   onClick: () => void;
   onToolInfoClick: () => void;
-  featureFlags?: WhitelistableFeature[];
 }
 
 export function MCPServerCard({
@@ -29,9 +27,8 @@ export function MCPServerCard({
   isSelected,
   onClick,
   onToolInfoClick,
-  featureFlags,
 }: MCPServerCardProps) {
-  const requirements = getMCPServerRequirements(view, featureFlags);
+  const requirements = getMCPServerRequirements(view);
   const canAdd = requirements.noRequirement ? !isSelected : true;
 
   const icon = isCustomResourceIconType(view.server.icon)
@@ -76,7 +73,7 @@ export function MCPServerCard({
         // eslint-disable-next-line react-hooks/refs, @typescript-eslint/prefer-nullish-coalescing
         mountPortalContainer={containerRef.current || undefined}
         footer={{
-          label: "More info",
+          label: "Tool Details",
           onClick: onToolInfoClick,
         }}
       />
@@ -90,7 +87,6 @@ interface MCPServerSelectionPageProps {
   onItemClick: (mcpServerView: MCPServerViewTypeWithLabel) => void;
   selectedToolsInSheet?: SelectedTool[];
   onToolDetailsClick?: (tool: SelectedTool) => void;
-  featureFlags?: WhitelistableFeature[];
 }
 
 export function MCPServerSelectionPage({
@@ -99,15 +95,12 @@ export function MCPServerSelectionPage({
   onItemClick,
   selectedToolsInSheet = [],
   onToolDetailsClick,
-  featureFlags,
 }: MCPServerSelectionPageProps) {
   // Optimize selection lookup with Set-based approach
   const selectedMCPIds = useMemo(() => {
     const mcpIds = new Set<string>();
     selectedToolsInSheet.forEach((tool) => {
-      if (tool.type === "MCP") {
-        mcpIds.add(tool.view.sId);
-      }
+      mcpIds.add(tool.view.sId);
     });
     return mcpIds;
   }, [selectedToolsInSheet]);
@@ -145,10 +138,9 @@ export function MCPServerSelectionPage({
             onClick={() => onItemClick(view)}
             onToolInfoClick={() => {
               if (onToolDetailsClick) {
-                onToolDetailsClick({ type: "MCP", view });
+                onToolDetailsClick({ view });
               }
             }}
-            featureFlags={featureFlags}
           />
         ))}
       </div>
@@ -164,10 +156,9 @@ export function MCPServerSelectionPage({
             onClick={() => onItemClick(view)}
             onToolInfoClick={() => {
               if (onToolDetailsClick) {
-                onToolDetailsClick({ type: "MCP", view });
+                onToolDetailsClick({ view });
               }
             }}
-            featureFlags={featureFlags}
           />
         ))}
       </div>

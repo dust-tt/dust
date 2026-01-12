@@ -19,6 +19,31 @@ export function InvitationsDataTable({
   invitations,
 }: InvitationsDataTableProps) {
   const router = useRouter();
+
+  async function onResendInvitation(invitationId: string): Promise<void> {
+    if (!window.confirm("Are you sure you want to resend this invitation?")) {
+      return;
+    }
+
+    try {
+      const r = await clientFetch(
+        `/api/poke/workspaces/${owner.sId}/invitations/${invitationId}`,
+        {
+          method: "PATCH",
+        }
+      );
+      if (!r.ok) {
+        throw new Error(`Failed to resend invitation: ${r.statusText}`);
+      }
+      const response = await r.json();
+      window.alert("Invitation resent successfully to " + response.email + ".");
+      router.reload();
+    } catch (e) {
+      console.error(e);
+      window.alert("An error occurred while resending the invitation.");
+    }
+  }
+
   async function onRevokeInvitation(email: string): Promise<void> {
     if (!window.confirm(`Are you sure you want to revoke ${email}?`)) {
       return;
@@ -54,7 +79,10 @@ export function InvitationsDataTable({
           <h2 className="text-md mb-4 font-bold">Pending Invitations:</h2>
         </div>
         <PokeDataTable
-          columns={makeColumnsForInvitations(onRevokeInvitation)}
+          columns={makeColumnsForInvitations(
+            onRevokeInvitation,
+            onResendInvitation
+          )}
           data={invitations}
           defaultFilterColumn="inviteEmail"
         />

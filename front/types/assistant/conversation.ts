@@ -1,6 +1,5 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import type { MentionStatusType } from "@app/lib/models/agent/conversation";
 import type {
   AllSupportedWithDustSpecificFileContentType,
   ContentFragmentType,
@@ -28,7 +27,7 @@ export type ConversationMessageReactions = {
 export type MessageReactionType = {
   emoji: string;
   users: {
-    userId: ModelId | null;
+    userId: string | null;
     username: string;
     fullName: string | null;
   }[];
@@ -116,7 +115,18 @@ export type AgenticMessageData = {
   originMessageId: string;
 };
 
-export type RichMentionWithStatus = RichMention & { status: MentionStatusType };
+export type RichMentionWithStatus =
+  | (RichMention & { dismissed: boolean; status: "pending" })
+  | (RichMention & { dismissed: boolean; status: "approved" })
+  | (RichMention & { dismissed: boolean; status: "rejected" })
+  | (RichMention & {
+      dismissed: boolean;
+      status: "user_restricted_by_conversation_access";
+    })
+  | (RichMention & {
+      dismissed: boolean;
+      status: "agent_restricted_by_space_usage";
+    });
 
 export type UserMessageType = {
   id: ModelId;
@@ -132,6 +142,7 @@ export type UserMessageType = {
   content: string;
   context: UserMessageContext;
   agenticMessageData?: AgenticMessageData;
+  reactions: MessageReactionType[];
 };
 
 export type UserMessageTypeWithoutMentions = Omit<
@@ -194,6 +205,7 @@ export type BaseAgentMessageType = {
   error: GenericErrorContent | null;
   visibility: MessageVisibility;
   richMentions: RichMentionWithStatus[];
+  completionDurationMs: number | null;
 };
 
 export type ParsedContentItem =
@@ -215,6 +227,7 @@ export type AgentMessageType = BaseAgentMessageType & {
   contents: Array<{ step: number; content: AgentContentItemType }>;
   parsedContents: Record<number, Array<ParsedContentItem>>;
   modelInteractionDurationMs: number | null;
+  reactions: MessageReactionType[];
 };
 
 export type AgentMessageTypeWithoutMentions = Omit<
@@ -232,6 +245,7 @@ export type LightAgentMessageType = BaseAgentMessageType & {
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
+  reactions: MessageReactionType[];
 };
 
 // This type represents the agent message we can reconstruct by accumulating streaming events
@@ -276,6 +290,7 @@ export type ConversationWithoutContentType = {
   sId: string;
   title: string | null;
   spaceId: string | null;
+  triggerId: string | null;
   depth: number;
 
   // Ideally, this property should be moved to the ConversationType.
@@ -287,7 +302,6 @@ export type ConversationWithoutContentType = {
  * messages).
  */
 export type ConversationType = ConversationWithoutContentType & {
-  triggerId: string | null;
   owner: WorkspaceType;
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
@@ -313,6 +327,7 @@ export interface UserParticipantType {
   username: string;
   action: ParticipantActionType;
   lastActivityAt?: number;
+  isCreator?: boolean;
 }
 
 export interface ConversationParticipantsType {

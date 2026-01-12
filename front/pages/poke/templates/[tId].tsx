@@ -312,7 +312,7 @@ function PresetActionsField({
                   <PokeFormLabel className="capitalize">Remove</PokeFormLabel>
                   <div>
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                         e.preventDefault();
                         remove(index);
@@ -325,7 +325,7 @@ function PresetActionsField({
             ))}
             <br />
             <Button
-              variant="secondary"
+              variant="outline"
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.preventDefault();
                 const pendingAction = {
@@ -425,7 +425,7 @@ function PreviewDialog({ form }: { form: any }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="secondary" label="✨ Preview Template Card" />
+        <Button variant="outline" label="✨ Preview Template Card" />
       </DialogTrigger>
       <DialogContent className="bg-primary-50 dark:bg-primary-50-night dark:text-white sm:max-w-[600px]">
         <DialogHeader>
@@ -579,7 +579,7 @@ function TemplatesPage({
 
   if (isSubmitting) {
     return (
-      <div className="min-h-dvh flex items-center justify-center bg-primary-50 dark:bg-primary-50-night">
+      <div className="flex min-h-dvh items-center justify-center bg-primary-50 dark:bg-primary-50-night">
         <div className="text-primary-900">Creating/Updating template...</div>
       </div>
     );

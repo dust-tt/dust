@@ -1,25 +1,15 @@
 import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import React from "react";
 
-import type {
-  CapabilitiesSheetContentProps,
-  CapabilitiesSheetMode,
-} from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import type { CapabilitiesSheetContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { useCapabilitiesPageAndFooter } from "@app/components/agent_builder/capabilities/capabilities_sheet/utils";
 
-export function CapabilitiesSheet(
-  props: Omit<CapabilitiesSheetContentProps, "mode"> & {
-    mode: CapabilitiesSheetMode | null;
-  }
-) {
-  const { mode, onClose } = props;
+export function CapabilitiesSheet(props: CapabilitiesSheetContentProps) {
+  const { isOpen, onClose } = props;
 
   return (
-    <MultiPageSheet
-      open={mode !== null}
-      onOpenChange={(open) => !open && onClose()}
-    >
-      {mode && <CapabilitiesSheetContent {...props} mode={mode} />}
+    <MultiPageSheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <CapabilitiesSheetContent {...props} />
     </MultiPageSheet>
   );
 }
@@ -30,7 +20,7 @@ function CapabilitiesSheetContent(props: CapabilitiesSheetContentProps) {
   return (
     <MultiPageSheetContent
       pages={[page]}
-      currentPageId={props.mode.pageId}
+      currentPageId={props.sheetState.state}
       onPageChange={() => {}}
       size="xl"
       addFooterSeparator

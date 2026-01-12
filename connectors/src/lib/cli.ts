@@ -159,11 +159,11 @@ export const connectors = async ({
   });
   switch (command) {
     case "stop": {
-      await throwOnError(manager.stop());
+      await throwOnError(manager.stop({ reason: "Stopped via CLI" }));
       return { success: true };
     }
     case "pause": {
-      await throwOnError(manager.pauseAndStop());
+      await throwOnError(manager.pauseAndStop({ reason: "Paused via CLI" }));
       return { success: true };
     }
     case "unpause": {
@@ -210,7 +210,7 @@ export const connectors = async ({
         throw new Error("Cannot restart a paused connector");
       }
 
-      await throwOnError(manager.stop());
+      await throwOnError(manager.stop({ reason: "Restart via CLI" }));
       await throwOnError(manager.resume());
       return { success: true };
     }
@@ -392,7 +392,7 @@ export const batch = async ({
                 getConnectorManager({
                   connectorId: connector.id,
                   connectorProvider: connector.type,
-                }).stop()
+                }).stop({ reason: "Stopped via CLI batch operation" })
               );
             }
             if (["restart-all", "resume-all"].includes(command)) {

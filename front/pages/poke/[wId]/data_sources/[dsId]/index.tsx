@@ -66,6 +66,7 @@ type FeaturesType = {
   slackBotEnabled: boolean;
   googleDrivePdfEnabled: boolean;
   googleDriveLargeFilesEnabled: boolean;
+  googleDriveParallelSyncEnabled: boolean;
   microsoftPdfEnabled: boolean;
   microsoftLargeFilesEnabled: boolean;
   googleDriveCsvEnabled: boolean;
@@ -157,6 +158,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     slackBotEnabled: false,
     googleDrivePdfEnabled: false,
     googleDriveLargeFilesEnabled: false,
+    googleDriveParallelSyncEnabled: false,
     microsoftPdfEnabled: false,
     microsoftLargeFilesEnabled: false,
     googleDriveCsvEnabled: false,
@@ -242,6 +244,17 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         }
         features.googleDriveLargeFilesEnabled =
           gdriveLargeFilesEnabledRes.value.configValue === "true";
+
+        const gdriveParallelSyncEnabledRes =
+          await connectorsAPI.getConnectorConfig(
+            dataSource.connectorId,
+            "useParallelSync"
+          );
+        if (gdriveParallelSyncEnabledRes.isErr()) {
+          throw gdriveParallelSyncEnabledRes.error;
+        }
+        features.googleDriveParallelSyncEnabled =
+          gdriveParallelSyncEnabledRes.value.configValue === "true";
         break;
 
       case "microsoft":
@@ -714,6 +727,14 @@ const DataSourcePage = ({
                   dataSource={dataSource}
                   configKey="largeFilesEnabled"
                   featureKey="googleDriveLargeFilesEnabled"
+                />
+                <ConfigToggle
+                  title="Parallel syncing enabled?"
+                  owner={owner}
+                  features={features}
+                  dataSource={dataSource}
+                  configKey="useParallelSync"
+                  featureKey="googleDriveParallelSyncEnabled"
                 />
               </>
             )}

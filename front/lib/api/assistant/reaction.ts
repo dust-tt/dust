@@ -3,11 +3,13 @@ import {
   MessageModel,
   MessageReactionModel,
 } from "@app/lib/models/agent/conversation";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
   ConversationError,
   ConversationMessageReactions,
   ConversationWithoutContentType,
   MessageReactionType,
+  ModelId,
   Result,
 } from "@app/types";
 import type { UserType } from "@app/types";
@@ -16,7 +18,7 @@ import { Ok } from "@app/types";
 /**
  * We retrieve the reactions for a whole conversation, not just a single message.
  */
-export async function getMessageReactions(
+export async function getConversationMessagesReactions(
   auth: Authenticator,
   conversation: ConversationWithoutContentType
 ): Promise<Result<ConversationMessageReactions, ConversationError>> {
@@ -43,10 +45,54 @@ export async function getMessageReactions(
   return new Ok(
     messages.map((m) => ({
       messageId: m.sId,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      reactions: _renderMessageReactions(m.reactions || []),
+      reactions: _renderMessageReactions(m.reactions ?? []),
     }))
   );
+}
+
+export async function getMessagesReactions(
+  auth: Authenticator,
+  { messageIds }: { messageIds: ModelId[] }
+) {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const reactions = await MessageReactionModel.findAll({
+    where: {
+      workspaceId: owner.id,
+      messageId: messageIds,
+    },
+    include: [
+      {
+        model: UserModel,
+        as: "user",
+        attributes: ["sId", "firstName", "lastName", "username"],
+        required: true,
+      },
+    ],
+  });
+
+  //group by message id
+  const groupedReactions = reactions.reduce(
+    (acc, reaction) => {
+      const messageId = reaction.messageId;
+      if (!acc[messageId]) {
+        acc[messageId] = [];
+      }
+      acc[messageId].push(reaction);
+      return acc;
+    },
+    {} as { [key: ModelId]: MessageReactionModel[] }
+  );
+
+  const result: { [key: ModelId]: MessageReactionType[] } = {};
+  for (const messageId in groupedReactions) {
+    result[messageId] = _renderMessageReactions(groupedReactions[messageId]);
+  }
+
+  return result;
 }
 
 function _renderMessageReactions(
@@ -54,24 +100,22 @@ function _renderMessageReactions(
 ): MessageReactionType[] {
   return reactions.reduce<MessageReactionType[]>(
     (acc: MessageReactionType[], r: MessageReactionModel) => {
+      if (!r.user) {
+        return acc;
+      }
+
+      const userData = {
+        userId: r.user.sId,
+        username: r.user.username,
+        fullName: [r.user.firstName, r.user.lastName].filter(Boolean).join(" "),
+      };
+
       const reaction = acc.find((r2) => r2.emoji === r.reaction);
+
       if (reaction) {
-        reaction.users.push({
-          userId: r.userId,
-          username: r.userContextUsername,
-          fullName: r.userContextFullName,
-        });
+        reaction.users.push(userData);
       } else {
-        acc.push({
-          emoji: r.reaction,
-          users: [
-            {
-              userId: r.userId,
-              username: r.userContextUsername,
-              fullName: r.userContextFullName,
-            },
-          ],
-        });
+        acc.push({ emoji: r.reaction, users: [userData] });
       }
       return acc;
     },
@@ -81,7 +125,7 @@ function _renderMessageReactions(
 
 /**
  * We create a reaction for a single message.
- * As user can be null (user from Slack), we also store the user context, as we do for messages.
+ * As a user can be null (user from Slack), we also store the user context, as we do for messages.
  */
 export async function createMessageReaction(
   auth: Authenticator,
@@ -124,6 +168,7 @@ export async function createMessageReaction(
     reaction,
     workspaceId: owner.id,
   });
+
   return newReaction !== null;
 }
 

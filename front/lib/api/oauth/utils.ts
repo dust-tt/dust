@@ -10,7 +10,8 @@ export function finalizeUriForProvider(provider: OAuthProvider): string {
   if (isDevelopment() && provider === "fathom") {
     return config.getDevOAuthFathomRedirectBaseUrl() + "/oauth/fathom/finalize";
   }
-  return config.getClientFacingUrl() + `/oauth/${provider}/finalize`;
+  // Use auth redirect base URL for OAuth callbacks
+  return config.getAuthRedirectBaseUrl() + `/oauth/${provider}/finalize`;
 }
 
 export function getStringFromQuery(

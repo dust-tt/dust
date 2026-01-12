@@ -9,10 +9,11 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  skillConfiguration: SkillType;
+  skill: SkillType;
   extendedSkill: SkillType | null;
   owner: WorkspaceType;
   user: UserType;
@@ -34,7 +35,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  if (typeof context.params?.sId !== "string") {
+  if (!isString(context.params?.sId)) {
     return {
       notFound: true,
     };
@@ -47,7 +48,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  if (!skillResource.canWrite(auth)) {
+  if (!skillResource.canWrite(auth) || skillResource.status === "archived") {
     return {
       notFound: true,
     };
@@ -59,7 +60,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
-      skillConfiguration: skillResource.toJSON(auth),
+      skill: skillResource.toJSON(auth),
       extendedSkill: extendedSkillResource
         ? extendedSkillResource.toJSON(auth)
         : null,
@@ -71,27 +72,19 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 });
 
 export default function EditSkill({
-  skillConfiguration,
+  skill,
   extendedSkill,
   owner,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  if (skillConfiguration.status === "archived") {
-    throw new Error("Cannot edit archived skill");
-  }
-
   return (
-    <SkillBuilderProvider
-      owner={owner}
-      user={user}
-      skillConfigurationId={skillConfiguration.sId}
-    >
+    <SkillBuilderProvider owner={owner} user={user} skillId={skill.sId}>
       <>
         <Head>
-          <title>{`Dust - ${skillConfiguration.name}`}</title>
+          <title>{`Dust - ${skill.name}`}</title>
         </Head>
         <SkillBuilder
-          skillConfiguration={skillConfiguration}
+          skill={skill}
           extendedSkill={extendedSkill ?? undefined}
         />
       </>

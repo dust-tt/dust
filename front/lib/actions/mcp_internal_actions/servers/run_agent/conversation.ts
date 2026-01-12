@@ -6,6 +6,7 @@ import type {
 } from "@dust-tt/client";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { isTransientNetworkError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/network_errors";
 import type { ChildAgentBlob } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { isRunAgentResumeState } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
@@ -81,13 +82,14 @@ export async function getOrCreateConversation(
 
     if (convRes.isErr()) {
       const isUserSide = isUserSideError(convRes.error);
+      const isTransient = isTransientNetworkError(convRes.error);
       const message = isUserSide
         ? convRes.error.message
         : "Failed to get conversation";
       return new Err(
         new MCPError(message, {
           cause: convRes.error,
-          tracked: !isUserSide,
+          tracked: !isUserSide && !isTransient,
         })
       );
     }
@@ -173,13 +175,14 @@ export async function getOrCreateConversation(
 
     if (messageRes.isErr()) {
       const isUserSide = isUserSideError(messageRes.error);
+      const isTransient = isTransientNetworkError(messageRes.error);
       const message = isUserSide
         ? messageRes.error.message
         : "Failed to create message";
       return new Err(
         new MCPError(message, {
           cause: messageRes.error,
-          tracked: !isUserSide,
+          tracked: !isUserSide && !isTransient,
         })
       );
     }
@@ -190,13 +193,14 @@ export async function getOrCreateConversation(
 
     if (convRes.isErr()) {
       const isUserSide = isUserSideError(convRes.error);
+      const isTransient = isTransientNetworkError(convRes.error);
       const message = isUserSide
         ? convRes.error.message
         : "Failed to get conversation";
       return new Err(
         new MCPError(message, {
           cause: convRes.error,
-          tracked: !isUserSide,
+          tracked: !isUserSide && !isTransient,
         })
       );
     }
@@ -235,22 +239,26 @@ export async function getOrCreateConversation(
   });
 
   if (convRes.isErr()) {
+    const isUserSide = isUserSideError(convRes.error);
+    const isTransient = isTransientNetworkError(convRes.error);
+
     logger.error(
       {
         error: convRes.error,
         stepContext,
+        isTransient,
+        isUserSide,
       },
       "Failed to create conversation"
     );
 
-    const isUserSide = isUserSideError(convRes.error);
     const message = isUserSide
       ? convRes.error.message
       : "Failed to create conversation";
     return new Err(
       new MCPError(message, {
         cause: convRes.error,
-        tracked: !isUserSide,
+        tracked: !isUserSide && !isTransient,
       })
     );
   }

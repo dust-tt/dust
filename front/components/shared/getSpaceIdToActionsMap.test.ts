@@ -14,7 +14,6 @@ const createMockMCPAction = (
   tablesConfigurations?: any
 ): BuilderAction => ({
   id,
-  type: "MCP",
   name,
   description: `Description for ${name}`,
   configuration: {

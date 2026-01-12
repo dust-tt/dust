@@ -1,4 +1,4 @@
-import { FeatureFlagModel } from "@app/lib/models/feature_flag";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import type { WhitelistableFeature } from "@app/types";
@@ -11,13 +11,11 @@ async function enableFeatureFlag(
 ) {
   const { id: workspaceId, name } = workspace;
 
-  const existingFlag = await FeatureFlagModel.findOne({
-    where: {
-      workspaceId,
-      name: featureFlag,
-    },
-  });
-  if (existingFlag) {
+  const isEnabled = await FeatureFlagResource.isEnabledForWorkspace(
+    workspace,
+    featureFlag
+  );
+  if (isEnabled) {
     console.log(
       `Workspace ${name}(${workspaceId}) already has ${featureFlag} enabled -- Skipping.`
     );
@@ -25,10 +23,7 @@ async function enableFeatureFlag(
   }
 
   if (execute) {
-    await FeatureFlagModel.create({
-      workspaceId,
-      name: featureFlag satisfies WhitelistableFeature,
-    });
+    await FeatureFlagResource.enable(workspace, featureFlag);
   }
 
   console.log(
@@ -46,20 +41,18 @@ async function disableFeatureFlag(
   const { id: workspaceId, name } = workspace;
 
   if (execute) {
-    const existingFlag = await FeatureFlagModel.findOne({
-      where: {
-        workspaceId,
-        name: featureFlag,
-      },
-    });
-    if (!existingFlag) {
+    const isEnabled = await FeatureFlagResource.isEnabledForWorkspace(
+      workspace,
+      featureFlag
+    );
+    if (!isEnabled) {
       console.log(
         `Workspace ${name}(${workspaceId}) does not have ${featureFlag} enabled -- Skipping.`
       );
       return;
     }
 
-    await existingFlag.destroy();
+    await FeatureFlagResource.disable(workspace, featureFlag);
   }
 
   console.log(

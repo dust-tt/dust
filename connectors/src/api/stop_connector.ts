@@ -32,7 +32,7 @@ const _stopConnectorAPIHandler = async (
     const stopRes = await getConnectorManager({
       connectorProvider: connector.type,
       connectorId: connector.id,
-    }).stop();
+    }).stop({ reason: "Stopped via connector STOP API" });
 
     if (stopRes.isErr()) {
       return apiError(req, res, {

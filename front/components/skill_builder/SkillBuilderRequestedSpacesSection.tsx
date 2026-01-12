@@ -1,3 +1,4 @@
+import { ContentMessage } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -6,10 +7,9 @@ import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActio
 import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { SpaceType } from "@app/types";
-import { removeNulls } from "@app/types";
+import { pluralize, removeNulls } from "@app/types";
 
 export function SkillBuilderRequestedSpacesSection() {
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
@@ -35,9 +35,7 @@ export function SkillBuilderRequestedSpacesSection() {
   }, [spaceIdToActions, spaces]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
-    const actionsToRemove = (spaceIdToActions[space.sId] || []).filter(
-      (action): action is BuilderAction => action.type === "MCP"
-    );
+    const actionsToRemove = spaceIdToActions[space.sId] || [];
 
     const confirmed = await confirmRemoveSpace(space, actionsToRemove);
 
@@ -66,9 +64,22 @@ export function SkillBuilderRequestedSpacesSection() {
           Spaces
         </h3>
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Determines who can use this skill and what data it can access
+          Sets what knowledge and tools the skill can access.
         </p>
       </div>
+      {nonGlobalSpacesUsedInActions.length > 0 && (
+        <div className="mb-4 w-full">
+          <ContentMessage variant="golden" size="lg">
+            Based on your selection of knowledge and tools, this skill can only
+            be used by users with access to space
+            {pluralize(nonGlobalSpacesUsedInActions.length)} :{" "}
+            <strong>
+              {nonGlobalSpacesUsedInActions.map((v) => v.name).join(", ")}
+            </strong>
+            .
+          </ContentMessage>
+        </div>
+      )}
       <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
     </div>
   );

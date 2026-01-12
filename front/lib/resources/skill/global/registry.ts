@@ -1,19 +1,40 @@
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { Authenticator } from "@app/lib/auth";
+import { discoverKnowledgeSkill } from "@app/lib/resources/skill/global/discover_knowledge";
+import { discoverToolsSkill } from "@app/lib/resources/skill/global/discover_tools";
 import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import { goDeepSkill } from "@app/lib/resources/skill/global/go_deep";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import type { ResourceSId } from "@app/lib/resources/string_ids";
 
-export interface GlobalSkillDefinition {
+interface BaseGlobalSkillDefinition {
   readonly agentFacingDescription: string;
   readonly userFacingDescription: string;
-  readonly instructions: string;
-  readonly internalMCPServerNames?: AutoInternalMCPServerNameType[];
   readonly name: string;
   readonly sId: string;
   readonly version: number;
   readonly icon: string;
+  readonly internalMCPServerNames?: AutoInternalMCPServerNameType[];
+  readonly inheritAgentConfigurationDataSources?: boolean;
+  readonly isAutoEnabled?: boolean;
 }
+
+type WithStaticInstructions<T extends BaseGlobalSkillDefinition> = T & {
+  readonly instructions: string;
+  readonly fetchInstructions?: never;
+};
+
+type WithDynamicInstructions<T extends BaseGlobalSkillDefinition> = T & {
+  readonly instructions?: never;
+  readonly fetchInstructions: (
+    auth: Authenticator,
+    spaceIds: string[]
+  ) => Promise<string>;
+};
+
+export type GlobalSkillDefinition =
+  | WithStaticInstructions<BaseGlobalSkillDefinition>
+  | WithDynamicInstructions<BaseGlobalSkillDefinition>;
 
 // Helper function that enforces unique sIds.
 function ensureUniqueSIds<T extends readonly GlobalSkillDefinition[]>(
@@ -44,6 +65,8 @@ function ensureUniqueSIds<T extends readonly GlobalSkillDefinition[]>(
 
 // Registry is a simple array.
 const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
+  discoverKnowledgeSkill,
+  discoverToolsSkill,
   framesSkill,
   goDeepSkill,
 ] as const);
@@ -91,5 +114,13 @@ export class GlobalSkillsRegistry {
 
       return true;
     });
+  }
+
+  static isSkillAutoEnabled(sId: string): boolean {
+    return this.getById(sId)?.isAutoEnabled ?? false;
+  }
+
+  static doesSkillInheritAgentConfigurationDataSources(sId: string): boolean {
+    return this.getById(sId)?.inheritAgentConfigurationDataSources ?? false;
   }
 }

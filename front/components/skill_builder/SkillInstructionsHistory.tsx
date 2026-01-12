@@ -10,112 +10,95 @@ import {
   HistoryIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { compareDesc } from "date-fns";
 import { format } from "date-fns/format";
 import React, { useCallback, useMemo } from "react";
 
 import { useMembersLookup } from "@app/lib/swr/memberships";
 import type { LightWorkspaceType } from "@app/types";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillType,
+  SkillWithVersionType,
+} from "@app/types/assistant/skill_configuration";
 
 interface SkillInstructionsHistoryProps {
-  history: SkillType[];
-  selectedConfig: SkillType | null;
-  onSelect: (config: SkillType) => void;
+  currentSkill: SkillType;
+  history: SkillWithVersionType[];
+  selectedConfig: SkillWithVersionType | null;
+  onSelect: (config: SkillWithVersionType) => void;
   owner: LightWorkspaceType;
 }
 
 export function SkillInstructionsHistory({
+  currentSkill,
   history,
   onSelect,
   selectedConfig,
   owner,
 }: SkillInstructionsHistoryProps) {
-  const authorIdsToLookup = useMemo(() => {
+  const editedByIdsToLookup = useMemo(() => {
     const ids = new Set<number>();
     history.forEach((config) => {
-      if (config.authorId) {
-        ids.add(Number(config.authorId));
+      if (config.editedBy) {
+        ids.add(Number(config.editedBy));
       }
     });
 
     return Array.from(ids);
   }, [history]);
 
-  const { members: authorLookupMembers, isMembersLookupLoading } =
+  const { members: editedByLookupMembers, isMembersLookupLoading } =
     useMembersLookup({
       workspaceId: owner.sId,
-      memberIds: authorIdsToLookup,
-      disabled: authorIdsToLookup.length === 0,
+      memberIds: editedByIdsToLookup,
+      disabled: editedByIdsToLookup.length === 0,
     });
 
-  const authorMap = useMemo(() => {
+  const editedByUserMap = useMemo(() => {
     const map: Record<string, string> = {};
-    authorLookupMembers.forEach((user) => {
+    editedByLookupMembers.forEach((user) => {
       map[user.id.toString()] = user.fullName || user.firstName || "Unknown";
     });
     return map;
-  }, [authorLookupMembers]);
+  }, [editedByLookupMembers]);
 
-  const formatVersionLabel = useCallback((config: SkillType) => {
+  const formatVersionLabel = useCallback((config: SkillWithVersionType) => {
     return config.createdAt
       ? format(config.createdAt, "Pp")
-      : `Version ${config.id}`;
+      : `Version ${config.version}`;
   }, []);
 
-  const getAuthorName = useCallback(
+  const getEditedByName = useCallback(
     (config: SkillType) => {
-      if (!config.authorId) {
+      if (!config.editedBy) {
         return "System";
       }
-      return authorMap[config.authorId.toString()] || "Unknown";
+      return editedByUserMap[config.editedBy.toString()] || "Unknown";
     },
-    [authorMap]
+    [editedByUserMap]
   );
 
+  // Collapse successive versions that contain the exact same instructions,
+  // keeping the first one (it's the one with the highest version).
   const historyWithPrev = useMemo(() => {
-    // Get current version (first item, since it's sorted DESC by version)
-    const currentVersionId = history[0]?.id;
+    const result: SkillWithVersionType[] = [];
 
-    const sorted = [...history]
-      .filter((config) => config.id !== currentVersionId)
-      .sort((a, b) => compareDesc(a.createdAt ?? a.id, b.createdAt ?? b.id));
+    let lastRawInstructions = currentSkill.instructions;
 
-    const result: Array<{
-      config: SkillType;
-      prevInstructions: string;
-    }> = [];
-
-    let lastRawInstructions: string | null = null;
-
-    for (const config of sorted) {
-      const instructions = config.instructions ?? "";
-      const isNewRun =
-        lastRawInstructions === null || instructions !== lastRawInstructions;
+    for (const config of history) {
+      const { instructions } = config;
+      const isNewRun = instructions !== lastRawInstructions;
 
       if (isNewRun) {
-        const prevInstructions =
-          result.length > 0
-            ? (result[result.length - 1].config.instructions ?? "")
-            : "";
-
-        result.push({
-          config,
-          prevInstructions,
-        });
-      } else if (config.id === selectedConfig?.id) {
-        const prevInstructions = result[result.length - 1].prevInstructions;
-        result[result.length - 1] = {
-          config,
-          prevInstructions,
-        };
+        result.push(config);
+      } else if (config.version === selectedConfig?.version) {
+        result[result.length - 1] = config;
       }
 
       lastRawInstructions = instructions;
     }
 
     return result;
-  }, [history, selectedConfig]);
+  }, [history, selectedConfig, currentSkill]);
 
   return (
     <DropdownMenu>
@@ -144,26 +127,26 @@ export function SkillInstructionsHistory({
           </div>
         ) : (
           <DropdownMenuRadioGroup
-            value={selectedConfig?.id.toString() ?? ""}
+            value={selectedConfig?.version.toString() ?? ""}
             onValueChange={(selectedValue) => {
               const config = history.find(
-                (c) => c.id.toString() === selectedValue
+                (c) => c.version.toString() === selectedValue
               );
               if (config) {
                 onSelect(config);
               }
             }}
           >
-            {historyWithPrev.map(({ config }) => (
+            {historyWithPrev.map((config) => (
               <DropdownMenuRadioItem
-                key={config.id}
-                value={config.id.toString()}
+                key={config.version}
+                value={config.version.toString()}
               >
                 <div className="flex w-full items-center justify-between">
                   <div className="flex flex-col">
                     <span>{formatVersionLabel(config)}</span>
                     <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      by {getAuthorName(config)}
+                      by {getEditedByName(config)}
                     </span>
                   </div>
                 </div>

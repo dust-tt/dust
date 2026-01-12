@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { FeatureFlagModel } from "@app/lib/models/feature_flag";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WhitelistableFeature, WithAPIErrorResponse } from "@app/types";
 import { isWhitelistableFeature } from "@app/types";
@@ -57,11 +57,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const flags = await FeatureFlagModel.findAll({
-        where: {
-          workspaceId: owner.id,
-        },
-      });
+      const flags = await FeatureFlagResource.listForWorkspace(owner);
 
       const features = flags.map((f) => ({
         name: f.name,

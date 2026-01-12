@@ -3,16 +3,31 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getRelatedContentFragments } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import {
   createMessageReaction,
   deleteMessageReaction,
+  getMessagesReactions,
 } from "@app/lib/api/assistant/reaction";
+import {
+  publishAgentMessagesEvents,
+  publishMessageEventsOnMessagePostOrEdit,
+} from "@app/lib/api/assistant/streaming/events";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { MessageReactionType, WithAPIErrorResponse } from "@app/types";
+import type {
+  AgentMessageType,
+  ContentFragmentType,
+  ConversationType,
+  MessageReactionType,
+  UserMessageType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { isAgentMessageType } from "@app/types";
+import { isUserMessageType } from "@app/types";
 
 export const MessageReactionRequestBodySchema = t.type({
   reaction: t.string,
@@ -40,11 +55,7 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
-    );
+  const conversationRes = await getConversation(auth, conversationId);
 
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);
@@ -75,6 +86,17 @@ async function handler(
     });
   }
 
+  const message = conversation.content.flat().find((m) => m.sId === messageId);
+  if (!message) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The message you're trying to react to does not exist.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "POST":
       const created = await createMessageReaction(auth, {
@@ -89,6 +111,7 @@ async function handler(
       });
 
       if (created) {
+        await publishMessageUpdate(req, res, auth, { conversation, message });
         res.status(200).json({ success: true });
         return;
       }
@@ -113,7 +136,9 @@ async function handler(
       });
 
       if (deleted) {
+        await publishMessageUpdate(req, res, auth, { conversation, message });
         res.status(200).json({ success: true });
+        return;
       }
       return apiError(req, res, {
         status_code: 400,
@@ -134,5 +159,55 @@ async function handler(
       });
   }
 }
+
+const publishMessageUpdate = async (
+  req: NextApiRequest,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      { reactions: MessageReactionType[] } | { success: boolean }
+    >
+  >,
+  auth: Authenticator,
+  {
+    conversation,
+    message,
+  }: {
+    conversation: ConversationType;
+    message: UserMessageType | ContentFragmentType | AgentMessageType;
+  }
+) => {
+  const reactions = await getMessagesReactions(auth, {
+    messageIds: [message.id],
+  });
+
+  if (isUserMessageType(message)) {
+    return publishMessageEventsOnMessagePostOrEdit(
+      conversation,
+      {
+        ...message,
+        contentFragments: getRelatedContentFragments(conversation, message),
+        reactions: reactions[message.id] ?? [],
+      },
+      []
+    );
+  }
+
+  if (isAgentMessageType(message)) {
+    return publishAgentMessagesEvents(conversation, [
+      {
+        ...message,
+        reactions: reactions[message.id] ?? [],
+      },
+    ]);
+  }
+
+  return apiError(req, res, {
+    status_code: 500,
+    api_error: {
+      type: "internal_server_error",
+      message: "Unexpected message type",
+    },
+  });
+};
 
 export default withSessionAuthenticationForWorkspace(handler);

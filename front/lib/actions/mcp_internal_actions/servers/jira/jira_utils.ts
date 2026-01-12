@@ -138,6 +138,10 @@ export function shouldConvertToADF(
   return false;
 }
 
+// Fields that cannot be set when creating/updating issues.
+// These are either auto-generated or must be changed via workflow transitions.
+const READ_ONLY_FIELDS = ["status", "id", "key", "self"];
+
 export function processFieldsForJira(
   fields: Record<string, unknown>,
   fieldsMetadata?: Record<
@@ -148,6 +152,11 @@ export function processFieldsForJira(
   >
 ): Record<string, unknown> {
   const processedFields = { ...fields };
+
+  // Remove read-only fields that cannot be set via the API.
+  for (const field of READ_ONLY_FIELDS) {
+    delete processedFields[field];
+  }
 
   for (const [fieldKey, fieldValue] of Object.entries(processedFields)) {
     const fieldMetadata = fieldsMetadata?.[fieldKey];

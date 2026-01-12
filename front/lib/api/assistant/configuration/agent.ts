@@ -1387,11 +1387,12 @@ export async function updateAgentConfigurationScope(
 
 export async function updateAgentRequirements(
   auth: Authenticator,
-  params: { agentId: string; newSpaceIds: number[] },
-  options?: { transaction?: Transaction }
+  {
+    agentModelId,
+    newSpaceIds,
+  }: { agentModelId: ModelId; newSpaceIds: ModelId[] },
+  { transaction }: { transaction?: Transaction }
 ): Promise<Result<boolean, Error>> {
-  const { agentId, newSpaceIds } = params;
-
   const owner = auth.getNonNullableWorkspace();
 
   const updated = await AgentConfigurationModel.update(
@@ -1401,9 +1402,9 @@ export async function updateAgentRequirements(
     {
       where: {
         workspaceId: owner.id,
-        sId: agentId,
+        id: agentModelId,
       },
-      transaction: options?.transaction,
+      transaction,
     }
   );
 
@@ -1425,15 +1426,14 @@ export async function filterAgentsByRequestedSpaces(
   // When a space is deleted, mcp actions are removed, and requestedSpaceIds are updated.
   const foundSpaceIds = new Set(spaces.map((s) => s.id));
   const validAgents = agents.filter((c) =>
-    c.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
+    c.requestedSpaceIds.every((id) => foundSpaceIds.has(id))
   );
 
   const allowedBySpaceIds = validAgents.filter((agent) =>
     auth.canRead(
       createResourcePermissionsFromSpacesWithMap(
         spaceIdToGroupsMap,
-        // Parse as Number since Sequelize array of BigInts are returned as strings.
-        agent.requestedSpaceIds.map((id) => Number(id))
+        agent.requestedSpaceIds
       )
     )
   );

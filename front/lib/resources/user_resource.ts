@@ -1,6 +1,9 @@
 import { escape } from "html-escaper";
+import fromPairs from "lodash/fromPairs";
+import sortBy from "lodash/sortBy";
 import type {
   Attributes,
+  CreationAttributes,
   ModelStatic,
   Transaction,
   WhereOptions,
@@ -14,6 +17,7 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import {
   UserMetadataModel,
   UserModel,
+  UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { searchUsers } from "@app/lib/user_search/search";
@@ -21,7 +25,7 @@ import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightWorkspaceType, ModelId, Result, UserType } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, md5, normalizeError, Ok } from "@app/types";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
 
 export interface SearchMembersPaginationParams {
@@ -385,20 +389,26 @@ export class UserResource extends BaseResource<UserModel> {
     }
   }
 
-  async getMetadata(key: string) {
+  async getMetadata(key: string, workspaceModelId?: number | null) {
     return UserMetadataModel.findOne({
       where: {
         userId: this.id,
         key,
+        workspaceId: workspaceModelId ?? null,
       },
     });
   }
 
-  async setMetadata(key: string, value: string) {
+  async setMetadata(
+    key: string,
+    value: string,
+    workspaceModelId?: number | null
+  ) {
     const metadata = await UserMetadataModel.findOne({
       where: {
         userId: this.id,
         key,
+        workspaceId: workspaceModelId ?? null,
       },
     });
 
@@ -407,6 +417,7 @@ export class UserResource extends BaseResource<UserModel> {
         userId: this.id,
         key,
         value,
+        workspaceId: workspaceModelId ?? null,
       });
       return;
     }
@@ -463,11 +474,19 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   async deleteAllMetadata() {
-    return UserMetadataModel.destroy({
+    await UserMetadataModel.destroy({
       where: {
         userId: this.id,
       },
     });
+
+    await UserToolApprovalModel.destroy({
+      where: {
+        userId: this.id,
+      },
+    });
+
+    return;
   }
 
   async getToolValidations(): Promise<
@@ -491,6 +510,73 @@ export class UserResource extends BaseResource<UserModel> {
 
       return { mcpServerId, toolNames };
     });
+  }
+
+  /**
+   * Create a tool approval for this user.
+   *
+   * For low stake (tool-level): pass agentId=null and argsAndValues=null
+   * For medium stake (per-agent, per-args): pass agentId and argsAndValues
+   *
+   * Uses upsert to avoid duplicates.
+   */
+  async createToolApproval(
+    auth: Authenticator,
+    {
+      mcpServerId,
+      toolName,
+      agentId = null,
+      argsAndValues = null,
+    }: Pick<
+      CreationAttributes<UserToolApprovalModel>,
+      "mcpServerId" | "toolName" | "agentId" | "argsAndValues"
+    >
+  ): Promise<void> {
+    // Sort keys to ensure consistent JSONB storage for unique constraint.
+    const sortedArgsAndValues = argsAndValues
+      ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
+      : null;
+
+    await UserToolApprovalModel.upsert({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      userId: this.id,
+      mcpServerId,
+      toolName,
+      agentId,
+      argsAndValues: sortedArgsAndValues,
+      argsAndValuesMd5: md5(JSON.stringify(sortedArgsAndValues)),
+    });
+  }
+
+  async hasApprovedTool(
+    auth: Authenticator,
+    {
+      mcpServerId,
+      toolName,
+      agentId = null,
+      argsAndValues = null,
+    }: Pick<
+      CreationAttributes<UserToolApprovalModel>,
+      "mcpServerId" | "toolName" | "agentId" | "argsAndValues"
+    >
+  ): Promise<boolean> {
+    const sortedArgsAndValues = argsAndValues
+      ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
+      : null;
+
+    const whereClause: WhereOptions<UserToolApprovalModel> = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      userId: this.id,
+      mcpServerId,
+      toolName,
+      agentId,
+      argsAndValuesMd5: md5(JSON.stringify(sortedArgsAndValues)),
+    };
+    const approval = await UserToolApprovalModel.findOne({
+      where: whereClause,
+    });
+
+    return approval !== null;
   }
 
   fullName(): string {

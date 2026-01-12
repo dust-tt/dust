@@ -3,10 +3,8 @@ import type { Dispatch, SetStateAction } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type {
-  SelectedTool,
-  SheetMode,
-} from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
+import type { SheetMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import type { ConfigurationPagePageId } from "@app/components/agent_builder/types";
 import { TOOLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
@@ -209,16 +207,13 @@ export function handleConfigurationSave({
 
   setSelectedToolsInSheet((prev) => {
     const existingToolIndex = prev.findIndex(
-      (tool) =>
-        tool.type === "MCP" &&
-        tool.configuredAction?.name === configuredAction.name
+      (tool) => tool.configuredAction?.name === configuredAction.name
     );
 
     if (existingToolIndex >= 0) {
       // Update existing tool with configuration
       const updated = [...prev];
       updated[existingToolIndex] = {
-        type: "MCP",
         view: mcpServerView,
         configuredAction,
       };
@@ -228,7 +223,6 @@ export function handleConfigurationSave({
       return [
         ...prev,
         {
-          type: "MCP",
           view: mcpServerView,
           configuredAction,
         },

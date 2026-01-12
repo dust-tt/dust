@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { UniqueConstraintError } from "sequelize";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -55,7 +56,7 @@ function createServer(
         .string()
         .max(255)
         .describe(
-          "A short, descriptive name for the schedule (max 255 chars). Examples: 'Daily email summary', 'Weekly PR review', 'Morning standup prep'"
+          "A short, descriptive name for the schedule (max 255 chars). Examples: 'Daily email summary', 'Weekly PR review', 'Morning standup prep'. Schedule name MUST be unique."
         ),
       schedule: z
         .string()
@@ -92,7 +93,6 @@ function createServer(
 
         const { agentConfiguration } = agentLoopContext.runContext;
 
-        // Determine timezone: explicit param > context > default
         const resolvedTimezone = timezone ?? getUserTimezone(agentLoopContext);
 
         if (!resolvedTimezone) {
@@ -120,32 +120,41 @@ function createServer(
             )
           );
         }
-
         const { cron, timezone: resultTimezone } = cronResult.value;
+        let result;
+        try {
+          result = await TriggerResource.makeNew(auth, {
+            workspaceId: owner.id,
+            agentConfigurationId: agentConfiguration.sId,
+            name,
+            kind: "schedule",
+            enabled: true,
+            configuration: {
+              cron,
+              timezone: resultTimezone,
+            },
+            naturalLanguageDescription: schedule,
+            customPrompt: prompt,
+            editor: user.id,
+            webhookSourceViewId: null,
+            executionPerDayLimitOverride: null,
+            executionMode: "fair_use",
+            origin: "agent",
+          });
 
-        const result = await TriggerResource.makeNew(auth, {
-          workspaceId: owner.id,
-          agentConfigurationId: agentConfiguration.sId,
-          name,
-          kind: "schedule",
-          enabled: true,
-          configuration: {
-            cron,
-            timezone: resultTimezone,
-          },
-          naturalLanguageDescription: schedule,
-          customPrompt: prompt,
-          editor: user.id,
-          webhookSourceViewId: null,
-          executionPerDayLimitOverride: null,
-          executionMode: "fair_use",
-          origin: "agent",
-        });
-
-        if (result.isErr()) {
-          return new Err(
-            new MCPError(`Failed to create schedule: ${result.error.message}`)
-          );
+          if (result.isErr()) {
+            logger.error(result.error.message);
+            return new Err(
+              new MCPError(`Failed to enable schedule: ${result.error.message}`)
+            );
+          }
+        } catch (err) {
+          if (err instanceof UniqueConstraintError) {
+            return new Err(
+              new MCPError("Schedule uniqueness constraint error")
+            );
+          }
+          throw err;
         }
 
         getStatsDClient().increment("tools.schedules_management.created", 1, [

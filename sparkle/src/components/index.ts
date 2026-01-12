@@ -33,7 +33,6 @@ export * from "./Citation";
 export { default as CollapseButton } from "./CollapseButton";
 export {
   Collapsible,
-  CollapsibleComponent,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./Collapsible";
@@ -45,13 +44,16 @@ export {
   ContentMessageInline,
 } from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
-export type { ConversationMessageAction } from "./ConversationMessage";
 export {
   ConversationContainer,
   ConversationMessage,
-  ConversationMessageContent,
-  ConversationMessageHeader,
 } from "./ConversationMessage";
+export {
+  ConversationMessageAvatar,
+  ConversationMessageContainer,
+  ConversationMessageContent,
+  ConversationMessageTitle,
+} from "./ConversationMessages";
 export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
 export {
@@ -76,6 +78,8 @@ export {
 export type {
   DropdownMenuFilterOption,
   DropdownMenuItemProps,
+  DropdownTooltipProps,
+  DropdownTooltipTriggerProps,
 } from "./Dropdown";
 export {
   DropdownMenu,
@@ -97,6 +101,7 @@ export {
   DropdownMenuTagItem,
   DropdownMenuTagList,
   DropdownMenuTrigger,
+  DropdownTooltipTrigger,
 } from "./Dropdown";
 export { default as DropzoneOverlay } from "./DropzoneOverlay";
 export type { EmojiMartData } from "./EmojiPicker";
@@ -113,6 +118,7 @@ export { InteractiveImageGrid } from "./InteractiveImageGrid";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
+export { ListGroup, ListItem, ListItemSection } from "./ListItem";
 export { LoadingBlock } from "./LoadingBlock";
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
@@ -179,6 +185,8 @@ export {
   SheetTitle,
   SheetTrigger,
 } from "./Sheet";
+export type { SidebarLayoutProps, SidebarLayoutRef } from "./SidebarLayout";
+export { SidebarLayout } from "./SidebarLayout";
 export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
 export { FlexSplitButton } from "./SplitButton";

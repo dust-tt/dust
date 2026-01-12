@@ -217,3 +217,15 @@ export function makeQueryTextForList({
 
   return `Listing content${location}${types}${pagination}.`;
 }
+
+export const SkillEnableInputSchema = z.object({
+  skillName: z.string(),
+});
+
+export type SkillEnableInputType = z.infer<typeof SkillEnableInputSchema>;
+
+export function isSkillEnableInputType(
+  input: Record<string, unknown>
+): input is SkillEnableInputType {
+  return SkillEnableInputSchema.safeParse(input).success;
+}

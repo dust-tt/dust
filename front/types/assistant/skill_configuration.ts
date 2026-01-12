@@ -2,14 +2,14 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { UserType } from "@app/types/user";
 
-export type SkillStatus = "active" | "archived";
+export type SkillStatus = "active" | "archived" | "suggested";
 
 export type SkillType = {
   id: number;
   sId: string;
   createdAt: number | null;
   updatedAt: number | null;
-  authorId: number | null;
+  editedBy: number | null;
   status: SkillStatus;
   name: string;
   agentFacingDescription: string;
@@ -17,7 +17,7 @@ export type SkillType = {
   instructions: string | null;
   icon: string | null;
   requestedSpaceIds: string[];
-  tools: { mcpServerViewId: string }[];
+  tools: MCPServerViewType[];
   canWrite: boolean;
   isExtendable: boolean;
   extendedSkillId: string | null;
@@ -26,11 +26,14 @@ export type SkillType = {
 export type SkillRelations = {
   usage: AgentsUsageType;
   editors: UserType[] | null;
-  mcpServerViews: MCPServerViewType[];
-  author: UserType | null;
+  editedByUser: UserType | null;
   extendedSkill: SkillType | null;
 };
 
 export type SkillWithRelationsType = SkillType & {
   relations: SkillRelations;
+};
+
+export type SkillWithVersionType = SkillType & {
+  version: number;
 };

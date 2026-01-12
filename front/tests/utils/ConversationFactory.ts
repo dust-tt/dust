@@ -159,6 +159,7 @@ export class ConversationFactory {
           },
         }),
       rank: messageRow.rank,
+      reactions: [],
     };
 
     return { messageRow, userMessage };
@@ -303,6 +304,36 @@ export class ConversationFactory {
       contentFragmentId: contentFragment.id,
       workspaceId: workspace.id,
     });
+  }
+
+  static async getMessage(auth: Authenticator, messageId: ModelId) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const message = await MessageModel.findOne({
+      where: { id: messageId, workspaceId },
+    });
+
+    let userMessage: UserMessageModel | null = null;
+    if (message?.userMessageId) {
+      userMessage = await UserMessageModel.findOne({
+        where: {
+          id: message.userMessageId,
+          workspaceId,
+        },
+      });
+    }
+
+    let agentMessage: AgentMessageModel | null = null;
+    if (message?.agentMessageId) {
+      agentMessage = await AgentMessageModel.findOne({
+        where: {
+          id: message.agentMessageId,
+          workspaceId,
+        },
+      });
+    }
+
+    return { agentMessage, message, userMessage };
   }
 }
 

@@ -9,11 +9,12 @@ import {
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types";
 import type {
@@ -46,11 +47,11 @@ describe("GET /api/w/[wId]/skills", () => {
       workspace.sId
     );
 
-    await SkillConfigurationFactory.create(auth, {
+    await SkillFactory.create(auth, {
       name: "Test Skill 1",
       agentFacingDescription: "First test skill",
     });
-    await SkillConfigurationFactory.create(auth, {
+    await SkillFactory.create(auth, {
       name: "Test Skill 2",
       agentFacingDescription: "Second test skill",
     });
@@ -61,9 +62,9 @@ describe("GET /api/w/[wId]/skills", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    expect(data).toHaveProperty("skillConfigurations");
+    expect(data).toHaveProperty("skills");
 
-    const skillNames = data.skillConfigurations.map((s: SkillType) => s.name);
+    const skillNames = data.skills.map((s: SkillType) => s.name);
     expect(skillNames).toContain("Test Skill 1");
     expect(skillNames).toContain("Test Skill 2");
   });
@@ -76,11 +77,15 @@ describe("GET /api/w/[wId]/skills", () => {
       workspace.sId
     );
 
-    await SkillConfigurationFactory.create(auth, {
+    await SkillFactory.create(auth, {
       name: "Active Skill",
       status: "active",
     });
-    await SkillConfigurationFactory.create(auth, {
+    await SkillFactory.create(auth, {
+      name: "Suggested Skill",
+      status: "suggested",
+    });
+    await SkillFactory.create(auth, {
       name: "Archived Skill",
       status: "archived",
     });
@@ -92,25 +97,43 @@ describe("GET /api/w/[wId]/skills", () => {
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
 
-    const skillNames = data.skillConfigurations.map((s: SkillType) => s.name);
+    const skillNames = data.skills.map((s: SkillType) => s.name);
     expect(skillNames).toContain("Active Skill");
     expect(skillNames).not.toContain("Archived Skill");
   });
 
-  it("should return 403 when user is not a builder", async () => {
-    const { req, res, workspace } = await setupTest("GET", "user");
+  it("should return suggested skills when status=suggested", async () => {
+    const { req, res, workspace, user } = await setupTest();
 
-    req.query = { ...req.query, wId: workspace.sId };
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    await SkillFactory.create(auth, {
+      name: "Active Skill",
+      status: "active",
+    });
+    await SkillFactory.create(auth, {
+      name: "Suggested Skill",
+      status: "suggested",
+    });
+    await SkillFactory.create(auth, {
+      name: "Archived Skill",
+      status: "archived",
+    });
+
+    req.query = { ...req.query, wId: workspace.sId, status: "suggested" };
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toMatchObject({
-      error: {
-        type: "app_auth_error",
-        message: "User is not a builder.",
-      },
-    });
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+
+    const skillNames = data.skills.map((s: SkillType) => s.name);
+    expect(skillNames).toContain("Suggested Skill");
+    expect(skillNames).not.toContain("Active Skill");
+    expect(skillNames).not.toContain("Archived Skill");
   });
 
   it("should return 403 when skills feature flag is not enabled", async () => {
@@ -141,7 +164,7 @@ describe("GET /api/w/[wId]/skills", () => {
         workspace.sId
       );
 
-      await SkillConfigurationFactory.create(auth, {
+      await SkillFactory.create(auth, {
         name: `Skill for ${role}`,
       });
 
@@ -152,9 +175,70 @@ describe("GET /api/w/[wId]/skills", () => {
       expect(res._getStatusCode()).toBe(200);
       const skillNames = res
         ._getJSONData()
-        .skillConfigurations.map((s: SkillType) => s.name);
+        .skills.map((s: SkillType) => s.name);
       expect(skillNames).toContain(`Skill for ${role}`);
     }
+  });
+
+  it("should not return skills with requestedSpaceIds user cannot access", async () => {
+    const { req, res, workspace, authenticator } = await setupTest();
+
+    // Create a skill in global space (user has access)
+    await SkillFactory.create(authenticator, {
+      name: "Accessible Skill",
+    });
+
+    // Create a restricted space without adding user to it
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+
+    // Create a skill and manually set its requestedSpaceIds to the restricted space
+    const restrictedSkill = await SkillFactory.create(authenticator, {
+      name: "Restricted Skill",
+    });
+    await SkillConfigurationModel.update(
+      { requestedSpaceIds: [restrictedSpace.id] },
+      { where: { id: restrictedSkill.id } }
+    );
+
+    req.query = { ...req.query, wId: workspace.sId };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const skillNames = res._getJSONData().skills.map((s: SkillType) => s.name);
+    expect(skillNames).toContain("Accessible Skill");
+    expect(skillNames).not.toContain("Restricted Skill");
+  });
+
+  it("should return skills when user has access to requestedSpaceIds", async () => {
+    const { req, res, workspace, user, authenticator } = await setupTest(
+      "GET",
+      "admin"
+    );
+
+    // Required for proper group/space structure in permission checks.
+    await SpaceFactory.defaults(authenticator);
+
+    // Create a restricted space and add user to it
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });
+
+    // Create a skill and set its requestedSpaceIds to the restricted space
+    const skill = await SkillFactory.create(authenticator, {
+      name: "Skill In Restricted Space",
+    });
+    await SkillConfigurationModel.update(
+      { requestedSpaceIds: [restrictedSpace.id] },
+      { where: { id: skill.id } }
+    );
+
+    req.query = { ...req.query, wId: workspace.sId };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const skillNames = res._getJSONData().skills.map((s: SkillType) => s.name);
+    expect(skillNames).toContain("Skill In Restricted Space");
   });
 });
 
@@ -167,7 +251,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       workspace.sId
     );
 
-    const skill = await SkillConfigurationFactory.create(auth, {
+    const skill = await SkillFactory.create(auth, {
       name: "Skill With Usage",
     });
 
@@ -175,7 +259,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       name: "Test Agent",
     });
 
-    await SkillConfigurationFactory.linkToAgent(auth, {
+    await SkillFactory.linkToAgent(auth, {
       skillId: skill.id,
       agentConfigurationId: agent.id,
     });
@@ -192,9 +276,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skillConfigurations.find(
-        (s: SkillWithRelationsType) => s.sId === skillSId
-      );
+      .skills.find((s: SkillWithRelationsType) => s.sId === skillSId);
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -218,7 +300,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       name: "Agent With Frames",
     });
 
-    await SkillConfigurationFactory.linkGlobalSkillToAgent(auth, {
+    await SkillFactory.linkGlobalSkillToAgent(auth, {
       globalSkillId: "frames",
       agentConfigurationId: agent.id,
     });
@@ -231,9 +313,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     const skillResult = res
       ._getJSONData()
-      .skillConfigurations.find(
-        (s: SkillWithRelationsType) => s.sId === "frames"
-      );
+      .skills.find((s: SkillWithRelationsType) => s.sId === "frames");
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -253,7 +333,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       workspace.sId
     );
 
-    const skill = await SkillConfigurationFactory.create(auth, {
+    const skill = await SkillFactory.create(auth, {
       name: "Skill Without Agents",
     });
 
@@ -269,9 +349,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skillConfigurations.find(
-        (s: SkillWithRelationsType) => s.sId === skillSId
-      );
+      .skills.find((s: SkillWithRelationsType) => s.sId === skillSId);
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -291,7 +369,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       workspace.sId
     );
 
-    const skill = await SkillConfigurationFactory.create(auth, {
+    const skill = await SkillFactory.create(auth, {
       name: "Skill Without Relations",
     });
 
@@ -307,7 +385,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skillConfigurations.find((s: SkillType) => s.sId === skillSId);
+      .skills.find((s: SkillType) => s.sId === skillSId);
 
     expect(skillResult).toBeDefined();
     expect(skillResult).not.toHaveProperty("usage");
@@ -321,7 +399,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       workspace.sId
     );
 
-    const skill = await SkillConfigurationFactory.create(auth, {
+    const skill = await SkillFactory.create(auth, {
       name: "Popular Skill",
     });
 
@@ -332,11 +410,11 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
       name: "Agent Beta",
     });
 
-    await SkillConfigurationFactory.linkToAgent(auth, {
+    await SkillFactory.linkToAgent(auth, {
       skillId: skill.id,
       agentConfigurationId: agent1.id,
     });
-    await SkillConfigurationFactory.linkToAgent(auth, {
+    await SkillFactory.linkToAgent(auth, {
       skillId: skill.id,
       agentConfigurationId: agent2.id,
     });
@@ -353,9 +431,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skillConfigurations.find(
-        (s: SkillWithRelationsType) => s.sId === skillSId
-      );
+      .skills.find((s: SkillWithRelationsType) => s.sId === skillSId);
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -380,13 +456,14 @@ describe("POST /api/w/[wId]/skills", () => {
       icon: null,
       tools: [],
       extendedSkillId: null,
+      attachedKnowledge: [],
     };
 
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
 
     const responseData = res._getJSONData();
-    expect(responseData.skillConfiguration).toMatchObject({
+    expect(responseData.skill).toMatchObject({
       name: "Simple Skill",
       agentFacingDescription: "To use in various situations",
       userFacingDescription: "A simple skill without tools",
@@ -438,22 +515,20 @@ describe("POST /api/w/[wId]/skills", () => {
         { mcpServerViewId: serverView2.sId },
       ],
       extendedSkillId: null,
+      attachedKnowledge: [],
     };
 
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
 
     const responseData = res._getJSONData();
-    expect(responseData.skillConfiguration).toMatchObject({
+    expect(responseData.skill).toMatchObject({
       name: "Test Skill",
       agentFacingDescription: "Use this skill all the time",
       userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
       status: "active",
-      tools: [
-        { mcpServerViewId: serverView1.sId },
-        { mcpServerViewId: serverView2.sId },
-      ],
+      tools: [serverView1.toJSON(), serverView2.toJSON()],
     });
 
     // Verify skill was created in the database
@@ -470,7 +545,7 @@ describe("POST /api/w/[wId]/skills", () => {
     expect(skillConfiguration!.instructions).toBe(
       "Test instructions for the skill"
     );
-    expect(skillConfiguration!.authorId).toBe(user.id);
+    expect(skillConfiguration!.editedBy).toBe(user.id);
 
     // Verify tools were created in the database
     const toolConfigurations = await SkillMCPServerConfigurationModel.findAll({
@@ -518,13 +593,14 @@ describe("POST /api/w/[wId]/skills", () => {
       icon: null,
       tools: [{ mcpServerViewId: serverView.sId }],
       extendedSkillId: null,
+      attachedKnowledge: [],
     };
 
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
 
     const responseData = res._getJSONData();
-    expect(responseData.skillConfiguration).toMatchObject({
+    expect(responseData.skill).toMatchObject({
       name: "Skill With Space Restrictions",
       requestedSpaceIds: [regularSpace.sId],
     });
@@ -536,9 +612,60 @@ describe("POST /api/w/[wId]/skills", () => {
       },
     });
     expect(skillConfiguration).not.toBeNull();
-    expect(skillConfiguration!.requestedSpaceIds).toEqual([
-      String(regularSpace.id), // BigInt array returned as string
-    ]);
+    expect(skillConfiguration!.requestedSpaceIds).toEqual([regularSpace.id]);
+  });
+
+  it("creates a skill with attached knowledge", async () => {
+    const { req, res, authenticator, workspace, user, globalSpace } =
+      await setupTest("POST", "admin");
+
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      user
+    );
+
+    const dataSourceView1 = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      user
+    );
+
+    req.body = {
+      name: "Skill with Knowledge",
+      agentFacingDescription: "A skill with knowledge attachments",
+      userFacingDescription: "User description",
+      instructions: "Instructions",
+      icon: null,
+      tools: [],
+      attachedKnowledge: [
+        {
+          dataSourceViewId: dataSourceView.sId,
+          nodeId: "node1",
+          nodeType: "document",
+          spaceId: dataSourceView.space.sId,
+          title: "Document Node 1",
+        },
+        {
+          dataSourceViewId: dataSourceView1.sId,
+          nodeId: "node2",
+          nodeType: "folder",
+          spaceId: dataSourceView1.space.sId,
+          title: "Folder Node 2",
+        },
+      ],
+      extendedSkillId: null,
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+
+    const skillId = res._getJSONData().skill.sId;
+
+    // Verify persistence by fetching the skill again.
+    const createdSkill = await SkillResource.fetchById(authenticator, skillId);
+    expect(createdSkill).not.toBeNull();
+    expect(createdSkill!.dataSourceConfigurations).toHaveLength(2);
   });
 });
 

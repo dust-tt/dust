@@ -8,7 +8,6 @@ import {
   isInternalAllowedIcon,
   ResourceAvatar,
 } from "@app/components/resources/resources_icons";
-import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import type {
   SkillRelations,
   SkillType,
@@ -16,6 +15,11 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 
 export const SKILL_ICON = PuzzleIcon;
+
+export const SKILL_AVATAR_BACKGROUND_COLOR =
+  "bg-highlight-50 dark:bg-highlight-50-night";
+export const SKILL_AVATAR_ICON_COLOR =
+  "text-highlight dark:text-highlight-night";
 
 export function getSkillAvatarIcon(
   iconString: string | null
@@ -30,13 +34,21 @@ export function getSkillAvatarIcon(
   ) {
     const icon = getIcon(iconString);
     return (props) =>
-      React.createElement(ResourceAvatar, { icon, size: "sm", ...props });
+      React.createElement(ResourceAvatar, {
+        icon,
+        size: "sm",
+        backgroundColor: SKILL_AVATAR_BACKGROUND_COLOR,
+        iconColor: SKILL_AVATAR_ICON_COLOR,
+        ...props,
+      });
   }
 
   return (props) =>
     React.createElement(ResourceAvatar, {
       icon: SKILL_ICON,
       size: "sm",
+      backgroundColor: SKILL_AVATAR_BACKGROUND_COLOR,
+      iconColor: SKILL_AVATAR_ICON_COLOR,
       ...props,
     });
 }
@@ -54,13 +66,16 @@ export function getSkillIcon(
 }
 
 const IDS_OF_SKILLS_TRIGGERING_SELECT_SPACES_OPTIONS: string[] = [
-  framesSkill.sId, // TODO(skills) Remove frames from this list when we have real global skills with space selection
+  // We don't trigger this flow for now.
+  // TODO(skills 2025-12-24): confirm whether we need this flow of space selection or not,
+  //  if we do, then add the skill IDs here, otherwise remove it from Agent Builder.
 ];
 
 export function doesSkillTriggerSelectSpaces(sId: string): boolean {
   return IDS_OF_SKILLS_TRIGGERING_SELECT_SPACES_OPTIONS.includes(sId);
 }
-export const hasRelations = (
-  skillConfiguration: SkillType & { relations?: SkillRelations }
-): skillConfiguration is SkillWithRelationsType =>
-  skillConfiguration.relations !== undefined;
+export function hasRelations(
+  skill: SkillType & { relations?: SkillRelations }
+): skill is SkillWithRelationsType {
+  return skill.relations !== undefined;
+}

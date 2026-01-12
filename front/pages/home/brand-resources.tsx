@@ -63,7 +63,6 @@ export default function BrandResources() {
                   variant="primary"
                   size="md"
                   label="Download brand kit"
-                  download
                 />
               </div>
             </div>

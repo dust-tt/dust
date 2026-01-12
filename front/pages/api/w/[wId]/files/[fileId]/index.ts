@@ -1,13 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
+import {
+  getOrCreateConversationDataSourceFromFile,
+  getOrCreateProjectContextDataSourceFromFile,
+} from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -105,16 +109,46 @@ async function handler(
 
   let space: SpaceResource | null = null;
   if (file.useCaseMetadata?.spaceId) {
+    if (file.useCase === "project_context") {
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      if (!featureFlags.includes("projects")) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Feature not supported",
+          },
+        });
+      }
+    }
+
     space = await SpaceResource.fetchById(auth, file.useCaseMetadata.spaceId);
   }
-  if (file.useCase === "folders_document" && (!space || !space.canRead(auth))) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: "File not found.",
-      },
-    });
+  if (
+    file.useCase === "folders_document" ||
+    file.useCase === "project_context"
+  ) {
+    if (!space || !space.canRead(auth)) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
+
+    if (space.kind !== "project" && file.useCase === "project_context") {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Space is not a project",
+        },
+      });
+    }
   }
 
   // Check permissions based on useCase and useCaseMetadata
@@ -280,6 +314,49 @@ async function handler(
           const rUpsert = await processAndUpsertToDataSource(
             auth,
             jitDataSource.value,
+            { file }
+          );
+
+          if (rUpsert.isErr()) {
+            logger.error({
+              fileModelId: file.id,
+              workspaceId: auth.workspace()?.sId,
+              contentType: file.contentType,
+              useCase: file.useCase,
+              useCaseMetadata: file.useCaseMetadata,
+              message: "Failed to upsert the file.",
+              error: rUpsert.error,
+            });
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "Failed to upsert the file.",
+              },
+            });
+          }
+        }
+      } else if (
+        file.useCase === "project_context" &&
+        space &&
+        isFileTypeUpsertableForUseCase(file)
+      ) {
+        const projectContextDatasource =
+          await getOrCreateProjectContextDataSourceFromFile(auth, file);
+        if (projectContextDatasource.isErr()) {
+          logger.warn({
+            fileModelId: file.id,
+            workspaceId: auth.workspace()?.sId,
+            contentType: file.contentType,
+            useCase: file.useCase,
+            useCaseMetadata: file.useCaseMetadata,
+            message: "Failed to get or create project context data source.",
+            error: projectContextDatasource.error,
+          });
+        } else {
+          const rUpsert = await processAndUpsertToDataSource(
+            auth,
+            projectContextDatasource.value,
             { file }
           );
 

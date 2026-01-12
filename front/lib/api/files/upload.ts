@@ -3,6 +3,7 @@ import { isDustMimeType } from "@dust-tt/client";
 import ConvertAPI from "convertapi";
 import fs from "fs";
 import type { IncomingMessage } from "http";
+import imageSize from "image-size";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { fileSync } from "tmp";
@@ -140,6 +141,73 @@ const resizeAndUploadToFileStorage = async (
   });
   */
 
+  const maxSizePixels = parseInt(resizeParams.ImageWidth);
+
+  // Check image dimensions before calling ConvertAPI
+  try {
+    const readStreamForProbe = file.getReadStream({
+      auth,
+      version: "original",
+    });
+
+    // Read first 32KB (sufficient for all image format headers)
+    const chunks: Buffer[] = [];
+    let totalSize = 0;
+    const maxBufferSize = 32 * 1024;
+
+    for await (const chunk of readStreamForProbe) {
+      chunks.push(chunk);
+      totalSize += chunk.length;
+      if (totalSize >= maxBufferSize) {
+        break;
+      }
+    }
+
+    readStreamForProbe.destroy();
+
+    const buffer = Buffer.concat(chunks);
+    const dimensions = imageSize(buffer);
+
+    if (!dimensions.width || !dimensions.height) {
+      throw new Error("Could not determine image dimensions");
+    }
+
+    if (
+      dimensions.width <= maxSizePixels &&
+      dimensions.height <= maxSizePixels
+    ) {
+      // Upload without resizing
+      const readStream = file.getReadStream({ auth, version: "original" });
+      const writeStream = file.getWriteStream({
+        auth,
+        version: "processed",
+      });
+
+      logger.info(
+        {
+          dimensions: { width: dimensions.width, height: dimensions.height },
+          maxSize: maxSizePixels,
+        },
+        "Image already within size limits, skipping ConvertAPI"
+      );
+
+      await pipeline(readStream, writeStream);
+
+      return new Ok(undefined);
+    }
+  } catch (err) {
+    // If dimension check fails, fall back to ConvertAPI for safety
+    logger.warn(
+      {
+        fileModelId: file.id,
+        workspaceId: auth.workspace()?.sId,
+        err: normalizeError(err),
+      },
+      "Failed to check image dimensions, falling back to ConvertAPI"
+    );
+  }
+
+  // ConvertAPI flow
   if (!process.env.CONVERTAPI_API_KEY) {
     throw new Error("CONVERTAPI_API_KEY is not set");
   }
@@ -397,7 +465,7 @@ const getProcessingFunction = ({
   }
 
   if (isSupportedImageContentType(contentType)) {
-    if (useCase === "conversation") {
+    if (useCase === "conversation" || useCase === "project_context") {
       return makeResizeAndUploadImageToFileStorage(
         CONVERSATION_IMG_MAX_SIZE_PIXELS
       );
@@ -423,6 +491,7 @@ const getProcessingFunction = ({
         "folders_document",
         "upsert_table",
         "tool_output",
+        "project_context",
       ].includes(useCase)
     ) {
       return storeRawText;
@@ -432,7 +501,7 @@ const getProcessingFunction = ({
 
   if (isSupportedAudioContentType(contentType)) {
     if (
-      useCase === "conversation" &&
+      (useCase === "conversation" || useCase === "project_context") &&
       // Only handle voice transcription if the workspace has enabled it.
       auth.getNonNullableWorkspace().metadata?.allowVoiceTranscription !== false
     ) {
@@ -450,9 +519,12 @@ const getProcessingFunction = ({
     case "application/vnd.google-apps.presentation":
     case "application/pdf":
       if (
-        ["conversation", "upsert_document", "folders_document"].includes(
-          useCase
-        )
+        [
+          "conversation",
+          "upsert_document",
+          "folders_document",
+          "project_context",
+        ].includes(useCase)
       ) {
         return extractTextFromFileAndUpload;
       }
@@ -496,18 +568,19 @@ const getProcessingFunction = ({
           "upsert_document",
           "tool_output",
           "folders_document",
+          "project_context",
         ].includes(useCase)
       ) {
         return storeRawText;
       }
       break;
     case "text/vnd.dust.attachment.slack.thread":
-      if (useCase === "conversation") {
+      if (useCase === "conversation" || useCase === "project_context") {
         return storeRawText;
       }
       break;
     case "text/vnd.dust.attachment.pasted":
-      if (useCase === "conversation") {
+      if (useCase === "conversation" || useCase === "project_context") {
         return storeRawText;
       }
       break;

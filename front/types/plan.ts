@@ -30,6 +30,7 @@ export type LimitsType = {
     isSlackBotAllowed: boolean;
     maxMessages: number;
     maxMessagesTimeframe: MaxMessagesTimeframeType;
+    isDeepDiveAllowed: boolean;
   };
   connections: ManageDataSourcesLimitsType;
   dataSources: {
@@ -110,6 +111,7 @@ export const CreatePlanFormSchema = t.type({
     day: null,
     lifetime: null,
   }),
+  isDeepDiveAllowed: t.boolean,
   dataSourcesCount: t.union([t.number, NumberFromString]),
   dataSourcesDocumentsCount: t.union([t.number, NumberFromString]),
   dataSourcesDocumentsSizeMb: t.union([t.number, NumberFromString]),

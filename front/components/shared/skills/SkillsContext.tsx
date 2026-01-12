@@ -33,12 +33,13 @@ export const SkillsProvider = ({ owner, children }: SkillsProviderProps) => {
 
   const { skills, isSkillsLoading, isSkillsError } = useSkills({
     owner,
+    status: "active",
     disabled: !hasSkillsFeature,
   });
 
   const value: SkillsContextType = useMemo(() => {
     return {
-      skills,
+      skills: skills.toSorted((a, b) => a.name.localeCompare(b.name)),
       isSkillsLoading,
       isSkillsError,
     };

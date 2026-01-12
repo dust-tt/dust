@@ -115,6 +115,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       pdfEnabled: false,
       largeFilesEnabled: false,
       csvEnabled: false,
+      useParallelSync: false,
     };
 
     const connector = await ConnectorResource.makeNew(
@@ -683,6 +684,18 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         }
         return new Ok(void 0);
       }
+      case "useParallelSync": {
+        await config.update({
+          useParallelSync: configValue === "true",
+        });
+        const workflowRes = await launchGoogleDriveIncrementalSyncWorkflow(
+          this.connectorId
+        );
+        if (workflowRes.isErr()) {
+          return workflowRes;
+        }
+        return new Ok(void 0);
+      }
 
       default: {
         return new Err(new Error(`Invalid config key ${configKey}`));
@@ -771,6 +784,9 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       case "csvEnabled": {
         return new Ok(config.csvEnabled ? "true" : "false");
       }
+      case "useParallelSync": {
+        return new Ok(config.useParallelSync ? "true" : "false");
+      }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
@@ -787,8 +803,15 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     return launchGoogleGarbageCollector(this.connectorId);
   }
 
-  async stop(): Promise<Result<undefined, Error>> {
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
+    await terminateAllWorkflowsForConnectorId({
+      connectorId: this.connectorId,
+      stopReason: reason,
+    });
     return new Ok(undefined);
   }
 

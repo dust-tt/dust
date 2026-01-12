@@ -18,6 +18,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
 
 import { ResourceAvatar } from "@app/components/resources/resources_icons";
+import { ExtendedSkillBadge } from "@app/components/skills/ExtendedSkillBadge";
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
@@ -31,7 +32,7 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 
 type SkillDetailsProps = {
-  skill: SkillWithRelationsType;
+  skill: SkillWithRelationsType | null;
   onClose: () => void;
   owner: WorkspaceType;
   user: UserType;
@@ -44,24 +45,29 @@ export function SkillDetailsSheet({
   owner,
 }: SkillDetailsProps) {
   return (
-    <Sheet
-      open={!!skill}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
-    >
+    <Sheet open={skill !== null} onOpenChange={onClose}>
       <SheetContent size="lg">
         <VisuallyHidden>
           <SheetTitle />
         </VisuallyHidden>
-        <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
-          <DescriptionSection skill={skill} owner={owner} onClose={onClose} />
-        </SheetHeader>
-        <SheetContainer className="pb-4">
-          <SkillDetailsSheetContent skill={skill} user={user} owner={owner} />
-        </SheetContainer>
+        {skill && (
+          <>
+            <SheetHeader>
+              <DescriptionSection
+                skill={skill}
+                owner={owner}
+                onClose={onClose}
+              />
+            </SheetHeader>
+            <SheetContainer className="pb-4">
+              <SkillDetailsSheetContent
+                skill={skill}
+                user={user}
+                owner={owner}
+              />
+            </SheetContainer>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );
@@ -80,7 +86,7 @@ export function SkillDetailsSheetContent({
 }: SkillDetailsSheetContentProps) {
   const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
 
-  const showEditorsTabs = skill.canWrite;
+  const showEditorsTabs = skill.status !== "suggested" && skill.canWrite;
 
   if (showEditorsTabs) {
     return (
@@ -101,15 +107,11 @@ export function SkillDetailsSheetContent({
         </TabsList>
         <div className="mt-4">
           <TabsContent value="info">
-            <SkillInfoTab skill={skill} />
+            <SkillInfoTab skill={skill} owner={owner} />
           </TabsContent>
           <TabsContent value="editors">
             {hasRelations(skill) && (
-              <SkillEditorsTab
-                skillConfiguration={skill}
-                owner={owner}
-                user={user}
-              />
+              <SkillEditorsTab skill={skill} owner={owner} user={user} />
             )}
           </TabsContent>
         </div>
@@ -117,7 +119,7 @@ export function SkillDetailsSheetContent({
     );
   }
 
-  return <SkillInfoTab skill={skill} />;
+  return <SkillInfoTab skill={skill} owner={owner} />;
 }
 
 type DescriptionSectionProps = {
@@ -132,7 +134,7 @@ const DescriptionSection = ({
   onClose,
 }: DescriptionSectionProps) => {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const author = skill.relations.author;
+  const { editedByUser } = skill.relations;
   const editedDate =
     skill.updatedAt &&
     new Date(skill.updatedAt).toLocaleDateString("en-US", {
@@ -157,21 +159,19 @@ const DescriptionSection = ({
           {skill.name}
         </h2>
         {skill.relations.extendedSkill && (
-          <p className="text-base text-muted-foreground dark:text-muted-foreground-night">
-            Extends {skill.relations.extendedSkill.name}
-          </p>
+          <ExtendedSkillBadge extendedSkill={skill.relations.extendedSkill} />
         )}
 
         {editedDate && (
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Last edited: {editedDate}
-            {author && ` by ${author.fullName}`}
+            {editedByUser && ` by ${editedByUser.fullName}`}
           </p>
         )}
       </div>
 
       {skill.status === "active" && (
-        <SkillDetailsButtonBar owner={owner} skill={skill} />
+        <SkillDetailsButtonBar owner={owner} skill={skill} onClose={onClose} />
       )}
 
       {skill.status === "archived" && (

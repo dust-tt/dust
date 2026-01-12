@@ -682,7 +682,10 @@ export const notion = async ({
           { connectorId: connector.id },
           "[Admin] Stopping notion garbage collector"
         );
-        await stopNotionGarbageCollectorWorkflow(connector.id);
+        await stopNotionGarbageCollectorWorkflow({
+          connectorId: connector.id,
+          stopReason: "Stopped via CLI",
+        });
       }
       return { success: true };
     }

@@ -2,7 +2,9 @@ import {
   Button,
   Card,
   Checkbox,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -74,8 +76,9 @@ const ToolItem = memo(
     };
 
     const toolPermissionLabel: Record<MCPToolStakeLevelType, string> = {
-      high: "High (update data or send information)",
-      low: "Low (retrieve data or generate content)",
+      high: "High (always ask for confirmation)",
+      medium: "Medium (per-agent per-argument confirmation saves)",
+      low: "Low (per-tool confirmation saves)",
       never_ask: "Never ask (automatic execution)",
     };
 
@@ -114,14 +117,16 @@ const ToolItem = memo(
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  {availableStakeLevels.map((permission) => (
-                    <DropdownMenuItem
-                      key={permission}
-                      onClick={() => handlePermissionChange(permission)}
-                      label={toolPermissionLabel[permission]}
-                      disabled={!toolEnabled}
-                    />
-                  ))}
+                  {availableStakeLevels
+                    .filter((v) => v !== "medium")
+                    .map((permission) => (
+                      <DropdownMenuItem
+                        key={permission}
+                        onClick={() => handlePermissionChange(permission)}
+                        label={toolPermissionLabel[permission]}
+                        disabled={!toolEnabled}
+                      />
+                    ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -152,12 +157,11 @@ export const ToolsList = memo(
     return (
       <>
         {tools && tools.length > 0 && (
-          <CollapsibleComponent
-            rootProps={{ defaultOpen: tools.length <= 5 }}
-            triggerChildren={
+          <Collapsible defaultOpen={tools.length <= 5}>
+            <CollapsibleTrigger>
               <div className="heading-lg">Available Tools ({tools.length})</div>
-            }
-            contentChildren={
+            </CollapsibleTrigger>
+            <CollapsibleContent>
               <>
                 <ContentMessage
                   className="mb-4 w-full"
@@ -218,8 +222,8 @@ export const ToolsList = memo(
                   )}
                 </div>
               </>
-            }
-          />
+            </CollapsibleContent>
+          </Collapsible>
         )}
       </>
     );

@@ -42,7 +42,7 @@ export const AgentInputBar = ({
 }) => {
   const [blockedActionIndex, setBlockedActionIndex] = useState<number>(0);
   const generationContext = useContext(GenerationContext);
-  const { getBlockedActions, hasPendingValidations } =
+  const { getBlockedActions, hasPendingValidations, startPulsingAction } =
     useBlockedActionsContext();
 
   if (!generationContext) {
@@ -107,6 +107,14 @@ export const AgentInputBar = ({
   const showStopButton = generatingMessages.length > 0;
   const blockedActions = getBlockedActions(context.user.sId);
 
+  // Keep blockedActionIndex in sync when blockedActions array changes
+  useEffect(() => {
+    // Clamp index to valid range: [0, length-1] when non-empty, or 0 when empty
+    if (blockedActionIndex >= blockedActions.length) {
+      setBlockedActionIndex(Math.max(0, blockedActions.length - 1));
+    }
+  }, [blockedActionIndex, blockedActions.length]);
+
   const scrollToBottom = useCallback(() => {
     methods.scrollToItem({
       index: "LAST",
@@ -157,7 +165,7 @@ export const AgentInputBar = ({
   return (
     <div
       className={
-        "max-h-dvh relative z-20 mx-auto flex w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4"
+        "relative z-20 mx-auto flex max-h-dvh w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4"
       }
     >
       <div
@@ -198,7 +206,7 @@ export const AgentInputBar = ({
         <ContentMessageInline
           icon={InformationCircleIcon}
           variant="primary"
-          className="max-h-dvh mb-5 flex w-full"
+          className="mb-5 flex max-h-dvh w-full"
         >
           <span className="font-bold">
             {blockedActions.length} manual action
@@ -212,8 +220,10 @@ export const AgentInputBar = ({
               variant="outline"
               size="xs"
               onClick={() => {
-                const blockedActionTargetMessageId =
-                  blockedActions[blockedActionIndex].messageId;
+                const blockedAction = blockedActions[blockedActionIndex];
+                const blockedActionTargetMessageId = blockedAction.messageId;
+
+                startPulsingAction(blockedAction.actionId);
 
                 const blockedActionMessageIndex = methods.data.findIndex(
                   (m) =>

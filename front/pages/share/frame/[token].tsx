@@ -116,7 +116,7 @@ export default function SharedFramePage({
         {/* Favicon */}
         <link rel="icon" type="image/png" href={faviconPath} />
       </Head>
-      <div className="h-dvh flex w-full">
+      <div className="flex h-dvh w-full">
         <PublicInteractiveContentContainer
           shareToken={token}
           workspaceId={workspaceId}

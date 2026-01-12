@@ -13,19 +13,17 @@ import { pluralize } from "@app/types";
 
 export function useSkillEditors({
   owner,
-  skillConfigurationId,
+  skillId,
   disabled,
 }: {
   owner: LightWorkspaceType;
-  skillConfigurationId: string | null;
+  skillId: string | null;
   disabled?: boolean;
 }) {
   const editorsFetcher: Fetcher<GetSkillEditorsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    skillConfigurationId
-      ? `/api/w/${owner.sId}/skills/${skillConfigurationId}/editors`
-      : null,
+    skillId ? `/api/w/${owner.sId}/skills/${skillId}/editors` : null,
 
     editorsFetcher,
     {
@@ -43,22 +41,22 @@ export function useSkillEditors({
 
 export function useUpdateSkillEditors({
   owner,
-  skillConfigurationId,
+  skillId,
 }: {
   owner: LightWorkspaceType;
-  skillConfigurationId: string;
+  skillId: string;
 }) {
   const sendNotification = useSendNotification();
   const { mutateEditors } = useSkillEditors({
     owner,
-    skillConfigurationId,
+    skillId,
     disabled: true,
   });
 
   const updateSkillEditors = useCallback(
     async (body: PatchSkillEditorsRequestBody) => {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/skills/${skillConfigurationId}/editors`,
+        `/api/w/${owner.sId}/skills/${skillId}/editors`,
         {
           method: "PATCH",
           headers: {
@@ -71,7 +69,7 @@ export function useUpdateSkillEditors({
       if (res.ok) {
         void mutateEditors();
 
-        let title = "";
+        let title;
         let description: string | undefined = undefined;
         if (
           body.addEditorIds != null &&
@@ -98,7 +96,7 @@ export function useUpdateSkillEditors({
         });
       }
     },
-    [owner, skillConfigurationId, mutateEditors, sendNotification]
+    [owner, skillId, mutateEditors, sendNotification]
   );
 
   return updateSkillEditors;

@@ -10,6 +10,7 @@ import {
   ValueCard,
 } from "@dust-tt/sparkle";
 
+import { DatasourceRetrievalTreemapChart } from "@app/components/agent_builder/observability/charts/DatasourceRetrievalTreemapChart";
 import { LatencyChart } from "@app/components/agent_builder/observability/charts/LatencyChart";
 import { SourceChart } from "@app/components/agent_builder/observability/charts/SourceChart";
 import { ToolUsageChart } from "@app/components/agent_builder/observability/charts/ToolUsageChart";
@@ -22,6 +23,7 @@ import {
   useAgentAnalytics,
   useAgentObservabilitySummary,
 } from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface AgentObservabilityProps {
   workspaceId: string;
@@ -35,6 +37,7 @@ export function AgentObservability({
   isCustomAgent,
 }: AgentObservabilityProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
+  const { featureFlags } = useFeatureFlags({ workspaceId });
 
   const isTimeRangeMode = mode === "timeRange";
 
@@ -42,7 +45,10 @@ export function AgentObservability({
     workspaceId,
     agentConfigurationId,
     period,
-    version: mode === "version" ? selectedVersion?.version : undefined,
+    version:
+      isCustomAgent && mode === "version"
+        ? selectedVersion?.version
+        : undefined,
   });
 
   const shouldShowMessagesPerActiveUser =
@@ -65,6 +71,7 @@ export function AgentObservability({
         <SharedObservabilityFilterSelector
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
         />
       }
     >
@@ -183,21 +190,35 @@ export function AgentObservability({
         <UsageMetricsChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
         />
         <Separator />
         <SourceChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
         />
+        {featureFlags.includes("agent_tool_outputs_analytics") && (
+          <>
+            <Separator />
+            <DatasourceRetrievalTreemapChart
+              workspaceId={workspaceId}
+              agentConfigurationId={agentConfigurationId}
+              isCustomAgent={isCustomAgent}
+            />
+          </>
+        )}
         <Separator />
         <ToolUsageChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
         />
         <Separator />
         <LatencyChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
         />
       </TabContentChildSectionLayout>
     </TabContentLayout>

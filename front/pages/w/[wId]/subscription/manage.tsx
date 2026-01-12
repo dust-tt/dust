@@ -58,7 +58,7 @@ export default function ManageSubscription({
   }, [owner.sId, router]);
 
   return (
-    <div className="h-dvh flex w-full items-center justify-center">
+    <div className="flex h-dvh w-full items-center justify-center">
       <Spinner />
     </div>
   );

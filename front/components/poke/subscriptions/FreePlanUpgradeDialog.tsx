@@ -21,7 +21,7 @@ import {
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
 import { clientFetch } from "@app/lib/egress/client";
-import { isFreePlan } from "@app/lib/plans/plan_codes";
+import { isFreePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { FreePlanUpgradeFormType, WorkspaceType } from "@app/types";
 import { FreePlanUpgradeFormSchema, removeNulls } from "@app/types";
@@ -130,7 +130,10 @@ export default function FreePlanUpgradeDialog({
                       name="planCode"
                       title="Free Plan"
                       options={plans
-                        .filter((plan) => isFreePlan(plan.code))
+                        .filter(
+                          (plan) =>
+                            isFreePlan(plan.code) && !isOldFreePlan(plan.code)
+                        )
                         .map((plan) => ({
                           value: plan.code,
                           display: `${plan.name} (${plan.code})`,

@@ -90,10 +90,7 @@ export function AgentInstructionsHistory({
         )
       );
 
-    const result: Array<{
-      config: LightAgentConfigurationType;
-      prevInstructions: string;
-    }> = [];
+    const result: LightAgentConfigurationType[] = [];
 
     let lastRawInstructions: string | null = null;
 
@@ -103,21 +100,9 @@ export function AgentInstructionsHistory({
         lastRawInstructions === null || instructions !== lastRawInstructions;
 
       if (isNewRun) {
-        const prevInstructions =
-          result.length > 0
-            ? (result[result.length - 1].config.instructions ?? "")
-            : "";
-
-        result.push({
-          config,
-          prevInstructions,
-        });
+        result.push(config);
       } else if (config.version === selectedConfig?.version) {
-        const prevInstructions = result[result.length - 1].prevInstructions;
-        result[result.length - 1] = {
-          config,
-          prevInstructions,
-        };
+        result[result.length - 1] = config;
       }
 
       lastRawInstructions = instructions;
@@ -163,7 +148,7 @@ export function AgentInstructionsHistory({
               }
             }}
           >
-            {historyWithPrev.map(({ config }) => (
+            {historyWithPrev.map((config) => (
               <DropdownMenuRadioItem
                 key={config.version}
                 value={config.version.toString()}

@@ -239,10 +239,10 @@ runs:
 
         # Get commits between versions (handle case where CURRENT_TAG might not exist in git)
         if git rev-parse --verify "$CURRENT_TAG" >/dev/null 2>&1; then
-          COMMITS_RAW=$(git log --oneline --pretty=format:"%h (%an)" $CURRENT_TAG..$TARGET_TAG 2>/dev/null | head -10 || true)
+          COMMITS_RAW=$(git log --oneline --pretty=format:"%h %s (%an)" $CURRENT_TAG..$TARGET_TAG 2>/dev/null | head -10 || true)
         else
           echo "Previous tag $CURRENT_TAG not found in git history, showing recent commits"
-          COMMITS_RAW=$(git log --oneline --pretty=format:"%h (%an)" -10 $TARGET_TAG 2>/dev/null || true)
+          COMMITS_RAW=$(git log --oneline --pretty=format:"%h %s (%an)" -10 $TARGET_TAG 2>/dev/null || true)
         fi
 
         # Store raw commits data

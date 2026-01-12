@@ -208,7 +208,7 @@ async function handler(
           "Content-Disposition",
           `attachment; filename="usage.zip"`
         );
-        res.status(200).send(zipContent);
+        res.status(200).send(Buffer.from(zipContent));
       } else {
         res.setHeader("Content-Type", "text/csv");
         res.setHeader(

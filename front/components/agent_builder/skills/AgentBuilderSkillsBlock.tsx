@@ -4,13 +4,13 @@ import {
   Card,
   CardActionButton,
   CardGrid,
-  ContentMessage,
   EmptyCTA,
+  Hoverable,
   Spinner,
   ToolsIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useController, useFieldArray, useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -20,26 +20,28 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { CapabilitiesSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSheet";
-import type {
-  CapabilitiesSheetMode,
-  SelectedTool,
-} from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import { validateMCPActionConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
+import { getSheetStateForActionEdit } from "@app/components/agent_builder/skills/sheetRouting";
+import { useSkillsAndActionsState } from "@app/components/agent_builder/skills/skillsAndActionsState";
+import type { SheetState } from "@app/components/agent_builder/skills/types";
+import { isCapabilitiesSheetOpen } from "@app/components/agent_builder/skills/types";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { ResourceAvatar } from "@app/components/resources/resources_icons";
-import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { getSkillIcon } from "@app/lib/skill";
+import {
+  getSkillIcon,
+  SKILL_AVATAR_BACKGROUND_COLOR,
+  SKILL_AVATAR_ICON_COLOR,
+} from "@app/lib/skill";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
-import type { TemplateActionPreset } from "@app/types";
-import { pluralize } from "@app/types";
 
 interface SkillCardProps {
   skill: AgentBuilderSkillsType;
@@ -68,7 +70,12 @@ function SkillCard({ skill, onRemove, onClick }: SkillCardProps) {
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          <ResourceAvatar icon={SkillIcon} size="sm" />
+          <ResourceAvatar
+            icon={SkillIcon}
+            size="xs"
+            backgroundColor={SKILL_AVATAR_BACKGROUND_COLOR}
+            iconColor={SKILL_AVATAR_ICON_COLOR}
+          />
           <span className="truncate">{skill.name}</span>
         </div>
 
@@ -91,16 +98,16 @@ function ActionButtons({
     <div className="flex items-center gap-2">
       <Button
         type="button"
-        onClick={onClickKnowledge}
-        label="Add knowledge"
-        icon={BookOpenIcon}
+        onClick={onClickCapability}
+        label="Add capabilities"
+        icon={ToolsIcon}
         variant="primary"
       />
       <Button
         type="button"
-        onClick={onClickCapability}
-        label="Add capabilities"
-        icon={ToolsIcon}
+        onClick={onClickKnowledge}
+        label="Add knowledge"
+        icon={BookOpenIcon}
         variant="outline"
       />
     </div>
@@ -134,7 +141,6 @@ export function AgentBuilderSkillsBlock() {
     name: "additionalSpaces",
   });
 
-  // TODO(skills Jules): make a pass on the way we use reacthookform here
   const {
     mcpServerViewsWithKnowledge,
     mcpServerViewsWithoutKnowledge,
@@ -143,97 +149,47 @@ export function AgentBuilderSkillsBlock() {
   const { skills: allSkills, isSkillsLoading } = useSkillsContext();
   const { spaces } = useSpacesContext();
 
-  const alreadyAddedSkillIds = useMemo(
-    () => new Set(skillFields.map((s) => s.sId)),
-    [skillFields]
-  );
-
-  // Compute space IDs already requested by actions (tools/knowledge)
-  const alreadyRequestedSpaceIds = useMemo(() => {
-    const spaceIdToActions = getSpaceIdToActionsMap(
+  const { alreadyAddedSkillIds, alreadyRequestedSpaceIds } =
+    useSkillsAndActionsState(
+      skillFields,
       actionFields,
-      mcpServerViews
+      mcpServerViews,
+      allSkills,
+      spaces
     );
-    const actionRequestedSpaceIds = new Set<string>();
-    for (const spaceId of Object.keys(spaceIdToActions)) {
-      if (spaceIdToActions[spaceId]?.length > 0) {
-        actionRequestedSpaceIds.add(spaceId);
-      }
-    }
 
-    // Also include space IDs from custom skills (those with canWrite: true have their own requestedSpaceIds)
-    for (const skill of allSkills) {
-      if (alreadyAddedSkillIds.has(skill.sId) && skill.canWrite) {
-        for (const spaceId of skill.requestedSpaceIds) {
-          actionRequestedSpaceIds.add(spaceId);
-        }
-      }
-    }
+  const [sheetState, setSheetState] = useState<SheetState>({ state: "closed" });
 
-    return actionRequestedSpaceIds;
-  }, [actionFields, mcpServerViews, alreadyAddedSkillIds, allSkills]);
-
-  const spaceIdToActions = useMemo(() => {
-    return getSpaceIdToActionsMap(actionFields, mcpServerViews);
-  }, [actionFields, mcpServerViews]);
-
-  const nonGlobalSpacesUsedInActions = useMemo(() => {
-    const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
-    return nonGlobalSpaces.filter((s) => spaceIdToActions[s.sId]?.length > 0);
-  }, [spaceIdToActions, spaces]);
-
-  const [capabillitiesSheetMode, setCapabilitiesSheetMode] =
-    useState<CapabilitiesSheetMode | null>(null);
-  const [knowledgeAction, setKnowledgeAction] = useState<{
-    action: BuilderAction;
-    index: number | null;
-    presetData?: TemplateActionPreset;
-  } | null>(null);
-
+  // Sheets own closing after save; this handler only upserts into the form state.
   const handleToolEditSave = (updatedAction: BuilderAction) => {
-    if (capabillitiesSheetMode?.pageId === "tool_edit") {
-      updateAction(capabillitiesSheetMode.index, updatedAction);
-    } else if (knowledgeAction && knowledgeAction.index !== null) {
-      updateAction(knowledgeAction.index, updatedAction);
-    } else {
-      appendActions(updatedAction);
-    }
-    setCapabilitiesSheetMode(null);
-    setKnowledgeAction(null);
-  };
-
-  const handleActionEdit = (action: BuilderAction, index: number) => {
-    const mcpServerViewWithKnowledge = mcpServerViewsWithKnowledge.find(
-      (view) => view.sId === action.configuration?.mcpServerViewId
-    );
-    const isDataSourceSelectionRequired =
-      action.type === "MCP" && Boolean(mcpServerViewWithKnowledge);
-
-    if (isDataSourceSelectionRequired) {
-      setKnowledgeAction({ action, index });
+    if (
+      (sheetState.state === "configuration" ||
+        sheetState.state === "knowledge") &&
+      sheetState.index !== null
+    ) {
+      updateAction(sheetState.index, updatedAction);
       return;
     }
 
-    const mcpServerViewWithoutKnowledge = mcpServerViewsWithoutKnowledge.find(
-      (view) => view.sId === action.configuration?.mcpServerViewId
-    );
+    appendActions(updatedAction);
+  };
 
-    setCapabilitiesSheetMode(
-      action.configurationRequired && mcpServerViewWithoutKnowledge
-        ? {
-            pageId: "tool_edit",
-            capability: action,
-            mcpServerView: mcpServerViewWithoutKnowledge,
-            index,
-          }
-        : { pageId: "tool_info", capability: action, hasPreviousPage: false }
+  const handleActionEdit = (action: BuilderAction, index: number) => {
+    setSheetState(
+      getSheetStateForActionEdit({
+        action,
+        index,
+        mcpServerViewsWithKnowledge,
+        mcpServerViewsWithoutKnowledge,
+      })
     );
   };
 
   const { fetchSkillWithRelations } = useSkillWithRelations(owner, {
     onSuccess: ({ skill }) =>
-      setCapabilitiesSheetMode({
-        pageId: "skill_info",
+      setSheetState({
+        state: "info",
+        kind: "skill",
         capability: skill,
         hasPreviousPage: false,
       }),
@@ -251,7 +207,7 @@ export function AgentBuilderSkillsBlock() {
     }) => {
       // Validate any configured tools before adding
       for (const tool of tools) {
-        if (tool.type === "MCP" && tool.configuredAction) {
+        if (tool.configuredAction) {
           const validation = validateMCPActionConfiguration(
             tool.configuredAction,
             tool.view
@@ -282,7 +238,8 @@ export function AgentBuilderSkillsBlock() {
     // We don't know which action will be selected so we will create a generic MCP action.
     const action = getDefaultMCPAction();
 
-    setKnowledgeAction({
+    setSheetState({
+      state: "knowledge",
       action: {
         ...action,
         configurationRequired: true, // it's always required for knowledge
@@ -292,12 +249,11 @@ export function AgentBuilderSkillsBlock() {
   };
 
   const handleClickCapability = () => {
-    setCapabilitiesSheetMode({ pageId: "selection" });
+    setSheetState({ state: "selection" });
   };
 
   const handleCloseSheet = useCallback(() => {
-    setCapabilitiesSheetMode(null);
-    setKnowledgeAction(null);
+    setSheetState({ state: "closed" });
   }, []);
 
   const hasCapabilitiesConfigured =
@@ -305,8 +261,21 @@ export function AgentBuilderSkillsBlock() {
 
   return (
     <AgentBuilderSectionContainer
-      title="Skills"
-      description="Give your agent a custom capability for specific tasks"
+      title="Knowledge and capabilities"
+      description={
+        <>
+          Add knowledge, tools and skills to enhance your agent's abilities.
+          Need help? Check our{" "}
+          <Hoverable
+            variant="primary"
+            href="https://docs.dust.tt/docs/tools"
+            target="_blank"
+          >
+            guide
+          </Hoverable>
+          .
+        </>
+      }
       headerActions={
         hasCapabilitiesConfigured && (
           <ActionButtons
@@ -322,41 +291,26 @@ export function AgentBuilderSkillsBlock() {
             <Spinner />
           </div>
         ) : hasCapabilitiesConfigured ? (
-          <>
-            {nonGlobalSpacesUsedInActions.length > 0 && (
-              <div className="mb-4 w-full">
-                <ContentMessage variant="golden" size="lg">
-                  Based on your selection, this agent can only be used by users
-                  with access to space
-                  {pluralize(nonGlobalSpacesUsedInActions.length)} :{" "}
-                  <strong>
-                    {nonGlobalSpacesUsedInActions.map((v) => v.name).join(", ")}
-                  </strong>
-                  .
-                </ContentMessage>
-              </div>
-            )}
-            <CardGrid>
-              {skillFields.map((field, index) => (
-                <SkillCard
-                  key={field.id}
-                  skill={field}
-                  onRemove={() => removeSkill(index)}
-                  onClick={() => {
-                    void fetchSkillWithRelations(field.sId);
-                  }}
-                />
-              ))}
-              {actionFields.map((field, index) => (
-                <ActionCard
-                  key={field.id}
-                  action={field}
-                  onRemove={() => removeAction(index)}
-                  onEdit={() => handleActionEdit(field, index)}
-                />
-              ))}
-            </CardGrid>
-          </>
+          <CardGrid>
+            {skillFields.map((field, index) => (
+              <SkillCard
+                key={field.id}
+                skill={field}
+                onRemove={() => removeSkill(index)}
+                onClick={() => {
+                  void fetchSkillWithRelations(field.sId);
+                }}
+              />
+            ))}
+            {actionFields.map((field, index) => (
+              <ActionCard
+                key={field.id}
+                action={field}
+                onRemove={() => removeAction(index)}
+                onClick={() => handleActionEdit(field, index)}
+              />
+            ))}
+          </CardGrid>
         ) : (
           <EmptyCTA
             action={
@@ -373,20 +327,28 @@ export function AgentBuilderSkillsBlock() {
       <KnowledgeConfigurationSheet
         onClose={handleCloseSheet}
         onSave={handleToolEditSave}
-        action={knowledgeAction?.action ?? null}
+        action={sheetState.state === "knowledge" ? sheetState.action : null}
         actions={actionFields}
-        isEditing={Boolean(knowledgeAction && knowledgeAction.index !== null)}
+        isEditing={
+          sheetState.state === "knowledge" && sheetState.index !== null
+        }
         mcpServerViews={mcpServerViewsWithKnowledge}
         getAgentInstructions={() => getValues("instructions")}
-        presetActionData={knowledgeAction?.presetData}
+        presetActionData={
+          sheetState.state === "knowledge" ? sheetState.presetData : undefined
+        }
       />
       <CapabilitiesSheet
-        mode={capabillitiesSheetMode}
+        isOpen={isCapabilitiesSheetOpen(sheetState)}
+        sheetState={
+          isCapabilitiesSheetOpen(sheetState)
+            ? sheetState
+            : { state: "selection" }
+        }
         onClose={handleCloseSheet}
         onCapabilitiesSave={handleCapabilitiesSave}
         onToolEditSave={handleToolEditSave}
-        onModeChange={setCapabilitiesSheetMode}
-        initialAdditionalSpaces={additionalSpacesField.value}
+        onStateChange={setSheetState}
         alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
         alreadyAddedSkillIds={alreadyAddedSkillIds}
         selectedActions={actionFields}

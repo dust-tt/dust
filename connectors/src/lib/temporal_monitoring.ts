@@ -237,7 +237,9 @@ export class ActivityInboundLogInterceptor implements ActivityInboundCallsInterc
           });
 
           if (connectorManager) {
-            await connectorManager.pauseAndStop();
+            await connectorManager.pauseAndStop({
+              reason: `Stopped on ${err.name}`,
+            });
           } else {
             this.logger.error(
               {

@@ -1,5 +1,6 @@
 import assert from "assert";
 import { tracer } from "dd-trace";
+import uniq from "lodash/uniq";
 import type {
   Attributes,
   CreationAttributes,
@@ -13,10 +14,7 @@ import {
   getServerTypeAndIdFromSId,
   remoteMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
-import type {
-  AutoInternalMCPServerNameType,
-  MCPServerAvailability,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerById,
@@ -361,6 +359,21 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     });
   }
 
+  static async listBySpaceIds(
+    auth: Authenticator,
+    spaceIds: string[],
+    { includeGlobalSpace = false }: { includeGlobalSpace?: boolean } = {}
+  ) {
+    const requestedSpaces = await SpaceResource.fetchByIds(auth, spaceIds);
+
+    if (includeGlobalSpace) {
+      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+      requestedSpaces.push(globalSpace);
+    }
+
+    return this.listBySpaces(auth, requestedSpaces);
+  }
+
   static async listBySpace(
     auth: Authenticator,
     space: SpaceResource,
@@ -409,6 +422,58 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     );
 
     return views.find((view) => view.space.kind === "global") ?? null;
+  }
+
+  static async listMCPServerViewsAutoInternalForSpaces(
+    auth: Authenticator,
+    name: AutoInternalMCPServerNameType,
+    spaceModelIds: ModelId[]
+  ) {
+    const views = await this.listByMCPServer(
+      auth,
+      autoInternalMCPServerNameToSId({
+        name,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      })
+    );
+
+    // We include the global space, which is omitted from the requested space IDs of an agent.
+    return views.filter(
+      (view) =>
+        spaceModelIds.includes(view.vaultId) || view.space.kind === "global"
+    );
+  }
+
+  static async listSpaceRequirementsByIds(
+    auth: Authenticator,
+    mcpServerViewIds: string[]
+  ): Promise<ModelId[]> {
+    const mcpServerViews = await this.fetchByIds(auth, mcpServerViewIds);
+
+    const spaceRequirements = mcpServerViews
+      .filter((view) => {
+        if (view.serverType !== "internal") {
+          return true;
+        }
+
+        // We skip the permissions for auto internal tools as they are automatically available to all users.
+        // This mimic the previous behavior of generic internal tools (search etc..).
+        const availability = getAvailabilityOfInternalMCPServerById(
+          view.mcpServerId
+        );
+        switch (availability) {
+          case "auto":
+          case "auto_hidden_builder":
+            return false;
+          case "manual":
+            return true;
+          default:
+            assertNever(availability);
+        }
+      })
+      .map((view) => view.space.id);
+
+    return uniq(spaceRequirements);
   }
 
   static async getMCPServerViewForSystemSpace(
@@ -617,14 +682,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     } else {
       assertNever(this.serverType);
     }
-  }
-
-  get availability(): MCPServerAvailability {
-    if (this.serverType !== "internal" || !this.internalMCPServerId) {
-      return "manual";
-    }
-
-    return getAvailabilityOfInternalMCPServerById(this.internalMCPServerId);
   }
 
   static async ensureAllAutoToolsAreCreated(auth: Authenticator): Promise<{

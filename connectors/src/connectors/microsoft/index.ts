@@ -462,8 +462,15 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
-  async stop(): Promise<Result<undefined, Error>> {
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
+    await terminateAllWorkflowsForConnectorId({
+      connectorId: this.connectorId,
+      stopReason: reason,
+    });
     return new Ok(undefined);
   }
 

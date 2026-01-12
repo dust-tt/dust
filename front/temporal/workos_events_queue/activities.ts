@@ -11,7 +11,7 @@ import { NotFoundException } from "@workos-inc/node";
 import assert from "assert";
 
 import { createAndLogMembership } from "@app/lib/api/signup";
-import { createRegularSpaceAndGroup } from "@app/lib/api/spaces";
+import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { determineUserRoleFromGroups } from "@app/lib/api/user";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
@@ -26,7 +26,12 @@ import {
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import type { ExternalUser } from "@app/lib/iam/provider";
-import { createOrUpdateUser } from "@app/lib/iam/users";
+import type { CustomAttributeKey } from "@app/lib/iam/users";
+import {
+  createOrUpdateUser,
+  CUSTOM_ATTRIBUTES_TO_SYNC,
+  WORKOS_METADATA_KEY_PREFIX,
+} from "@app/lib/iam/users";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -46,6 +51,10 @@ const logger = mainLogger.child(
 
 const ADMIN_GROUP_NAME = "dust-admins";
 const BUILDER_GROUP_NAME = "dust-builders";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 /**
  * Verify if workspace exist, if it does will call the callback with the found workspace.
@@ -125,6 +134,7 @@ async function handleRoleAssignmentForGroup(
         user,
         workspace,
         newRole,
+        allowLastAdminRemoval: true,
         author: auth.user()?.toJSON() ?? "no-author",
       });
 
@@ -163,6 +173,7 @@ async function handleRoleAssignmentForGroup(
         user,
         workspace,
         newRole,
+        allowLastAdminRemoval: true,
         author: auth.user()?.toJSON() ?? "no-author",
       });
 
@@ -446,13 +457,14 @@ async function autoCreateSpaceForProvisionedGroup(
   // Create restricted space with group-based management
   const spaceName = group.name;
 
-  const spaceResult = await createRegularSpaceAndGroup(
+  const spaceResult = await createSpaceAndGroup(
     auth,
     {
       name: spaceName,
       groupIds: [group.sId],
       isRestricted: true,
       managementMode: "group",
+      spaceKind: "regular",
     },
     { ignoreWorkspaceLimit: false }
   );
@@ -683,6 +695,46 @@ async function handleUserRemovedFromGroup(
   });
 }
 
+// Extracts WorkOS custom attributes from DirectoryUser.
+function extractCustomAttributes(
+  directoryUser: DirectoryUser
+): Record<CustomAttributeKey, string | null> {
+  const result: Record<CustomAttributeKey, string | null> = {
+    job_title: null,
+    department_name: null,
+  };
+
+  const { customAttributes } = directoryUser;
+  if (isRecord(customAttributes)) {
+    for (const attr of CUSTOM_ATTRIBUTES_TO_SYNC) {
+      const value = customAttributes[attr];
+      if (typeof value === "string" && value.trim() !== "") {
+        result[attr] = value.trim();
+      }
+    }
+  }
+
+  return result;
+}
+
+// Clears all WorkOS custom attributes for a user in a workspace.
+// Called when the user is deleted from the directory.
+async function clearCustomAttributesFromUserMetadata(
+  user: UserResource,
+  workspace: LightWorkspaceType
+): Promise<void> {
+  for (const attr of CUSTOM_ATTRIBUTES_TO_SYNC) {
+    await user.deleteMetadata({
+      key: `${WORKOS_METADATA_KEY_PREFIX}${attr}`,
+      workspaceId: workspace.id,
+    });
+  }
+  logger.info(
+    { userId: user.sId, workspaceId: workspace.sId },
+    "Cleared WorkOS custom attributes from user metadata"
+  );
+}
+
 async function handleCreateOrUpdateWorkOSUser(
   workspace: LightWorkspaceType,
   event: DirectoryUser
@@ -706,12 +758,14 @@ async function handleCreateOrUpdateWorkOSUser(
     given_name: workOSUser.firstName ?? undefined,
     family_name: workOSUser.lastName ?? undefined,
     picture: workOSUser.profilePictureUrl ?? undefined,
+    customAttributes: extractCustomAttributes(event),
   };
 
   const { user: createdOrUpdatedUser } = await createOrUpdateUser({
     user,
     externalUser,
     forceNameUpdate: !!(workOSUser.firstName && workOSUser.lastName),
+    workspace,
   });
 
   const membership =
@@ -759,6 +813,9 @@ async function handleDeleteWorkOSUser(
       `Did not find user to delete for workOSUserId "${workOSUser.id}" in workspace "${workspace.sId}"`
     );
   }
+
+  // Clear WorkOS custom attributes before revoking membership.
+  await clearCustomAttributesFromUserMetadata(user, workspace);
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const groups = await GroupResource.listUserGroupsInWorkspace({

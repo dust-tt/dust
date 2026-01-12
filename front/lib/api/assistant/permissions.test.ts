@@ -1,23 +1,25 @@
 import { describe, expect, it } from "vitest";
 
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
+import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
-describe("getAgentConfigurationRequirementsFromActions", () => {
+describe("getAgentConfigurationRequirementsFromCapabilities", () => {
   it("should return empty arrays when no actions are provided", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
-    const result = await getAgentConfigurationRequirementsFromActions(
+    const result = await getAgentConfigurationRequirementsFromCapabilities(
       authenticator,
       {
         actions: [],
+        skills: [],
       }
     );
 
@@ -96,10 +98,11 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
       },
     ];
 
-    const result = await getAgentConfigurationRequirementsFromActions(
+    const result = await getAgentConfigurationRequirementsFromCapabilities(
       authenticator,
       {
         actions,
+        skills: [],
       }
     );
 
@@ -167,10 +170,11 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
       },
     ];
 
-    const result = await getAgentConfigurationRequirementsFromActions(
+    const result = await getAgentConfigurationRequirementsFromCapabilities(
       authenticator,
       {
         actions,
+        skills: [],
       }
     );
 
@@ -246,10 +250,11 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
     ];
 
     // Without ignoreSpaces - should include both spaces
-    const resultAll = await getAgentConfigurationRequirementsFromActions(
+    const resultAll = await getAgentConfigurationRequirementsFromCapabilities(
       authenticator,
       {
         actions,
+        skills: [],
       }
     );
 
@@ -258,13 +263,12 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
     expect(resultAll.requestedSpaceIds).toContain(space2.id);
 
     // With ignoreSpaces - should exclude space1
-    const resultIgnore = await getAgentConfigurationRequirementsFromActions(
-      authenticator,
-      {
+    const resultIgnore =
+      await getAgentConfigurationRequirementsFromCapabilities(authenticator, {
         actions,
+        skills: [],
         ignoreSpaces: [space1],
-      }
-    );
+      });
 
     expect(resultIgnore.requestedSpaceIds).toHaveLength(1);
     expect(resultIgnore.requestedSpaceIds).toContain(space2.id);
@@ -319,10 +323,11 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
       },
     ];
 
-    const result = await getAgentConfigurationRequirementsFromActions(
+    const result = await getAgentConfigurationRequirementsFromCapabilities(
       authenticator,
       {
         actions,
+        skills: [],
       }
     );
 
@@ -384,12 +389,11 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
       },
     ];
 
-    const autoOnlyResult = await getAgentConfigurationRequirementsFromActions(
-      authenticator,
-      {
+    const autoOnlyResult =
+      await getAgentConfigurationRequirementsFromCapabilities(authenticator, {
         actions: autoOnlyActions,
-      }
-    );
+        skills: [],
+      });
 
     // Should NOT include any spaces or groups since auto tools are automatically available
     expect(autoOnlyResult.requestedSpaceIds).toHaveLength(0);
@@ -432,10 +436,11 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
       },
     ];
 
-    const mixedResult = await getAgentConfigurationRequirementsFromActions(
+    const mixedResult = await getAgentConfigurationRequirementsFromCapabilities(
       authenticator,
       {
         actions: mixedActions,
+        skills: [],
       }
     );
 
@@ -443,5 +448,133 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
     expect(mixedResult.requestedSpaceIds).toHaveLength(1);
     expect(mixedResult.requestedSpaceIds).toContain(regularSpace.id);
     expect(mixedResult.requestedSpaceIds).not.toContain(globalSpace.id);
+  });
+
+  it("should include skill space requirements", async () => {
+    const { authenticator, workspace, globalGroup } = await createResourceTest({
+      role: "admin",
+    });
+
+    // Create spaces for the skill requirements
+    const skillSpace1 = await SpaceFactory.regular(workspace);
+    await GroupSpaceFactory.associate(skillSpace1, globalGroup);
+
+    const skillSpace2 = await SpaceFactory.regular(workspace);
+    await GroupSpaceFactory.associate(skillSpace2, globalGroup);
+
+    // Create a skill with space requirements
+    const skill = await SkillFactory.create(authenticator, {
+      name: "Skill with space requirements",
+      requestedSpaceIds: [skillSpace1.id, skillSpace2.id],
+    });
+
+    const result = await getAgentConfigurationRequirementsFromCapabilities(
+      authenticator,
+      {
+        actions: [],
+        skills: [skill],
+      }
+    );
+
+    expect(result.requestedSpaceIds).toHaveLength(2);
+    expect(result.requestedSpaceIds).toContain(skillSpace1.id);
+    expect(result.requestedSpaceIds).toContain(skillSpace2.id);
+  });
+
+  it("should combine skill and action space requirements without duplicates", async () => {
+    const { authenticator, workspace, globalGroup } = await createResourceTest({
+      role: "admin",
+    });
+
+    // Create a shared space used by both action and skill
+    const sharedSpace = await SpaceFactory.regular(workspace);
+    await GroupSpaceFactory.associate(sharedSpace, globalGroup);
+
+    // Create an action-only space
+    const actionSpace = await SpaceFactory.regular(workspace);
+    await GroupSpaceFactory.associate(actionSpace, globalGroup);
+
+    // Create a skill-only space
+    const skillSpace = await SpaceFactory.regular(workspace);
+    await GroupSpaceFactory.associate(skillSpace, globalGroup);
+
+    // Create data source view in shared and action spaces
+    const sharedDsView = await DataSourceViewFactory.folder(
+      workspace,
+      sharedSpace
+    );
+    const actionDsView = await DataSourceViewFactory.folder(
+      workspace,
+      actionSpace
+    );
+
+    // Create skill with shared and skill-only space requirements
+    const skill = await SkillFactory.create(authenticator, {
+      name: "Skill with mixed spaces",
+      requestedSpaceIds: [sharedSpace.id, skillSpace.id],
+    });
+
+    const actions: ServerSideMCPServerConfigurationType[] = [
+      {
+        id: 1,
+        sId: "action1",
+        type: "mcp_server_configuration",
+        name: "Action with shared DS",
+        description: null,
+        dataSources: [
+          {
+            dataSourceViewId: sharedDsView.sId,
+            workspaceId: workspace.sId,
+            filter: { tags: null, parents: null },
+          },
+        ],
+        tables: null,
+        childAgentId: null,
+        timeFrame: null,
+        jsonSchema: null,
+        additionalConfiguration: {},
+        mcpServerViewId: "server1",
+        dustAppConfiguration: null,
+        secretName: null,
+        internalMCPServerId: null,
+      },
+      {
+        id: 2,
+        sId: "action2",
+        type: "mcp_server_configuration",
+        name: "Action with action-only DS",
+        description: null,
+        dataSources: [
+          {
+            dataSourceViewId: actionDsView.sId,
+            workspaceId: workspace.sId,
+            filter: { tags: null, parents: null },
+          },
+        ],
+        tables: null,
+        childAgentId: null,
+        timeFrame: null,
+        jsonSchema: null,
+        additionalConfiguration: {},
+        mcpServerViewId: "server2",
+        dustAppConfiguration: null,
+        secretName: null,
+        internalMCPServerId: null,
+      },
+    ];
+
+    const result = await getAgentConfigurationRequirementsFromCapabilities(
+      authenticator,
+      {
+        actions,
+        skills: [skill],
+      }
+    );
+
+    // Should include all 3 spaces without duplicates (shared appears in both action and skill)
+    expect(result.requestedSpaceIds).toHaveLength(3);
+    expect(result.requestedSpaceIds).toContain(sharedSpace.id);
+    expect(result.requestedSpaceIds).toContain(actionSpace.id);
+    expect(result.requestedSpaceIds).toContain(skillSpace.id);
   });
 });

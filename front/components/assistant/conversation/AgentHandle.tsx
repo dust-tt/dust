@@ -21,6 +21,7 @@ export function AgentHandle({
   const href = {
     pathname: router.pathname,
     query: { ...router.query, agentDetails: agent.sId },
+    hash: router.asPath.split("#")[1] || undefined,
   };
 
   if (!canMention) {

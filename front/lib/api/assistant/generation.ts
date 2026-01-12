@@ -9,6 +9,8 @@ import {
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
+import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   isMCPConfigurationForInternalNotion,
   isMCPConfigurationForInternalSlack,
@@ -82,11 +84,17 @@ function constructToolsSection({
   model,
   agentConfiguration,
   serverToolsAndInstructions,
+  enabledSkills,
+  equippedSkills,
+  featureFlags,
 }: {
   hasAvailableActions: boolean;
   model: ModelConfigurationType;
   agentConfiguration: AgentConfigurationType;
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
+  enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
+  equippedSkills: SkillResource[];
+  featureFlags: WhitelistableFeature[];
 }): string {
   let toolsSection = "# TOOLS\n";
 
@@ -121,11 +129,32 @@ function constructToolsSection({
   // All discovered tools from all servers are made available for the agent to call, regardless of
   // whether their server has explicit instructions or is detailed in this specific prompt overview.
   let toolServersPrompt = "";
+
+  const areInstructionsAlreadyIncludedInSkillSection = ({
+    serverName,
+  }: ServerToolsAndInstructions): boolean => {
+    if (serverName !== "interactive_content" && serverName !== "deep_dive") {
+      return false;
+    }
+    return equippedSkills
+      .concat(enabledSkills)
+      .some((skill) => skill.sId === serverName);
+  };
+
   if (serverToolsAndInstructions && serverToolsAndInstructions.length > 0) {
     toolServersPrompt = "\n## AVAILABLE TOOL SERVERS\n";
     toolServersPrompt +=
       "Each server provides a list of tools made available to the agent.\n";
     for (const serverData of serverToolsAndInstructions) {
+      if (
+        featureFlags.includes("skills") &&
+        areInstructionsAlreadyIncludedInSkillSection(serverData)
+      ) {
+        // When skills feature flag is enabled, prevent interactive_content and deep_dive server instructions
+        // from being duplicated in the prompt if they are already included in the skills section.
+        continue;
+      }
+
       toolServersPrompt += `\n### SERVER NAME: ${serverData.serverName}\n`;
       if (serverData.instructions) {
         toolServersPrompt += `Server instructions: ${serverData.instructions}\n`;
@@ -169,7 +198,6 @@ function getEnabledSkillInstructions(
   ].join("\n");
 }
 
-// TODO(skills): add detailed tools per skill
 function constructSkillsSection({
   enabledSkills,
   equippedSkills,
@@ -183,11 +211,24 @@ function constructSkillsSection({
     return "";
   }
 
-  let skillsSection = "\n## SKILLS\n";
+  let skillsSection =
+    "\n## SKILLS\n" +
+    "Skills are modular capabilities that extend your abilities for specific tasks. " +
+    "Each skill includes specialized instructions and may provide additional tools.\n\n" +
+    "Skills can be in two states:\n" +
+    // We do not use the wording `equipped` with the model as `available` is more meaningful in context.
+    // `equipped` is the backend term.
+    "- **Available**: Listed below but not active. Their instructions are not loaded yet. " +
+    `You can enable them using the \`${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}\` ` +
+    "tool when they become relevant to the conversation.\n" +
+    "- **Enabled**: Fully active with instructions loaded. Once enabled, a skill remains active " +
+    "for the rest of the conversation.\n\n" +
+    "Enable skills proactively when a user's request matches a skill's purpose. " +
+    "Only enable skills you actually need—enabling a skill loads its full instructions into context.\n";
 
   if (!enabledSkills.length && !equippedSkills.length) {
     skillsSection +=
-      "No skills are currently equipped or enabled for this agent.\n";
+      "\nNo skills are currently available or enabled for this agent.\n";
     return skillsSection;
   }
 
@@ -206,7 +247,9 @@ function constructSkillsSection({
   // Equipped but not yet enabled skills - show name and description only
   if (equippedSkills && equippedSkills.length > 0) {
     skillsSection += "\n### AVAILABLE SKILLS\n";
-    skillsSection += `The following skills are available but not currently enabled, you can enable them with the ${ENABLE_SKILL_TOOL_NAME} tool.\n`;
+    skillsSection +=
+      `These skills can be enabled using the \`${ENABLE_SKILL_TOOL_NAME}\` tool. ` +
+      "Review their descriptions and enable the appropriate skill when relevant:\n";
     const skillList = equippedSkills
       .map(
         ({ name, agentFacingDescription }) =>
@@ -269,10 +312,15 @@ export function constructGuidelinesSection({
   }
 
   guidelinesSection +=
-    "\n## GENERATING LATEX FORMULAS\n" +
-    "Every latex formula should be inside double dollars $$ blocks." +
-    " Parentheses cannot be used to enclose mathematical formulas: BAD: \\( \\Delta \\), GOOD: $$ \\Delta $$." +
-    " To avoid ambiguity, make sure to escape the $ sign when not used as an escape sequence (examples: currency or env variable prefix).\n";
+    "\n## MATH FORMULAS\n" +
+    "When generating LaTeX/Math formulas exclusively rely on the $$ escape sequence. " +
+    "Single dollar $ escape sequences are not supported and " +
+    "parentheses are not sufficient to denote mathematical formulas:\nBAD: \\( \\Delta \\)\nGOOD: $$ \\Delta $$.\n";
+
+  guidelinesSection +=
+    "\n## RENDERING MARKDOWN CODE BLOCKS\n" +
+    "When rendering code blocks, always use quadruple backticks (````). " +
+    "To render nested code blocks, always use triple backticks (```) for the inner code blocks.";
 
   guidelinesSection +=
     "\n## RENDERING MARKDOWN IMAGES\n" +
@@ -403,6 +451,9 @@ export function constructPromptMultiActions(
       model,
       agentConfiguration,
       serverToolsAndInstructions,
+      enabledSkills,
+      equippedSkills,
+      featureFlags,
     }),
     constructSkillsSection({
       enabledSkills,

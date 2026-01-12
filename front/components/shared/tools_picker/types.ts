@@ -118,7 +118,6 @@ export type MCPServerConfigurationType = z.infer<
 >;
 
 export const actionSchema = baseActionSchema.extend({
-  type: z.literal("MCP"),
   configuration: mcpServerConfigurationSchema,
 });
 

@@ -49,6 +49,7 @@ type EditorsSheetProps = {
   editors: UserType[];
   onEditorsChange: (editors: UserType[]) => void;
   description: string;
+  buildersOnly?: boolean;
 };
 
 export function EditorsSheet({
@@ -56,6 +57,7 @@ export function EditorsSheet({
   editors,
   onEditorsChange,
   description,
+  buildersOnly = false,
 }: EditorsSheetProps) {
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -87,6 +89,7 @@ export function EditorsSheet({
       searchTerm,
       pageIndex: 0,
       pageSize: 100,
+      buildersOnly,
     });
 
   const onRemoveEditor = useCallback((user: UserType) => {

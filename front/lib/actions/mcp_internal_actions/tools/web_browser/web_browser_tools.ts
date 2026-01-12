@@ -9,6 +9,7 @@ import {
 import { MAXED_OUTPUT_FILE_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
+  USE_SUMMARY_SWITCH,
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -23,6 +24,7 @@ import {
 import { summarizeWithAgent } from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
@@ -120,20 +122,16 @@ export function registerWebBrowserTool(
         agentLoopContext,
         enableAlerting: true,
       },
-      async ({
-        urls,
-        format = "markdown",
-        screenshotMode = "none",
-        links,
-        useSummary,
-      }) => {
-        const useSummarization = useSummary?.value === true;
-
-        if (useSummarization && !agentLoopContext?.runContext) {
-          return new Err(
-            new MCPError("agentLoopContext is required for summarization")
-          );
+      async ({ urls, format = "markdown", screenshotMode = "none", links }) => {
+        if (!agentLoopContext?.runContext) {
+          return new Err(new MCPError("No conversation context available"));
         }
+
+        const { toolConfiguration } = agentLoopContext.runContext;
+        const useSummarization =
+          isLightServerSideMCPToolConfiguration(toolConfiguration) &&
+          toolConfiguration.additionalConfiguration[USE_SUMMARY_SWITCH] ===
+            true;
 
         const summaryAgentId = useSummarization
           ? GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY
@@ -144,11 +142,7 @@ export function registerWebBrowserTool(
           links,
         });
 
-        if (
-          useSummarization &&
-          summaryAgentId &&
-          agentLoopContext?.runContext
-        ) {
+        if (useSummarization && summaryAgentId) {
           const runCtx = agentLoopContext.runContext;
           const conversationId = runCtx.conversation.sId;
           const { citationsOffset, websearchResultCount } = runCtx.stepContext;

@@ -27,6 +27,7 @@ export class PlanModel extends BaseModel<PlanModel> {
   // workspace limitations
   declare maxMessages: number;
   declare maxMessagesTimeframe: MaxMessagesTimeframeType;
+  declare isDeepDiveAllowed: boolean;
   declare maxUsersInWorkspace: number;
   declare maxImagesPerWeek: number;
   declare maxVaultsInWorkspace: number;
@@ -82,6 +83,11 @@ PlanModel.init(
     maxMessagesTimeframe: {
       type: DataTypes.ENUM("day", "lifetime"),
       allowNull: false,
+    },
+    isDeepDiveAllowed: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
     maxImagesPerWeek: {
       type: DataTypes.INTEGER,

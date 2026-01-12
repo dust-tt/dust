@@ -11,6 +11,7 @@ import type { Transaction } from "sequelize";
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
+import { getProjectContextDatasourceName } from "@app/lib/api/projects";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
 import {
   getMembers,
@@ -23,7 +24,6 @@ import { DustError } from "@app/lib/error";
 import { getDustDataSourcesBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { executeWithLock } from "@app/lib/lock";
-import { TrackerDataSourceConfigurationModel } from "@app/lib/models/doc_tracker";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -267,14 +267,6 @@ export async function hardDeleteDataSource(
       );
     }
   } while (files.length === FILE_BATCH_SIZE);
-
-  // Delete all trackers datasource configurations associated with the data source.
-  await TrackerDataSourceConfigurationModel.destroy({
-    where: {
-      dataSourceId: dataSource.id,
-    },
-    hardDelete: true,
-  });
 
   // Ensure all content fragments from dsviews are expired.
   // Only used temporarily to unstuck queues -- TODO(fontanierh)
@@ -1248,6 +1240,107 @@ export async function getOrCreateConversationDataSourceFromFile(
   }
 
   return getOrCreateConversationDataSource(auth, cRes.value);
+}
+
+async function getOrCreateProjectContextDataSource(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<
+  Result<
+    DataSourceResource,
+    Omit<DustError, "code"> & {
+      code: "internal_server_error" | "invalid_request_error";
+    }
+  >
+> {
+  const lockName = "projectContextDataSource" + space.id;
+
+  const res = await executeWithLock(
+    lockName,
+    async (): Promise<
+      Result<
+        DataSourceResource,
+        Omit<DustError, "code"> & {
+          code: "internal_server_error" | "invalid_request_error";
+        }
+      >
+    > => {
+      // Fetch the datasource linked to the project space...
+      let dataSource = await DataSourceResource.fetchByProjectId(
+        auth,
+        space.id
+      );
+
+      if (!dataSource) {
+        // ...or create a new one.
+        const r = await createDataSourceWithoutProvider(auth, {
+          plan: auth.getNonNullablePlan(),
+          owner: auth.getNonNullableWorkspace(),
+          space: space,
+          name: getProjectContextDatasourceName(space.id),
+          description: `Files uploaded to project ${space.sId}`,
+        });
+
+        if (r.isErr()) {
+          return new Err({
+            name: "dust_error",
+            code: "internal_server_error",
+            message: `Failed to create datasource: ${r.error}`,
+          });
+        }
+
+        dataSource = r.value.dataSource;
+      }
+
+      return new Ok(dataSource);
+    }
+  );
+
+  return res;
+}
+
+function validateFileMetadataForProjectContext(
+  file: FileResource
+): Result<string, Error> {
+  const spaceId = file.useCaseMetadata?.spaceId;
+  if (!spaceId) {
+    return new Err(new Error("Field spaceId is missing from metadata"));
+  }
+
+  return new Ok(spaceId);
+}
+
+export async function getOrCreateProjectContextDataSourceFromFile(
+  auth: Authenticator,
+  file: FileResource
+): Promise<
+  Result<
+    DataSourceResource,
+    Omit<DustError, "code"> & {
+      code: "internal_server_error" | "invalid_request_error";
+    }
+  >
+> {
+  // Note: this assume that if we don't have useCaseMetadata, the file is fine.
+  const metadataResult = validateFileMetadataForProjectContext(file);
+  if (metadataResult.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: metadataResult.error.message,
+    });
+  }
+
+  const space = await SpaceResource.fetchById(auth, metadataResult.value);
+  if (!space) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: `Failed to fetch space.`,
+    });
+  }
+
+  return getOrCreateProjectContextDataSource(auth, space);
 }
 
 async function getAllManagedDataSources(auth: Authenticator) {

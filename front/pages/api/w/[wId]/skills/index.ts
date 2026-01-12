@@ -1,13 +1,13 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
+import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getRequestedSpaceIdsFromMCPServerViewIds } from "@app/lib/api/assistant/permissions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -19,34 +19,39 @@ import type {
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 
-export type GetSkillConfigurationsResponseBody = {
-  skillConfigurations: SkillType[];
+export type GetSkillsResponseBody = {
+  skills: SkillType[];
 };
 
-export type GetSkillWithRelationsResponseBody = {
-  skill: SkillWithRelationsType;
+export type GetSkillsWithRelationsResponseBody = {
+  skills: SkillWithRelationsType[];
 };
 
-export type GetSkillConfigurationsWithRelationsResponseBody = {
-  skillConfigurations: SkillWithRelationsType[];
+export type PostSkillResponseBody = {
+  skill: SkillType;
 };
 
-export type PostSkillConfigurationResponseBody = {
-  skillConfiguration: SkillType;
-};
-
-// Schema for GET status query parameter
+// Schema for GET status query parameter.
 const SkillStatusSchema = t.union([
   t.literal("active"),
   t.literal("archived"),
+  t.literal("suggested"),
   t.undefined,
 ]);
 
-// Request body schema for POST
-const PostSkillConfigurationRequestBodySchema = t.type({
+// Schema for attached knowledge.
+export const AttachedKnowledgeSchema = t.type({
+  dataSourceViewId: t.string,
+  nodeId: t.string,
+  spaceId: t.string,
+  title: t.string,
+});
+
+// Request body schema for POST.
+const PostSkillRequestBodySchema = t.type({
   name: t.string,
   agentFacingDescription: t.string,
-  userFacingDescription: t.union([t.string, t.null]),
+  userFacingDescription: t.string,
   instructions: t.string,
   icon: t.union([t.string, t.null]),
   tools: t.array(
@@ -55,34 +60,23 @@ const PostSkillConfigurationRequestBodySchema = t.type({
     })
   ),
   extendedSkillId: t.union([t.string, t.null]),
+  attachedKnowledge: t.array(AttachedKnowledgeSchema),
 });
 
-type PostSkillConfigurationRequestBody = t.TypeOf<
-  typeof PostSkillConfigurationRequestBodySchema
->;
+type PostSkillRequestBody = t.TypeOf<typeof PostSkillRequestBodySchema>;
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | GetSkillConfigurationsResponseBody
-      | GetSkillConfigurationsWithRelationsResponseBody
-      | PostSkillConfigurationResponseBody
+      | GetSkillsResponseBody
+      | GetSkillsWithRelationsResponseBody
+      | PostSkillResponseBody
     >
   >,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-
-  if (!isBuilder(owner)) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "User is not a builder.",
-      },
-    });
-  }
 
   const featureFlags = await getFeatureFlags(owner);
   if (!featureFlags.includes("skills")) {
@@ -97,7 +91,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { withRelations, status } = req.query;
+      const { withRelations, status, globalSpaceOnly } = req.query;
 
       const statusValidation = SkillStatusSchema.decode(status);
       if (isLeft(statusValidation)) {
@@ -105,24 +99,24 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid status: ${status}. Expected "active" or "archived".`,
+            message: `Invalid status: ${status}. Expected "active", "archived", or "suggested".`,
           },
         });
       }
       const skillStatus = statusValidation.right;
 
-      const skillConfigurations = await SkillResource.listSkills(auth, {
+      const skills = await SkillResource.listSkills(auth, {
         status: skillStatus,
+        globalSpaceOnly: globalSpaceOnly === "true",
       });
 
       if (withRelations === "true") {
-        const skillConfigurationsWithRelations = await concurrentExecutor(
-          skillConfigurations,
+        const skillsWithRelations = await concurrentExecutor(
+          skills,
           async (sc) => {
             const usage = await sc.fetchUsage(auth);
             const editors = await sc.listEditors(auth);
-            const mcpServerViews = await sc.listMCPServerViews(auth);
-            const author = await sc.fetchAuthor(auth);
+            const editedByUser = await sc.fetchEditedByUser(auth);
             const extendedSkill = sc.extendedSkillId
               ? await SkillResource.fetchById(auth, sc.extendedSkillId)
               : null;
@@ -132,8 +126,7 @@ async function handler(
               relations: {
                 usage,
                 editors: editors ? editors.map((e) => e.toJSON()) : null,
-                mcpServerViews: mcpServerViews.map((view) => view.toJSON()),
-                author: author ? author.toJSON() : null,
+                editedByUser: editedByUser ? editedByUser.toJSON() : null,
                 extendedSkill: extendedSkill
                   ? extendedSkill.toJSON(auth)
                   : null,
@@ -143,22 +136,28 @@ async function handler(
           { concurrency: 10 }
         );
 
-        return res
-          .status(200)
-          .json({ skillConfigurations: skillConfigurationsWithRelations });
+        return res.status(200).json({ skills: skillsWithRelations });
       }
 
       return res.status(200).json({
-        skillConfigurations: skillConfigurations.map((sc) => sc.toJSON(auth)),
+        skills: skills.map((sc) => sc.toJSON(auth)),
       });
     }
 
     case "POST": {
+      if (!isBuilder(owner)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: "User is not a builder.",
+          },
+        });
+      }
+
       const user = auth.getNonNullableUser();
 
-      const bodyValidation = PostSkillConfigurationRequestBodySchema.decode(
-        req.body
-      );
+      const bodyValidation = PostSkillRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -171,57 +170,91 @@ async function handler(
         });
       }
 
-      const body: PostSkillConfigurationRequestBody = bodyValidation.right;
+      const body: PostSkillRequestBody = bodyValidation.right;
+      const name = body.name.trim();
 
-      const existingSkill = await SkillResource.fetchActiveByName(
-        auth,
-        body.name
-      );
+      if (!name) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Skill name cannot be empty.",
+          },
+        });
+      }
+
+      const existingSkill = await SkillResource.fetchActiveByName(auth, name);
 
       if (existingSkill) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `A skill with the name "${body.name}" already exists.`,
+            message: `A skill with the name "${name}" already exists.`,
           },
         });
       }
 
       // Validate all MCP server views exist before creating anything
-      const mcpServerViewIds = body.tools.map((t) => t.mcpServerViewId);
-      const mcpServerViews: MCPServerViewResource[] = [];
-      for (const mcpServerViewId of mcpServerViewIds) {
-        const mcpServerView = await MCPServerViewResource.fetchById(
-          auth,
-          mcpServerViewId
-        );
-        if (!mcpServerView) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "invalid_request_error",
-              message: `MCP server view not found ${mcpServerViewId}`,
-            },
-          });
-        }
-        mcpServerViews.push(mcpServerView);
-      }
-
-      const requestedSpaceIds = await getRequestedSpaceIdsFromMCPServerViewIds(
+      const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
+      const mcpServerViews = await MCPServerViewResource.fetchByIds(
         auth,
         mcpServerViewIds
       );
+
+      if (mcpServerViewIds.length !== mcpServerViews.length) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "invalid_request_error",
+            message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
+          },
+        });
+      }
+
+      // Validate all data source views from attached knowledge exist and user has access.
+      const { attachedKnowledge } = body;
+      const dataSourceViewIds = uniq(
+        attachedKnowledge.map((attachment) => attachment.dataSourceViewId)
+      );
+
+      const dataSourceViews = await DataSourceViewResource.fetchByIds(
+        auth,
+        dataSourceViewIds
+      );
+      if (dataSourceViews.length !== dataSourceViewIds.length) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Data source views not all found, ${dataSourceViews.length} found, ${dataSourceViewIds.length} requested`,
+          },
+        });
+      }
+
+      const dataSourceViewIdMap = new Map(
+        dataSourceViews.map((dsv) => [dsv.sId, dsv])
+      );
+
+      const attachedKnowledgeWithDataSourceViews = attachedKnowledge.map(
+        (attachment) => ({
+          dataSourceView: dataSourceViewIdMap.get(attachment.dataSourceViewId)!,
+          nodeId: attachment.nodeId,
+        })
+      );
+
+      const requestedSpaceIds =
+        await MCPServerViewResource.listSpaceRequirementsByIds(
+          auth,
+          mcpServerViewIds
+        );
 
       const extendedSkill = body.extendedSkillId
         ? await SkillResource.fetchById(auth, body.extendedSkillId)
         : null;
 
-      // Only global skills can be extended
-      if (
-        extendedSkill !== null &&
-        (extendedSkill === null || !extendedSkill.isExtendable)
-      ) {
+      // Only global skills can be extended.
+      if (extendedSkill !== null && !extendedSkill.isExtendable) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -231,34 +264,26 @@ async function handler(
         });
       }
 
-      // Use a transaction to ensure all creates succeed or all are rolled back
-      const skillResource = await SkillResource.makeNew(auth, {
-        status: "active",
-        name: body.name,
-        agentFacingDescription: body.agentFacingDescription,
-        // TODO(skills 2025-12-12): insert an LLM-generated description if missing.
-        userFacingDescription: body.userFacingDescription ?? "",
-        instructions: body.instructions,
-        authorId: user.id,
-        requestedSpaceIds,
-        extendedSkillId: body.extendedSkillId,
-      });
-
-      // Create MCP server configurations (tools) for this skill
-      for (const mcpServerView of mcpServerViews) {
-        // TODO(skills 2025-12-09): move this to the makeNew.
-        await SkillMCPServerConfigurationModel.create({
-          workspaceId: owner.id,
-          skillConfigurationId: skillResource.id,
-          mcpServerViewId: mcpServerView.id,
-        });
-      }
+      const skillResource = await SkillResource.makeNew(
+        auth,
+        {
+          status: "active",
+          name,
+          agentFacingDescription: body.agentFacingDescription,
+          userFacingDescription: body.userFacingDescription,
+          instructions: body.instructions,
+          editedBy: user.id,
+          requestedSpaceIds,
+          extendedSkillId: body.extendedSkillId,
+        },
+        {
+          mcpServerViews,
+          attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        }
+      );
 
       return res.status(200).json({
-        skillConfiguration: {
-          ...skillResource.toJSON(auth),
-          tools: body.tools,
-        },
+        skill: skillResource.toJSON(auth),
       });
     }
 

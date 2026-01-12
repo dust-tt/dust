@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
-import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerSheet";
+import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerDialog";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -227,6 +227,7 @@ export function ToolsPicker({
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
+    globalSpaceOnly: true,
     disabled: !shouldFetchToolsData || !hasSkillsFeature,
   });
 

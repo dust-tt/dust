@@ -292,6 +292,8 @@ export const SearchResultResourceSchema = z.object({
   chunks: z.array(z.string()),
   source: z.object({
     provider: z.string().optional(),
+    data_source_id: z.string().optional(),
+    data_source_view_id: z.string().optional(),
   }),
 });
 
@@ -624,6 +626,8 @@ const RenderedNodeSchema = z.object({
   hasChildren: z.boolean(),
   connectorProvider: z.enum(CONNECTOR_PROVIDERS).nullable(),
 });
+
+export type RenderedNodeType = z.infer<typeof RenderedNodeSchema>;
 
 export const DataSourceNodeListSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_LIST),

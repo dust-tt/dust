@@ -4,12 +4,24 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { getAuthors } from "@app/lib/api/assistant/editors";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
-import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
-import type { WithAPIErrorResponse } from "@app/types";
+import type {
+  LightAgentConfigurationType,
+  UserType,
+  WithAPIErrorResponse,
+} from "@app/types";
+
+export type PokeAgentConfigurationType = LightAgentConfigurationType & {
+  versionAuthor?: UserType | null;
+};
+
+export type PokeGetAgentConfigurationsResponseBody = {
+  agentConfigurations: PokeAgentConfigurationType[];
+};
 
 const GetAgentConfigurationsQuerySchema = t.type({
   view: t.union([t.literal("admin_internal"), t.literal("archived")]),
@@ -18,7 +30,7 @@ const GetAgentConfigurationsQuerySchema = t.type({
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetAgentConfigurationsResponseBody | void>
+    WithAPIErrorResponse<PokeGetAgentConfigurationsResponseBody | void>
   >,
   session: SessionWithUser
 ): Promise<void> {
@@ -64,8 +76,20 @@ async function handler(
         dangerouslySkipPermissionFiltering: true,
       });
 
+      // Fetch authors and embed in each config
+      const authors = await getAuthors(agentConfigurations);
+      const authorMap = new Map(authors.map((a) => [a.id, a]));
+
+      const agentsWithAuthors: PokeAgentConfigurationType[] =
+        agentConfigurations.map((a) => ({
+          ...a,
+          versionAuthor: a.versionAuthorId
+            ? (authorMap.get(a.versionAuthorId) ?? null)
+            : null,
+        }));
+
       return res.status(200).json({
-        agentConfigurations,
+        agentConfigurations: agentsWithAuthors,
       });
 
     default:

@@ -12,10 +12,10 @@ import {
   pageSettings,
   Quote,
   salesFAQItems,
-  Stories,
+  // Stories,
   UseCases,
 } from "@app/components/home/content/Solutions/configs/salesConfig";
-import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
+// import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
@@ -80,12 +80,12 @@ export default function Sales() {
           <div className={GRID_SECTION_CLASSES}>
             <QuoteSection {...Quote} />
           </div>
-          <div className={GRID_SECTION_CLASSES}>
+          {/* <div className={GRID_SECTION_CLASSES}>
             <CustomerStoriesSection
               title="Customer stories"
               stories={Stories}
             />
-          </div>
+          </div> */}
           <TrustedBy />
           <div className={GRID_SECTION_CLASSES}>
             <FAQ title="FAQ" items={salesFAQItems} />

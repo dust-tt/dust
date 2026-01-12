@@ -1,4 +1,9 @@
-import { CollapsibleComponent, Input } from "@dust-tt/sparkle";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Input,
+} from "@dust-tt/sparkle";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
@@ -15,9 +20,11 @@ export function InternalMCPBearerTokenForm() {
 
   return (
     <div className="space-y-5 text-foreground dark:text-foreground-night">
-      <CollapsibleComponent
-        triggerChildren={<div className="heading-lg">Authorization</div>}
-        contentChildren={
+      <Collapsible>
+        <CollapsibleTrigger>
+          <div className="heading-lg">Authorization</div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
           <div className="space-y-2">
             <Input
               {...form.register("sharedSecret")}
@@ -31,21 +38,21 @@ export function InternalMCPBearerTokenForm() {
               Authorization header.
             </p>
           </div>
-        }
-      />
-      <CollapsibleComponent
-        triggerChildren={
+        </CollapsibleContent>
+      </Collapsible>
+      <Collapsible>
+        <CollapsibleTrigger>
           <div className="heading-lg">Headers ({fields.length})</div>
-        }
-        contentChildren={
+        </CollapsibleTrigger>
+        <CollapsibleContent>
           <div className="space-y-2">
             <McpServerHeaders
               headers={fields.map(({ key, value }) => ({ key, value }))}
               onHeadersChange={(rows) => replace(rows)}
             />
           </div>
-        }
-      />
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

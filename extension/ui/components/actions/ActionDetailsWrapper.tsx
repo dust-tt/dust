@@ -3,7 +3,7 @@ import type { ComponentType } from "react";
 
 interface ActionDetailsWrapperProps {
   actionName: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   viewType: "conversation" | "sidebar";
   visual: ComponentType<{ className?: string }>;
 }

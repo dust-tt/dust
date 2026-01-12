@@ -9,7 +9,7 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 import { AddToolsMenu } from "@app/components/actions/mcp/AddToolsMenu";
-import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerSheet";
+import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerDialog";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";

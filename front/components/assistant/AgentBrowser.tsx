@@ -30,7 +30,7 @@ import React, {
 } from "react";
 import { useInView } from "react-intersection-observer";
 
-import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
+import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { AgentDetailsDropdownMenu } from "@app/components/assistant/details/AgentDetailsButtonBar";
 import { rankAgentsByPopularity } from "@app/components/assistant/helpers/agents";
@@ -472,7 +472,7 @@ export function AgentBrowser({
           <div className="flex gap-2">
             {!isRestrictedFromAgentCreation && (
               <div ref={createAgentButtonRef}>
-                <CreateAgentButton owner={owner} dataGtmLocation="homepage" />
+                <CreateDropdown owner={owner} dataGtmLocation="homepage" />
               </div>
             )}
 

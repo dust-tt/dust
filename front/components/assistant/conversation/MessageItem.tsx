@@ -5,6 +5,7 @@ import { AgentMessage } from "@app/components/assistant/conversation/AgentMessag
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { contentFragmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
+import { MentionInvalid } from "@app/components/assistant/conversation/MentionInvalid";
 import { MentionValidationRequired } from "@app/components/assistant/conversation/MentionValidationRequired";
 import { MessageDateIndicator } from "@app/components/assistant/conversation/MessageDateIndicator";
 import type {
@@ -19,6 +20,7 @@ import {
 } from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
+import { useReaction } from "@app/hooks/useReaction";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
 import type { UserType } from "@app/types";
@@ -70,6 +72,12 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           });
         }
       );
+
+    const { onReactionToggle } = useReaction({
+      owner: context.owner,
+      conversationId: context.conversationId,
+      message: data,
+    });
 
     const messageFeedback = context.feedbacksByMessageId[sId];
 
@@ -139,10 +147,12 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             <UserMessage
               citations={citations}
               conversationId={context.conversationId}
+              enableReactions={context.enableReactions}
               currentUserId={context.user.sId}
               isLastMessage={!nextData}
               message={data}
               owner={context.owner}
+              onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
             />
           )}
           {isMessageTemporayState(data) && (
@@ -158,18 +168,34 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             />
           )}
           {data.visibility !== "deleted" &&
-            data.richMentions
-              .filter((mention) => mention.status === "pending")
-              .map((mention) => (
-                <MentionValidationRequired
-                  key={mention.id}
-                  pendingMention={mention}
-                  message={data}
-                  owner={context.owner}
-                  triggeringUser={triggeringUser}
-                  conversationId={context.conversationId}
-                />
-              ))}
+            data.richMentions.map((mention) => {
+              if (mention.status === "pending") {
+                return (
+                  <MentionValidationRequired
+                    key={mention.id}
+                    mention={mention}
+                    message={data}
+                    owner={context.owner}
+                    triggeringUser={triggeringUser}
+                    conversationId={context.conversationId}
+                  />
+                );
+              } else if (
+                mention.status === "user_restricted_by_conversation_access" ||
+                mention.status === "agent_restricted_by_space_usage"
+              ) {
+                return (
+                  <MentionInvalid
+                    key={mention.id}
+                    mention={mention}
+                    message={data}
+                    owner={context.owner}
+                    triggeringUser={triggeringUser}
+                    conversationId={context.conversationId}
+                  />
+                );
+              }
+            })}
         </div>
       </>
     );

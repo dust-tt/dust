@@ -77,11 +77,15 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     cId === "new" &&
     context.query.welcome === "true"
   ) {
-    await createOnboardingConversationIfNeeded(auth);
+    // Extract user's preferred language from Accept-Language header.
+    const acceptLanguage = context.req.headers["accept-language"];
+    const language = acceptLanguage?.split(",")[0]?.split("-")[0] ?? null;
+
+    await createOnboardingConversationIfNeeded(auth, { language });
 
     const userResource = auth.user();
     const metadata = userResource
-      ? await userResource.getMetadata("onboarding:conversation")
+      ? await userResource.getMetadata("onboarding:conversation", owner.id)
       : null;
 
     const onboardingConversationId = metadata?.value ?? null;

@@ -1,16 +1,6 @@
 import {
-  Button,
-  ContentMessage,
-  DataTable,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyCTA,
   Input,
   Page,
-  ScrollArea,
-  SearchInput,
   Separator,
   Sheet,
   SheetContainer,
@@ -18,24 +8,15 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SliderToggle,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  CellContext,
-  PaginationState,
-  SortingState,
-} from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
-import { GroupsList } from "@app/components/groups/GroupsList";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
-import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
-import { SearchMembersDropdown } from "@app/components/spaces/SearchMembersDropdown";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
+import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
 import { useGroups } from "@app/lib/swr/groups";
 import {
   useCreateSpace,
@@ -44,7 +25,6 @@ import {
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type {
   GroupType,
@@ -55,12 +35,6 @@ import type {
 } from "@app/types";
 
 type MembersManagementType = "manual" | "group";
-
-function isMembersManagementType(
-  value: string
-): value is MembersManagementType {
-  return value === "manual" || value === "group";
-}
 
 interface CreateOrEditSpaceModalProps {
   defaultRestricted?: boolean;
@@ -84,21 +58,13 @@ export function CreateOrEditSpaceModal({
   plan,
 }: CreateOrEditSpaceModalProps) {
   const confirm = React.useContext(ConfirmContext);
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
   const [spaceName, setSpaceName] = useState<string>(space?.name ?? "");
-  const [conversationsEnabled, setConversationsEnabled] = useState<boolean>(
-    space?.conversationsEnabled ?? false
-  );
   const [selectedMembers, setSelectedMembers] = useState<UserType[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<GroupType[]>([]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestricted, setIsRestricted] = useState(false);
-  const [searchSelectedMembers, setSearchSelectedMembers] =
-    useState<string>("");
   const [managementType, setManagementType] =
     useState<MembersManagementType>("manual");
   const [isDirty, setIsDirty] = useState(false);
@@ -211,13 +177,28 @@ export function CreateOrEditSpaceModal({
       return;
     }
 
+    // Warn admin if they are modifying a space they don't belong to.
+    if (space && spaceInfo && !spaceInfo.isMember) {
+      const confirmed = await confirm({
+        title: "Security notice",
+        message:
+          "You are modifying this space's settings while not being a member yourself. " +
+          "This action will be logged for security purposes. Do you want to proceed?",
+        validateLabel: "Proceed",
+        validateVariant: "warning",
+      });
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setIsSaving(true);
 
     if (space) {
       if (planAllowsSCIM && managementType === "group") {
         await doUpdate(space, {
           isRestricted,
-          conversationsEnabled,
           groupIds: selectedGroups.map((group) => group.sId),
           managementMode: "group",
           name: trimmedName,
@@ -225,7 +206,6 @@ export function CreateOrEditSpaceModal({
       } else {
         await doUpdate(space, {
           isRestricted,
-          conversationsEnabled,
           memberIds: selectedMembers.map((vm) => vm.sId),
           managementMode: "manual",
           name: trimmedName,
@@ -243,6 +223,7 @@ export function CreateOrEditSpaceModal({
           isRestricted,
           groupIds: selectedGroups.map((group) => group.sId),
           managementMode: "group",
+          spaceKind: "regular",
         });
       } else {
         createdSpace = await doCreate({
@@ -250,6 +231,7 @@ export function CreateOrEditSpaceModal({
           isRestricted,
           memberIds: selectedMembers.map((vm) => vm.sId),
           managementMode: "manual",
+          spaceKind: "regular",
         });
       }
 
@@ -261,6 +243,7 @@ export function CreateOrEditSpaceModal({
 
     handleClose();
   }, [
+    confirm,
     doCreate,
     doUpdate,
     handleClose,
@@ -268,12 +251,12 @@ export function CreateOrEditSpaceModal({
     mutateSpaceInfo,
     onCreated,
     space,
+    spaceInfo,
     selectedMembers,
     spaceName,
     managementType,
     selectedGroups,
     planAllowsSCIM,
-    conversationsEnabled,
   ]);
 
   const onDelete = useCallback(async () => {
@@ -293,63 +276,11 @@ export function CreateOrEditSpaceModal({
   }, [doDelete, handleClose, owner.sId, router, space]);
 
   const handleManagementTypeChange = useCallback(
-    async (value: string) => {
-      if (!isMembersManagementType(value) || !planAllowsSCIM) {
-        return;
-      }
-
-      // If switching from manual to group mode with manually added members.
-      if (
-        managementType === "manual" &&
-        value === "group" &&
-        selectedMembers.length > 0
-      ) {
-        const confirmed = await confirm({
-          title: "Switch to groups",
-          message:
-            "This switches from manual member to group-based access. " +
-            "Your current member list will be saved but no longer active.",
-          validateLabel: "Confirm",
-          validateVariant: "primary",
-        });
-
-        if (confirmed) {
-          setManagementType("group");
-          setIsDirty(true);
-        }
-      }
-      // If switching from group to manual mode with selected groups.
-      else if (
-        managementType === "group" &&
-        value === "manual" &&
-        selectedGroups.length > 0
-      ) {
-        const confirmed = await confirm({
-          title: "Switch to members",
-          message:
-            "This switches from group-based access to manual member management. " +
-            "Your current group settings will be saved but no longer active.",
-          validateLabel: "Confirm",
-          validateVariant: "primary",
-        });
-
-        if (confirmed) {
-          setManagementType("manual");
-          setIsDirty(true);
-        }
-      } else {
-        // For direct switches without selections, clear everything and let the user start fresh.
-        setManagementType(value);
-        setIsDirty(true);
-      }
+    (managementType: MembersManagementType) => {
+      setManagementType(managementType);
+      setIsDirty(true);
     },
-    [
-      confirm,
-      managementType,
-      selectedMembers.length,
-      selectedGroups.length,
-      planAllowsSCIM,
-    ]
+    []
   );
 
   const disabled = useMemo(() => {
@@ -378,11 +309,6 @@ export function CreateOrEditSpaceModal({
 
   const handleNameChange = useCallback((value: string) => {
     setSpaceName(value);
-    setIsDirty(true);
-  }, []);
-
-  const handleConversationsEnabledChange = useCallback((value: boolean) => {
-    setConversationsEnabled(value);
     setIsDirty(true);
   }, []);
 
@@ -423,62 +349,30 @@ export function CreateOrEditSpaceModal({
                   setSelectedMembers([user, ...selectedMembers]);
                 }
               }}
+              restrictedDescription="Restricted access is active."
+              unrestrictedDescription="Restricted access is disabled. The space is accessible to everyone in
+          the workspace."
             />
-            {hasFeature("projects") && space?.kind === "regular" && (
-              <div>
-                <ContentMessage
-                  title="Alpha: Use as Project"
-                  variant="info"
-                  action={
-                    <SliderToggle
-                      selected={conversationsEnabled}
-                      onClick={() => {
-                        handleConversationsEnabledChange(!conversationsEnabled);
-                      }}
-                    />
-                  }
-                >
-                  <p>
-                    This feature is currently in internal testing. It is only
-                    available in the Dust workspace ("projects" feature flag
-                    enabled).
-                    <br />
-                    Enabling this feature will make the space show in the "Chat"
-                    sidebar for all members of the space.
-                    {!isRestricted && (
-                      <>
-                        <br />
-                        Since this space is not restricted, you can pick which
-                        members will see the chat sidebar.
-                      </>
-                    )}
-                  </p>
-                </ContentMessage>
-              </div>
+
+            {isRestricted && (
+              <RestrictedAccessBody
+                isManual={isManual}
+                planAllowsSCIM={planAllowsSCIM}
+                managementType={managementType}
+                owner={owner}
+                selectedMembers={selectedMembers}
+                selectedGroups={selectedGroups}
+                onManagementTypeChange={handleManagementTypeChange}
+                onMembersUpdated={(members) => {
+                  setSelectedMembers(members);
+                  setIsDirty(true);
+                }}
+                onGroupsUpdated={(groups) => {
+                  setSelectedGroups(groups);
+                  setIsDirty(true);
+                }}
+              />
             )}
-            <RestrictedAccessBody
-              isRestricted={isRestricted}
-              isManual={isManual}
-              areConversationsEnabled={conversationsEnabled}
-              planAllowsSCIM={planAllowsSCIM}
-              managementType={managementType}
-              owner={owner}
-              selectedMembers={selectedMembers}
-              selectedGroups={selectedGroups}
-              searchSelectedMembers={searchSelectedMembers}
-              onSearchChange={setSearchSelectedMembers}
-              onManagementTypeChange={(value) => {
-                void handleManagementTypeChange(value);
-              }}
-              onMembersUpdated={(members) => {
-                setSelectedMembers(members);
-                setIsDirty(true);
-              }}
-              onGroupsUpdated={(groups) => {
-                setSelectedGroups(groups);
-                setIsDirty(true);
-              }}
-            />
           </div>
         </SheetContainer>
         <SheetFooter
@@ -550,367 +444,5 @@ function SpaceDeleteSection({
       />
       <Separator />
     </>
-  );
-}
-
-interface RestrictedAccessHeaderProps {
-  isRestricted: boolean;
-  onToggle: () => void;
-}
-
-function RestrictedAccessHeader({
-  isRestricted,
-  onToggle,
-}: RestrictedAccessHeaderProps) {
-  return (
-    <>
-      <div className="flex w-full items-center justify-between overflow-visible">
-        <Page.SectionHeader title="Restricted Access" />
-        <SliderToggle selected={isRestricted} onClick={onToggle} />
-      </div>
-      {isRestricted ? (
-        <span>Restricted access is active.</span>
-      ) : (
-        <span>
-          Restricted access is disabled. The space is accessible to everyone in
-          the workspace.
-        </span>
-      )}
-    </>
-  );
-}
-
-interface RestrictedAccessBodyProps {
-  isRestricted: boolean;
-  isManual: boolean;
-  areConversationsEnabled: boolean;
-  planAllowsSCIM: boolean;
-  managementType: MembersManagementType;
-  owner: LightWorkspaceType;
-  selectedMembers: UserType[];
-  selectedGroups: GroupType[];
-  searchSelectedMembers: string;
-  onSearchChange: (value: string) => void;
-  onManagementTypeChange: (value: string) => void;
-  onMembersUpdated: (members: UserType[]) => void;
-  onGroupsUpdated: (groups: GroupType[]) => void;
-}
-
-function RestrictedAccessBody({
-  isRestricted,
-  isManual,
-  areConversationsEnabled,
-  planAllowsSCIM,
-  managementType,
-  owner,
-  selectedMembers,
-  selectedGroups,
-  searchSelectedMembers,
-  onSearchChange,
-  onManagementTypeChange,
-  onMembersUpdated,
-  onGroupsUpdated,
-}: RestrictedAccessBodyProps) {
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  if (isRestricted || (hasFeature("projects") && areConversationsEnabled)) {
-    return (
-      <>
-        {planAllowsSCIM ? (
-          <div className="flex flex-row items-center justify-between">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  isSelect
-                  label={
-                    managementType === "manual"
-                      ? "Manual access"
-                      : "Provisioned group access"
-                  }
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  label="Manual access"
-                  onClick={() => {
-                    if (isMembersManagementType("manual")) {
-                      onManagementTypeChange("manual");
-                    }
-                  }}
-                />
-                <DropdownMenuItem
-                  label="Provisioned group access"
-                  onClick={() => {
-                    if (isMembersManagementType("group")) {
-                      onManagementTypeChange("group");
-                    }
-                  }}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {isManual && selectedMembers.length > 0 && (
-              <SearchMembersDropdown
-                owner={owner}
-                selectedMembers={selectedMembers}
-                onMembersUpdated={onMembersUpdated}
-              />
-            )}
-            {!isManual && selectedGroups.length > 0 && (
-              <SearchGroupsDropdown
-                owner={owner}
-                selectedGroups={selectedGroups}
-                onGroupsUpdated={onGroupsUpdated}
-              />
-            )}
-          </div>
-        ) : (
-          isManual &&
-          selectedMembers.length > 0 && (
-            <div className="flex w-full justify-end">
-              <SearchMembersDropdown
-                owner={owner}
-                selectedMembers={selectedMembers}
-                onMembersUpdated={onMembersUpdated}
-              />
-            </div>
-          )
-        )}
-
-        {isManual && selectedMembers.length === 0 && (
-          <EmptyCTA
-            action={
-              <SearchMembersDropdown
-                owner={owner}
-                selectedMembers={selectedMembers}
-                onMembersUpdated={onMembersUpdated}
-              />
-            }
-            message="Add members to the space"
-          />
-        )}
-        {!isManual && selectedGroups.length === 0 && (
-          <EmptyCTA
-            action={
-              <SearchGroupsDropdown
-                owner={owner}
-                selectedGroups={selectedGroups}
-                onGroupsUpdated={onGroupsUpdated}
-              />
-            }
-            message="Add groups to the space"
-          />
-        )}
-
-        {isManual && selectedMembers.length > 0 && (
-          <>
-            <SearchInput
-              name="search"
-              placeholder="Search (email)"
-              value={searchSelectedMembers}
-              onChange={onSearchChange}
-            />
-            <ScrollArea className="h-full">
-              <MembersTable
-                onMembersUpdated={onMembersUpdated}
-                selectedMembers={selectedMembers}
-                searchSelectedMembers={searchSelectedMembers}
-              />
-            </ScrollArea>
-          </>
-        )}
-        {!isManual && selectedGroups.length > 0 && (
-          <>
-            <SearchInput
-              name="search"
-              placeholder={"Search groups"}
-              value={searchSelectedMembers}
-              onChange={onSearchChange}
-            />
-            <ScrollArea className="h-full">
-              <GroupsTable
-                onGroupsUpdated={onGroupsUpdated}
-                selectedGroups={selectedGroups}
-                searchSelectedGroups={searchSelectedMembers}
-              />
-            </ScrollArea>
-          </>
-        )}
-      </>
-    );
-  }
-
-  return null;
-}
-
-type MemberRowData = {
-  icon: string;
-  name: string;
-  userId: string;
-  email: string;
-  onClick?: () => void;
-};
-
-type MemberInfo = CellContext<MemberRowData, unknown>;
-
-function getMemberTableRows(allUsers: UserType[]): MemberRowData[] {
-  return allUsers.map((user) => ({
-    icon: user.image ?? "",
-    name: user.fullName,
-    userId: user.sId,
-    email: user.email ?? "",
-  }));
-}
-
-interface MembersTableProps {
-  onMembersUpdated: (members: UserType[]) => void;
-  selectedMembers: UserType[];
-  searchSelectedMembers: string;
-}
-
-function MembersTable({
-  onMembersUpdated,
-  selectedMembers,
-  searchSelectedMembers,
-}: MembersTableProps) {
-  const sendNotifications = useSendNotification();
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 50,
-  });
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "email", desc: false },
-  ]);
-
-  const getTableColumns = useCallback(() => {
-    const removeMember = (userId: string) => {
-      if (selectedMembers.length === 1) {
-        sendNotifications({
-          title: "Cannot remove last member.",
-          description: "You cannot remove the last group member.",
-          type: "error",
-        });
-        return;
-      }
-      onMembersUpdated(selectedMembers.filter((m) => m.sId !== userId));
-    };
-    return [
-      {
-        id: "name",
-        accessorKey: "name",
-        cell: (info: MemberInfo) => (
-          <>
-            <DataTable.CellContent
-              avatarUrl={info.row.original.icon}
-              className="hidden md:flex"
-            >
-              {info.row.original.name}
-            </DataTable.CellContent>
-            <DataTable.CellContent
-              avatarUrl={info.row.original.icon}
-              className="flex md:hidden"
-              description={info.row.original.email}
-            >
-              {info.row.original.name}
-            </DataTable.CellContent>
-          </>
-        ),
-        enableSorting: true,
-      },
-      {
-        id: "email",
-        accessorKey: "email",
-        cell: (info: MemberInfo) => (
-          <DataTable.BasicCellContent label={info.row.original.email} />
-        ),
-        enableSorting: true,
-      },
-      {
-        id: "action",
-        meta: {
-          className: "w-12",
-        },
-        cell: (info: MemberInfo) => {
-          return (
-            <DataTable.CellContent>
-              <Button
-                icon={XMarkIcon}
-                size="xs"
-                variant="ghost-secondary"
-                onClick={() => removeMember(info.row.original.userId)}
-              />
-            </DataTable.CellContent>
-          );
-        },
-      },
-    ];
-  }, [onMembersUpdated, selectedMembers, sendNotifications]);
-
-  const rows = useMemo(
-    () => getMemberTableRows(selectedMembers),
-    [selectedMembers]
-  );
-  const columns = useMemo(() => getTableColumns(), [getTableColumns]);
-
-  return (
-    <DataTable
-      data={rows}
-      columns={columns}
-      columnsBreakpoints={{
-        name: "md",
-      }}
-      pagination={pagination}
-      setPagination={setPagination}
-      sorting={sorting}
-      setSorting={setSorting}
-      totalRowCount={rows.length}
-      filter={searchSelectedMembers}
-      filterColumn="email"
-    />
-  );
-}
-
-interface GroupsTableProps {
-  onGroupsUpdated: (groups: GroupType[]) => void;
-  selectedGroups: GroupType[];
-  searchSelectedGroups: string;
-}
-
-function GroupsTable({
-  onGroupsUpdated,
-  selectedGroups,
-  searchSelectedGroups,
-}: GroupsTableProps) {
-  const sendNotifications = useSendNotification();
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 50,
-  });
-
-  const removeGroup = useCallback(
-    (group: GroupType) => {
-      if (selectedGroups.length === 1) {
-        sendNotifications({
-          title: "Cannot remove last group.",
-          description: "You cannot remove the last group.",
-          type: "error",
-        });
-        return;
-      }
-      onGroupsUpdated(selectedGroups.filter((g) => g.sId !== group.sId));
-    },
-    [onGroupsUpdated, selectedGroups, sendNotifications]
-  );
-
-  return (
-    <GroupsList
-      groups={selectedGroups}
-      searchTerm={searchSelectedGroups}
-      showColumns={["name", "memberCount", "action"]}
-      onRemoveGroupClick={removeGroup}
-      pagination={pagination}
-      setPagination={setPagination}
-    />
   );
 }

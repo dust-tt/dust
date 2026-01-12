@@ -6,7 +6,6 @@ import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import logger from "@app/logger/logger";
 import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
@@ -76,9 +75,7 @@ export async function runModelAndCreateActionsActivity({
     }
   }
 
-  // Otherwise, run both activities.
-  const localLogger = logger.child({ step });
-  localLogger.info("Running model and creating actions - normal path");
+  // Otherwise, run the model and create actions.
 
   // Track step content IDs by function call ID for later use in actions.
   const functionCallStepContentIds: Record<string, ModelId> = {};

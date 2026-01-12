@@ -1,6 +1,7 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
+import type { File } from "@google-cloud/storage";
 import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import type { Readable, Writable } from "stream";
@@ -23,6 +24,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import type {
   FileShareScope,
   FileType,
@@ -64,11 +66,12 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<FileModel>, "status" | "sId">
+    blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "version">
   ) {
     const key = await FileResource.model.create({
       ...blob,
       status: "created",
+      version: 0,
     });
 
     return new this(FileResource.model, key.get());
@@ -484,6 +487,87 @@ export class FileResource extends BaseResource<FileModel> {
       : getPrivateUploadBucket();
   }
 
+  /**
+   * Get sorted file versions from GCS (newest first).
+   * Used for reverting Interactive Content files to previous versions.
+   * Returns an empty array if versions cannot be retrieved.
+   */
+  private async getSortedFileVersions(
+    auth: Authenticator,
+    maxResults?: number
+  ): Promise<File[]> {
+    const filePath = this.getCloudStoragePath(auth, "original");
+    const fileStorage = getPrivateUploadBucket();
+
+    return fileStorage.getSortedFileVersions({
+      filePath,
+      maxResults,
+    });
+  }
+
+  /**
+   * Revert the file to its previous version.
+   * Uses GCS copy function to restore the previous version as the current version.
+   * Deletes old versions to prevent accumulation.
+   */
+  async revert(
+    auth: Authenticator,
+    {
+      revertedByAgentConfigurationId,
+    }: {
+      revertedByAgentConfigurationId: string;
+    }
+  ): Promise<Result<undefined, string>> {
+    // Get all versions of the file (sorted newest to oldest)
+    const versions = await this.getSortedFileVersions(auth);
+
+    // Check if there's a previous version available before attempting revert
+    if (versions.length < 2) {
+      return new Err("No previous version available to revert to");
+    }
+
+    const currentVersion = versions[0];
+    const previousVersion = versions[1];
+
+    // Update metadata before copy
+    await this.setUseCaseMetadata({
+      ...this.useCaseMetadata,
+      lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
+    });
+
+    // Use GCS copy function to make a copy of the previous version the current version
+    const filePath = this.getCloudStoragePath(auth, "original");
+    const bucket = this.getBucketForVersion("original");
+    const destinationFile = bucket.file(filePath);
+
+    try {
+      await previousVersion.copy(destinationFile);
+    } catch (error) {
+      return new Err(
+        `Revert unsuccessful. Failed to copy previous version: ${normalizeError(error)}`
+      );
+    }
+
+    // Delete old versions to prevent accumulation and infinite loops
+    try {
+      // Decrement version after deletion to ensure version counter only changes on success
+      await currentVersion.delete();
+      await previousVersion.delete();
+      await this.decrementVersion();
+    } catch (error) {
+      logger.error(
+        {
+          fileId: this.sId,
+          workspaceId: this.workspaceId,
+          error: normalizeError(error),
+        },
+        "Failed to delete old file versions after successful revert, future reverts may loop"
+      );
+    }
+
+    return new Ok(undefined);
+  }
+
   // Stream logic.
 
   getWriteStream({
@@ -570,7 +654,8 @@ export class FileResource extends BaseResource<FileModel> {
       filePath: this.getCloudStoragePath(auth, "original"),
     });
 
-    // Mark the file as ready.
+    // Increment version after successful upload and mark as ready
+    await this.incrementVersion();
     await this.markAsReady();
   }
 
@@ -580,6 +665,14 @@ export class FileResource extends BaseResource<FileModel> {
 
   setSnippet(snippet: string) {
     return this.update({ snippet });
+  }
+
+  private incrementVersion() {
+    return this.update({ version: this.version + 1 });
+  }
+
+  private decrementVersion() {
+    return this.update({ version: Math.max(0, this.version - 1) });
   }
 
   rename(newFileName: string) {
@@ -684,6 +777,7 @@ export class FileResource extends BaseResource<FileModel> {
       contentType: this.contentType,
       fileName: this.fileName,
       fileSize: this.fileSize,
+      version: this.version,
       status: this.status,
       useCase: this.useCase,
     };
@@ -725,6 +819,7 @@ export class FileResource extends BaseResource<FileModel> {
       contentType: this.contentType,
       fileName: this.fileName,
       fileSize: this.fileSize,
+      version: this.version,
       status: this.status,
       useCase: this.useCase,
     };

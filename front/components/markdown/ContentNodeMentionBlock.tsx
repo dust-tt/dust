@@ -9,7 +9,9 @@ export function ContentNodeMentionBlock({
   title: string;
   url: string;
 }) {
-  return <AttachmentChip label={title} href={url} target="_blank" />;
+  return (
+    <AttachmentChip label={title} href={url} target="_blank" color="white" />
+  );
 }
 
 export function contentNodeMentionDirective() {

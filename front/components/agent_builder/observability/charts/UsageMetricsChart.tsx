@@ -96,13 +96,17 @@ function UsageMetricsTooltip(
   );
 }
 
+interface UsageMetricsChartProps {
+  workspaceId: string;
+  agentConfigurationId: string;
+  isCustomAgent: boolean;
+}
+
 export function UsageMetricsChart({
   workspaceId,
   agentConfigurationId,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-}) {
+  isCustomAgent,
+}: UsageMetricsChartProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useAgentUsageMetrics({
@@ -116,20 +120,21 @@ export function UsageMetricsChart({
     workspaceId,
     agentConfigurationId,
     days: period,
-    disabled: !workspaceId || !agentConfigurationId,
+    disabled: !workspaceId || !agentConfigurationId || !isCustomAgent,
   });
 
   const legendItems = legendFromConstant(
     USAGE_METRICS_LEGEND,
     USAGE_METRICS_PALETTE,
     {
-      includeVersionMarker: mode === "timeRange" && versionMarkers.length > 0,
+      includeVersionMarker:
+        isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
     }
   );
 
   const filteredData = filterTimeSeriesByVersionWindow(
     usageMetrics,
-    mode,
+    isCustomAgent ? mode : "timeRange",
     selectedVersion,
     versionMarkers
   );
@@ -221,7 +226,7 @@ export function UsageMetricsChart({
             <UsageMetricsTooltip {...props} versionMarkers={versionMarkers} />
           )}
           cursor={false}
-          wrapperStyle={{ outline: "none" }}
+          wrapperStyle={{ outline: "none", zIndex: 50 }}
           contentStyle={{
             background: "transparent",
             border: "none",
@@ -266,7 +271,9 @@ export function UsageMetricsChart({
           stroke="currentColor"
           dot={false}
         />
-        <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
+        {isCustomAgent && (
+          <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
+        )}
       </LineChart>
     </ChartContainer>
   );

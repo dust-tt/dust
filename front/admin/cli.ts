@@ -13,7 +13,6 @@ import {
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { Authenticator } from "@app/lib/auth";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { getDustProdActionRegistry } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -172,10 +171,14 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
           logger
         );
         for (const connectorId of connectorIds) {
-          console.log(`Unpausing connectorId=${connectorId}`);
+          logger.info(`Unpausing connectorId=${connectorId}`);
           const res = await connectorsAPI.unpauseConnector(connectorId);
           if (res.isErr()) {
-            throw new Error(res.error.message);
+            if (res.error.message === "Connector is not stopped") {
+              logger.error(res.error.message);
+            } else {
+              throw new Error(res.error.message);
+            }
           }
         }
       }
@@ -426,13 +429,14 @@ function getActiveIdsFile(args: parseArgs.ParsedArgs) {
 }
 
 const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
+  const auth = await Authenticator.internalAdminForWorkspace(args.wId);
   switch (command) {
     case "stop": {
       if (!args.cId) {
         throw new Error("Missing --cId argument");
       }
       const transcriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchById(args.cId);
+        await LabsTranscriptsConfigurationResource.fetchById(auth, args.cId);
 
       if (!transcriptsConfiguration) {
         throw new Error(
@@ -456,7 +460,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --cId argument");
       }
       const transcriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchById(args.cId);
+        await LabsTranscriptsConfigurationResource.fetchById(auth, args.cId);
 
       if (!transcriptsConfiguration) {
         throw new Error(
@@ -523,8 +527,10 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         process.exit(1);
       }
       for (const sId of activeConfigSIds) {
-        const config =
-          await LabsTranscriptsConfigurationResource.fetchById(sId);
+        const config = await LabsTranscriptsConfigurationResource.fetchById(
+          auth,
+          sId
+        );
         if (!config) {
           logger.warn(`Config sId=${sId} not found, skipping.`);
           continue;
@@ -540,19 +546,6 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       logger.info(`Restarted ${activeConfigSIds.length} workflows.`);
       return;
     }
-  }
-};
-
-const registry = async (command: string) => {
-  switch (command) {
-    case "dump": {
-      console.log(JSON.stringify(getDustProdActionRegistry()));
-      return;
-    }
-
-    default:
-      console.log(`Unknown registry command: ${command}`);
-      console.log("Possible values: `dump`");
   }
 };
 
@@ -737,7 +730,6 @@ export const CLI_OBJECT_TYPES = [
   "data-source",
   "conversation",
   "transcripts",
-  "registry",
   "production-check",
   "api-key",
   "trigger",
@@ -782,8 +774,6 @@ const main = async () => {
       return conversation(command, argv);
     case "transcripts":
       return transcripts(command, argv);
-    case "registry":
-      return registry(command);
     case "production-check":
       return productionCheck(command, argv);
     case "api-key":

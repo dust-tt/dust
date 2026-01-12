@@ -190,8 +190,15 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
-  async stop(): Promise<Result<undefined, Error>> {
-    const res = await stopConfluenceSyncWorkflow(this.connectorId);
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
+    const res = await stopConfluenceSyncWorkflow({
+      connectorId: this.connectorId,
+      stopReason: reason,
+    });
     if (res.isErr()) {
       return res;
     }

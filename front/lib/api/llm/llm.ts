@@ -1,5 +1,6 @@
 import { startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
+import pickBy from "lodash/pickBy";
 
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
@@ -25,7 +26,7 @@ import type {
   ReasoningEffort,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES, removeNulls } from "@app/types";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -133,24 +134,22 @@ export abstract class LLM {
     );
 
     generation.updateTrace({
-      tags: removeNulls([
-        this.authenticator.user()?.sId
-          ? `actualUserId:${this.authenticator.user()?.sId}`
-          : null,
-        this.authenticator.key()
-          ? `apiKeyId:${this.authenticator.key()?.id}`
-          : null,
-        `authMethod:${this.authenticator.authMethod() ?? "unknown"}`,
-        // Dynamic tags from all context fields (except userId and workspaceId).
-        ...Object.entries(this.context)
-          .filter(
-            ([key, value]) =>
-              value !== undefined && !["userId", "workspaceId"].includes(key)
-          )
-          .map(([key, value]) => `${key}:${value}`),
-      ]),
       metadata: {
         dustTraceId: this.traceId,
+        // All contextual data as key-value pairs for better filtering in Langfuse UI.
+        ...(this.authenticator.user()?.sId && {
+          actualUserId: this.authenticator.user()!.sId,
+        }),
+        ...(this.authenticator.key() && {
+          apiKeyId: this.authenticator.key()!.id,
+        }),
+        authMethod: this.authenticator.authMethod() ?? "unknown",
+        // Include all context fields (except userId and workspaceId).
+        ...pickBy(
+          this.context,
+          (value, key) =>
+            value !== undefined && !["userId", "workspaceId"].includes(key)
+        ),
       },
       // In observability, userId maps to workspaceId for consistent grouping.
       userId: this.authenticator.getNonNullableWorkspace().sId,
@@ -178,28 +177,35 @@ export abstract class LLM {
 
     // TODO(LLM-Router 13/11/2025): Temporary logs, TBRemoved
     let currentEvent: LLMEvent | null = null;
-    try {
-      for await (const event of this.completeStream({
-        conversation,
-        prompt,
-        specifications,
-      })) {
-        currentEvent = event;
-        buffer.addEvent(event);
+    let timeToFirstEventMs: number | undefined = undefined;
 
-        if (event.type === "interaction_id") {
-          buffer.setModelInteractionId(event.content.modelInteractionId);
-          generation.updateTrace({
-            metadata: {
-              modelInteractionId: event.content.modelInteractionId,
-            },
-          });
-        }
-
-        yield event;
+    for await (const event of this.completeStream({
+      conversation,
+      prompt,
+      specifications,
+    })) {
+      if (currentEvent === null) {
+        timeToFirstEventMs = Date.now() - startTime;
       }
-    } finally {
-      if (currentEvent?.type === "error") {
+      currentEvent = event;
+      buffer.addEvent(currentEvent);
+
+      if (currentEvent.type === "interaction_id") {
+        buffer.setModelInteractionId(currentEvent.content.modelInteractionId);
+        generation.updateTrace({
+          metadata: {
+            modelInteractionId: currentEvent.content.modelInteractionId,
+          },
+        });
+      }
+
+      if (currentEvent.type !== "success" && currentEvent.type !== "error") {
+        yield currentEvent;
+        continue;
+      }
+
+      // Logging before it gets stopped and retried downstream
+      if (currentEvent.type === "error") {
         // Temporary: track LLM error metric
         statsDClient.increment("llm_error.count", 1, metricTags);
         generation.updateTrace({
@@ -216,7 +222,9 @@ export abstract class LLM {
           },
           "LLM Error"
         );
-      } else if (currentEvent?.type === "success") {
+      }
+
+      if (currentEvent.type === "success") {
         // Temporary: track LLM success metric
         statsDClient.increment("llm_success.count", 1, metricTags);
 
@@ -232,7 +240,9 @@ export abstract class LLM {
       }
 
       const durationMs = Date.now() - startTime;
-      buffer.writeToGCS({ durationMs, startTime }).catch(() => {});
+      buffer
+        .writeToGCS({ durationMs, startTime, timeToFirstEventMs })
+        .catch(() => {});
 
       const { tokenUsage, ...rest } = buffer.currentOutput;
 
@@ -279,6 +289,10 @@ export abstract class LLM {
       if (buffer.runTokenUsage) {
         await run.recordTokenUsage(buffer.runTokenUsage, this.modelId);
       }
+
+      yield currentEvent;
+
+      break;
     }
   }
 

@@ -3,18 +3,15 @@ import React, { useMemo, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { SkillCard } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillCard";
-import type {
-  CapabilitiesSheetMode,
-  CapabilityFilterType,
-} from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import type { CapabilityFilterType } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { MCPServerCard } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
+import type { SheetState } from "@app/components/agent_builder/skills/types";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 type CapabilitiesSelectionPageProps = {
-  onModeChange: (mode: CapabilitiesSheetMode | null) => void;
+  onStateChange: (state: SheetState) => void;
   handleSkillToggle: (skill: SkillType) => void;
   filteredSkills: SkillType[];
   searchQuery: string;
@@ -41,16 +38,16 @@ export function CapabilitiesSelectionPageContent({
   selectedMCPServerViewIds,
   handleToolToggle,
   handleToolInfoClick,
-  onModeChange,
+  onStateChange,
 }: CapabilitiesSelectionPageProps) {
   const { owner } = useAgentBuilderContext();
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [filter, setFilter] = useState<CapabilityFilterType>("all");
 
   const { fetchSkillWithRelations } = useSkillWithRelations(owner, {
     onSuccess: ({ skill }) => {
-      onModeChange({
-        pageId: "skill_info",
+      onStateChange({
+        state: "info",
+        kind: "skill",
         capability: skill,
         hasPreviousPage: true,
       });
@@ -76,7 +73,14 @@ export function CapabilitiesSelectionPageContent({
     (showSkillsSection && hasSkills) || (showToolsSection && hasTools);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 pt-1">
+      <SearchInput
+        placeholder="Search capabilities..."
+        value={searchQuery}
+        onChange={setSearchQuery}
+        name="capability-search"
+      />
+
       <div className="flex gap-2">
         <Button
           label="All"
@@ -98,13 +102,6 @@ export function CapabilitiesSelectionPageContent({
         />
       </div>
 
-      <SearchInput
-        placeholder="Search capabilities..."
-        value={searchQuery}
-        onChange={setSearchQuery}
-        name="capability-search"
-      />
-
       {isCapabilitiesLoading ? (
         <div className="flex h-40 items-center justify-center">
           <Spinner />
@@ -114,7 +111,7 @@ export function CapabilitiesSelectionPageContent({
           <div className="px-4 text-center">
             <div className="mb-2 text-lg font-medium text-foreground dark:text-foreground-night">
               {searchQuery
-                ? "No capability match your search"
+                ? "No capability matches your search"
                 : "No capabilities available"}
             </div>
             <div className="max-w-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -128,7 +125,13 @@ export function CapabilitiesSelectionPageContent({
         <>
           {showSkillsSection && hasSkills && (
             <>
-              <span className="text-lg font-semibold">Skills</span>
+              <div>
+                <span className="text-lg font-semibold">Skills</span>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Reusable packages of instructions and tools that enable agents
+                  to perform specialized tasks.
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 {filteredSkills.map((skill) => (
                   <SkillCard
@@ -145,7 +148,12 @@ export function CapabilitiesSelectionPageContent({
 
           {showToolsSection && hasTools && (
             <>
-              <span className="text-lg font-semibold">Tools</span>
+              <div>
+                <span className="text-lg font-semibold">Tools</span>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Tools that allow agents to retrieve data and take actions.
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 {sortedMCPServerViews.map((view) => (
                   <MCPServerCard
@@ -154,7 +162,6 @@ export function CapabilitiesSelectionPageContent({
                     isSelected={selectedMCPServerViewIds.has(view.sId)}
                     onClick={() => handleToolToggle(view)}
                     onToolInfoClick={() => handleToolInfoClick(view)}
-                    featureFlags={featureFlags}
                   />
                 ))}
               </div>

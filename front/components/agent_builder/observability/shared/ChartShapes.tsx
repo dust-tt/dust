@@ -1,5 +1,9 @@
 import type { ValuesPayload } from "@app/components/agent_builder/observability/utils";
 
+function getStackValue(payload: ValuesPayload, key: string): number {
+  return payload.values[key]?.count ?? 0;
+}
+
 export function RoundedTopBarShape({
   x,
   y,
@@ -29,15 +33,15 @@ export function RoundedTopBarShape({
     return <g />;
   }
 
-  const toolValue = payload.values[toolName] ?? 0;
-  if (toolValue === 0) {
+  const toolValue = getStackValue(payload, toolName);
+  if (toolValue <= 0) {
     return <rect x={x} y={y} width={width} height={height} fill={fill} />;
   }
 
   let topTool: string | undefined;
   for (let idx = stackOrder.length - 1; idx >= 0; idx--) {
     const candidate = stackOrder[idx];
-    const value = payload.values[candidate] ?? 0;
+    const value = getStackValue(payload, candidate);
 
     if (value > 0) {
       topTool = candidate;
@@ -49,7 +53,7 @@ export function RoundedTopBarShape({
     return <rect x={x} y={y} width={width} height={height} fill={fill} />;
   }
 
-  const r = 4;
+  const r = Math.max(0, Math.min(4, height, width / 2));
   const right = x + width;
   const bottom = y + height;
   const d = `M ${x} ${bottom} L ${x} ${y + r} A ${r} ${r} 0 0 1 ${x + r} ${y} L ${right - r} ${y} A ${r} ${r} 0 0 1 ${right} ${y + r} L ${right} ${bottom} Z`;

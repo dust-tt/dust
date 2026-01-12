@@ -242,7 +242,11 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     return new Ok(c.id.toString());
   }
 
-  async stop(): Promise<Result<undefined, Error>> {
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
 
     if (!connector) {
@@ -257,7 +261,10 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     }
 
     try {
-      await stopNotionSyncWorkflow(connector.id);
+      await stopNotionSyncWorkflow({
+        connectorId: connector.id,
+        stopReason: reason,
+      });
     } catch (e) {
       logger.error(
         {
@@ -359,7 +366,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     }
 
     try {
-      await this.stop();
+      await this.stop({ reason: "Stopped for full resync" });
     } catch (e) {
       logger.error(
         {

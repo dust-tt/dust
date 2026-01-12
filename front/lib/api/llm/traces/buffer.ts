@@ -234,10 +234,12 @@ export class LLMTraceBuffer {
     durationMs,
     endTimestamp,
     startTimestamp,
+    timeToFirstEventMs,
   }: {
     durationMs: number;
     endTimestamp: string;
     startTimestamp: string;
+    timeToFirstEventMs?: number;
   }): LLMTrace {
     if (!this.input) {
       throw new Error("Input must be set before creating trace");
@@ -251,6 +253,7 @@ export class LLMTraceBuffer {
         endTimestamp,
         modelId: this.input.modelId,
         startTimestamp,
+        timeToFirstEventMs,
       },
       traceId: this.traceId,
       workspaceId: this.workspaceId,
@@ -321,9 +324,11 @@ export class LLMTraceBuffer {
   async writeToGCS({
     startTime,
     durationMs,
+    timeToFirstEventMs,
   }: {
     startTime: number;
     durationMs: number;
+    timeToFirstEventMs?: number;
   }): Promise<void> {
     const startTimestamp = new Date(startTime).toISOString();
     const endTimestamp = new Date(startTime + durationMs).toISOString();
@@ -333,6 +338,7 @@ export class LLMTraceBuffer {
         durationMs,
         endTimestamp,
         startTimestamp,
+        timeToFirstEventMs,
       });
       const bucket = getLLMTracesBucket();
 

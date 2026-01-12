@@ -234,13 +234,19 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
-  async stop(): Promise<Result<undefined, Error>> {
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       return new Err(new Error("Connector not found"));
     }
 
-    const res = await stopIntercomSchedulesAndWorkflows(connector);
+    const res = await stopIntercomSchedulesAndWorkflows(connector, {
+      stopReason: reason,
+    });
     if (res.isErr()) {
       return res;
     }

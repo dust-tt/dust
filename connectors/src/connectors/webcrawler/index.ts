@@ -120,7 +120,11 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     return new Ok(undefined);
   }
 
-  async stop(): Promise<Result<undefined, Error>> {
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
     const webConfig = await WebCrawlerConfigurationResource.fetchByConnectorId(
       this.connectorId
     );
@@ -157,7 +161,10 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         }
       }
     } else {
-      const res = await stopCrawlWebsiteWorkflow(this.connectorId);
+      const res = await stopCrawlWebsiteWorkflow({
+        connectorId: this.connectorId,
+        stopReason: reason,
+      });
       if (res.isErr()) {
         return res;
       }
@@ -372,7 +379,10 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
 
     await webcrawlerConfig.setCustomHeaders(headersForUpdate);
 
-    const stopRes = await stopCrawlWebsiteWorkflow(connector.id);
+    const stopRes = await stopCrawlWebsiteWorkflow({
+      connectorId: connector.id,
+      stopReason: "Stopped to update connector configuration",
+    });
     if (stopRes.isErr()) {
       return new Err(stopRes.error);
     }

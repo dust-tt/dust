@@ -58,7 +58,7 @@ function getSubscriptionDisplayStatus(
   }
   if (
     subscription.plan.code === FREE_NO_PLAN_CODE ||
-    subscription.endDate !== null
+    (subscription.endDate !== null && subscription.endDate <= Date.now())
   ) {
     return "ended";
   }
@@ -327,6 +327,13 @@ export function PlanLimitationsTable({
                   {activePlan.limits.assistant.maxMessages === -1
                     ? "unlimited"
                     : `${activePlan.limits.assistant.maxMessages} / ${activePlan.limits.assistant.maxMessagesTimeframe}`}
+                </PokeTableCell>
+              </PokeTableRow>
+
+              <PokeTableRow>
+                <PokeTableCell>Is Deep Dive allowed?</PokeTableCell>
+                <PokeTableCell>
+                  {activePlan.limits.assistant.isDeepDiveAllowed ? "✅" : "❌"}
                 </PokeTableCell>
               </PokeTableRow>
 

@@ -1,11 +1,14 @@
 import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 
 import {
   AgentMessageModel,
   ConversationModel,
 } from "@app/lib/models/agent/conversation";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
+import {
+  eitherGlobalOrCustomSkillValidation,
+  SkillConfigurationModel,
+} from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -60,23 +63,6 @@ const SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES = {
   },
 } as const satisfies ModelAttributes;
 
-/**
- * Shared validation for skill in conversation models.
- * Ensures exactly one of customSkillId or globalSkillId is set.
- */
-function eitherGlobalOrCustomSkillValidation(this: {
-  customSkillId: unknown;
-  globalSkillId: unknown;
-}) {
-  const hasCustomSkill = this.customSkillId !== null;
-  const hasGlobalSkill = this.globalSkillId !== null;
-  if (hasCustomSkill === hasGlobalSkill) {
-    throw new Error(
-      "Exactly one of customSkillId or globalSkillId must be set"
-    );
-  }
-}
-
 export class ConversationSkillModel extends WorkspaceAwareModel<ConversationSkillModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -95,7 +81,37 @@ export class ConversationSkillModel extends WorkspaceAwareModel<ConversationSkil
 ConversationSkillModel.init(SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES, {
   modelName: "conversation_skills",
   sequelize: frontSequelize,
-  indexes: [],
+  indexes: [
+    {
+      fields: ["workspaceId", "conversationId", "agentConfigurationId"],
+      name: "idx_conversation_skills_workspace_conv_agent",
+    },
+    {
+      fields: [
+        "workspaceId",
+        "conversationId",
+        "agentConfigurationId",
+        "customSkillId",
+      ],
+      where: { customSkillId: { [Op.ne]: null } },
+      name: "idx_conversation_skills_workspace_conv_agent_custom_skill",
+    },
+    {
+      fields: [
+        "workspaceId",
+        "conversationId",
+        "agentConfigurationId",
+        "globalSkillId",
+      ],
+      where: { globalSkillId: { [Op.ne]: null } },
+      name: "idx_conversation_skills_workspace_conv_agent_global_skill",
+    },
+    {
+      fields: ["conversationId"],
+      name: "idx_conversation_skills_conversation_id",
+      concurrently: true,
+    },
+  ],
   validate: {
     eitherGlobalOrCustomSkill: eitherGlobalOrCustomSkillValidation,
   },
@@ -150,7 +166,22 @@ AgentMessageSkillModel.init(
   {
     modelName: "agent_message_skills",
     sequelize: frontSequelize,
-    indexes: [],
+    indexes: [
+      {
+        fields: ["workspaceId", "agentMessageId"],
+        name: "idx_agent_message_skills_workspace_message",
+      },
+      {
+        fields: ["conversationId"],
+        name: "idx_agent_message_skills_conversation_id",
+        concurrently: true,
+      },
+      {
+        fields: ["agentMessageId"],
+        name: "idx_agent_message_skills_agent_message_id",
+        concurrently: true,
+      },
+    ],
     validate: {
       eitherGlobalOrCustomSkill: eitherGlobalOrCustomSkillValidation,
     },

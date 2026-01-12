@@ -11,7 +11,6 @@ import {
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
-import type { StripePricingData } from "@app/lib/types/stripe/pricing";
 import logger from "@app/logger/logger";
 import type {
   BillingPeriod,
@@ -24,6 +23,7 @@ import type {
 import { assertNever } from "@app/types";
 import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
+import type { StripePricingData } from "@app/types/stripe/pricing";
 
 const DEV_PRO_PLAN_PRODUCT_ID = "prod_OwKvN4XrUwFw5a";
 const DEV_BUSINESS_PRO_PLAN_PRODUCT_ID = "prod_RkNr4qbHJD3oUp";
@@ -201,7 +201,8 @@ export const createProPlanCheckoutSession = async ({
 
   // Only allow a subscription to have a trial if the workspace never had a
   // subscription before.
-  // User under the grandfathered free plan are not allowed to have a trial.
+  // The exception is that if they were under the grandfathered free plan,
+  // we do allow them to have a trial again.
   let trialAllowed = true;
   const existingSubscription = await SubscriptionModel.findOne({
     where: { workspaceId: owner.id },

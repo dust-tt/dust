@@ -3,8 +3,8 @@ import type { PlanType, WorkspaceType } from "@app/types";
 // Current free plans:
 export const FREE_NO_PLAN_CODE = "FREE_NO_PLAN";
 export const FREE_UPGRADED_PLAN_CODE = "FREE_UPGRADED_PLAN";
-export const FREE_TEST_PLAN_CODE = "FREE_TEST_PLAN";
-export const TRIAL_PLAN_CODE = "TRIAL_PLAN_CODE";
+export const FREE_TEST_PLAN_CODE = "FREE_TEST_PLAN"; // Old free plan that's no longer used
+export const FREE_TRIAL_PHONE_PLAN_CODE = "FREE_TRIAL_PHONE_PLAN";
 
 // Current pro plans:
 export const PRO_PLAN_SEAT_29_CODE = "PRO_PLAN_SEAT_29";
@@ -31,6 +31,9 @@ export const isFriendsAndFamilyPlan = (planCode: string) =>
 // Everything else is free
 export const isFreePlan = (planCode: string) =>
   !isEntreprisePlanPrefix(planCode) && !isProPlanPrefix(planCode);
+
+export const isFreeTrialPhonePlan = (planCode: string) =>
+  planCode === FREE_TRIAL_PHONE_PLAN_CODE;
 
 // Early plan when anyone could create a dust account
 export const isOldFreePlan = (planCode: string) =>

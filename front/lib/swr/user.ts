@@ -39,12 +39,18 @@ export function useUserMetadata(
   key: string,
   swrOptions?: SWRConfiguration & {
     disabled?: boolean;
+    workspaceId?: string;
   }
 ) {
   const userMetadataFetcher: Fetcher<GetUserMetadataResponseBody> = fetcher;
 
+  let url = `/api/user/metadata/${encodeURIComponent(key)}`;
+  if (swrOptions?.workspaceId) {
+    url += `?workspaceId=${encodeURIComponent(swrOptions.workspaceId)}`;
+  }
+
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/user/metadata/${encodeURIComponent(key)}`,
+    url,
     userMetadataFetcher,
     swrOptions
   );
@@ -84,10 +90,16 @@ export function useDeleteMetadata() {
   return { deleteMetadata };
 }
 
-export function useIsOnboardingConversation(conversationId: string | null) {
+export function useIsOnboardingConversation(
+  conversationId: string | null,
+  workspaceId: string
+) {
   const { metadata, isMetadataLoading } = useUserMetadata(
     "onboarding:conversation",
-    { disabled: !conversationId }
+    {
+      disabled: !conversationId,
+      workspaceId,
+    }
   );
 
   return {

@@ -10,7 +10,7 @@ import type {
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 
 import { getMaximalVersionAgentStepContent } from "@app/lib/api/assistant/configuration/steps";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
@@ -208,9 +208,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // We should probably only filter out conversations where the spaceId is deleted but keep the one that referenced a deleted space.
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
     const validConversations = conversations
-      .filter((c) =>
-        c.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
-      )
+      .filter((c) => c.requestedSpaceIds.every((id) => foundSpaceIds.has(id)))
       .map(
         (c) =>
           new this(
@@ -227,8 +225,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       auth.canRead(
         createResourcePermissionsFromSpacesWithMap(
           spaceIdToGroupsMap,
-          // Parse as Number since Sequelize array of BigInts are returned as strings.
-          c.requestedSpaceIds.map((id) => Number(id))
+          c.requestedSpaceIds
         )
       )
     );
@@ -339,7 +336,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         !auth.canRead(
           createResourcePermissionsFromSpacesWithMap(
             spaceIdToGroupsMap,
-            conversation.requestedSpaceIds.map((id) => Number(id))
+            conversation.requestedSpaceIds
           )
         )
       ) {
@@ -350,6 +347,21 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return "conversation_not_found";
     }
     return "allowed";
+  }
+
+  static async canUserAccess(
+    auth: Authenticator,
+    { conversationId, userId }: { conversationId: string; userId: string }
+  ): Promise<
+    "allowed" | "conversation_not_found" | "conversation_access_restricted"
+  > {
+    const workspace = auth.getNonNullableWorkspace();
+    const fakeAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      userId,
+      workspace.sId
+    );
+
+    return ConversationResource.canAccess(fakeAuth, conversationId);
   }
 
   static async listAll(
@@ -1423,6 +1435,29 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok({ wasLastMember: remaining <= 1, affectedCount });
   }
 
+  async isConversationCreator(
+    auth: Authenticator
+  ): Promise<Result<boolean, Error>> {
+    const user = auth.user();
+    if (!user) {
+      return new Err(new Error("user_not_authenticated"));
+    }
+
+    // Get the first participant added to the conversation (the creator)
+    const firstParticipant = await ConversationParticipantModel.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: this.id,
+      },
+      order: [["createdAt", "ASC"]],
+    });
+
+    if (!firstParticipant) {
+      return new Err(new Error("No participants found for conversation"));
+    }
+    return new Ok(firstParticipant.userId === user.id);
+  }
+
   async listParticipants(
     auth: Authenticator,
     unreadOnly: boolean = false
@@ -1531,6 +1566,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       created: this.createdAt.getTime(),
       updated: this.updatedAt.getTime(),
       spaceId: this.space?.sId ?? null,
+      triggerId: this.triggerSId,
       hasError: this.hasError,
       id: this.id,
       // TODO(REQUESTED_SPACE_IDS 2025-10-24): Stop exposing this once all logic is centralized

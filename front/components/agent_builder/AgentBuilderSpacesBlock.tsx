@@ -1,5 +1,6 @@
 import {
   Button,
+  ContentMessage,
   PlanetIcon,
   Sheet,
   SheetContainer,
@@ -19,9 +20,8 @@ import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog"
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { SpaceType } from "@app/types";
-import { removeNulls } from "@app/types";
+import { pluralize, removeNulls } from "@app/types";
 
 export function AgentBuilderSpacesBlock() {
   const { setValue } = useFormContext<AgentBuilderFormData>();
@@ -84,9 +84,7 @@ export function AgentBuilderSpacesBlock() {
 
   const handleRemoveSpace = async (space: SpaceType) => {
     // Compute items to remove for the dialog
-    const actionsToRemove = (spaceIdToActions[space.sId] || []).filter(
-      (action): action is BuilderAction => action.type === "MCP"
-    );
+    const actionsToRemove = spaceIdToActions[space.sId] || [];
 
     const skillsToRemove = selectedSkills.filter((skill) =>
       allSkills
@@ -161,7 +159,7 @@ export function AgentBuilderSpacesBlock() {
             Spaces
           </h2>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Determines who can use this agent and what data it can access
+            Set what knowledge and capabilities the agent can access.
           </p>
         </div>
         <Button
@@ -171,6 +169,19 @@ export function AgentBuilderSpacesBlock() {
           onClick={handleOpenSheet}
         />
       </div>
+      {nonGlobalSpacesWithRestrictions.length > 0 && (
+        <div className="mb-4 w-full">
+          <ContentMessage variant="golden" size="lg">
+            Based on your selection of knowledge and capabilities, this agent
+            can only be used by users with access to space
+            {pluralize(nonGlobalSpacesWithRestrictions.length)} :{" "}
+            <strong>
+              {nonGlobalSpacesWithRestrictions.map((v) => v.name).join(", ")}
+            </strong>
+            .
+          </ContentMessage>
+        </div>
+      )}
       <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
 
       <Sheet open={isSheetOpen} onOpenChange={handleCloseSheet}>
@@ -181,8 +192,8 @@ export function AgentBuilderSpacesBlock() {
           <SheetContainer>
             <SpaceSelectionPageContent
               alreadyRequestedSpaceIds={actionsAndSkillsRequestedSpaceIds}
-              draftSelectedSpaces={draftSelectedSpaces}
-              setDraftSelectedSpaces={setDraftSelectedSpaces}
+              selectedSpaces={draftSelectedSpaces}
+              setSelectedSpaces={setDraftSelectedSpaces}
             />
           </SheetContainer>
           <SheetFooter
