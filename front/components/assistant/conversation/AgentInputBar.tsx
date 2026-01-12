@@ -5,6 +5,7 @@ import {
   Button,
   ContentMessageAction,
   ContentMessageInline,
+  IconButton,
   InformationCircleIcon,
   StopIcon,
 } from "@dust-tt/sparkle";
@@ -135,20 +136,20 @@ export const AgentInputBar = ({
     // Convert listOffset to positive scroll position.
     // listOffset is negative when scrolled down (distance from list top to viewport top).
     const viewportTop = -listOffset;
-    const viewportMiddle = viewportTop + visibleListHeight / 2;
+    const viewportTopQuarter = viewportTop + visibleListHeight / 4;
 
     // Find user messages fully above viewport (for arrow up).
     const fullyAboveIndices = userMessageIndices.filter(
       (idx) => positions[idx] && positions[idx].bottom <= viewportTop
     );
 
-    // Find user messages whose top is below viewport middle (for arrow down).
-    const belowMiddleIndices = userMessageIndices.filter(
-      (idx) => positions[idx] && positions[idx].top >= viewportMiddle
+    // Find user messages whose top is below the top quarter of viewport (for arrow down).
+    const belowTopQuarterIndices = userMessageIndices.filter(
+      (idx) => positions[idx] && positions[idx].top >= viewportTopQuarter
     );
 
     const canUp = fullyAboveIndices.length > 0;
-    const canDown = belowMiddleIndices.length > 0 || bottomOffset > 0;
+    const canDown = belowTopQuarterIndices.length > 0 || bottomOffset > 0;
 
     return {
       canScrollUp: canUp,
@@ -165,9 +166,9 @@ export const AgentInputBar = ({
         }
       },
       scrollToNextUserMessage: () => {
-        if (belowMiddleIndices.length > 0) {
-          // Scroll to the first user message below middle.
-          const targetIndex = belowMiddleIndices[0];
+        if (belowTopQuarterIndices.length > 0) {
+          // Scroll to the first user message below top quarter.
+          const targetIndex = belowTopQuarterIndices[0];
           methods.scrollToItem({
             index: targetIndex,
             align: "start",
@@ -253,18 +254,20 @@ export const AgentInputBar = ({
           top: "-2em",
         }}
       >
-        <Button
-          icon={ArrowUpIcon}
-          variant="outline"
-          onClick={scrollToPreviousUserMessage}
-          disabled={!canScrollUp}
-        />
-        <Button
-          icon={ArrowDownIcon}
-          variant="outline"
-          onClick={scrollToNextUserMessage}
-          disabled={!canScrollDown}
-        />
+        <div className="flex items-center gap-1 rounded-full border border-border bg-white px-1 py-0.5 dark:border-border-night dark:bg-muted-night">
+          <IconButton
+            icon={ArrowUpIcon}
+            onClick={scrollToPreviousUserMessage}
+            disabled={!canScrollUp}
+            size="xs"
+          />
+          <IconButton
+            icon={ArrowDownIcon}
+            onClick={scrollToNextUserMessage}
+            disabled={!canScrollDown}
+            size="xs"
+          />
+        </div>
 
         {showClearButton && (
           <Button
