@@ -264,8 +264,6 @@ export async function runModelActivity(
       })
     : null;
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
@@ -278,7 +276,6 @@ export async function runModelActivity(
     serverToolsAndInstructions: mcpActions,
     enabledSkills,
     equippedSkills,
-    featureFlags,
   });
 
   const specifications: AgentActionSpecification[] = [];

@@ -5,7 +5,6 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -41,7 +40,6 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - Skills with 
     const { req, res, workspace, user, authenticator } = await setupTest();
 
     // Enable skills feature flag
-    await FeatureFlagFactory.basic("skills", workspace);
 
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);

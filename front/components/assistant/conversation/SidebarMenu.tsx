@@ -150,8 +150,6 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     isLoading: isHideTriggeredLoading,
   } = useHideTriggeredConversations();
 
-  const hasSkills = hasFeature("skills");
-
   const isRestrictedFromAgentCreation =
     hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
 
@@ -462,7 +460,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                         />
                       </>
                     )}
-                    {hasSkills && isBuilder(owner) && (
+                    {isBuilder(owner) && (
                       <>
                         <DropdownMenuLabel>Skills</DropdownMenuLabel>
                         <DropdownMenuItem

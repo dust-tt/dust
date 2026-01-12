@@ -58,7 +58,7 @@ export const CreateDropdown = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        {hasFeature("skills") && <DropdownMenuLabel label="Agents" />}
+        <DropdownMenuLabel label="Agents" />
         <DropdownMenuItem
           label="agent from scratch"
           icon={DocumentIcon}
@@ -91,23 +91,15 @@ export const CreateDropdown = ({
             onClick={triggerYAMLUpload}
           />
         )}
-        {hasFeature("skills") && (
-          <>
-            <DropdownMenuLabel label="Skills" />
-            <DropdownMenuItem
-              label="skill"
-              icon={PuzzleIcon}
-              onClick={withTracking(
-                TRACKING_AREAS.BUILDER,
-                "create_skill",
-                () => {
-                  setIsLoading(true);
-                  void router.push(getSkillBuilderRoute(owner.sId, "new"));
-                }
-              )}
-            />
-          </>
-        )}
+        <DropdownMenuLabel label="Skills" />
+        <DropdownMenuItem
+          label="skill"
+          icon={PuzzleIcon}
+          onClick={withTracking(TRACKING_AREAS.BUILDER, "create_skill", () => {
+            setIsLoading(true);
+            void router.push(getSkillBuilderRoute(owner.sId, "new"));
+          })}
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   );

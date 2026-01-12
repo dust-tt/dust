@@ -26,7 +26,6 @@ async function setupTest(
   req.query.wId = workspace.sId;
 
   if (withFeatureFlags) {
-    await FeatureFlagFactory.basic("skills", workspace);
     await FeatureFlagFactory.basic("skills_similar_display", workspace);
   }
 

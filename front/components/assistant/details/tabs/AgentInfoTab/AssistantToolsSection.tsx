@@ -22,7 +22,6 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useMCPServers, useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { AgentConfigurationType, LightWorkspaceType } from "@app/types";
 import { asDisplayName, assertNever, removeNulls } from "@app/types";
 
@@ -59,14 +58,12 @@ export function AssistantToolsSection({
   owner,
   isDustAgent,
 }: AssistantToolsSectionProps) {
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const { mcpServers, isMCPServersLoading: isToolsLoading } = useMCPServers({
     owner,
   });
   const { skills, isSkillsLoading } = useAgentConfigurationSkills({
     owner,
     agentConfigurationSId: agentConfiguration.sId,
-    disabled: !featureFlags.includes("skills"),
   });
 
   const { availableToolsets, isLoading: isToolsetsLoading } =
@@ -87,7 +84,7 @@ export function AssistantToolsSection({
   const sortedSkills = useMemo(() => _.sortBy(skills, "name"), [skills]);
 
   const hasTools = sortedActions.length > 0 || availableToolsets.length > 0;
-  const hasSkills = featureFlags.includes("skills") && skills.length > 0;
+  const hasSkills = skills.length > 0;
 
   return (
     <div className="flex flex-col gap-5">

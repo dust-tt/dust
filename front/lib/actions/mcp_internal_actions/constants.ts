@@ -1748,9 +1748,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("skills");
-    },
+    isRestricted: undefined,
     tools_stakes: undefined,
     tools_approval_holding_arguments: undefined,
     tools_retry_policies: undefined,

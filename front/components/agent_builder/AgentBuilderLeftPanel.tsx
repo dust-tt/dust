@@ -10,12 +10,10 @@ import React from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderSpacesBlock } from "@app/components/agent_builder/AgentBuilderSpacesBlock";
-import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
 import { AgentBuilderSkillsBlock } from "@app/components/agent_builder/skills/AgentBuilderSkillsBlock";
 import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface AgentBuilderLeftPanelProps {
   title: string;
@@ -31,12 +29,10 @@ export function AgentBuilderLeftPanel({
   onCancel,
   agentConfigurationId,
   saveButtonProps,
-  isActionsLoading,
+  isActionsLoading: _isActionsLoading,
   isTriggersLoading,
 }: AgentBuilderLeftPanelProps) {
   const { owner } = useAgentBuilderContext();
-
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const handleCancel = async () => {
     onCancel();
@@ -61,14 +57,8 @@ export function AgentBuilderLeftPanel({
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
-          {hasFeature("skills") && <AgentBuilderSpacesBlock />}
-          {hasFeature("skills") ? (
-            <AgentBuilderSkillsBlock />
-          ) : (
-            <AgentBuilderCapabilitiesBlock
-              isActionsLoading={isActionsLoading}
-            />
-          )}
+          <AgentBuilderSpacesBlock />
+          <AgentBuilderSkillsBlock />
           <AgentBuilderTriggersBlock
             owner={owner}
             isTriggersLoading={isTriggersLoading}

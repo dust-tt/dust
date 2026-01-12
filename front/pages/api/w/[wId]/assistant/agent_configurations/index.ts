@@ -24,7 +24,6 @@ import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -317,12 +316,7 @@ export async function createOrUpgradeAgentConfiguration({
   ).map((e) => e.toJSON());
 
   let skills: SkillResource[] = [];
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (
-    featureFlags.includes("skills") &&
-    assistant.skills &&
-    assistant.skills.length > 0
-  ) {
+  if (assistant.skills && assistant.skills.length > 0) {
     skills = await SkillResource.fetchByIds(
       auth,
       assistant.skills.map((s) => s.sId)
