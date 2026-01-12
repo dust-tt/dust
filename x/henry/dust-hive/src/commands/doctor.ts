@@ -152,6 +152,50 @@ async function checkProtobuf(): Promise<CheckResult> {
   };
 }
 
+async function checkDirenv(): Promise<CheckResult> {
+  const version = await getCommandVersion("direnv");
+  if (!version) {
+    return {
+      name: "direnv",
+      ok: false,
+      message: "Not found",
+      fix: getInstallInstructions("direnv"),
+    };
+  }
+
+  // Check if shell hook is configured by looking for it in shell config files
+  const { HOME: home = "" } = process.env;
+  const shellConfigs = [".zshrc", ".bashrc", ".bash_profile"];
+  let hookConfigured = false;
+
+  for (const configFile of shellConfigs) {
+    const configPath = `${home}/${configFile}`;
+    const file = Bun.file(configPath);
+    if (await file.exists()) {
+      const content = await file.text();
+      if (content.includes("direnv hook")) {
+        hookConfigured = true;
+        break;
+      }
+    }
+  }
+
+  if (!hookConfigured) {
+    return {
+      name: "direnv",
+      ok: false,
+      message: `${version} (shell hook not configured)`,
+      fix: 'Add to your shell config: eval "$(direnv hook $SHELL)" - see README for details',
+    };
+  }
+
+  return {
+    name: "direnv",
+    ok: true,
+    message: version,
+  };
+}
+
 async function checkSccache(): Promise<CheckResult> {
   const version = await getCommandVersion("sccache");
   if (!version) {
@@ -258,6 +302,7 @@ async function runAllChecks(): Promise<CheckResult[]> {
     await checkCargo(),
     await checkCmake(),
     await checkProtobuf(),
+    await checkDirenv(),
     await checkSccache(),
     await checkRepo(),
     await checkConfig(),

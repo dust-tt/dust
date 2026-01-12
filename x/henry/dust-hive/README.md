@@ -25,11 +25,43 @@ brew install --cask orbstack
 # Temporal CLI (workflow engine)
 brew install temporal
 
+# direnv (auto-load environment variables)
+brew install direnv
+
 # sccache (Rust compilation cache - speeds up builds across worktrees)
 brew install sccache
 ```
 
-Then configure cargo to use sccache by adding to `~/.cargo/config.toml`:
+### direnv setup
+
+1. **Add the shell hook** to your shell config:
+
+   **For zsh** (`~/.zshrc`):
+   ```bash
+   eval "$(direnv hook zsh)"
+   ```
+
+   **For bash** (`~/.bashrc`):
+   ```bash
+   eval "$(direnv hook bash)"
+   ```
+
+2. **Silence verbose output** by creating `~/.config/direnv/direnv.toml`:
+   ```bash
+   mkdir -p ~/.config/direnv
+   cat > ~/.config/direnv/direnv.toml << 'EOF'
+   [global]
+   hide_env_diff = true
+   EOF
+   ```
+
+This enables automatic environment loading when you `cd` into any dust-hive worktree. The `.envrc` file in each worktree sources the environment variables for that environment.
+
+After adding the hook, restart your shell or run `source ~/.zshrc` (or `~/.bashrc`).
+
+### sccache setup
+
+Configure cargo to use sccache by adding to `~/.cargo/config.toml`:
 
 ```toml
 [build]
