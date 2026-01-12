@@ -202,7 +202,7 @@ export function FeedbackSelector({
                       <Button
                         key={answer}
                         size="xs"
-                        color={isSelected ? "primary" : "outline"}
+                        variant={isSelected ? "primary" : "outline"}
                         label={answer}
                         onClick={
                           isSubmittingThumb
