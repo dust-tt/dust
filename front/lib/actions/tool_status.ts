@@ -109,6 +109,14 @@ export async function setUserAlwaysApprovedTool({
   mcpServerId: string;
   functionCallName: string;
 }) {
+  if (!mcpServerId) {
+    throw new Error("mcpServerId is required");
+  }
+
+  if (!functionCallName) {
+    throw new Error("functionCallName is required");
+  }
+
   await user.upsertMetadataArray(
     getToolsValidationKey(mcpServerId),
     functionCallName
@@ -135,6 +143,14 @@ export async function hasUserAlwaysApprovedTool({
   mcpServerId: string;
   functionCallName: string;
 }) {
+  if (!mcpServerId) {
+    throw new Error("mcpServerId is required");
+  }
+
+  if (!functionCallName) {
+    throw new Error("functionCallName is required");
+  }
+
   const metadata = await user.getMetadataAsArray(
     getToolsValidationKey(mcpServerId)
   );
