@@ -1734,6 +1734,7 @@ async function isOutsideRootNodes({
   logger.info(
     {
       driveItemId: driveItem.id,
+      driveItemName: driveItem.name,
       rootNodeIds,
       internalId: getDriveItemInternalId(driveItem),
       driveInternalId: getDriveInternalIdFromItem(driveItem),
