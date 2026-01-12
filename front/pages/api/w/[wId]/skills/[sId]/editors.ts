@@ -138,7 +138,7 @@ async function handler(
             status_code: 403,
             api_error: {
               type: "workspace_auth_error",
-              message: `Only builders and admins can be added as skill editors.`,
+              message: "Only builders can be added as skill editors.",
             },
           });
         }
