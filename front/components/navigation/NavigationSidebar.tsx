@@ -14,7 +14,13 @@ import {
 } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useCallback, useContext, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import type { SidebarNavigation } from "@app/components/navigation/config";
@@ -100,20 +106,23 @@ export const NavigationSidebar = React.forwardRef<
   const hasIncidentBanner =
     appStatus?.dustStatus !== null || appStatus?.providersStatus !== null;
   const endDate = subscription.endDate;
+  const thresholdMs = 30 * 24 * 60 * 60 * 1000;
+  // Capture initial timestamp in a ref to avoid re-computation on re-renders.
   // eslint-disable-next-line react-hooks/purity
-  const in30Days = Date.now() + 30 * 24 * 60 * 60 * 1000;
+  const nowRef = useRef(Date.now());
+  // Show subscription end banner for paid plans only (free plans use the new TrialBanner).
+  const showSubscriptionEndBanner =
+    !hasIncidentBanner &&
+    endDate !== null &&
+    endDate < nowRef.current + thresholdMs &&
+    !isFreePlan(subscription.plan.code);
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
       <div className="flex flex-col gap-2 pt-3">
         {appStatus && <AppStatusBanner appStatus={appStatus} />}
-        {!hasIncidentBanner && endDate && endDate < in30Days && (
-          <SubscriptionEndBanner
-            endDate={endDate}
-            startDate={subscription.startDate}
-            isFreePlan={isFreePlan(subscription.plan.code)}
-            workspaceId={owner.sId}
-          />
+        {showSubscriptionEndBanner && (
+          <SubscriptionEndBanner endDate={endDate} />
         )}
         {subscription.paymentFailingSince && isAdmin(owner) && (
           <SubscriptionPastDueBanner />
@@ -316,56 +325,17 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   return null;
 }
 
-function getTrialDaysRemainingVariant(
-  startDateMs: number | null,
-  endDateMs: number
-): "success" | "warning" | "danger" {
-  if (!startDateMs) {
-    // If no start date, default to warning (should not happen)
-    return "warning";
-  }
-
-  const totalDurationMs = endDateMs - startDateMs;
-  const remainingMs = endDateMs - Date.now();
-  const remainingPercentage = remainingMs / totalDurationMs;
-
-  if (remainingPercentage > 0.4) {
-    return "success";
-  } else if (remainingPercentage > 0.1) {
-    return "warning";
-  } else {
-    return "danger";
-  }
-}
-
-function SubscriptionEndBanner({
-  endDate,
-  startDate,
-  isFreePlan,
-  workspaceId,
-}: {
-  endDate: number;
-  startDate: number | null;
-  isFreePlan: boolean;
-  workspaceId: string;
-}) {
+function SubscriptionEndBanner({ endDate }: { endDate: number }) {
   const formattedEndDate = new Date(endDate).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
 
-  const variant = isFreePlan
-    ? getTrialDaysRemainingVariant(startDate, endDate)
-    : "info";
-  const title = isFreePlan
-    ? `Free trial ending on ${formattedEndDate}`
-    : `Subscription ending on ${formattedEndDate}`;
-
   return (
     <StatusBanner
-      variant={variant}
-      title={title}
+      variant="info"
+      title={`Subscription ending on ${formattedEndDate}`}
       description={
         <>
           Your connections and member access will be removed after this date.
@@ -378,17 +348,7 @@ function SubscriptionEndBanner({
             here
           </Link>
           .
-          {isFreePlan && (
-            <p className="mt-2">Keep everything. Subscribe now.</p>
-          )}
         </>
-      }
-      footer={
-        isFreePlan && (
-          <Link href={`/w/${workspaceId}/subscribe`} className="no-underline">
-            <Button label="Subscribe to Dust" variant="primary" />
-          </Link>
-        )
       }
     />
   );

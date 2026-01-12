@@ -6,6 +6,7 @@ import React from "react";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { Navigation } from "@app/components/navigation/Navigation";
+import { TrialBanner } from "@app/components/navigation/TrialBanner";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { NavigationLoadingOverlay } from "@app/components/sparkle/NavigationLoadingOverlay";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
@@ -95,21 +96,24 @@ export default function AppContentLayout({
       />
       <div
         className={cn(
-          "relative h-full w-full flex-1 overflow-hidden",
+          "relative flex h-full w-full flex-1 flex-col overflow-hidden",
           "bg-background text-foreground",
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
-        <NavigationLoadingOverlay />
-        {/* Temporary measure to preserve title existence on smaller screens.
-         * Page has no title, prepend empty AppLayoutTitle. */}
-        {loaded && !hasTitle && (
-          <>
-            <AppLayoutTitle />
-            {children}
-          </>
-        )}
-        {loaded && hasTitle && children}
+        <TrialBanner owner={owner} subscription={subscription} />
+        <div className="relative flex-1 overflow-hidden">
+          <NavigationLoadingOverlay />
+          {/* Temporary measure to preserve title existence on smaller screens.
+           * Page has no title, prepend empty AppLayoutTitle. */}
+          {loaded && !hasTitle && (
+            <>
+              <AppLayoutTitle />
+              {children}
+            </>
+          )}
+          {loaded && hasTitle && children}
+        </div>
       </div>
     </div>
   );
