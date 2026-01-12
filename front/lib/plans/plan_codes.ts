@@ -32,6 +32,9 @@ export const isFriendsAndFamilyPlan = (planCode: string) =>
 export const isFreePlan = (planCode: string) =>
   !isEntreprisePlanPrefix(planCode) && !isProPlanPrefix(planCode);
 
+export const isFreeTrialPhonePlan = (planCode: string) =>
+  planCode === FREE_TRIAL_PHONE_PLAN_CODE;
+
 // Early plan when anyone could create a dust account
 export const isOldFreePlan = (planCode: string) =>
   planCode === FREE_TEST_PLAN_CODE;
