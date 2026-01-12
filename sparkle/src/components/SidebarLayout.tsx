@@ -223,6 +223,7 @@ export const SidebarLayout = React.forwardRef<
           > .allotment-module_splitViewContainer__rQnVa
           > .allotment-module_splitViewView__MGZ6O:not(:first-child)::before {
           width: 1px;
+          transition: width 200ms, background-color 200ms;
         }
       `}</style>
       {/* Hover zone when collapsed */}

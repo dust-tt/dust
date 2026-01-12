@@ -213,7 +213,7 @@ const NavigationListItemAction = React.forwardRef<
       data-sidebar="menu-action"
       className={cn(
         "s-absolute s-right-2 s-top-1.5 s-opacity-0 s-transition-opacity",
-        "s-opacity-0 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100 group-data-[selected=true]/menu-item:s-opacity-100",
+        "s-opacity-0 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100",
         className
       )}
       {...props}

@@ -1,5 +1,4 @@
 import {
-  AtomIcon,
   Avatar,
   BoltOffIcon,
   BookOpenIcon,
@@ -7,22 +6,20 @@ import {
   Card,
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
+  CheckDoubleIcon,
   Cog6ToothIcon,
-  ContactsRobotIcon,
   ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
-  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   HeartIcon,
-  InboxIcon,
   LightbulbIcon,
   ListSelectIcon,
   LogoutIcon,
@@ -45,7 +42,6 @@ import {
   SlackLogo,
   SpaceClosedIcon,
   SpaceOpenIcon,
-  StarStrokeIcon,
   Tabs,
   TabsContent,
   TabsList,
@@ -321,6 +317,26 @@ function DustMain() {
     return getConversationsBySpaceId(selectedSpaceId);
   }, [selectedSpaceId]);
 
+  // Select 2-5 random conversations for inbox with status assignment
+  const inboxConversations = useMemo(() => {
+    if (filteredConversations.length === 0) return [];
+
+    // Randomly select 2-5 conversations
+    const count = Math.floor(Math.random() * 4) + 2; // 2-5
+    const shuffled = [...filteredConversations].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(
+      0,
+      Math.min(count, filteredConversations.length)
+    );
+
+    // Assign statuses: ~25% probability of "blocked", rest "idle"
+    return selected.map((conversation) => {
+      const status: "idle" | "unread" | "blocked" | "error" =
+        Math.random() < 0.25 ? "blocked" : "idle";
+      return { conversation, status };
+    });
+  }, [filteredConversations]);
+
   const getConversationMoreMenu = (conversation: Conversation) => {
     const participants = getRandomParticipants(conversation);
     return (
@@ -430,7 +446,7 @@ function DustMain() {
         }
         className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
-        <TabsList className="s-mt-2 s-px-2">
+        <TabsList className="s-mt-3 s-px-2">
           <TabsTrigger
             value="chat"
             label="Chat"
@@ -462,6 +478,43 @@ function DustMain() {
                 label="New"
               />
             </div>
+            {inboxConversations.length > 0 && (
+              <NavigationListCollapsibleSection
+                label="Inbox"
+                className="s-border-b s-border-t s-border-border s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
+                actionOnHover={false}
+                action={
+                  <Button
+                    size="xmini"
+                    icon={CheckDoubleIcon}
+                    variant="ghost"
+                    aria-label="Mark all as read"
+                    tooltip="Mark all as read"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // Add action logic here
+                    }}
+                  />
+                }
+              >
+                {inboxConversations.map(({ conversation, status }) => (
+                  <NavigationListItem
+                    key={conversation.id}
+                    label={conversation.title}
+                    selected={conversation.id === selectedConversationId}
+                    status={status}
+                    moreMenu={getConversationMoreMenu(conversation)}
+                    onClick={() => {
+                      // Clear previousSpaceId when navigating from sidebar
+                      setPreviousSpaceId(null);
+                      setSelectedConversationId(conversation.id);
+                      setSelectedSpaceId(null);
+                    }}
+                  />
+                ))}
+              </NavigationListCollapsibleSection>
+            )}
             {/* Collapsible Sections */}
             <NavigationList className="s-px-2">
               {(filteredSpaces.length > 0 || !searchText.trim()) && (
