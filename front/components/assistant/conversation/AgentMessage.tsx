@@ -30,8 +30,9 @@ import { markdownCitationToAttachmentCitation } from "@app/components/assistant/
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
-import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
+import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
+import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
@@ -81,6 +82,7 @@ import type {
 } from "@app/types";
 import {
   assertNever,
+  isGlobalAgentId,
   isInteractiveContentFileContentType,
   isSupportedImageContentType,
 } from "@app/types";
@@ -89,7 +91,7 @@ interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
   agentMessage: MessageTemporaryState;
-  messageFeedback: FeedbackSelectorBaseProps;
+  messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
   triggeringUser: UserType | null;
@@ -266,7 +268,16 @@ export function AgentMessage({
     }
   }, [shouldStream, generationContext, sId, conversationId]);
 
-  const isGlobalAgent = isGlobalAgentId(agentMessage.configuration.sId);
+  const PopoverContent = useCallback(
+    () => (
+      <FeedbackSelectorPopoverContent
+        owner={owner}
+        agentMessageToRender={agentMessage}
+        isGlobalAgent={isGlobalAgentId(agentMessage.configuration.sId)}
+      />
+    ),
+    [owner, agentMessage]
+  );
 
   async function handleCopyToClipboard() {
     const messageContent = agentMessage.content ?? "";
@@ -469,9 +480,7 @@ export function AgentMessage({
       <FeedbackSelector
         key="feedback-selector"
         {...messageFeedback}
-        owner={owner}
-        agentConfigurationId={agentMessage.configuration.sId}
-        isGlobalAgent={isGlobalAgent}
+        getPopoverInfo={PopoverContent}
       />
     );
   }

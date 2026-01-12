@@ -1,53 +1,56 @@
-import { Avatar, Page } from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
 
-import { useEditors } from "@app/lib/swr/agent_editors";
-import type { LightWorkspaceType } from "@app/types";
+import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
+import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
 
 interface FeedbackSelectorPopoverContentProps {
+  agentMessageToRender: LightAgentMessageType;
   owner: LightWorkspaceType;
-  agentConfigurationId: string;
   isGlobalAgent: boolean;
 }
 
 export function FeedbackSelectorPopoverContent({
   owner,
-  agentConfigurationId,
+  agentMessageToRender,
   isGlobalAgent,
 }: FeedbackSelectorPopoverContentProps) {
-  const { editors } = useEditors({
-    owner,
-    agentConfigurationId,
-    disabled: isGlobalAgent,
+  const { agentLastAuthor } = useAgentConfigurationLastAuthor({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentMessageToRender.configuration.sId,
   });
 
   if (isGlobalAgent) {
     return (
       <div className="mb-4 mt-2 flex flex-col gap-2">
         <Page.P variant="secondary">
-          Your feedback will be available to Dust for future improvement to our
-          default agents.
+          Submitting feedback will help Dust improve your global agents.
         </Page.P>
       </div>
     );
   }
 
-  if (editors.length === 0) {
-    return null;
-  }
-
-  const avatarProps = editors.map((editor) => ({
-    name: `${editor.firstName} ${editor.lastName}`,
-    visual: editor.image ?? undefined,
-  }));
-
   return (
-    <div className="mb-4 mt-2 flex flex-col gap-2">
-      <div className="flex items-center gap-2">
+    agentLastAuthor && (
+      <div className="mb-4 mt-2 flex flex-col gap-2">
         <Page.P variant="secondary">
-          Your feedback is available to editors of the agent:
+          <span>
+            Your feedback is available to editors of the agent. The last agent
+            editor is:{" "}
+          </span>
+          <span className="inline-flex items-center gap-2">
+            {agentLastAuthor.image && (
+              <img
+                src={agentLastAuthor.image}
+                alt={agentLastAuthor.firstName}
+                className="h-8 w-8 rounded-full"
+              />
+            )}
+            <span className="font-medium text-foreground dark:text-foreground-night">
+              {`${agentLastAuthor.firstName} ${agentLastAuthor.lastName}`}
+            </span>
+          </span>
         </Page.P>
-        <Avatar.Stack avatars={avatarProps} size="xs" nbVisibleItems={4} />
       </div>
-    </div>
+    )
   );
 }

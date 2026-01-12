@@ -1,5 +1,4 @@
 import { usePlatform } from "@app/shared/context/PlatformContext";
-import { assertNeverAndIgnore } from "@app/shared/lib/assertNeverAndIgnore";
 import { retryMessage } from "@app/shared/lib/conversation";
 import { formatTimestring } from "@app/shared/lib/utils";
 import type { StoredUser } from "@app/shared/services/auth";
@@ -10,7 +9,7 @@ import type {
 import { messageReducer } from "@app/ui/components/agents/state/messageReducer";
 import { ActionValidationContext } from "@app/ui/components/conversation/ActionValidationProvider";
 import { AgentMessageActions } from "@app/ui/components/conversation/AgentMessageActions";
-import type { FeedbackSelectorBaseProps } from "@app/ui/components/conversation/FeedbackSelector";
+import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/ui/components/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/ui/components/conversation/GenerationContextProvider";
 import { MCPServerAuthRequired } from "@app/ui/components/conversation/MCPServerAuthRequired";
@@ -43,6 +42,7 @@ import type {
   WebsearchResultResourceType,
 } from "@dust-tt/client";
 import {
+  assertNever,
   isAgentMessage,
   isRunAgentResultResourceType,
   isSearchResultResourceType,
@@ -67,6 +67,7 @@ import {
   FaviconIcon,
   InformationCircleIcon,
   Markdown,
+  Page,
   Popover,
   useCopyToClipboard,
   useSendNotification,
@@ -84,6 +85,22 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { visit } from "unist-util-visit";
+
+export const FeedbackSelectorPopoverContent = ({
+  isGlobalAgent,
+}: {
+  isGlobalAgent: boolean;
+}) => {
+  return (
+    <div className="mb-4 mt-2 flex flex-col gap-2">
+      <Page.P variant="secondary">
+        {isGlobalAgent
+          ? "Submitting feedback will help Dust improve your global agents."
+          : "Your feedback is available to editors of the agent."}
+      </Page.P>
+    </div>
+  );
+};
 
 export function visualizationDirective() {
   return (tree: any) => {
@@ -175,7 +192,7 @@ interface AgentMessageProps {
   isLastMessage: boolean;
   message: AgentMessagePublicType;
   userAndAgentMessages: (UserMessageType | AgentMessagePublicType)[];
-  messageFeedback: FeedbackSelectorBaseProps;
+  messageFeedback: FeedbackSelectorProps;
   owner: LightWorkspaceType;
   user: StoredUser;
 }
@@ -269,8 +286,7 @@ export function AgentMessage({
       case "created":
         return true;
       default:
-        assertNeverAndIgnore(messageStreamState.message.status);
-        return false;
+        assertNever(messageStreamState.message.status);
     }
   })();
 
@@ -475,6 +491,11 @@ export function AgentMessage({
 
   const isGlobalAgent = message.configuration.id === -1;
 
+  const PopoverContent = useCallback(
+    () => <FeedbackSelectorPopoverContent isGlobalAgent={isGlobalAgent} />,
+    [isGlobalAgent]
+  );
+
   async function handleCopyToClipboard() {
     const messageContent = agentMessageToRender.content || "";
     let footnotesMarkdown = "";
@@ -632,7 +653,7 @@ export function AgentMessage({
           <FeedbackSelector
             key="feedback-selector"
             {...messageFeedback}
-            isGlobalAgent={isGlobalAgent}
+            getPopoverInfo={PopoverContent}
           />
         );
       }
@@ -649,7 +670,7 @@ export function AgentMessage({
     isRetryHandlerProcessing,
     shouldStream,
     messageFeedback,
-    isGlobalAgent,
+    PopoverContent,
   ]);
 
   const renderName = useCallback(
