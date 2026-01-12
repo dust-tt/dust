@@ -38,6 +38,7 @@ import {
   ACTIVE_ROLES,
   assertNever,
   Err,
+  isBuilder,
   md5,
   Ok,
   removeNulls,
@@ -195,6 +196,7 @@ export async function searchMembers(
     searchTerm?: string;
     searchEmails?: string[];
     groupKind?: Omit<GroupKind, "system">;
+    buildersOnly?: boolean;
   },
   paginationParams: SearchMembersPaginationParams
 ): Promise<{ members: UserTypeWithWorkspace[]; total: number }> {
@@ -273,7 +275,15 @@ export async function searchMembers(
     })
   );
 
-  return { members: usersWithWorkspace, total };
+  let filteredUsers = usersWithWorkspace;
+  if (options.buildersOnly) {
+    filteredUsers = usersWithWorkspace.filter((u) => isBuilder(u.workspace));
+  }
+
+  return {
+    members: removeNulls(filteredUsers),
+    total: options.buildersOnly ? filteredUsers.length : total,
+  };
 }
 
 export async function getMembersCount(

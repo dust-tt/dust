@@ -273,4 +273,153 @@ describe("GET /api/w/[wId]/members/search", () => {
     expect(data.total).toBe(4);
     expect(data.members).toHaveLength(4);
   });
+
+  it("filters to only builders and admins when buildersOnly=true", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    // Create users with different roles
+    const users = await Promise.all([
+      UserFactory.basic(),
+      UserFactory.basic(),
+      UserFactory.basic(),
+      UserFactory.basic(),
+    ]);
+
+    await Promise.all([
+      MembershipFactory.associate(workspace, users[0], { role: "admin" }),
+      MembershipFactory.associate(workspace, users[1], { role: "builder" }),
+      MembershipFactory.associate(workspace, users[2], { role: "user" }),
+      MembershipFactory.associate(workspace, users[3], { role: "user" }),
+    ]);
+
+    req.query.buildersOnly = "true";
+    req.query.offset = "0";
+    req.query.limit = "25";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    // Should return 3 members: the admin from createPrivateApiMockRequest + 2 builders
+    expect(data.total).toBe(3);
+    expect(data.members).toHaveLength(3);
+    // Verify all returned members are builders or admins
+    data.members.forEach((member: any) => {
+      expect(["admin", "builder"]).toContain(member.workspace.role);
+    });
+  });
+
+  it("returns all members when buildersOnly=false", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const users = await Promise.all([
+      UserFactory.basic(),
+      UserFactory.basic(),
+    ]);
+
+    await Promise.all([
+      MembershipFactory.associate(workspace, users[0], { role: "builder" }),
+      MembershipFactory.associate(workspace, users[1], { role: "user" }),
+    ]);
+
+    req.query.buildersOnly = "false";
+    req.query.offset = "0";
+    req.query.limit = "25";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.total).toBe(3);
+    expect(data.members).toHaveLength(3);
+  });
+
+  it("returns all members when buildersOnly is not provided", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const users = await Promise.all([
+      UserFactory.basic(),
+      UserFactory.basic(),
+    ]);
+
+    await Promise.all([
+      MembershipFactory.associate(workspace, users[0], { role: "builder" }),
+      MembershipFactory.associate(workspace, users[1], { role: "user" }),
+    ]);
+
+    req.query.offset = "0";
+    req.query.limit = "25";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.total).toBe(3);
+    expect(data.members).toHaveLength(3);
+  });
+
+  it("combines buildersOnly filter with searchTerm", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const users = await Promise.all([
+      UserFactory.basic(),
+      UserFactory.basic(),
+      UserFactory.basic(),
+    ]);
+
+    await Promise.all([
+      MembershipFactory.associate(workspace, users[0], { role: "builder" }),
+      MembershipFactory.associate(workspace, users[1], { role: "builder" }),
+      MembershipFactory.associate(workspace, users[2], { role: "user" }),
+    ]);
+
+    // Search for a specific builder
+    req.query.searchTerm = users[0].email;
+    req.query.buildersOnly = "true";
+    req.query.offset = "0";
+    req.query.limit = "25";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.total).toBe(1);
+    expect(data.members).toHaveLength(1);
+    expect(data.members[0].email).toBe(users[0].email);
+    expect(data.members[0].workspace.role).toBe("builder");
+  });
+
+  it("returns empty when searching for non-builder with buildersOnly=true", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    req.query.searchTerm = user.email;
+    req.query.buildersOnly = "true";
+    req.query.offset = "0";
+    req.query.limit = "25";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.total).toBe(0);
+    expect(data.members).toHaveLength(0);
+  });
 });
