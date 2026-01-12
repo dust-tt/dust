@@ -38,7 +38,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
-import { isFreePlan } from "@app/lib/plans/plan_codes";
+import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -1711,8 +1711,8 @@ async function isMessagesLimitReached(
   // anything (no LLM call) so we don't count them toward the limit.
   // The return value won't account for the parallel calls depending on network timing
   // but we are fine with a little bit of overusage.
-  // For free plans, don't multiply by activeSeats to prevent increased limits with more users.
-  const effectiveMaxMessages = isFreePlan(plan.code)
+  // For free phone plans, don't multiply by activeSeats to prevent increased limits with more users.
+  const effectiveMaxMessages = isFreeTrialPhonePlan(plan.code)
     ? maxMessages
     : maxMessages * activeSeats;
   const agentMentions = mentions.filter(isAgentMention);

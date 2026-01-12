@@ -1,5 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
-import { isFreePlan } from "@app/lib/plans/plan_codes";
+import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import {
   expireRateLimiterKey,
@@ -56,9 +56,9 @@ export async function getMessageUsageCount(auth: Authenticator): Promise<{
     return { count: 0, limit: -1 };
   }
 
-  // For free plans, don't multiply by activeSeats to prevent increased limits with more users.
+  // For free phone plans, don't multiply by activeSeats to prevent increased limits with more users.
   const activeSeats = await countActiveSeatsInWorkspaceCached(workspace.sId);
-  const effectiveLimit = isFreePlan(plan.code)
+  const effectiveLimit = isFreeTrialPhonePlan(plan.code)
     ? maxMessages
     : maxMessages * activeSeats;
 
