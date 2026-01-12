@@ -27,8 +27,12 @@ import { Err, Ok, sanitizeString } from "@app/types";
 
 // WorkOS custom attributes to sync to user metadata.
 // These are normalized by WorkOS and can come from SCIM or SSO.
-const CUSTOM_ATTRIBUTES_TO_SYNC = ["job_title", "department_name"] as const;
-const WORKOS_METADATA_KEY_PREFIX = "workos:";
+export const CUSTOM_ATTRIBUTES_TO_SYNC = [
+  "job_title",
+  "department_name",
+] as const;
+export type CustomAttributeKey = (typeof CUSTOM_ATTRIBUTES_TO_SYNC)[number];
+export const WORKOS_METADATA_KEY_PREFIX = "workos:";
 
 // Syncs custom attributes to user metadata.
 // Stores attributes with workspace scope and "workos:" prefix.

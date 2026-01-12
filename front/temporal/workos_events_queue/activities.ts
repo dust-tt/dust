@@ -31,7 +31,12 @@ import {
 } from "@app/lib/api/workspace_domains";
 import { Authenticator } from "@app/lib/auth";
 import type { ExternalUser } from "@app/lib/iam/provider";
-import { createOrUpdateUser } from "@app/lib/iam/users";
+import type { CustomAttributeKey } from "@app/lib/iam/users";
+import {
+  createOrUpdateUser,
+  CUSTOM_ATTRIBUTES_TO_SYNC,
+  WORKOS_METADATA_KEY_PREFIX,
+} from "@app/lib/iam/users";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -50,13 +55,6 @@ const logger = mainLogger.child(
 
 const ADMIN_GROUP_NAME = "dust-admins";
 const BUILDER_GROUP_NAME = "dust-builders";
-
-// WorkOS custom attributes to sync to user metadata.
-// These are normalized by WorkOS and can come from SCIM or SSO.
-const CUSTOM_ATTRIBUTES_TO_SYNC = ["job_title", "department_name"] as const;
-type CustomAttributeKey = (typeof CUSTOM_ATTRIBUTES_TO_SYNC)[number];
-
-const WORKOS_METADATA_KEY_PREFIX = "workos:";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
