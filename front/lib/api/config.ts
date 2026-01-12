@@ -60,7 +60,7 @@ const config = {
   getStripeSecretWebhookKey: (): string => {
     return EnvironmentConfig.getEnvVariable("STRIPE_SECRET_WEBHOOK_KEY");
   },
-  // Twilio (workspace verification).
+  // Twilio (workspace verification - OTP).
   getTwilioAccountSid: (): string => {
     return EnvironmentConfig.getEnvVariable("TWILIO_ACCOUNT_SID");
   },
@@ -69,6 +69,10 @@ const config = {
   },
   getTwilioVerifyServiceSid: (): string => {
     return EnvironmentConfig.getEnvVariable("TWILIO_VERIFY_SERVICE_SID");
+  },
+  // Persona (workspace verification - phone risk).
+  getPersonaApiKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("PERSONA_API_KEY");
   },
   getServiceAccount: (): string => {
     return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");

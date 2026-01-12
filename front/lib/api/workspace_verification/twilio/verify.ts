@@ -33,9 +33,9 @@ export async function sendOtp(
       err.message.includes("Max send attempts reached") ||
       err.message.includes("rate limit")
     ) {
-      throw new Error(`Twilio rate limit exceeded: ${err.message}`);
+      throw new Error("Too many attempts. Please try again later.");
     }
-    throw new Error(`Failed to send OTP: ${err.message}`);
+    throw new Error("Failed to send verification code. Please try again.");
   }
 
   return new Ok({
@@ -86,7 +86,7 @@ export async function checkOtp(
         )
       );
     }
-    throw new Error(`Failed to verify code: ${err.message}`);
+    throw new Error("Failed to verify code. Please try again.");
   }
 
   if (verificationCheck.status !== "approved") {
