@@ -57,7 +57,10 @@ Each dust-hive worktree contains a `.envrc` file that automatically loads the en
 - No need to manually source `env.sh` or set environment variables
 - Variables like `FRONT_DATABASE_URI`, `CORE_API`, `CONNECTORS_API` are pre-configured for the environment's port range
 
-**Prerequisites:** direnv must be installed and hooked into your shell. Run `dust-hive doctor` to verify.
+**Troubleshooting:** If you encounter errors about missing environment variables, the user may not have direnv configured. In that case, manually source the environment:
+```bash
+source ~/.dust-hive/envs/{ENV_NAME}/env.sh
+```
 
 ## Environment States
 
