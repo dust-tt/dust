@@ -1,3 +1,4 @@
+import { ContentMessage } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -8,7 +9,7 @@ import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { SpaceType } from "@app/types";
-import { removeNulls } from "@app/types";
+import { pluralize, removeNulls } from "@app/types";
 
 export function SkillBuilderRequestedSpacesSection() {
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
@@ -66,6 +67,19 @@ export function SkillBuilderRequestedSpacesSection() {
           Set what data the skill can access and who can use it.
         </p>
       </div>
+      {nonGlobalSpacesUsedInActions.length > 0 && (
+        <div className="mb-4 w-full">
+          <ContentMessage variant="golden" size="lg">
+            Based on your selection, this skill can only be used by users with
+            access to space
+            {pluralize(nonGlobalSpacesUsedInActions.length)} :{" "}
+            <strong>
+              {nonGlobalSpacesUsedInActions.map((v) => v.name).join(", ")}
+            </strong>
+            .
+          </ContentMessage>
+        </div>
+      )}
       <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
     </div>
   );
