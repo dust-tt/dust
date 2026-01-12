@@ -67,15 +67,15 @@ export async function getExecutionStatusFromConfig(
 
       const { agentId, toolInputs } = context;
 
-      const approvalHoldingArgs =
-        actionConfiguration.approvalHoldingArguments ?? [];
+      const argumentsRequiringApproval =
+        actionConfiguration.argumentsRequiringApproval ?? [];
 
       const userHasApproved = await hasUserApprovedToolWithArgs({
         user,
         mcpServerId: actionConfiguration.toolServerId,
         toolName: actionConfiguration.name,
         agentId,
-        approvalHoldingArgs,
+        argumentsRequiringApproval,
         toolInputs,
       });
 
@@ -157,15 +157,15 @@ function buildArgApprovalKey(
   return `argApprovals:${mcpServerId}:${toolName}:${sortedPairs}`;
 }
 
-// Extracts the values of the approval-holding arguments from the tool inputs,
+// Extracts the values of the approval-requiring arguments from the tool inputs,
 // converting them to strings for storage. Skips any arguments that are not provided.
-function extractApprovalHoldingArgValues(
-  approvalHoldingArgs: string[],
+function extractArgRequiringApprovalValues(
+  argumentsRequiringApproval: string[],
   toolInputs: Record<string, unknown>
 ): Record<string, string> {
   const result: Record<string, string> = {};
 
-  for (const argName of approvalHoldingArgs) {
+  for (const argName of argumentsRequiringApproval) {
     const value = toolInputs[argName];
     if (value === undefined || value === null) {
       // Skip optional args that are not provided
@@ -192,22 +192,22 @@ export async function hasUserApprovedToolWithArgs({
   mcpServerId,
   toolName,
   agentId,
-  approvalHoldingArgs,
+  argumentsRequiringApproval,
   toolInputs,
 }: {
   user: UserResource;
   mcpServerId: string;
   toolName: string;
   agentId: string;
-  approvalHoldingArgs: string[];
+  argumentsRequiringApproval: string[];
   toolInputs: Record<string, unknown>;
 }): Promise<Result<boolean, Error>> {
-  const argValues = extractApprovalHoldingArgValues(
-    approvalHoldingArgs,
+  const argValues = extractArgRequiringApprovalValues(
+    argumentsRequiringApproval,
     toolInputs
   );
 
-  // If no approval-holding args have values, fall back to tool-level check
+  // If no approval-requiring args have values, fall back to tool-level check
   if (Object.keys(argValues).length === 0) {
     return new Ok(false);
   }
@@ -223,22 +223,22 @@ export async function setUserApprovedToolWithArgs({
   mcpServerId,
   toolName,
   agentId,
-  approvalHoldingArgs,
+  argumentsRequiringApproval,
   toolInputs,
 }: {
   user: UserResource;
   mcpServerId: string;
   toolName: string;
   agentId: string;
-  approvalHoldingArgs: string[];
+  argumentsRequiringApproval: string[];
   toolInputs: Record<string, unknown>;
 }): Promise<Result<void, Error>> {
-  const argValues = extractApprovalHoldingArgValues(
-    approvalHoldingArgs,
+  const argValues = extractArgRequiringApprovalValues(
+    argumentsRequiringApproval,
     toolInputs
   );
 
-  // If no approval-holding args have values, don't store anything.
+  // If no approval-requiring args have values, don't store anything.
   if (Object.keys(argValues).length === 0) {
     return new Ok(undefined);
   }
