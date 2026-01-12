@@ -35,31 +35,31 @@ export function SkillInstructionsHistory({
   selectedConfig,
   owner,
 }: SkillInstructionsHistoryProps) {
-  const authorIdsToLookup = useMemo(() => {
+  const editedByIdsToLookup = useMemo(() => {
     const ids = new Set<number>();
     history.forEach((config) => {
-      if (config.authorId) {
-        ids.add(Number(config.authorId));
+      if (config.editedBy) {
+        ids.add(Number(config.editedBy));
       }
     });
 
     return Array.from(ids);
   }, [history]);
 
-  const { members: authorLookupMembers, isMembersLookupLoading } =
+  const { members: editedByLookupMembers, isMembersLookupLoading } =
     useMembersLookup({
       workspaceId: owner.sId,
-      memberIds: authorIdsToLookup,
-      disabled: authorIdsToLookup.length === 0,
+      memberIds: editedByIdsToLookup,
+      disabled: editedByIdsToLookup.length === 0,
     });
 
-  const authorMap = useMemo(() => {
+  const editedByUserMap = useMemo(() => {
     const map: Record<string, string> = {};
-    authorLookupMembers.forEach((user) => {
+    editedByLookupMembers.forEach((user) => {
       map[user.id.toString()] = user.fullName || user.firstName || "Unknown";
     });
     return map;
-  }, [authorLookupMembers]);
+  }, [editedByLookupMembers]);
 
   const formatVersionLabel = useCallback((config: SkillWithVersionType) => {
     return config.createdAt
@@ -67,14 +67,14 @@ export function SkillInstructionsHistory({
       : `Version ${config.version}`;
   }, []);
 
-  const getAuthorName = useCallback(
+  const getEditedByName = useCallback(
     (config: SkillType) => {
-      if (!config.authorId) {
+      if (!config.editedBy) {
         return "System";
       }
-      return authorMap[config.authorId.toString()] || "Unknown";
+      return editedByUserMap[config.editedBy.toString()] || "Unknown";
     },
-    [authorMap]
+    [editedByUserMap]
   );
 
   // Collapse successive versions that contain the exact same instructions,
@@ -146,7 +146,7 @@ export function SkillInstructionsHistory({
                   <div className="flex flex-col">
                     <span>{formatVersionLabel(config)}</span>
                     <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      by {getAuthorName(config)}
+                      by {getEditedByName(config)}
                     </span>
                   </div>
                 </div>

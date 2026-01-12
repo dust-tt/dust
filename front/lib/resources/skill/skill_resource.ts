@@ -146,7 +146,7 @@ export interface SkillResource extends ReadonlyAttributesType<SkillConfiguration
  * - Type-safe constraints: Sequelize operators only available with `onlyCustom: true`
  *
  * ### What We Pay
- * - Global skills use synthetic database fields (id: -1, authorId: -1)
+ * - Global skills use synthetic database fields (id: -1, editedBy: -1)
  * - Mutations (update/delete) require runtime checks to reject global skills
  * - Mixed queries limited to simple equality filters (name, sId, status)
  * - Some internal complexity to distinguish types via `globalSId` presence
@@ -910,7 +910,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new SkillResource(
       this.model,
       {
-        authorId: -1,
+        editedBy: -1,
         createdAt: new Date(),
         agentFacingDescription: def.agentFacingDescription,
         userFacingDescription: def.userFacingDescription,
@@ -1110,7 +1110,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         {
           id: this.id,
           workspaceId: workspace.id,
-          authorId: versionModel.authorId,
+          editedBy: versionModel.editedBy,
           createdAt: versionModel.createdAt,
           updatedAt: versionModel.updatedAt,
           status: versionModel.status,
@@ -1140,22 +1140,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.editorGroup?.getActiveMembers(auth) ?? null;
   }
 
-  async fetchAuthor(auth: Authenticator): Promise<UserResource | null> {
-    if (this.authorId === null) {
+  async fetchEditedByUser(auth: Authenticator): Promise<UserResource | null> {
+    if (this.editedBy === null) {
       return null;
     }
 
-    const author = await UserResource.fetchByModelId(this.authorId);
+    const editedByUser = await UserResource.fetchByModelId(this.editedBy);
 
-    if (!author) {
+    if (!editedByUser) {
       return null;
     }
 
-    const shouldReturnAuthor = await hasSharedMembership(auth, {
-      user: author,
+    const shouldReturnEditedByUser = await hasSharedMembership(auth, {
+      user: editedByUser,
     });
 
-    return shouldReturnAuthor ? author : null;
+    return shouldReturnEditedByUser ? editedByUser : null;
   }
 
   async listInheritedDataSourceViews(
@@ -1243,7 +1243,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       // Snapshot the previous requested space IDs before updating.
       const previousRequestedSpaceIds = [...this.requestedSpaceIds];
 
-      const authorId = auth.user()?.id;
+      const editedBy = auth.user()?.id;
 
       await this.update(
         {
@@ -1253,7 +1253,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           instructions,
           icon,
           requestedSpaceIds,
-          authorId,
+          editedBy,
           ...(status ? { status } : {}),
         },
         transaction
@@ -1651,7 +1651,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       sId: this.sId,
       createdAt: this.globalSId ? null : this.createdAt.getTime(),
       updatedAt: this.globalSId ? null : this.updatedAt.getTime(),
-      authorId: this.globalSId ? null : this.authorId,
+      editedBy: this.globalSId ? null : this.editedBy,
       status: this.status,
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,
@@ -1727,7 +1727,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       userFacingDescription: this.userFacingDescription,
       instructions: this.instructions,
       requestedSpaceIds: this.requestedSpaceIds,
-      authorId: this.authorId,
+      editedBy: this.editedBy,
       mcpServerViewIds,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,

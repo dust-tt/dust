@@ -37,7 +37,7 @@ export type PatchSkillResponseBody = {
     | "workspaceId"
     | "createdAt"
     | "updatedAt"
-    | "authorId"
+    | "editedBy"
   >;
 };
 
@@ -128,7 +128,7 @@ async function handler(
       if (withRelations === "true") {
         const usage = await skillResource.fetchUsage(auth);
         const editors = await skillResource.listEditors(auth);
-        const author = await skillResource.fetchAuthor(auth);
+        const editedByUser = await skillResource.fetchEditedByUser(auth);
         const extendedSkill = skill.extendedSkillId
           ? await SkillResource.fetchById(auth, skill.extendedSkillId)
           : null;
@@ -138,7 +138,7 @@ async function handler(
           relations: {
             usage,
             editors: editors ? editors.map((e) => e.toJSON()) : null,
-            author: author ? author.toJSON() : null,
+            editedByUser: editedByUser ? editedByUser.toJSON() : null,
             extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
           },
         };

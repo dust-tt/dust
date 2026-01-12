@@ -561,7 +561,7 @@ describe("POST /api/w/[wId]/skills", () => {
     expect(skillConfiguration!.instructions).toBe(
       "Test instructions for the skill"
     );
-    expect(skillConfiguration!.authorId).toBe(user.id);
+    expect(skillConfiguration!.editedBy).toBe(user.id);
 
     // Verify tools were created in the database
     const toolConfigurations = await SkillMCPServerConfigurationModel.findAll({

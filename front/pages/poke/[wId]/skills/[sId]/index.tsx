@@ -16,7 +16,7 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   skill: SkillType;
-  author: UserType | null;
+  editedByUser: UserType | null;
   spaces: SpaceType[];
   owner: WorkspaceType;
 }>(async (context, auth) => {
@@ -36,7 +36,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   }
 
   const serializedSkill = skill.toJSON(auth);
-  const author = await skill.fetchAuthor(auth);
+  const editedByUser = await skill.fetchEditedByUser(auth);
   const spaces = await SpaceResource.fetchByIds(
     auth,
     serializedSkill.requestedSpaceIds
@@ -46,7 +46,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     props: {
       owner: auth.getNonNullableWorkspace(),
       skill: serializedSkill,
-      author: author ? author.toJSON() : null,
+      editedByUser: editedByUser ? editedByUser.toJSON() : null,
       spaces: spaces.map((s) => s.toJSON()),
     },
   };
@@ -55,7 +55,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 const SkillDetailsPage = ({
   owner,
   skill,
-  author,
+  editedByUser,
   spaces,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const { isDark } = useTheme();
@@ -70,7 +70,11 @@ const SkillDetailsPage = ({
       </h3>
 
       <div className="mt-4 flex flex-row items-stretch space-x-3">
-        <SkillOverviewTable skill={skill} author={author} spaces={spaces} />
+        <SkillOverviewTable
+          skill={skill}
+          editedByUser={editedByUser}
+          spaces={spaces}
+        />
       </div>
 
       <div className="mt-4 flex flex-row gap-4">
