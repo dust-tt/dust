@@ -45,6 +45,18 @@ const SkillDataSchema = z.object({
   description_for_agents: z.string(),
   description_for_humans: z.string(),
   instructions: z.string(),
+  icon: z.enum([
+    "ActionCommandIcon",
+    "ActionRocketIcon",
+    "ActionSparklesIcon",
+    "ActionBracesIcon",
+    "ActionListCheckIcon",
+    "ActionCubeIcon",
+    "ActionLightbulbIcon",
+    "ActionBriefcaseIcon",
+    "ActionMagicIcon",
+    "ActionBrainIcon",
+  ]),
   requiredTools: z.array(SkillToolSchema).optional(),
   requiredDatasources: z.array(SkillDatasourceSchema).optional(),
 });
@@ -262,7 +274,7 @@ async function createSuggestedSkills(
               status: "suggested",
               editedBy: null,
               requestedSpaceIds: [],
-              icon: null,
+              icon: skill.icon,
               extendedSkillId: null,
             },
             { transaction }
