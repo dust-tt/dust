@@ -118,7 +118,8 @@ export function CreateProjectModal({
           <DialogTitle>Create a new Project</DialogTitle>
           <DialogDescription>
             Unrestricted projects are accessible to all the members of the
-            workspace.
+            workspace. Restricted projects allow you to control who can access
+            them.
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
