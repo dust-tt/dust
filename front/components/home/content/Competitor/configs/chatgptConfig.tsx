@@ -24,8 +24,7 @@ export const chatgptConfig: CompetitorPageConfig = {
   },
 
   hero: {
-    title:
-      "The Best ChatGPT Enterprise Alternative for AI Agents at Work",
+    title: "The Best ChatGPT Enterprise Alternative for AI Agents at Work",
     subtitle:
       "Deploy AI agents that orchestrate workflows, take actions, and collaborate—across Slack, your CRM, support tools, and everywhere your team works",
     primaryCTA: {
