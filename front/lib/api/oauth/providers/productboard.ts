@@ -17,10 +17,10 @@ export class ProductboardOAuthProvider implements BaseOAuthStrategyProvider {
     useCase: OAuthUseCase;
   }) {
     const scopes = [
-      "notes:create",
-      "product_hierarchy_data:read",
-      "product_hierarchy_data:manage",
-      "members_pii:read", // List workspace members for product feedback assignment
+      "notes:write",
+      "notes:read",
+      "entities:write",
+      "entities:read",
     ];
 
     return (

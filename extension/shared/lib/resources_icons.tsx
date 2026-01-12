@@ -48,6 +48,7 @@ import {
   MondayLogo,
   NotionLogo,
   OpenaiLogo,
+  ProductboardLogo,
   SalesforceLogo,
   SlackLogo,
   StripeLogo,
@@ -132,6 +133,7 @@ export const InternalActionIcons = {
   SlackLogo,
   StripeLogo,
   SupabaseLogo,
+  ProductboardLogo,
   ValTownLogo,
   VantaLogo,
   ZendeskLogo,
@@ -173,3 +175,5 @@ export const getIcon = (
 
   return InternalActionIcons[icon];
 };
+
+export { ProductboardLogo, SalesforceLogo };
