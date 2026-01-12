@@ -713,46 +713,6 @@ function extractCustomAttributes(
   return result;
 }
 
-// Syncs WorkOS custom attributes to UserMetadataModel.
-// Stores attributes with workspace scope and "workos:" prefix.
-// Removes attributes that are no longer present in the directory.
-async function syncCustomAttributesToUserMetadata(
-  user: UserResource,
-  workspace: LightWorkspaceType,
-  attributes: Record<CustomAttributeKey, string | null>
-): Promise<void> {
-  for (const attr of CUSTOM_ATTRIBUTES_TO_SYNC) {
-    const metadataKey = `${WORKOS_METADATA_KEY_PREFIX}${attr}`;
-    const value = attributes[attr];
-
-    if (value !== null) {
-      await user.setMetadata(metadataKey, value, workspace.id);
-      logger.info(
-        {
-          userId: user.sId,
-          workspaceId: workspace.sId,
-          attribute: attr,
-          value,
-        },
-        "Synced WorkOS custom attribute to user metadata"
-      );
-    } else {
-      // Remove attribute if no longer present in directory.
-      const existing = await user.getMetadata(metadataKey, workspace.id);
-      if (existing) {
-        await user.deleteMetadata({
-          key: metadataKey,
-          workspaceId: workspace.id,
-        });
-        logger.info(
-          { userId: user.sId, workspaceId: workspace.sId, attribute: attr },
-          "Removed WorkOS custom attribute from user metadata"
-        );
-      }
-    }
-  }
-}
-
 // Clears all WorkOS custom attributes for a user in a workspace.
 // Called when the user is deleted from the directory.
 async function clearCustomAttributesFromUserMetadata(
@@ -794,21 +754,15 @@ async function handleCreateOrUpdateWorkOSUser(
     given_name: workOSUser.firstName ?? undefined,
     family_name: workOSUser.lastName ?? undefined,
     picture: workOSUser.profilePictureUrl ?? undefined,
+    customAttributes: extractCustomAttributes(event),
   };
 
   const { user: createdOrUpdatedUser } = await createOrUpdateUser({
     user,
     externalUser,
     forceNameUpdate: !!(workOSUser.firstName && workOSUser.lastName),
-  });
-
-  // Sync WorkOS custom attributes from directory user.
-  const customAttributes = extractCustomAttributes(event);
-  await syncCustomAttributesToUserMetadata(
-    createdOrUpdatedUser,
     workspace,
-    customAttributes
-  );
+  });
 
   const membership =
     await MembershipResource.getActiveMembershipOfUserInWorkspace({

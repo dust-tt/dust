@@ -12,6 +12,10 @@ export interface ExternalUser {
 
   // Always optional.
   picture?: string;
+
+  // Custom attributes from directory provider (SCIM).
+  // Keys are attribute names, values are the attribute value or null if not present.
+  customAttributes?: Record<string, string | null>;
 }
 
 export type SessionWithUser = {
