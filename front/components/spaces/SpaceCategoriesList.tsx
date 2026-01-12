@@ -105,6 +105,7 @@ export const SpaceCategoriesList = ({
     ? removeNulls(
         DATA_SOURCE_VIEW_CATEGORIES.map((category) =>
           spaceInfo.categories[category] &&
+          spaceInfo.categories[category].count > 0 &&
           hasFeature(CATEGORY_DETAILS[category].flag)
             ? {
                 category,
