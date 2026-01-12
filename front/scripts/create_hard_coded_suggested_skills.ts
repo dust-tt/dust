@@ -97,12 +97,6 @@ async function createSuggestedSkills(
     "Parsed and validated skills from file"
   );
 
-  // // Find the workspace
-  // const workspace = await WorkspaceModel.findOne({
-  //   where: { sId: workspaceSId },
-  //   attributes: ["id", "sId", "name"],
-  // });
-
   // Find the workspace using the resource layer
   const workspace = await WorkspaceResource.fetchById(workspaceSId);
 
@@ -165,11 +159,6 @@ async function createSuggestedSkills(
           "Validating MCP server views and tools"
         );
 
-        // // Create a temporary authenticator for the workspace to use the resource layer
-        // const auth = await Authenticator.internalAdminForWorkspace(
-        //   workspace.sId
-        // );
-
         for (const tool of skill.requiredTools) {
           const mcpServerViewId = tool.mcp_server_view_id;
 
@@ -180,12 +169,6 @@ async function createSuggestedSkills(
               workspaceId: workspace.id,
             },
           });
-
-          // // Verify the MCP server view exists using the resource layer
-          // const mcpServerView = await MCPServerViewResource.fetchByModelPk(
-          //   auth,
-          //   mcpServerViewId
-          // );
 
           if (!mcpServerView) {
             logger.warn(
