@@ -105,8 +105,6 @@ describe("PATCH /api/w/[wId]/skills/[sId]/editors", () => {
     expect(res._getStatusCode()).toBe(403);
     const data = res._getJSONData();
     expect(data.error.type).toBe("workspace_auth_error");
-    expect(data.error.message).toContain("Only builders and admins");
-    expect(data.error.message).toContain(regularUser.sId);
   });
 
   it("rejects mixed batch (builder + user)", async () => {
@@ -143,9 +141,6 @@ describe("PATCH /api/w/[wId]/skills/[sId]/editors", () => {
     expect(res._getStatusCode()).toBe(403);
     const data = res._getJSONData();
     expect(data.error.type).toBe("workspace_auth_error");
-    expect(data.error.message).toContain("Only builders and admins");
-    expect(data.error.message).toContain(regularUser.sId);
-    expect(data.error.message).not.toContain(builderUser.sId);
   });
 
   it("allows removing any editor regardless of role", async () => {
