@@ -23,7 +23,6 @@ export function SkillBuilderAgentFacingDescriptionSection() {
   const { getSimilarSkills } = useSimilarSkills({ owner });
   const { skills } = useSkills({
     owner,
-    disabled: !isSimilarSkillsEnabled,
   });
 
   const [similarSkills, setSimilarSkills] = useState<SkillType[]>([]);
@@ -31,10 +30,6 @@ export function SkillBuilderAgentFacingDescriptionSection() {
 
   const fetchSimilarSkills = useCallback(
     async (description: string, signal: AbortSignal) => {
-      if (!isSimilarSkillsEnabled) {
-        return;
-      }
-
       if (description.length < MIN_DESCRIPTION_LENGTH) {
         setSimilarSkills([]);
         setIsLoading(false);
@@ -57,7 +52,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
         }
       }
     },
-    [getSimilarSkills, isSimilarSkillsEnabled, skillId, skills]
+    [getSimilarSkills, skillId, skills]
   );
 
   const triggerSimilarSkillsFetch = useDebounceWithAbort(fetchSimilarSkills, {
@@ -70,14 +65,12 @@ export function SkillBuilderAgentFacingDescriptionSection() {
       formOnChange: (e: ChangeEvent<HTMLTextAreaElement>) => void
     ) => {
       formOnChange(e);
-      if (isSimilarSkillsEnabled) {
-        const value = e.target.value;
-        // Set loading immediately when description is long enough
-        setIsLoading(value.length >= MIN_DESCRIPTION_LENGTH);
-        triggerSimilarSkillsFetch(value);
-      }
+      const value = e.target.value;
+      // Set loading immediately when description is long enough
+      setIsLoading(value.length >= MIN_DESCRIPTION_LENGTH);
+      triggerSimilarSkillsFetch(value);
     },
-    [triggerSimilarSkillsFetch, isSimilarSkillsEnabled]
+    [triggerSimilarSkillsFetch]
   );
 
   return (
