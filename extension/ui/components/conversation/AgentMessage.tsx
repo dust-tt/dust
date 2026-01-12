@@ -249,8 +249,6 @@ export function AgentMessage({
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
 
-  const isGlobalAgent = message.configuration.id === -1;
-
   const { showValidationDialog } = useContext(ActionValidationContext);
 
   const [blockedAuthAction, setBlockedAuthAction] = useState<{
@@ -600,9 +598,8 @@ export function AgentMessage({
   const showFeedbackSection = useMemo(
     () =>
       showButtons &&
-      !isGlobalAgent &&
       agentMessageToRender.configuration.status !== "draft",
-    [showButtons, isGlobalAgent, agentMessageToRender.configuration.status]
+    [showButtons, agentMessageToRender.configuration.status]
   );
 
   const handleRetry = useCallback(() => {

@@ -82,7 +82,6 @@ import type {
 } from "@app/types";
 import {
   assertNever,
-  GLOBAL_AGENTS_SID,
   isInteractiveContentFileContentType,
   isSupportedImageContentType,
 } from "@app/types";
@@ -123,10 +122,6 @@ export function AgentMessage({
   const [isCopied, copy] = useCopyToClipboard();
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
-
-  const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
-    agentMessage.configuration.sId as GLOBAL_AGENTS_SID
-  );
 
   const { enqueueBlockedAction, removeAllBlockedActionsForMessage } =
     useBlockedActionsContext();
@@ -452,7 +447,6 @@ export function AgentMessage({
     !isDeleted &&
     agentMessage.status !== "created" &&
     agentMessage.status !== "failed" &&
-    !isGlobalAgent &&
     agentMessage.configuration.status !== "draft";
 
   const retryMessage = useRetryMessage({ owner });
