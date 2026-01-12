@@ -16,6 +16,11 @@ import type {
 
 export const SKILL_ICON = PuzzleIcon;
 
+export const SKILL_AVATAR_BACKGROUND_COLOR =
+  "bg-highlight-50 dark:bg-highlight-50-night";
+export const SKILL_AVATAR_ICON_COLOR =
+  "text-highlight dark:text-highlight-night";
+
 export function getSkillAvatarIcon(
   iconString: string | null
 ): React.ComponentType<{
@@ -29,13 +34,21 @@ export function getSkillAvatarIcon(
   ) {
     const icon = getIcon(iconString);
     return (props) =>
-      React.createElement(ResourceAvatar, { icon, size: "sm", ...props });
+      React.createElement(ResourceAvatar, {
+        icon,
+        size: "sm",
+        backgroundColor: SKILL_AVATAR_BACKGROUND_COLOR,
+        iconColor: SKILL_AVATAR_ICON_COLOR,
+        ...props,
+      });
   }
 
   return (props) =>
     React.createElement(ResourceAvatar, {
       icon: SKILL_ICON,
       size: "sm",
+      backgroundColor: SKILL_AVATAR_BACKGROUND_COLOR,
+      iconColor: SKILL_AVATAR_ICON_COLOR,
       ...props,
     });
 }
