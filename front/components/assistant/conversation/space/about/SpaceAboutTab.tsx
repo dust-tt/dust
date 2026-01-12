@@ -130,21 +130,20 @@ export function SpaceAboutTab({
       <RestrictedAccessHeader
         isRestricted={isRestricted}
         onToggle={() => setIsRestricted(!isRestricted)}
+        restrictedDescription="The project is only accessible to selected members."
         unrestrictedDescription="The project is accessible to everyone in the workspace."
       />
-      {isRestricted && (
-        <RestrictedAccessBody
-          isManual={isManual}
-          planAllowsSCIM={planAllowsSCIM}
-          managementType={managementType}
-          owner={owner}
-          selectedMembers={selectedMembers}
-          selectedGroups={selectedGroups}
-          onManagementTypeChange={setManagementType}
-          onMembersUpdated={setSelectedMembers}
-          onGroupsUpdated={setSelectedGroups}
-        />
-      )}
+      <RestrictedAccessBody
+        isManual={isManual}
+        planAllowsSCIM={planAllowsSCIM}
+        managementType={managementType}
+        owner={owner}
+        selectedMembers={selectedMembers}
+        selectedGroups={selectedGroups}
+        onManagementTypeChange={setManagementType}
+        onMembersUpdated={setSelectedMembers}
+        onGroupsUpdated={setSelectedGroups}
+      />
 
       <div className="flex justify-end gap-2 pt-4">
         <Button

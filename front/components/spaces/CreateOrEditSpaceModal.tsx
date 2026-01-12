@@ -349,6 +349,7 @@ export function CreateOrEditSpaceModal({
                   setSelectedMembers([user, ...selectedMembers]);
                 }
               }}
+              restrictedDescription="Restricted access is active."
               unrestrictedDescription="Restricted access is disabled. The space is accessible to everyone in
           the workspace."
             />

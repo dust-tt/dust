@@ -3,12 +3,14 @@ import { Page, SliderToggle } from "@dust-tt/sparkle";
 interface RestrictedAccessHeaderProps {
   isRestricted: boolean;
   onToggle: () => void;
+  restrictedDescription: string;
   unrestrictedDescription: string;
 }
 
 export function RestrictedAccessHeader({
   isRestricted,
   onToggle,
+  restrictedDescription,
   unrestrictedDescription,
 }: RestrictedAccessHeaderProps) {
   return (
@@ -18,7 +20,7 @@ export function RestrictedAccessHeader({
         <SliderToggle selected={isRestricted} onClick={onToggle} />
       </div>
       {isRestricted ? (
-        <span>Restricted access is active.</span>
+        <span>{restrictedDescription}</span>
       ) : (
         <span>{unrestrictedDescription}</span>
       )}
