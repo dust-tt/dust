@@ -11,12 +11,9 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import { isFreePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
+import { isFreeTrialPhonePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
-import {
-  useWorkspaceActiveSubscription,
-  useWorkspaceSubscriptions,
-} from "@app/lib/swr/workspaces";
+import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { BillingPeriod, WorkspaceType } from "@app/types";
 
@@ -51,12 +48,11 @@ export default function Subscribe({
     owner,
   });
 
-  const { activeSubscription } = useWorkspaceActiveSubscription({
-    owner,
-  });
-
-  const isInFreeTrial =
-    activeSubscription && isFreePlan(activeSubscription.plan.code);
+  // We treat user as being in free trial if they don't have any non free subs,
+  // regardless of whether they're active or not.
+  const isInFreePhoneTrial = !subscriptions.some(
+    (sub) => !isFreeTrialPhonePlan(sub.plan.code)
+  );
 
   const [billingPeriod, setBillingPeriod] =
     React.useState<BillingPeriod>("monthly");
@@ -130,14 +126,14 @@ export default function Subscribe({
                 <Page.Header
                   icon={CreditCardIcon}
                   title={
-                    isInFreeTrial
+                    isInFreePhoneTrial
                       ? "Subscribe to a paid plan"
                       : noPreviousSubscription
                         ? "Start your free trial"
                         : "Resume your subscription"
                   }
                 />
-                {isInFreeTrial ? (
+                {isInFreePhoneTrial ? (
                   <>
                     <Page.P>
                       <span className="font-bold">
@@ -210,7 +206,7 @@ export default function Subscribe({
                   variant="primary"
                   label={
                     !noPreviousSubscription
-                      ? isInFreeTrial
+                      ? isInFreePhoneTrial
                         ? `Subscribe with ${billingPeriod} billing`
                         : `Resume with ${billingPeriod} billing`
                       : `Start your trial with ${billingPeriod} billing`
