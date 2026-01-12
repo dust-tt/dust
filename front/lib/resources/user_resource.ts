@@ -560,13 +560,25 @@ export class UserResource extends BaseResource<UserModel> {
       argsAndValues?: Record<string, string> | null;
     }
   ): Promise<boolean> {
+    const sortedArgsAndValues = argsAndValues
+      ? Object.keys(argsAndValues)
+          .sort()
+          .reduce(
+            (acc, key) => {
+              acc[key] = argsAndValues[key];
+              return acc;
+            },
+            {} as Record<string, string>
+          )
+      : null;
+
     const whereClause: WhereOptions<UserToolApprovalModel> = {
       workspaceId: auth.getNonNullableWorkspace().id,
       userId: this.id,
       mcpServerId,
       toolName,
       agentId,
-      argsAndValues,
+      argsAndValues: sortedArgsAndValues,
     };
 
     const approval = await UserToolApprovalModel.findOne({
