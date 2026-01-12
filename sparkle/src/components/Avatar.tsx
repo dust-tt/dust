@@ -287,23 +287,20 @@ Avatar.Stack = function ({
 
   // Get visible avatars and calculate remaining count
   const shouldShowAll = !nbVisibleItems || avatars.length <= nbVisibleItems;
-  let visibleAvatars;
-  let remainingCount;
+  const isFirstOnTop = onTop === "first";
 
-  if (onTop === "first") {
-    // When onTop="first", show all nbVisibleItems without remaining count
-    visibleAvatars = shouldShowAll ? avatars : avatars.slice(0, nbVisibleItems);
-    remainingCount = 0; // Always 0 when onTop="first"
+  const maxVisible = shouldShowAll
+    ? avatars.length
+    : isFirstOnTop
+      ? nbVisibleItems
+      : nbVisibleItems - 1;
 
-    // Reverse insertion order so last avatar (first in original) is inserted first (appears on top)
-    visibleAvatars = [...visibleAvatars].reverse();
-  } else {
-    // Default behavior: show nbVisibleItems - 1 + remaining count indicator
-    visibleAvatars = shouldShowAll
-      ? avatars
-      : avatars.slice(0, nbVisibleItems - 1);
-    remainingCount = shouldShowAll ? 0 : avatars.length - (nbVisibleItems - 1);
-  }
+  const visibleAvatars = isFirstOnTop
+    ? avatars.slice(0, maxVisible).reverse()
+    : avatars.slice(0, maxVisible);
+
+  const remainingCount =
+    shouldShowAll || isFirstOnTop ? 0 : avatars.length - maxVisible;
 
   // Get all names for tooltip
   const avatarNames = avatars
