@@ -137,8 +137,8 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
 
   return [
     nameColumn,
-    editorsColumn,
     usedByColumn(onAgentClick),
+    editorsColumn,
     lastEditedColumn,
     menuColumn,
   ];
