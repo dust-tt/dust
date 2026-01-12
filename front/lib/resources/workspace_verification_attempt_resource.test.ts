@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { WorkspaceVerificationAttemptFactory } from "@app/tests/utils/WorkspaceVerificationAttemptFactory";
@@ -9,7 +9,6 @@ import type { WorkspaceType } from "@app/types";
 
 describe("WorkspaceVerificationAttemptResource", () => {
   let workspace1: WorkspaceType;
-  let workspace2: WorkspaceType;
 
   let authW1: Authenticator;
   let authW2: Authenticator;
@@ -20,7 +19,6 @@ describe("WorkspaceVerificationAttemptResource", () => {
     authW1 = testSetup1.authenticator;
 
     const testSetup2 = await createResourceTest({ role: "admin" });
-    workspace2 = testSetup2.workspace;
     authW2 = testSetup2.authenticator;
   });
 
