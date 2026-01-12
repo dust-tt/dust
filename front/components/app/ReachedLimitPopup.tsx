@@ -143,19 +143,15 @@ function getLimitPromptForCode(
           ),
         };
       } else {
-        const isFree = isFreePlan(subscription.plan.code);
-        const limitDescription = isFree
-          ? "100 messages total for the past 24 hours"
-          : "100 messages per user for the past 24 hours";
         return {
           title: "Message quota exceeded",
           validateLabel: "Ok",
           children: (
             <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               We've paused messaging for your workspace due to our fair usage
-              policy. Your workspace has reached its shared limit of{" "}
-              {limitDescription}. This total limit is collectively shared by all
-              users in the workspace. Check our{" "}
+              policy. Your workspace has reached its shared limit of 100
+              messages per user for the past 24 hours. This total limit is
+              collectively shared by all users in the workspace. Check our{" "}
               <Hoverable
                 variant="highlight"
                 onClick={() => displayFairUseModal()}
