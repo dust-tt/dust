@@ -102,18 +102,16 @@ export default function AppContentLayout({
         )}
       >
         <SubscriptionEndBanner owner={owner} subscription={subscription} />
-        <div className="relative flex-1 overflow-hidden">
-          <NavigationLoadingOverlay />
-          {/* Temporary measure to preserve title existence on smaller screens.
-           * Page has no title, prepend empty AppLayoutTitle. */}
-          {loaded && !hasTitle && (
-            <>
-              <AppLayoutTitle />
-              {children}
-            </>
-          )}
-          {loaded && hasTitle && children}
-        </div>
+        <NavigationLoadingOverlay />
+        {/* Temporary measure to preserve title existence on smaller screens.
+         * Page has no title, prepend empty AppLayoutTitle. */}
+        {loaded && !hasTitle && (
+          <>
+            <AppLayoutTitle />
+            {children}
+          </>
+        )}
+        {loaded && hasTitle && children}
       </div>
     </div>
   );
