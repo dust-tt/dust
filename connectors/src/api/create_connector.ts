@@ -191,6 +191,11 @@ const _createConnectorAPIHandler = async (
         break;
       }
 
+      case "dust_project": {
+        //TODO(project): implement this
+        throw new Error("Dust project connector is not implemented yet");
+      }
+
       default:
         assertNever(req.params.connector_provider);
     }

@@ -9,6 +9,10 @@ import {
 } from "@connectors/lib/models/confluence";
 import { DiscordConfigurationModel } from "@connectors/lib/models/discord";
 import {
+  DustProjectConfigurationModel,
+  DustProjectConversationModel,
+} from "@connectors/lib/models/dust_project";
+import {
   GithubCodeDirectoryModel,
   GithubCodeFileModel,
   GithubCodeRepositoryModel,
@@ -153,6 +157,8 @@ async function main(): Promise<void> {
   await GongConfigurationModel.sync({ alter: true });
   await GongTranscriptModel.sync({ alter: true });
   await GongUserModel.sync({ alter: true });
+  await DustProjectConfigurationModel.sync({ alter: true });
+  await DustProjectConversationModel.sync({ alter: true });
 
   // enable the `unaccent` extension
   await connectorsSequelize.query("CREATE EXTENSION IF NOT EXISTS unaccent;");

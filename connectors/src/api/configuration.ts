@@ -84,6 +84,11 @@ const _patchConnectorConfiguration = async (
       throw new Error(`Connector type ${connector.type} NOT IMPLEMENTED YET`);
     }
 
+    case "dust_project": {
+      //TODO(project): implement this
+      throw new Error("Dust project connector is not implemented yet");
+    }
+
     default: {
       assertNever(connector.type);
     }
