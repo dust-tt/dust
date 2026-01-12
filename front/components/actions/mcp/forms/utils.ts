@@ -1,14 +1,14 @@
 import type { UseFormReturn } from "react-hook-form";
 
-import { CreateMCPServerDialogSubmitError } from "@app/components/actions/mcp/submitCreateMCPServerDialogForm";
+import { CreateMCPServerDialogSubmitError } from "@app/components/actions/mcp/forms/submitCreateMCPServerDialogForm";
 import type {
   CreateMCPServerDialogFormValues,
   MCPServerOAuthFormValues,
-} from "@app/components/actions/mcp/types";
+} from "@app/components/actions/mcp/forms/types";
 import {
   createMCPServerDialogFormSchema,
   mcpServerOAuthFormSchema,
-} from "@app/components/actions/mcp/types";
+} from "@app/components/actions/mcp/forms/types";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { OAUTH_PROVIDER_NAMES } from "@app/types";
 

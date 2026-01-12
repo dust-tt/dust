@@ -13,14 +13,14 @@ import { useController, useForm, useWatch } from "react-hook-form";
 import { CustomHeadersConfigurationSection } from "@app/components/actions/mcp/create/CustomHeadersConfigurationSection";
 import { InternalBearerTokenSection } from "@app/components/actions/mcp/create/InternalBearerTokenSection";
 import { RemoteMCPServerConfigurationSection } from "@app/components/actions/mcp/create/RemoteMCPServerConfigurationSection";
-import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
-import { submitCreateMCPServerDialogForm } from "@app/components/actions/mcp/submitCreateMCPServerDialogForm";
-import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/types";
-import { createMCPServerDialogFormSchema } from "@app/components/actions/mcp/types";
+import { submitCreateMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitCreateMCPServerDialogForm";
+import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
+import { createMCPServerDialogFormSchema } from "@app/components/actions/mcp/forms/types";
 import {
   getCreateMCPServerDialogDefaultValues,
   handleCreateMCPServerDialogSubmitError,
-} from "@app/components/actions/mcp/utils";
+} from "@app/components/actions/mcp/forms/utils";
+import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,

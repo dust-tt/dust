@@ -1,5 +1,5 @@
 import { Button, Chip, LoginIcon, XMarkIcon } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { ConnectMCPServerDialog } from "@app/components/actions/mcp/create/ConnectMCPServerDialog";
 import {
@@ -22,10 +22,7 @@ export function MCPServerSettings({
   mcpServerView,
   owner,
 }: MCPServerSettingsProps) {
-  const authorization = useMemo(
-    () => mcpServerView.server.authorization,
-    [mcpServerView.server.authorization]
-  );
+  const authorization = mcpServerView.server.authorization;
 
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
@@ -47,29 +44,26 @@ export function MCPServerSettings({
     owner,
   });
 
-  const handleDeleteConnection = useCallback(() => {
-    if (!connection || !mcpServerView) {
-      return;
-    }
-
-    // eslint-disable-next-line react-hooks/immutability
-    setSelectedUseCase(null);
-    void deleteMCPServerConnection({
-      connection,
-      mcpServer: mcpServerView.server,
-    });
-  }, [deleteMCPServerConnection, connection, mcpServerView]);
-
   const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedUseCase, setSelectedUseCase] =
     useState<MCPOAuthUseCase | null>();
 
-  const useCase = useMemo(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    () => (selectedUseCase || mcpServerView.oAuthUseCase) as MCPOAuthUseCase,
-    [selectedUseCase, mcpServerView.oAuthUseCase]
-  );
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+  const useCase = (selectedUseCase ||
+    mcpServerView.oAuthUseCase) as MCPOAuthUseCase;
+
+  const handleDeleteConnection = () => {
+    if (!connection) {
+      return;
+    }
+
+    setSelectedUseCase(null);
+    void deleteMCPServerConnection({
+      connection,
+      mcpServer: mcpServerView.server,
+    });
+  };
 
   return (
     <>

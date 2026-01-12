@@ -209,7 +209,7 @@ export const AdminActionsList = ({
     ]
   );
   const columns = useMemo((): ColumnDef<RowData>[] => {
-    const columns: ColumnDef<RowData, any>[] = [];
+    const columns: ColumnDef<RowData, unknown>[] = [];
 
     columns.push(
       {

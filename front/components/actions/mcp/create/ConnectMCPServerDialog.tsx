@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useController, useForm, useWatch } from "react-hook-form";
 
 import { submitConnectMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitConnectMCPServerDialogForm";
@@ -15,10 +15,6 @@ import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms
 import { mcpServerOAuthFormSchema } from "@app/components/actions/mcp/forms/types";
 import { getConnectMCPServerDialogDefaultValues } from "@app/components/actions/mcp/forms/utils";
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
-import type {
-  CustomResourceIconType,
-  InternalAllowedIconType,
-} from "@app/components/resources/resources_icons";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -27,7 +23,6 @@ import {
   getServerTypeAndIdFromSId,
   isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
-import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
@@ -93,25 +88,11 @@ export function ConnectMCPServerDialog({
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { updateServerView } = useUpdateMCPServerView(owner, mcpServerView);
 
-  const serverType = useMemo(
-    () => getServerTypeAndIdFromSId(mcpServerView.server.sId).serverType,
-    [mcpServerView]
-  );
-
-  const toolName = useMemo(() => {
-    if (mcpServerView.server) {
-      return getMcpServerDisplayName(mcpServerView.server);
-    }
-    return "MCP Server";
-  }, [mcpServerView]);
-
-  const toolIcon: InternalAllowedIconType | CustomResourceIconType =
-    useMemo(() => {
-      if (mcpServerView.server) {
-        return mcpServerView.server.icon;
-      }
-      return DEFAULT_MCP_SERVER_ICON;
-    }, [mcpServerView]);
+  const serverType = getServerTypeAndIdFromSId(
+    mcpServerView.server.sId
+  ).serverType;
+  const toolName = getMcpServerDisplayName(mcpServerView.server);
+  const toolIcon = mcpServerView.server.icon;
 
   useEffect(() => {
     const discoverOAuth = async () => {

@@ -12,7 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
-import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/types";
+import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type {
   MCPOAuthUseCase,
