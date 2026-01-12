@@ -41,6 +41,7 @@ export function AgentFeedback({
         <SharedObservabilityFilterSelector
           workspaceId={owner.sId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={allowReactions}
         />
       }
     >

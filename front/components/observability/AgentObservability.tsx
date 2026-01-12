@@ -68,6 +68,7 @@ export function AgentObservability({
         <SharedObservabilityFilterSelector
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
         />
       }
     >

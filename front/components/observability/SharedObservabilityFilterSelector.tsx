@@ -18,6 +18,7 @@ import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 interface SharedObservabilityFilterSelectorProps {
   workspaceId: string;
   agentConfigurationId: string;
+  isCustomAgent: boolean;
 }
 
 function getVersionValue(versionMarker: AgentVersionMarker) {
@@ -36,6 +37,7 @@ function getVersionValue(versionMarker: AgentVersionMarker) {
 export function SharedObservabilityFilterSelector({
   workspaceId,
   agentConfigurationId,
+  isCustomAgent,
 }: SharedObservabilityFilterSelectorProps) {
   const {
     mode,
@@ -50,7 +52,7 @@ export function SharedObservabilityFilterSelector({
     workspaceId,
     agentConfigurationId,
     days: period,
-    disabled: false,
+    disabled: !isCustomAgent,
   });
 
   useEffect(() => {
@@ -66,20 +68,22 @@ export function SharedObservabilityFilterSelector({
 
   return (
     <div className="flex items-center gap-3">
-      <ButtonsSwitchList defaultValue={mode} size="xs">
-        <ButtonsSwitch
-          value="timeRange"
-          label="Time range"
-          onClick={() => setMode("timeRange")}
-        />
-        <ButtonsSwitch
-          value="version"
-          label="Version"
-          onClick={() => setMode("version")}
-        />
-      </ButtonsSwitchList>
+      {isCustomAgent && (
+        <ButtonsSwitchList defaultValue={mode} size="xs">
+          <ButtonsSwitch
+            value="timeRange"
+            label="Time range"
+            onClick={() => setMode("timeRange")}
+          />
+          <ButtonsSwitch
+            value="version"
+            label="Version"
+            onClick={() => setMode("version")}
+          />
+        </ButtonsSwitchList>
+      )}
 
-      {mode === "timeRange" ? (
+      {mode === "timeRange" || !isCustomAgent ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
