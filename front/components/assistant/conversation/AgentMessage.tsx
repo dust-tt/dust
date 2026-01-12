@@ -82,6 +82,7 @@ import type {
 } from "@app/types";
 import {
   assertNever,
+  isGlobalAgentId,
   isInteractiveContentFileContentType,
   isSupportedImageContentType,
 } from "@app/types";
@@ -272,6 +273,7 @@ export function AgentMessage({
       <FeedbackSelectorPopoverContent
         owner={owner}
         agentMessageToRender={agentMessage}
+        isGlobalAgent={isGlobalAgentId(agentMessage.configuration.sId)}
       />
     ),
     [owner, agentMessage]

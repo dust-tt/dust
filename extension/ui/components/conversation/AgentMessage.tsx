@@ -86,11 +86,17 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { visit } from "unist-util-visit";
 
-export const FeedbackSelectorPopoverContent = () => {
+export const FeedbackSelectorPopoverContent = ({
+  isGlobalAgent,
+}: {
+  isGlobalAgent: boolean;
+}) => {
   return (
     <div className="mb-4 mt-2 flex flex-col gap-2">
       <Page.P variant="secondary">
-        Your feedback is available to editors of the agent.
+        {isGlobalAgent
+          ? "Submitting feedback will help Dust improve your global agents."
+          : "Your feedback is available to editors of the agent."}
       </Page.P>
     </div>
   );
@@ -483,9 +489,11 @@ export function AgentMessage({
     [activeReferences]
   );
 
+  const isGlobalAgent = message.configuration.id === -1;
+
   const PopoverContent = useCallback(
-    () => <FeedbackSelectorPopoverContent />,
-    []
+    () => <FeedbackSelectorPopoverContent isGlobalAgent={isGlobalAgent} />,
+    [isGlobalAgent]
   );
 
   async function handleCopyToClipboard() {
