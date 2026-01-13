@@ -3,6 +3,7 @@
 CLI tool for running multiple isolated Dust development environments simultaneously.
 
 Each environment gets its own:
+
 - Git worktree (separate branch)
 - Port range (no conflicts)
 - Docker containers (isolated volumes)
@@ -66,7 +67,8 @@ brew install sccache
    EOF
    ```
 
-This enables automatic environment loading when you `cd` into any dust-hive worktree. The `.envrc` file in each worktree sources the environment variables for that environment.
+This enables automatic environment loading when you `cd` into any dust-hive worktree. The `.envrc` file in each worktree
+sources the environment variables for that environment.
 
 After adding the hook, restart your shell or run `source ~/.zshrc` (or `~/.bashrc`).
 
@@ -94,14 +96,15 @@ Now `dust-hive` is available globally. No build step needed - Bun runs TypeScrip
 
 ## Initial Setup
 
-1. **Create config file** with your secrets:
+1. **Create a config file** with your secrets:
 
 ```bash
 mkdir -p ~/.dust-hive
 cp /path/to/your/.env ~/.dust-hive/config.env
 ```
 
-The `config.env` must use `export` statements (e.g., `export API_KEY=xxx`). It contains all the environment variables from your local dev setup (API keys, OAuth secrets, etc.). See `local-dev-setup.md` for the full list.
+The `config.env` must use `export` statements (e.g., `export API_KEY=xxx`). It contains all the environment variables
+from your local dev setup (API keys, OAuth secrets, etc.). See `local-dev-setup.md` for the full list.
 
 2. **Start managed services** (temporal server + main zellij session):
 
@@ -113,7 +116,8 @@ dust-hive up
 dust-hive up -a
 ```
 
-This runs `dust-hive sync` to update dependencies, starts the Temporal server as a managed daemon, and creates a main zellij session with tabs for the repo shell and temporal logs.
+This runs `dust-hive sync` to update dependencies, starts the Temporal server as a managed daemon, and creates a main
+zellij session with tabs for the repo shell and temporal logs.
 
 ## Quick Start
 
@@ -145,42 +149,42 @@ dust-hive down
 
 ### Managed Services
 
-| Command | Description |
-|---------|-------------|
-| `up [-a\|--attach]` | Start temporal + test postgres + test redis + sync + create main session (from main repo) |
-| `down [-f\|--force]` | Stop all envs, temporal, test postgres, test redis, and sessions |
-| `temporal start` | Start Temporal server only |
-| `temporal stop` | Stop Temporal server only |
-| `temporal restart` | Restart Temporal server |
-| `temporal status` | Show Temporal server status |
+| Command              | Description                                                                               |
+|----------------------|-------------------------------------------------------------------------------------------|
+| `up [-a\|--attach]`  | Start temporal + test postgres + test redis + sync + create main session (from main repo) |
+| `down [-f\|--force]` | Stop all envs, temporal, test postgres, test redis, and sessions                          |
+| `temporal start`     | Start Temporal server only                                                                |
+| `temporal stop`      | Stop Temporal server only                                                                 |
+| `temporal restart`   | Restart Temporal server                                                                   |
+| `temporal status`    | Show Temporal server status                                                               |
 
 ### Environment Commands
 
-| Command | Description |
-|---------|-------------|
-| `spawn [NAME] [--no-open] [--no-attach] [--warm] [--wait]` | Create new environment |
-| `warm [NAME] [--no-forward] [--force-ports]` | Start docker + all services |
-| `cool [NAME]` | Pause services + docker, keep SDK (fast restart) |
-| `start [NAME]` | Resume stopped environment (when NAME provided) |
-| `stop [NAME]` | Full stop + remove docker containers |
-| `destroy NAME [--force]` | Remove environment completely |
-| `restart [NAME] SERVICE` | Restart a single service |
-| `open [NAME]` | Open zellij terminal session |
-| `reload [NAME]` | Kill and reopen zellij session |
-| `list` | Show all environments |
-| `status [NAME]` | Show service health |
-| `logs [NAME] [SERVICE] [-f]` | View service logs |
-| `url [NAME]` | Print front URL |
+| Command                                                    | Description                                      |
+|------------------------------------------------------------|--------------------------------------------------|
+| `spawn [NAME] [--no-open] [--no-attach] [--warm] [--wait]` | Create new environment                           |
+| `warm [NAME] [--no-forward] [--force-ports]`               | Start docker + all services                      |
+| `cool [NAME]`                                              | Pause services + docker, keep SDK (fast restart) |
+| `start [NAME]`                                             | Resume stopped environment (when NAME provided)  |
+| `stop [NAME]`                                              | Full stop + remove docker containers             |
+| `destroy NAME [--force]`                                   | Remove environment completely                    |
+| `restart [NAME] SERVICE`                                   | Restart a single service                         |
+| `open [NAME]`                                              | Open zellij terminal session                     |
+| `reload [NAME]`                                            | Kill and reopen zellij session                   |
+| `list`                                                     | Show all environments                            |
+| `status [NAME]`                                            | Show service health                              |
+| `logs [NAME] [SERVICE] [-f]`                               | View service logs                                |
+| `url [NAME]`                                               | Print front URL                                  |
 
 ### Utilities
 
-| Command | Description |
-|---------|-------------|
-| `doctor` | Check prerequisites |
-| `cache` | Show binary cache status |
-| `forward [NAME\|status\|stop]` | Manage OAuth port forwarding |
-| `sync` | Pull latest main, rebuild binaries, refresh deps |
-| `seed-config <postgres-uri>` | Extract user data from existing DB for seeding |
+| Command                        | Description                                      |
+|--------------------------------|--------------------------------------------------|
+| `doctor`                       | Check prerequisites                              |
+| `cache`                        | Show binary cache status                         |
+| `forward [NAME\|status\|stop]` | Manage OAuth port forwarding                     |
+| `sync`                         | Pull latest main, rebuild binaries, refresh deps |
+| `seed-config <postgres-uri>`   | Extract user data from existing DB for seeding   |
 
 > **Tip**: When `NAME` is omitted, you'll get an interactive picker to select an environment.
 > It pre-selects the current environment (if you're in a worktree) or the last one you used.
@@ -188,6 +192,7 @@ dust-hive down
 ### Services
 
 Available services for `logs` command:
+
 - `sdk` - TypeScript SDK watcher
 - `front` - Next.js frontend
 - `core` - Rust core API
@@ -197,32 +202,33 @@ Available services for `logs` command:
 
 ## Environment States
 
-| State | Description |
-|-------|-------------|
-| **stopped** | Nothing running |
-| **cold** | Only SDK watch running |
-| **warm** | All services running |
+| State       | Description            |
+|-------------|------------------------|
+| **stopped** | Nothing running        |
+| **cold**    | Only SDK watch running |
+| **warm**    | All services running   |
 
 ## Port Allocation
 
 Each environment gets a 1000-port range:
 
-| Environment | Port Range | Front | Core | Connectors |
-|-------------|------------|-------|------|------------|
-| 1st env | 10000-10999 | 10000 | 10001 | 10002 |
-| 2nd env | 11000-11999 | 11000 | 11001 | 11002 |
-| 3rd env | 12000-12999 | 12000 | 12001 | 12002 |
+| Environment | Port Range  | Front | Core  | Connectors |
+|-------------|-------------|-------|-------|------------|
+| 1st env     | 10000-10999 | 10000 | 10001 | 10002      |
+| 2nd env     | 11000-11999 | 11000 | 11001 | 11002      |
+| 3rd env     | 12000-12999 | 12000 | 12001 | 12002      |
 
 ## OAuth Forwarding
 
-OAuth providers (WorkOS, Google, GitHub, etc.) are configured to redirect to `http://localhost:3000`. Since dust-hive uses different ports per environment, a TCP forwarder routes standard ports to the active environment:
+OAuth providers (WorkOS, Google, GitHub, etc.) are configured to redirect to `http://localhost:3000`. Since dust-hive
+uses different ports per environment, a TCP forwarder routes standard ports to the active environment:
 
-| Standard Port | Service | Environment Port |
-|---------------|---------|------------------|
-| 3000 | front | base + 0 |
-| 3001 | core | base + 1 |
-| 3002 | connectors | base + 2 |
-| 3006 | oauth | base + 6 |
+| Standard Port | Service    | Environment Port |
+|---------------|------------|------------------|
+| 3000          | front      | base + 0         |
+| 3001          | core       | base + 1         |
+| 3002          | connectors | base + 2         |
+| 3006          | oauth      | base + 6         |
 
 **Automatic**: When you run `dust-hive warm`, these ports are automatically forwarded to that environment.
 The forwarder listens on `127.0.0.1` by default; set `DUST_HIVE_FORWARD_LISTEN_HOST=0.0.0.0` to expose it to your LAN.
@@ -287,7 +293,8 @@ To create the session in the background without attaching (useful for scripts or
 dust-hive spawn myenv --warm --no-attach
 ```
 
-This creates the zellij session and starts services, but leaves you in your current terminal. Use `dust-hive open myenv` to attach later.
+This creates the zellij session and starts services, but leaves you in your current terminal. Use `dust-hive open myenv`
+to attach later.
 
 ### Zellij Shortcuts
 
@@ -349,6 +356,7 @@ dust-hive destroy my-feature --force
 ### "Environment not found"
 
 Check if it exists:
+
 ```bash
 dust-hive list
 ```
@@ -356,6 +364,7 @@ dust-hive list
 ### Services not starting
 
 Check prerequisites:
+
 ```bash
 dust-hive doctor
 ```
@@ -363,6 +372,7 @@ dust-hive doctor
 ### Docker issues
 
 Make sure Docker/OrbStack is running:
+
 ```bash
 docker ps
 ```
@@ -370,6 +380,7 @@ docker ps
 ### Zellij "Waiting to run"
 
 Reload the session:
+
 ```bash
 dust-hive reload myenv
 ```
@@ -394,13 +405,14 @@ dust-hive logs myenv front -f
 
 dust-hive uses aggressive caching and parallelization:
 
-| Operation | Time |
-|-----------|------|
-| `spawn` | ~7 seconds |
-| `warm` (first) | ~80 seconds |
+| Operation           | Time        |
+|---------------------|-------------|
+| `spawn`             | ~7 seconds  |
+| `warm` (first)      | ~80 seconds |
 | `warm` (subsequent) | ~18 seconds |
 
-First warm is slower because it initializes databases (Postgres, Qdrant, Elasticsearch). Subsequent warms are fast because services just reconnect to existing data.
+First warm is slower because it initializes databases (Postgres, Qdrant, Elasticsearch). Subsequent warms are fast
+because services just reconnect to existing data.
 
 ### Cache System
 
@@ -410,9 +422,11 @@ The cache uses your main Dust repo as source:
 2. **Cargo target**: Symlinked from main repo (shared compilation + linking cache)
 3. **Rust binaries**: Pre-compiled for init scripts (qdrant, elasticsearch, init_db)
 
-> **Warning**: node_modules are symlinked, not copied. Running `npm install` in a worktree will modify the main repo's node_modules. If you need isolation, manually run: `rm -rf node_modules && npm ci`
+> **Warning**: node_modules are symlinked, not copied. Running `npm install` in a worktree will modify the main repo's
+> node_modules. If you need isolation, manually run: `rm -rf node_modules && npm ci`
 
-> **sccache** (optional but recommended): When worktree code differs from main, cargo recompiles. sccache caches these compilations by content hash, so rebuilding after switching branches is faster.
+> **sccache** (optional but recommended): When worktree code differs from main, cargo recompiles. sccache caches these
+> compilations by content hash, so rebuilding after switching branches is faster.
 
 ```bash
 # Check cache status

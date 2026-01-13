@@ -374,6 +374,11 @@ export const InstructionBlockExtension =
             return false;
           }
 
+          // Safety check for Safari: ensure editor and docView are available before dispatch
+          if (this.editor.isDestroyed) {
+            return false;
+          }
+
           const tr = state.tr;
           const fromPos = $from.before(blockDepth);
           const toPos = fromPos + blockNode.nodeSize;
@@ -391,7 +396,7 @@ export const InstructionBlockExtension =
           }
 
           this.editor.view.dispatch(tr);
-          // Safety check for Safari: ensure editor and docView are available
+          // Additional check after dispatch
           if (!this.editor.isDestroyed) {
             this.editor.commands.focus();
           }
@@ -455,6 +460,11 @@ export const InstructionBlockExtension =
             return false;
           }
 
+          // Safety check for Safari: ensure editor and docView are available before dispatch
+          if (this.editor.isDestroyed) {
+            return false;
+          }
+
           // Exit the block by creating a new paragraph after it
           const tr = state.tr;
           const posBeforeBlock = $from.before(blockDepth);
@@ -468,7 +478,7 @@ export const InstructionBlockExtension =
           tr.setSelection(TextSelection.create(tr.doc, posAfterBlock + 1));
 
           this.editor.view.dispatch(tr);
-          // Safety check for Safari: ensure editor and docView are available
+          // Additional check after dispatch
           if (!this.editor.isDestroyed) {
             this.editor.commands.focus();
           }

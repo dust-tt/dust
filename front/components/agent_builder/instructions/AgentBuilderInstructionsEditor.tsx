@@ -76,8 +76,49 @@ export function AgentBuilderInstructionsEditor({
     name: "instructions",
   });
   const editorRef = useRef<ReactEditor | null>(null);
+  const initialContentSetRef = useRef(false);
   const blockDropdown = useBlockInsertDropdown(editorRef);
   const suggestionHandler = blockDropdown.suggestionOptions;
+
+  // Add global error handler for Safari debugging
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      if (
+        event.message.includes("transaction") ||
+        event.message.includes("RangeError")
+      ) {
+        // Log to console with full details
+        console.error("Safari Editor Error Captured:", {
+          message: event.message,
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno,
+          stack: event.error?.stack,
+          userAgent: navigator.userAgent,
+        });
+
+        // Store in localStorage for inspection
+        try {
+          localStorage.setItem(
+            "lastEditorError",
+            JSON.stringify({
+              message: event.message,
+              filename: event.filename,
+              lineno: event.lineno,
+              colno: event.colno,
+              stack: event.error?.stack,
+              timestamp: new Date().toISOString(),
+            })
+          );
+        } catch {
+          // Ignore localStorage errors
+        }
+      }
+    };
+
+    window.addEventListener("error", handleError);
+    return () => window.removeEventListener("error", handleError);
+  }, []);
 
   const extensions = useMemo(() => {
     const extensions: Extensions = [
@@ -201,7 +242,6 @@ export function AgentBuilderInstructionsEditor({
   const editor = useEditor(
     {
       extensions,
-      content: field.value,
       contentType: "markdown",
       onUpdate: ({ editor, transaction }) => {
         if (transaction.docChanged) {
@@ -219,10 +259,38 @@ export function AgentBuilderInstructionsEditor({
 
   useEffect(() => {
     editorRef.current = editor;
+    // Use requestAnimationFrame to ensure DOM is ready before focusing
+    // This fixes Safari crashes where docView is accessed before render
     if (editor && !editor.isDestroyed) {
-      editor.commands.focus("end");
+      requestAnimationFrame(() => {
+        if (editor && !editor.isDestroyed) {
+          editor.commands.focus("end");
+        }
+      });
     }
   }, [editor]);
+
+  // Set initial content after editor is created (markdown must be set via setContent)
+  useEffect(() => {
+    if (
+      editor &&
+      field.value &&
+      !initialContentSetRef.current &&
+      !editor.isDestroyed
+    ) {
+      // Use requestAnimationFrame to ensure DOM is ready before setting content
+      // This fixes Safari crashes where docView is accessed before render
+      requestAnimationFrame(() => {
+        if (editor && !editor.isDestroyed) {
+          editor.commands.setContent(field.value, {
+            emitUpdate: false,
+            contentType: "markdown",
+          });
+          initialContentSetRef.current = true;
+        }
+      });
+    }
+  }, [editor, field.value]);
 
   useEffect(() => {
     return () => {
@@ -254,18 +322,26 @@ export function AgentBuilderInstructionsEditor({
       return;
     }
 
+    // Skip if this is the initial content setting
+    if (!initialContentSetRef.current) {
+      return;
+    }
+
     if (editor.isFocused) {
       return;
     }
     const currentContent = editor.getMarkdown();
     if (currentContent !== field.value) {
-      // Use setTimeout to ensure this runs after any diff mode changes
-      setTimeout(() => {
-        editor.commands.setContent(field.value, {
-          emitUpdate: false,
-          contentType: "markdown",
-        });
-      }, 0);
+      // Use requestAnimationFrame to ensure DOM is ready before setting content
+      // This fixes Safari crashes where docView is accessed before render
+      requestAnimationFrame(() => {
+        if (editor && !editor.isDestroyed) {
+          editor.commands.setContent(field.value, {
+            emitUpdate: false,
+            contentType: "markdown",
+          });
+        }
+      });
     }
   }, [editor, field.value]);
 
