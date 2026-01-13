@@ -689,7 +689,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // Fetch participation map for the user for these conversations
     const conversationIds = conversations.map((c) => c.id);
     const participationMap =
-      conversationIds.length > 0
+      conversationIds.length > 0 && auth.user()
         ? await this.fetchParticipationMapForUser(auth, conversationIds)
         : new Map<number, UserParticipation>();
 
