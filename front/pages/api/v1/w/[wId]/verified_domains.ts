@@ -2,8 +2,8 @@ import type { GetWorkspaceVerifiedDomainsResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import type { Authenticator } from "@app/lib/auth";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -31,9 +31,24 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const verifiedDomains = await getWorkspaceVerifiedDomains(
-        auth.getNonNullableWorkspace()
+      const workspace = auth.getNonNullableWorkspace();
+      const workspaceResource = await WorkspaceResource.fetchById(
+        workspace.sId
       );
+
+      if (!workspaceResource) {
+        // This should not happen as the workspace is fetched from the auth.
+        // Clearly something is wrong if we reach this point, so we log a 500 error.
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to fetch the workspace.",
+          },
+        });
+      }
+
+      const verifiedDomains = await workspaceResource.getVerifiedDomains();
 
       return res.status(200).json({ verified_domains: verifiedDomains });
 

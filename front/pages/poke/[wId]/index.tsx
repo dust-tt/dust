@@ -41,7 +41,6 @@ import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import config from "@app/lib/api/config";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
-import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
@@ -50,6 +49,7 @@ import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import type {
   ExtensionConfigurationType,
@@ -104,7 +104,12 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     })
   );
 
-  const workspaceVerifiedDomains = await getWorkspaceVerifiedDomains(owner);
+  const workspaceResource = await WorkspaceResource.fetchById(owner.sId);
+  if (!workspaceResource) {
+    throw new Error(`Workspace not found: ${owner.sId}`);
+  }
+  const workspaceVerifiedDomains = await workspaceResource.getVerifiedDomains();
+
   const workspaceCreationDay = await getWorkspaceCreationDate(owner.sId);
 
   const extensionConfig =
