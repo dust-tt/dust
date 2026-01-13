@@ -24,7 +24,7 @@ import { useNavigate, useParams } from "react-router-dom";
 type GroupLabel =
   | "Today"
   | "Yesterday"
-  | "Last Week"
+  | "Last Week HAHAHAH"
   | "Last Month"
   | "Last 12 Months"
   | "Older";
