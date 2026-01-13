@@ -104,7 +104,7 @@ export class GlobalSkillsRegistry {
         return false;
       }
 
-      if (where.status && where.status !== "active") {
+      if (where.status && !matchesFilter("active", where.status)) {
         return false; // Global skills are always active.
       }
 
