@@ -133,7 +133,7 @@ export async function getSkillIconSuggestion(
       prompt:
         "The user is creating a skill (reusable capability) for an AI assistant. " +
         "Based on the skill name, purpose, and instructions, " +
-        "select the most appropriate icon from the available options. " +
+        "pick the most appropriate icon from the available options. " +
         "Choose the icon that best represents what this skill does.",
       specifications,
       forceToolCall: FUNCTION_NAME,
