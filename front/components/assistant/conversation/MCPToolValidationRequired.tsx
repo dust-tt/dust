@@ -124,16 +124,31 @@ export function MCPToolValidationRequired({
             </div>
           )}
           <div className="mt-3 flex flex-row items-center gap-3">
-            {blockedAction.stake === "low" && (
-              <div className="flex flex-row justify-end gap-2">
-                <Label className="flex w-fit cursor-pointer flex-row items-center gap-2 py-2 pr-2 text-xs">
+            {(blockedAction.stake === "low" ||
+              blockedAction.stake === "medium") && (
+              <div className="flex flex-col gap-0.5">
+                <Label className="flex w-fit cursor-pointer flex-row items-center gap-2 py-1 pr-2 text-xs">
                   <Checkbox
                     checked={neverAskAgain}
                     onCheckedChange={(check) => {
                       setNeverAskAgain(!!check);
                     }}
                   />
-                  <span>Always allow</span>
+                  <span>
+                    Always allow{" "}
+                    {blockedAction.stake === "medium" &&
+                      blockedAction.argumentsRequiringApproval &&
+                      blockedAction.argumentsRequiringApproval.length > 0 && (
+                        <span className="font-normal">
+                          @{blockedAction.metadata.agentName} to{" "}
+                          {asDisplayName(blockedAction.metadata.toolName)} using{" "}
+                          {blockedAction.argumentsRequiringApproval
+                            .filter((arg) => blockedAction.inputs[arg] != null)
+                            .map((arg) => `${blockedAction.inputs[arg]}`)
+                            .join(", ")}
+                        </span>
+                      )}
+                  </span>
                 </Label>
               </div>
             )}

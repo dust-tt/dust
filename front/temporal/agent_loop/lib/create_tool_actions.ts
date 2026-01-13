@@ -1,6 +1,10 @@
 import assert from "assert";
 
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type {
+  MCPToolConfigurationType,
+  ServerSideMCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
+import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
@@ -250,6 +254,10 @@ async function createActionForTool(
               agentName: agentConfiguration.name,
               icon: actionConfiguration.icon,
             },
+            argumentsRequiringApproval:
+              isServerSideMCPToolConfiguration(actionConfiguration)
+                ? actionConfiguration.argumentsRequiringApproval
+                : undefined,
           }
         : undefined,
   };

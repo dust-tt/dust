@@ -20,6 +20,9 @@ export interface ToolExecution<
   metadata: T;
 
   inputs: Record<string, unknown>;
+
+  // For medium-stake tools: which arguments will be saved for future auto-approval.
+  argumentsRequiringApproval?: string[];
 }
 
 type ToolPersonalAuthError = {
