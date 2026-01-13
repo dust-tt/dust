@@ -347,13 +347,18 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
-  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+  static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[],
+    { includeDeleted }: { includeDeleted?: boolean } = {}
+  ) {
     const spaces = await this.baseFetch(auth, {
       where: {
         id: {
           [Op.in]: ids,
         },
       },
+      includeDeleted,
     });
 
     return spaces ?? [];
