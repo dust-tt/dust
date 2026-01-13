@@ -30,6 +30,7 @@ import type {
   FileType,
   FileTypeWithMetadata,
   FileTypeWithUploadUrl,
+  FileUseCase,
   FileUseCaseMetadata,
   LightWorkspaceType,
   ModelId,
@@ -847,5 +848,85 @@ export class FileResource extends BaseResource<FileModel> {
 
   isSafeToDisplay(): boolean {
     return ALL_FILE_FORMATS[this.contentType].isSafeToDisplay;
+  }
+
+  /**
+   * Copy a file to a new file with the specified use case and metadata.
+   * This method copies both the file metadata and the content stored in GCS.
+   *
+   * @param auth - Authenticator for workspace isolation
+   * @param params - Parameters for copying the file
+   * @param params.sourceId - The sId of the source file to copy
+   * @param params.useCase - The use case for the new file
+   * @param params.useCaseMetadata - Metadata for the new file's use case
+   * @returns Result containing the new FileResource or an error
+   */
+  static async copy(
+    auth: Authenticator,
+    {
+      sourceId,
+      useCase,
+      useCaseMetadata,
+    }: {
+      sourceId: string;
+      useCase: FileUseCase;
+      useCaseMetadata?: FileUseCaseMetadata;
+    }
+  ): Promise<
+    Result<
+      FileResource,
+      Error | { name: "dust_error"; code: string; message: string }
+    >
+  > {
+    // Fetch the source file.
+    const sourceFile = await FileResource.fetchById(auth, sourceId);
+    if (!sourceFile) {
+      return new Err(new Error(`Source file not found: ${sourceId}`));
+    }
+
+    if (!sourceFile.isReady) {
+      return new Err(
+        new Error(
+          `Source file is not ready for copying: ${sourceId} (status: ${sourceFile.status})`
+        )
+      );
+    }
+
+    try {
+      // Create a new file with the same properties.
+      const newFile = await FileResource.makeNew({
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: auth.user()?.id ?? null,
+        contentType: sourceFile.contentType,
+        fileName: sourceFile.fileName,
+        fileSize: sourceFile.fileSize,
+        useCase,
+        useCaseMetadata,
+      });
+
+      // Get a read stream from the source file's original version.
+      const readStream = sourceFile.getReadStream({
+        auth,
+        version: "original",
+      });
+
+      // Use processAndStoreFile to handle the content processing and storage.
+      const { processAndStoreFile } = await import("@app/lib/api/files/upload");
+      const result = await processAndStoreFile(auth, {
+        file: newFile,
+        content: {
+          type: "readable",
+          value: readStream,
+        },
+      });
+
+      if (result.isErr()) {
+        return new Err(result.error);
+      }
+
+      return new Ok(result.value);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
   }
 }
