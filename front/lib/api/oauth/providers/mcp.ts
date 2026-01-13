@@ -34,6 +34,7 @@ const BaseMCPMetadataSchema = z.object({
 const MCPOAuthConnectionMetadataSchema = BaseMCPMetadataSchema.extend({
   client_secret: z.string().optional(),
   scope: z.string().optional(),
+  resource: z.string().optional(),
 });
 
 const MCPMetadataSchema = BaseMCPMetadataSchema.extend({
@@ -60,6 +61,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
     const client_id = connection.metadata.client_id;
     const authorization_endpoint = connection.metadata.authorization_endpoint;
     const scope = connection.metadata.scope;
+    const resource = connection.metadata.resource;
 
     if (!code_challenge) {
       throw new Error("Missing code challenge");
@@ -88,6 +90,10 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
 
     if (scope) {
       authUrl.searchParams.set("scope", scope);
+    }
+
+    if (resource) {
+      authUrl.searchParams.set("resource", resource);
     }
 
     return authUrl.toString();
@@ -235,6 +241,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
           token_endpoint: connection.metadata.token_endpoint,
           authorization_endpoint: connection.metadata.authorization_endpoint,
           scope: connection.metadata.scope,
+          resource: connection.metadata.resource,
           code_verifier,
           code_challenge,
           ...restConfig,
