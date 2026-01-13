@@ -21,6 +21,7 @@ interface HubSpotSubmissionContext {
   hutk?: string;
   pageUri: string;
   pageName: string;
+  ipAddress?: string;
 }
 
 interface HubSpotSubmissionRequest {
@@ -65,21 +66,17 @@ export async function submitToHubSpotForm(params: {
   addField("language", formData.language);
   addField("headquarters_region", formData.headquarters_region);
   addField("company_headcount_form", formData.company_headcount_form);
-  addField("how_to_use_dust", formData.how_to_use_dust);
+  // "How do you want to use Dust?" maps to "Landing Use Cases" property
+  addField("landing_use_cases", formData.how_to_use_dust);
 
-  // UTM and tracking fields
-  // HubSpot has built-in properties for these
-  addField("hs_analytics_source", tracking.utm_source);
-  addField("hs_analytics_source_data_1", tracking.utm_medium);
-  addField("hs_analytics_source_data_2", tracking.utm_campaign);
-
-  // Custom properties for additional tracking (if configured in HubSpot)
-  addField("utm_source", tracking.utm_source);
-  addField("utm_medium", tracking.utm_medium);
-  addField("utm_campaign", tracking.utm_campaign);
-  addField("utm_content", tracking.utm_content);
-  addField("utm_term", tracking.utm_term);
-  addField("gclid", tracking.gclid);
+  // UTM tracking fields - internal names have capital U
+  addField("Utm_source", tracking.utm_source);
+  addField("Utm_medium", tracking.utm_medium);
+  addField("Utm_campaign", tracking.utm_campaign);
+  addField("Utm_content", tracking.utm_content);
+  addField("Utm_term", tracking.utm_term);
+  // HubSpot's built-in property for Google Ads click ID
+  addField("hs_google_click_id", tracking.gclid);
   addField("fbclid", tracking.fbclid);
   addField("msclkid", tracking.msclkid);
   addField("li_fat_id", tracking.li_fat_id);
@@ -89,6 +86,18 @@ export async function submitToHubSpotForm(params: {
     fields,
     context,
   };
+
+  // Log tracking data for debugging
+  logger.info(
+    {
+      email: formData.email,
+      gclid: tracking.gclid ?? "not set",
+      utm_source: tracking.utm_source ?? "not set",
+      fieldsCount: fields.length,
+      fieldNames: fields.map((f) => f.name),
+    },
+    "Submitting to HubSpot with tracking data"
+  );
 
   // Use the correct regional endpoint
   const endpoint = `https://api.hsforms.com/submissions/v3/integration/submit/${HUBSPOT_PORTAL_ID}/${HUBSPOT_FORM_ID}`;
@@ -105,7 +114,7 @@ export async function submitToHubSpotForm(params: {
     if (!response.ok) {
       const errorText = await response.text();
       logger.error(
-        { status: response.status, error: errorText },
+        { status: response.status, error: errorText, fields },
         "HubSpot form submission failed"
       );
       return new Err(
@@ -114,7 +123,7 @@ export async function submitToHubSpotForm(params: {
     }
 
     logger.info(
-      { email: formData.email },
+      { email: formData.email, gclid: tracking.gclid ?? "not set" },
       "HubSpot form submission successful"
     );
     return new Ok(undefined);

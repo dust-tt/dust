@@ -90,6 +90,13 @@ export default async function handler(
   // Determine if lead is qualified based on self-reported headcount
   const isQualified = QUALIFIED_HEADCOUNTS.includes(formData.company_headcount_form);
 
+  // Extract IP address from request headers
+  const forwardedFor = req.headers["x-forwarded-for"];
+  const ipAddress =
+    (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor)?.split(",")[0]?.trim() ??
+    req.socket.remoteAddress ??
+    undefined;
+
   // Submit to HubSpot
   const hubspotResult = await submitToHubSpotForm({
     formData,
@@ -97,6 +104,7 @@ export default async function handler(
     context: {
       pageUri,
       pageName,
+      ipAddress,
     },
   });
 

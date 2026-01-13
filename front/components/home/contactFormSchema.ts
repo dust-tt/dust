@@ -1,20 +1,24 @@
 import { z } from "zod";
 
 // Language options for the form
+// Values must match HubSpot CRM values exactly
 export const LANGUAGE_OPTIONS = [
-  { value: "en", label: "English" },
-  { value: "fr", label: "French" },
+  {
+    value: "I would like my meeting to be in English 🇬🇧🇺🇸",
+    label: "English",
+  },
+  { value: "I would like my meeting to be in French 🇫🇷", label: "French" },
 ] as const;
 
 // Headquarters region options
+// Values must match HubSpot CRM values exactly (capitalized)
 export const HEADQUARTERS_REGION_OPTIONS = [
-  { value: "north_america", label: "North America" },
-  { value: "europe", label: "Europe" },
-  { value: "asia", label: "Asia" },
-  { value: "latin_america", label: "Latin America" },
-  { value: "oceania", label: "Oceania" },
-  { value: "africa", label: "Africa" },
-  { value: "middle_east", label: "Middle East" },
+  { value: "North America", label: "North America" },
+  { value: "Europe", label: "Europe" },
+  { value: "Asia", label: "Asia" },
+  { value: "Latin America", label: "Latin America" },
+  { value: "Oceania", label: "Oceania" },
+  { value: "Africa", label: "Africa" },
 ] as const;
 
 // Company headcount options

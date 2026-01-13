@@ -82,6 +82,14 @@ export function ContactForm({
         undefined,
     };
 
+    // Debug logging for tracking params
+    console.log("[ContactForm] Tracking params:", {
+      storedParams,
+      sessionGclid: sessionStorage.getItem("gclid"),
+      sessionUtmData: sessionStorage.getItem("utm_data"),
+      finalTracking: tracking,
+    });
+
     // Track form submission attempt
     trackEvent({
       area: TRACKING_AREAS.CONTACT,
