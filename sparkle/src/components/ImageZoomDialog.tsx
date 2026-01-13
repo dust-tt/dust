@@ -62,10 +62,8 @@ function ImageZoomDialog({
 
   // Reset image loaded state when dialog closes or image changes
   React.useEffect(() => {
-    if (!open) {
-      setImageLoaded(false);
-    }
-  }, [open]);
+    setImageLoaded(false);
+  }, [open, image.src]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
