@@ -510,16 +510,18 @@ const ProductionChecksPage = () => {
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="py-8">
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex items-center justify-between gap-x-2">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-foreground-night">
               Production Checks
             </h1>
-            <p className="mt-1 text-sm text-gray-600 dark:text-muted-foreground-night">
-              {alertCount > 0
-                ? `${alertCount} check${pluralize(alertCount)} need${conjugate(alertCount)} attention`
-                : "All checks passing"}
-            </p>
+            {!isProductionChecksLoading && (
+              <p className="mt-1 text-sm text-gray-600 dark:text-muted-foreground-night">
+                {alertCount > 0
+                  ? `${alertCount} check${pluralize(alertCount)} need${conjugate(alertCount)} attention`
+                  : "All checks passing"}
+              </p>
+            )}
           </div>
           <Button
             variant="outline"
