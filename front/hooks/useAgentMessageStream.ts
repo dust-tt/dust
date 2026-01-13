@@ -281,8 +281,9 @@ export function useAgentMessageStream({
             isMessageTemporayState(m) && m.sId === sId
               ? {
                   ...m,
-                  ...getLightAgentMessageFromAgentMessage(messageSuccess.message),
-                  actions: m.actions,
+                  ...getLightAgentMessageFromAgentMessage(
+                    messageSuccess.message
+                  ),
                   status: "succeeded",
                   streaming: {
                     ...m.streaming,
