@@ -8,6 +8,12 @@ import {
   ANALYTICS_ALIAS_NAME,
   withEs,
 } from "@app/lib/api/elasticsearch";
+import {
+  addTraceToLangfuseDataset,
+  flushLangfuse,
+} from "@app/lib/api/instrumentation/langfuse_datasets";
+import { fetchLLMTrace, isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
+import type { LLMTrace } from "@app/lib/api/llm/traces/types";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
@@ -37,6 +43,7 @@ import type {
   AgentMessageAnalyticsToolUsed,
   AgentRetrievalOutputAnalyticsData,
 } from "@app/types/assistant/analytics";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { sha256 } from "@app/types/shared/utils/hashing";
 
@@ -654,4 +661,99 @@ export async function storeAgentMessageFeedbackActivity(
     },
     getAgentMessageFeedbackAnalytics(agentMessageFeedbacks)
   );
+
+  const { agentConfigurationId } = agentMessageModel;
+  if (isGlobalAgentId(agentConfigurationId)) {
+    // Add negative feedback traces to Langfuse dataset for global agents
+    await appendNegativeFeedbackTracesToLangfuseDataset({
+      auth,
+      agentMessageModel,
+      agentMessageFeedbacks,
+    });
+  }
+}
+
+/**
+ * Appends traces to Langfuse dataset when negative feedback is given on global agents.
+ * This enables later annotation and analysis of problematic agent responses.
+ */
+async function appendNegativeFeedbackTracesToLangfuseDataset({
+  auth,
+  agentMessageModel,
+  agentMessageFeedbacks,
+}: {
+  auth: Authenticator;
+  agentMessageModel: AgentMessageModel;
+  agentMessageFeedbacks: AgentMessageFeedbackResource[];
+}): Promise<void> {
+  const { agentConfigurationId } = agentMessageModel;
+
+  // Find negative (thumbs down) feedbacks that haven't been dismissed
+  const negativeFeedbacks = agentMessageFeedbacks.filter(
+    (feedback) => feedback.thumbDirection === "down" && !feedback.dismissed
+  );
+
+  if (negativeFeedbacks.length === 0) {
+    return;
+  }
+
+  // Get run IDs from agent message
+  const runIds = agentMessageModel.runIds ?? [];
+  const llmTraceIds = runIds.filter(isLLMTraceId);
+
+  if (llmTraceIds.length === 0) {
+    logger.info(
+      {
+        agentConfigurationId,
+        agentMessageId: agentMessageModel.id,
+        runIdsCount: runIds.length,
+      },
+      "[Langfuse] No LLM trace IDs found for negative feedback on global agent"
+    );
+    return;
+  }
+
+  const datasetName = `${agentConfigurationId}-feedback`;
+
+  // Process each negative feedback and trace combination
+  for (const feedback of negativeFeedbacks) {
+    for (const runId of llmTraceIds) {
+      try {
+        const trace = await fetchLLMTrace(auth, { runId });
+
+        if (!trace) {
+          logger.warn(
+            {
+              runId,
+              feedbackId: feedback.id,
+              agentConfigurationId,
+            },
+            "[Langfuse] Failed to fetch LLM trace for dataset"
+          );
+          continue;
+        }
+
+        await addTraceToLangfuseDataset({
+          datasetName,
+          trace: trace as LLMTrace,
+          feedbackId: feedback.id,
+          runId,
+        });
+      } catch (error) {
+        // Log but don't throw - dataset operations shouldn't block feedback workflow
+        logger.error(
+          {
+            runId,
+            feedbackId: feedback.id,
+            agentConfigurationId,
+            error,
+          },
+          "[Langfuse] Error processing trace for dataset"
+        );
+      }
+    }
+  }
+
+  // Flush to ensure all items are sent
+  await flushLangfuse();
 }
