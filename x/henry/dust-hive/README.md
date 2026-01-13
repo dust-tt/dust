@@ -250,6 +250,13 @@ dust-hive forward env-b     # Switch OAuth to env-b
 If the ports are already owned by another dust-hive forwarder, `dust-hive forward NAME` will switch it automatically.
 If those ports are owned by a different process, the command will fail with details so you can stop it.
 
+## Configuration settings
+
+You can customize the behavior of `dust-hive` by editing `~/.dust-hive/settings.json`.
+Two options are available:
+* branchPrefix: Prefix to add to branch names (e.g., "tom-" creates branches like "tom-myenv")
+* useGitSpice: Use git-spice to manage stacks (requires git-spice installed and configured)
+
 ## Zellij Sessions
 
 ### Main Session
@@ -427,6 +434,7 @@ dust-hive sync
 ```
 ~/.dust-hive/
 ├── config.env                 # Your secrets (create this)
+├── settings.json              # Your dust-hive settings
 ├── temporal.pid               # Temporal server process ID
 ├── temporal.log               # Temporal server logs
 ├── forward.pid                # Forwarder process ID

@@ -9,6 +9,7 @@ import { readPid, stopAllServices } from "../lib/process";
 import { restoreTerminal, selectMultipleEnvironments } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import type { ServiceName } from "../lib/services";
+import { type Settings, loadSettings } from "../lib/settings";
 import { isDockerRunning } from "../lib/state";
 import { dropTestDatabase } from "../lib/test-postgres";
 import { deleteBranch, hasUncommittedChanges, removeWorktree } from "../lib/worktree";
@@ -55,7 +56,8 @@ async function cleanupDocker(envName: string): Promise<void> {
 // Destroy a single environment (internal helper)
 async function destroySingleEnvironment(
   env: Environment,
-  options: DestroyOptions
+  options: DestroyOptions,
+  settings: Settings
 ): Promise<Result<void>> {
   const worktreePath = getWorktreeDir(env.name);
 
@@ -133,7 +135,7 @@ async function destroySingleEnvironment(
 
   // Delete the workspace branch
   logger.step(`Deleting branch '${env.metadata.workspaceBranch}'...`);
-  await deleteBranch(env.metadata.repoRoot, env.metadata.workspaceBranch);
+  await deleteBranch(env.metadata.repoRoot, env.metadata.workspaceBranch, settings);
   logger.success("Branch deleted");
 
   // Remove environment directory
@@ -154,6 +156,9 @@ export async function destroyCommand(
 ): Promise<Result<void>> {
   const resolvedOptions: DestroyOptions = { force: false, ...options };
 
+  // Load settings for git-spice support
+  const settings = await loadSettings();
+
   // If a name is provided, use single-environment flow with confirmation
   if (name) {
     const envResult = await requireEnvironment(name, "destroy", {
@@ -161,7 +166,7 @@ export async function destroyCommand(
     });
     if (!envResult.ok) return envResult;
 
-    return destroySingleEnvironment(envResult.value, resolvedOptions);
+    return destroySingleEnvironment(envResult.value, resolvedOptions, settings);
   }
 
   // No name provided - use multi-select for batch destruction
@@ -189,7 +194,7 @@ export async function destroyCommand(
 
   // Destroy each environment sequentially
   for (const env of envs) {
-    const result = await destroySingleEnvironment(env, resolvedOptions);
+    const result = await destroySingleEnvironment(env, resolvedOptions, settings);
     if (!result.ok) {
       return result;
     }
