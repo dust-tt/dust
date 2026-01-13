@@ -1,6 +1,7 @@
 import { startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
 import pickBy from "lodash/pickBy";
+import startCase from "lodash/startCase";
 
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
@@ -142,7 +143,7 @@ export abstract class LLM {
         : [{ role: "system", content: prompt }, ...conversation.messages];
 
     generation.updateTrace({
-      name: this.context.operationType,
+      name: startCase(this.context.operationType),
       input: traceInput,
       metadata: {
         dustTraceId: this.traceId,
