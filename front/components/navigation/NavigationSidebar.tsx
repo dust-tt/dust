@@ -194,7 +194,7 @@ export const NavigationSidebar = React.forwardRef<
       </div>
       <div className="flex grow flex-col">{children}</div>
       {subscription.plan.code === FREE_TRIAL_PHONE_PLAN_CODE && (
-        <TrialMessageUsage workspaceId={owner.sId} />
+        <TrialMessageUsage isAdmin={isAdmin(owner)} workspaceId={owner.sId} />
       )}
       {user && (
         <div
@@ -330,10 +330,11 @@ function SubscriptionPastDueBanner() {
 const MESSAGE_USAGE_CRITICAL_THRESHOLD = 0.9;
 
 interface TrialMessageUsageProps {
+  isAdmin: boolean;
   workspaceId: string;
 }
 
-function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
+function TrialMessageUsage({ isAdmin, workspaceId }: TrialMessageUsageProps) {
   const { messageUsage } = useTrialMessageUsage({ workspaceId });
 
   if (!messageUsage || messageUsage.limit === -1) {
@@ -380,7 +381,7 @@ function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
           style={{ width: `${Math.min(percentage * 100, 100)}%` }}
         />
       </div>
-      {isAtLimit && (
+      {isAtLimit && isAdmin && (
         <div className="mt-3">
           <Link
             href={`/w/${workspaceId}/subscription`}

@@ -38,6 +38,7 @@ import type {
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
+import { isAdmin } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
@@ -168,6 +169,7 @@ export default function WorkspaceAdmin({
           </WorkspaceSection>
           {inviteBlockedPopupReason && (
             <ReachedLimitPopup
+              isAdmin={isAdmin(owner)}
               isOpened={!!inviteBlockedPopupReason}
               onClose={() => setInviteBlockedPopupReason(null)}
               subscription={subscription}
