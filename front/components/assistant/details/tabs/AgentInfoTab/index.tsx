@@ -57,16 +57,6 @@ export function AgentInfoTab({
         </div>
       )}
 
-      {displayKnowledge && (
-        <>
-          <Page.Separator />
-          <AssistantKnowledgeSection
-            agentConfiguration={agentConfiguration}
-            owner={owner}
-          />
-        </>
-      )}
-
       {displayInstructions && isString(agentConfiguration.instructions) && (
         <div className="dd-privacy-mask flex flex-col gap-4">
           <div className="heading-lg text-foreground dark:text-foreground-night">
@@ -88,6 +78,22 @@ export function AgentInfoTab({
         </div>
       )}
 
+      <AssistantToolsSection
+        agentConfiguration={agentConfiguration}
+        owner={owner}
+        isDustAgent={isDustAgent}
+      />
+
+      {displayKnowledge && (
+        <>
+          <Page.Separator />
+          <AssistantKnowledgeSection
+            agentConfiguration={agentConfiguration}
+            owner={owner}
+          />
+        </>
+      )}
+
       {model && (
         <div className="flex flex-col gap-5">
           <div className="heading-lg text-foreground dark:text-foreground-night">
@@ -102,12 +108,6 @@ export function AgentInfoTab({
           </div>
         </div>
       )}
-
-      <AssistantToolsSection
-        agentConfiguration={agentConfiguration}
-        owner={owner}
-        isDustAgent={isDustAgent}
-      />
     </div>
   );
 }
