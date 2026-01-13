@@ -86,10 +86,13 @@ function useEditorService(editor: Editor | null) {
       },
 
       setContent(content: string) {
-        editor?.commands.setContent(content, {
-          emitUpdate: false,
-          contentType: "markdown",
-        });
+        // Safety check for Safari: ensure editor and docView are available
+        if (editor && !editor.isDestroyed) {
+          editor.commands.setContent(content, {
+            emitUpdate: false,
+            contentType: "markdown",
+          });
+        }
       },
 
       setEditable(editable: boolean) {
@@ -168,12 +171,23 @@ export function useSkillInstructionsEditor({
 
   // Set initial content after editor is created (markdown must be set via setContent)
   useEffect(() => {
-    if (editor && content && !initialContentSetRef.current) {
-      editor.commands.setContent(content, {
-        emitUpdate: false,
-        contentType: "markdown",
+    if (
+      editor &&
+      content &&
+      !initialContentSetRef.current &&
+      !editor.isDestroyed
+    ) {
+      // Use requestAnimationFrame to ensure DOM is ready before setting content
+      // This fixes Safari crashes where docView is accessed before render
+      requestAnimationFrame(() => {
+        if (editor && !editor.isDestroyed) {
+          editor.commands.setContent(content, {
+            emitUpdate: false,
+            contentType: "markdown",
+          });
+          initialContentSetRef.current = true;
+        }
       });
-      initialContentSetRef.current = true;
     }
   }, [editor, content]);
 
