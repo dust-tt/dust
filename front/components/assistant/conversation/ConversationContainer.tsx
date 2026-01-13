@@ -25,7 +25,13 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, Ok, toMentionType, toRichAgentMentionType } from "@app/types";
+import {
+  Err,
+  isAdmin,
+  Ok,
+  toMentionType,
+  toRichAgentMentionType,
+} from "@app/types";
 interface ConversationContainerProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -195,6 +201,7 @@ export function ConversationContainerVirtuoso({
         </>
       )}
       <ReachedLimitPopup
+        isAdmin={isAdmin(owner)}
         isOpened={planLimitReached}
         onClose={() => setPlanLimitReached(false)}
         subscription={subscription}

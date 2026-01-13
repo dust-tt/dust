@@ -28,7 +28,8 @@ function getLimitPromptForCode(
   owner: WorkspaceType,
   code: WorkspaceLimit,
   subscription: SubscriptionType,
-  displayFairUseModal: () => void
+  displayFairUseModal: () => void,
+  isAdmin: boolean
 ) {
   switch (code) {
     case "cant_invite_no_seats_available": {
@@ -107,10 +108,12 @@ function getLimitPromptForCode(
       if (isFreeTrialPhonePlan(subscription.plan.code)) {
         return {
           title: "Dust trial message limit reached",
-          validateLabel: "Subscribe to Dust",
-          onValidate: () => {
-            void router.push(`/w/${owner.sId}/subscribe`);
-          },
+          validateLabel: isAdmin ? "Subscribe to Dust" : "Ok",
+          onValidate: isAdmin
+            ? () => {
+                void router.push(`/w/${owner.sId}/subscription`);
+              }
+            : undefined,
           children: (
             <>
               <Page.P>
@@ -123,10 +126,12 @@ function getLimitPromptForCode(
       } else if (subscription.trialing) {
         return {
           title: "Fair usage limit reached",
-          validateLabel: "Manage your subscription",
-          onValidate: () => {
-            void router.push(`/w/${owner.sId}/subscription`);
-          },
+          validateLabel: isAdmin ? "Manage your subscription" : "Ok",
+          onValidate: isAdmin
+            ? () => {
+                void router.push(`/w/${owner.sId}/subscription`);
+              }
+            : undefined,
           children: (
             <>
               <Page.P>
@@ -171,12 +176,14 @@ function getLimitPromptForCode(
 }
 
 export function ReachedLimitPopup({
+  isAdmin,
   isOpened,
   onClose,
   subscription,
   owner,
   code,
 }: {
+  isAdmin: boolean;
   isOpened: boolean;
   onClose: () => void;
   subscription: SubscriptionType;
@@ -191,7 +198,8 @@ export function ReachedLimitPopup({
     owner,
     code,
     subscription,
-    () => setIsFairUsageModalOpened(true)
+    () => setIsFairUsageModalOpened(true),
+    isAdmin
   );
 
   return (

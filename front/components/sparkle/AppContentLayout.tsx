@@ -6,11 +6,13 @@ import React from "react";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { Navigation } from "@app/components/navigation/Navigation";
+import { SubscriptionEndBanner } from "@app/components/navigation/TrialBanner";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { NavigationLoadingOverlay } from "@app/components/sparkle/NavigationLoadingOverlay";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
+import { isAdmin } from "@app/types";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
 // fallback to the landing if we linked directly to that modal.
@@ -100,6 +102,11 @@ export default function AppContentLayout({
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
+        <SubscriptionEndBanner
+          isAdmin={isAdmin(owner)}
+          owner={owner}
+          subscription={subscription}
+        />
         <NavigationLoadingOverlay />
         {/* Temporary measure to preserve title existence on smaller screens.
          * Page has no title, prepend empty AppLayoutTitle. */}

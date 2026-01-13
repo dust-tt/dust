@@ -24,10 +24,7 @@ import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingC
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
 import type { AppStatus } from "@app/lib/api/status";
-import {
-  FREE_TRIAL_PHONE_PLAN_CODE,
-  isFreePlan,
-} from "@app/lib/plans/plan_codes";
+import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useTrialMessageUsage } from "@app/lib/swr/trial_message_usage";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -97,24 +94,10 @@ export const NavigationSidebar = React.forwardRef<
 
   const { appStatus } = useAppStatus();
 
-  const hasIncidentBanner =
-    appStatus?.dustStatus !== null || appStatus?.providersStatus !== null;
-  const endDate = subscription.endDate;
-  // eslint-disable-next-line react-hooks/purity
-  const in30Days = Date.now() + 30 * 24 * 60 * 60 * 1000;
-
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
       <div className="flex flex-col gap-2 pt-3">
         {appStatus && <AppStatusBanner appStatus={appStatus} />}
-        {!hasIncidentBanner && endDate && endDate < in30Days && (
-          <SubscriptionEndBanner
-            endDate={endDate}
-            startDate={subscription.startDate}
-            isFreePlan={isFreePlan(subscription.plan.code)}
-            workspaceId={owner.sId}
-          />
-        )}
         {subscription.paymentFailingSince && isAdmin(owner) && (
           <SubscriptionPastDueBanner />
         )}
@@ -211,7 +194,7 @@ export const NavigationSidebar = React.forwardRef<
       </div>
       <div className="flex grow flex-col">{children}</div>
       {subscription.plan.code === FREE_TRIAL_PHONE_PLAN_CODE && (
-        <TrialMessageUsage workspaceId={owner.sId} />
+        <TrialMessageUsage isAdmin={isAdmin(owner)} workspaceId={owner.sId} />
       )}
       {user && (
         <div
@@ -316,84 +299,6 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   return null;
 }
 
-function getTrialDaysRemainingVariant(
-  startDateMs: number | null,
-  endDateMs: number
-): "success" | "warning" | "danger" {
-  if (!startDateMs) {
-    // If no start date, default to warning (should not happen)
-    return "warning";
-  }
-
-  const totalDurationMs = endDateMs - startDateMs;
-  const remainingMs = endDateMs - Date.now();
-  const remainingPercentage = remainingMs / totalDurationMs;
-
-  if (remainingPercentage > 0.4) {
-    return "success";
-  } else if (remainingPercentage > 0.1) {
-    return "warning";
-  } else {
-    return "danger";
-  }
-}
-
-function SubscriptionEndBanner({
-  endDate,
-  startDate,
-  isFreePlan,
-  workspaceId,
-}: {
-  endDate: number;
-  startDate: number | null;
-  isFreePlan: boolean;
-  workspaceId: string;
-}) {
-  const formattedEndDate = new Date(endDate).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const variant = isFreePlan
-    ? getTrialDaysRemainingVariant(startDate, endDate)
-    : "info";
-  const title = isFreePlan
-    ? `Free trial ending on ${formattedEndDate}`
-    : `Subscription ending on ${formattedEndDate}`;
-
-  return (
-    <StatusBanner
-      variant={variant}
-      title={title}
-      description={
-        <>
-          Your connections and member access will be removed after this date.
-          Details{" "}
-          <Link
-            href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
-            target="_blank"
-            className="underline"
-          >
-            here
-          </Link>
-          .
-          {isFreePlan && (
-            <p className="mt-2">Keep everything. Subscribe now.</p>
-          )}
-        </>
-      }
-      footer={
-        isFreePlan && (
-          <Link href={`/w/${workspaceId}/subscribe`} className="no-underline">
-            <Button label="Subscribe to Dust" variant="primary" />
-          </Link>
-        )
-      }
-    />
-  );
-}
-
 function SubscriptionPastDueBanner() {
   return (
     <StatusBanner
@@ -425,10 +330,11 @@ function SubscriptionPastDueBanner() {
 const MESSAGE_USAGE_CRITICAL_THRESHOLD = 0.9;
 
 interface TrialMessageUsageProps {
+  isAdmin: boolean;
   workspaceId: string;
 }
 
-function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
+function TrialMessageUsage({ isAdmin, workspaceId }: TrialMessageUsageProps) {
   const { messageUsage } = useTrialMessageUsage({ workspaceId });
 
   if (!messageUsage || messageUsage.limit === -1) {
@@ -475,9 +381,12 @@ function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
           style={{ width: `${Math.min(percentage * 100, 100)}%` }}
         />
       </div>
-      {isAtLimit && (
+      {isAtLimit && isAdmin && (
         <div className="mt-3">
-          <Link href={`/w/${workspaceId}/subscribe`} className="no-underline">
+          <Link
+            href={`/w/${workspaceId}/subscription`}
+            className="no-underline"
+          >
             <Button label="Subscribe to Dust" variant="primary" />
           </Link>
         </div>
