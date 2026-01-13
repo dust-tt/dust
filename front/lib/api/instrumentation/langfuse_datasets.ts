@@ -1,6 +1,5 @@
 import { LangfuseClient } from "@langfuse/client";
 
-import type { LLMTrace } from "@app/lib/api/llm/traces/types";
 import logger from "@app/logger/logger";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
@@ -59,14 +58,52 @@ function createUniqueItemId(feedbackId: number, runId: string): string {
 
 interface AddTraceToDatasetParams {
   datasetName: string;
-  trace: LLMTrace;
+  dustTraceId: string;
   feedbackId: number;
-  runId: string;
+  workspaceId: string;
 }
 
 /**
- * Adds a trace to a Langfuse dataset for later annotation.
- * Uses the item ID for upsert behavior to ensure idempotency.
+ * Fetches a trace from Langfuse by searching for its dustTraceId in metadata.
+ *
+ * Since traces are stored in Langfuse with our dustTraceId in their metadata,
+ * we can find them by filtering on the metadata.dustTraceId field.
+ */
+async function fetchTraceByDustTraceId(
+  client: LangfuseClient,
+  dustTraceId: string
+): Promise<{ id: string; input: unknown; output: unknown } | null> {
+  // Use Langfuse's advanced filtering to find trace by metadata.dustTraceId
+  const filter = JSON.stringify([
+    {
+      type: "stringObject",
+      column: "metadata",
+      key: "dustTraceId",
+      operator: "=",
+      value: dustTraceId,
+    },
+  ]);
+
+  const traces = await client.api.trace.list({
+    filter,
+    limit: 1,
+  });
+
+  if (!traces.data || traces.data.length === 0) {
+    return null;
+  }
+
+  const trace = traces.data[0];
+  return {
+    id: trace.id,
+    input: trace.input,
+    output: trace.output,
+  };
+}
+
+/**
+ * Adds a trace to a Langfuse dataset by fetching the trace from Langfuse
+ * (searching by dustTraceId metadata) and creating a dataset item with its input/output data.
  *
  * @param params - The parameters for adding the trace
  * @returns true if the trace was added, false if it was skipped (disabled or error)
@@ -74,35 +111,47 @@ interface AddTraceToDatasetParams {
 export async function addTraceToLangfuseDataset(
   params: AddTraceToDatasetParams
 ): Promise<boolean> {
-  const { datasetName, trace, feedbackId, runId } = params;
+  const { datasetName, dustTraceId, feedbackId, workspaceId } = params;
 
   const client = getLangfuseClient();
   if (!client) {
     return false;
   }
 
-  const itemId = createUniqueItemId(feedbackId, runId);
+  const itemId = createUniqueItemId(feedbackId, dustTraceId);
 
   try {
     // Ensure dataset exists
     await ensureLangfuseDatasetExists(client, datasetName);
 
+    // Fetch the trace from Langfuse by searching for dustTraceId in metadata
+    const trace = await fetchTraceByDustTraceId(client, dustTraceId);
+
+    if (!trace) {
+      logger.warn(
+        {
+          datasetName,
+          feedbackId,
+          dustTraceId,
+          workspaceId,
+        },
+        "[Langfuse] Trace not found by dustTraceId metadata"
+      );
+      return false;
+    }
+
     // Create dataset item with trace data
-    // Using the id field enables upsert behavior for idempotency
+    // sourceTraceId links to the trace in Langfuse UI for reference
     await client.api.datasetItems.create({
       datasetName,
       id: itemId,
       input: trace.input,
       expectedOutput: trace.output,
+      sourceTraceId: trace.id,
       metadata: {
         feedbackId,
-        runId,
-        traceId: trace.traceId,
-        workspaceId: trace.workspaceId,
-        context: trace.context,
-        modelId: trace.metadata.modelId,
-        durationMs: trace.metadata.durationMs,
-        hasError: !!trace.error,
+        dustTraceId,
+        workspaceId,
         timestamp: new Date().toISOString(),
       },
     });
@@ -111,9 +160,9 @@ export async function addTraceToLangfuseDataset(
       {
         datasetName,
         feedbackId,
-        runId,
-        traceId: trace.traceId,
-        workspaceId: trace.workspaceId,
+        dustTraceId,
+        langfuseTraceId: trace.id,
+        workspaceId,
         itemId,
       },
       "[Langfuse] Added trace to dataset"
@@ -126,7 +175,7 @@ export async function addTraceToLangfuseDataset(
       {
         datasetName,
         feedbackId,
-        runId,
+        dustTraceId,
         itemId,
         error,
       },
@@ -136,12 +185,3 @@ export async function addTraceToLangfuseDataset(
   }
 }
 
-/**
- * Placeholder for flush operation.
- * The LangfuseClient from @langfuse/client handles batching internally,
- * but this function is provided for API consistency if needed in the future.
- */
-export async function flushLangfuse(): Promise<void> {
-  // LangfuseClient handles batching internally
-  // This function is provided for API consistency
-}

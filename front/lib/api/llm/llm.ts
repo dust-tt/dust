@@ -133,7 +133,9 @@ export abstract class LLM {
           tools: specifications.map((spec) => spec.name),
         },
       },
-      { asType: "generation" }
+      {
+        asType: "generation",
+      }
     );
 
     // Use custom trace input if provided, otherwise use the full conversation.
