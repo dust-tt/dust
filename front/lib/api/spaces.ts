@@ -431,26 +431,22 @@ export async function createSpaceAndGroup(
       );
       const groupsResult = await memberGroup.addMembers(
         auth,
-        // Editors can add members to the space
+        // Space creators can add members to the space
         {
           users,
-          permissionsToWrite: {
-            roles: [
-              {
-                role: "admin",
-                permissions: ["read", "write", "admin"],
-              },
-            ],
-            groups: editorGroup
-              ? [
-                  {
-                    id: editorGroup.id,
-                    permissions: ["read", "write"],
-                  },
-                ]
-              : [],
-            workspaceId: owner.id,
-          },
+          permissionsToWrite:
+            memberGroup.isSpaceMemberGroup() && editorGroup
+              ? {
+                  roles: [],
+                  groups: [
+                    {
+                      id: editorGroup.id,
+                      permissions: ["read", "write"],
+                    },
+                  ],
+                  workspaceId: owner.id,
+                }
+              : undefined,
         },
         {
           transaction: t,

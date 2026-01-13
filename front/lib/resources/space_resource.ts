@@ -631,16 +631,25 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           auth,
           {
             users: users.map((u) => u.toJSON()),
-            permissionsToWrite: {
-              groups: [
-                {
-                  id: editorGroup.id,
-                  permissions: ["admin", "write", "read"],
-                },
-              ],
-              roles: [],
-              workspaceId: this.workspaceId,
-            },
+            // Editors and admins can add members to the space
+            permissionsToWrite:
+              memberGroup.isSpaceMemberGroup() && editorGroup
+                ? {
+                    groups: [
+                      {
+                        id: editorGroup.id,
+                        permissions: ["admin", "write", "read"],
+                      },
+                    ],
+                    roles: [
+                      {
+                        role: "admin",
+                        permissions: ["read", "write", "admin"],
+                      },
+                    ],
+                    workspaceId: this.workspaceId,
+                  }
+                : undefined,
           },
           { transaction: t }
         );
