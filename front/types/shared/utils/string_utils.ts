@@ -154,7 +154,8 @@ export function asDisplayToolName(name?: string | null) {
 
   // TODO(skills-GA 2026-01-13): remove this renaming once we GA.
   // The tool will be named interactive content, Frames the the skill
-  // wrapping it that makes is easy
+  // that wraps these tools with React client-side code generation.
+
   if (name === "interactive_content") {
     return "Create Frames";
   }
@@ -163,16 +164,16 @@ export function asDisplayToolName(name?: string | null) {
     return "Go deep";
   }
 
+  if (name === "slideshow") {
+    return "Create Slideshows";
+  }
+
   if (name === "image_generation") {
     return "Create Images";
   }
 
   if (name === "file_generation") {
     return "Create Files";
-  }
-
-  if (name === "slideshow") {
-    return "Create Slideshows";
   }
 
   // Override the name to avoids having "Query Tables V2" show up in the UI. Ideally, we would
