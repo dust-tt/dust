@@ -1,3 +1,4 @@
+import type { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
@@ -9,14 +10,21 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import UTMPageWrapper from "@app/components/UTMPageWrapper";
+import { getSession } from "@app/lib/auth";
+import { getUserFromSession } from "@app/lib/iam/session";
 
-export async function getStaticProps() {
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const session = await getSession(context.req, context.res);
+  const user = await getUserFromSession(session);
+
   return {
     props: {
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      isAuthenticated: !!user,
+      shape: 0,
     },
   };
-}
+};
 
 export default function Contact() {
   const router = useRouter();

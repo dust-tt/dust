@@ -7,10 +7,7 @@ import type {
   TrackingParams,
 } from "@app/components/home/contactFormSchema";
 import { ContactFormSchema } from "@app/components/home/contactFormSchema";
-import {
-  getDefaultSchedulingUrl,
-  submitToHubSpotForm,
-} from "@app/lib/api/hubspot";
+import { submitToHubSpotForm } from "@app/lib/api/hubspot";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
 import { sendUserOperationMessage } from "@app/types";
@@ -137,18 +134,8 @@ export default async function handler(
     });
   }
 
-  // Generate scheduling URL for qualified leads
-  const schedulingUrl = isQualified
-    ? getDefaultSchedulingUrl({
-        email: formData.email,
-        firstName: formData.firstname ?? "",
-        lastName: formData.lastname ?? "",
-      })
-    : undefined;
-
   return res.status(200).json({
     success: true,
     isQualified,
-    schedulingUrl,
   });
 }

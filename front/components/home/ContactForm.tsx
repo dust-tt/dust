@@ -144,8 +144,9 @@ export function ContactForm({
     return (
       <ContactFormThankYou
         firstName={form.getValues("firstname") ?? ""}
+        lastName={form.getValues("lastname") ?? ""}
+        email={form.getValues("email")}
         isQualified={submitResult.isQualified}
-        schedulingUrl={submitResult.schedulingUrl}
       />
     );
   }

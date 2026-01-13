@@ -19,7 +19,6 @@ import {
   shouldCheckGeolocation,
 } from "@app/lib/cookies";
 import { useGeolocation } from "@app/lib/swr/geo";
-import { useUser } from "@app/lib/swr/user";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
 
@@ -28,6 +27,7 @@ export interface LandingLayoutProps {
   postLoginReturnToUrl?: string;
   gtmTrackingId?: string;
   utmParams?: { [key: string]: string | string[] | undefined };
+  isAuthenticated?: boolean;
 }
 
 export default function LandingLayout({
@@ -41,9 +41,8 @@ export default function LandingLayout({
     postLoginReturnToUrl = "/api/login",
     gtmTrackingId,
     utmParams,
+    isAuthenticated = false,
   } = pageProps;
-
-  const { user } = useUser();
 
   const [cookies, setCookie] = useCookies([DUST_COOKIES_ACCEPTED], {
     doNotParse: true,
@@ -124,7 +123,7 @@ export default function LandingLayout({
           </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
-            {user ? (
+            {isAuthenticated ? (
               <Button
                 variant="highlight"
                 size="sm"

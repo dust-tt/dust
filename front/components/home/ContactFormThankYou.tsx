@@ -1,20 +1,27 @@
-import { Button, CheckCircleIcon } from "@dust-tt/sparkle";
+import { CheckCircleIcon } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 
+// Default.com configuration
+const DEFAULT_FORM_ID = 503792;
+const DEFAULT_TEAM_ID = 579;
+
 interface ContactFormThankYouProps {
   firstName: string;
   isQualified: boolean;
-  schedulingUrl?: string;
+  email: string;
+  lastName: string;
 }
 
 export function ContactFormThankYou({
   firstName,
   isQualified,
-  schedulingUrl,
+  email,
+  lastName,
 }: ContactFormThankYouProps) {
   const hasTrackedRef = useRef(false);
+  const defaultInitializedRef = useRef(false);
 
   useEffect(() => {
     // Fire qualified lead event only once, after a short delay
@@ -45,17 +52,75 @@ export function ContactFormThankYou({
     }
   }, [isQualified]);
 
-  const handleScheduleClick = () => {
-    trackEvent({
-      area: TRACKING_AREAS.CONTACT,
-      object: "contact_form",
-      action: "schedule_click",
+  // Load Default.com SDK for qualified leads (webform integration)
+  useEffect(() => {
+    console.log("[Default.com] useEffect triggered", {
+      isQualified,
+      defaultInitialized: defaultInitializedRef.current,
     });
 
-    if (schedulingUrl) {
-      window.location.href = schedulingUrl;
+    if (!isQualified || defaultInitializedRef.current) {
+      console.log("[Default.com] Skipping - not qualified or already initialized");
+      return;
     }
-  };
+    defaultInitializedRef.current = true;
+
+    // Initialize Default.com SDK configuration
+    window.__default__ = window.__default__ ?? {};
+    window.__default__.form_id = DEFAULT_FORM_ID;
+    window.__default__.team_id = DEFAULT_TEAM_ID;
+
+    console.log("[Default.com] Initialized __default__", window.__default__);
+
+    // Load the Default.com script
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://import-cdn.default.com/v2/index.js";
+
+    script.onload = () => {
+      console.log("[Default.com] Script loaded");
+      console.log("[Default.com] window.Default:", window.Default);
+      console.log(
+        "[Default.com] Available methods:",
+        window.Default ? Object.keys(window.Default) : "Default not found"
+      );
+
+      // After SDK loads, identify the lead and trigger scheduler
+      // Default.com webform integration expects form submission data
+      if (window.Default?.identify) {
+        console.log("[Default.com] Calling identify with:", {
+          email,
+          first_name: firstName,
+          last_name: lastName,
+        });
+        window.Default.identify({
+          email,
+          first_name: firstName,
+          last_name: lastName,
+        });
+      } else {
+        console.log("[Default.com] identify method not found");
+      }
+
+      if (window.Default?.book) {
+        console.log("[Default.com] Calling book()");
+        window.Default.book();
+      } else {
+        console.log("[Default.com] book method not found");
+      }
+    };
+
+    script.onerror = (error) => {
+      console.error("[Default.com] Script failed to load:", error);
+    };
+
+    document.head.appendChild(script);
+    console.log("[Default.com] Script appended to head");
+
+    return () => {
+      script.remove();
+    };
+  }, [isQualified, email, firstName, lastName]);
 
   return (
     <div className="flex flex-col gap-6 py-8">
@@ -70,17 +135,13 @@ export function ContactFormThankYou({
 
       <p className="text-lg text-muted-foreground">
         {isQualified
-          ? "We're excited to show you Dust. Book a time with our team to get started."
+          ? "We're excited to show you Dust. Book a time with our team below."
           : "We've received your request. Our team will be in touch soon."}
       </p>
 
-      {isQualified && schedulingUrl && (
-        <Button
-          label="Schedule your demo"
-          variant="primary"
-          size="md"
-          onClick={handleScheduleClick}
-        />
+      {/* Default.com SDK will render the scheduler here */}
+      {isQualified && (
+        <div id="default-scheduler-container" className="w-full" />
       )}
     </div>
   );

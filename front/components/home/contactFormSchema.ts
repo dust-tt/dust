@@ -58,6 +58,5 @@ export interface TrackingParams {
 export interface ContactSubmitResponse {
   success: boolean;
   isQualified: boolean;
-  schedulingUrl?: string;
   error?: string;
 }
