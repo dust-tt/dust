@@ -413,11 +413,30 @@ First warm is slower because it initializes databases (Postgres, Qdrant, Elastic
 
 The cache uses your main Dust repo as source:
 
-1. **Node modules**: Symlinked from main repo (instant)
+1. **Node modules**: Shallow copy with symlinks from main repo (see below)
 2. **Cargo target**: Symlinked from main repo (shared compilation + linking cache)
 3. **Rust binaries**: Pre-compiled for init scripts (qdrant, elasticsearch, init_db)
 
-> **Warning**: node_modules are symlinked, not copied. Running `npm install` in a worktree will modify the main repo's node_modules. If you need isolation, manually run: `rm -rf node_modules && npm ci`
+#### Node modules structure
+
+For `front` and `connectors`, dust-hive uses a **shallow copy** approach:
+- Creates a real `node_modules` directory in the worktree
+- Symlinks all packages from the main repo's node_modules
+- **Exception**: `@dust-tt/client` points to the worktree's SDK (not main repo's)
+
+This ensures TypeScript and runtime resolve `@dust-tt/client` from the worktree's SDK, preventing type mismatches when your branch has newer SDK types than main.
+
+For `sdks/js`, a simple symlink is used (it IS the SDK).
+
+> **Warning**: Running `npm install` in a worktree will **fail** because npm cannot handle the shallow copy structure. You must delete node_modules first:
+> ```bash
+> rm -rf node_modules && npm install
+> ```
+>
+> This is necessary when:
+> - You modify `package.json` (add/remove dependencies)
+> - You need to regenerate `package-lock.json`
+> - You want fully isolated dependencies for this environment
 
 > **sccache** (optional but recommended): When worktree code differs from main, cargo recompiles. sccache caches these compilations by content hash, so rebuilding after switching branches is faster.
 
