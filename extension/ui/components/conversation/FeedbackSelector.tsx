@@ -58,6 +58,8 @@ export function FeedbackSelector({
   isGlobalAgent,
 }: FeedbackSelectorProps) {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [thumbDirection, setThumbDirection] =
+    React.useState<ThumbReaction>("up");
   const [localFeedbackContent, setLocalFeedbackContent] = React.useState<
     string | null
   >(null);
@@ -67,17 +69,7 @@ export function FeedbackSelector({
     feedback?.isConversationShared ?? false
   );
 
-  const dialogPopoverInfo = isDialogOpen ? (
-    <div className="mb-4 mt-2 flex flex-col gap-2">
-      <Page.P variant="secondary">
-        {isGlobalAgent
-          ? "Submitting feedback will help Dust improve your global agents."
-          : "Your feedback is available to editors of the agent."}
-      </Page.P>
-    </div>
-  ) : null;
-
-  const closePopover = () => {
+  const closeDialog = () => {
     setIsDialogOpen(false);
     setSelectedPredefinedAnswer(null);
     setLocalFeedbackContent(null);
@@ -93,29 +85,19 @@ export function FeedbackSelector({
       .join("\n\n");
 
     await onSubmitThumb({
-      thumb: "down",
+      thumb: thumbDirection,
       shouldRemoveExistingFeedback: false,
-      feedbackContent,
+      feedbackContent: feedbackContent || null,
       isConversationShared,
     });
-    closePopover();
+    closeDialog();
   };
 
-  const handleThumbUp = async () => {
-    const shouldRemoveExistingFeedback = feedback?.thumb === "up";
-    await onSubmitThumb({
-      thumb: "up",
-      shouldRemoveExistingFeedback,
-      feedbackContent: null,
-      isConversationShared: false,
-    });
-  };
-
-  const handleThumbDown = async () => {
-    const shouldRemoveExistingFeedback = feedback?.thumb === "down";
+  const handleThumbClick = async (direction: ThumbReaction) => {
+    const shouldRemoveExistingFeedback = feedback?.thumb === direction;
     if (shouldRemoveExistingFeedback) {
       await onSubmitThumb({
-        thumb: "down",
+        thumb: direction,
         shouldRemoveExistingFeedback,
         feedbackContent: null,
         isConversationShared: false,
@@ -123,6 +105,7 @@ export function FeedbackSelector({
       return;
     }
 
+    setThumbDirection(direction);
     setSelectedPredefinedAnswer(null);
     setLocalFeedbackContent(null);
     setIsConversationShared(true);
@@ -130,7 +113,9 @@ export function FeedbackSelector({
   };
 
   const canSubmit =
-    !!selectedPredefinedAnswer || (localFeedbackContent?.trim() ?? "") !== "";
+    thumbDirection === "up" ||
+    !!selectedPredefinedAnswer ||
+    (localFeedbackContent?.trim() ?? "") !== "";
 
   return (
     <div className="flex items-center">
@@ -140,7 +125,7 @@ export function FeedbackSelector({
           variant={feedback?.thumb === "up" ? "primary" : "ghost"}
           size="xs"
           disabled={isSubmittingThumb}
-          onClick={handleThumbUp}
+          onClick={() => handleThumbClick("up")}
           icon={HandThumbUpIcon}
           className="text-muted-foreground dark:text-muted-foreground-night"
         />
@@ -149,7 +134,7 @@ export function FeedbackSelector({
           variant={feedback?.thumb === "down" ? "primary" : "ghost"}
           size="xs"
           disabled={isSubmittingThumb}
-          onClick={handleThumbDown}
+          onClick={() => handleThumbClick("down")}
           icon={HandThumbDownIcon}
           className="text-muted-foreground dark:text-muted-foreground-night"
         />
@@ -159,7 +144,7 @@ export function FeedbackSelector({
         open={isDialogOpen}
         onOpenChange={(open) => {
           if (!open) {
-            closePopover();
+            closeDialog();
           }
         }}
       >
@@ -175,38 +160,40 @@ export function FeedbackSelector({
               </div>
             ) : (
               <div className="flex flex-col gap-4">
-                <div className="flex flex-wrap gap-2">
-                  {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => {
-                    const isSelected = selectedPredefinedAnswer === answer;
-                    return (
-                      <Button
-                        key={answer}
-                        size="xs"
-                        variant={isSelected ? "primary" : "outline"}
-                        label={answer}
-                        onClick={
-                          isSubmittingThumb
-                            ? undefined
-                            : () =>
-                                setSelectedPredefinedAnswer(
-                                  isSelected ? null : answer
-                                )
-                        }
-                      />
-                    );
-                  })}
-                </div>
+                {thumbDirection === "down" && (
+                  <div className="flex flex-wrap gap-2">
+                    {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => {
+                      const isSelected = selectedPredefinedAnswer === answer;
+                      return (
+                        <Button
+                          key={answer}
+                          size="xs"
+                          variant={isSelected ? "primary" : "outline"}
+                          label={answer}
+                          onClick={() =>
+                            setSelectedPredefinedAnswer(
+                              isSelected ? null : answer
+                            )
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                )}
                 <TextArea
                   placeholder="Share details (optional)"
                   resize="vertical"
                   rows={3}
                   value={localFeedbackContent ?? ""}
-                  onChange={(e) => {
-                    setLocalFeedbackContent(e.target.value);
-                  }}
+                  onChange={(e) => setLocalFeedbackContent(e.target.value)}
                 />
-
-                {dialogPopoverInfo}
+                <div className="mb-4 mt-2 flex flex-col gap-2">
+                  <Page.P variant="secondary">
+                    {isGlobalAgent
+                      ? "Submitting feedback will help Dust improve your global agents."
+                      : "Your feedback is available to editors of the agent."}
+                  </Page.P>
+                </div>
 
                 <div className="bg-muted-background dark:bg-muted-background-night border-border dark:border-border-night rounded-lg border p-3">
                   <div className="flex items-center gap-2">
@@ -230,7 +217,7 @@ export function FeedbackSelector({
               label: "Cancel",
               variant: "outline",
               disabled: isSubmittingThumb,
-              onClick: closePopover,
+              onClick: closeDialog,
             }}
             rightButtonProps={{
               label: "Submit",
