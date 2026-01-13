@@ -86,10 +86,6 @@ export function redactString(str: string, n: number) {
   return redacted;
 }
 
-export function isRedacted(str: string) {
-  return str.includes("•");
-}
-
 export function truncate(text: string, length: number, omission = "...") {
   return text.length > length
     ? `${text.substring(0, length - omission.length)}${omission}`
@@ -127,8 +123,6 @@ const SPECIAL_CASES = {
   github: "GitHub",
   hubspot: "HubSpot",
   mcp: "MCP",
-  // TODO(cc): remove this once we have settled on a name.
-  "interactive content": "Frame",
 };
 
 // Create a single regex pattern for all special cases
@@ -152,8 +146,20 @@ export function asDisplayToolName(name?: string | null) {
     return "";
   }
 
+  // TODO(skills-GA 2026-01-13): remove this renaming (all 3 below) once we GA.
+  // The tool will be named interactive content, Frames the skill
+  // that wraps these tools with React client-side code generation.
+
   if (name === "interactive_content") {
     return "Create Frames";
+  }
+
+  if (name === "deep_dive") {
+    return "Go deep";
+  }
+
+  if (name === "slideshow") {
+    return "Create Slideshows";
   }
 
   if (name === "image_generation") {
@@ -164,15 +170,7 @@ export function asDisplayToolName(name?: string | null) {
     return "Create Files";
   }
 
-  if (name === "slideshow") {
-    return "Create Slideshows";
-  }
-
-  if (name === "deep_dive") {
-    return "Go deep";
-  }
-
-  // Override the name to avoids having "Query Tables V2" show up in the UI. Ideally, we would
+  // Override the name to avoid having "Query Tables V2" show up in the UI. Ideally, we would
   // rename the tool internally to just "query_tables", but that raises more potential risks,
   // in particular with the Extension logic in extension/ui/components/actions/mcp/details/MCPActionDetails.tsx,
   // which has some hardcoded logic that could be affected.

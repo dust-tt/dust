@@ -84,10 +84,6 @@ function matchesFilter<T>(value: T, filter: T | T[]): boolean {
 }
 
 export class GlobalSkillsRegistry {
-  static listAll(): readonly GlobalSkillDefinition[] {
-    return GLOBAL_SKILLS_ARRAY;
-  }
-
   static getById(sId: string): GlobalSkillDefinition | undefined {
     return GLOBAL_SKILLS_BY_ID.get(sId);
   }
