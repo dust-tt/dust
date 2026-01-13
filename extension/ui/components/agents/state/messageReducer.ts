@@ -1,3 +1,4 @@
+import { assertNeverAndIgnore } from "@app/shared/lib/assertNeverAndIgnore";
 import type {
   AgentActionPublicType,
   AgentActionSpecificEvent,
@@ -11,7 +12,6 @@ import type {
   ToolNotificationEvent,
   ToolNotificationProgress,
 } from "@dust-tt/client";
-import { assertNever } from "@dust-tt/client";
 
 export type AgentStateClassification =
   | "thinking"
@@ -180,6 +180,6 @@ export function messageReducer(
     }
 
     default:
-      assertNever(event);
+      assertNeverAndIgnore(event);
   }
 }

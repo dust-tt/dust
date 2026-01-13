@@ -6,7 +6,6 @@ import type {
 } from "@dust-tt/client";
 import { DATA_SOURCE_MIME_TYPE, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import {
-  assertNever,
   ChatBubbleLeftRightIcon,
   DocumentIcon,
   DocumentPileIcon,
@@ -15,6 +14,8 @@ import {
   LockIcon,
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
+
+import { assertNeverAndIgnore } from "./assertNeverAndIgnore";
 
 // Since titles will be synced in ES we don't support arbitrarily large titles.
 export const MAX_NODE_TITLE_LENGTH = 512;
@@ -81,7 +82,7 @@ export function getVisualForContentNodeType(type: ContentNodeType["type"]) {
     case "document":
       return DocumentIcon;
     default:
-      assertNever(type);
+      assertNeverAndIgnore(type);
   }
 }
 
@@ -127,7 +128,7 @@ export function getVisualForContentNode(node: ContentNodeType) {
       );
 
     default:
-      assertNever(node.type);
+      assertNeverAndIgnore(node.type);
   }
 }
 

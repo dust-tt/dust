@@ -1,4 +1,5 @@
 import { usePlatform } from "@app/shared/context/PlatformContext";
+import { assertNeverAndIgnore } from "@app/shared/lib/assertNeverAndIgnore";
 import { retryMessage } from "@app/shared/lib/conversation";
 import { formatTimestring } from "@app/shared/lib/utils";
 import type { StoredUser } from "@app/shared/services/auth";
@@ -42,7 +43,6 @@ import type {
   WebsearchResultResourceType,
 } from "@dust-tt/client";
 import {
-  assertNever,
   isAgentMessage,
   isRunAgentResultResourceType,
   isSearchResultResourceType,
@@ -282,7 +282,7 @@ export function AgentMessage({
       case "created":
         return true;
       default:
-        assertNever(messageStreamState.message.status);
+        assertNeverAndIgnore(messageStreamState.message.status);
     }
   })();
 

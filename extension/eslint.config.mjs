@@ -136,6 +136,13 @@ export default [
       curly: ["error", "all"],
       "no-case-declarations": "off",
       "react/no-unescaped-entities": "off",
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "CallExpression[callee.name='assertNever']",
+          message: "Use assertNeverAndIgnore instead of assertNever.",
+        },
+      ],
     },
   },
 
