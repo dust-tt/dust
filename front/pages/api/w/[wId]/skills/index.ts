@@ -5,7 +5,7 @@ import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getSkillIconSuggestion } from "@app/lib/api/skill/suggestions";
+import { getSkillIconSuggestion } from "@app/lib/api/skill/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
