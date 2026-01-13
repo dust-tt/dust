@@ -428,6 +428,22 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
       "Dust will index the content accessible to the authorized account only. All transcripts will be synchronized with Dust.",
     mismatchError: `You cannot change the Gong account. Please add a new Gong connection instead.`,
   },
+  dust_project: {
+    hide: true,
+    description: "Use Dust project as a data source.",
+    limitations: null,
+    mismatchError: `You cannot change the Dust project. Please add a new Dust project connection instead.`,
+    guideLink: null,
+    getLogoComponent: () => {
+      //TODO(project): replace with Dust project logo
+      return GongLogo;
+    },
+    isNested: false,
+    permissions: {
+      selected: "read",
+      unselected: "none",
+    },
+  },
 };
 
 export function getConnectorProviderLogoWithFallback({

@@ -482,6 +482,7 @@ export const AddConnectionMenu = ({
             case "microsoft_bot":
             case "slack_bot":
             case "discord_bot":
+            case "dust_project":
             case undefined:
               return null;
             default:

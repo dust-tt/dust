@@ -89,7 +89,10 @@ DustProjectConversationModel.init(
       { fields: ["conversationId"], unique: true },
       { fields: ["connectorId", "conversationId"], unique: true },
       { fields: ["connectorId", "lastMessageAt"] },
-      { fields: ["connectorId", "projectId", "conversationId"] },
+      {
+        fields: ["connectorId", "projectId", "conversationId"],
+        name: "dust_project_conversations_connector_id_project_id_conversation",
+      },
     ],
     modelName: "dust_project_conversations",
     relationship: "hasMany",

@@ -4,6 +4,7 @@ import { assertNever } from "@dust-tt/client";
 import { BigQueryConnectorManager } from "@connectors/connectors/bigquery";
 import { ConfluenceConnectorManager } from "@connectors/connectors/confluence";
 import { DiscordBotConnectorManager } from "@connectors/connectors/discord_bot";
+import { DustProjectConnectorManager } from "@connectors/connectors/dust_project";
 import { GithubConnectorManager } from "@connectors/connectors/github";
 import { GongConnectorManager } from "@connectors/connectors/gong";
 import { GoogleDriveConnectorManager } from "@connectors/connectors/google_drive";
@@ -26,8 +27,7 @@ import type {
   SlackConfigurationType,
   WebCrawlerConfiguration,
 } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 
 type ConnectorManager =
   | NotionConnectorManager
@@ -39,7 +39,8 @@ type ConnectorManager =
   | IntercomConnectorManager
   | GithubConnectorManager
   | GoogleDriveConnectorManager
-  | SnowflakeConnectorManager;
+  | SnowflakeConnectorManager
+  | DustProjectConnectorManager;
 
 export function getConnectorManager({
   connectorProvider,
@@ -82,8 +83,7 @@ export function getConnectorManager({
     case "discord_bot":
       return new DiscordBotConnectorManager(connectorId);
     case "dust_project":
-      //TODO(project): implement this
-      throw new Error("Dust project connector is not implemented yet");
+      return new DustProjectConnectorManager(connectorId);
     default:
       assertNever(connectorProvider);
   }
@@ -96,7 +96,7 @@ export function createConnector({
   | {
       connectorProvider: Exclude<
         ConnectorProvider,
-        "webcrawler" | "slack" | "slack_bot" | "discord_bot"
+        "webcrawler" | "slack" | "slack_bot" | "discord_bot" | "dust_project"
       >;
       params: {
         dataSourceConfig: DataSourceConfig;
@@ -126,6 +126,14 @@ export function createConnector({
         dataSourceConfig: DataSourceConfig;
         connectionId: string;
         configuration: DiscordBotConfigurationType;
+      };
+    }
+  | {
+      connectorProvider: "dust_project";
+      params: {
+        dataSourceConfig: DataSourceConfig;
+        connectionId: string;
+        configuration: null;
       };
     }): Promise<
   Result<string, ConnectorManagerError<CreateConnectorErrorCode>>
@@ -164,8 +172,7 @@ export function createConnector({
     case "discord_bot":
       return DiscordBotConnectorManager.create(params);
     case "dust_project":
-      //TODO(project): implement this
-      throw new Error("Dust project connector is not implemented yet");
+      return DustProjectConnectorManager.create(params);
     default:
       assertNever(connectorProvider);
   }

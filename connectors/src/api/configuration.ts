@@ -57,7 +57,9 @@ const _patchConnectorConfiguration = async (
       patchRes = await getConnectorManager({
         connectorId: connector.id,
         connectorProvider: "webcrawler",
-      }).configure({ configuration: parseRes.value });
+      }).configure({
+        configuration: parseRes.value,
+      });
       break;
     }
 
@@ -74,7 +76,8 @@ const _patchConnectorConfiguration = async (
     case "zendesk":
     case "gong":
     case "slack_bot":
-    case "slack": {
+    case "slack":
+    case "dust_project": {
       throw new Error(
         `Connector type ${connector.type} does not support configuration patching`
       );
@@ -82,11 +85,6 @@ const _patchConnectorConfiguration = async (
     // TODO(salesforce): implement this
     case "salesforce": {
       throw new Error(`Connector type ${connector.type} NOT IMPLEMENTED YET`);
-    }
-
-    case "dust_project": {
-      //TODO(project): implement this
-      throw new Error("Dust project connector is not implemented yet");
     }
 
     default: {

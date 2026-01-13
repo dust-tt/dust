@@ -21,6 +21,7 @@ import type { ZendeskConfigurationModel } from "@connectors/lib/models/zendesk";
 import { BigQueryConnectorStrategy } from "@connectors/resources/connector/bigquery";
 import { ConfluenceConnectorStrategy } from "@connectors/resources/connector/confluence";
 import { DiscordConnectorStrategy } from "@connectors/resources/connector/discord";
+import { DustProjectConnectorStrategy } from "@connectors/resources/connector/dust_project";
 import { GithubConnectorStrategy } from "@connectors/resources/connector/github";
 import { GongConnectorStrategy } from "@connectors/resources/connector/gong";
 import { GoogleDriveConnectorStrategy } from "@connectors/resources/connector/google_drive";
@@ -105,6 +106,7 @@ export interface ConnectorProviderConfigurationTypeM {
   bigquery: null;
   salesforce: null;
   gong: null;
+  dust_project: null;
 }
 
 export type ConnectorProviderConfigurationTypeMapping = {
@@ -188,8 +190,7 @@ export function getConnectorProviderStrategy(
       return new GongConnectorStrategy();
 
     case "dust_project":
-      //TODO(project): implement this
-      throw new Error("Dust project connector is not implemented yet");
+      return new DustProjectConnectorStrategy();
 
     default:
       assertNever(type);
