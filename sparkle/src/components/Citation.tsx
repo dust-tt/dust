@@ -254,20 +254,22 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
                 className="s-h-full s-w-full s-object-cover"
               />
               {/* Blur overlay with title - shown on hover */}
+              {/* Bottom padding accounts for Card padding (12px) + description line height (~16px) */}
               <div
                 className={cn(
                   "s-absolute s-inset-0 s-z-10",
-                  "s-flex s-items-center s-justify-center",
+                  "s-flex s-flex-col s-items-start s-justify-end",
                   "s-bg-primary-100/80 dark:s-bg-primary-100-night/80",
                   "s-backdrop-blur-sm",
                   "s-opacity-0 s-transition s-duration-200",
-                  "group-hover/citation-image:s-opacity-100"
+                  "group-hover/citation-image:s-opacity-100",
+                  "s-px-3 s-pb-7"
                 )}
               >
                 <span
                   className={cn(
-                    "s-max-w-[90%] s-truncate s-px-2 s-text-center",
-                    "s-text-sm s-font-medium",
+                    "s-max-w-full s-truncate",
+                    "s-heading-sm",
                     "s-text-foreground dark:s-text-foreground-night"
                   )}
                 >
