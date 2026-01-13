@@ -174,7 +174,8 @@ async function createOnboardingConversation(
       // Create MCP action for the tool call
       // Use type assertion to bypass strict type checking for test fixtures
       // The actual types are complex union types that aren't needed for this test
-      const mcpAction = await (AgentMCPActionModel.create as Function)({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mcpAction = await (AgentMCPActionModel.create as any)({
         workspaceId: workspace.id,
         agentMessageId: agentMessageRow.id,
         stepContentId: functionCallContent.id,
