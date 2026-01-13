@@ -7,6 +7,10 @@ import {
   updateAgentRequirements,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
+import {
+  createDustProjectConnectorForSpace,
+  deleteDustProjectConnectorForSpace,
+} from "@app/lib/api/project_connectors";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -214,6 +218,21 @@ export async function hardDeleteSpace(
   assert(auth.isAdmin(), "Only admins can delete spaces.");
 
   assert(space.isDeletable(), "Space cannot be deleted.");
+
+  // If this is a project space, delete the dust_project connector first
+  if (space.isProject()) {
+    const connectorRes = await deleteDustProjectConnectorForSpace(auth, space);
+    if (connectorRes.isErr()) {
+      logger.error(
+        {
+          error: connectorRes.error,
+          spaceId: space.sId,
+        },
+        "Failed to delete dust_project connector for project, continuing with space deletion"
+      );
+      // Continue with deletion even if connector deletion fails
+    }
+  }
 
   const dataSourceViews = await DataSourceViewResource.listBySpace(
     auth,
@@ -425,5 +444,31 @@ export async function createSpaceAndGroup(
     return new Ok(space);
   });
 
+  if (result.isOk()) {
+    const space = result.value;
+    if (space.kind === "project") {
+      // If this is a project space, create the dust_project connector
+      // Create connector outside transaction to avoid long-running transaction
+      // The connector creation involves external API calls
+      const connectorRes = await createDustProjectConnectorForSpace(
+        auth,
+        space,
+        owner,
+        plan
+      );
+      if (connectorRes.isErr()) {
+        logger.error(
+          {
+            error: connectorRes.error,
+            spaceId: space.sId,
+            workspaceId: owner.sId,
+          },
+          "Failed to create dust_project connector for project, but space was created"
+        );
+        // Don't fail space creation if connector creation fails
+        // The connector can be created later if needed
+      }
+    }
+  }
   return result;
 }

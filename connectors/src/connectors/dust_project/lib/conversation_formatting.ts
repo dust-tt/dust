@@ -57,7 +57,10 @@ export async function formatConversationForUpsert({
     if (prefix !== null && content !== null) {
       messageSections.push({
         prefix,
-        content: msg.visibility === "deleted" ? "Deleted message\n" : content,
+        content:
+          msg.visibility === "deleted"
+            ? "Deleted message\n"
+            : content.trimStart().trimEnd(),
         sections: [],
       });
     }
