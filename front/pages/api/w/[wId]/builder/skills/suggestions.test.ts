@@ -6,11 +6,11 @@ import { Err, Ok } from "@app/types";
 
 import handler from "./suggestions";
 
-vi.mock("@app/lib/api/skill/suggestions", () => ({
+vi.mock("@app/lib/api/skill/description_suggestion", () => ({
   getSkillDescriptionSuggestion: vi.fn(),
 }));
 
-import { getSkillDescriptionSuggestion } from "@app/lib/api/skill/suggestions";
+import { getSkillDescriptionSuggestion } from "@app/lib/api/skill/description_suggestion";
 
 async function setupTest(options: { method?: RequestMethod } = {}) {
   const method = options.method ?? "POST";
