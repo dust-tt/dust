@@ -28,6 +28,8 @@ export function isJiraProject(data: unknown): data is JiraProjectType {
 }
 
 export const JiraProjectsResponseSchema = z.object({
+  isLast: z.boolean(),
+  startAt: z.number(),
   values: z.array(JiraProjectSchema),
 });
 
