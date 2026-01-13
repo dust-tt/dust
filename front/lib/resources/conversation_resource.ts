@@ -184,7 +184,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const spaces =
       uniqueSpaceIds.length === 0
         ? []
-        : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds);
+        : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds, {
+            includeDeleted: fetchConversationOptions?.includeDeleted,
+          });
 
     const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
 

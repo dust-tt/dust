@@ -184,7 +184,7 @@ async function deleteSpaceConversations(
 ) {
   const conversations = await ConversationResource.listConversationsInSpace(
     auth,
-    { spaceId: space.sId }
+    { spaceId: space.sId, options: { includeDeleted: true } }
   );
 
   hardDeleteLogger.info(
