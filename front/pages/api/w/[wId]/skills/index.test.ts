@@ -453,7 +453,7 @@ describe("POST /api/w/[wId]/skills", () => {
       agentFacingDescription: "To use in various situations",
       userFacingDescription: "A simple skill without tools",
       instructions: "Simple instructions",
-      icon: null,
+      icon: "PuzzleIcon",
       tools: [],
       extendedSkillId: null,
       attachedKnowledge: [],
@@ -509,7 +509,7 @@ describe("POST /api/w/[wId]/skills", () => {
       agentFacingDescription: "Use this skill all the time",
       userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
-      icon: null,
+      icon: "PuzzleIcon",
       tools: [
         { mcpServerViewId: serverView1.sId },
         { mcpServerViewId: serverView2.sId },
@@ -590,7 +590,7 @@ describe("POST /api/w/[wId]/skills", () => {
       agentFacingDescription: "A skill restricted to specific spaces",
       userFacingDescription: "User description",
       instructions: "Instructions",
-      icon: null,
+      icon: "PuzzleIcon",
       tools: [{ mcpServerViewId: serverView.sId }],
       extendedSkillId: null,
       attachedKnowledge: [],
@@ -636,7 +636,7 @@ describe("POST /api/w/[wId]/skills", () => {
       agentFacingDescription: "A skill with knowledge attachments",
       userFacingDescription: "User description",
       instructions: "Instructions",
-      icon: null,
+      icon: "PuzzleIcon",
       tools: [],
       attachedKnowledge: [
         {
