@@ -134,14 +134,7 @@ export function KnowledgeDisplayComponent({
 
   // At this point we must have a full item with node data.
   return (
-    <KnowledgeChip
-      node={{
-        ...item.node,
-        dataSource: item.node.dataSourceView.dataSource,
-      }}
-      onRemove={onRemove}
-      title={item.label}
-    />
+    <KnowledgeChip node={item.node} onRemove={onRemove} title={item.label} />
   );
 }
 

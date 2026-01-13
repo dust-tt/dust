@@ -1,7 +1,10 @@
 import { Chip, Separator, Spinner, Tooltip } from "@dust-tt/sparkle";
 import sortBy from "lodash/sortBy";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
+import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
+import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import { SkillInstructionsReadOnlyEditor } from "@app/components/skills/SkillInstructionsReadOnlyEditor";
 import {
   getMcpServerViewDescription,
@@ -27,6 +30,8 @@ export function SkillInfoTab({
   spaces,
   showDescription = true,
 }: SkillInfoTabProps) {
+  const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
+
   const shouldLoadSpaces = skill.requestedSpaceIds.length > 0;
   const { spaces: spacesFromHook, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
@@ -57,8 +62,15 @@ export function SkillInfoTab({
     [requestedSpaces]
   );
 
+  const handleKnowledgeItemsChange = useCallback((items: KnowledgeItem[]) => {
+    setKnowledgeItems(items);
+  }, []);
+
   const showSeparator =
-    !!skill.instructions || sortedMCPServerViews.length > 0 || shouldLoadSpaces;
+    !!skill.instructions ||
+    knowledgeItems.length > 0 ||
+    sortedMCPServerViews.length > 0 ||
+    shouldLoadSpaces;
 
   return (
     <div className="flex flex-col gap-4">
@@ -78,7 +90,25 @@ export function SkillInfoTab({
           <SkillInstructionsReadOnlyEditor
             content={skill.instructions}
             owner={owner}
+            onKnowledgeItemsChange={handleKnowledgeItemsChange}
           />
+        </div>
+      )}
+      {knowledgeItems.length > 0 && (
+        <div className="flex flex-col gap-5">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            Knowledge
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {knowledgeItems.filter(isFullKnowledgeItem).map((item) => (
+              <KnowledgeChip
+                key={item.nodeId}
+                node={item.node}
+                title={item.label}
+                color="primary"
+              />
+            ))}
+          </div>
         </div>
       )}
       {sortedMCPServerViews.length > 0 && (

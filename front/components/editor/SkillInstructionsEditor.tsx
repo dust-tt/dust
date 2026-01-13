@@ -10,7 +10,11 @@ import { useEffect, useMemo, useRef } from "react";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
-import { KnowledgeNode } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import {
+  KNOWLEDGE_NODE_TYPE,
+  KnowledgeNode,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
@@ -83,6 +87,23 @@ function useEditorService(editor: Editor | null) {
     return {
       getMarkdown() {
         return editor?.getMarkdown() ?? "";
+      },
+
+      getKnowledgeItems(): KnowledgeItem[] {
+        if (!editor) {
+          return [];
+        }
+
+        const items: KnowledgeItem[] = [];
+        editor.state.doc.descendants((node) => {
+          if (node.type.name === KNOWLEDGE_NODE_TYPE) {
+            const selectedItems = node.attrs.selectedItems as KnowledgeItem[];
+            if (selectedItems && selectedItems.length > 0) {
+              items.push(...selectedItems);
+            }
+          }
+        });
+        return items;
       },
 
       setContent(content: string) {
