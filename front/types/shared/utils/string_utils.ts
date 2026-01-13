@@ -152,8 +152,15 @@ export function asDisplayToolName(name?: string | null) {
     return "";
   }
 
+  // TODO(skills-GA 2026-01-13): remove this renaming once we GA.
+  // The tool will be named interactive content, Frames the the skill
+  // wrapping it that makes is easy
   if (name === "interactive_content") {
     return "Create Frames";
+  }
+
+  if (name === "deep_dive") {
+    return "Go deep";
   }
 
   if (name === "image_generation") {
@@ -166,10 +173,6 @@ export function asDisplayToolName(name?: string | null) {
 
   if (name === "slideshow") {
     return "Create Slideshows";
-  }
-
-  if (name === "deep_dive") {
-    return "Go deep";
   }
 
   // Override the name to avoids having "Query Tables V2" show up in the UI. Ideally, we would
