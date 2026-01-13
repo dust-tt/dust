@@ -147,7 +147,7 @@ export function asDisplayToolName(name?: string | null) {
   }
 
   // TODO(skills-GA 2026-01-13): remove this renaming (all 3 below) once we GA.
-  // The tool will be named interactive content, Frames the the skill
+  // The tool will be named interactive content, Frames the skill
   // that wraps these tools with React client-side code generation.
 
   if (name === "interactive_content") {
