@@ -11,7 +11,7 @@ export type AllSkillConfigurationFindOptions = Omit<
     name?: string | string[];
     sId?: string | string[];
     id?: number | number[];
-    status?: SkillStatus;
+    status?: SkillStatus | SkillStatus[];
   };
   onlyCustom?: false; // Default: include global skills.
 };

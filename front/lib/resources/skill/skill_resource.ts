@@ -673,7 +673,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       limit,
       globalSpaceOnly,
     }: {
-      status?: SkillStatus;
+      status?: SkillStatus | SkillStatus[];
       limit?: number;
       globalSpaceOnly?: boolean;
     } = {}
