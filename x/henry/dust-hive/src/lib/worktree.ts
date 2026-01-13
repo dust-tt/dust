@@ -1,7 +1,13 @@
 // Git worktree operations
 
 import { directoryExists } from "./fs";
+import {
+  deleteBranchWithGitSpice,
+  isGitSpiceAvailable,
+  trackBranchWithGitSpice,
+} from "./git-spice";
 import { logger } from "./logger";
+import type { Settings } from "./settings";
 
 // Check if a directory is a git worktree (not the main repo)
 export async function isWorktree(repoRoot: string): Promise<boolean> {
@@ -78,10 +84,12 @@ export async function createWorktree(
   repoRoot: string,
   worktreePath: string,
   branchName: string,
-  baseBranch: string
+  baseBranch: string,
+  settings?: Settings
 ): Promise<void> {
   logger.step(`Creating worktree at ${worktreePath}`);
 
+  // Create worktree with standard git
   const proc = Bun.spawn(["git", "worktree", "add", worktreePath, "-b", branchName, baseBranch], {
     cwd: repoRoot,
     stdout: "pipe",
@@ -96,6 +104,20 @@ export async function createWorktree(
   }
 
   logger.success("Worktree created");
+
+  // Track with git-spice if enabled
+  if (settings?.useGitSpice) {
+    const gsAvailable = await isGitSpiceAvailable();
+    if (gsAvailable) {
+      const trackResult = await trackBranchWithGitSpice(worktreePath, branchName);
+      if (!trackResult.success) {
+        logger.warn(`Failed to track branch with git-spice: ${trackResult.error}`);
+        logger.warn("Branch created but not tracked by git-spice");
+      } else {
+        logger.success("Branch tracked with git-spice");
+      }
+    }
+  }
 }
 
 // Remove a git worktree
@@ -159,7 +181,11 @@ export async function hasUncommittedChanges(
 }
 
 // Delete a git branch
-export async function deleteBranch(repoRoot: string, branchName: string): Promise<void> {
+export async function deleteBranch(
+  repoRoot: string,
+  branchName: string,
+  settings?: Settings
+): Promise<void> {
   // If repoRoot doesn't exist, we can't delete the branch - just skip
   const repoExists = await directoryExists(repoRoot);
   if (!repoExists) {
@@ -167,6 +193,20 @@ export async function deleteBranch(repoRoot: string, branchName: string): Promis
     return;
   }
 
+  // Use git-spice if enabled and available
+  if (settings?.useGitSpice) {
+    const gsAvailable = await isGitSpiceAvailable();
+    if (gsAvailable) {
+      const result = await deleteBranchWithGitSpice(repoRoot, branchName);
+      if (!result.success) {
+        throw new Error(`Failed to delete branch with git-spice: ${result.error}`);
+      }
+      return;
+    }
+    logger.warn("git-spice not available, falling back to standard git");
+  }
+
+  // Fall back to standard git
   const proc = Bun.spawn(["git", "branch", "-D", branchName], {
     cwd: repoRoot,
     stdout: "pipe",
@@ -187,8 +227,9 @@ export async function deleteBranch(repoRoot: string, branchName: string): Promis
 export async function cleanupPartialEnvironment(
   repoRoot: string,
   worktreePath: string,
-  branchName: string
+  branchName: string,
+  settings?: Settings
 ): Promise<void> {
   await removeWorktree(repoRoot, worktreePath);
-  await deleteBranch(repoRoot, branchName);
+  await deleteBranch(repoRoot, branchName, settings);
 }

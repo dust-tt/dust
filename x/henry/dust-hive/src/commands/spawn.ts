@@ -16,7 +16,7 @@ import type { PortAllocation } from "../lib/ports";
 import { allocateNextPort, calculatePorts, savePortAllocation } from "../lib/ports";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
-import { getBranchName, loadSettings } from "../lib/settings";
+import { type Settings, getBranchName, loadSettings } from "../lib/settings";
 import { installAllDependencies } from "../lib/setup";
 import { createTestDatabase, isTestPostgresRunning } from "../lib/test-postgres";
 import { cleanupPartialEnvironment, createWorktree, getMainRepoPath } from "../lib/worktree";
@@ -138,10 +138,17 @@ source "${envShPath}"
 async function setupWorktree(
   metadata: EnvironmentMetadata,
   worktreePath: string,
-  workspaceBranch: string
+  workspaceBranch: string,
+  settings: Settings
 ): Promise<Result<void, CommandError>> {
   try {
-    await createWorktree(metadata.repoRoot, worktreePath, workspaceBranch, metadata.baseBranch);
+    await createWorktree(
+      metadata.repoRoot,
+      worktreePath,
+      workspaceBranch,
+      metadata.baseBranch,
+      settings
+    );
   } catch (error) {
     await deleteEnvironmentDir(metadata.name).catch((e) =>
       logger.warn(`Cleanup failed: ${errorMessage(e)}`)
@@ -160,9 +167,12 @@ async function setupWorktree(
     await installAllDependencies(worktreePath, metadata.repoRoot);
   } catch (error) {
     logger.error("Spawn failed during dependency linking, cleaning up...");
-    await cleanupPartialEnvironment(metadata.repoRoot, worktreePath, workspaceBranch).catch((e) =>
-      logger.warn(`Worktree cleanup failed: ${errorMessage(e)}`)
-    );
+    await cleanupPartialEnvironment(
+      metadata.repoRoot,
+      worktreePath,
+      workspaceBranch,
+      settings
+    ).catch((e) => logger.warn(`Worktree cleanup failed: ${errorMessage(e)}`));
     await deleteEnvironmentDir(metadata.name).catch((e) =>
       logger.warn(`Env cleanup failed: ${errorMessage(e)}`)
     );
@@ -176,7 +186,8 @@ async function setupWorktree(
 async function startSdk(
   env: Environment,
   worktreePath: string,
-  waitForReady: boolean
+  waitForReady: boolean,
+  settings: Settings
 ): Promise<Result<void, CommandError>> {
   const { repoRoot } = env.metadata;
   const workspaceBranch = env.metadata.workspaceBranch;
@@ -188,7 +199,7 @@ async function startSdk(
     }
   } catch (error) {
     logger.error("Spawn failed during SDK startup, cleaning up...");
-    await cleanupPartialEnvironment(repoRoot, worktreePath, workspaceBranch).catch((e) =>
+    await cleanupPartialEnvironment(repoRoot, worktreePath, workspaceBranch, settings).catch((e) =>
       logger.warn(`Worktree cleanup failed: ${errorMessage(e)}`)
     );
     await deleteEnvironmentDir(env.name).catch((e) =>
@@ -262,7 +273,7 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   await tryCreateTestDatabase(name);
 
   // Phase 2: Setup worktree
-  const worktreeResult = await setupWorktree(metadata, worktreePath, workspaceBranch);
+  const worktreeResult = await setupWorktree(metadata, worktreePath, workspaceBranch, settings);
   if (!worktreeResult.ok) return worktreeResult;
 
   // Phase 3: Start SDK
@@ -278,7 +289,7 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   // - --wait is explicitly passed
   // Otherwise, let the watch process run and show progress in zellij
   const shouldWaitForSdk = options.noOpen || options.wait;
-  const sdkResult = await startSdk(env, worktreePath, Boolean(shouldWaitForSdk));
+  const sdkResult = await startSdk(env, worktreePath, Boolean(shouldWaitForSdk), settings);
   if (!sdkResult.ok) return sdkResult;
 
   logger.success(`Environment '${name}' created successfully!`);

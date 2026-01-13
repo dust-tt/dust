@@ -16,9 +16,11 @@ import {
   setCacheSource,
 } from "../lib/cache";
 import { directoryExists } from "../lib/fs";
+import { isGitSpiceAvailable, repoSyncWithGitSpice } from "../lib/git-spice";
 import { logger } from "../lib/logger";
 import { findRepoRoot } from "../lib/paths";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
+import { loadSettings } from "../lib/settings";
 import { runNpmInstall } from "../lib/setup";
 import {
   getCurrentBranch,
@@ -307,6 +309,35 @@ function buildSyncState(
   return newState;
 }
 
+// Pull and sync repository (uses git-spice if enabled, otherwise standard git)
+async function pullAndSync(repoRoot: string): Promise<Result<void>> {
+  const settings = await loadSettings();
+
+  // Use git-spice repo sync if enabled
+  if (settings.useGitSpice) {
+    const gsAvailable = await isGitSpiceAvailable();
+    if (gsAvailable) {
+      logger.step("Syncing repository with git-spice...");
+      const syncResult = await repoSyncWithGitSpice(repoRoot);
+      if (!syncResult.success) {
+        return Err(new CommandError(`Failed to sync with git-spice: ${syncResult.error}`));
+      }
+      logger.success("Repository synced with git-spice");
+      return Ok(undefined);
+    }
+    logger.warn("git-spice not available, falling back to standard git pull");
+  }
+
+  // Fall back to standard git pull
+  logger.step("Pulling latest main...");
+  const pullResult = await gitPull(repoRoot);
+  if (!pullResult.success) {
+    return Err(new CommandError(`Failed to pull: ${pullResult.error}`));
+  }
+  logger.success("Pulled latest changes");
+  return Ok(undefined);
+}
+
 export async function syncCommand(options: SyncOptions = {}): Promise<Result<void>> {
   const startTimeMs = Date.now();
   const force = options.force ?? false;
@@ -329,13 +360,11 @@ export async function syncCommand(options: SyncOptions = {}): Promise<Result<voi
   // Capture state before pull for change detection
   const savedState = await getSyncState();
 
-  // Pull latest main
-  logger.step("Pulling latest main...");
-  const pullResult = await gitPull(repoRoot);
-  if (!pullResult.success) {
-    return Err(new CommandError(`Failed to pull: ${pullResult.error}`));
+  // Pull and sync (uses git-spice if enabled, otherwise standard git)
+  const pullResult = await pullAndSync(repoRoot);
+  if (!pullResult.ok) {
+    return pullResult;
   }
-  logger.success("Pulled latest changes");
 
   // Update cache source
   await setCacheSource(repoRoot);

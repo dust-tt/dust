@@ -3,6 +3,8 @@ import { SETTINGS_PATH } from "./paths";
 export interface Settings {
   // Prefix to add to branch names (e.g., "tom-" creates branches like "tom-myenv")
   branchPrefix?: string;
+  // Enable git-spice for branch management (default: false)
+  useGitSpice?: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = {};
