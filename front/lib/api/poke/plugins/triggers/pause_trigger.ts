@@ -50,5 +50,6 @@ export const unpauseTriggerPlugin = createPlugin({
       value: `Trigger "${resource.name}" has been unpaused successfully.`,
     });
   },
-  isApplicableTo: (auth, resource) => !!resource && resource.status !== "enabled",
+  isApplicableTo: (auth, resource) =>
+    !!resource && resource.status !== "enabled",
 });

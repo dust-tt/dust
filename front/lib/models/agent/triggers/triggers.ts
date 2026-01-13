@@ -114,7 +114,10 @@ TriggerModel.init(
         if (trigger.changed("kind") && !isValidTriggerKind(trigger.kind)) {
           throw new Error(`Invalid trigger kind: ${trigger.kind}`);
         }
-        if (trigger.changed("status") && !isValidTriggerStatus(trigger.status)) {
+        if (
+          trigger.changed("status") &&
+          !isValidTriggerStatus(trigger.status)
+        ) {
           throw new Error(`Invalid trigger status: ${trigger.status}`);
         }
       },
