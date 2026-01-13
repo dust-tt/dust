@@ -1,3 +1,4 @@
+import { cn } from "@dust-tt/sparkle";
 import type { ChangeEvent, ReactNode } from "react";
 import type { ControllerFieldState } from "react-hook-form";
 import { useController, useFormContext } from "react-hook-form";
@@ -6,6 +7,7 @@ interface BaseFormFieldSectionProps<
   E extends HTMLInputElement | HTMLTextAreaElement,
 > {
   title?: string;
+  titleClassName?: string;
   description?: string;
   helpText?: string;
   headerActions?: ReactNode;
@@ -29,6 +31,7 @@ export function BaseFormFieldSection<
   E extends HTMLInputElement | HTMLTextAreaElement,
 >({
   title,
+  titleClassName,
   description,
   helpText,
   headerActions,
@@ -52,7 +55,12 @@ export function BaseFormFieldSection<
         <div className="flex flex-col items-end justify-between gap-2 sm:flex-row">
           <div>
             {title && (
-              <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
+              <h3
+                className={cn(
+                  "heading-base font-semibold text-foreground dark:text-foreground-night",
+                  titleClassName
+                )}
+              >
                 {title}
               </h3>
             )}

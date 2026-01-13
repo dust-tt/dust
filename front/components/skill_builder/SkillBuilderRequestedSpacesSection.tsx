@@ -60,7 +60,7 @@ export function SkillBuilderRequestedSpacesSection() {
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
+        <h3 className="heading-large font-semibold text-foreground dark:text-foreground-night">
           Spaces
         </h3>
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
