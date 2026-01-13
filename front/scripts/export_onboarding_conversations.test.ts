@@ -172,7 +172,9 @@ async function createOnboardingConversation(
       });
 
       // Create MCP action for the tool call
-      const mcpAction = await AgentMCPActionModel.create({
+      // Use type assertion to bypass strict type checking for test fixtures
+      // The actual types are complex union types that aren't needed for this test
+      const mcpAction = await (AgentMCPActionModel.create as Function)({
         workspaceId: workspace.id,
         agentMessageId: agentMessageRow.id,
         stepContentId: functionCallContent.id,
@@ -182,7 +184,13 @@ async function createOnboardingConversation(
         citationsAllocated: 0,
         augmentedInputs: { query: "onboarding" },
         toolConfiguration: { name: "search_workspace" },
-        stepContext: {},
+        stepContext: {
+          citationsCount: 0,
+          citationsOffset: 0,
+          resumeState: null,
+          retrievalTopK: 10,
+          websearchResultCount: 5,
+        },
         executionDurationMs: 150,
       });
 
