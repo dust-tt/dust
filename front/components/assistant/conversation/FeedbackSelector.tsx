@@ -68,6 +68,8 @@ export function FeedbackSelector({
   isGlobalAgent,
 }: FeedbackSelectorProps) {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [thumbDirection, setThumbDirection] =
+    React.useState<ThumbReaction>("up");
   const [localFeedbackContent, setLocalFeedbackContent] = React.useState<
     string | null
   >(null);
@@ -77,15 +79,7 @@ export function FeedbackSelector({
     feedback?.isConversationShared ?? false
   );
 
-  const dialogPopoverInfo = isDialogOpen ? (
-    <FeedbackSelectorPopoverContent
-      owner={owner}
-      agentConfigurationId={agentConfigurationId}
-      isGlobalAgent={isGlobalAgent}
-    />
-  ) : null;
-
-  const closePopover = () => {
+  const closeDialog = () => {
     setIsDialogOpen(false);
     setSelectedPredefinedAnswer(null);
     setLocalFeedbackContent(null);
@@ -101,29 +95,19 @@ export function FeedbackSelector({
       .join("\n\n");
 
     await onSubmitThumb({
-      thumb: "down",
+      thumb: thumbDirection,
       shouldRemoveExistingFeedback: false,
-      feedbackContent,
+      feedbackContent: feedbackContent || null,
       isConversationShared,
     });
-    closePopover();
+    closeDialog();
   };
 
-  const handleThumbUp = async () => {
-    const shouldRemoveExistingFeedback = feedback?.thumb === "up";
-    await onSubmitThumb({
-      thumb: "up",
-      shouldRemoveExistingFeedback,
-      feedbackContent: null,
-      isConversationShared: false,
-    });
-  };
-
-  const handleThumbDown = async () => {
-    const shouldRemoveExistingFeedback = feedback?.thumb === "down";
+  const handleThumbClick = async (direction: ThumbReaction) => {
+    const shouldRemoveExistingFeedback = feedback?.thumb === direction;
     if (shouldRemoveExistingFeedback) {
       await onSubmitThumb({
-        thumb: "down",
+        thumb: direction,
         shouldRemoveExistingFeedback,
         feedbackContent: null,
         isConversationShared: false,
@@ -131,6 +115,7 @@ export function FeedbackSelector({
       return;
     }
 
+    setThumbDirection(direction);
     setSelectedPredefinedAnswer(null);
     setLocalFeedbackContent(null);
     setIsConversationShared(true);
@@ -138,7 +123,9 @@ export function FeedbackSelector({
   };
 
   const canSubmit =
-    !!selectedPredefinedAnswer || (localFeedbackContent?.trim() ?? "") !== "";
+    thumbDirection === "up" ||
+    !!selectedPredefinedAnswer ||
+    (localFeedbackContent?.trim() ?? "") !== "";
 
   return (
     <div className="flex items-center">
@@ -152,7 +139,7 @@ export function FeedbackSelector({
               variant: feedback?.thumb === "up" ? "primary" : "ghost-secondary",
               size: "xs",
               disabled: isSubmittingThumb,
-              onClick: handleThumbUp,
+              onClick: () => handleThumbClick("up"),
               icon: HandThumbUpIcon,
               className:
                 feedback?.thumb === "up" ? "" : "text-muted-foreground",
@@ -166,7 +153,7 @@ export function FeedbackSelector({
                 feedback?.thumb === "down" ? "primary" : "ghost-secondary",
               size: "xs",
               disabled: isSubmittingThumb,
-              onClick: handleThumbDown,
+              onClick: () => handleThumbClick("down"),
               icon: HandThumbDownIcon,
               className:
                 feedback?.thumb === "down" ? "" : "text-muted-foreground",
@@ -179,7 +166,7 @@ export function FeedbackSelector({
         open={isDialogOpen}
         onOpenChange={(open) => {
           if (!open) {
-            closePopover();
+            closeDialog();
           }
         }}
       >
@@ -195,37 +182,38 @@ export function FeedbackSelector({
               </div>
             ) : (
               <div className="flex flex-col gap-4 pt-2">
-                <div className="flex flex-wrap gap-2">
-                  {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => {
-                    const isSelected = selectedPredefinedAnswer === answer;
-                    return (
-                      <Button
-                        key={answer}
-                        size="xs"
-                        variant={isSelected ? "primary" : "outline"}
-                        label={answer}
-                        onClick={
-                          isSubmittingThumb
-                            ? undefined
-                            : () =>
-                                setSelectedPredefinedAnswer(
-                                  isSelected ? null : answer
-                                )
-                        }
-                      />
-                    );
-                  })}
-                </div>
+                {thumbDirection === "down" && (
+                  <div className="flex flex-wrap gap-2">
+                    {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => {
+                      const isSelected = selectedPredefinedAnswer === answer;
+                      return (
+                        <Button
+                          key={answer}
+                          size="xs"
+                          variant={isSelected ? "primary" : "outline"}
+                          label={answer}
+                          onClick={() =>
+                            setSelectedPredefinedAnswer(
+                              isSelected ? null : answer
+                            )
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                )}
                 <TextArea
                   placeholder="Share details (optional)"
                   resize="vertical"
                   rows={5}
                   value={localFeedbackContent ?? ""}
-                  onChange={(e) => {
-                    setLocalFeedbackContent(e.target.value);
-                  }}
+                  onChange={(e) => setLocalFeedbackContent(e.target.value)}
                 />
-                {dialogPopoverInfo}
+                <FeedbackSelectorPopoverContent
+                  owner={owner}
+                  agentConfigurationId={agentConfigurationId}
+                  isGlobalAgent={isGlobalAgent}
+                />
                 <div
                   className={cn(
                     "rounded-lg border p-3",
@@ -254,7 +242,7 @@ export function FeedbackSelector({
               label: "Cancel",
               variant: "outline",
               disabled: isSubmittingThumb,
-              onClick: closePopover,
+              onClick: closeDialog,
             }}
             rightButtonProps={{
               label: "Submit",

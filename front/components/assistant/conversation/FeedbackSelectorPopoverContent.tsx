@@ -1,6 +1,6 @@
 import { Avatar, Page } from "@dust-tt/sparkle";
 
-import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
+import { useEditors } from "@app/lib/swr/agent_editors";
 import type { LightWorkspaceType } from "@app/types";
 
 interface FeedbackSelectorPopoverContentProps {
@@ -14,39 +14,40 @@ export function FeedbackSelectorPopoverContent({
   agentConfigurationId,
   isGlobalAgent,
 }: FeedbackSelectorPopoverContentProps) {
-  const { agentLastAuthor } = useAgentConfigurationLastAuthor({
-    workspaceId: owner.sId,
+  const { editors } = useEditors({
+    owner,
     agentConfigurationId,
+    disabled: isGlobalAgent,
   });
 
   if (isGlobalAgent) {
     return (
       <div className="mb-4 mt-2 flex flex-col gap-2">
         <Page.P variant="secondary">
-          Submitting feedback will help Dust improve your global agents.
+          Your feedback will be available to Dust for future improvement to our
+          default agents.
         </Page.P>
       </div>
     );
   }
 
+  if (editors.length === 0) {
+    return null;
+  }
+
+  const avatarProps = editors.map((editor) => ({
+    name: `${editor.firstName} ${editor.lastName}`,
+    visual: editor.image ?? undefined,
+  }));
+
   return (
-    agentLastAuthor && (
-      <div className="mb-4 mt-2 flex flex-col gap-2">
+    <div className="mb-4 mt-2 flex flex-col gap-2">
+      <div className="flex items-center gap-2">
         <Page.P variant="secondary">
-          <span>
-            Your feedback is available to editors of the agent. The last agent
-            editor is:{" "}
-          </span>
-          <span className="inline-flex items-center gap-2">
-            {agentLastAuthor.image && (
-              <Avatar visual={agentLastAuthor.image} size="sm" />
-            )}
-            <span className="font-medium text-foreground dark:text-foreground-night">
-              {`${agentLastAuthor.firstName} ${agentLastAuthor.lastName}`}
-            </span>
-          </span>
+          Your feedback is available to editors of the agent:
         </Page.P>
+        <Avatar.Stack avatars={avatarProps} size="xs" nbVisibleItems={4} />
       </div>
-    )
+    </div>
   );
 }
