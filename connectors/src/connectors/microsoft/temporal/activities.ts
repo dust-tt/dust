@@ -138,7 +138,7 @@ export async function getRootNodesToSyncFromResources(
               },
               "Failed to get item"
             );
-            return null;
+            throw error;
           }
         })
     )
