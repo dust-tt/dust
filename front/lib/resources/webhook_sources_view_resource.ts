@@ -284,13 +284,13 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
    */
   static async listByWebhookSourceForInternalProcessing(
     auth: Authenticator,
-    webhookSourceId: ModelId
+    webhookSourceModelId: ModelId
   ): Promise<WebhookSourcesViewResource[]> {
     // baseFetch already ensures we only return views from the same workspace.
     // We skip the additional canReadOrAdministrate check since the webhook
     // request was already authorized via the URL secret.
     return this.baseFetch(auth, {
-      where: { webhookSourceId },
+      where: { webhookSourceId: webhookSourceModelId },
     });
   }
 
