@@ -109,7 +109,7 @@ function getLimitPromptForCode(
           title: "Dust trial message limit reached",
           validateLabel: "Subscribe to Dust",
           onValidate: () => {
-            void router.push(`/w/${owner.sId}/subscribe`);
+            void router.push(`/w/${owner.sId}/subscription`);
           },
           children: (
             <>

@@ -12,6 +12,7 @@ import { NavigationLoadingOverlay } from "@app/components/sparkle/NavigationLoad
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
+import { isAdmin } from "@app/types";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
 // fallback to the landing if we linked directly to that modal.
@@ -101,7 +102,11 @@ export default function AppContentLayout({
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
-        <SubscriptionEndBanner owner={owner} subscription={subscription} />
+        <SubscriptionEndBanner
+          isAdmin={isAdmin(owner)}
+          owner={owner}
+          subscription={subscription}
+        />
         <NavigationLoadingOverlay />
         {/* Temporary measure to preserve title existence on smaller screens.
          * Page has no title, prepend empty AppLayoutTitle. */}

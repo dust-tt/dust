@@ -11,11 +11,13 @@ const THRESHOLD_MS =
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface SubscriptionEndBannerProps {
+  isAdmin: boolean;
   owner: { sId: string };
   subscription: SubscriptionType;
 }
 
 export function SubscriptionEndBanner({
+  isAdmin,
   owner,
   subscription,
 }: SubscriptionEndBannerProps) {
@@ -83,20 +85,22 @@ export function SubscriptionEndBanner({
           keep everything.
         </span>
       </div>
-      <Link
-        href={`/w/${owner.sId}/subscribe`}
-        className="shrink-0 no-underline"
-      >
-        <Button
-          label="Subscribe to Dust"
-          className={cn(
-            "bg-sky-600 dark:bg-sky-600-night",
-            "dark:text-white-night text-white",
-            "hover:bg-sky-700 dark:hover:bg-sky-700-night"
-          )}
-          size="sm"
-        />
-      </Link>
+      {isAdmin && (
+        <Link
+          href={`/w/${owner.sId}/subscription`}
+          className="shrink-0 no-underline"
+        >
+          <Button
+            label="Subscribe to Dust"
+            className={cn(
+              "bg-sky-600 dark:bg-sky-600-night",
+              "dark:text-white-night text-white",
+              "hover:bg-sky-700 dark:hover:bg-sky-700-night"
+            )}
+            size="sm"
+          />
+        </Link>
+      )}
     </div>
   );
 }

@@ -382,7 +382,10 @@ function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
       </div>
       {isAtLimit && (
         <div className="mt-3">
-          <Link href={`/w/${workspaceId}/subscribe`} className="no-underline">
+          <Link
+            href={`/w/${workspaceId}/subscription`}
+            className="no-underline"
+          >
             <Button label="Subscribe to Dust" variant="primary" />
           </Link>
         </div>
