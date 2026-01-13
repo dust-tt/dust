@@ -1,7 +1,5 @@
-import {
-  lookupPhoneNumber,
-  sendOtp,
-} from "@app/lib/api/workspace_verification/twilio";
+import { lookupPhoneNumber } from "@app/lib/api/workspace_verification/persona";
+import { sendOtp } from "@app/lib/api/workspace_verification/twilio";
 import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -108,48 +106,51 @@ export async function startVerification(
     }
   }
 
-  const lookupResult = await lookupPhoneNumber(phoneNumber);
-  if (lookupResult.isErr()) {
-    const error = lookupResult.error;
-    // for eng-oncall: you can defer this to growth / paywall owners
-    logger.error(
-      {
-        panic: true, // TODO(2026-03-01) - remove the panic:true
-        workspaceId: workspace.sId,
-        phoneNumberHash,
-        errorCode: error.code,
-      },
-      "Phone lookup validation failed"
-    );
-
-    let message: string;
-    switch (error.code) {
-      case "not_mobile":
-        message = "Only mobile phone numbers are accepted for verification.";
-        break;
-      case "high_sms_pumping_risk":
-        message = "This phone number cannot be used for verification.";
-        break;
-      case "invalid_phone_number":
-      case "lookup_failed":
-        message = error.message;
-        break;
-      default:
-        assertNever(error.code);
-    }
-
-    return new Err({
-      type: "invalid_request_error",
-      message,
-    });
-  }
-
   const rateLimitResult = await checkVerificationRateLimits(
     phoneNumberHash,
     workspaceModelId
   );
   if (!rateLimitResult.allowed) {
     return new Err(rateLimitResult.error);
+  }
+
+  const lookupResult = await lookupPhoneNumber(phoneNumber);
+  if (lookupResult.isErr()) {
+    const error = lookupResult.error;
+    let panic = false;
+
+    let message: string;
+    switch (error.code) {
+      case "not_mobile":
+        message = "Only mobile phone numbers are accepted for verification.";
+        break;
+      case "high_risk_blocked":
+      case "flagged_for_review":
+        message = "This phone number cannot be used for verification.";
+        break;
+      case "invalid_phone_number":
+      case "lookup_failed":
+        message = error.message;
+        panic = true;
+        break;
+      default:
+        assertNever(error.code);
+    }
+
+    // for eng-oncall: you can defer this to growth / paywall owners
+    logger.error(
+      {
+        panic,
+        workspaceId: workspace.sId,
+        phoneNumberHash,
+        errorCode: error.code,
+      },
+      "Phone lookup validation failed"
+    );
+    return new Err({
+      type: "invalid_request_error",
+      message,
+    });
   }
 
   const sendResult = await sendOtp(phoneNumber);

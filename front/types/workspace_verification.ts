@@ -37,19 +37,39 @@ export type VerificationErrorResponse = {
   };
 };
 
-// Twilio Lookup API types.
+// Persona Phone Risk Report types.
 export const LINE_TYPES = [
   "mobile",
-  "landline",
-  "fixedVoip",
-  "nonFixedVoip",
-  "personal",
-  "tollFree",
-  "premium",
-  "sharedCost",
-  "uan",
-  "voicemail",
+  "fixed_line",
+  "prepaid",
+  "toll_free",
+  "voip",
   "pager",
+  "payphone",
+  "invalid",
+  "restricted_premium",
+  "personal",
+  "voicemail",
+  "other",
   "unknown",
 ] as const;
 export type LineType = (typeof LINE_TYPES)[number];
+
+export const RISK_RECOMMENDATIONS = ["allow", "flag", "block"] as const;
+export type RiskRecommendation = (typeof RISK_RECOMMENDATIONS)[number];
+
+export type PhoneLookupResult = {
+  phoneType: LineType;
+  phoneCarrier: string | null;
+  riskScore: number;
+  riskLevel: string;
+  riskRecommendation: RiskRecommendation;
+  simSwapRisk: string | null;
+};
+
+export type PhoneLookupErrorCode =
+  | "invalid_phone_number"
+  | "lookup_failed"
+  | "not_mobile"
+  | "high_risk_blocked"
+  | "flagged_for_review";
