@@ -9,6 +9,7 @@ import {
   DialogTitle,
   HandThumbDownIcon,
   HandThumbUpIcon,
+  Label,
   Page,
   Spinner,
   TextArea,
@@ -38,14 +39,12 @@ export interface FeedbackSelectorProps extends FeedbackSelectorBaseProps {
 }
 
 const FEEDBACK_PREDEFINED_ANSWERS = [
-  "Didn't search company data",
-  "Should have searched the web",
-  "Response too verbose",
-  "Didn't follow instructions",
-  "Missing or incorrect citations",
-  "Didn't use available tools",
-  "Not factually correct",
-  "Should have spawned sub-agents",
+  "Factually incorrect",
+  "Didn't fully follow instructions",
+  "Don't like the tone",
+  "Wrong data sources",
+  "Took too long",
+  "Other (please explain below)",
 ] as const;
 
 type FeedbackPredefinedAnswerType =
@@ -150,7 +149,11 @@ export function FeedbackSelector({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Share feedback</DialogTitle>
+            <DialogTitle>
+              {thumbDirection === "down"
+                ? "What’s wrong with this answer?"
+                : "Glad you liked it! Tell us more?"}
+            </DialogTitle>
           </DialogHeader>
 
           <DialogContainer>
@@ -195,18 +198,17 @@ export function FeedbackSelector({
                   </Page.P>
                 </div>
 
-                <div className="bg-muted-background dark:bg-muted-background-night border-border dark:border-border-night rounded-lg border p-3">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={isConversationShared}
-                      onCheckedChange={(value) => {
-                        setIsConversationShared(!!value);
-                      }}
-                    />
-                    <Page.P variant="secondary">
-                      Include my full conversation with this feedback.
-                    </Page.P>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="share-conversation"
+                    checked={isConversationShared}
+                    onCheckedChange={(value) => {
+                      setIsConversationShared(!!value);
+                    }}
+                  />
+                  <Label htmlFor="share-conversation">
+                    Include my full conversation with this feedback.
+                  </Label>
                 </div>
               </div>
             )}
