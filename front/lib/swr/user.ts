@@ -3,6 +3,7 @@ import type { Fetcher, SWRConfiguration } from "swr";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
+  emptyArray,
   fetcher,
   getErrorFromResponse,
   useSWRWithDefaults,
@@ -11,6 +12,7 @@ import type { EmailProviderType } from "@app/lib/utils/email_provider_detection"
 import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/approvals";
+import type { GetPendingInvitationsResponseBody } from "@app/pages/api/w/[wId]/me/pending-invitations";
 import type { LightWorkspaceType } from "@app/types";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
@@ -166,4 +168,28 @@ export function usePatchUser() {
   };
 
   return { patchUser };
+}
+
+export function usePendingInvitations({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const pendingInvitationsFetcher: Fetcher<GetPendingInvitationsResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/me/pending-invitations`,
+    pendingInvitationsFetcher,
+    { disabled }
+  );
+
+  return {
+    pendingInvitations: data?.pendingInvitations ?? emptyArray(),
+    isPendingInvitationsLoading: !error && !data && !disabled,
+    isPendingInvitationsError: error,
+    mutatePendingInvitations: mutate,
+  };
 }

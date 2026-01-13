@@ -90,6 +90,28 @@ export function useSpacesAsAdmin({
   };
 }
 
+export function useSystemSpace({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const spacesFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces?role=admin&kind=system`,
+    spacesFetcher,
+    { disabled }
+  );
+
+  return {
+    systemSpace: data?.spaces[0] ?? null,
+    isSystemSpaceLoading: !error && !data && !disabled,
+    isSystemSpaceError: error,
+  };
+}
+
 export function useSpaceInfo({
   workspaceId,
   spaceId,

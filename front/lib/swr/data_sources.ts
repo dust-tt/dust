@@ -1,6 +1,7 @@
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetBotDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources/bot-data-sources";
 import type { GetDataSourceUsageResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/usage";
 import type {
   DataSourceType,
@@ -51,5 +52,29 @@ export function useNotionLastSyncedUrls({
     isLoading,
     isError: error,
     mutate,
+  };
+}
+
+export function useBotDataSources({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const botDataSourcesFetcher: Fetcher<GetBotDataSourcesResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/data_sources/bot-data-sources`,
+    botDataSourcesFetcher,
+    { disabled }
+  );
+
+  return {
+    slackBotDataSource: data?.slackBotDataSource ?? null,
+    microsoftBotDataSource: data?.microsoftBotDataSource ?? null,
+    discordBotDataSource: data?.discordBotDataSource ?? null,
+    isBotDataSourcesLoading: !error && !data && !disabled,
+    isBotDataSourcesError: error,
   };
 }
