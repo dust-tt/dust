@@ -1,11 +1,10 @@
 import {
-  Avatar,
   ContentMessage,
   InformationCircleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 
-import { getSkillIcon } from "@app/lib/skill";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 type SimilarSkillsDisplayProps = {
@@ -38,23 +37,23 @@ export function SimilarSkillsDisplay({
       icon={InformationCircleIcon}
     >
       <div className="mt-2 space-y-3">
-        {similarSkills.map((skill) => (
-          <div key={skill.sId} className="flex items-start gap-2">
-            <Avatar
-              name={skill.name}
-              icon={getSkillIcon(skill.icon)}
-              size="xs"
-            />
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                {skill.name}
-              </span>
-              <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                {skill.agentFacingDescription}
-              </span>
+        {similarSkills.map((skill) => {
+          const SkillAvatar = getSkillAvatarIcon(skill.icon);
+
+          return (
+            <div key={skill.sId} className="flex items-start gap-2">
+              <SkillAvatar name={skill.name} size="xs" />
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                  {skill.name}
+                </span>
+                <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                  {skill.agentFacingDescription}
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {isLoading && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
             <Spinner size="xs" />
