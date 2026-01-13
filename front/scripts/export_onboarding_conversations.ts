@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-
-import { Op, QueryTypes } from "sequelize";
+import { QueryTypes } from "sequelize";
 
 import {
   AgentMCPActionModel,
@@ -10,13 +9,11 @@ import {
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
-  ConversationModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
@@ -37,17 +34,12 @@ function formatTimestamp(date: Date): string {
   return date.toISOString().replace("T", " ").replace(/\.\d{3}Z$/, "");
 }
 
-function escapeMarkdown(text: string): string {
-  // Escape markdown special characters that could break formatting
-  return text.replace(/([\\`*_{}[\]()#+\-.!])/g, "\\$1");
-}
-
 function formatContentItem(item: AgentContentItemType): string {
   switch (item.type) {
     case "text_content":
       return item.value;
     case "reasoning":
-      return `<details>\n<summary>🧠 Reasoning (${item.value.tokens} tokens)</summary>\n\n${item.value.reasoning || "(hidden)"}\n\n</details>`;
+      return `<details>\n<summary>🧠 Reasoning (${item.value.tokens} tokens)</summary>\n\n${item.value.reasoning ?? "(hidden)"}\n\n</details>`;
     case "function_call":
       return `**Tool Call:** \`${item.value.name}\`\n\n<details>\n<summary>Arguments</summary>\n\n\`\`\`json\n${item.value.arguments}\n\`\`\`\n\n</details>`;
     case "error":
@@ -132,9 +124,9 @@ async function generateMarkdown(
       lines.push("");
       lines.push(`**Sent at:** ${formatTimestamp(message.createdAt)}`);
       if (um.userContextEmail) {
-        lines.push(`**From:** ${um.userContextFullName || um.userContextUsername} (${um.userContextEmail})`);
+        lines.push(`**From:** ${um.userContextFullName ?? um.userContextUsername} (${um.userContextEmail})`);
       } else {
-        lines.push(`**From:** ${um.userContextFullName || um.userContextUsername}`);
+        lines.push(`**From:** ${um.userContextFullName ?? um.userContextUsername}`);
       }
       lines.push(`**Origin:** ${um.userContextOrigin}`);
       lines.push("");
@@ -149,7 +141,7 @@ async function generateMarkdown(
       lines.push("");
 
       // Process step contents
-      const stepContents = am.agentStepContents || [];
+      const stepContents = am.agentStepContents ?? [];
 
       // Group by step and take max version for each (step, index) pair
       const contentByStepIndex = new Map<string, AgentStepContentModel>();
@@ -296,7 +288,7 @@ async function generateMarkdown(
         lines.push("### Error");
         lines.push("");
         lines.push(`**Code:** ${am.errorCode}`);
-        lines.push(`**Message:** ${am.errorMessage || "(no message)"}`);
+        lines.push(`**Message:** ${am.errorMessage ?? "(no message)"}`);
         lines.push("");
       }
     } else if (message.contentFragment) {
