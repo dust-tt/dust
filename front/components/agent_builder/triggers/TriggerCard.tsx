@@ -86,7 +86,7 @@ export const TriggerCard = ({
       variant="primary"
       className={"min-h-28 select-none"}
       onClick={onEdit}
-      disabled={!trigger.enabled}
+      disabled={trigger.status !== "enabled"}
       action={
         (isEditor || isAdmin) && (
           <CardActionButton

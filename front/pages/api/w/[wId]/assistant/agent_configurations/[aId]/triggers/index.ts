@@ -327,7 +327,7 @@ async function handler(
           agentConfigurationId,
           name: validatedTrigger.name,
           kind: validatedTrigger.kind,
-          enabled: validatedTrigger.enabled,
+          status: validatedTrigger.status,
           configuration: validatedTrigger.configuration,
           naturalLanguageDescription:
             validatedTrigger.naturalLanguageDescription,

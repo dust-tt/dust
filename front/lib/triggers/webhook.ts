@@ -427,7 +427,7 @@ export async function filterTriggers({
     // Filter here to avoid a lot of type checking later.
     .filter(isWebhookTrigger)
     // Filter out disabled triggers
-    .filter((t) => t.enabled);
+    .filter((t) => t.status === "enabled");
 
   const filteredTriggers: WebhookTriggerType[] = [];
 

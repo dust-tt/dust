@@ -24,7 +24,7 @@ export const pauseTriggerPlugin = createPlugin({
       value: `Trigger "${resource.name}" has been paused successfully.`,
     });
   },
-  isApplicableTo: (auth, resource) => !!resource?.enabled,
+  isApplicableTo: (auth, resource) => resource?.status === "enabled",
 });
 
 export const unpauseTriggerPlugin = createPlugin({
@@ -50,5 +50,5 @@ export const unpauseTriggerPlugin = createPlugin({
       value: `Trigger "${resource.name}" has been unpaused successfully.`,
     });
   },
-  isApplicableTo: (auth, resource) => !!resource && !resource.enabled,
+  isApplicableTo: (auth, resource) => !!resource && resource.status !== "enabled",
 });

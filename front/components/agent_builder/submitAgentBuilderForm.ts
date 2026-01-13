@@ -283,7 +283,7 @@ async function processTriggers({
             const baseData = {
               sId: trigger.sId,
               name: trigger.name,
-              enabled: trigger.enabled,
+              status: trigger.status,
               customPrompt: trigger.customPrompt,
               naturalLanguageDescription: trigger.naturalLanguageDescription,
               configuration: trigger.configuration,
@@ -334,7 +334,7 @@ async function processTriggers({
           triggers: formData.triggersToCreate.map((trigger) => {
             const baseData = {
               name: trigger.name,
-              enabled: trigger.enabled,
+              status: trigger.status,
               customPrompt: trigger.customPrompt,
               naturalLanguageDescription: trigger.naturalLanguageDescription,
               configuration: trigger.configuration,
