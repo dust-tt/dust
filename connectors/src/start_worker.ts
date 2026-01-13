@@ -68,6 +68,8 @@ const workerFunctions: Record<WorkerType, () => Promise<void>> = {
   bigquery: runBigQueryWorker,
   salesforce: runSalesforceWorker,
   gong: runGongWorker,
+  //TODO(project): implement this
+  dust_project: () => Promise.resolve(),
 };
 
 const ALL_WORKERS = Object.keys(workerFunctions) as WorkerType[];

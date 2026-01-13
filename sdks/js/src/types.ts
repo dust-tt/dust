@@ -366,6 +366,7 @@ const Timezone = z.string().refine((s) => TIMEZONE_NAMES.includes(s), {
 const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "confluence"
   | "discord_bot"
+  | "dust_project"
   | "github"
   | "google_drive"
   | "intercom"

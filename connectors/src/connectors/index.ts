@@ -81,6 +81,9 @@ export function getConnectorManager({
       return new GongConnectorManager(connectorId);
     case "discord_bot":
       return new DiscordBotConnectorManager(connectorId);
+    case "dust_project":
+      //TODO(project): implement this
+      throw new Error("Dust project connector is not implemented yet");
     default:
       assertNever(connectorProvider);
   }
@@ -160,6 +163,9 @@ export function createConnector({
       return GongConnectorManager.create(params);
     case "discord_bot":
       return DiscordBotConnectorManager.create(params);
+    case "dust_project":
+      //TODO(project): implement this
+      throw new Error("Dust project connector is not implemented yet");
     default:
       assertNever(connectorProvider);
   }

@@ -5,6 +5,7 @@ import type { CreationAttributes, Model, Transaction } from "sequelize";
 import type { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import type { ConfluenceConfigurationModel } from "@connectors/lib/models/confluence";
 import type { DiscordConfigurationModel } from "@connectors/lib/models/discord";
+import type { DustProjectConfigurationModel } from "@connectors/lib/models/dust_project";
 import type { GithubConnectorStateModel } from "@connectors/lib/models/github";
 import type { GongConfigurationModel } from "@connectors/lib/models/gong";
 import type { GoogleDriveConfigModel } from "@connectors/lib/models/google_drive";
@@ -63,6 +64,7 @@ export interface ConnectorProviderModelM {
   bigquery: BigQueryConfigurationModel;
   salesforce: SalesforceConfigurationModel;
   gong: GongConfigurationModel;
+  dust_project: DustProjectConfigurationModel;
 }
 
 export type ConnectorProviderModelMapping = {
@@ -184,6 +186,10 @@ export function getConnectorProviderStrategy(
 
     case "gong":
       return new GongConnectorStrategy();
+
+    case "dust_project":
+      //TODO(project): implement this
+      throw new Error("Dust project connector is not implemented yet");
 
     default:
       assertNever(type);
