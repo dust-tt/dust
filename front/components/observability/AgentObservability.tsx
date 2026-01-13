@@ -16,37 +16,37 @@ import { useObservabilityContext } from "@app/components/agent_builder/observabi
 // Dynamic imports for chart components to exclude recharts from server bundle
 const DatasourceRetrievalTreemapChart = dynamic(
   () =>
-    import(
-      "@app/components/agent_builder/observability/charts/DatasourceRetrievalTreemapChart"
-    ).then((mod) => mod.DatasourceRetrievalTreemapChart),
+    import("@app/components/agent_builder/observability/charts/DatasourceRetrievalTreemapChart").then(
+      (mod) => mod.DatasourceRetrievalTreemapChart
+    ),
   { ssr: false }
 );
 const LatencyChart = dynamic(
   () =>
-    import(
-      "@app/components/agent_builder/observability/charts/LatencyChart"
-    ).then((mod) => mod.LatencyChart),
+    import("@app/components/agent_builder/observability/charts/LatencyChart").then(
+      (mod) => mod.LatencyChart
+    ),
   { ssr: false }
 );
 const SourceChart = dynamic(
   () =>
-    import(
-      "@app/components/agent_builder/observability/charts/SourceChart"
-    ).then((mod) => mod.SourceChart),
+    import("@app/components/agent_builder/observability/charts/SourceChart").then(
+      (mod) => mod.SourceChart
+    ),
   { ssr: false }
 );
 const ToolUsageChart = dynamic(
   () =>
-    import(
-      "@app/components/agent_builder/observability/charts/ToolUsageChart"
-    ).then((mod) => mod.ToolUsageChart),
+    import("@app/components/agent_builder/observability/charts/ToolUsageChart").then(
+      (mod) => mod.ToolUsageChart
+    ),
   { ssr: false }
 );
 const UsageMetricsChart = dynamic(
   () =>
-    import(
-      "@app/components/agent_builder/observability/charts/UsageMetricsChart"
-    ).then((mod) => mod.UsageMetricsChart),
+    import("@app/components/agent_builder/observability/charts/UsageMetricsChart").then(
+      (mod) => mod.UsageMetricsChart
+    ),
   { ssr: false }
 );
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
