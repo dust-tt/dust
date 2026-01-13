@@ -88,7 +88,7 @@ type AgentSidebarMenuProps = {
 type GroupLabel =
   | "Today"
   | "Yesterday"
-  | "Last Week AHAH"
+  | "Last Week AH"
   | "Last Month"
   | "Last 12 Months"
   | "Older";
