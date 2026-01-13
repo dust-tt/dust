@@ -45,4 +45,4 @@ jobs:
         uses: ./.github/actions/setup-node-deps
       - name: Typecheck
         working-directory: extension
-        run: npx tsgo --version && npm run tsgo
+        run: npm run tsc
