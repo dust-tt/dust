@@ -83,6 +83,7 @@ export function getVisualForContentNodeType(type: ContentNodeType["type"]) {
       return DocumentIcon;
     default:
       assertNeverAndIgnore(type);
+      return DocumentIcon;
   }
 }
 
@@ -129,6 +130,7 @@ export function getVisualForContentNode(node: ContentNodeType) {
 
     default:
       assertNeverAndIgnore(node.type);
+      return DocumentIcon;
   }
 }
 

@@ -181,5 +181,6 @@ export function messageReducer(
 
     default:
       assertNeverAndIgnore(event);
+      return state;
   }
 }
