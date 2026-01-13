@@ -158,6 +158,7 @@ export function SpaceAboutTab({
         onToggle={() => setIsRestricted(!isRestricted)}
         restrictedDescription="The project is only accessible to selected members."
         unrestrictedDescription="The project is accessible to everyone in the workspace."
+        disabled={!isSpaceEditor}
       />
       <RestrictedAccessBody
         isManual={isManual}
