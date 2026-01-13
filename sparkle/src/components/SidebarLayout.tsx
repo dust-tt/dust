@@ -206,7 +206,7 @@ export const SidebarLayout = React.forwardRef<
   );
 
   return (
-    <div className={cn("hello s-relative s-flex s-h-full s-w-full", className)}>
+    <div className={cn("s-relative s-flex s-h-full s-w-full", className)}>
       {/* Allotment CSS variables for resize border customization */}
       <style>{`
         :root {
