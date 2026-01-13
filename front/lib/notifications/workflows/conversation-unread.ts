@@ -1,5 +1,6 @@
 import { workflow } from "@novu/framework";
 import type { ChannelPreference } from "@novu/react";
+import assert from "assert";
 import uniqBy from "lodash/uniqBy";
 import { Op } from "sequelize";
 import z from "zod";
@@ -7,7 +8,6 @@ import z from "zod";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import { MentionModel, MessageModel } from "@app/lib/models/agent/conversation";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import { getNovuClient } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/conversations-unread";
@@ -24,6 +24,7 @@ import {
   normalizeError,
   Ok,
 } from "@app/types";
+import { isRichUserMention } from "@app/types/assistant/mentions";
 import type {
   NotificationPreferencesDelay,
   NotificationTrigger,
@@ -36,7 +37,7 @@ import {
   NOTIFICATION_DELAY_OPTIONS,
 } from "@app/types/notification_preferences";
 
-const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread";
+export const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread";
 
 const ConversationUnreadPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -91,9 +92,17 @@ const ConversationDetailsSchema = z.object({
   avatarUrl: z.string().optional(),
   isFromTrigger: z.boolean(),
   workspaceName: z.string(),
+  mentionedUserIds: z.array(z.string()),
 });
 
 type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
+
+type GetConversationDetailsParams = {
+  payload: ConversationUnreadPayloadType;
+} & (
+  | { auth: Authenticator; subscriberId?: never }
+  | { auth?: never; subscriberId: string }
+);
 
 const UserNotificationDelaySchema = z.object({
   delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
@@ -128,69 +137,73 @@ const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay = isDevelopment()
   ? "5_minutes"
   : "1_hour";
 
-const getConversationDetails = async ({
-  subscriberId,
-  payload,
-}: {
-  subscriberId?: string | null;
-  payload: ConversationUnreadPayloadType;
-}): Promise<ConversationDetailsType> => {
-  let subject: string = "A dust conversation";
-  let author: string = "Someone else";
-  let authorIsAgent: boolean = false;
-  let avatarUrl: string | undefined;
-  let isFromTrigger: boolean = false;
-  let workspaceName: string = "A workspace";
+const getConversationDetails = async (
+  params: GetConversationDetailsParams
+): Promise<ConversationDetailsType> => {
+  const { payload } = params;
 
-  if (subscriberId) {
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      subscriberId,
-      payload.workspaceId
-    );
-
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      payload.conversationId
-    );
-
-    if (conversation) {
-      workspaceName = auth.getNonNullableWorkspace().name;
-      subject = conversation.title ?? "Dust conversation";
-      isFromTrigger = !!conversation.triggerSId;
-
-      // Retrieve the message that triggered the notification
-      const messageRes = await conversation.getMessageById(
-        auth,
-        payload.messageId
-      );
-
-      if (messageRes.isOk()) {
-        const rendered = await batchRenderMessages(
-          auth,
-          conversation,
-          [messageRes.value],
-          "light"
+  // Get or create auth from the discriminated union.
+  const auth =
+    "auth" in params && params.auth
+      ? params.auth
+      : await Authenticator.fromUserIdAndWorkspaceId(
+          params.subscriberId,
+          payload.workspaceId
         );
 
-        if (rendered.isOk() && rendered.value.length === 1) {
-          const lightMessage = rendered.value[0];
-          if (isContentFragmentType(lightMessage)) {
-            // Do nothing. Content fragments are not displayed in the notification.
-          } else if (isUserMessageType(lightMessage)) {
-            author = lightMessage.user?.fullName ?? "Someone else";
-            avatarUrl = lightMessage.user?.image ?? undefined;
-            authorIsAgent = false;
-          } else {
-            author = lightMessage.configuration.name
-              ? `@${lightMessage.configuration.name}`
-              : "An agent";
-            avatarUrl = lightMessage.configuration.pictureUrl ?? undefined;
-            authorIsAgent = true;
-          }
-        }
-      }
-    }
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    payload.conversationId
+  );
+  assert(conversation, `Conversation not found: ${payload.conversationId}`);
+
+  const workspaceName = auth.getNonNullableWorkspace().name;
+  const subject = conversation.title ?? "Dust conversation";
+  const isFromTrigger = !!conversation.triggerSId;
+
+  // Retrieve the message that triggered the notification.
+  const messageRes = await conversation.getMessageById(auth, payload.messageId);
+  assert(messageRes.isOk(), `Message not found: ${payload.messageId}`);
+
+  const rendered = await batchRenderMessages(
+    auth,
+    conversation,
+    [messageRes.value],
+    "light"
+  );
+  assert(
+    rendered.isOk() && rendered.value.length === 1,
+    `Failed to render message: ${payload.messageId}`
+  );
+
+  const lightMessage = rendered.value[0];
+
+  let author: string;
+  let authorIsAgent: boolean;
+  let avatarUrl: string | undefined;
+  let mentionedUserIds: string[] = [];
+
+  if (isContentFragmentType(lightMessage)) {
+    // Content fragments don't have author info.
+    author = "Someone else";
+    authorIsAgent = false;
+  } else if (isUserMessageType(lightMessage)) {
+    author = lightMessage.user?.fullName ?? "Someone else";
+    avatarUrl = lightMessage.user?.image ?? undefined;
+    authorIsAgent = false;
+
+    // Extract approved user mentions from the rendered message.
+    mentionedUserIds = lightMessage.richMentions
+      .filter((m) => isRichUserMention(m) && m.status === "approved")
+      .map((m) => m.id);
+  } else {
+    author = lightMessage.configuration.name
+      ? `@${lightMessage.configuration.name}`
+      : "An agent";
+    avatarUrl = lightMessage.configuration.pictureUrl ?? undefined;
+    authorIsAgent = true;
   }
+
   return {
     subject,
     author,
@@ -198,6 +211,7 @@ const getConversationDetails = async ({
     avatarUrl,
     isFromTrigger,
     workspaceName,
+    mentionedUserIds,
   };
 };
 
@@ -283,6 +297,7 @@ export const conversationUnreadWorkflow = workflow(
     const details = await step.custom(
       "get-conversation-details",
       async () => {
+        assert(subscriber.subscriberId, "subscriberId is required in workflow");
         return getConversationDetails({
           subscriberId: subscriber.subscriberId,
           payload,
@@ -386,6 +401,10 @@ export const conversationUnreadWorkflow = workflow(
           }
 
           const payload = event.payload as ConversationUnreadPayloadType;
+          assert(
+            subscriber.subscriberId,
+            "subscriberId is required in workflow"
+          );
           const details = await getConversationDetails({
             subscriberId: subscriber.subscriberId,
             payload,
@@ -440,40 +459,6 @@ export const conversationUnreadWorkflow = workflow(
 const DEFAULT_NOTIFICATION_TRIGGER: NotificationTrigger = "all_messages";
 
 /**
- * Returns a set of user IDs that are mentioned in the given message.
- */
-const getMentionedUserIds = async ({
-  messageSId,
-  workspaceId,
-}: {
-  messageSId: string;
-  workspaceId: number;
-}): Promise<Set<number>> => {
-  const message = await MessageModel.findOne({
-    where: { sId: messageSId, workspaceId },
-    attributes: ["id"],
-  });
-
-  if (!message) {
-    return new Set();
-  }
-
-  const mentions = await MentionModel.findAll({
-    where: {
-      messageId: message.id,
-      workspaceId,
-      userId: { [Op.ne]: null },
-      status: "approved",
-    },
-    attributes: ["userId"],
-  });
-
-  return new Set(
-    mentions.map((m) => m.userId).filter((id): id is number => id !== null)
-  );
-};
-
-/**
  * Filters participants based on their notification trigger preference.
  * Returns only participants who should receive notifications.
  * Note: If a user is the only human participant in the conversation, they are
@@ -492,15 +477,15 @@ const filterParticipantsByNotifyPreference = async ({
     lastName: string | null;
     unread: boolean;
   }[];
-  mentionedUserIds: Set<number>;
+  mentionedUserIds: Set<string>;
   totalParticipantCount: number;
 }): Promise<typeof participants> => {
-  const userIds = participants.map((p) => p.id);
+  const userModelIds = participants.map((p) => p.id);
 
   // Bulk query for all preferences.
   const preferences = await UserMetadataModel.findAll({
     where: {
-      userId: { [Op.in]: userIds },
+      userId: { [Op.in]: userModelIds },
       key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyTrigger,
     },
     attributes: ["userId", "value"],
@@ -522,7 +507,7 @@ const filterParticipantsByNotifyPreference = async ({
       case "only_mentions":
         // Notify if mentioned OR if only human participant.
         return (
-          mentionedUserIds.has(participant.id) || totalParticipantCount === 1
+          mentionedUserIds.has(participant.sId) || totalParticipantCount === 1
         );
       case "never":
         return false;
@@ -557,16 +542,20 @@ export const triggerConversationUnreadNotifications = async (
     return new Ok(undefined);
   }
 
-  // Get mentioned user IDs from the triggering message.
-  const mentionedUserIds = await getMentionedUserIds({
-    messageSId: messageId,
-    workspaceId: auth.getNonNullableWorkspace().id,
+  // Get conversation details including mentioned user IDs.
+  const details = await getConversationDetails({
+    auth,
+    payload: {
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      conversationId: conversation.sId,
+      messageId,
+    },
   });
 
   // Filter participants based on their notification trigger preference.
   const participants = await filterParticipantsByNotifyPreference({
     participants: allParticipants,
-    mentionedUserIds,
+    mentionedUserIds: new Set(details.mentionedUserIds),
     totalParticipantCount: totalParticipants.length,
   });
 

@@ -22,6 +22,7 @@ import {
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useNovuClient } from "@app/hooks/useNovuClient";
+import { CONVERSATION_UNREAD_TRIGGER_ID } from "@app/lib/notifications/workflows/conversation-unread";
 import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import type {
@@ -55,8 +56,6 @@ const NOTIFICATION_TRIGGER_LABELS: Record<NotificationTrigger, string> = {
 
 const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay = "1_hour";
 const DEFAULT_NOTIFICATION_TRIGGER: NotificationTrigger = "all_messages";
-
-const CONVERSATION_UNREAD_WORKFLOW_ID = "conversation-unread";
 
 export interface NotificationPreferencesRefProps {
   savePreferences: () => Promise<boolean>;
@@ -140,7 +139,7 @@ export const NotificationPreferences = forwardRef<
     void novuClient.preferences.list().then((preferences) => {
       const workflowPref = preferences.data?.find(
         (preference) =>
-          preference.workflow?.identifier === CONVERSATION_UNREAD_WORKFLOW_ID
+          preference.workflow?.identifier === CONVERSATION_UNREAD_TRIGGER_ID
       );
       setWorkflowPreferences(workflowPref);
       originalPreferencesRef.current = workflowPref;
