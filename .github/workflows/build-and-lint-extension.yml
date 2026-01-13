@@ -37,3 +37,12 @@ jobs:
         run: npm install && npm run lint && npm run format:check && npm run package:chrome:production
         env:
           DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
+  tsc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+      - name: Typecheck
+        working-directory: extension
+        run: npx tsgo --version && npm run tsgo
