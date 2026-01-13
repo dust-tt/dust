@@ -130,6 +130,7 @@ const NavigationListItem = React.forwardRef<
 
     const shouldShowStatusDot = status !== "idle";
     const counterValue = count && count > 0 ? count : undefined;
+    const shouldHideStatusIndicators = Boolean(moreMenu && selected);
 
     return (
       <div
@@ -170,7 +171,7 @@ const NavigationListItem = React.forwardRef<
                 {label}
               </span>
             )}
-            {counterValue && (
+            {counterValue !== undefined && !shouldHideStatusIndicators && (
               <Counter
                 value={counterValue}
                 size="xs"
@@ -178,16 +179,16 @@ const NavigationListItem = React.forwardRef<
                 className={cn(
                   "s-flex-shrink-0 s-translate-x-0.5",
                   moreMenu &&
-                    "group-hover/menu-item:s-hidden group-focus-within/menu-item:s-hidden group-data-[selected=true]/menu-item:s-hidden"
+                    "group-hover/menu-item:s-hidden group-focus-within/menu-item:s-hidden"
                 )}
               />
             )}
-            {shouldShowStatusDot && (
+            {shouldShowStatusDot && !shouldHideStatusIndicators && (
               <div
                 className={cn(
                   "s-heading-xs s-flex s-flex-shrink-0 s-items-center s-justify-center s-rounded-full",
                   moreMenu &&
-                    "group-hover/menu-item:s-hidden group-focus-within/menu-item:s-hidden group-data-[selected=true]/menu-item:s-hidden",
+                    "group-hover/menu-item:s-hidden group-focus-within/menu-item:s-hidden",
                   getStatusDotColor()
                 )}
               />
