@@ -4,7 +4,7 @@ import React, { useMemo } from "react";
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { contentFragmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
-import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
+import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { MentionInvalid } from "@app/components/assistant/conversation/MentionInvalid";
 import { MentionValidationRequired } from "@app/components/assistant/conversation/MentionValidationRequired";
 import { MessageDateIndicator } from "@app/components/assistant/conversation/MessageDateIndicator";
@@ -81,7 +81,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     const messageFeedback = context.feedbacksByMessageId[sId];
 
-    const messageFeedbackWithSubmit: FeedbackSelectorProps = {
+    const messageFeedbackWithSubmit: FeedbackSelectorBaseProps = {
       feedback: messageFeedback
         ? {
             thumb: messageFeedback.thumbDirection,
@@ -91,7 +91,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         : null,
       onSubmitThumb,
       isSubmittingThumb,
-      owner: context.owner,
     };
 
     const citations =

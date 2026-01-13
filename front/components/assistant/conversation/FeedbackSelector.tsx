@@ -2,18 +2,22 @@ import {
   Button,
   ButtonGroup,
   Checkbox,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   HandThumbDownIcon,
   HandThumbUpIcon,
-  Page,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
+  Label,
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useRef } from "react";
+import React from "react";
 
-import type { WorkspaceType } from "@app/types";
+import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
+import type { LightWorkspaceType } from "@app/types";
 
 export type ThumbReaction = "up" | "down";
 
@@ -23,7 +27,7 @@ export type FeedbackType = {
   isConversationShared: boolean;
 };
 
-export interface FeedbackSelectorProps {
+export interface FeedbackSelectorBaseProps {
   feedback: FeedbackType | null;
   onSubmitThumb: (
     p: FeedbackType & {
@@ -31,194 +35,218 @@ export interface FeedbackSelectorProps {
     }
   ) => Promise<void>;
   isSubmittingThumb: boolean;
-  getPopoverInfo?: () => React.JSX.Element | null;
-  owner: WorkspaceType;
+}
+
+const FEEDBACK_PREDEFINED_ANSWERS = [
+  "Factually incorrect",
+  "Didn't fully follow instructions",
+  "Don't like the tone",
+  "Wrong data sources",
+  "Took too long",
+  "Other (please explain below)",
+] as const;
+
+type FeedbackPredefinedAnswerType =
+  (typeof FEEDBACK_PREDEFINED_ANSWERS)[number];
+
+interface FeedbackSelectorProps extends FeedbackSelectorBaseProps {
+  owner: LightWorkspaceType;
+  agentConfigurationId: string;
+  isGlobalAgent: boolean;
 }
 
 export function FeedbackSelector({
   feedback,
   onSubmitThumb,
   isSubmittingThumb,
-  getPopoverInfo,
+  owner,
+  agentConfigurationId,
+  isGlobalAgent,
 }: FeedbackSelectorProps) {
-  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [thumbDirection, setThumbDirection] =
+    React.useState<ThumbReaction>("up");
   const [localFeedbackContent, setLocalFeedbackContent] = React.useState<
     string | null
   >(null);
-  const [popOverInfo, setPopoverInfo] = React.useState<JSX.Element | null>(
-    null
-  );
+  const [selectedPredefinedAnswer, setSelectedPredefinedAnswer] =
+    React.useState<FeedbackPredefinedAnswerType | null>(null);
   const [isConversationShared, setIsConversationShared] = React.useState(
     feedback?.isConversationShared ?? false
   );
-  // This is required to adjust the content of the popover even when feedback is null.
-  const [lastSelectedThumb, setLastSelectedThumb] =
-    React.useState<ThumbReaction | null>(feedback?.thumb ?? null);
 
-  useEffect(() => {
-    if (isPopoverOpen) {
-      if (getPopoverInfo) {
-        setPopoverInfo(getPopoverInfo());
-      }
-      if (feedback?.thumb === lastSelectedThumb) {
-        setLocalFeedbackContent(feedback?.feedbackContent ?? null);
-      }
-    }
-  }, [
-    isPopoverOpen,
-    feedback?.feedbackContent,
-    getPopoverInfo,
-    lastSelectedThumb,
-    feedback?.thumb,
-  ]);
-
-  const selectThumb = async (thumb: ThumbReaction) => {
-    const shouldRemoveExistingFeedback = feedback?.thumb === thumb;
-    setIsPopoverOpen(!shouldRemoveExistingFeedback);
-    setLastSelectedThumb(shouldRemoveExistingFeedback ? null : thumb);
-    setIsConversationShared(thumb === "down");
-
-    // We enforce written feedback for thumbs down.
-    // -> Not saving the reaction until then.
-    if (thumb === "down" && !shouldRemoveExistingFeedback) {
-      return;
-    }
-
-    await onSubmitThumb({
-      feedbackContent: localFeedbackContent,
-      thumb,
-      shouldRemoveExistingFeedback,
-      isConversationShared: false,
-    });
-  };
-
-  const handleThumbUp = async () => {
-    await selectThumb("up");
-  };
-
-  const handleThumbDown = async () => {
-    await selectThumb("down");
-  };
-
-  const handleTextAreaChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setLocalFeedbackContent(e.target.value);
-    },
-    []
-  );
-
-  const closePopover = () => {
-    setIsPopoverOpen(false);
+  const closeDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedPredefinedAnswer(null);
+    setLocalFeedbackContent(null);
+    setIsConversationShared(false);
   };
 
   const handleSubmit = async () => {
-    setIsPopoverOpen(false);
-    if (lastSelectedThumb) {
-      await onSubmitThumb({
-        thumb: lastSelectedThumb,
-        shouldRemoveExistingFeedback: false,
-        feedbackContent: localFeedbackContent,
-        isConversationShared,
-      });
-      setLocalFeedbackContent(null);
-    }
+    const details = localFeedbackContent?.trim() ?? "";
+    const predefinedAnswer = selectedPredefinedAnswer?.trim() ?? "";
+
+    const feedbackContent = [predefinedAnswer, details]
+      .filter(Boolean)
+      .join("\n\n");
+
+    await onSubmitThumb({
+      thumb: thumbDirection,
+      shouldRemoveExistingFeedback: false,
+      feedbackContent: feedbackContent || null,
+      isConversationShared,
+    });
+    closeDialog();
   };
 
+  const handleThumbClick = async (direction: ThumbReaction) => {
+    const shouldRemoveExistingFeedback = feedback?.thumb === direction;
+    if (shouldRemoveExistingFeedback) {
+      await onSubmitThumb({
+        thumb: direction,
+        shouldRemoveExistingFeedback,
+        feedbackContent: null,
+        isConversationShared: false,
+      });
+      return;
+    }
+
+    setThumbDirection(direction);
+    setSelectedPredefinedAnswer(null);
+    setLocalFeedbackContent(null);
+    setIsConversationShared(true);
+    setIsDialogOpen(true);
+  };
+
+  const canSubmit =
+    thumbDirection === "up" ||
+    !!selectedPredefinedAnswer ||
+    (localFeedbackContent?.trim() ?? "") !== "";
+
   return (
-    <div ref={containerRef} className="flex items-center">
-      <PopoverRoot open={isPopoverOpen}>
-        <PopoverTrigger asChild>
-          <ButtonGroup
-            variant="outline"
-            items={[
-              {
-                type: "button",
-                props: {
-                  tooltip: "I found this helpful",
-                  variant:
-                    feedback?.thumb === "up" ? "primary" : "ghost-secondary",
-                  size: "xs",
-                  disabled: isSubmittingThumb,
-                  onClick: handleThumbUp,
-                  icon: HandThumbUpIcon,
-                  className:
-                    feedback?.thumb === "up" ? "" : "text-muted-foreground",
-                },
-              },
-              {
-                type: "button",
-                props: {
-                  tooltip: "Report an issue with this answer",
-                  variant:
-                    feedback?.thumb === "down" ? "primary" : "ghost-secondary",
-                  size: "xs",
-                  disabled: isSubmittingThumb,
-                  onClick: handleThumbDown,
-                  icon: HandThumbDownIcon,
-                  className:
-                    feedback?.thumb === "down" ? "" : "text-muted-foreground",
-                },
-              },
-            ]}
+    <div className="flex items-center">
+      <ButtonGroup
+        variant="outline"
+        items={[
+          {
+            type: "button",
+            props: {
+              tooltip: "I found this helpful",
+              variant: feedback?.thumb === "up" ? "primary" : "ghost-secondary",
+              size: "xs",
+              disabled: isSubmittingThumb,
+              onClick: () => handleThumbClick("up"),
+              icon: HandThumbUpIcon,
+              className:
+                feedback?.thumb === "up" ? "" : "text-muted-foreground",
+            },
+          },
+          {
+            type: "button",
+            props: {
+              tooltip: "Report an issue with this answer",
+              variant:
+                feedback?.thumb === "down" ? "primary" : "ghost-secondary",
+              size: "xs",
+              disabled: isSubmittingThumb,
+              onClick: () => handleThumbClick("down"),
+              icon: HandThumbDownIcon,
+              className:
+                feedback?.thumb === "down" ? "" : "text-muted-foreground",
+            },
+          },
+        ]}
+      />
+
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeDialog();
+          }
+        }}
+      >
+        <DialogContent size="lg">
+          <DialogHeader>
+            <DialogTitle>
+              {thumbDirection === "down"
+                ? "What’s wrong with this answer?"
+                : "Glad you liked it! Tell us more?"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <DialogContainer>
+            {isSubmittingThumb ? (
+              <div className="m-3 flex items-center justify-center">
+                <Spinner size="sm" />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4 pt-2">
+                {thumbDirection === "down" && (
+                  <div className="flex flex-wrap gap-2">
+                    {FEEDBACK_PREDEFINED_ANSWERS.map((answer) => {
+                      const isSelected = selectedPredefinedAnswer === answer;
+                      return (
+                        <Button
+                          key={answer}
+                          size="xs"
+                          variant={isSelected ? "primary" : "outline"}
+                          label={answer}
+                          onClick={() =>
+                            setSelectedPredefinedAnswer(
+                              isSelected ? null : answer
+                            )
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+                <TextArea
+                  placeholder="Share details (optional)"
+                  resize="vertical"
+                  rows={5}
+                  value={localFeedbackContent ?? ""}
+                  onChange={(e) => setLocalFeedbackContent(e.target.value)}
+                />
+                <FeedbackSelectorPopoverContent
+                  owner={owner}
+                  agentConfigurationId={agentConfigurationId}
+                  isGlobalAgent={isGlobalAgent}
+                />
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="share-conversation"
+                    checked={isConversationShared}
+                    onCheckedChange={(value) => {
+                      setIsConversationShared(!!value);
+                    }}
+                  />
+                  <Label htmlFor="share-conversation">
+                    Include my full conversation with this feedback.
+                  </Label>
+                </div>
+              </div>
+            )}
+          </DialogContainer>
+
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              disabled: isSubmittingThumb,
+              onClick: closeDialog,
+            }}
+            rightButtonProps={{
+              label: "Submit",
+              variant: "primary",
+              onClick: handleSubmit,
+              disabled: isSubmittingThumb || !canSubmit,
+            }}
           />
-        </PopoverTrigger>
-        <PopoverContent
-          fullWidth={true}
-          onInteractOutside={closePopover}
-          onEscapeKeyDown={closePopover}
-        >
-          {isSubmittingThumb ? (
-            <div className="m-3 flex items-center justify-center">
-              <Spinner size="sm" />
-            </div>
-          ) : (
-            <div className="w-80 p-4">
-              <Page.H variant="h6">
-                {lastSelectedThumb === "up"
-                  ? "🎉 Glad you liked it! Tell us more?"
-                  : "🫠 Help make the answers better!"}
-              </Page.H>
-              <TextArea
-                placeholder={
-                  lastSelectedThumb === "up"
-                    ? "What did you like?"
-                    : "Tell us what went wrong so we can make this agent better."
-                }
-                className="mb-4 mt-4"
-                resize="vertical"
-                rows={3}
-                value={localFeedbackContent ?? ""}
-                onChange={handleTextAreaChange}
-              />
-              {popOverInfo}
-              <div className="mt-2 flex items-center gap-2">
-                <Checkbox
-                  checked={isConversationShared}
-                  onCheckedChange={(value) => {
-                    setIsConversationShared(!!value);
-                  }}
-                />
-                <Page.P variant="secondary">
-                  By clicking, you accept to share your full conversation
-                </Page.P>
-              </div>
-              <div className="mt-4 flex justify-end gap-2">
-                <Button
-                  variant="primary"
-                  label="Submit feedback"
-                  onClick={handleSubmit}
-                  disabled={
-                    !localFeedbackContent ||
-                    localFeedbackContent.trim() === "" ||
-                    isSubmittingThumb
-                  }
-                />
-              </div>
-            </div>
-          )}
-        </PopoverContent>
-      </PopoverRoot>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

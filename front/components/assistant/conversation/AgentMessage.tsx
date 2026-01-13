@@ -30,9 +30,8 @@ import { markdownCitationToAttachmentCitation } from "@app/components/assistant/
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
-import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
+import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
-import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
@@ -82,7 +81,7 @@ import type {
 } from "@app/types";
 import {
   assertNever,
-  GLOBAL_AGENTS_SID,
+  isGlobalAgentId,
   isInteractiveContentFileContentType,
   isSupportedImageContentType,
 } from "@app/types";
@@ -91,7 +90,7 @@ interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
   agentMessage: MessageTemporaryState;
-  messageFeedback: FeedbackSelectorProps;
+  messageFeedback: FeedbackSelectorBaseProps;
   owner: WorkspaceType;
   user: UserType;
   triggeringUser: UserType | null;
@@ -123,10 +122,6 @@ export function AgentMessage({
   const [isCopied, copy] = useCopyToClipboard();
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
-
-  const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
-    agentMessage.configuration.sId as GLOBAL_AGENTS_SID
-  );
 
   const { enqueueBlockedAction, removeAllBlockedActionsForMessage } =
     useBlockedActionsContext();
@@ -272,15 +267,7 @@ export function AgentMessage({
     }
   }, [shouldStream, generationContext, sId, conversationId]);
 
-  const PopoverContent = useCallback(
-    () => (
-      <FeedbackSelectorPopoverContent
-        owner={owner}
-        agentMessageToRender={agentMessage}
-      />
-    ),
-    [owner, agentMessage]
-  );
+  const isGlobalAgent = isGlobalAgentId(agentMessage.configuration.sId);
 
   async function handleCopyToClipboard() {
     const messageContent = agentMessage.content ?? "";
@@ -452,7 +439,6 @@ export function AgentMessage({
     !isDeleted &&
     agentMessage.status !== "created" &&
     agentMessage.status !== "failed" &&
-    !isGlobalAgent &&
     agentMessage.configuration.status !== "draft";
 
   const retryMessage = useRetryMessage({ owner });
@@ -484,7 +470,9 @@ export function AgentMessage({
       <FeedbackSelector
         key="feedback-selector"
         {...messageFeedback}
-        getPopoverInfo={PopoverContent}
+        owner={owner}
+        agentConfigurationId={agentMessage.configuration.sId}
+        isGlobalAgent={isGlobalAgent}
       />
     );
   }
