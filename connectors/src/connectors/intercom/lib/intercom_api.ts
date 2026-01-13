@@ -40,6 +40,10 @@ async function queryIntercomAPI({
       per_page: number;
       starting_after: string | null;
     };
+    sort?: {
+      field: string;
+      order: "ascending" | "descending";
+    };
   };
 }) {
   // Intercom will route to the correct region based on the token.
@@ -385,6 +389,10 @@ export async function fetchIntercomConversations({
         pagination: {
           per_page: pageSize,
           starting_after: cursor,
+        },
+        sort: {
+          field: "created_at",
+          order: "ascending",
         },
       },
     });
