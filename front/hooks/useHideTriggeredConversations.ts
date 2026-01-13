@@ -9,6 +9,7 @@ export const useHideTriggeredConversations = () => {
   const { metadata, isMetadataLoading, isMetadataError, mutateMetadata } =
     useUserMetadata(HIDE_TRIGGERED_CONVERSATIONS_KEY, {
       revalidateOnFocus: false,
+      revalidateOnReconnect: false,
     });
 
   const hideTriggeredConversations = metadata?.value === "true";
