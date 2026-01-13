@@ -112,11 +112,10 @@ describe("getJITServers", () => {
   });
 
   describe("skills feature", () => {
-    // Note: This test requires the skill_management MCP server to be enabled and available.
-    // In the current test environment, this server may not be created by ensureAllAutoToolsAreCreated.
-    it.skip("should include skill_management server when agent has skills and feature flag is enabled", async () => {
+    it("should include skill_management server when agent has skills and feature flag is enabled", async () => {
       // Enable skills feature flag.
       await FeatureFlagFactory.basic("skills", workspace);
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       // Create a skill and link it to the agent.
       const skill = await SkillFactory.create(auth, {
@@ -170,6 +169,7 @@ describe("getJITServers", () => {
     it("should not include skill_management server when agent has no skills", async () => {
       // Enable skills feature flag.
       await FeatureFlagFactory.basic("skills", workspace);
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
@@ -186,11 +186,10 @@ describe("getJITServers", () => {
   });
 
   describe("projects feature", () => {
-    // Note: This test requires the search MCP server to be enabled in the projects context.
-    // The test environment may not have all the required infrastructure for project context search.
-    it.skip("should include project search server when feature flag is enabled and project context exists", async () => {
+    it("should include project search server when feature flag is enabled and project context exists", async () => {
       // Enable projects feature flag.
       await FeatureFlagFactory.basic("projects", workspace);
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       // Create a data source view with the project context name.
       const projectContextName = getProjectContextDatasourceName(
