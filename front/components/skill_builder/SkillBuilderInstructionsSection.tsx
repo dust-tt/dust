@@ -72,7 +72,7 @@ export function SkillBuilderInstructionsSection({
     <section className="flex flex-col gap-3">
       <div className="flex flex-col items-end justify-between gap-2 sm:flex-row">
         <div>
-          <h3 className="heading-large font-semibold text-foreground dark:text-foreground-night">
+          <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
             What guidelines should it provide?
           </h3>
         </div>
