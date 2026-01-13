@@ -12,6 +12,7 @@ import type {
 import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
+import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type {
   LightAgentMessageWithActionsType,
   LightWorkspaceType,
@@ -280,7 +281,8 @@ export function useAgentMessageStream({
             isMessageTemporayState(m) && m.sId === sId
               ? {
                   ...m,
-                  ...messageSuccess.message,
+                  ...getLightAgentMessageFromAgentMessage(messageSuccess.message),
+                  actions: m.actions,
                   status: "succeeded",
                   streaming: {
                     ...m.streaming,
