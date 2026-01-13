@@ -1,4 +1,4 @@
-import { PuzzleIcon } from "@dust-tt/sparkle";
+import { cn, PuzzleIcon } from "@dust-tt/sparkle";
 import type { AvatarSizeType } from "@dust-tt/sparkle/dist/esm/components/Avatar";
 import React from "react";
 
@@ -56,13 +56,16 @@ export function getSkillAvatarIcon(
 export function getSkillIcon(
   iconString: string | null
 ): React.ComponentType<{ className?: string }> {
-  if (
+  const Icon =
     iconString &&
     (isCustomResourceIconType(iconString) || isInternalAllowedIcon(iconString))
-  ) {
-    return getIcon(iconString);
-  }
-  return SKILL_ICON;
+      ? getIcon(iconString)
+      : SKILL_ICON;
+
+  return ({ className }) =>
+    React.createElement(Icon, {
+      className: cn(SKILL_AVATAR_ICON_COLOR, className),
+    });
 }
 
 const IDS_OF_SKILLS_TRIGGERING_SELECT_SPACES_OPTIONS: string[] = [
