@@ -21,12 +21,13 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type {
+  ModelConversationTypeMultiActions,
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES, isTextContent } from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -133,7 +134,15 @@ export abstract class LLM {
       { asType: "generation" }
     );
 
+    // For agent_conversation, extract the last user message text as trace input.
+    // For other operation types, keep the full conversation.
+    const traceInput =
+      this.context.operationType === "agent_conversation"
+        ? this.extractLastUserMessageText(conversation)
+        : [{ role: "system", content: prompt }, ...conversation.messages];
+
     generation.updateTrace({
+      input: traceInput,
       metadata: {
         dustTraceId: this.traceId,
         // All contextual data as key-value pairs for better filtering in Langfuse UI.
@@ -250,6 +259,18 @@ export abstract class LLM {
         output: { ...rest },
       });
 
+      // For agent_conversation, only set trace output on final call (no tool calls, has content).
+      // This ensures the trace shows the actual agent answer, not intermediate tool calls.
+      const hasToolCalls = (rest.toolCalls?.length ?? 0) > 0;
+      const isAgentConversation =
+        this.context.operationType === "agent_conversation";
+
+      if (!isAgentConversation) {
+        generation.updateTrace({ output: { ...rest } });
+      } else if (!hasToolCalls && rest.content) {
+        generation.updateTrace({ output: rest.content });
+      }
+
       if (tokenUsage) {
         generation.update({
           usageDetails: {
@@ -294,6 +315,27 @@ export abstract class LLM {
 
       break;
     }
+  }
+
+  /**
+   * Extracts the text content from the last user msg of a conversation.
+   */
+  private extractLastUserMessageText(
+    conversation: ModelConversationTypeMultiActions
+  ): string {
+    const lastUserMessage = conversation.messages
+      .slice()
+      .reverse()
+      .find((msg) => msg.role === "user");
+
+    if (!lastUserMessage) {
+      return "";
+    }
+
+    return lastUserMessage.content
+      .filter(isTextContent)
+      .map((item) => item.text)
+      .join("\n");
   }
 
   /**
