@@ -903,8 +903,8 @@ IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specifi
   );
 
   server.tool(
-    "list_threads",
-    "List threads for a given channel, private channel, or DM. Returns thread headers with timestamps (ts field). Use read_thread_messages with the ts field to read the full thread content.",
+    "list_messages",
+    "List messages for a given channel, private channel, or DM. Returns message headers with timestamps (ts field). Use read_thread_messages with the ts field to read the full thread content for messages that have replies.",
     {
       channel: z
         .string()
@@ -999,19 +999,14 @@ IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specifi
 
         const rawMessages = response.messages ?? [];
 
-        // Filter to only keep messages that have threads (reply_count > 0).
-        const threadsOnly = rawMessages.filter(
-          (msg) => msg.reply_count && msg.reply_count > 0
-        );
-
-        // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS threads.
-        const matches = threadsOnly.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
+        // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS messages.
+        const matches = rawMessages.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
 
         if (matches.length === 0) {
           return new Ok([
             {
               type: "text" as const,
-              text: `No threads found.`,
+              text: `No messages found.`,
             },
           ]);
         }
@@ -1050,10 +1045,16 @@ IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specifi
           text?: string;
           ts?: string;
           authorName: string;
+          reply_count?: number;
         }>(threadsWithAuthors, refs, {
           permalink: (match) => match.permalink,
-          text: (match) =>
-            `[Thread: ${match.ts}] From ${match.authorName} in ${displayName}: ${match.text ?? ""}`,
+          text: (match) => {
+            const hasReplies = match.reply_count && match.reply_count > 0;
+            const prefix = hasReplies
+              ? `[Thread: ${match.ts}]`
+              : `[Message: ${match.ts}]`;
+            return `${prefix} From ${match.authorName} in ${displayName}: ${match.text ?? ""}`;
+          },
           id: (match) => match.ts ?? "",
           content: (match) => match.text ?? "",
         });
@@ -1070,7 +1071,7 @@ IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specifi
 
   server.tool(
     "read_thread_messages",
-    "Read all messages in a specific thread from public channels, private channels, or DMs. Use list_threads first to find thread timestamps (ts field).",
+    "Read all messages in a specific thread from public channels, private channels, or DMs. Use list_messages first to find thread timestamps (ts field).",
     {
       channel: z
         .string()
@@ -1080,7 +1081,7 @@ IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specifi
       threadTs: z
         .string()
         .describe(
-          "Thread timestamp (ts field from list_threads results, identifies the parent message)"
+          "Thread timestamp (ts field from list_messages results, identifies the parent message)"
         ),
       limit: z
         .number()

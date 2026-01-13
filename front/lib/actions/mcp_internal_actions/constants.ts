@@ -604,7 +604,7 @@ export const INTERNAL_MCP_SERVERS = {
       semantic_search_messages: "never_ask",
       list_users: "never_ask",
       search_channels: "never_ask",
-      list_threads: "never_ask",
+      list_messages: "never_ask",
       read_thread_messages: "never_ask",
       get_user: "never_ask",
 
