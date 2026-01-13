@@ -61,6 +61,7 @@ import {
 } from "@app/components/assistant/conversation/utils";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
+import { useFaviconBadge } from "@app/hooks/useFaviconBadge";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -337,6 +338,20 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     router,
     owner,
   ]);
+
+  const { setDot, clearBadge } = useFaviconBadge();
+
+  useEffect(() => {
+    const showDot =
+      filteredConversations.some((c) => c.unread || c.actionRequired) ||
+      summary?.some((s) => s.unreadConversations.length > 0);
+
+    if (showDot) {
+      setDot();
+    } else {
+      clearBadge();
+    }
+  }, [filteredConversations, setDot, clearBadge, summary]);
 
   return (
     <>
