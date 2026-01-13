@@ -37,7 +37,15 @@ async function handler(
       );
 
       if (!workspaceResource) {
-        return res.status(200).json({ verified_domains: [] });
+        // This should not happen as the workspace is fetched from the auth.
+        // Clearly something is wrong if we reach this point, so we log a 500 error.
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to fetch the workspace.",
+          },
+        });
       }
 
       const verifiedDomains = await workspaceResource.getVerifiedDomains();
