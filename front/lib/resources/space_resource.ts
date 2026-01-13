@@ -471,6 +471,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         | "user_not_found"
         | "user_not_member"
         | "user_already_member"
+        | "group_requirements_not_met"
         | "system_or_global_group"
         | "invalid_id"
       >
@@ -637,6 +638,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         | "unauthorized"
         | "user_not_found"
         | "user_already_member"
+        | "group_requirements_not_met"
         | "system_or_global_group"
       >
     >

@@ -4,6 +4,7 @@ import { DataTypes, Op } from "sequelize";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserProviderType } from "@app/types";
 
 export class UserModel extends BaseModel<UserModel> {
@@ -167,4 +168,97 @@ WorkspaceModel.hasMany(UserMetadataModel, {
 });
 UserMetadataModel.belongsTo(WorkspaceModel, {
   foreignKey: { name: "workspaceId", allowNull: true },
+});
+
+export class UserToolApprovalModel extends WorkspaceAwareModel<UserToolApprovalModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare userId: ForeignKey<UserModel["id"]>;
+  declare mcpServerId: string;
+  declare toolName: string;
+
+  // For medium-stake tools, we tie the approval to an agent, and eventually to arg-values couples.
+  // For low-stake tools, these can be null.
+  declare agentId: string | null;
+  declare argsAndValues: Record<string, string> | null;
+
+  // Md5 hash of argsAndValues for quick lookup and uniqueness constraint
+  declare argsAndValuesMd5: string | null;
+}
+
+UserToolApprovalModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    mcpServerId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    toolName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    agentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    argsAndValues: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+    },
+    argsAndValuesMd5: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+  },
+  {
+    modelName: "user_tool_approval",
+    sequelize: frontSequelize,
+    indexes: [
+      { fields: ["userId"], concurrently: true },
+      { fields: ["workspaceId", "userId"], concurrently: true },
+      {
+        fields: [
+          "workspaceId",
+          "userId",
+          "mcpServerId",
+          "toolName",
+          "agentId",
+          "argsAndValuesMd5",
+        ],
+        unique: true,
+        name: "user_tool_approvals_unique_idx",
+      },
+    ],
+  }
+);
+
+UserModel.hasMany(UserToolApprovalModel, {
+  foreignKey: { name: "userId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+
+WorkspaceModel.hasMany(UserToolApprovalModel, {
+  foreignKey: { name: "workspaceId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+
+UserToolApprovalModel.belongsTo(UserModel, {
+  foreignKey: { name: "userId", allowNull: false },
+});
+
+UserToolApprovalModel.belongsTo(WorkspaceModel, {
+  foreignKey: { name: "workspaceId", allowNull: false },
 });

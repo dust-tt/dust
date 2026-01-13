@@ -129,7 +129,6 @@ export function UserMessage({
   onReactionToggle,
 }: UserMessageProps) {
   const [shouldShowEditor, setShouldShowEditor] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { ref: userMessageHoveredRef, isHovering: isUserMessageHovered } =
     useHover();
   const isAdmin = owner.role === "admin";
@@ -241,28 +240,6 @@ export function UserMessage({
   };
 
   const showActions = !isDeleted && !shouldShowEditor;
-  const actions = showActions
-    ? [
-        ...(canEdit
-          ? [
-              {
-                icon: PencilSquareIcon,
-                label: "Edit message",
-                onClick: handleEditMessage,
-              },
-            ]
-          : []),
-        ...(canDelete
-          ? [
-              {
-                icon: TrashIcon,
-                label: "Delete message",
-                onClick: handleDeleteMessage,
-              },
-            ]
-          : []),
-      ]
-    : [];
 
   const displayChip =
     message.version > 0 || isTriggeredOrigin(message.context.origin);
@@ -287,7 +264,12 @@ export function UserMessage({
         <ConversationMessageContainer
           messageType={isCurrentUser ? "me" : "user"}
           type="user"
-          className={isCurrentUser ? "ml-auto" : undefined}
+          className={cn(
+            isCurrentUser ? "ml-auto" : undefined,
+            "relative",
+            "s-pb-6",
+            "s-pb-4"
+          )}
           ref={userMessageHoveredRef}
         >
           <ConversationMessageAvatar
@@ -319,35 +301,6 @@ export function UserMessage({
                 }
                 renderName={renderName}
               />
-              {actions && actions.length > 0 && (
-                <DropdownMenu
-                  open={isMenuOpen}
-                  onOpenChange={(open) => setIsMenuOpen(open)}
-                >
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      icon={MoreIcon}
-                      size="xs"
-                      variant="ghost-secondary"
-                      aria-label="Message actions"
-                      className={cn(
-                        "opacity-100 transition-opacity duration-200",
-                        !isUserMessageHovered && !isMenuOpen && "sm:opacity-0" // always show on small screens
-                      )}
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {actions.map((action, index) => (
-                      <DropdownMenuItem
-                        key={index}
-                        icon={action.icon}
-                        label={action.label}
-                        onClick={action.onClick}
-                      />
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
             </div>
             <ConversationMessageContent
               citations={citations}
@@ -363,20 +316,20 @@ export function UserMessage({
                   isLastMessage={isLastMessage}
                 />
               )}
-              {!isDeleted && reactionsEnabled && (
-                <>
-                  <MessageEmojiPicker
-                    key="emoji-picker"
-                    onEmojiSelect={onReactionToggle}
-                  />
-                  <MessageReactions
-                    reactions={message.reactions ?? []}
-                    onReactionClick={onReactionToggle}
-                  />
-                </>
-              )}
             </ConversationMessageContent>
           </div>
+          <ActionMenu
+            isDeleted={isDeleted}
+            showActions={showActions}
+            isUserMessageHovered={isUserMessageHovered}
+            message={message}
+            onReactionToggle={onReactionToggle}
+            reactionsEnabled={reactionsEnabled}
+            handleEditMessage={handleEditMessage}
+            handleDeleteMessage={handleDeleteMessage}
+            canDelete={canDelete}
+            canEdit={canEdit}
+          />
         </ConversationMessageContainer>
       )}
 
@@ -432,5 +385,104 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
       label={<Label message={message} />}
       trigger={<Icon size="xs" visual={BoltIcon} />}
     />
+  );
+}
+
+function ActionMenu({
+  isDeleted,
+  reactionsEnabled,
+  showActions,
+  canEdit,
+  canDelete,
+  handleEditMessage,
+  handleDeleteMessage,
+  message,
+  onReactionToggle,
+  isUserMessageHovered,
+}: {
+  isDeleted: boolean;
+  reactionsEnabled: boolean;
+  showActions: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  handleEditMessage: () => void;
+  handleDeleteMessage: () => void;
+  message: UserMessageTypeWithContentFragments;
+  onReactionToggle: (emoji: string) => void;
+  isUserMessageHovered: boolean;
+}) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const actions = showActions
+    ? [
+        ...(canEdit
+          ? [
+              {
+                icon: PencilSquareIcon,
+                label: "Edit message",
+                onClick: handleEditMessage,
+              },
+            ]
+          : []),
+        ...(canDelete
+          ? [
+              {
+                icon: TrashIcon,
+                label: "Delete message",
+                onClick: handleDeleteMessage,
+              },
+            ]
+          : []),
+      ]
+    : [];
+
+  return (
+    <div className="absolute -bottom-3.5 left-2.5 flex flex-wrap items-center gap-1">
+      {!isDeleted && reactionsEnabled && (
+        <>
+          <MessageReactions
+            reactions={message.reactions ?? []}
+            onReactionClick={onReactionToggle}
+          />
+          <MessageEmojiPicker
+            key="emoji-picker"
+            onEmojiSelect={onReactionToggle}
+            className={cn(
+              "opacity-100 transition-opacity duration-200",
+              !isUserMessageHovered && !isMenuOpen && "sm:opacity-0"
+            )}
+          />
+        </>
+      )}
+      {!isDeleted && actions && actions.length > 0 && (
+        <DropdownMenu
+          open={isMenuOpen}
+          onOpenChange={(open) => setIsMenuOpen(open)}
+        >
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={MoreIcon}
+              size="xs"
+              variant="outline"
+              aria-label="Message actions"
+              className={cn(
+                "opacity-100 transition-opacity duration-200",
+                !isUserMessageHovered && !isMenuOpen && "sm:opacity-0"
+              )}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {actions.map((action, index) => (
+              <DropdownMenuItem
+                key={index}
+                icon={action.icon}
+                label={action.label}
+                onClick={action.onClick}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
   );
 }

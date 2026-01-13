@@ -71,6 +71,7 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
             trigger={
               <Button label="Add editors" icon={PlusIcon} onClick={() => {}} />
             }
+            buildersOnly
           />
         </div>
       )}

@@ -72,6 +72,18 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     this.user = user;
   }
 
+  get isBuilder(): boolean {
+    switch (this.role) {
+      case "admin":
+      case "builder":
+        return true;
+      case "user":
+        return false;
+      default:
+        assertNever(this.role);
+    }
+  }
+
   static async getMembershipsForWorkspace({
     workspace,
     transaction,

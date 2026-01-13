@@ -14,6 +14,7 @@ import {
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
+import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import {
   DEEP_DIVE_NAME,
@@ -184,7 +185,7 @@ export const INTERNAL_MCP_SERVERS = {
       search_advanced: "never_ask",
       get_issue: "never_ask",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -207,7 +208,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -228,7 +229,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -248,7 +249,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -307,7 +308,7 @@ export const INTERNAL_MCP_SERVERS = {
       update_deal: "high",
       remove_association: "high",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -330,7 +331,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -350,7 +351,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -373,7 +374,7 @@ export const INTERNAL_MCP_SERVERS = {
     },
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -415,7 +416,7 @@ export const INTERNAL_MCP_SERVERS = {
       update_row_database: "low",
       update_schema_database: "low",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -438,7 +439,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -458,7 +459,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -490,7 +491,7 @@ export const INTERNAL_MCP_SERVERS = {
       read_attachment: "never_ask",
       update_object: "high",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -518,7 +519,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_messages: "never_ask",
       create_reply_draft: "low",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -552,7 +553,7 @@ export const INTERNAL_MCP_SERVERS = {
       check_availability: "never_ask",
       get_user_timezones: "never_ask",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -578,7 +579,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -613,7 +614,7 @@ export const INTERNAL_MCP_SERVERS = {
       add_reaction: "low",
       remove_reaction: "low",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -656,7 +657,7 @@ export const INTERNAL_MCP_SERVERS = {
       rename_worksheet: "low",
       move_worksheet: "low",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -712,7 +713,7 @@ export const INTERNAL_MCP_SERVERS = {
       delete_item: "high",
       delete_group: "high",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -736,7 +737,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -782,7 +783,7 @@ export const INTERNAL_MCP_SERVERS = {
       delete_issue_link: "low",
       upload_attachment: "low",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -805,7 +806,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -835,7 +836,7 @@ export const INTERNAL_MCP_SERVERS = {
       create_contact: "high",
       update_contact: "high",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -870,7 +871,7 @@ export const INTERNAL_MCP_SERVERS = {
       check_availability: "never_ask",
       check_self_availability: "never_ask",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -935,7 +936,7 @@ export const INTERNAL_MCP_SERVERS = {
       request_service_approval: "low",
       create_solution_article: "high",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -964,7 +965,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_spreadsheet: "never_ask",
       get_worksheet: "never_ask",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -990,7 +991,7 @@ export const INTERNAL_MCP_SERVERS = {
     },
     isPreview: true,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1010,7 +1011,7 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1042,7 +1043,7 @@ export const INTERNAL_MCP_SERVERS = {
       add_reaction: "low" as const,
       remove_reaction: "low" as const,
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1076,7 +1077,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_completions_usage: "low",
       get_organization_costs: "low",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1109,7 +1110,7 @@ export const INTERNAL_MCP_SERVERS = {
       create_page: "low",
       update_page: "low",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1135,7 +1136,7 @@ export const INTERNAL_MCP_SERVERS = {
       text_to_speech: "low",
       text_to_dialogue: "low",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -1161,7 +1162,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_file_content: "never_ask",
       upload_file: "high",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1194,7 +1195,7 @@ export const INTERNAL_MCP_SERVERS = {
       list_messages: "never_ask",
       post_message: "low",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1222,7 +1223,7 @@ export const INTERNAL_MCP_SERVERS = {
       generate_music: "low",
       generate_sound_effects: "low",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -1249,7 +1250,7 @@ export const INTERNAL_MCP_SERVERS = {
       create_worksheet: "low",
       clear_range: "high",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1280,7 +1281,7 @@ export const INTERNAL_MCP_SERVERS = {
       websearch: "never_ask",
       webbrowser: "never_ask",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1312,7 +1313,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_candidate_notes: "never_ask",
       create_candidate_note: "high",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1340,7 +1341,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_tasks: "never_ask",
       get_actions: "never_ask",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1365,7 +1366,7 @@ export const INTERNAL_MCP_SERVERS = {
       search_tickets: "never_ask",
       draft_reply: "low", // Low because it's a draft.
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1397,7 +1398,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_topics: "never_ask",
       get_post_metadata: "never_ask",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1432,7 +1433,7 @@ export const INTERNAL_MCP_SERVERS = {
       list_risks: "never_ask",
       list_vulnerabilities: "never_ask",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1458,7 +1459,7 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("dev_mcp_actions");
     },
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1479,7 +1480,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -1499,7 +1500,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
     serverInfo: {
@@ -1519,7 +1520,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1542,7 +1543,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1566,7 +1567,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_stakes: {
       create_agent: "high",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1586,7 +1587,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     isRestricted: undefined,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1606,7 +1607,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     isRestricted: undefined,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1638,7 +1639,7 @@ export const INTERNAL_MCP_SERVERS = {
       search_vals: "never_ask",
       list_val_files: "never_ask",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1661,7 +1662,7 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("dev_mcp_actions");
     },
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1681,7 +1682,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     isRestricted: undefined,
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1723,7 +1724,7 @@ export const INTERNAL_MCP_SERVERS = {
       update_conversation_status: "high",
       assign_conversation: "high",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
@@ -1753,7 +1754,7 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("skills");
     },
     tools_stakes: undefined,
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1779,7 +1780,7 @@ export const INTERNAL_MCP_SERVERS = {
       update_schedule: "high",
       delete_schedule: "high",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1806,7 +1807,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_stakes: {
       list_warehouses: "never_ask",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1827,10 +1828,8 @@ export const INTERNAL_MCP_SERVERS = {
     id: 46,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("productboard_tool");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       get_note: "never_ask",
       query_notes: "never_ask",
@@ -1842,7 +1841,7 @@ export const INTERNAL_MCP_SERVERS = {
       update_entity: "low",
       get_configuration: "never_ask",
     },
-    tools_approval_holding_arguments: undefined,
+    tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1854,16 +1853,8 @@ export const INTERNAL_MCP_SERVERS = {
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
       },
       icon: "ProductboardLogo",
-      documentationUrl: null,
-      instructions:
-        "Productboard uses a configuration-driven API. Always start by calling get_configuration to understand available fields.\n\n" +
-        "Typical workflow:\n" +
-        "1. Call get_configuration to retrieve configuration for the entity type you're working with (notes or entities)\n" +
-        "2. Parse the configuration to understand available fields, their types, constraints, and allowed operations\n" +
-        "3. Use the configuration to validate and structure your requests:\n" +
-        "   - When creating/updating notes: check required fields, field types, and allowed operations (set, clear, addItems, removeItems)\n" +
-        "   - When creating/updating entities: check required fields and field types for the specific entity type\n" +
-        "4. Make your tool calls (create_note, update_note, create_entity, update_entity, query_notes, query_entities)",
+      documentationUrl: "https://docs.dust.tt/docs/productboard",
+      instructions: PRODUCTBOARD_SERVER_INSTRUCTIONS,
     },
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
@@ -1884,7 +1875,7 @@ export const INTERNAL_MCP_SERVERS = {
     // Defines which arguments require per-agent approval for "medium" stake tools.
     // When a tool has "medium" stake, the user must approve the specific combination
     // of (agent, tool, argument values) before the tool can execute.
-    tools_approval_holding_arguments: Record<string, string[]> | undefined;
+    tools_arguments_requiring_approval: Record<string, string[]> | undefined;
     tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
     timeoutMs: number | undefined;
     requiresBearerToken?: boolean;

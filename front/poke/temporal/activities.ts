@@ -2,6 +2,7 @@ import assert from "assert";
 import { Op } from "sequelize";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
+import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
@@ -27,6 +28,7 @@ import { MembershipInvitationModel } from "@app/lib/models/membership_invitation
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -53,7 +55,10 @@ import {
   LabsTranscriptsConfigurationModel,
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
-import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
+import {
+  UserMetadataModel,
+  UserToolApprovalModel,
+} from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -163,9 +168,42 @@ export async function scrubSpaceActivity({
       workspaceId,
     });
   }
+
+  // Delete all conversations in the space.
+  // Won't scale if there's tons of conversations in spaces.
+  await deleteSpaceConversations(auth, space);
+
   hardDeleteLogger.info({ space: space.sId, workspaceId }, "Deleting space");
 
   await hardDeleteSpace(auth, space);
+}
+
+async function deleteSpaceConversations(
+  auth: Authenticator,
+  space: SpaceResource
+) {
+  const conversations = await ConversationResource.listConversationsInSpace(
+    auth,
+    { spaceId: space.sId }
+  );
+
+  hardDeleteLogger.info(
+    { spaceId: space.sId, conversationsCount: conversations.length },
+    "Deleting conversations in space."
+  );
+
+  await concurrentExecutor(
+    conversations,
+    async (conversation) => {
+      const result = await destroyConversation(auth, {
+        conversationId: conversation.sId,
+      });
+      if (result.isErr() && result.error.type !== "conversation_not_found") {
+        throw result.error;
+      }
+    },
+    { concurrency: 8 }
+  );
 }
 
 export async function isWorkflowDeletableActivity({
@@ -735,6 +773,17 @@ export async function deleteWorkspaceUserMetadataActivity({
   logger.info(
     { workspaceId, deletedCount },
     "Deleted workspace-scoped user metadata"
+  );
+
+  const deleteCountApproval = await UserToolApprovalModel.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+
+  logger.info(
+    { workspaceId, deleteCountApproval },
+    "Deleted workspace-scoped user tool approvals"
   );
 }
 

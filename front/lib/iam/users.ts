@@ -21,8 +21,58 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 import logger from "@app/logger/logger";
+import type { LightWorkspaceType } from "@app/types";
 import type { Result } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
+
+// WorkOS custom attributes to sync to user metadata.
+// These are normalized by WorkOS and can come from SCIM or SSO.
+export const CUSTOM_ATTRIBUTES_TO_SYNC = [
+  "job_title",
+  "department_name",
+] as const;
+export type CustomAttributeKey = (typeof CUSTOM_ATTRIBUTES_TO_SYNC)[number];
+export const WORKOS_METADATA_KEY_PREFIX = "workos:";
+
+// Syncs custom attributes to user metadata.
+// Stores attributes with workspace scope and "workos:" prefix.
+// Removes attributes that are no longer present.
+async function syncCustomAttributesToUserMetadata(
+  user: UserResource,
+  workspace: LightWorkspaceType,
+  attributes: Record<string, string | null>
+): Promise<void> {
+  for (const attr of CUSTOM_ATTRIBUTES_TO_SYNC) {
+    const metadataKey = `${WORKOS_METADATA_KEY_PREFIX}${attr}`;
+    const value = attributes[attr] ?? null;
+
+    if (value !== null) {
+      await user.setMetadata(metadataKey, value, workspace.id);
+      logger.info(
+        {
+          userId: user.sId,
+          workspaceId: workspace.sId,
+          attribute: attr,
+          value,
+        },
+        "Synced custom attribute to user metadata"
+      );
+    } else {
+      // Remove attribute if no longer present.
+      const existing = await user.getMetadata(metadataKey, workspace.id);
+      if (existing) {
+        await user.deleteMetadata({
+          key: metadataKey,
+          workspaceId: workspace.id,
+        });
+        logger.info(
+          { userId: user.sId, workspaceId: workspace.sId, attribute: attr },
+          "Removed custom attribute from user metadata"
+        );
+      }
+    }
+  }
+}
 
 /**
  * Soft HTML escaping that prevents HTML tag injection while preserving apostrophes and other common characters.
@@ -64,11 +114,16 @@ export async function createOrUpdateUser({
   user,
   externalUser,
   forceNameUpdate = false,
+  workspace,
 }: {
   user: UserResource | null;
   externalUser: ExternalUser;
   forceNameUpdate?: boolean;
+  workspace?: LightWorkspaceType;
 }): Promise<{ user: UserResource; created: boolean }> {
+  let resultUser: UserResource;
+  let created: boolean;
+
   if (user) {
     const updateArgs: { [key: string]: string } = {};
 
@@ -133,7 +188,8 @@ export async function createOrUpdateUser({
       }
     }
 
-    return { user, created: false };
+    resultUser = user;
+    created = false;
   } else {
     let { firstName, lastName } = guessFirstAndLastNameFromFullName(
       externalUser.name
@@ -176,8 +232,20 @@ export async function createOrUpdateUser({
       );
     }
 
-    return { user: u, created: true };
+    resultUser = u;
+    created = true;
   }
+
+  // Sync custom attributes to user metadata if workspace is provided.
+  if (workspace && externalUser.customAttributes) {
+    await syncCustomAttributesToUserMetadata(
+      resultUser,
+      workspace,
+      externalUser.customAttributes
+    );
+  }
+
+  return { user: resultUser, created };
 }
 
 export async function mergeUserIdentities({

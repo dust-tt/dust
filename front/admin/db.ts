@@ -93,6 +93,7 @@ import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import {
   UserMetadataModel,
   UserModel,
+  UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
@@ -193,6 +194,8 @@ async function main() {
 
   await AgentMemoryModel.sync({ alter: true });
   await OnboardingTaskModel.sync({ alter: true });
+
+  await UserToolApprovalModel.sync({ alter: true });
 
   await SkillConfigurationModel.sync({ alter: true });
   await SkillDataSourceConfigurationModel.sync({ alter: true });

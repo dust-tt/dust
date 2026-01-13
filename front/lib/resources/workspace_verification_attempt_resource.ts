@@ -47,8 +47,8 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
 
   static async isPhoneAlreadyUsed(phoneNumberHash: string): Promise<boolean> {
     const existing = await this.model.findOne({
-      where: { phoneNumberHash },
-      // WORKSPACE_ISOLATION_BYPASS: Global uniqueness check - a phone can only be used by one workspace.
+      where: { phoneNumberHash, verifiedAt: { [Op.ne]: null } },
+      // WORKSPACE_ISOLATION_BYPASS: Global uniqueness check - a verified phone can only be used by one workspace.
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     return existing !== null;

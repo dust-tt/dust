@@ -791,7 +791,13 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async listUserGroupsInWorkspace({
     user,
     workspace,
-    groupKinds = ["global", "regular", "provisioned", "agent_editors"],
+    groupKinds = [
+      "global",
+      "regular",
+      "provisioned",
+      "agent_editors",
+      "skill_editors",
+    ],
     transaction,
   }: {
     user: UserResource;
@@ -1018,6 +1024,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         | "unauthorized"
         | "user_not_found"
         | "user_already_member"
+        | "group_requirements_not_met"
         | "system_or_global_group"
       >
     >
@@ -1065,12 +1072,30 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be added to regular, agent_editors or provisioned groups.
-    if (!["regular", "agent_editors", "provisioned"].includes(this.kind)) {
+    // Users can only be added to regular, agent_editors, skill_editors or provisioned groups.
+    if (
+      !["regular", "agent_editors", "skill_editors", "provisioned"].includes(
+        this.kind
+      )
+    ) {
       return new Err(
         new DustError(
           "system_or_global_group",
-          "Users can only be added to regular, agent_editors or provisioned groups."
+          "Users can only be added to regular, agent_editors, skill_editors or provisioned groups."
+        )
+      );
+    }
+
+    if (
+      this.kind === "skill_editors" &&
+      workspaceMemberships.some((member) => !member.isBuilder)
+    ) {
+      return new Err(
+        new DustError(
+          "group_requirements_not_met",
+          userIds.length === 1
+            ? "Cannot add: user is not a builder in the workspace"
+            : "Cannot add: some users are not builders in the workspace"
         )
       );
     }
@@ -1169,12 +1194,16 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be added to regular, agent_editors or provisioned groups.
-    if (!["regular", "agent_editors", "provisioned"].includes(this.kind)) {
+    // Users can only be removed from regular, agent_editors, skill_editors or provisioned groups.
+    if (
+      !["regular", "agent_editors", "skill_editors", "provisioned"].includes(
+        this.kind
+      )
+    ) {
       return new Err(
         new DustError(
           "system_or_global_group",
-          "Users can only be removed from regular, agent_editors or provisioned groups."
+          "Users can only be removed from regular, agent_editors, skill_editors or provisioned groups."
         )
       );
     }
@@ -1234,6 +1263,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         | "user_not_found"
         | "user_not_member"
         | "user_already_member"
+        | "group_requirements_not_met"
         | "system_or_global_group"
       >
     >
@@ -1352,10 +1382,10 @@ export class GroupResource extends BaseResource<GroupModel> {
    * 1. Group-based: The group's members get read access
    * 2. Role-based: Workspace admins get read and write access
    *
-   * For agent_editors groups, the permissions are:
+   * For agent_editors and skill_editors groups, the permissions are:
    * 1. Group-based: The group's members get read and write access
    * 2. Role-based: Workspace admins get read and write access. All users can
-   *    read "agent_editors" groups.
+   *    read "agent_editors" and "skill_editors" groups.
    *
    * CAUTION: if / when editing, note that for role permissions, permissions are
    * NOT inherited, i.e. if you set a permission for role "user", an "admin"
@@ -1376,18 +1406,20 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
     ];
 
+    const isEditorGroup =
+      this.kind === "agent_editors" || this.kind === "skill_editors";
+
     return [
       {
         groups: [
           {
             id: this.id,
-            permissions:
-              this.kind === "agent_editors" ? ["read", "write"] : ["read"],
+            permissions: isEditorGroup ? ["read", "write"] : ["read"],
           },
         ],
         roles: [
           { role: "admin", permissions: ["read", "write", "admin"] },
-          ...(this.kind === "agent_editors" ? userReadPermissions : []),
+          ...(isEditorGroup ? userReadPermissions : []),
         ],
         workspaceId: this.workspaceId,
       },

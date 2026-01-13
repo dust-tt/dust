@@ -1,3 +1,5 @@
+import { Button, Tooltip } from "@dust-tt/sparkle";
+
 import { useUser } from "@app/lib/swr/user";
 import type { MessageReactionType } from "@app/types";
 
@@ -7,6 +9,8 @@ interface MessageReactionsProps {
   reactions: MessageReactionType[];
   onReactionClick: (emoji: string) => void;
 }
+
+const MAX_VISIBLE_REACTIONS = 3;
 
 export function MessageReactions({
   reactions,
@@ -18,10 +22,14 @@ export function MessageReactions({
     return null;
   }
 
+  const visibleReactions = reactions.slice(0, MAX_VISIBLE_REACTIONS);
+  const hiddenReactions = reactions.slice(MAX_VISIBLE_REACTIONS);
+  const hasMoreReactions = hiddenReactions.length > 0;
+
   return (
-    <div className="mt-2 flex flex-wrap gap-1">
-      {reactions.map((reaction) => {
-        const isCurrentUserReacted = reaction.users.some(
+    <>
+      {visibleReactions.map((reaction) => {
+        const hasCurrentUserReacted = reaction.users.some(
           (u) => u.userId === user?.sId
         );
 
@@ -31,11 +39,38 @@ export function MessageReactions({
             emoji={reaction.emoji}
             count={reaction.users.length}
             users={reaction.users}
-            hasCurrentUserReacted={isCurrentUserReacted}
+            hasCurrentUserReacted={hasCurrentUserReacted}
             onClick={() => onReactionClick(reaction.emoji)}
           />
         );
       })}
-    </div>
+      {hasMoreReactions && (
+        <Tooltip
+          label={
+            <div className="flex flex-col gap-1">
+              {hiddenReactions.map((reaction) => (
+                <div key={reaction.emoji} className="flex items-center gap-1">
+                  <span>{reaction.emoji}</span>
+                  <span className="text-xs">
+                    {reaction.users
+                      .map((u) => u.fullName ?? u.username)
+                      .join(", ")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          }
+          side="top"
+          trigger={
+            <Button
+              label={`+${hiddenReactions.length}`}
+              size="xs"
+              variant="outline"
+              aria-label="More reactions"
+            />
+          }
+        />
+      )}
+    </>
   );
 }

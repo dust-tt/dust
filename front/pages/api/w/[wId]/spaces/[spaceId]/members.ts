@@ -137,6 +137,15 @@ export async function handler(
                 message: "Some of the passed ids are invalid.",
               },
             });
+          case "group_requirements_not_met":
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message:
+                  "Some users have insufficient role privilege to be added to the space.",
+              },
+            });
           case "system_or_global_group":
             return apiError(req, res, {
               status_code: 400,

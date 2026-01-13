@@ -10,6 +10,8 @@ const FADE_TRANSITION_CLASSES =
 
 export interface ActionCardProps {
   icon: React.ComponentType;
+  iconBackgroundColor?: string;
+  iconColor?: string;
   label: string;
   description: string | React.ReactNode;
   isSelected: boolean;
@@ -28,6 +30,8 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
   (
     {
       icon,
+      iconBackgroundColor,
+      iconColor,
       label,
       description,
       isSelected,
@@ -56,7 +60,12 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
           <div className="s-flex s-flex-col">
             <div className="s-mb-2 s-flex s-items-center s-justify-between s-gap-2">
               <div className="s-flex s-items-center s-gap-2">
-                <Avatar icon={icon} size="sm" />
+                <Avatar
+                  icon={icon}
+                  size="sm"
+                  backgroundColor={iconBackgroundColor}
+                  iconColor={iconColor}
+                />
                 <span className="s-text-sm s-font-medium">{label}</span>
                 {isSelected && (
                   <Chip

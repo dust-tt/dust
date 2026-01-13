@@ -28,14 +28,19 @@ export function renderNote(note: ProductboardNote): string {
   if (note.relationships && note.relationships.data.length > 0) {
     lines.push("### Relationships");
     for (const rel of note.relationships.data) {
+      const linkText = rel.target.links?.self
+        ? ` (API endpoint: ${rel.target.links.self})`
+        : "";
       lines.push(
-        `- **${rel.type}:** ${rel.target.type} (${rel.target.id}). Can be found at link: ${rel.target.links?.self}.`
+        `- **${rel.type}:** ${rel.target.type} (${rel.target.id})${linkText}`
       );
     }
   }
 
   if (note.links.self) {
-    lines.push(`**Link:** ${note.links.self}`);
+    lines.push(
+      `**API Endpoint:** ${note.links.self} (Note: This is an API endpoint for programmatic access, not a user-facing link)`
+    );
   }
 
   return lines.join("\n");
@@ -66,8 +71,9 @@ export function renderNotesList(
   }
 
   if (options?.pageCursor) {
+    lines.push("");
     lines.push(
-      `*More results available. Use pageCursor: "${options.pageCursor}"*`
+      `**More results available.** To fetch the next page, call this tool again with \`page_cursor: "${options.pageCursor}"\`.`
     );
   }
 
@@ -95,14 +101,19 @@ export function renderEntity(entity: ProductboardEntity): string {
   if (entity.relationships && entity.relationships.data.length > 0) {
     lines.push("### Relationships");
     for (const rel of entity.relationships.data) {
+      const linkText = rel.target.links?.self
+        ? ` (API endpoint: ${rel.target.links.self})`
+        : "";
       lines.push(
-        `- **${rel.type}:** ${rel.target.type} (${rel.target.id}). Can be found at link: ${rel.target.links?.self}.`
+        `- **${rel.type}:** ${rel.target.type} (${rel.target.id})${linkText}`
       );
     }
   }
 
   if (entity.links.self) {
-    lines.push(`**Link:** ${entity.links.self}`);
+    lines.push(
+      `**API Endpoint:** ${entity.links.self} (Note: This is an API endpoint for programmatic access, not a user-facing link)`
+    );
   }
 
   return lines.join("\n");
@@ -130,7 +141,7 @@ export function renderEntitiesList(
 
   if (options?.pageCursor) {
     lines.push(
-      `*More results available. Use pageCursor: "${options.pageCursor}"*`
+      `**More results available.** To fetch the next page, call this tool again with \`page_cursor: "${options.pageCursor}"\`.`
     );
   }
 
@@ -306,7 +317,9 @@ export function renderRelationship(rel: ProductboardRelationship): string {
   lines.push(`- **${rel.type}**`);
   lines.push(`  Target: ${rel.target.type} (${rel.target.id})`);
   if (rel.target.links?.self) {
-    lines.push(`  Link: ${rel.target.links.self}`);
+    lines.push(
+      `  API Endpoint: ${rel.target.links.self} (Note: This is an API endpoint for programmatic access, not a user-facing link)`
+    );
   }
   return lines.join("\n");
 }
@@ -334,7 +347,7 @@ export function renderRelationshipsList(
 
   if (options?.pageCursor) {
     lines.push(
-      `_More results available. Use page_cursor: "${options.pageCursor}"_`
+      `**More results available.** To fetch the next page, call this tool again with \`page_cursor: "${options.pageCursor}"\`.`
     );
   }
 

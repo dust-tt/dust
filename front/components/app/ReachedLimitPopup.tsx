@@ -13,6 +13,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { FairUsageModal } from "@app/components/FairUsageModal";
+import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -103,7 +104,23 @@ function getLimitPromptForCode(
       };
 
     case "message_limit": {
-      if (subscription.trialing) {
+      if (isFreeTrialPhonePlan(subscription.plan.code)) {
+        return {
+          title: "Dust trial message limit reached",
+          validateLabel: "Subscribe to Dust",
+          onValidate: () => {
+            void router.push(`/w/${owner.sId}/subscribe`);
+          },
+          children: (
+            <>
+              <Page.P>
+                You have reached the message limit under the trial. You can
+                subscribe to a paid plan to continue using Dust.
+              </Page.P>
+            </>
+          ),
+        };
+      } else if (subscription.trialing) {
         return {
           title: "Fair usage limit reached",
           validateLabel: "Manage your subscription",

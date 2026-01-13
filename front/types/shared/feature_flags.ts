@@ -226,11 +226,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Phone verification during trial sign-up",
     stage: "dust_only",
   },
-  productboard_tool: {
-    description:
-      "Productboard MCP tool for customer feedback management and feature planning",
-    stage: "on_demand",
-  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
