@@ -1,4 +1,12 @@
-import { BarFooter, BarHeader, Button, cn, ScrollArea } from "@dust-tt/sparkle";
+import {
+  BarFooter,
+  BarHeader,
+  Button,
+  cn,
+  ContentMessage,
+  InformationCircleIcon,
+  ScrollArea,
+} from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
@@ -158,6 +166,18 @@ export default function SkillBuilder({
 
             <ScrollArea className="flex-1">
               <div className="mx-auto space-y-10 p-4 2xl:max-w-5xl">
+                {skill?.status === "suggested" && (
+                  <ContentMessage
+                    title="This is a generated skill suggestion"
+                    variant="primary"
+                    icon={InformationCircleIcon}
+                    size="lg"
+                  >
+                    This skill was automatically generated based on your
+                    workspace's agent configurations. We recommend reviewing and
+                    editing it to match your specific needs before saving.
+                  </ContentMessage>
+                )}
                 <SkillBuilderRequestedSpacesSection />
                 <SkillBuilderAgentFacingDescriptionSection />
                 <SkillBuilderInstructionsSection skill={skill} />
