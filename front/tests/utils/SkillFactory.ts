@@ -3,6 +3,7 @@ import assert from "assert";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SKILL_ICON } from "@app/lib/skill";
 import type { ModelId } from "@app/types";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
 
@@ -42,6 +43,7 @@ export class SkillFactory {
         name,
         requestedSpaceIds,
         status,
+        icon: SKILL_ICON.name,
       },
       {
         mcpServerViews: [],
