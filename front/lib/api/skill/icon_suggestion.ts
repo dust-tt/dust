@@ -90,11 +90,6 @@ function getConversationContext(
     parts.push(`## Skill instructions (how to use)\n\n${inputs.instructions}`);
   }
 
-  const iconList = SKILL_ICON_OPTIONS.map(
-    (i) => `- **${i.name}**: ${i.description}`
-  ).join("\n");
-  parts.push(`## Available icons\n\n${iconList}`);
-
   return {
     messages: [
       {
@@ -134,7 +129,11 @@ export async function getSkillIconSuggestion(
         "The user is creating a skill (reusable capability) for an AI assistant. " +
         "Based on the skill name, purpose, and instructions, " +
         "pick the most appropriate icon from the available options. " +
-        "Choose the icon that best represents what this skill does.",
+        "Choose the icon that best represents what this skill does." +
+        "## Available icons\n\n" +
+        SKILL_ICON_OPTIONS.map((i) => `- **${i.name}**: ${i.description}`).join(
+          "\n"
+        ),
       specifications,
       forceToolCall: FUNCTION_NAME,
     },
