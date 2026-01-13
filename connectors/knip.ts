@@ -5,6 +5,7 @@ const config: KnipConfig = {
   ignoreFiles: [
     "src/resources/dust_project_configuration_resource.ts",
     "src/resources/dust_project_conversation_resource.ts",
+    "src/lib/conversation_rendering.ts",
   ],
   project: ["**/*.{js,jsx,ts,tsx}"],
   rules: {

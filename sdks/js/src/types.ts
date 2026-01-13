@@ -2392,6 +2392,23 @@ export type CheckUpsertQueueResponseType = z.infer<
   typeof CheckUpsertQueueResponseSchema
 >;
 
+const PostRenderConversationForDataSourceRequestBodySchema = z.object({
+  excludeActions: z.boolean().optional(),
+  excludeImages: z.boolean().optional(),
+});
+export type PostRenderConversationForDataSourceRequestBody = z.infer<
+  typeof PostRenderConversationForDataSourceRequestBodySchema
+>;
+
+export const PostRenderConversationForDataSourceResponseSchema = z.object({
+  //TODO(project): add the proper schema for the messages
+  messages: z.array(z.unknown()),
+  tokensUsed: z.number(),
+});
+export type PostRenderConversationForDataSourceResponseType = z.infer<
+  typeof PostRenderConversationForDataSourceResponseSchema
+>;
+
 const GetDocumentsResponseSchema = z.object({
   documents: z.array(CoreAPIDocumentSchema),
   total: z.number(),

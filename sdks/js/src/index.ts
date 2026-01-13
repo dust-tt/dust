@@ -87,6 +87,7 @@ import {
   PostContentFragmentResponseSchema,
   PostMCPResultsResponseSchema,
   PostMessageFeedbackResponseSchema,
+  PostRenderConversationForDataSourceResponseSchema,
   PostUserMessageResponseSchema,
   PostWorkspaceSearchResponseBodySchema,
   RegisterMCPResponseSchema,
@@ -1225,6 +1226,30 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.feedbacks);
+  }
+
+  async renderConversationForDataSource({
+    conversationId,
+    excludeActions,
+    excludeImages,
+  }: {
+    conversationId: string;
+    excludeActions?: boolean;
+    excludeImages?: boolean;
+  }) {
+    const res = await this.request({
+      method: "POST",
+      path: `conversations/${conversationId}/render_for_data_source`,
+      body: {
+        ...(excludeActions !== undefined ? { excludeActions } : {}),
+        ...(excludeImages !== undefined ? { excludeImages } : {}),
+      },
+    });
+
+    return this._resultFromResponse(
+      PostRenderConversationForDataSourceResponseSchema,
+      res
+    );
   }
 
   async postFeedback(
