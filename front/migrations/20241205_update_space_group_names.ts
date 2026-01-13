@@ -13,9 +13,11 @@ makeScript({}, async ({ execute }) => {
       `Found ${regularSpaces.length} regular spaces for workspace ${w.name}`
     );
     for (const space of regularSpaces) {
-      const regularGroups = space.groups.filter((g) => g.isSpaceMemberGroup());
-      if (regularGroups.length === 1) {
-        const group = regularGroups[0];
+      const spaceMembersGroups = space.groups.filter((g) =>
+        g.isSpaceMemberGroup()
+      );
+      if (spaceMembersGroups.length === 1) {
+        const group = spaceMembersGroups[0];
         if (execute) {
           await group.updateName(auth, `Group for space ${space.name}`);
         }

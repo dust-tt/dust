@@ -44,29 +44,29 @@ async function suspendGroupModeMembers(
     const groupIds = groupSpaceJunctions.map((gs) => gs.groupId);
 
     // Find regular groups among those associated with the space
-    const regularGroups = await GroupModel.findAll({
+    const spaceMemberGroups = await GroupModel.findAll({
       where: {
         id: {
           [Op.in]: groupIds,
         },
-        kind: "regular",
+        kind: "space_members",
         workspaceId: space.workspaceId,
       },
     });
 
-    if (regularGroups.length !== 1) {
+    if (spaceMemberGroups.length !== 1) {
       logger.warn(
         {
           spaceId: space.id,
           spaceName: space.name,
-          regularGroupsCount: regularGroups.length,
+          spaceMembersGroupsCount: spaceMemberGroups.length,
         },
-        "Space has unexpected number of regular groups, expected exactly 1. Skipping..."
+        "Space has unexpected number of space_members groups, expected exactly 1. Skipping..."
       );
       continue;
     }
 
-    const defaultGroup = regularGroups[0];
+    const defaultGroup = spaceMemberGroups[0];
 
     // Find all active memberships in this group
     const activeMemberships = await GroupMembershipModel.findAll({

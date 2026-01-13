@@ -118,7 +118,7 @@ async function handler(
           await concurrentExecutor(
             // Get members from the space_member group only.
             space.groups.filter((g) => {
-              return g.kind === "space_members" || g.kind === "space_editors";
+              return g.isSpaceMemberGroup() || g.isSpaceEditorGroup();
             }),
             async (group) => {
               const members = includeAllMembers
@@ -126,7 +126,7 @@ async function handler(
                 : await group.getActiveMembers(auth);
               return members.map((member) => ({
                 ...member.toJSON(),
-                isEditor: group.kind === "space_editors",
+                isEditor: group.isSpaceEditorGroup(),
               }));
             },
             { concurrency: 10 }

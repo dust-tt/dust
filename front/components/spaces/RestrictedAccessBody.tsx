@@ -30,7 +30,6 @@ import type {
   SpaceUserType,
   UserType,
 } from "@app/types";
-import { cp } from "fs";
 
 type MembersManagementType = "manual" | "group";
 
@@ -47,7 +46,7 @@ interface RestrictedAccessBodyProps {
   owner: LightWorkspaceType;
   selectedMembers: UserType[];
   selectedGroups: GroupType[];
-  editorIds?: string[];
+  canSetEditors?: boolean;
   onManagementTypeChange: (managementType: MembersManagementType) => void;
   onMembersUpdated: (members: UserType[]) => void;
   onGroupsUpdated: (groups: GroupType[]) => void;
@@ -61,7 +60,7 @@ export function RestrictedAccessBody({
   owner,
   selectedMembers,
   selectedGroups,
-  editorIds,
+  canSetEditors,
   onManagementTypeChange,
   onMembersUpdated,
   onGroupsUpdated,
@@ -230,7 +229,7 @@ export function RestrictedAccessBody({
               onMembersUpdated={onMembersUpdated}
               selectedMembers={selectedMembers}
               searchSelectedMembers={searchSelectedMembers}
-              editorIds={editorIds}
+              canSetEditors={canSetEditors}
               disabled={disabled}
             />
           </ScrollArea>
@@ -282,7 +281,7 @@ interface MembersTableProps {
   onMembersUpdated: (members: SpaceUserType[]) => void;
   selectedMembers: SpaceUserType[];
   searchSelectedMembers: string;
-  editorIds?: string[];
+  canSetEditors?: boolean;
   disabled?: boolean;
 }
 
@@ -290,6 +289,7 @@ function MembersTable({
   onMembersUpdated,
   selectedMembers,
   searchSelectedMembers,
+  canSetEditors,
   disabled = false,
 }: MembersTableProps) {
   const editorIds = useMemo(
@@ -319,6 +319,9 @@ function MembersTable({
     };
 
     const toggleEditor = (userId: string) => {
+      if (!canSetEditors) {
+        return;
+      }
       const toggledMember = selectedMembers.find((m) => m.sId === userId);
       onMembersUpdated([
         ...selectedMembers.slice(0, selectedMembers.indexOf(toggledMember!)),
@@ -361,25 +364,31 @@ function MembersTable({
         ),
         enableSorting: true,
       },
-      {
-        id: "editor",
-        header: "Editor",
-        meta: {
-          className: "w-20",
-        },
-        cell: (info: MemberInfo) => {
-          const isEditor = editorIds.includes(info.row.original.userId);
-          return (
-            <DataTable.CellContent>
-              <Checkbox
-                checked={isEditor}
-                onCheckedChange={() => toggleEditor(info.row.original.userId)}
-                disabled={disabled}
-              />
-            </DataTable.CellContent>
-          );
-        },
-      },
+      ...(canSetEditors
+        ? [
+            {
+              id: "editor",
+              header: "Editor",
+              meta: {
+                className: "w-20",
+              },
+              cell: (info: MemberInfo) => {
+                const isEditor = editorIds.includes(info.row.original.userId);
+                return (
+                  <DataTable.CellContent>
+                    <Checkbox
+                      checked={isEditor}
+                      onCheckedChange={() =>
+                        toggleEditor(info.row.original.userId)
+                      }
+                      disabled={disabled}
+                    />
+                  </DataTable.CellContent>
+                );
+              },
+            },
+          ]
+        : []),
       {
         id: "action",
         meta: {

@@ -33,9 +33,15 @@ export function SpaceAboutTab({
   isSpaceEditor,
   planAllowsSCIM,
 }: SpaceAboutTabProps) {
+  const [savedManagementType, setSavedManagementType] = useState<
+    "manual" | "group"
+  >(initialManagementMode);
   const [managementType, setManagementType] = useState<"manual" | "group">(
     initialManagementMode
   );
+  const [savedIsRestricted, setSavedIsRestricted] =
+    useState(initialIsRestricted);
+  const [isRestricted, setIsRestricted] = useState(initialIsRestricted);
   const [savedMembers, setSavedMembers] =
     useState<SpaceUserType[]>(initialMembers);
   const [selectedMembers, setSelectedMembers] =
@@ -45,16 +51,14 @@ export function SpaceAboutTab({
     useState<GroupType[]>(initialGroups);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [isRestricted, setIsRestricted] = useState(initialIsRestricted);
-
   const isManual = !planAllowsSCIM || managementType === "manual";
   const doUpdate = useUpdateSpace({ owner });
 
   const hasChanges = useMemo(() => {
-    if (managementType !== initialManagementMode) {
+    if (managementType !== savedManagementType) {
       return true;
     }
-    if (isRestricted !== initialIsRestricted) {
+    if (isRestricted !== savedIsRestricted) {
       return true;
     }
 
@@ -67,14 +71,14 @@ export function SpaceAboutTab({
       // Check if editor IDs have changed
       const selectedEditorIds = selectedMembers
         .filter((m) => m.isEditor)
-        .map((m) => m.sId);
+        .map((m) => m.sId)
+        .sort();
       const savedEditorIds = savedMembers
         .filter((m: SpaceUserType) => m.isEditor)
         .map((m) => m.sId)
         .sort();
-      const currentEditorIds = [...selectedEditorIds].sort();
       const editorsChanged =
-        JSON.stringify(savedEditorIds) !== JSON.stringify(currentEditorIds);
+        JSON.stringify(savedEditorIds) !== JSON.stringify(selectedEditorIds);
 
       return memberIdsChanged || editorsChanged;
     } else {
@@ -84,17 +88,19 @@ export function SpaceAboutTab({
     }
   }, [
     managementType,
-    initialManagementMode,
+    savedManagementType,
     selectedMembers,
     savedMembers,
     selectedGroups,
-    initialGroups,
-    isRestricted,
-    initialIsRestricted,
     savedGroups,
+    isRestricted,
+    savedIsRestricted,
   ]);
 
   const canSave = useMemo(() => {
+    if (!isSpaceEditor) {
+      return false;
+    }
     if (!hasChanges) {
       return false;
     }
@@ -123,6 +129,8 @@ export function SpaceAboutTab({
       });
       if (updatedtedSpace) {
         setSavedGroups(selectedGroups);
+        setSavedManagementType("group");
+        setSavedIsRestricted(isRestricted);
       }
     } else {
       const updatedtedSpace = await doUpdate(space, {
@@ -136,9 +144,10 @@ export function SpaceAboutTab({
       });
       if (updatedtedSpace) {
         setSavedMembers(selectedMembers);
+        setSavedManagementType("manual");
+        setSavedIsRestricted(isRestricted);
       }
     }
-
     setIsSaving(false);
   }, [
     canSave,
@@ -170,6 +179,7 @@ export function SpaceAboutTab({
         onManagementTypeChange={setManagementType}
         onMembersUpdated={setSelectedMembers}
         onGroupsUpdated={setSelectedGroups}
+        canSetEditors
         disabled={!isSpaceEditor}
       />
 

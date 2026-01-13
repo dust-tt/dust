@@ -4,6 +4,7 @@ import type {
   Attributes,
   CreationAttributes,
   Includeable,
+  InferAttributes,
   ModelStatic,
   Transaction,
   WhereOptions,
@@ -53,7 +54,10 @@ export const BUILDER_GROUP_NAME = "dust-builders";
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
+export interface GroupResource extends ReadonlyAttributesType<GroupModel> {
+  // Optional property added by Sequelize when loading through belongsToMany with GroupSpaceModel
+  group_vaults?: InferAttributes<GroupSpaceModel>;
+}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GroupResource extends BaseResource<GroupModel> {
   static model: ModelStatic<GroupModel> = GroupModel;
@@ -343,7 +347,13 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Use with care as this gives access to all groups in the workspace.
   static async internalFetchAllWorkspaceGroups({
     workspaceId,
-    groupKinds = ["global", "space_members", "system", "provisioned"],
+    groupKinds = [
+      "global",
+      "space_members",
+      "space_editors",
+      "system",
+      "provisioned",
+    ],
     transaction,
   }: {
     workspaceId: ModelId;
@@ -368,6 +378,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     groupKinds: GroupKind[] = [
       "global",
       "space_members",
+      "space_editors",
       "system",
       "provisioned",
     ]
@@ -734,7 +745,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     options: { groupKinds?: GroupKind[] } = {}
   ): Promise<GroupResource[]> {
-    const { groupKinds = ["global", "space_members", "provisioned"] } = options;
+    const {
+      groupKinds = ["global", "space_members", "space_editors", "provisioned"],
+    } = options;
     const groups = await this.baseFetch(auth, {
       where: {
         kind: {
@@ -1082,7 +1095,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be added to space_members, agent_editors, skill_editors or provisioned groups.
+    // Users can only be added to space_members, space_editors, agent_editors, skill_editors or provisioned groups.
     if (
       ![
         "space_members",
@@ -1466,7 +1479,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       ];
     }
 
-    if (this.kind === "space_editors") {
+    if (this.isSpaceEditorGroup()) {
       return [
         {
           groups: [

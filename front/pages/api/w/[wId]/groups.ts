@@ -43,7 +43,7 @@ async function handler(
         ? Array.isArray(kind)
           ? kind
           : [kind]
-        : ["global", "space_members"];
+        : ["global", "space_members", "space_editors"];
 
       let groups: GroupResource[];
       if (spaceId) {

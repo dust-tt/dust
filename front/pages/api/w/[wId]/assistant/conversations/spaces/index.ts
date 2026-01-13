@@ -27,7 +27,7 @@ async function handler(
     case "GET":
       const workspace = auth.getNonNullableWorkspace();
 
-      // Filter out non-space_member groups as we only want to allow conversations in project spaces (that are linked to space_members groups)
+      // Filter out non-space_member and non-space_editors groups as we only want to allow conversations in project spaces (that are linked to space_members/space_editors groups)
       const allGroups = auth
         .groups()
         .filter(

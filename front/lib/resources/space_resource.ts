@@ -450,11 +450,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await this.update({ name: newName });
     // For regular spaces that only have a single group, update
     // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
-    const regularGroups = this.groups.filter((g) => g.isSpaceMemberGroup());
-    if (regularGroups.length === 1 && (this.isRegular() || this.isPublic())) {
-      await regularGroups[0].updateName(
+    const spaceMemberGroups = this.groups.filter((g) => g.isSpaceMemberGroup());
+    if (
+      spaceMemberGroups.length === 1 &&
+      (this.isRegular() || this.isPublic())
+    ) {
+      await spaceMemberGroups[0].updateName(
         auth,
-        `Group for ${this.kind === "project" ? "project" : "space"} ${newName}`
+        `Group for ${this.isProject() ? "project" : "space"} ${newName}`
       );
     }
 
@@ -507,13 +510,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const { isRestricted } = params;
 
-    const spaceMembersGroups = this.groups.filter(
-      (group) => group.kind === "space_members"
+    const spaceMembersGroups = this.groups.filter((group) =>
+      group.isSpaceMemberGroup()
     );
-    const spaceEditorsGroups = this.groups.filter(
-      (group) => group.kind === "space_editors"
+    const spaceEditorsGroups = this.groups.filter((group) =>
+      group.isSpaceEditorGroup()
     );
 
+    // Ensure exactly one space_members group is associated with the space.
+    // IMPORTANT: This constraint is critical for the requestedPermissions() method logic.
+    // Modifying this requires careful review and updates to requestedPermissions().
     assert(
       spaceMembersGroups.length === 1,
       `Expected one space_members group for the space, but found ${spaceMembersGroups.length}.`
@@ -574,7 +580,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         if (editorIds.length > 0) {
           const editorUsers = await UserResource.fetchByIds(editorIds);
 
-          // Create or get editor group
           if (!editorGroup) {
             // Create a new editor group
             editorGroup = await GroupResource.makeNew(
@@ -814,8 +819,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   private getDefaultSpaceGroup(): GroupResource {
-    const spaceMembersGroups = this.groups.filter(
-      (group) => group.kind === "space_members"
+    const spaceMembersGroups = this.groups.filter((group) =>
+      group.isSpaceMemberGroup()
     );
     assert(
       spaceMembersGroups.length === 1,
@@ -940,19 +945,19 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           workspaceId: this.workspaceId,
           roles: [
             { role: "admin", permissions: ["admin", "read", "write"] },
-            { role: "user", permissions: this.isOpen() ? ["read"] : [] },
+            { role: "user", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
           ],
           groups: this.groups.reduce((acc, group) => {
             if (groupFilter(group)) {
-              const groupKind = (group as any).group_vaults?.kind;
+              const groupKind = group.group_vaults?.kind;
               if (groupKind === "editor") {
-                // Editor groups get admin permissions in restricted spaces
+                // Editor groups get admin permissions in restricted projects
                 acc.push({
                   id: group.id,
                   permissions: ["admin", "read", "write"],
                 });
               } else {
-                // Member groups get read permissions in restricted spaces
+                // Member groups get read permissions in restricted projects
                 acc.push({
                   id: group.id,
                   permissions: ["read"],
@@ -965,7 +970,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ];
     }
 
-    // Restricted space (regular or project).
+    // Restricted space.
     return [
       {
         workspaceId: this.workspaceId,

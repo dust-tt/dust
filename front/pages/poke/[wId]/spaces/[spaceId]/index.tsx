@@ -44,7 +44,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
   const allGroups = space.groups.filter((g) =>
     space.managementMode === "manual"
-      ? g.kind === "space_members" || g.kind === "space_editors"
+      ? g.isSpaceMemberGroup() || g.isSpaceEditorGroup()
       : g.kind === "provisioned"
   );
 
