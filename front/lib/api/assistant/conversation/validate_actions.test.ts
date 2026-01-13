@@ -204,8 +204,14 @@ describe("dismissMention", () => {
       expect(result.isOk()).toBe(true);
 
       // Verify mention was dismissed in database
-      await mentionInDb!.reload();
-      expect(mentionInDb?.dismissed).toBe(true);
+      const refreshedMention = await MentionModel.findOne({
+        where: {
+          workspaceId: workspace.id,
+          messageId: userMessage.id,
+          userId: mentionedUser.id,
+        },
+      });
+      expect(refreshedMention?.dismissed).toBe(true);
 
       // Verify the conversation's richMentions were updated
       const updatedConversation = await getConversation(
@@ -394,10 +400,22 @@ describe("dismissMention", () => {
       expect(result.isOk()).toBe(true);
 
       // Verify both mentions were dismissed
-      await mention1InDb!.reload();
-      await mention2InDb!.reload();
-      expect(mention1InDb?.dismissed).toBe(true);
-      expect(mention2InDb?.dismissed).toBe(true);
+      const refreshedMention1 = await MentionModel.findOne({
+        where: {
+          workspaceId: workspace.id,
+          messageId: userMessage1.id,
+          userId: mentionedUser.id,
+        },
+      });
+      const refreshedMention2 = await MentionModel.findOne({
+        where: {
+          workspaceId: workspace.id,
+          messageId: userMessage2.id,
+          userId: mentionedUser.id,
+        },
+      });
+      expect(refreshedMention1?.dismissed).toBe(true);
+      expect(refreshedMention2?.dismissed).toBe(true);
     });
 
     it("should only dismiss mentions with restricted status", async () => {
@@ -451,8 +469,14 @@ describe("dismissMention", () => {
       expect(result.isOk()).toBe(true);
 
       // Verify mention was NOT dismissed (only restricted mentions can be dismissed)
-      await mentionInDb!.reload();
-      expect(mentionInDb?.dismissed).toBe(false);
+      const refreshedMention = await MentionModel.findOne({
+        where: {
+          workspaceId: workspace.id,
+          messageId: userMessage.id,
+          userId: mentionedUser.id,
+        },
+      });
+      expect(refreshedMention?.dismissed).toBe(false);
     });
   });
 
@@ -610,8 +634,14 @@ describe("dismissMention", () => {
       expect(result.isOk()).toBe(true);
 
       // Verify mention was dismissed in database
-      await mentionInDb!.reload();
-      expect(mentionInDb?.dismissed).toBe(true);
+      const refreshedMention = await MentionModel.findOne({
+        where: {
+          workspaceId: workspace.id,
+          messageId: userMessage.id,
+          agentConfigurationId: agentConfig.sId,
+        },
+      });
+      expect(refreshedMention?.dismissed).toBe(true);
 
       // Verify events were published
       // For restricted agent mentions, publishMessageEventsOnMessagePostOrEdit is called
