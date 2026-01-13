@@ -21,29 +21,75 @@ interface BufferedEvent {
  * EventCoalescer batches generation_tokens events to reduce Redis writes
  * and function call overhead. Buffers tokens for 100ms before publishing.
  *
+ * Classification grouping:
+ * - Only batches tokens with the same classification together
+ * - When classification changes, the current buffer is flushed immediately
+ * - Delimiters (opening/closing) bypass batching and flush any pending tokens
+ *
  * Safety mechanisms:
- * - maxBufferAge: Forces flush after 60s
+ * - maxBufferAge: Forces flush after 60s to prevent stale buffers
  * - Periodic cleanup: Flushes and removes stale buffers every 5 minutes
- * - Terminal events: Bypass coalescing and flush immediately
+ * - Delimiter events: Bypass coalescing and flush immediately
  */
 class EventCoalescer {
   private buffers = new Map<string, BufferedEvent>();
 
   /**
-   * Handle an event. generation_tokens are batched, other events are passed through immediately to
-   * the publishFn callback.
+   * Create a new buffer for a given key with the provided event.
    */
-  async handleEvent(
-    key: string,
-    conversationId: string,
-    step: number,
-    event: AgentMessageEvents,
-    publishFn: (coalescedEvent: AgentMessageEvents) => Promise<void>
-  ): Promise<void> {
+  private createBuffer({
+    conversationId,
+    event,
+    key,
+    step,
+  }: {
+    conversationId: string;
+    event: GenerationTokensEvent;
+    key: string;
+    step: number;
+  }): void {
+    const timer = setTimeout(() => {
+      void this.flush(key);
+    }, FLUSH_INTERVAL_MS);
+
+    this.buffers.set(key, {
+      latestEvent: event,
+      accumulatedText: event.text,
+      firstTokenAt: Date.now(),
+      timer,
+      conversationId,
+      step,
+    });
+  }
+
+  /**
+   * Handle an event. generation_tokens are batched, other events are published immediately.
+   */
+  async handleEvent({
+    conversationId,
+    event,
+    key,
+    step,
+  }: {
+    conversationId: string;
+    event: AgentMessageEvents;
+    key: string;
+    step: number;
+  }): Promise<void> {
     // Non-token events: flush any pending tokens for this key, then publish immediately.
-    if (event.type !== "generation_tokens") {
+    const isGenerationTokensEvent = event.type === "generation_tokens";
+    const isDelimiterEvent =
+      isGenerationTokensEvent &&
+      (event.classification === "closing_delimiter" ||
+        event.classification === "opening_delimiter");
+
+    if (!isGenerationTokensEvent || isDelimiterEvent) {
       await this.flush(key);
-      await publishFn(event);
+      await publishConversationRelatedEvent({
+        conversationId,
+        event,
+        step,
+      });
       return;
     }
 
@@ -51,26 +97,23 @@ class EventCoalescer {
     const existing = this.buffers.get(key);
     if (!existing) {
       // First token in window, start new buffer.
-      const timer = setTimeout(() => {
-        void this.flush(key);
-      }, FLUSH_INTERVAL_MS);
-
-      this.buffers.set(key, {
-        latestEvent: event,
-        accumulatedText: event.text,
-        firstTokenAt: Date.now(),
-        timer,
-        conversationId,
-        step,
-      });
+      this.createBuffer({ key, conversationId, step, event });
     } else {
-      // Accumulate tokens.
+      // If classification changed, flush existing buffer and start fresh.
+      if (existing.latestEvent.classification !== event.classification) {
+        await this.flush(key);
+
+        // Start new buffer with this token classification.
+        this.createBuffer({ key, conversationId, step, event });
+        return;
+      }
+
+      // Accumulate tokens with same classification.
       existing.accumulatedText += event.text;
-      existing.latestEvent = event; // Keep latest metadata (classification, etc.)
+      existing.latestEvent = event; // Keep latest metadata.
 
       // Safety: if buffer is too old, force flush.
       if (Date.now() - existing.firstTokenAt > MAX_BUFFER_AGE_MS) {
-        clearTimeout(existing.timer);
         await this.flush(key);
       }
     }

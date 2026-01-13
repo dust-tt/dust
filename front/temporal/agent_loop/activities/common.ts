@@ -200,21 +200,14 @@ export async function updateResourceAndPublishEvent(
     processEventForUnreadState(auth, { event, conversation }),
   ]);
 
-  // All events go through the coalescer, which handles batching logic internally
+  // All events go through the coalescer, which handles batching logic internally.
   const key = `${conversation.sId}-${event.messageId}-${step}`;
-  await globalCoalescer.handleEvent(
-    key,
-    conversation.sId,
-    step,
+  await globalCoalescer.handleEvent({
+    conversationId: conversation.sId,
     event,
-    async (coalescedEvent) => {
-      await publishConversationRelatedEvent({
-        conversationId: conversation.sId,
-        event: coalescedEvent,
-        step,
-      });
-    }
-  );
+    key,
+    step,
+  });
 }
 
 export async function notifyWorkflowError(
