@@ -1,9 +1,9 @@
-import type { ActionIcons } from "@dust-tt/sparkle";
-
+import type { InternalActionIcons } from "@app/components/resources/resources_icons";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelConversationTypeMultiActions, Result } from "@app/types";
+import { isString } from "@app/types";
 import { Err, getLargeWhitelistedModel, Ok } from "@app/types";
 
 const DESCRIPTION_FUNCTION_NAME = "send_suggestion";
@@ -34,7 +34,7 @@ export interface SkillDescriptionSuggestionInputs {
   tools: { name: string; description: string }[];
 }
 
-function getDescriptionConversationContext(
+function getConversationContext(
   inputs: SkillDescriptionSuggestionInputs
 ): ModelConversationTypeMultiActions {
   const parts: string[] = [];
@@ -90,7 +90,7 @@ export async function getSkillDescriptionSuggestion(
       useCache: false,
     },
     {
-      conversation: getDescriptionConversationContext(inputs),
+      conversation: getConversationContext(inputs),
       prompt:
         "The user is creating a skill (reusable capability) for an AI assistant. " +
         "Based on the provided purpose, instructions, and available tools, " +
@@ -126,55 +126,25 @@ export async function getSkillDescriptionSuggestion(
 // Curated list of icons suitable for skills, with semantic descriptions.
 const SKILL_ICON_OPTIONS = [
   { name: "ActionAtomIcon", description: "Science, research, deep analysis" },
-  {
-    name: "ActionBookOpenIcon",
-    description: "Knowledge, learning, documentation",
-  },
   { name: "ActionBrainIcon", description: "Thinking, AI, intelligence" },
-  { name: "ActionBriefcaseIcon", description: "Work, business, professional" },
-  { name: "ActionCalculatorIcon", description: "Math, calculations, numbers" },
-  { name: "ActionCalendarIcon", description: "Scheduling, events, planning" },
-  {
-    name: "ActionCheckCircleIcon",
-    description: "Tasks, completion, validation",
-  },
-  { name: "ActionClipboardIcon", description: "Notes, forms, checklists" },
-  {
-    name: "ActionCodeBlockIcon",
-    description: "Coding, programming, development",
-  },
-  { name: "ActionCommunityIcon", description: "People, team, collaboration" },
-  {
-    name: "ActionCustomerServiceIcon",
-    description: "Support, help, assistance",
-  },
-  { name: "ActionDashboardIcon", description: "Analytics, overview, metrics" },
-  { name: "ActionDatabaseIcon", description: "Data, storage, information" },
   { name: "ActionDocumentTextIcon", description: "Documents, text, writing" },
   {
     name: "ActionEmotionLaughIcon",
     description: "Fun, creative, entertainment",
   },
-  { name: "ActionFilterIcon", description: "Filtering, sorting, organizing" },
   { name: "ActionFrameIcon", description: "Structure, layout, design" },
   {
     name: "ActionGitBranchIcon",
     description: "Version control, branches, code",
   },
   { name: "ActionGlobeAltIcon", description: "Web, international, global" },
-  {
-    name: "ActionGraduationCapIcon",
-    description: "Education, training, learning",
-  },
   { name: "ActionImageIcon", description: "Images, visuals, graphics" },
   { name: "ActionLightbulbIcon", description: "Ideas, insights, suggestions" },
-  { name: "ActionListCheckIcon", description: "Todo lists, tasks, workflows" },
   { name: "ActionLockIcon", description: "Security, privacy, protection" },
   {
     name: "ActionMagnifyingGlassIcon",
     description: "Search, discovery, investigation",
   },
-  { name: "ActionMailIcon", description: "Email, messaging, communication" },
   {
     name: "ActionMegaphoneIcon",
     description: "Announcements, marketing, outreach",
@@ -182,20 +152,16 @@ const SKILL_ICON_OPTIONS = [
   { name: "ActionNoiseIcon", description: "Audio, sound, voice" },
   { name: "ActionPieChartIcon", description: "Charts, reports, visualization" },
   { name: "ActionRobotIcon", description: "Automation, bots, AI agents" },
-  { name: "ActionRocketIcon", description: "Launch, speed, growth" },
   { name: "ActionScanIcon", description: "Scanning, reading, extraction" },
-  { name: "ActionServerIcon", description: "Infrastructure, systems, backend" },
   { name: "ActionSlideshowIcon", description: "Presentations, slides, demos" },
   { name: "ActionSpeakIcon", description: "Speech, conversation, dialogue" },
   { name: "ActionTableIcon", description: "Tables, spreadsheets, data grids" },
   { name: "ActionTimeIcon", description: "Time, scheduling, deadlines" },
-  {
-    name: "ActionTranslateIcon",
-    description: "Translation, languages, localization",
-  },
-  { name: "ActionUserGroupIcon", description: "Team, groups, collaboration" },
   { name: "ToolsIcon", description: "Tools, utilities, configuration" },
-] as const satisfies { name: ActionIcons; description: string }[];
+] as const satisfies {
+  name: keyof typeof InternalActionIcons;
+  description: string;
+}[];
 
 const iconSpecifications: AgentActionSpecification[] = [
   {
