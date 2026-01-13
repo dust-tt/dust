@@ -103,36 +103,41 @@ export const AgentInputBar = ({
 
   const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
 
-  // Calculate positions and determine which user messages are navigable.
-  const {
-    canScrollUp,
-    canScrollDown,
-    scrollToPreviousUserMessage,
-    scrollToNextUserMessage,
-  } = useMemo(() => {
+  // Memoize message positions separately - only recalculate when messages change, not on scroll.
+  const { userMessageIndices, positions } = useMemo(() => {
     const allMessages = methods.data.get();
 
     // Find indices of visible (non-hidden) user messages.
-    const userMessageIndices: number[] = [];
+    const userIndices: number[] = [];
     for (let i = 0; i < allMessages.length; i++) {
       const msg = allMessages[i];
       if (isUserMessage(msg) && !isHiddenMessage(msg)) {
-        userMessageIndices.push(i);
+        userIndices.push(i);
       }
     }
 
     // Calculate positions by accumulating heights.
-    const positions: { top: number; bottom: number }[] = [];
+    const pos: { top: number; bottom: number }[] = [];
     let accumulatedHeight = 0;
     for (const msg of allMessages) {
       const height = methods.height(msg);
-      positions.push({
+      pos.push({
         top: accumulatedHeight,
         bottom: accumulatedHeight + height,
       });
       accumulatedHeight += height;
     }
 
+    return { userMessageIndices: userIndices, positions: pos };
+  }, [methods]);
+
+  // Determine navigable messages based on viewport position.
+  const {
+    canScrollUp,
+    canScrollDown,
+    scrollToPreviousUserMessage,
+    scrollToNextUserMessage,
+  } = useMemo(() => {
     // Convert listOffset to positive scroll position.
     // listOffset is negative when scrolled down (distance from list top to viewport top).
     const viewportTop = -listOffset;
@@ -187,7 +192,14 @@ export const AgentInputBar = ({
         }
       },
     };
-  }, [methods, listOffset, visibleListHeight, bottomOffset]);
+  }, [
+    userMessageIndices,
+    positions,
+    listOffset,
+    visibleListHeight,
+    bottomOffset,
+    methods,
+  ]);
 
   const showClearButton =
     context.agentBuilderContext?.resetConversation &&
@@ -260,12 +272,14 @@ export const AgentInputBar = ({
             onClick={scrollToPreviousUserMessage}
             disabled={!canScrollUp}
             size="xs"
+            tooltip="Previous message"
           />
           <IconButton
             icon={ArrowDownIcon}
             onClick={scrollToNextUserMessage}
             disabled={!canScrollDown}
             size="xs"
+            tooltip="Next message"
           />
         </div>
 
