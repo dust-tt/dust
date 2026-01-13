@@ -43,7 +43,9 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const skills = await SkillResource.listSkills(auth);
+      const skills = await SkillResource.listSkills(auth, {
+        status: ["active", "archived", "suggested"],
+      });
 
       return res.status(200).json({
         skills: skills.map((skill) => skill.toJSON(auth)),
