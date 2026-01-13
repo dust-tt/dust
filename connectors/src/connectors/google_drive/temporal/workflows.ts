@@ -103,9 +103,13 @@ export async function googleDriveFullSync({
             foldersQueue.push(folderId);
           }
           break;
-        case "removed":
-          foldersQueue.splice(foldersQueue.indexOf(folderId), 1);
+        case "removed": {
+          const index = foldersQueue.indexOf(folderId);
+          if (index !== -1) {
+            foldersQueue.splice(index, 1);
+          }
           break;
+        }
         default:
           assertNever(
             `Unexpected signal action ${action} received for Google Drive full sync workflow.`,
