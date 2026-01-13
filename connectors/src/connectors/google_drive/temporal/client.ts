@@ -34,19 +34,6 @@ import {
   googleDriveIncrementalSyncV2WorkflowId,
 } from "./workflows";
 
-const isWorkflowRunning = async (handle: WorkflowHandle): Promise<boolean> => {
-  try {
-    const description = await handle.describe();
-    return description.status.name === "RUNNING";
-  } catch (e) {
-    if (!(e instanceof WorkflowNotFoundError)) {
-      throw e;
-    }
-
-    return false;
-  }
-};
-
 /**
  * Launch a Google Drive full sync workflow.
  * @param addedFolderIds - Pass `null` to sync all folders from DB, or specific folder IDs to sync only those.
@@ -97,12 +84,53 @@ export async function launchGoogleDriveFullSyncWorkflow(
     ? googleDriveFullSyncV2WorkflowId(connectorId)
     : googleDriveFullSyncWorkflowId(connectorId);
 
-  // Helper to start the workflow
-  const startWorkflow = async () => {
+  try {
+    // Full resync (null): terminate any running workflow and start fresh
+    if (addedFolderIds === null) {
+      const workflowFn = useParallelSync
+        ? googleDriveFullSyncV2
+        : googleDriveFullSync;
+
+      await terminateWorkflow(workflowId);
+      await client.workflow.start(workflowFn, {
+        args: [
+          {
+            connectorId,
+            garbageCollect: true,
+            startSyncTs: undefined,
+            foldersToBrowse: null,
+            totalCount: 0,
+            mimeTypeFilter,
+          },
+        ],
+        taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
+        workflowId,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        memo: {
+          connectorId,
+        },
+      });
+      localLogger.info(
+        {
+          workspaceId: dataSourceConfig.workspaceId,
+          workflowId,
+          useParallelSync,
+        },
+        `Terminated existing workflow and started fresh full sync.`
+      );
+      return new Ok(workflowId);
+    }
+
+    // Specific folders: use signalWithStart to either signal running workflow or start new one.
+    // If workflow is running, it just signals. If not, it starts with foldersToBrowse and signals.
+    // This handles the removal-only case gracefully: starts with empty folders, skips sync, runs GC.
     const workflowFn = useParallelSync
       ? googleDriveFullSyncV2
       : googleDriveFullSync;
-    await client.workflow.start(workflowFn, {
+
+    await client.workflow.signalWithStart(workflowFn, {
       args: [
         {
           connectorId,
@@ -115,6 +143,8 @@ export async function launchGoogleDriveFullSyncWorkflow(
       ],
       taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
       workflowId,
+      signal: folderUpdatesSignal,
+      signalArgs: [signalArgs],
       searchAttributes: {
         connectorId: [connectorId],
       },
@@ -122,63 +152,18 @@ export async function launchGoogleDriveFullSyncWorkflow(
         connectorId,
       },
     });
-  };
 
-  try {
-    // Full resync (null): terminate any running workflow and start fresh
-    if (addedFolderIds === null) {
-      await terminateWorkflow(workflowId);
-      await startWorkflow();
-      localLogger.info(
-        {
-          workspaceId: dataSourceConfig.workspaceId,
-          workflowId,
-          useParallelSync,
-        },
-        `Terminated existing workflow and started fresh full sync.`
-      );
-      return new Ok(workflowId);
-    }
+    localLogger.info(
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        workflowId,
+        useParallelSync,
+        foldersAdded: addedFolderIds.length,
+        foldersRemoved: removedFolderIds.length,
+      },
+      `Sent signalWithStart to workflow.`
+    );
 
-    // Specific folders: signal running workflow or start new one
-    const handle = client.workflow.getHandle(workflowId);
-    const workflowRunning = await isWorkflowRunning(handle);
-
-    if (workflowRunning) {
-      await handle.signal(folderUpdatesSignal, signalArgs);
-      localLogger.info(
-        {
-          workspaceId: dataSourceConfig.workspaceId,
-          workflowId,
-          useParallelSync,
-          foldersAdded: addedFolderIds.length,
-          foldersRemoved: removedFolderIds.length,
-        },
-        `Sent signal to running workflow.`
-      );
-    } else {
-      if (addedFolderIds.length > 0) {
-        await startWorkflow();
-        localLogger.info(
-          {
-            workspaceId: dataSourceConfig.workspaceId,
-            workflowId,
-            useParallelSync,
-          },
-          `Started workflow.`
-        );
-      } else if (removedFolderIds.length > 0) {
-        // Only removals, launch garbage collector
-        localLogger.info(
-          {
-            workspaceId: dataSourceConfig.workspaceId,
-            foldersRemoved: removedFolderIds.length,
-          },
-          `Folders removed but workflow not running, will launch GC.`
-        );
-        return await launchGoogleGarbageCollector(connectorId);
-      }
-    }
     return new Ok(workflowId);
   } catch (e) {
     localLogger.error(
@@ -258,78 +243,6 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
         error: e,
       },
       `Failed starting workflow.`
-    );
-    return new Err(normalizeError(e));
-  }
-}
-
-/**
- * Signal folder removal to a running workflow, or launch GC if workflow is not running.
- * This function is used when folders are removed without any additions.
- */
-export async function signalFolderRemoval(
-  connectorId: ModelId,
-  removedFolderIds: string[]
-): Promise<Result<string, Error>> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    return new Err(new Error(`Connector ${connectorId} not found`));
-  }
-  const localLogger = getActivityLogger(connector);
-
-  const config = await GoogleDriveConfigModel.findOne({
-    where: { connectorId },
-  });
-  const useParallelSync = config?.useParallelSync ?? false;
-
-  const client = await getTemporalClient();
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
-  const workflowId = useParallelSync
-    ? googleDriveFullSyncV2WorkflowId(connectorId)
-    : googleDriveFullSyncWorkflowId(connectorId);
-
-  const signalArgs: FolderUpdatesSignal[] = removedFolderIds.map((sId) => ({
-    action: "removed" as const,
-    folderId: sId,
-  }));
-
-  try {
-    const handle = client.workflow.getHandle(workflowId);
-    const workflowRunning = await isWorkflowRunning(handle);
-
-    if (workflowRunning) {
-      // Workflow is running, send signal to stop tracking these folders
-      await handle.signal(folderUpdatesSignal, signalArgs);
-      localLogger.info(
-        {
-          workspaceId: dataSourceConfig.workspaceId,
-          workflowId,
-          useParallelSync,
-          foldersRemoved: removedFolderIds.length,
-        },
-        `Sent removal signal to running workflow.`
-      );
-      return new Ok(workflowId);
-    } else {
-      // Workflow not running, just launch GC to clean up removed folders
-      localLogger.info(
-        {
-          workspaceId: dataSourceConfig.workspaceId,
-          foldersRemoved: removedFolderIds.length,
-        },
-        `Workflow not running, launching GC for removed folders.`
-      );
-      return await launchGoogleGarbageCollector(connectorId);
-    }
-  } catch (e) {
-    localLogger.error(
-      {
-        workspaceId: dataSourceConfig.workspaceId,
-        workflowId,
-        error: e,
-      },
-      `Failed to signal folder removal.`
     );
     return new Err(normalizeError(e));
   }

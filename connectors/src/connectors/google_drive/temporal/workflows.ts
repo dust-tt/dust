@@ -92,9 +92,7 @@ export async function googleDriveFullSync({
 
   // Initialize foldersToBrowse from DB if null, otherwise use provided list
   let foldersQueue: string[] =
-    foldersToBrowse !== null
-      ? foldersToBrowse
-      : await getFoldersToSync(connectorId);
+    foldersToBrowse ?? (await getFoldersToSync(connectorId));
 
   setHandler(folderUpdatesSignal, (folderUpdates: FolderUpdatesSignal[]) => {
     // If we get a signal, update the workflow state by adding/removing folder ids.
@@ -570,6 +568,10 @@ export async function googleDriveFullSyncV2({
 
   // Start progress reporting task (runs in parallel with child workflows)
   const progressReporting = async () => {
+    if (folderIds.length === 0) {
+      return;
+    }
+
     while (!syncCompleted) {
       await sleep("30 seconds");
       if (syncCompleted) break;
