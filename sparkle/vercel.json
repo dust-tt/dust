@@ -1,5 +1,5 @@
 {
   "buildCommand": "npm run build-storybook",
   "outputDirectory": "storybook-static",
-  "ignoreCommand": "bash -c 'BASE_BRANCH=${BASE_BRANCH:-master}; REPO_URL=\"https://github.com/${VERCEL_GIT_REPO_OWNER}/${VERCEL_GIT_REPO_SLUG}.git\"; if [ -n \"$VERCEL_GIT_PULL_REQUEST_ID\" ]; then git fetch --depth=1 \"$REPO_URL\" \"$BASE_BRANCH\" && git diff --quiet FETCH_HEAD HEAD -- sparkle/src; else [ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ] && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" \"$VERCEL_GIT_COMMIT_SHA\" -- sparkle/src || exit 1; fi'"
+  "ignoreCommand": "B=${BASE_BRANCH:-master};R=\"https://github.com/${VERCEL_GIT_REPO_OWNER}/${VERCEL_GIT_REPO_SLUG}.git\";[ -n \"$VERCEL_GIT_PULL_REQUEST_ID\" ]&&git fetch --depth=1 \"$R\" \"$B\"&&git diff --quiet FETCH_HEAD HEAD -- sparkle/src||([ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ]&&git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" \"$VERCEL_GIT_COMMIT_SHA\" -- sparkle/src||exit 1)"
 }
