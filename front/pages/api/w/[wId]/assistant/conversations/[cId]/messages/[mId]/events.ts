@@ -6,6 +6,8 @@ import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -109,8 +111,17 @@ async function handler(
         signal,
       });
 
+      let backpressureCount = 0;
+
       for await (const event of eventStream) {
-        res.write(`data: ${JSON.stringify(event)}\n\n`);
+        const writeSuccessful = res.write(`data: ${JSON.stringify(event)}\n\n`);
+        if (!writeSuccessful) {
+          backpressureCount++;
+          statsDClient.increment("streaming.backpressure.count", 1, [
+            "endpoint_type:internal",
+            "endpoint:message_events",
+          ]);
+        }
         // @ts-expect-error - We need it for streaming but it does not exists in the types.
         res.flush();
 
@@ -119,9 +130,28 @@ async function handler(
           break;
         }
       }
-      res.write("data: done\n\n");
+      const doneWriteSuccessful = res.write("data: done\n\n");
+      if (!doneWriteSuccessful) {
+        backpressureCount++;
+        statsDClient.increment("streaming.backpressure.count", 1, [
+          "endpoint_type:internal",
+          "endpoint:message_events",
+        ]);
+      }
       // @ts-expect-error - We need it for streaming but it does not exists in the types.
       res.flush();
+
+      if (backpressureCount > 10) {
+        logger.warn(
+          {
+            conversationId: conversation.sId,
+            messageId,
+            backpressureCount,
+            endpointType: "internal",
+          },
+          "High streaming backpressure detected during message events"
+        );
+      }
 
       res.status(200).end();
       return;
