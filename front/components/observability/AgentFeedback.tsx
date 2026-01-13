@@ -3,10 +3,19 @@ import {
   HandThumbUpIcon,
   ValueCard,
 } from "@dust-tt/sparkle";
+import dynamic from "next/dynamic";
 
 import { FeedbacksSection } from "@app/components/agent_builder/FeedbacksSection";
-import { FeedbackDistributionChart } from "@app/components/agent_builder/observability/charts/FeedbackDistributionChart";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
+
+// Dynamic import for chart component to exclude recharts from server bundle
+const FeedbackDistributionChart = dynamic(
+  () =>
+    import(
+      "@app/components/agent_builder/observability/charts/FeedbackDistributionChart"
+    ).then((mod) => mod.FeedbackDistributionChart),
+  { ssr: false }
+);
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";

@@ -444,6 +444,23 @@ const config = {
         { module: /opentelemetry/ },
         { module: /require-in-the-middle/ },
       ];
+
+      // Exclude client-only packages from server bundle to reduce bundle size
+      // These packages are only used in client-side components with ssr: false
+      config.externals = [
+        ...(Array.isArray(config.externals) ? config.externals : []),
+        ({ request }, callback) => {
+          if (request === "@emoji-mart/data") {
+            return callback(null, `commonjs ${request}`);
+          }
+          // Handle Next.js barrel optimization format: __barrel_optimize__?names=...!=!recharts
+          if (request && request.includes("recharts")) {
+            // Extract the base module name for externalization
+            return callback(null, "commonjs recharts");
+          }
+          callback();
+        },
+      ];
     }
 
     if (!dev && !isServer && process.env.ANALYZE === "true") {

@@ -5,14 +5,12 @@ import {
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import type { EmojiMartData } from "@emoji-mart/data";
-import data from "@emoji-mart/data";
 import { init, SearchIndex } from "emoji-mart";
 import shuffle from "lodash/shuffle";
 import React, {
   forwardRef,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -21,9 +19,6 @@ import type {
   EmojiDropdownOnKeyDown,
   EmojiDropdownProps,
 } from "@app/components/editor/input_bar/types";
-
-// Type the imported data, emoji-mart types are not the best
-const emojiData = data as unknown as EmojiMartData;
 
 // Curated list of commonly used emoji IDs (short codes)
 const POPULAR_EMOJI_IDS = [
@@ -48,18 +43,24 @@ const POPULAR_EMOJI_IDS = [
   "100",
 ];
 
-// Get popular emojis from emoji-mart data
-const POPULAR_EMOJIS = POPULAR_EMOJI_IDS.map((id) => {
-  const emoji = emojiData.emojis[id];
-  return emoji
-    ? {
-        id,
-        name: emoji.name,
-        native: emoji.skins[0].native,
-        shortcodes: emoji.id,
-      }
-    : null;
-}).filter((emoji): emoji is NonNullable<typeof emoji> => emoji !== null);
+// Cache for emoji data loaded dynamically
+let emojiDataCache: EmojiMartData | null = null;
+let popularEmojisCache: EmojiResult[] | null = null;
+
+// Helper to get popular emojis from emoji-mart data
+function getPopularEmojis(emojiData: EmojiMartData): EmojiResult[] {
+  return POPULAR_EMOJI_IDS.map((id) => {
+    const emoji = emojiData.emojis[id];
+    return emoji
+      ? {
+          id,
+          name: emoji.name,
+          native: emoji.skins[0].native,
+          shortcodes: emoji.id,
+        }
+      : null;
+  }).filter((emoji): emoji is NonNullable<typeof emoji> => emoji !== null);
+}
 
 type EmojiResult = {
   id: string;
@@ -77,22 +78,32 @@ export const EmojiDropdown = forwardRef<
   const [filteredEmojis, setFilteredEmojis] = useState<EmojiResult[]>([]);
   const triggerRect = clientRect?.();
 
-  useMemo(() => {
-    // Initialize emoji-mart with data
-    const _init = async () => {
-      await init({ data: emojiData });
+  // Initialize emoji-mart with dynamically loaded data
+  useEffect(() => {
+    const initEmojiMart = async () => {
+      if (!emojiDataCache) {
+        // Dynamically import emoji data to avoid bundling in server
+        // @emoji-mart/data exports JSON directly, so we cast it appropriately
+        const dataModule = await import("@emoji-mart/data");
+        emojiDataCache = dataModule as unknown as EmojiMartData;
+        popularEmojisCache = getPopularEmojis(emojiDataCache);
+      }
+      await init({ data: emojiDataCache });
       setEmojiMartInitialized(true);
     };
 
-    // eslint-disable-next-line react-hooks/set-state-in-render
-    void _init();
+    void initEmojiMart();
   }, []);
 
   // Filter emojis based on query using emoji-mart's search
   useEffect(() => {
+    if (!emojiMartInitialized) {
+      return;
+    }
+
     if (!query) {
       // Show curated popular emojis when no query
-      setFilteredEmojis(shuffle(POPULAR_EMOJIS).slice(0, 5));
+      setFilteredEmojis(shuffle(popularEmojisCache ?? []).slice(0, 5));
       return;
     }
 
