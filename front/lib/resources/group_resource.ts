@@ -37,7 +37,6 @@ import type {
   ModelId,
   ResourcePermission,
   Result,
-  RolePermission,
   UserType,
 } from "@app/types";
 import {

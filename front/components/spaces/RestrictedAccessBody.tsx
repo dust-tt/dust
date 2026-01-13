@@ -409,7 +409,14 @@ function MembersTable({
         },
       },
     ];
-  }, [onMembersUpdated, selectedMembers, sendNotifications, disabled]);
+  }, [
+    onMembersUpdated,
+    selectedMembers,
+    sendNotifications,
+    disabled,
+    canSetEditors,
+    editorIds,
+  ]);
 
   const rows = useMemo(
     () => getMemberTableRows(selectedMembers),

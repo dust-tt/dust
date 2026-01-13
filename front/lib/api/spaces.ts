@@ -22,7 +22,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
@@ -33,7 +33,6 @@ import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { AgentsUsageType, Result } from "@app/types";
 import { Err, Ok, removeNulls, SPACE_GROUP_PREFIX } from "@app/types";
-import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
