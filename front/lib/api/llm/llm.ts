@@ -71,17 +71,11 @@ export abstract class LLM {
     this.traceId = createLLMTraceId(randomUUID());
   }
 
-  private async *completeStream({
-    conversation,
-    prompt,
-    specifications,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
+  private async *completeStream(
+    streamParameters: LLMStreamParameters
+  ): AsyncGenerator<LLMEvent> {
     let currentEvent: LLMEvent | null = null;
-    for await (const event of this.internalStream({
-      conversation,
-      prompt,
-      specifications,
-    })) {
+    for await (const event of this.internalStream(streamParameters)) {
       currentEvent = event;
       yield event;
     }
@@ -103,15 +97,14 @@ export abstract class LLM {
   /**
    * Private method that wraps the abstract internalStream() with tracing functionality
    */
-  private async *streamWithTracing({
-    conversation,
-    prompt,
-    specifications,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
+  private async *streamWithTracing(
+    streamParameters: LLMStreamParameters
+  ): AsyncGenerator<LLMEvent> {
     if (!this.context) {
-      yield* this.completeStream({ conversation, prompt, specifications });
+      yield* this.completeStream(streamParameters);
       return;
     }
+    const { conversation, prompt, specifications } = streamParameters;
 
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
     const buffer = new LLMTraceBuffer(this.traceId, workspaceId, this.context);
@@ -179,11 +172,7 @@ export abstract class LLM {
     let currentEvent: LLMEvent | null = null;
     let timeToFirstEventMs: number | undefined = undefined;
 
-    for await (const event of this.completeStream({
-      conversation,
-      prompt,
-      specifications,
-    })) {
+    for await (const event of this.completeStream(streamParameters)) {
       if (currentEvent === null) {
         timeToFirstEventMs = Date.now() - startTime;
       }
@@ -303,24 +292,13 @@ export abstract class LLM {
     return this.traceId;
   }
 
-  async *stream({
-    conversation,
-    prompt,
-    specifications,
-    forceToolCall,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
-    yield* this.streamWithTracing({
-      conversation,
-      prompt,
-      specifications,
-      forceToolCall,
-    });
+  async *stream(
+    streamParameters: LLMStreamParameters
+  ): AsyncGenerator<LLMEvent> {
+    yield* this.streamWithTracing(streamParameters);
   }
 
-  protected abstract internalStream({
-    conversation,
-    prompt,
-    specifications,
-    forceToolCall,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent>;
+  protected abstract internalStream(
+    streamParameters: LLMStreamParameters
+  ): AsyncGenerator<LLMEvent>;
 }
