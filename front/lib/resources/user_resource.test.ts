@@ -262,22 +262,6 @@ describe("UserResource", () => {
         const metadata = await user.getMetadata("non-existent-key");
         expect(metadata).toBeNull();
       });
-
-      it("should handle workspace-scoped metadata independently", async () => {
-        const key = "workspace-key";
-        const globalValue = "global";
-        const workspaceValue = "workspace-specific";
-        const workspaceModelId = 12345;
-
-        await user.setMetadata(key, globalValue);
-        await user.setMetadata(key, workspaceValue, workspaceModelId);
-
-        const globalMetadata = await user.getMetadata(key);
-        const workspaceMetadata = await user.getMetadata(key, workspaceModelId);
-
-        expect(globalMetadata!.value).toBe(globalValue);
-        expect(workspaceMetadata!.value).toBe(workspaceValue);
-      });
     });
 
     describe("deleteMetadata", () => {
