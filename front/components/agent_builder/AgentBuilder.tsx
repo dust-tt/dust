@@ -110,12 +110,12 @@ export default function AgentBuilder({
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
 
-  const agentConfigurationSIdForSkills =
+  const agentConfigurationIdForSkills =
     duplicateAgentId ?? agentConfiguration?.sId ?? null;
   const { skills, isSkillsLoading } = useAgentConfigurationSkills({
     owner,
-    agentConfigurationSId: agentConfigurationSIdForSkills ?? "",
-    disabled: !hasFeature("skills") || !agentConfigurationSIdForSkills,
+    agentConfigurationId: agentConfigurationIdForSkills ?? "",
+    disabled: !hasFeature("skills") || !agentConfigurationIdForSkills,
   });
 
   const { editors } = useEditors({

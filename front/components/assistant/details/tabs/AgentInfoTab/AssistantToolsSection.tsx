@@ -65,7 +65,7 @@ export function AssistantToolsSection({
   });
   const { skills, isSkillsLoading } = useAgentConfigurationSkills({
     owner,
-    agentConfigurationSId: agentConfiguration.sId,
+    agentConfigurationId: agentConfiguration.sId,
     disabled: !featureFlags.includes("skills"),
   });
 
