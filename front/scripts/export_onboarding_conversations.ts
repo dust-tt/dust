@@ -27,11 +27,17 @@ interface OnboardingConversationInfo {
 }
 
 function formatDate(date: Date): string {
-  return date.toISOString().replace("T", " ").replace(/\.\d{3}Z$/, " UTC");
+  return date
+    .toISOString()
+    .replace("T", " ")
+    .replace(/\.\d{3}Z$/, " UTC");
 }
 
 function formatTimestamp(date: Date): string {
-  return date.toISOString().replace("T", " ").replace(/\.\d{3}Z$/, "");
+  return date
+    .toISOString()
+    .replace("T", " ")
+    .replace(/\.\d{3}Z$/, "");
 }
 
 function formatContentItem(item: AgentContentItemType): string {
@@ -124,9 +130,13 @@ async function generateMarkdown(
       lines.push("");
       lines.push(`**Sent at:** ${formatTimestamp(message.createdAt)}`);
       if (um.userContextEmail) {
-        lines.push(`**From:** ${um.userContextFullName ?? um.userContextUsername} (${um.userContextEmail})`);
+        lines.push(
+          `**From:** ${um.userContextFullName ?? um.userContextUsername} (${um.userContextEmail})`
+        );
       } else {
-        lines.push(`**From:** ${um.userContextFullName ?? um.userContextUsername}`);
+        lines.push(
+          `**From:** ${um.userContextFullName ?? um.userContextUsername}`
+        );
       }
       lines.push(`**Origin:** ${um.userContextOrigin}`);
       lines.push("");
@@ -134,7 +144,9 @@ async function generateMarkdown(
       lines.push("");
     } else if (message.agentMessage) {
       const am = message.agentMessage;
-      lines.push(`## Message ${messageNum} - Agent (@${am.agentConfigurationId})`);
+      lines.push(
+        `## Message ${messageNum} - Agent (@${am.agentConfigurationId})`
+      );
       lines.push("");
       lines.push(`**Sent at:** ${formatTimestamp(message.createdAt)}`);
       lines.push(`**Status:** ${am.status}`);
@@ -253,7 +265,9 @@ async function generateMarkdown(
                   const text = outputContent.text;
                   if (text.length > 2000) {
                     lines.push(
-                      "```\n" + text.substring(0, 2000) + "\n... (truncated)\n```"
+                      "```\n" +
+                        text.substring(0, 2000) +
+                        "\n... (truncated)\n```"
                     );
                   } else {
                     lines.push("```\n" + text + "\n```");
@@ -320,7 +334,8 @@ makeScript(
   {
     afterDate: {
       alias: "a",
-      describe: "Export conversations created after this date (ISO format, e.g., 2024-12-01)",
+      describe:
+        "Export conversations created after this date (ISO format, e.g., 2024-12-01)",
       type: "string" as const,
       demandOption: true,
     },
@@ -334,7 +349,10 @@ makeScript(
   async ({ afterDate, outputDir, execute }, logger) => {
     const parsedDate = new Date(afterDate);
     if (isNaN(parsedDate.getTime())) {
-      logger.error({ afterDate }, "Invalid date format. Use ISO format (e.g., 2024-12-01)");
+      logger.error(
+        { afterDate },
+        "Invalid date format. Use ISO format (e.g., 2024-12-01)"
+      );
       return;
     }
 
@@ -414,7 +432,10 @@ makeScript(
         fs.writeFileSync(filepath, markdown, "utf-8");
         exported++;
         if (exported % 100 === 0) {
-          logger.info({ exported, total: onboardingConversations.length }, "Progress");
+          logger.info(
+            { exported, total: onboardingConversations.length },
+            "Progress"
+          );
         }
       } catch (err) {
         failed++;
@@ -426,7 +447,12 @@ makeScript(
     }
 
     logger.info(
-      { exported, failed, total: onboardingConversations.length, outputDir: resolvedOutputDir },
+      {
+        exported,
+        failed,
+        total: onboardingConversations.length,
+        outputDir: resolvedOutputDir,
+      },
       "Export completed"
     );
   }
