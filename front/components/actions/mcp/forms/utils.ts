@@ -93,14 +93,8 @@ export function getConnectMCPServerDialogDefaultValues(): MCPServerOAuthFormValu
 export function getCreateMCPServerDialogDefaultValues(
   defaultServerConfig?: DefaultRemoteMCPServerConfig
 ): CreateMCPServerDialogFormValues {
-  const values = createMCPServerDialogFormSchema.parse({});
-
-  if (defaultServerConfig?.url) {
-    values.remoteServerUrl = defaultServerConfig.url;
-  }
-  if (defaultServerConfig) {
-    values.authMethod = defaultServerConfig.authMethod ?? values.authMethod;
-  }
-
-  return values;
+  return createMCPServerDialogFormSchema.parse({
+    remoteServerUrl: defaultServerConfig?.url,
+    authMethod: defaultServerConfig?.authMethod ?? undefined,
+  });
 }

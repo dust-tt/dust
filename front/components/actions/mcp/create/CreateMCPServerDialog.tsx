@@ -24,10 +24,6 @@ import {
   AUTH_CREDENTIALS_ERROR_KEY,
   MCPServerOAuthConnexion,
 } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
-import type {
-  CustomResourceIconType,
-  InternalAllowedIconType,
-} from "@app/components/resources/resources_icons";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -195,16 +191,15 @@ export function CreateMCPServerDialog({
     return "MCP Server";
   }, [internalMCPServer, defaultServerConfig]);
 
-  const toolIcon: InternalAllowedIconType | CustomResourceIconType =
-    useMemo(() => {
-      if (internalMCPServer) {
-        return internalMCPServer.icon;
-      }
-      if (defaultServerConfig) {
-        return defaultServerConfig.icon;
-      }
-      return DEFAULT_MCP_SERVER_ICON;
-    }, [internalMCPServer, defaultServerConfig]);
+  const toolIcon = useMemo(() => {
+    if (internalMCPServer) {
+      return internalMCPServer.icon;
+    }
+    if (defaultServerConfig) {
+      return defaultServerConfig.icon;
+    }
+    return DEFAULT_MCP_SERVER_ICON;
+  }, [internalMCPServer, defaultServerConfig]);
 
   // When OAuth is required (authorization is set), form is valid when:
   // - use case is selected AND no credential validation errors.

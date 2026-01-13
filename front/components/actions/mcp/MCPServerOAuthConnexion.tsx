@@ -10,7 +10,7 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
-import { useFormContext, useWatch } from "react-hook-form";
+import { useController, useFormContext, useWatch } from "react-hook-form";
 
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
@@ -55,9 +55,15 @@ export function MCPServerOAuthConnexion({
   const useCase = useWatch<MCPServerOAuthFormValues, "useCase">({
     name: "useCase",
   });
-  const authCredentials = useWatch<MCPServerOAuthFormValues, "authCredentials">(
-    { name: "authCredentials" }
-  );
+
+  // Use useController for authCredentials to get field.onChange for user interactions.
+  const { field: credentialsField } = useController<
+    MCPServerOAuthFormValues,
+    "authCredentials"
+  >({
+    name: "authCredentials",
+  });
+  const authCredentials = credentialsField.value;
 
   // Dynamically fetched credential inputs based on provider and use case.
   const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
@@ -111,7 +117,7 @@ export function MCPServerOAuthConnexion({
     useCase,
   ]);
 
-  // Effect 2: Validate credentials based on dynamic requirements.
+  // Validate credentials based on dynamic requirements.
   // Runs when credentials or inputs change, uses setError/clearErrors.
   useEffect(() => {
     if (!inputs) {
@@ -160,7 +166,7 @@ export function MCPServerOAuthConnexion({
     if (!isSupportedOAuthCredential(key)) {
       return;
     }
-    setValue("authCredentials", { ...(authCredentials ?? {}), [key]: value });
+    credentialsField.onChange({ ...(authCredentials ?? {}), [key]: value });
   };
 
   const handleUseCaseSelect = (selectedUseCase: MCPOAuthUseCase) => {
