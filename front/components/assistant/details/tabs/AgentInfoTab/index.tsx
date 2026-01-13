@@ -2,7 +2,7 @@ import { Avatar, Chip, cn, Markdown, Page } from "@dust-tt/sparkle";
 
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection";
-import { AssistantToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantToolsSection";
+import { AssistantSkillsToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { AgentConfigurationType, WorkspaceType } from "@app/types";
@@ -78,7 +78,7 @@ export function AgentInfoTab({
         </div>
       )}
 
-      <AssistantToolsSection
+      <AssistantSkillsToolsSection
         agentConfiguration={agentConfiguration}
         owner={owner}
         isDustAgent={isDustAgent}

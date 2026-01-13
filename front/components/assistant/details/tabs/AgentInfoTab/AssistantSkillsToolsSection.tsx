@@ -54,7 +54,7 @@ const isHiddenDustAction = (action: MCPServerConfigurationType) => {
   return false;
 };
 
-export function AssistantToolsSection({
+export function AssistantSkillsToolsSection({
   agentConfiguration,
   owner,
   isDustAgent,
