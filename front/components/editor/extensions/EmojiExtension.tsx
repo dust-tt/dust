@@ -58,7 +58,6 @@ export const EmojiExtension = Emoji.extend({
   },
 
   onCreate() {
-    // Load emoji data when extension is created (client-side only)
     void loadEmojiData();
   },
 }).configure({

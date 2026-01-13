@@ -5,7 +5,6 @@ import type Stripe from "stripe";
 import { makeColumnsForCredits } from "@app/components/poke/credits/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 
-// Dynamic import for chart component to exclude recharts from server bundle
 const PokeProgrammaticCostChart = dynamic(
   () =>
     import("@app/components/poke/credits/PokeProgrammaticCostChart").then(

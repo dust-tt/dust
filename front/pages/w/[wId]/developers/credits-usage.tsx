@@ -18,7 +18,6 @@ import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
 import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
 
-// Dynamic import for chart component to exclude recharts from server bundle
 const ProgrammaticCostChart = dynamic(
   () =>
     import("@app/components/workspace/ProgrammaticCostChart").then(

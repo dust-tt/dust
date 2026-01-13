@@ -8,7 +8,6 @@ import dynamic from "next/dynamic";
 import { FeedbacksSection } from "@app/components/agent_builder/FeedbacksSection";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 
-// Dynamic import for chart component to exclude recharts from server bundle
 const FeedbackDistributionChart = dynamic(
   () =>
     import("@app/components/agent_builder/observability/charts/FeedbackDistributionChart").then(
