@@ -268,7 +268,7 @@ export function AgentBuilderSkillsBlock() {
           Need help? Check our{" "}
           <Hoverable
             variant="primary"
-            href="https://docs.dust.tt/docs/tools"
+            href="https://docs.dust.tt/docs/skills"
             target="_blank"
           >
             guide
