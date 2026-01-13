@@ -177,7 +177,8 @@ const NavigationListItem = React.forwardRef<
                 variant="outline"
                 className={cn(
                   "s-flex-shrink-0 s-translate-x-0.5",
-                  moreMenu && "group-hover/menu-item:s-hidden"
+                  moreMenu &&
+                    "group-hover/menu-item:s-hidden group-data-[selected=true]/menu-item:s-hidden"
                 )}
               />
             )}
@@ -185,7 +186,8 @@ const NavigationListItem = React.forwardRef<
               <div
                 className={cn(
                   "s-heading-xs s-flex s-flex-shrink-0 s-items-center s-justify-center s-rounded-full",
-                  moreMenu && "group-hover/menu-item:s-hidden",
+                  moreMenu &&
+                    "group-hover/menu-item:s-hidden group-data-[selected=true]/menu-item:s-hidden",
                   getStatusDotColor()
                 )}
               />
