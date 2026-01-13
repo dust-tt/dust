@@ -142,6 +142,7 @@ export abstract class LLM {
         : [{ role: "system", content: prompt }, ...conversation.messages];
 
     generation.updateTrace({
+      name: this.context.operationType,
       input: traceInput,
       metadata: {
         dustTraceId: this.traceId,
@@ -184,7 +185,6 @@ export abstract class LLM {
     ];
     statsDClient.increment("llm_interaction.count", 1, metricTags);
 
-    // TODO(LLM-Router 13/11/2025): Temporary logs, TBRemoved
     let currentEvent: LLMEvent | null = null;
     let timeToFirstEventMs: number | undefined = undefined;
 
