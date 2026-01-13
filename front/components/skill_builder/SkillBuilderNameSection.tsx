@@ -8,7 +8,6 @@ export function SkillBuilderNameSection() {
   return (
     <BaseFormFieldSection
       title="Name"
-      titleClassName="heading-lg"
       fieldName={NAME_FIELD_NAME}
       triggerValidationOnChange={false}
     >
