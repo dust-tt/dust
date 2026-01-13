@@ -266,7 +266,20 @@ export const AgentInputBar = ({
           top: "-2em",
         }}
       >
-        <div className="flex items-center gap-1 rounded-full border border-border bg-white px-1 py-0.5 dark:border-border-night dark:bg-muted-night">
+        <div className="flex items-center gap-1 rounded-full border border-border bg-white px-2 py-1 dark:border-border-night dark:bg-muted-night">
+          {showStopButton && (
+            <>
+              <Button
+                variant="ghost"
+                label={getStopButtonLabel()}
+                icon={StopIcon}
+                onClick={handleStopGeneration}
+                disabled={isStopping}
+                size="xs"
+              />
+              <div className="h-4 w-px bg-border dark:bg-border-night" />
+            </>
+          )}
           <IconButton
             icon={ArrowUpIcon}
             onClick={scrollToPreviousUserMessage}
@@ -289,16 +302,6 @@ export const AgentInputBar = ({
             icon={ArrowPathIcon}
             onClick={context.agentBuilderContext?.resetConversation}
             label="Clear"
-          />
-        )}
-
-        {showStopButton && (
-          <Button
-            variant="outline"
-            label={getStopButtonLabel()}
-            icon={StopIcon}
-            onClick={handleStopGeneration}
-            disabled={isStopping}
           />
         )}
       </div>
