@@ -14,6 +14,7 @@ import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
+import { globalCoalescer } from "@app/temporal/agent_loop/lib/event_coalescer";
 import type {
   ConversationWithoutContentType,
   ToolErrorEvent,
@@ -187,7 +188,7 @@ export async function updateResourceAndPublishEvent(
     modelInteractionDurationMs?: number;
   }
 ): Promise<void> {
-  // Processing of events before publishing to Redis.
+  // Process DB updates and unread state for all events.
   await Promise.all([
     processEventForDatabase(auth, {
       event,
@@ -199,11 +200,21 @@ export async function updateResourceAndPublishEvent(
     processEventForUnreadState(auth, { event, conversation }),
   ]);
 
-  await publishConversationRelatedEvent({
-    conversationId: conversation.sId,
-    event,
+  // All events go through the coalescer, which handles batching logic internally
+  const key = `${conversation.sId}-${event.messageId}-${step}`;
+  await globalCoalescer.handleEvent(
+    key,
+    conversation.sId,
     step,
-  });
+    event,
+    async (coalescedEvent) => {
+      await publishConversationRelatedEvent({
+        conversationId: conversation.sId,
+        event: coalescedEvent,
+        step,
+      });
+    }
+  );
 }
 
 export async function notifyWorkflowError(
