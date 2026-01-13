@@ -1242,7 +1242,7 @@ export async function getOrCreateConversationDataSourceFromFile(
   return getOrCreateConversationDataSource(auth, cRes.value);
 }
 
-async function getOrCreateProjectContextDataSource(
+export async function getOrCreateProjectContextDataSource(
   auth: Authenticator,
   space: SpaceResource
 ): Promise<
