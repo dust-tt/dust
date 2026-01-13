@@ -392,6 +392,7 @@ export default function SpaceConversations({
                 }
                 initialManagementMode={spaceInfo.managementMode}
                 initialIsRestricted={spaceInfo.isRestricted}
+                isSpaceEditor={spaceInfo.isEditor}
               />
             )}
           </TabsContent>

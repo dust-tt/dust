@@ -28,6 +28,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
+  CombinedResourcePermissions,
   GroupKind,
   GroupType,
   LightAgentConfigurationType,
@@ -799,6 +800,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     groupKinds = [
       "global",
       "space_members",
+      "space_editors",
       "provisioned",
       "agent_editors",
       "skill_editors",
@@ -1020,7 +1022,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMembers(
     auth: Authenticator,
-    users: UserType[],
+    {
+      users,
+      permissionsToWrite,
+    }: { users: UserType[]; permissionsToWrite?: CombinedResourcePermissions },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1034,7 +1039,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth)) {
+    if (!this.canWrite(auth, permissionsToWrite)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1143,15 +1148,25 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMember(
     auth: Authenticator,
-    user: UserType,
+    {
+      user,
+      permissionsToWrite,
+    }: { user: UserType; permissionsToWrite?: CombinedResourcePermissions },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, DustError>> {
-    return this.addMembers(auth, [user], { transaction });
+    return this.addMembers(
+      auth,
+      { users: [user], permissionsToWrite },
+      { transaction }
+    );
   }
 
   async removeMembers(
     auth: Authenticator,
-    users: UserType[],
+    {
+      users,
+      permissionsToWrite,
+    }: { users: UserType[]; permissionsToWrite?: CombinedResourcePermissions },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1164,7 +1179,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth)) {
+    if (!this.canWrite(auth, permissionsToWrite)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1258,15 +1273,25 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async removeMember(
     auth: Authenticator,
-    users: UserType,
+    {
+      user,
+      permissionsToWrite,
+    }: { user: UserType; permissionsToWrite?: CombinedResourcePermissions },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, DustError>> {
-    return this.removeMembers(auth, [users], { transaction });
+    return this.removeMembers(
+      auth,
+      { users: [user], permissionsToWrite },
+      { transaction }
+    );
   }
 
   async setMembers(
     auth: Authenticator,
-    users: UserType[],
+    {
+      users,
+      permissionsToWrite,
+    }: { users: UserType[]; permissionsToWrite?: CombinedResourcePermissions },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1281,7 +1306,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth)) {
+    if (!this.canWrite(auth, permissionsToWrite)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1299,9 +1324,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       (user) => !currentMemberIds.includes(user.sId)
     );
     if (usersToAdd.length > 0) {
-      const addResult = await this.addMembers(auth, usersToAdd, {
-        transaction,
-      });
+      const addResult = await this.addMembers(
+        auth,
+        { users: usersToAdd, permissionsToWrite },
+        {
+          transaction,
+        }
+      );
       if (addResult.isErr()) {
         return addResult;
       }
@@ -1312,9 +1341,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       .filter((currentMember) => !userIds.includes(currentMember.sId))
       .map((m) => m.toJSON());
     if (usersToRemove.length > 0) {
-      const removeResult = await this.removeMembers(auth, usersToRemove, {
-        transaction,
-      });
+      const removeResult = await this.removeMembers(
+        auth,
+        { users: usersToRemove, permissionsToWrite },
+        {
+          transaction,
+        }
+      );
       if (removeResult.isErr()) {
         return removeResult;
       }
@@ -1466,8 +1499,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     return auth.canRead(this.requestedPermissions());
   }
 
-  canWrite(auth: Authenticator): boolean {
-    return auth.canWrite(this.requestedPermissions());
+  canWrite(
+    auth: Authenticator,
+    permissionsToWrite?: CombinedResourcePermissions
+  ): boolean {
+    return auth.canWrite(
+      permissionsToWrite ? [permissionsToWrite] : this.requestedPermissions()
+    );
   }
 
   isSystem(): boolean {

@@ -406,8 +406,12 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     if (managementMode === "manual") {
       const { memberIds, editorIds } = params;
 
-      // Must have memberIds for manual management mode
-      if (isRestricted && (!memberIds || memberIds.length < 1)) {
+      // Must have memberIds or editorIds for manual management mode
+      if (
+        isRestricted &&
+        (!memberIds || memberIds.length < 1) &&
+        (!editorIds || editorIds.length < 1)
+      ) {
         return null;
       }
 

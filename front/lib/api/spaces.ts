@@ -33,6 +33,7 @@ import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { AgentsUsageType, Result } from "@app/types";
 import { Err, Ok, removeNulls, SPACE_GROUP_PREFIX } from "@app/types";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -358,11 +359,21 @@ export async function createSpaceAndGroup(
       );
     }
 
+    const memberGroup = await GroupResource.makeNew(
+      {
+        name: `${SPACE_GROUP_PREFIX} ${name}`,
+        workspaceId: owner.id,
+        kind: "space_members",
+      },
+      { transaction: t }
+    );
+
     const globalGroupRes = isRestricted
       ? null
       : await GroupResource.fetchWorkspaceGlobalGroup(auth);
 
     const groups = removeNulls([
+      memberGroup,
       globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
     ]);
 
@@ -379,37 +390,6 @@ export async function createSpaceAndGroup(
 
     // Handle member-based space creation
     if (params.managementMode === "manual") {
-      const memberGroup = await GroupResource.makeNew(
-        {
-          name: `${SPACE_GROUP_PREFIX} ${name}`,
-          workspaceId: owner.id,
-          kind: "space_members",
-        },
-        { transaction: t }
-      );
-
-      // Update the member group kind in group_vaults
-      await space.linkGroup(memberGroup, "member", t);
-
-      const users = (await UserResource.fetchByIds(params.memberIds)).map(
-        (user) => user.toJSON()
-      );
-      const groupsResult = await memberGroup.addMembers(auth, users, {
-        transaction: t,
-      });
-      if (groupsResult.isErr()) {
-        logger.error(
-          {
-            error: groupsResult.error,
-          },
-          "The space cannot be created - group members could not be added"
-        );
-
-        return new Err(
-          new DustError("internal_error", "The space cannot be created.")
-        );
-      }
-
       // Handle editor group if editorIds are provided
       if (params.editorIds && params.editorIds.length > 0) {
         // Create editor group
@@ -429,25 +409,20 @@ export async function createSpaceAndGroup(
         const editorUsers = (
           await UserResource.fetchByIds(params.editorIds)
         ).map((user) => user.toJSON());
-        const editorGroupResult = await editorGroup.addMembers(
-          auth,
-          editorUsers,
-          {
-            transaction: t,
-          }
-        );
-        if (editorGroupResult.isErr()) {
-          logger.error(
-            {
-              error: editorGroupResult.error,
-            },
-            "The space cannot be created - editor group members could not be added"
-          );
 
-          return new Err(
-            new DustError("internal_error", "The space cannot be created.")
-          );
-        }
+        // Add user to the newly created group. For the specific purpose of
+        // space_editors group creation, we don't use addMembers, since admins
+        // can add/remove members this way. We create the relation directly.
+        await GroupMembershipModel.create(
+          {
+            groupId: editorGroup.id,
+            userId: editorUsers[0].id,
+            workspaceId: owner.id,
+            startAt: new Date(),
+            status: "active" as const,
+          },
+          { transaction: t }
+        );
       }
     }
 

@@ -33,6 +33,7 @@ import type {
   SpaceType,
 } from "@app/types";
 import { Err, GLOBAL_SPACE_NAME, Ok, removeNulls } from "@app/types";
+import { cons } from "fp-ts/lib/ReadonlyNonEmptyArray";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -45,28 +46,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   constructor(
     model: ModelStaticSoftDeletable<SpaceModel>,
     blob: Attributes<SpaceModel>,
-    readonly groups: GroupResource[],
-    readonly groupKinds: Map<number, string> = new Map()
+    readonly groups: GroupResource[]
   ) {
     super(SpaceModel, blob);
   }
 
   static fromModel(space: SpaceModel) {
-    // Extract group kinds from the GroupSpaceModel association
-    const groupKinds = new Map<number, string>();
-    space.groups.forEach((group) => {
-      // Access the through table data
-      const groupSpace = (group as any).GroupSpaceModel;
-      if (groupSpace?.kind) {
-        groupKinds.set(group.id, groupSpace.kind);
-      }
-    });
-
     return new SpaceResource(
       SpaceModel,
       space.get(),
-      space.groups.map((group) => new GroupResource(GroupModel, group.get())),
-      groupKinds
+      space.groups.map((group) => new GroupResource(GroupModel, group.get()))
     );
   }
 
@@ -78,7 +67,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return withTransaction(async (t: Transaction) => {
       const space = await SpaceModel.create(blob, { transaction: t });
 
-      const groupKinds = new Map<number, string>();
       for (const group of groups) {
         await GroupSpaceModel.create(
           {
@@ -89,11 +77,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           },
           { transaction: t }
         );
-        // Default to "member" kind for new spaces
-        groupKinds.set(group.id, "member");
       }
 
-      return new this(SpaceModel, space.get(), groups, groupKinds);
+      return new this(SpaceModel, space.get(), groups);
     }, transaction);
   }
 
@@ -466,7 +452,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
     const regularGroups = this.groups.filter((g) => g.isSpaceMemberGroup());
     if (regularGroups.length === 1 && (this.isRegular() || this.isPublic())) {
-      await regularGroups[0].updateName(auth, `Group for space ${newName}`);
+      await regularGroups[0].updateName(
+        auth,
+        `Group for ${this.kind === "project" ? "project" : "space"} ${newName}`
+      );
     }
 
     return new Ok(undefined);
@@ -581,18 +570,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         const memberIds = params.memberIds;
         const editorIds = params.editorIds ?? [];
 
-        // Handle member-based management
-        const users = await UserResource.fetchByIds(memberIds);
-
-        const setMembersRes = await memberGroup.setMembers(
-          auth,
-          users.map((u) => u.toJSON()),
-          { transaction: t }
-        );
-        if (setMembersRes.isErr()) {
-          return setMembersRes;
-        }
-
         // Handle editor group - create if needed and update members
         if (editorIds.length > 0) {
           const editorUsers = await UserResource.fetchByIds(editorIds);
@@ -624,7 +601,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           // Set members of the editor group
           const setEditorsRes = await editorGroup.setMembers(
             auth,
-            editorUsers.map((u) => u.toJSON()),
+            { users: editorUsers.map((u) => u.toJSON()) },
             { transaction: t }
           );
           if (setEditorsRes.isErr()) {
@@ -632,12 +609,39 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           }
         } else if (editorGroup) {
           // No editors specified, clear the editor group
-          const setEditorsRes = await editorGroup.setMembers(auth, [], {
-            transaction: t,
-          });
+          const setEditorsRes = await editorGroup.setMembers(
+            auth,
+            { users: [] },
+            {
+              transaction: t,
+            }
+          );
           if (setEditorsRes.isErr()) {
             return setEditorsRes;
           }
+        }
+        // Handle member-based management
+        const users = await UserResource.fetchByIds(memberIds);
+
+        const setMembersRes = await memberGroup.setMembers(
+          auth,
+          {
+            users: users.map((u) => u.toJSON()),
+            permissionsToWrite: {
+              groups: [
+                {
+                  id: editorGroup.id,
+                  permissions: ["admin", "write", "read"],
+                },
+              ],
+              roles: [],
+              workspaceId: this.workspaceId,
+            },
+          },
+          { transaction: t }
+        );
+        if (setMembersRes.isErr()) {
+          return setMembersRes;
         }
       } else if (managementMode === "group") {
         // Handle group-based management
@@ -753,10 +757,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return new Err(new DustError("user_not_found", "User not found."));
     }
 
-    const addMemberRes = await defaultSpaceGroup.addMembers(
-      auth,
-      users.map((user) => user.toJSON())
-    );
+    const addMemberRes = await defaultSpaceGroup.addMembers(auth, {
+      users: users.map((user) => user.toJSON()),
+    });
 
     if (addMemberRes.isErr()) {
       return addMemberRes;
@@ -799,10 +802,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return new Err(new DustError("user_not_found", "User not found."));
     }
 
-    const removeMemberRes = await defaultSpaceGroup.removeMembers(
-      auth,
-      users.map((user) => user.toJSON())
-    );
+    const removeMemberRes = await defaultSpaceGroup.removeMembers(auth, {
+      users: users.map((user) => user.toJSON()),
+    });
 
     if (removeMemberRes.isErr()) {
       return removeMemberRes;
@@ -932,6 +934,37 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ];
     }
 
+    if (this.isProject()) {
+      return [
+        {
+          workspaceId: this.workspaceId,
+          roles: [
+            { role: "admin", permissions: ["admin", "read", "write"] },
+            { role: "user", permissions: this.isOpen() ? ["read"] : [] },
+          ],
+          groups: this.groups.reduce((acc, group) => {
+            if (groupFilter(group)) {
+              const groupKind = (group as any).group_vaults?.kind;
+              if (groupKind === "editor") {
+                // Editor groups get admin permissions in restricted spaces
+                acc.push({
+                  id: group.id,
+                  permissions: ["admin", "read", "write"],
+                });
+              } else {
+                // Member groups get read permissions in restricted spaces
+                acc.push({
+                  id: group.id,
+                  permissions: ["read"],
+                });
+              }
+            }
+            return acc;
+          }, [] as GroupPermission[]),
+        },
+      ];
+    }
+
     // Restricted space (regular or project).
     return [
       {
@@ -939,20 +972,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         roles: [{ role: "admin", permissions: ["admin"] }],
         groups: this.groups.reduce((acc, group) => {
           if (groupFilter(group)) {
-            const groupKind = this.groupKinds.get(group.id);
-            if (groupKind === "editor") {
-              // Editor groups get admin permissions in restricted spaces
-              acc.push({
-                id: group.id,
-                permissions: ["admin", "read", "write"],
-              });
-            } else {
-              // Member groups get read/write permissions in restricted spaces
-              acc.push({
-                id: group.id,
-                permissions: ["read", "write"],
-              });
-            }
+            acc.push({
+              id: group.id,
+              permissions: ["read", "write"],
+            });
           }
           return acc;
         }, [] as GroupPermission[]),

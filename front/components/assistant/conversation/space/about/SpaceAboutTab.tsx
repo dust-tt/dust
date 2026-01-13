@@ -115,22 +115,28 @@ export function SpaceAboutTab({
     setIsSaving(true);
 
     if (planAllowsSCIM && managementType === "group") {
-      await doUpdate(space, {
+      const updatedtedSpace = await doUpdate(space, {
         isRestricted,
         groupIds: selectedGroups.map((group) => group.sId),
         managementMode: "group",
         name: space.name,
       });
-      setSavedGroups(selectedGroups);
+      if (updatedtedSpace) {
+        setSavedGroups(selectedGroups);
+      }
     } else {
-      await doUpdate(space, {
+      const updatedtedSpace = await doUpdate(space, {
         isRestricted,
-        memberIds: selectedMembers.map((member) => member.sId),
+        memberIds: selectedMembers
+          .filter((m) => !m.isEditor)
+          .map((member) => member.sId),
         editorIds: selectedMembers.filter((m) => m.isEditor).map((m) => m.sId),
         managementMode: "manual",
         name: space.name,
       });
-      setSavedMembers(selectedMembers);
+      if (updatedtedSpace) {
+        setSavedMembers(selectedMembers);
+      }
     }
 
     setIsSaving(false);

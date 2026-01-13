@@ -111,48 +111,29 @@ async function handler(
       categories["actions"].count = actionsCount;
 
       const includeAllMembers = req.query.includeAllMembers === "true";
-      const currentMembers = uniqBy(
+      const currentMembers: (UserType & {
+        isEditor?: boolean;
+      })[] = uniqBy(
         (
           await concurrentExecutor(
             // Get members from the space_member group only.
             space.groups.filter((g) => {
-              return g.kind === "space_members";
+              return g.kind === "space_members" || g.kind === "space_editors";
             }),
-            (group) =>
-              includeAllMembers
-                ? group.getAllMembers(auth)
-                : group.getActiveMembers(auth),
+            async (group) => {
+              const members = includeAllMembers
+                ? await group.getAllMembers(auth)
+                : await group.getActiveMembers(auth);
+              return members.map((member) => ({
+                ...member.toJSON(),
+                isEditor: group.kind === "space_editors",
+              }));
+            },
             { concurrency: 10 }
           )
         ).flat(),
         "sId"
       );
-
-      // Fetch editor information from group_vaults table
-      const editorGroupSpaces = await GroupSpaceModel.findAll({
-        where: {
-          vaultId: space.id,
-          kind: "editor",
-        },
-        attributes: ["groupId"],
-      });
-
-      assert(
-        editorGroupSpaces.length <= 1,
-        "There should be at most one editor group per space"
-      );
-
-      const editorGroupSpace = editorGroupSpaces[0];
-      const editorGroup = space.groups.find(
-        (g) => g.id === editorGroupSpace?.groupId
-      );
-      const spaceEditors = !editorGroup
-        ? []
-        : includeAllMembers
-          ? await editorGroup.getAllMembers(auth)
-          : await editorGroup.getActiveMembers(auth);
-
-      const spaceEditorIds = new Set(spaceEditors.map((m) => m.sId));
 
       return res.status(200).json({
         space: {
@@ -160,10 +141,7 @@ async function handler(
           categories,
           isMember: space.canRead(auth),
           isEditor: space.canAdministrate(auth),
-          members: currentMembers.map((member) => ({
-            ...member.toJSON(),
-            isEditor: spaceEditorIds.has(member.sId),
-          })),
+          members: currentMembers,
         },
       });
     }
