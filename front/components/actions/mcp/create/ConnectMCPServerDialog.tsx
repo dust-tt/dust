@@ -8,7 +8,7 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
-import { useController, useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { submitConnectMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitConnectMCPServerDialogForm";
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
@@ -33,13 +33,13 @@ import {
 import type { WorkspaceType } from "@app/types";
 import { OAUTH_PROVIDER_NAMES } from "@app/types";
 
-type ConnectMCPServerDialogProps = {
+interface ConnectMCPServerDialogProps {
   owner: WorkspaceType;
   mcpServerView: MCPServerViewType;
   setIsLoading: (isCreating: boolean) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-};
+}
 
 export function ConnectMCPServerDialog({
   owner,
@@ -55,17 +55,13 @@ export function ConnectMCPServerDialog({
     resolver: zodResolver(mcpServerOAuthFormSchema),
     defaultValues,
     mode: "onChange",
-    shouldUnregister: false,
   });
 
-  const { field: authCredentialsField } = useController({
-    control: form.control,
-    name: "authCredentials",
-  });
+  const { isValid: isSchemaValid } = form.formState;
 
-  const [useCase, oauthFormValid] = useWatch({
+  const useCase = useWatch({
     control: form.control,
-    name: ["useCase", "oauthFormValid"],
+    name: "useCase",
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -117,7 +113,7 @@ export function ConnectMCPServerDialog({
               provider: "mcp",
               supported_use_cases: ["platform_actions", "personal_actions"],
             });
-            authCredentialsField.onChange({
+            form.setValue("oauthCredentials", {
               ...discoverOAuthMetadataRes.value.connectionMetadata,
             });
             setRemoteMCPServerOAuthDiscoveryDone(true);
@@ -142,7 +138,7 @@ export function ConnectMCPServerDialog({
     serverType,
     remoteMCPServerOAuthDiscoveryDone,
     discoverOAuthMetadata,
-    authCredentialsField,
+    form,
     sendNotification,
   ]);
 
@@ -227,11 +223,9 @@ export function ConnectMCPServerDialog({
                     onClick: (e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      if (oauthFormValid) {
-                        void form.handleSubmit(handleSave)();
-                      }
+                      void form.handleSubmit(handleSave)();
                     },
-                    disabled: !oauthFormValid || !useCase || isLoading,
+                    disabled: !isSchemaValid || !useCase || isLoading,
                   }
                 : undefined
             }

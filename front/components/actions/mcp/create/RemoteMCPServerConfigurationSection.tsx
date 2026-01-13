@@ -17,6 +17,36 @@ import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mc
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 
+function getAuthMethodLabel(
+  authMethod: CreateMCPServerDialogFormValues["authMethod"],
+  defaultServerConfig?: DefaultRemoteMCPServerConfig
+): string {
+  switch (authMethod) {
+    case "oauth-dynamic":
+      return "Automatic";
+    case "bearer":
+      if (defaultServerConfig?.authMethod === "bearer") {
+        return `${defaultServerConfig.name} API Key`;
+      }
+      return "Bearer token";
+    case "oauth-static":
+      return "Static OAuth";
+  }
+}
+
+function getBearerPlaceholder(
+  authMethod: CreateMCPServerDialogFormValues["authMethod"],
+  defaultServerConfig?: DefaultRemoteMCPServerConfig
+): string {
+  if (defaultServerConfig?.authMethod === "bearer") {
+    return `Paste your ${defaultServerConfig.name} API key here`;
+  }
+  if (authMethod === "bearer") {
+    return "Paste the Bearer Token here";
+  }
+  return "";
+}
+
 interface RemoteMCPServerConfigurationSectionProps {
   defaultServerConfig?: DefaultRemoteMCPServerConfig;
   setAuthorization: (authorization: AuthorizationInfo | null) => void;
@@ -26,41 +56,21 @@ export function RemoteMCPServerConfigurationSection({
   defaultServerConfig,
   setAuthorization,
 }: RemoteMCPServerConfigurationSectionProps) {
-  const form = useFormContext<CreateMCPServerDialogFormValues>();
+  const {
+    register,
+    formState: { errors },
+  } = useFormContext<CreateMCPServerDialogFormValues>();
 
-  const { field: remoteServerUrlField, fieldState: remoteServerUrlFieldState } =
-    useController({
-      control: form.control,
-      name: "remoteServerUrl",
-    });
-
-  const { field: authMethodField } = useController({
-    control: form.control,
+  const { field: authMethodField } = useController<
+    CreateMCPServerDialogFormValues,
+    "authMethod"
+  >({
     name: "authMethod",
   });
 
-  const { field: sharedSecretField } = useController({
-    control: form.control,
-    name: "sharedSecret",
-  });
-
-  const { field: oauthFormValidField } = useController({
-    control: form.control,
-    name: "oauthFormValid",
-  });
-
   const authMethod = authMethodField.value;
-  const sharedSecret = sharedSecretField.value;
-  const remoteServerUrlError = remoteServerUrlFieldState.error?.message;
 
-  const authMethodLabel =
-    authMethod === "oauth-dynamic"
-      ? "Automatic"
-      : authMethod === "bearer"
-        ? defaultServerConfig?.authMethod === "bearer"
-          ? `${defaultServerConfig.name} API Key`
-          : "Bearer token"
-        : "Static OAuth";
+  const authMethodLabel = getAuthMethodLabel(authMethod, defaultServerConfig);
 
   return (
     <>
@@ -98,13 +108,9 @@ export function RemoteMCPServerConfigurationSection({
               <Input
                 id="url"
                 placeholder="https://example.com/api/mcp"
-                {...remoteServerUrlField}
-                onChange={(e) => {
-                  remoteServerUrlField.onChange(e);
-                  form.clearErrors("remoteServerUrl");
-                }}
-                isError={!!remoteServerUrlError}
-                message={remoteServerUrlError}
+                {...register("remoteServerUrl")}
+                isError={!!errors.remoteServerUrl}
+                message={errors.remoteServerUrl?.message}
                 autoFocus
               />
             </div>
@@ -142,7 +148,6 @@ export function RemoteMCPServerConfigurationSection({
                       onClick={() => {
                         authMethodField.onChange("oauth-dynamic");
                         setAuthorization(null);
-                        oauthFormValidField.onChange(true);
                       }}
                     />
                   )}
@@ -158,7 +163,6 @@ export function RemoteMCPServerConfigurationSection({
                       onClick={() => {
                         authMethodField.onChange("bearer");
                         setAuthorization(null);
-                        oauthFormValidField.onChange(true);
                       }}
                     />
                   )}
@@ -175,7 +179,6 @@ export function RemoteMCPServerConfigurationSection({
                             "personal_actions",
                           ],
                         });
-                        oauthFormValidField.onChange(false);
                       }}
                     />
                   )}
@@ -197,23 +200,14 @@ export function RemoteMCPServerConfigurationSection({
             <div className="flex-grow">
               <Input
                 id="sharedSecret"
-                placeholder={
-                  defaultServerConfig?.authMethod === "bearer"
-                    ? `Paste your ${defaultServerConfig.name} API key here`
-                    : authMethod === "bearer"
-                      ? "Paste the Bearer Token here"
-                      : ""
-                }
+                placeholder={getBearerPlaceholder(
+                  authMethod,
+                  defaultServerConfig
+                )}
                 disabled={authMethod !== "bearer"}
-                {...sharedSecretField}
-                value={sharedSecret ?? ""}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  sharedSecretField.onChange(value === "" ? undefined : value);
-                }}
-                isError={
-                  defaultServerConfig?.authMethod === "bearer" && !sharedSecret
-                }
+                {...register("sharedSecret")}
+                isError={!!errors.sharedSecret}
+                message={errors.sharedSecret?.message}
               />
             </div>
           )}

@@ -1,3 +1,4 @@
+import type { NotificationType } from "@dust-tt/sparkle";
 import type { UseFormReturn } from "react-hook-form";
 
 import { CreateMCPServerDialogSubmitError } from "@app/components/actions/mcp/forms/submitCreateMCPServerDialogForm";
@@ -12,6 +13,19 @@ import {
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { OAUTH_PROVIDER_NAMES } from "@app/types";
 
+type SendNotificationFn = (notification: NotificationType) => void;
+
+interface HandleCreateMCPServerDialogSubmitErrorParams {
+  error: Error;
+  values: CreateMCPServerDialogFormValues;
+  authorization: { provider: keyof typeof OAUTH_PROVIDER_NAMES } | null;
+  form: UseFormReturn<CreateMCPServerDialogFormValues>;
+  sendNotification: SendNotificationFn;
+  setRemoteMCPServerOAuthDiscoveryDone: (done: boolean) => void;
+  setExternalIsLoading: (isLoading: boolean) => void;
+  setIsLoading: (isLoading: boolean) => void;
+}
+
 export function handleCreateMCPServerDialogSubmitError({
   error,
   values,
@@ -21,20 +35,7 @@ export function handleCreateMCPServerDialogSubmitError({
   setRemoteMCPServerOAuthDiscoveryDone,
   setExternalIsLoading,
   setIsLoading,
-}: {
-  error: Error;
-  values: CreateMCPServerDialogFormValues;
-  authorization: { provider: keyof typeof OAUTH_PROVIDER_NAMES } | null;
-  form: UseFormReturn<CreateMCPServerDialogFormValues>;
-  sendNotification: (args: {
-    type: "error";
-    title: string;
-    description: string;
-  }) => void;
-  setRemoteMCPServerOAuthDiscoveryDone: (done: boolean) => void;
-  setExternalIsLoading: (isLoading: boolean) => void;
-  setIsLoading: (isLoading: boolean) => void;
-}) {
+}: HandleCreateMCPServerDialogSubmitErrorParams): void {
   if (!(error instanceof CreateMCPServerDialogSubmitError)) {
     sendNotification({
       type: "error",
@@ -49,15 +50,6 @@ export function handleCreateMCPServerDialogSubmitError({
   setRemoteMCPServerOAuthDiscoveryDone(error.remoteMCPServerOAuthDiscoveryDone);
 
   switch (error.kind) {
-    case "invalid_url": {
-      form.setError("remoteServerUrl", {
-        type: "manual",
-        message: error.message,
-      });
-      setIsLoading(false);
-      return;
-    }
-
     case "discover_oauth_metadata": {
       sendNotification({
         type: "error",

@@ -8,7 +8,7 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
-import { useController, useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { CustomHeadersConfigurationSection } from "@app/components/actions/mcp/create/CustomHeadersConfigurationSection";
 import { InternalBearerTokenSection } from "@app/components/actions/mcp/create/InternalBearerTokenSection";
@@ -21,10 +21,6 @@ import {
   handleCreateMCPServerDialogSubmitError,
 } from "@app/components/actions/mcp/forms/utils";
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
-import type {
-  CustomResourceIconType,
-  InternalAllowedIconType,
-} from "@app/components/resources/resources_icons";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -42,7 +38,19 @@ import {
   useDiscoverOAuthMetadata,
 } from "@app/lib/swr/mcp_servers";
 import type { WorkspaceType } from "@app/types";
-import { validateUrl } from "@app/types";
+
+function getSubmitButtonLabel(
+  isLoading: boolean,
+  authorization: AuthorizationInfo | null
+): string {
+  if (isLoading) {
+    return "Loading...";
+  }
+  if (authorization) {
+    return "Setup connection";
+  }
+  return "Save";
+}
 
 interface CreateMCPServerDialogProps {
   owner: WorkspaceType;
@@ -72,17 +80,14 @@ export function CreateMCPServerDialog({
   const form = useForm<CreateMCPServerDialogFormValues>({
     resolver: zodResolver(createMCPServerDialogFormSchema),
     defaultValues,
-    shouldUnregister: false,
+    mode: "onChange",
   });
 
-  const { field: authCredentialsField } = useController({
-    control: form.control,
-    name: "authCredentials",
-  });
+  const { isValid: isSchemaValid } = form.formState;
 
-  const [remoteServerUrl, sharedSecret, useCase, oauthFormValid] = useWatch({
+  const useCase = useWatch({
     control: form.control,
-    name: ["remoteServerUrl", "sharedSecret", "useCase", "oauthFormValid"],
+    name: "useCase",
   });
 
   const [
@@ -149,7 +154,7 @@ export function CreateMCPServerDialog({
 
     if (submitRes.value.type === "oauth_required") {
       setAuthorization(submitRes.value.authorization);
-      authCredentialsField.onChange(submitRes.value.authCredentials);
+      form.setValue("oauthCredentials", submitRes.value.oauthCredentials);
       // Returning here as now the user must select the use case.
       setIsLoading(false);
       return;
@@ -167,39 +172,29 @@ export function CreateMCPServerDialog({
     resetState();
   };
 
-  const toolName = useMemo(() => {
+  const { toolName, toolIcon } = useMemo(() => {
     if (internalMCPServer) {
-      return getMcpServerDisplayName(internalMCPServer);
+      return {
+        toolName: getMcpServerDisplayName(internalMCPServer),
+        toolIcon: internalMCPServer.icon,
+      };
     }
     if (defaultServerConfig) {
-      return defaultServerConfig.name;
+      return {
+        toolName: defaultServerConfig.name,
+        toolIcon: defaultServerConfig.icon,
+      };
     }
-    return "MCP Server";
+    return {
+      toolName: "MCP Server",
+      toolIcon: DEFAULT_MCP_SERVER_ICON,
+    };
   }, [internalMCPServer, defaultServerConfig]);
 
-  const toolIcon: InternalAllowedIconType | CustomResourceIconType =
-    useMemo(() => {
-      if (internalMCPServer) {
-        return internalMCPServer.icon;
-      }
-      if (defaultServerConfig) {
-        return defaultServerConfig.icon;
-      }
-      return DEFAULT_MCP_SERVER_ICON;
-    }, [internalMCPServer, defaultServerConfig]);
-
-  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-  const isSubmitDisabled =
-    !oauthFormValid ||
-    (authorization && !useCase) ||
-    (defaultServerConfig?.authMethod === "bearer" && !sharedSecret) ||
-    (internalMCPServer &&
-      !authorization &&
-      requiresBearerTokenConfiguration(internalMCPServer) &&
-      !sharedSecret) ||
-    (!internalMCPServer && !validateUrl(remoteServerUrl).valid) ||
-    isLoading;
-  /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
+  // Schema validation handles URL and bearer token requirements.
+  // Runtime check needed for OAuth: when authorization is discovered but useCase not yet selected.
+  const isOAuthPending = authorization && !useCase;
+  const isSubmitDisabled = !isSchemaValid || isOAuthPending || isLoading;
 
   return (
     <Dialog
@@ -258,11 +253,7 @@ export function CreateMCPServerDialog({
             }}
             rightButtonProps={{
               isLoading: isLoading,
-              label: isLoading
-                ? "Loading..."
-                : authorization
-                  ? "Setup connection"
-                  : "Save",
+              label: getSubmitButtonLabel(isLoading, authorization),
               variant: "primary",
               disabled: isSubmitDisabled,
               onClick: (e) => {

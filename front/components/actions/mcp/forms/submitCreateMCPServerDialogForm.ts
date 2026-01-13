@@ -11,14 +11,13 @@ import {
   Ok,
   sanitizeHeadersArray,
   setupOAuthConnection,
-  validateUrl,
 } from "@app/types";
 
 export type CreateMCPServerDialogSubmitResult =
   | {
       type: "oauth_required";
       authorization: AuthorizationInfo;
-      authCredentials: CreateMCPServerDialogFormValues["authCredentials"];
+      oauthCredentials: CreateMCPServerDialogFormValues["oauthCredentials"];
       remoteMCPServerOAuthDiscoveryDone: boolean;
     }
   | {
@@ -28,7 +27,6 @@ export type CreateMCPServerDialogSubmitResult =
     };
 
 export type CreateMCPServerDialogSubmitErrorKind =
-  | "invalid_url"
   | "discover_oauth_metadata"
   | "missing_use_case"
   | "oauth_connection"
@@ -99,19 +97,7 @@ export async function submitCreateMCPServerDialogForm({
   let nextRemoteMCPServerOAuthDiscoveryDone = remoteMCPServerOAuthDiscoveryDone;
 
   if (values.remoteServerUrl) {
-    const urlValidation = validateUrl(values.remoteServerUrl);
-    if (!urlValidation.valid) {
-      return new Err(
-        new CreateMCPServerDialogSubmitError({
-          kind: "invalid_url",
-          message:
-            "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c)).",
-          remoteMCPServerOAuthDiscoveryDone:
-            nextRemoteMCPServerOAuthDiscoveryDone,
-        })
-      );
-    }
-
+    // URL validation is handled by Zod schema
     if (
       values.authMethod === "oauth-dynamic" &&
       !remoteMCPServerOAuthDiscoveryDone
@@ -132,7 +118,8 @@ export async function submitCreateMCPServerDialogForm({
               provider: "mcp",
               supported_use_cases: ["platform_actions", "personal_actions"],
             },
-            authCredentials: discoverOAuthMetadataRes.value.connectionMetadata,
+            oauthCredentials:
+              discoverOAuthMetadataRes.value.connectionMetadata ?? {},
             remoteMCPServerOAuthDiscoveryDone:
               nextRemoteMCPServerOAuthDiscoveryDone,
           });
@@ -172,7 +159,7 @@ export async function submitCreateMCPServerDialogForm({
       // During setup, the use case is always "platform_actions".
       useCase: "platform_actions",
       extraConfig: {
-        ...(values.authCredentials ?? {}),
+        ...values.oauthCredentials,
         ...(authorization.scope ? { scope: authorization.scope } : {}),
       },
     });

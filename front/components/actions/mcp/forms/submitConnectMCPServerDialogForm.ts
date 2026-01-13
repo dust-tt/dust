@@ -45,7 +45,7 @@ export async function submitConnectMCPServerDialogForm({
     // During setup, the use case is always "platform_actions".
     useCase: "platform_actions",
     extraConfig: {
-      ...(values.authCredentials ?? {}),
+      ...values.oauthCredentials,
       ...(authorization.scope ? { scope: authorization.scope } : {}),
     },
   });

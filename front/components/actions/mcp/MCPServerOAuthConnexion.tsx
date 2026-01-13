@@ -9,20 +9,12 @@ import {
   Tooltip,
   UserIcon,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import type {
-  MCPOAuthUseCase,
-  OAuthCredentialInputs,
-  OAuthCredentials,
-} from "@app/types";
-import {
-  getProviderRequiredOAuthCredentialInputs,
-  isSupportedOAuthCredential,
-} from "@app/types";
+import type { MCPOAuthUseCase } from "@app/types";
 
 export const OAUTH_USE_CASE_TO_LABEL: Record<MCPOAuthUseCase, string> = {
   platform_actions: "Shared",
@@ -34,35 +26,32 @@ export const OAUTH_USE_CASE_TO_DESCRIPTION: Record<MCPOAuthUseCase, string> = {
   personal_actions: "Each member connects their own account.",
 };
 
-type MCPServerOauthConnexionProps = {
+interface MCPServerOauthConnexionProps {
   toolName: string;
   authorization: AuthorizationInfo;
   documentationUrl?: string;
-};
+}
 
 export function MCPServerOAuthConnexion({
   toolName,
   authorization,
   documentationUrl,
 }: MCPServerOauthConnexionProps) {
-  const form = useFormContext<MCPServerOAuthFormValues>();
-  const { field: useCaseField } = useController({
-    control: form.control,
+  const {
+    register,
+    formState: { errors },
+  } = useFormContext<MCPServerOAuthFormValues>();
+
+  const { field: useCaseField } = useController<
+    MCPServerOAuthFormValues,
+    "useCase"
+  >({
     name: "useCase",
-  });
-  const { field: authCredentialsField } = useController({
-    control: form.control,
-    name: "authCredentials",
-  });
-  const { field: oauthFormValidField } = useController({
-    control: form.control,
-    name: "oauthFormValid",
   });
 
   const useCase = useCaseField.value;
-  const authCredentials = authCredentialsField.value;
-  const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
 
+  // Auto-select use case on mount
   useEffect(() => {
     if (useCase) {
       return;
@@ -74,69 +63,6 @@ export function MCPServerOAuthConnexion({
     }
   }, [authorization.supported_use_cases, useCaseField, useCase]);
 
-  useEffect(() => {
-    if (useCase) {
-      // We fetch the credential inputs for this provider and use case.
-      const fetchCredentialInputs = async () => {
-        const credentialInputs = await getProviderRequiredOAuthCredentialInputs(
-          {
-            provider: authorization.provider,
-            useCase: useCase,
-          }
-        );
-        setInputs(credentialInputs);
-
-        // Set the auth credentials to the values in the credentials object
-        // that already have a value as we will not ask the user for these values.
-        if (credentialInputs) {
-          const nextCredentials: OAuthCredentials = {};
-          for (const [key, inputData] of Object.entries(credentialInputs)) {
-            if (!isSupportedOAuthCredential(key)) {
-              continue;
-            }
-            nextCredentials[key] = inputData.value ?? "";
-          }
-          authCredentialsField.onChange(nextCredentials);
-        }
-      };
-      void fetchCredentialInputs();
-    }
-  }, [authorization.provider, authCredentialsField, useCase]);
-
-  // We check if the form is valid.
-  useEffect(() => {
-    if (!authCredentials) {
-      return;
-    }
-
-    if (!inputs) {
-      oauthFormValidField.onChange(!!useCase);
-      return;
-    }
-
-    let isFormValid = true;
-    for (const [key, value] of Object.entries(authCredentials)) {
-      if (!isSupportedOAuthCredential(key)) {
-        continue;
-      }
-
-      const input = inputs[key];
-      if (input && input.validator) {
-        if (!input.validator(value)) {
-          isFormValid = false;
-          break;
-        }
-      } else {
-        if (!value) {
-          isFormValid = false;
-          break;
-        }
-      }
-    }
-
-    oauthFormValidField.onChange(isFormValid && !!useCase);
-  }, [authCredentials, inputs, oauthFormValidField, useCase]);
-
   const supportsPersonalActions =
     authorization.supported_use_cases.includes("personal_actions");
   const supportsPlatformActions =
@@ -145,168 +71,185 @@ export function MCPServerOAuthConnexion({
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <>
-        <div className="w-full space-y-4">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            {supportBoth ? "How do you want to connect?" : "Connection type"}
+      <div className="w-full space-y-4">
+        <div className="heading-lg text-foreground dark:text-foreground-night">
+          {supportBoth ? "How do you want to connect?" : "Connection type"}
+        </div>
+        <div className="grid w-full grid-cols-2 gap-4">
+          <ConditionalTooltip
+            showTooltip={!supportsPersonalActions}
+            label={`${toolName} does not support individual connection.`}
+          >
+            <Card
+              variant={supportsPersonalActions ? "secondary" : "primary"}
+              selected={useCase === "personal_actions"}
+              disabled={!supportsPersonalActions}
+              className={cn(
+                "h-full",
+                supportsPersonalActions
+                  ? "cursor-pointer"
+                  : "cursor-not-allowed"
+              )}
+              onClick={
+                supportsPersonalActions
+                  ? () => useCaseField.onChange("personal_actions")
+                  : undefined
+              }
+            >
+              <div className="flex flex-col gap-1 p-1">
+                <div className="flex items-center gap-2">
+                  <Icon
+                    visual={UserIcon}
+                    className={cn(
+                      supportsPersonalActions
+                        ? "text-highlight"
+                        : "text-muted-foreground dark:text-muted-foreground-night"
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "font-medium",
+                      supportsPersonalActions
+                        ? "text-highlight"
+                        : "text-muted-foreground dark:text-muted-foreground-night"
+                    )}
+                  >
+                    {OAUTH_USE_CASE_TO_LABEL["personal_actions"]}
+                  </span>
+                </div>
+                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  {OAUTH_USE_CASE_TO_DESCRIPTION["personal_actions"]}
+                </span>
+              </div>
+            </Card>
+          </ConditionalTooltip>
+          <ConditionalTooltip
+            showTooltip={!supportsPlatformActions}
+            label={`${toolName} does not support shared connection.`}
+          >
+            <Card
+              variant={supportsPlatformActions ? "secondary" : "primary"}
+              selected={useCase === "platform_actions"}
+              disabled={!supportsPlatformActions}
+              className={cn(
+                "h-full",
+                supportsPlatformActions
+                  ? "cursor-pointer"
+                  : "cursor-not-allowed"
+              )}
+              onClick={
+                supportsPlatformActions
+                  ? () => useCaseField.onChange("platform_actions")
+                  : undefined
+              }
+            >
+              <div className="flex flex-col gap-1 p-1">
+                <div className="flex items-center gap-2">
+                  <Icon
+                    visual={PlanetIcon}
+                    className={cn(
+                      supportsPlatformActions
+                        ? "text-highlight"
+                        : "text-muted-foreground dark:text-muted-foreground-night"
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "font-medium",
+                      supportsPlatformActions
+                        ? "text-highlight"
+                        : "text-muted-foreground dark:text-muted-foreground-night"
+                    )}
+                  >
+                    {OAUTH_USE_CASE_TO_LABEL["platform_actions"]}
+                  </span>
+                </div>
+                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  {OAUTH_USE_CASE_TO_DESCRIPTION["platform_actions"]}
+                </span>
+              </div>
+            </Card>
+          </ConditionalTooltip>
+        </div>
+      </div>
+
+      {/* Static OAuth fields - only for mcp_static provider */}
+      {authorization.provider === "mcp_static" && (
+        <div className="w-full space-y-4 pt-4">
+          <div className="space-y-1">
+            <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
+              Client ID
+            </Label>
+            <Input
+              {...register("oauthCredentials.client_id")}
+              placeholder="Enter your OAuth Client ID"
+              isError={!!errors.oauthCredentials?.client_id}
+              message={errors.oauthCredentials?.client_id?.message}
+            />
           </div>
-          <div className="grid w-full grid-cols-2 gap-4">
-            <ConditionalTooltip
-              showTooltip={!supportsPersonalActions}
-              label={`${toolName} does not support individual connection.`}
-            >
-              <Card
-                variant={supportsPersonalActions ? "secondary" : "primary"}
-                selected={useCase === "personal_actions"}
-                disabled={!supportsPersonalActions}
-                className={cn(
-                  "h-full",
-                  supportsPersonalActions
-                    ? "cursor-pointer"
-                    : "cursor-not-allowed"
-                )}
-                onClick={
-                  supportsPersonalActions
-                    ? () => useCaseField.onChange("personal_actions")
-                    : undefined
-                }
-              >
-                <div className="flex flex-col gap-1 p-1">
-                  <div className="flex items-center gap-2">
-                    <Icon
-                      visual={UserIcon}
-                      className={cn(
-                        supportsPersonalActions
-                          ? "text-highlight"
-                          : "text-muted-foreground dark:text-muted-foreground-night"
-                      )}
-                    />
-                    <span
-                      className={cn(
-                        "font-medium",
-                        supportsPersonalActions
-                          ? "text-highlight"
-                          : "text-muted-foreground dark:text-muted-foreground-night"
-                      )}
-                    >
-                      {OAUTH_USE_CASE_TO_LABEL["personal_actions"]}
-                    </span>
-                  </div>
-                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    {OAUTH_USE_CASE_TO_DESCRIPTION["personal_actions"]}
-                  </span>
-                </div>
-              </Card>
-            </ConditionalTooltip>
-            <ConditionalTooltip
-              showTooltip={!supportsPlatformActions}
-              label={`${toolName} does not support shared connection.`}
-            >
-              <Card
-                variant={supportsPlatformActions ? "secondary" : "primary"}
-                selected={useCase === "platform_actions"}
-                disabled={!supportsPlatformActions}
-                className={cn(
-                  "h-full",
-                  supportsPlatformActions
-                    ? "cursor-pointer"
-                    : "cursor-not-allowed"
-                )}
-                onClick={
-                  supportsPlatformActions
-                    ? () => useCaseField.onChange("platform_actions")
-                    : undefined
-                }
-              >
-                <div className="flex flex-col gap-1 p-1">
-                  <div className="flex items-center gap-2">
-                    <Icon
-                      visual={PlanetIcon}
-                      className={cn(
-                        supportsPlatformActions
-                          ? "text-highlight"
-                          : "text-muted-foreground dark:text-muted-foreground-night"
-                      )}
-                    />
-                    <span
-                      className={cn(
-                        "font-medium",
-                        supportsPlatformActions
-                          ? "text-highlight"
-                          : "text-muted-foreground dark:text-muted-foreground-night"
-                      )}
-                    >
-                      {OAUTH_USE_CASE_TO_LABEL["platform_actions"]}
-                    </span>
-                  </div>
-                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    {OAUTH_USE_CASE_TO_DESCRIPTION["platform_actions"]}
-                  </span>
-                </div>
-              </Card>
-            </ConditionalTooltip>
+          <div className="space-y-1">
+            <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
+              Client Secret (optional for PKCE)
+            </Label>
+            <Input
+              {...register("oauthCredentials.client_secret")}
+              placeholder="Enter your OAuth Client Secret"
+              isError={!!errors.oauthCredentials?.client_secret}
+              message={errors.oauthCredentials?.client_secret?.message}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
+              Authorization Endpoint
+            </Label>
+            <Input
+              {...register("oauthCredentials.authorization_endpoint")}
+              placeholder="https://example.com/oauth/authorize"
+              isError={!!errors.oauthCredentials?.authorization_endpoint}
+              message={errors.oauthCredentials?.authorization_endpoint?.message}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
+              Token Endpoint
+            </Label>
+            <Input
+              {...register("oauthCredentials.token_endpoint")}
+              placeholder="https://example.com/oauth/token"
+              isError={!!errors.oauthCredentials?.token_endpoint}
+              message={errors.oauthCredentials?.token_endpoint?.message}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
+              Scope (space-separated)
+            </Label>
+            <Input
+              {...register("oauthCredentials.scope")}
+              placeholder="read write"
+              isError={!!errors.oauthCredentials?.scope}
+              message={errors.oauthCredentials?.scope?.message}
+            />
           </div>
         </div>
+      )}
 
-        {inputs && (
-          <div className="w-full space-y-4 pt-4">
-            {inputs &&
-              Object.entries(inputs).map(([key, inputData]) => {
-                if (inputData.value) {
-                  // If the credential is already set, we don't need to ask the user for it.
-                  return null;
-                }
+      {/* Dynamic OAuth (mcp provider) - credentials obtained via OAuth flow */}
+      {authorization.provider === "mcp" && (
+        <div className="w-full pt-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          Credentials will be obtained automatically via the OAuth flow.
+        </div>
+      )}
 
-                if (!isSupportedOAuthCredential(key)) {
-                  // Can't happen but to make typescript happy.
-                  return null;
-                }
-
-                const value = authCredentials?.[key] ?? "";
-                return (
-                  <div key={key} className="w-full space-y-1">
-                    <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                      {inputData.label}
-                    </Label>
-                    <Input
-                      id={key}
-                      value={value}
-                      onChange={(e) => {
-                        const nextCredentials: OAuthCredentials = {
-                          ...(authCredentials ?? {}),
-                        };
-                        nextCredentials[key] = e.target.value;
-                        authCredentialsField.onChange(nextCredentials);
-                      }}
-                      message={inputData.helpMessage}
-                      messageStatus={
-                        value.length > 0 &&
-                        inputData.validator &&
-                        !inputData.validator(value)
-                          ? "error"
-                          : undefined
-                      }
-                    />
-                  </div>
-                );
-              })}
-          </div>
-        )}
-
-        {documentationUrl && (
-          <div className="w-full pt-6 text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Questions ? Read{" "}
-            <Hoverable
-              href={documentationUrl}
-              target="_blank"
-              variant="primary"
-            >
-              our guide
-            </Hoverable>{" "}
-            on {toolName}.
-          </div>
-        )}
-      </>
+      {documentationUrl && (
+        <div className="w-full pt-6 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          Questions ? Read{" "}
+          <Hoverable href={documentationUrl} target="_blank" variant="primary">
+            our guide
+          </Hoverable>{" "}
+          on {toolName}.
+        </div>
+      )}
     </div>
   );
 }
