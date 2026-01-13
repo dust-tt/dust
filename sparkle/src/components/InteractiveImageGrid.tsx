@@ -1,46 +1,13 @@
 import React from "react";
 
+import { Button, Spinner } from "@sparkle/components/";
 import {
-  Button,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTrigger,
-  Spinner,
-} from "@sparkle/components/";
-import {
-  ArrowDownOnSquareIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  XMarkIcon,
-} from "@sparkle/icons/app";
+  downloadFile,
+  ImageZoomDialog,
+} from "@sparkle/components/ImageZoomDialog";
+import { ArrowDownOnSquareIcon, XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
-interface ImageLoadingStateProps {
-  className?: string;
-  size?: "sm" | "md" | "lg";
-}
-
-const ImageLoadingState = React.forwardRef<
-  HTMLDivElement,
-  ImageLoadingStateProps
->(({ className, size = "lg" }, ref) => {
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "s-mx-auto s-flex s-aspect-square s-w-full s-min-w-[50vh]",
-        "s-max-w-[80vh] s-items-center s-justify-center",
-        "s-bg-muted-background dark:s-bg-muted-background-night",
-        className
-      )}
-    >
-      <Spinner variant="dark" size={size} />
-    </div>
-  );
-});
-
-ImageLoadingState.displayName = "ImageLoadingState";
 interface ImagePreviewProps {
   image: {
     alt: string;
@@ -50,7 +17,7 @@ interface ImagePreviewProps {
     title: string;
   };
   onClick: () => void;
-  onDownload: (e: React.MouseEvent) => Promise<void>;
+  onDownload: (e: React.MouseEvent) => void;
   onClose?: (e: React.MouseEvent) => void;
 }
 
@@ -165,7 +132,6 @@ function InteractiveImageGrid({
   const [currentImageIndex, setCurrentImageIndex] = React.useState<
     number | null
   >(null);
-  const [imageLoaded, setImageLoaded] = React.useState(false);
 
   const handleNext = React.useCallback(() => {
     if (currentImageIndex === null) {
@@ -184,28 +150,21 @@ function InteractiveImageGrid({
   }, [currentImageIndex, images.length]);
 
   const handleDownload = React.useCallback(
-    async (downloadUrl?: string, title?: string) => {
-      if (!downloadUrl || !title) {
-        return;
+    (e: React.MouseEvent, downloadUrl?: string, title?: string) => {
+      e.stopPropagation();
+      if (downloadUrl && title) {
+        downloadFile(downloadUrl, title);
       }
-
-      // Create a hidden link and click it.
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = title;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
     },
     []
   );
 
+  // Keyboard navigation for the zoomed image
   React.useEffect(() => {
     if (currentImageIndex === null) {
       return;
     }
 
-    // Only handle keyboard events if the image is zoomed.
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight") {
         handleNext();
@@ -218,126 +177,70 @@ function InteractiveImageGrid({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [currentImageIndex, handleNext, handlePrevious]);
 
+  const currentImage = currentImageIndex !== null ? images[currentImageIndex] : null;
+
   return (
-    <Dialog
-      open={currentImageIndex !== null}
-      onOpenChange={(open) => !open && setCurrentImageIndex(null)}
-    >
-      <DialogTrigger asChild>
-        <div className={cn("s-@container", className)}>
-          {images.length === 1 ? (
-            <div className={SIZE_CLASSES[size]}>
-              <ImagePreview
-                image={images[0]}
-                onClick={() => {
+    <>
+      <div className={cn("s-@container", className)}>
+        {images.length === 1 ? (
+          <div className={SIZE_CLASSES[size]}>
+            <ImagePreview
+              image={images[0]}
+              onClick={() => {
+                if (!images[0].isLoading) {
                   setCurrentImageIndex(0);
-                }}
-                onDownload={async (e) => {
-                  e.stopPropagation();
-                  await handleDownload(images[0].downloadUrl, images[0].title);
-                }}
-                onClose={
-                  onClose
-                    ? (e) => {
-                        e.stopPropagation();
-                        onClose();
-                      }
-                    : undefined
                 }
-              />
-            </div>
-          ) : (
-            <div className="s-grid s-grid-cols-2 s-gap-2 @xxs:s-grid-cols-3 @xs:s-grid-cols-4">
-              {images.map((image, idx) => (
-                <ImagePreview
-                  key={idx}
-                  image={image}
-                  onClick={() => {
+              }}
+              onDownload={(e) => handleDownload(e, images[0].downloadUrl, images[0].title)}
+              onClose={
+                onClose
+                  ? (e) => {
+                      e.stopPropagation();
+                      onClose();
+                    }
+                  : undefined
+              }
+            />
+          </div>
+        ) : (
+          <div className="s-grid s-grid-cols-2 s-gap-2 @xxs:s-grid-cols-3 @xs:s-grid-cols-4">
+            {images.map((image, idx) => (
+              <ImagePreview
+                key={idx}
+                image={image}
+                onClick={() => {
+                  if (!image.isLoading) {
                     setCurrentImageIndex(idx);
-                  }}
-                  onDownload={async (e) => {
-                    e.stopPropagation();
-                    await handleDownload(image.downloadUrl, image.title);
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </DialogTrigger>
-      <DialogContent size="xl" className="s-max-w-[90vw] s-overflow-hidden s-p-3">
-        {currentImageIndex !== null && (
-          <div className="s-relative s-flex s-items-center s-justify-center s-gap-2">
-            {/* Previous button */}
-            {images.length > 1 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={ChevronLeftIcon}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePrevious();
+                  }
                 }}
+                onDownload={(e) => handleDownload(e, image.downloadUrl, image.title)}
               />
-            )}
-
-            {/* Image container with overlay buttons */}
-            <div className="s-relative">
-              {images[currentImageIndex].isLoading ? (
-                <ImageLoadingState size="lg" />
-              ) : (
-                <>
-                  <img
-                    src={images[currentImageIndex].imageUrl}
-                    alt={images[currentImageIndex].alt}
-                    className="s-max-h-full s-max-w-full s-rounded-lg s-object-contain"
-                    onLoad={() => setImageLoaded(true)}
-                  />
-                  {/* Close button - top right of image */}
-                  <DialogClose asChild>
-                    <Button
-                      variant="outline"
-                      size="xs"
-                      icon={XMarkIcon}
-                      className="s-absolute s-right-2 s-top-2"
-                    />
-                  </DialogClose>
-                  {/* Download button - bottom right of image */}
-                  {imageLoaded && (
-                    <Button
-                      variant="outline"
-                      size="xs"
-                      icon={ArrowDownOnSquareIcon}
-                      tooltip="Download"
-                      className="s-absolute s-bottom-2 s-right-2"
-                      onClick={async () => {
-                        await handleDownload(
-                          images[currentImageIndex].downloadUrl,
-                          images[currentImageIndex].title
-                        );
-                      }}
-                    />
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Next button */}
-            {images.length > 1 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={ChevronRightIcon}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleNext();
-                }}
-              />
-            )}
+            ))}
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </div>
+      <ImageZoomDialog
+        open={currentImageIndex !== null}
+        onOpenChange={(open) => !open && setCurrentImageIndex(null)}
+        image={{
+          src: currentImage?.imageUrl ?? "",
+          alt: currentImage?.alt,
+          title: currentImage?.title,
+          downloadUrl: currentImage?.downloadUrl,
+          isLoading: currentImage?.isLoading,
+        }}
+        navigation={
+          images.length > 1
+            ? {
+                onPrevious: handlePrevious,
+                onNext: handleNext,
+                hasPrevious: true,
+                hasNext: true,
+              }
+            : undefined
+        }
+      />
+    </>
   );
 }
 

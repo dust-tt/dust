@@ -116,6 +116,8 @@ export { Hoverable } from "./Hoverable";
 export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
 export { Input } from "./Input";
+export type { ImageZoomDialogProps } from "./ImageZoomDialog";
+export { downloadFile, ImageZoomDialog } from "./ImageZoomDialog";
 export { InteractiveImageGrid } from "./InteractiveImageGrid";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";

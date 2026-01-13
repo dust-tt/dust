@@ -1,16 +1,11 @@
 import { cva } from "class-variance-authority";
 import React, { ReactNode, useCallback, useState } from "react";
 
+import { Button, Card, CardProps, Spinner, Tooltip } from "@sparkle/components/";
 import {
-  Button,
-  Card,
-  CardProps,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  Spinner,
-  Tooltip,
-} from "@sparkle/components/";
+  downloadFile,
+  ImageZoomDialog,
+} from "@sparkle/components/ImageZoomDialog";
 import { ArrowDownOnSquareIcon, XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
@@ -186,21 +181,14 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
     ref
   ) => {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [imageLoaded, setImageLoaded] = useState(false);
 
     const handleDownload = useCallback(
-      async (e: React.MouseEvent) => {
+      (e: React.MouseEvent) => {
         e.stopPropagation();
         e.preventDefault();
-        if (!downloadUrl || !title) {
-          return;
+        if (downloadUrl && title) {
+          downloadFile(downloadUrl, title);
         }
-        const link = document.createElement("a");
-        link.href = downloadUrl;
-        link.download = title;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
       },
       [downloadUrl, title]
     );
@@ -305,53 +293,17 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
             </>
           )}
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent
-            size="xl"
-            className="s-max-w-[90vw] s-overflow-hidden s-p-3"
-          >
-            <div className="s-relative s-flex s-items-center s-justify-center">
-              {isLoading ? (
-                <div
-                  className={cn(
-                    "s-mx-auto s-flex s-aspect-square s-w-full s-min-w-[50vh]",
-                    "s-max-w-[80vh] s-items-center s-justify-center",
-                    "s-bg-muted-background dark:s-bg-muted-background-night"
-                  )}
-                >
-                  <Spinner variant="dark" size="lg" />
-                </div>
-              ) : (
-                <>
-                  <img
-                    src={imgSrc}
-                    alt={alt}
-                    className="s-max-h-full s-max-w-full s-rounded-lg s-object-contain"
-                    onLoad={() => setImageLoaded(true)}
-                  />
-                  <DialogClose asChild>
-                    <Button
-                      variant="outline"
-                      size="xs"
-                      icon={XMarkIcon}
-                      className="s-absolute s-right-2 s-top-2"
-                    />
-                  </DialogClose>
-                  {imageLoaded && downloadUrl && (
-                    <Button
-                      variant="outline"
-                      size="xs"
-                      icon={ArrowDownOnSquareIcon}
-                      tooltip="Download"
-                      className="s-absolute s-bottom-2 s-right-2"
-                      onClick={handleDownload}
-                    />
-                  )}
-                </>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+        <ImageZoomDialog
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          image={{
+            src: imgSrc,
+            alt,
+            title,
+            downloadUrl,
+            isLoading,
+          }}
+        />
       </>
     );
   }
