@@ -2,7 +2,7 @@ import { Button, cn } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useMemo, useRef } from "react";
 
-import { isFreePlan } from "@app/lib/plans/plan_codes";
+import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import type { SubscriptionType } from "@app/types";
 
 const SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS = 30;
@@ -20,7 +20,7 @@ export function SubscriptionEndBanner({
   subscription,
 }: SubscriptionEndBannerProps) {
   const endDate = subscription.endDate;
-  const isTrial = isFreePlan(subscription.plan.code);
+  const isTrial = isFreeTrialPhonePlan(subscription.plan.code);
 
   // Capture initial timestamp in a ref to avoid re-computation on re-renders.
   // This is intentionally not reactive - the banner state is stable for the session.
