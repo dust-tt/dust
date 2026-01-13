@@ -26,13 +26,13 @@ import {
 } from "@app/types";
 import { isRichUserMention } from "@app/types/assistant/mentions";
 import type {
+  NotificationCondition,
   NotificationPreferencesDelay,
-  NotificationTrigger,
 } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
+  isNotificationCondition,
   isNotificationPreferencesDelay,
-  isNotificationTrigger,
   makeNotificationPreferencesUserMetadata,
   NOTIFICATION_DELAY_OPTIONS,
 } from "@app/types/notification_preferences";
@@ -97,13 +97,6 @@ const ConversationDetailsSchema = z.object({
 
 type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
 
-type GetConversationDetailsParams = {
-  payload: ConversationUnreadPayloadType;
-} & (
-  | { auth: Authenticator; subscriberId?: never }
-  | { auth?: never; subscriberId: string }
-);
-
 const UserNotificationDelaySchema = z.object({
   delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
 });
@@ -138,7 +131,10 @@ const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay = isDevelopment()
   : "1_hour";
 
 const getConversationDetails = async (
-  params: GetConversationDetailsParams
+  params: { payload: ConversationUnreadPayloadType } & (
+    | { auth: Authenticator; subscriberId?: never }
+    | { auth?: never; subscriberId: string }
+  )
 ): Promise<ConversationDetailsType> => {
   const { payload } = params;
 
@@ -456,15 +452,15 @@ export const conversationUnreadWorkflow = workflow(
   }
 );
 
-const DEFAULT_NOTIFICATION_TRIGGER: NotificationTrigger = "all_messages";
+const DEFAULT_NOTIFICATION_CONDITION: NotificationCondition = "all_messages";
 
 /**
- * Filters participants based on their notification trigger preference.
+ * Filters participants based on their notification condition preference.
  * Returns only participants who should receive notifications.
  * Note: If a user is the only human participant in the conversation, they are
  * always notified regardless of their preference.
  */
-const filterParticipantsByNotifyPreference = async ({
+const filterParticipantsByNotifyCondition = async ({
   participants,
   mentionedUserIds,
   totalParticipantCount,
@@ -486,22 +482,22 @@ const filterParticipantsByNotifyPreference = async ({
   const preferences = await UserMetadataModel.findAll({
     where: {
       userId: { [Op.in]: userModelIds },
-      key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyTrigger,
+      key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
     },
     attributes: ["userId", "value"],
   });
 
-  const preferenceMap = new Map<number, NotificationTrigger>();
+  const preferenceMap = new Map<number, NotificationCondition>();
   for (const pref of preferences) {
-    if (isNotificationTrigger(pref.value)) {
+    if (isNotificationCondition(pref.value)) {
       preferenceMap.set(pref.userId, pref.value);
     }
   }
 
   return participants.filter((participant) => {
-    const notifyTrigger =
-      preferenceMap.get(participant.id) ?? DEFAULT_NOTIFICATION_TRIGGER;
-    switch (notifyTrigger) {
+    const notifyCondition =
+      preferenceMap.get(participant.id) ?? DEFAULT_NOTIFICATION_CONDITION;
+    switch (notifyCondition) {
       case "all_messages":
         return true;
       case "only_mentions":
@@ -552,8 +548,8 @@ export const triggerConversationUnreadNotifications = async (
     },
   });
 
-  // Filter participants based on their notification trigger preference.
-  const participants = await filterParticipantsByNotifyPreference({
+  // Filter participants based on their notification condition preference.
+  const participants = await filterParticipantsByNotifyCondition({
     participants: allParticipants,
     mentionedUserIds: new Set(details.mentionedUserIds),
     totalParticipantCount: totalParticipants.length,

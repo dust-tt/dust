@@ -26,13 +26,13 @@ import { CONVERSATION_UNREAD_TRIGGER_ID } from "@app/lib/notifications/workflows
 import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import type {
+  NotificationCondition,
   NotificationPreferencesDelay,
-  NotificationTrigger,
 } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
+  isNotificationCondition,
   isNotificationPreferencesDelay,
-  isNotificationTrigger,
   makeNotificationPreferencesUserMetadata,
   NOTIFICATION_DELAY_OPTIONS,
 } from "@app/types/notification_preferences";
@@ -48,14 +48,14 @@ const NOTIFICATION_PREFERENCES_DELAY_LABELS: Record<
   daily: "once a day",
 };
 
-const NOTIFICATION_TRIGGER_LABELS: Record<NotificationTrigger, string> = {
+const NOTIFICATION_CONDITION_LABELS: Record<NotificationCondition, string> = {
   all_messages: "for all new messages",
   only_mentions: "only when I'm mentioned",
   never: "never",
 };
 
 const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay = "1_hour";
-const DEFAULT_NOTIFICATION_TRIGGER: NotificationTrigger = "all_messages";
+const DEFAULT_NOTIFICATION_CONDITION: NotificationCondition = "all_messages";
 
 export interface NotificationPreferencesRefProps {
   savePreferences: () => Promise<boolean>;
@@ -84,9 +84,9 @@ export const NotificationPreferences = forwardRef<
     DEFAULT_NOTIFICATION_DELAY
   );
 
-  // Conversation notification trigger
-  const [notifyTrigger, setNotifyTrigger] = useState<NotificationTrigger>(
-    DEFAULT_NOTIFICATION_TRIGGER
+  // Conversation notification condition
+  const [notifyCondition, setNotifyCondition] = useState<NotificationCondition>(
+    DEFAULT_NOTIFICATION_CONDITION
   );
 
   const { novuClient } = useNovuClient();
@@ -95,17 +95,17 @@ export const NotificationPreferences = forwardRef<
   const { metadata: emailDelayMetadata, mutateMetadata: mutateEmailDelay } =
     useUserMetadata(makeNotificationPreferencesUserMetadata("email"));
   const {
-    metadata: notifyTriggerMetadata,
-    mutateMetadata: mutateNotifyTrigger,
-  } = useUserMetadata(CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyTrigger);
+    metadata: notifyConditionMetadata,
+    mutateMetadata: mutateNotifyCondition,
+  } = useUserMetadata(CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition);
 
   // Store original values for reset/dirty checking
   const originalPreferencesRef = useRef<Preference | undefined>();
   const originalEmailDelayRef = useRef<NotificationPreferencesDelay>(
     DEFAULT_NOTIFICATION_DELAY
   );
-  const originalNotifyTriggerRef = useRef<NotificationTrigger>(
-    DEFAULT_NOTIFICATION_TRIGGER
+  const originalNotifyConditionRef = useRef<NotificationCondition>(
+    DEFAULT_NOTIFICATION_CONDITION
   );
 
   // Load email delay from user metadata
@@ -119,16 +119,16 @@ export const NotificationPreferences = forwardRef<
     }
   }, [emailDelayMetadata]);
 
-  // Load notify trigger from user metadata
+  // Load notify condition from user metadata
   useEffect(() => {
-    if (notifyTriggerMetadata?.value) {
-      const trigger = notifyTriggerMetadata.value as NotificationTrigger;
-      if (isNotificationTrigger(trigger)) {
-        setNotifyTrigger(trigger);
-        originalNotifyTriggerRef.current = trigger;
+    if (notifyConditionMetadata?.value) {
+      const condition = notifyConditionMetadata.value as NotificationCondition;
+      if (isNotificationCondition(condition)) {
+        setNotifyCondition(condition);
+        originalNotifyConditionRef.current = condition;
       }
     }
-  }, [notifyTriggerMetadata]);
+  }, [notifyConditionMetadata]);
 
   // Load workflow-specific preferences from Novu
   useEffect(() => {
@@ -183,21 +183,21 @@ export const NotificationPreferences = forwardRef<
             );
           }
 
-          // Save notify trigger if changed
-          if (notifyTrigger !== originalNotifyTriggerRef.current) {
+          // Save notify condition if changed
+          if (notifyCondition !== originalNotifyConditionRef.current) {
             await setUserMetadataFromClient({
-              key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyTrigger,
-              value: notifyTrigger,
+              key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+              value: notifyCondition,
             });
-            await mutateNotifyTrigger((current) =>
-              current ? { ...current, value: notifyTrigger } : current
+            await mutateNotifyCondition((current) =>
+              current ? { ...current, value: notifyCondition } : current
             );
           }
 
           // Update original references on successful save
           originalPreferencesRef.current = workflowPreferences;
           originalEmailDelayRef.current = emailDelay;
-          originalNotifyTriggerRef.current = notifyTrigger;
+          originalNotifyConditionRef.current = notifyCondition;
           return true;
         } catch (error) {
           sendNotification({
@@ -229,7 +229,7 @@ export const NotificationPreferences = forwardRef<
         if (emailDelay !== originalEmailDelayRef.current) {
           return true;
         }
-        if (notifyTrigger !== originalNotifyTriggerRef.current) {
+        if (notifyCondition !== originalNotifyConditionRef.current) {
           return true;
         }
 
@@ -240,15 +240,15 @@ export const NotificationPreferences = forwardRef<
           setWorkflowPreferences(cloneDeep(originalPreferencesRef.current));
         }
         setEmailDelay(originalEmailDelayRef.current);
-        setNotifyTrigger(originalNotifyTriggerRef.current);
+        setNotifyCondition(originalNotifyConditionRef.current);
       },
     }),
     [
       workflowPreferences,
       emailDelay,
-      notifyTrigger,
+      notifyCondition,
       mutateEmailDelay,
-      mutateNotifyTrigger,
+      mutateNotifyCondition,
       novuClient,
       sendNotification,
     ]
@@ -256,7 +256,7 @@ export const NotificationPreferences = forwardRef<
 
   useEffect(() => {
     onChanged();
-  }, [workflowPreferences, emailDelay, notifyTrigger, onChanged]);
+  }, [workflowPreferences, emailDelay, notifyCondition, onChanged]);
 
   const updateChannelPreference = (
     channel: keyof ChannelPreference,
@@ -302,25 +302,25 @@ export const NotificationPreferences = forwardRef<
               variant="outline"
               size="sm"
               isSelect
-              label={NOTIFICATION_TRIGGER_LABELS[notifyTrigger]}
+              label={NOTIFICATION_CONDITION_LABELS[notifyCondition]}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem
-              label={NOTIFICATION_TRIGGER_LABELS["all_messages"]}
-              onClick={() => setNotifyTrigger("all_messages")}
+              label={NOTIFICATION_CONDITION_LABELS["all_messages"]}
+              onClick={() => setNotifyCondition("all_messages")}
             />
             <DropdownMenuItem
-              label={NOTIFICATION_TRIGGER_LABELS["only_mentions"]}
-              onClick={() => setNotifyTrigger("only_mentions")}
+              label={NOTIFICATION_CONDITION_LABELS["only_mentions"]}
+              onClick={() => setNotifyCondition("only_mentions")}
             />
             <DropdownMenuItem
-              label={NOTIFICATION_TRIGGER_LABELS["never"]}
-              onClick={() => setNotifyTrigger("never")}
+              label={NOTIFICATION_CONDITION_LABELS["never"]}
+              onClick={() => setNotifyCondition("never")}
             />
           </DropdownMenuContent>
         </DropdownMenu>
-        {notifyTrigger === "only_mentions" && (
+        {notifyCondition === "only_mentions" && (
           <Tooltip
             label="You'll still be notified if you're the only participant in a conversation."
             trigger={
@@ -341,7 +341,7 @@ export const NotificationPreferences = forwardRef<
               <Checkbox
                 id="in_app-preference"
                 checked={isInAppEnabled}
-                disabled={notifyTrigger === "never"}
+                disabled={notifyCondition === "never"}
                 onCheckedChange={(checked) =>
                   updateChannelPreference("in_app", checked === true)
                 }
@@ -349,7 +349,7 @@ export const NotificationPreferences = forwardRef<
               <Label
                 htmlFor="in_app-preference"
                 className={
-                  notifyTrigger === "never"
+                  notifyCondition === "never"
                     ? "text-muted-foreground dark:text-muted-foreground-night"
                     : "cursor-pointer"
                 }
@@ -363,7 +363,7 @@ export const NotificationPreferences = forwardRef<
               <Checkbox
                 id="email-preference"
                 checked={isEmailEnabled}
-                disabled={notifyTrigger === "never"}
+                disabled={notifyCondition === "never"}
                 onCheckedChange={(checked) =>
                   updateChannelPreference("email", checked === true)
                 }
@@ -371,7 +371,7 @@ export const NotificationPreferences = forwardRef<
               <Label
                 htmlFor="email-preference"
                 className={
-                  notifyTrigger === "never"
+                  notifyCondition === "never"
                     ? "text-muted-foreground dark:text-muted-foreground-night"
                     : "cursor-pointer"
                 }

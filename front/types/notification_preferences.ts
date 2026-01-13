@@ -30,23 +30,24 @@ export function makeNotificationPreferencesUserMetadata(
 }
 
 /**
- * Notification trigger options (determines when to send notifications).
+ * Notification condition options (determines when to send notifications).
  * Includes "never" to allow disabling notifications entirely.
  */
-export const NOTIFICATION_TRIGGER_OPTIONS = [
+export const NOTIFICATION_CONDITION_OPTIONS = [
   "all_messages",
   "only_mentions",
   "never",
 ] as const;
 
-export type NotificationTrigger = (typeof NOTIFICATION_TRIGGER_OPTIONS)[number];
+export type NotificationCondition =
+  (typeof NOTIFICATION_CONDITION_OPTIONS)[number];
 
-export const isNotificationTrigger = (
+export const isNotificationCondition = (
   value: unknown
-): value is NotificationTrigger => {
+): value is NotificationCondition => {
   return (
     typeof value === "string" &&
-    (NOTIFICATION_TRIGGER_OPTIONS as readonly string[]).includes(value)
+    (NOTIFICATION_CONDITION_OPTIONS as readonly string[]).includes(value)
   );
 };
 
@@ -54,5 +55,5 @@ export const isNotificationTrigger = (
  * User metadata keys for conversation notification preferences.
  */
 export const CONVERSATION_NOTIFICATION_METADATA_KEYS = {
-  notifyTrigger: "conversation_notify_trigger",
+  notifyCondition: "conversation_notify_condition",
 } as const;
