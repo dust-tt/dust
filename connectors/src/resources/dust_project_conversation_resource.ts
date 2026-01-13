@@ -42,7 +42,7 @@ export class DustProjectConversationResource extends BaseResource<DustProjectCon
     conversationId: string;
     projectId: string;
     lastMessageAt: Date;
-    transaction: Transaction;
+    transaction?: Transaction;
   }): Promise<DustProjectConversationResource> {
     const model = await DustProjectConversationModel.create(
       {

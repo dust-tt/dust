@@ -75,6 +75,7 @@ import {
   GetFeedbacksResponseSchema,
   GetMCPServerViewsResponseSchema,
   GetMentionSuggestionsResponseBodySchema,
+  GetSpaceConversationsForDataSourceResponseSchema,
   GetSpacesResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
@@ -87,7 +88,6 @@ import {
   PostContentFragmentResponseSchema,
   PostMCPResultsResponseSchema,
   PostMessageFeedbackResponseSchema,
-  PostRenderConversationForDataSourceResponseSchema,
   PostUserMessageResponseSchema,
   PostWorkspaceSearchResponseBodySchema,
   RegisterMCPResponseSchema,
@@ -1228,26 +1228,26 @@ export class DustAPI {
     return new Ok(r.value.feedbacks);
   }
 
-  async renderConversationForDataSource({
-    conversationId,
-    excludeActions,
-    excludeImages,
+  async getSpaceConversationsForDataSource({
+    spaceId,
+    updatedSince,
   }: {
-    conversationId: string;
-    excludeActions?: boolean;
-    excludeImages?: boolean;
+    spaceId: string;
+    updatedSince?: number | null;
   }) {
+    const query = new URLSearchParams();
+    if (updatedSince !== undefined && updatedSince !== null) {
+      query.append("updatedSince", String(updatedSince));
+    }
+
     const res = await this.request({
-      method: "POST",
-      path: `conversations/${conversationId}/render_for_data_source`,
-      body: {
-        ...(excludeActions !== undefined ? { excludeActions } : {}),
-        ...(excludeImages !== undefined ? { excludeImages } : {}),
-      },
+      method: "GET",
+      path: `spaces/${spaceId}/conversations`,
+      query,
     });
 
     return this._resultFromResponse(
-      PostRenderConversationForDataSourceResponseSchema,
+      GetSpaceConversationsForDataSourceResponseSchema,
       res
     );
   }

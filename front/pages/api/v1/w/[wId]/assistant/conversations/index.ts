@@ -21,6 +21,7 @@ import {
 } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
 import {
   hasReachedProgrammaticUsageLimits,
   isProgrammaticUsage,
@@ -29,6 +30,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -481,6 +483,12 @@ async function handler(
       res.status(200).json({
         conversation: {
           ...conversation,
+          url: getConversationRoute(
+            conversation.owner.sId,
+            conversation.sId,
+            undefined,
+            config.getClientFacingUrl()
+          ),
           requestedGroupIds: [], // Remove once all old SDKs users are updated
         },
         message: newMessage ?? undefined,

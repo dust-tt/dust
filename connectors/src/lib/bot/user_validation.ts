@@ -10,7 +10,7 @@ async function getActiveMemberEmails(
   const ds = dataSourceConfigFromConnector(connector);
 
   // List the emails of all active members in the workspace.
-  const dustAPI = getDustAPI(ds);
+  const dustAPI = getDustAPI(ds, { useInternalAPI: false });
 
   const activeMemberEmailsRes =
     await dustAPI.getActiveMemberEmailsInWorkspace();

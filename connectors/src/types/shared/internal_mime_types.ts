@@ -146,6 +146,10 @@ export const INTERNAL_MIME_TYPES = {
     provider: "gong",
     resourceTypes: ["TRANSCRIPT", "TRANSCRIPT_FOLDER"],
   }),
+  DUST_PROJECT: generateMimeTypes({
+    provider: "dust_project",
+    resourceTypes: ["CONVERSATION_FOLDER", "CONVERSATION_MESSAGES"],
+  }),
 };
 
 export type BigQueryMimeType =
@@ -184,6 +188,9 @@ export type ZendeskMimeType =
 export type SalesforceMimeType =
   (typeof INTERNAL_MIME_TYPES.SALESFORCE)[keyof typeof INTERNAL_MIME_TYPES.SALESFORCE];
 
+export type DustProjectMimeType =
+  (typeof INTERNAL_MIME_TYPES.DUST_PROJECT)[keyof typeof INTERNAL_MIME_TYPES.DUST_PROJECT];
+
 export type DustMimeType =
   | BigQueryMimeType
   | ConfluenceMimeType
@@ -196,4 +203,5 @@ export type DustMimeType =
   | SnowflakeMimeType
   | WebcrawlerMimeType
   | ZendeskMimeType
-  | SalesforceMimeType;
+  | SalesforceMimeType
+  | DustProjectMimeType;
