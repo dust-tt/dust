@@ -1,14 +1,17 @@
 import {
-  ArrowRightIcon,
   Avatar,
   Button,
   CheckIcon,
+  Collapsible,
+  CollapsibleContent,
   Counter,
+  Icon,
+  InboxIcon,
   ListGroup,
   ListItem,
   ListItemSection,
 } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { getAgentById } from "../data/agents";
 import type { Agent, Conversation, Space, User } from "../data/types";
@@ -104,6 +107,23 @@ export function InboxView({
   onConversationClick,
   onSpaceClick,
 }: InboxViewProps) {
+  // Track which spaces are collapsed (marked as read)
+  const [collapsedSpaces, setCollapsedSpaces] = useState<Set<string>>(
+    new Set()
+  );
+
+  const toggleSpaceCollapse = (spaceId: string) => {
+    setCollapsedSpaces((prev) => {
+      const next = new Set(prev);
+      if (next.has(spaceId)) {
+        next.delete(spaceId);
+      } else {
+        next.add(spaceId);
+      }
+      return next;
+    });
+  };
+
   // Filter conversations that have a spaceId and are "unread" (for demo, use recent conversations)
   const unreadConversations = useMemo(() => {
     const now = new Date();
@@ -152,142 +172,177 @@ export function InboxView({
     return spaces.filter((space) => conversationsBySpace.has(space.id));
   }, [spaces, conversationsBySpace]);
 
+  // Filter out collapsed spaces from display
+  const visibleSpaces = useMemo(() => {
+    return spacesWithUnread.filter((space) => !collapsedSpaces.has(space.id));
+  }, [spacesWithUnread, collapsedSpaces]);
+
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background s-px-6">
       <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto">
-        <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-py-4">
-          <h2 className="s-mb-4 s-mt-6 s-text-2xl s-font-semibold s-text-foreground dark:s-text-foreground-night">
-            Inbox
-          </h2>
-          {spacesWithUnread.length > 0 ? (
-            <div className="s-flex s-flex-col">
-              {spacesWithUnread.map((space) => {
-                const spaceConversations =
-                  conversationsBySpace.get(space.id) || [];
-                if (spaceConversations.length === 0) return null;
+        <div
+          className={`s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-py-8 ${
+            visibleSpaces.length === 0 ? "s-flex-1" : ""
+          }`}
+        >
+          {visibleSpaces.length > 0 ? (
+            <>
+              <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+                Inbox
+              </h2>
+              <div className="s-flex s-flex-col">
+                {visibleSpaces.map((space) => {
+                  const spaceConversations =
+                    conversationsBySpace.get(space.id) || [];
+                  if (spaceConversations.length === 0) return null;
 
-                return (
-                  <div key={space.id} className="s-flex s-flex-col">
-                    <div className="s-flex s-flex-col">
-                      <ListItemSection
-                        size="sm"
-                        action={
-                          <Button
-                            label="Mark as read"
-                            icon={CheckIcon}
-                            size="sm"
-                            variant="ghost-secondary"
-                          />
+                  const isCollapsed = collapsedSpaces.has(space.id);
+
+                  return (
+                    <Collapsible
+                      key={space.id}
+                      open={!isCollapsed}
+                      onOpenChange={(open) => {
+                        if (!open) {
+                          setCollapsedSpaces((prev) =>
+                            new Set(prev).add(space.id)
+                          );
+                        } else {
+                          setCollapsedSpaces((prev) => {
+                            const next = new Set(prev);
+                            next.delete(space.id);
+                            return next;
+                          });
                         }
-                      >
-                        <Button
-                          size="sm"
-                          variant="ghost-secondary"
-                          label={`Activity in "${space.name}"`}
-                          onClick={() => onSpaceClick?.(space)}
-                        />
-                        {/* Activity in{" "}
-                        <span className="s-italic">"{space.name}"</span> */}
-                        {/* <Button
-                          size="xmini"
-                          variant="ghost-secondary"
-                          icon={ArrowRightIcon}
-                          className="s-ml-2"
-                        /> */}
-                      </ListItemSection>
-                      <ListGroup>
-                        {spaceConversations.map((conversation) => {
-                          const participants = getRandomParticipants(
-                            conversation,
-                            users,
-                            agents
-                          );
-                          const creator = getRandomCreator(conversation, users);
-                          const avatarProps =
-                            participantsToAvatarProps(participants);
+                      }}
+                      className="s-flex s-flex-col"
+                    >
+                      <CollapsibleContent>
+                        <div className="s-flex s-flex-col">
+                          <ListItemSection
+                            size="sm"
+                            action={
+                              <Button
+                                label="Mark as read"
+                                icon={CheckIcon}
+                                size="sm"
+                                variant="ghost-secondary"
+                                onClick={() => toggleSpaceCollapse(space.id)}
+                              />
+                            }
+                          >
+                            <Button
+                              size="sm"
+                              variant="ghost-secondary"
+                              label={`Activity in "${space.name}"`}
+                              onClick={() => onSpaceClick?.(space)}
+                            />
+                          </ListItemSection>
+                          <ListGroup>
+                            {spaceConversations.map((conversation) => {
+                              const participants = getRandomParticipants(
+                                conversation,
+                                users,
+                                agents
+                              );
+                              const creator = getRandomCreator(
+                                conversation,
+                                users
+                              );
+                              const avatarProps =
+                                participantsToAvatarProps(participants);
 
-                          // Format time from updatedAt
-                          const time = conversation.updatedAt
-                            .toLocaleTimeString("en-US", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: false,
-                            })
-                            .replace("24:", "00:");
+                              // Format time from updatedAt
+                              const time = conversation.updatedAt
+                                .toLocaleTimeString("en-US", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: false,
+                                })
+                                .replace("24:", "00:");
 
-                          // Generate random message count (1-4)
-                          const messageCount = Math.floor(
-                            Math.random() * 4 + 1
-                          );
+                              // Generate random message count (1-4)
+                              const messageCount = Math.floor(
+                                Math.random() * 4 + 1
+                              );
 
-                          return (
-                            <ListItem
-                              key={conversation.id}
-                              onClick={() => {
-                                onConversationClick?.(conversation);
-                              }}
-                              groupName="conversation-item"
-                            >
-                              {creator ? (
-                                <Avatar
-                                  name={creator.fullName}
-                                  visual={creator.portrait}
-                                  size="sm"
-                                  isRounded={true}
-                                />
-                              ) : null}
-                              <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-1">
-                                <div className="s-heading-sm s-flex s-w-full s-items-center s-justify-between s-gap-2 s-text-foreground dark:s-text-foreground-night">
-                                  <div className="s-flex s-gap-2">
-                                    {creator && creator.fullName}
-                                    <span className="s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                      {conversation.title}
-                                    </span>
-                                  </div>
-                                  <div className="s-flex s-items-center s-gap-2 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                    <span className="s-font-normal">
-                                      {time}
-                                    </span>
-                                    <Counter
-                                      value={messageCount}
-                                      size="xs"
-                                      variant="highlight"
+                              return (
+                                <ListItem
+                                  key={conversation.id}
+                                  onClick={() => {
+                                    onConversationClick?.(conversation);
+                                  }}
+                                  groupName="conversation-item"
+                                >
+                                  {creator ? (
+                                    <Avatar
+                                      name={creator.fullName}
+                                      visual={creator.portrait}
+                                      size="sm"
+                                      isRounded={true}
                                     />
+                                  ) : null}
+                                  <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-1">
+                                    <div className="s-heading-sm s-flex s-w-full s-items-center s-justify-between s-gap-2 s-text-foreground dark:s-text-foreground-night">
+                                      <div className="s-flex s-gap-2">
+                                        {creator && creator.fullName}
+                                        <span className="s-text-muted-foreground dark:s-text-muted-foreground-night">
+                                          {conversation.title}
+                                        </span>
+                                      </div>
+                                      <div className="s-flex s-items-center s-gap-2 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                                        <span className="s-font-normal">
+                                          {time}
+                                        </span>
+                                        <Counter
+                                          value={messageCount}
+                                          size="xs"
+                                          variant="highlight"
+                                        />
+                                      </div>
+                                    </div>
+                                    {conversation.description && (
+                                      <div className="s-line-clamp-2 s-text-sm s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
+                                        {conversation.description}
+                                      </div>
+                                    )}
+                                    <div className="s-heading-xs s-flex s-items-center s-gap-2 s-pt-2 s-text-muted-foreground dark:s-text-muted-foreground-night">
+                                      <Avatar.Stack
+                                        avatars={avatarProps}
+                                        nbVisibleItems={3}
+                                        onTop="first"
+                                        size="xs"
+                                      />
+                                      {Math.floor(Math.random() * 8) + 1}{" "}
+                                      replies.
+                                      <span className="s-font-normal">
+                                        Last from @seb 5 minutes ago.
+                                      </span>
+                                    </div>
                                   </div>
-                                </div>
-                                {conversation.description && (
-                                  <div className="s-line-clamp-2 s-text-sm s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                    {conversation.description}
-                                  </div>
-                                )}
-                                <div className="s-heading-xs s-flex s-items-center s-gap-2 s-pt-2 s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                  <Avatar.Stack
-                                    avatars={avatarProps}
-                                    nbVisibleItems={3}
-                                    onTop="first"
-                                    size="xs"
-                                  />
-                                  {Math.floor(Math.random() * 8) + 1} replies.
-                                  <span className="s-font-normal">
-                                    Last from @seb 5 minutes ago.
-                                  </span>
-                                </div>
-                              </div>
-                            </ListItem>
-                          );
-                        })}
-                      </ListGroup>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                                </ListItem>
+                              );
+                            })}
+                          </ListGroup>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })}
+              </div>
+            </>
           ) : (
-            <div className="s-flex s-items-center s-justify-center s-py-12">
-              <p className="s-text-muted-foreground dark:s-text-muted-foreground-night">
-                No unread messages
-              </p>
-            </div>
+            <>
+              <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-gap-2 s-text-foreground dark:s-text-foreground-night">
+                <Icon size="md" visual={InboxIcon} />
+                <h2 className="s-heading-2xl">Inbox</h2>
+                <p className="s-text-center s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  You're all caught up!
+                  <br />
+                  Nothing new under the sun.
+                </p>
+              </div>
+            </>
           )}
         </div>
       </div>

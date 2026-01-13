@@ -94,12 +94,12 @@ export function ListGroup({ children, className }: ListGroupProps) {
 }
 
 const listItemSectionVariants = cva(
-  "s-pb-2 s-font-semibold s-tracking-wide s-text-muted-foreground dark:s-text-muted-foreground-night",
+  "s-pb-2 s-pt-4 s-font-semibold s-tracking-wide s-text-muted-foreground dark:s-text-muted-foreground-night",
   {
     variants: {
       size: {
-        xs: "s-text-xs s-uppercase s-pt-6",
-        sm: "s-text-sm s-pt-5",
+        xs: "s-text-xs s-uppercase",
+        sm: "s-text-sm",
       },
     },
     defaultVariants: {
