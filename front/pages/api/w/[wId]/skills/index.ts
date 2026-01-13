@@ -5,12 +5,14 @@ import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { getSkillIconSuggestion } from "@app/lib/api/skill/suggestions";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder } from "@app/types";
@@ -264,6 +266,24 @@ async function handler(
         });
       }
 
+      // Generate icon suggestion if not provided.
+      let icon = body.icon;
+      if (!icon) {
+        const iconResult = await getSkillIconSuggestion(auth, {
+          name,
+          instructions: body.instructions,
+          agentFacingDescription: body.agentFacingDescription,
+        });
+        if (iconResult.isOk()) {
+          icon = iconResult.value;
+        } else {
+          logger.warn(
+            { error: iconResult.error },
+            "Failed to generate icon suggestion for skill"
+          );
+        }
+      }
+
       const skillResource = await SkillResource.makeNew(
         auth,
         {
@@ -275,6 +295,7 @@ async function handler(
           editedBy: user.id,
           requestedSpaceIds,
           extendedSkillId: body.extendedSkillId,
+          icon,
         },
         {
           mcpServerViews,

@@ -1,14 +1,17 @@
+import type { ActionIcons } from "@dust-tt/sparkle";
+
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelConversationTypeMultiActions, Result } from "@app/types";
 import { Err, getLargeWhitelistedModel, Ok } from "@app/types";
 
-const FUNCTION_NAME = "send_suggestion";
+const DESCRIPTION_FUNCTION_NAME = "send_suggestion";
+const ICON_FUNCTION_NAME = "send_icon_suggestion";
 
-const specifications: AgentActionSpecification[] = [
+const descriptionSpecifications: AgentActionSpecification[] = [
   {
-    name: FUNCTION_NAME,
+    name: DESCRIPTION_FUNCTION_NAME,
     description: "Send a suggestion of description for the skill",
     inputSchema: {
       type: "object",
@@ -31,7 +34,7 @@ export interface SkillDescriptionSuggestionInputs {
   tools: { name: string; description: string }[];
 }
 
-function getConversationContext(
+function getDescriptionConversationContext(
   inputs: SkillDescriptionSuggestionInputs
 ): ModelConversationTypeMultiActions {
   const parts: string[] = [];
@@ -80,21 +83,21 @@ export async function getSkillDescriptionSuggestion(
   const res = await runMultiActionsAgent(
     auth,
     {
-      functionCall: FUNCTION_NAME,
+      functionCall: DESCRIPTION_FUNCTION_NAME,
       modelId: model.modelId,
       providerId: model.providerId,
       temperature: 0.5,
       useCache: false,
     },
     {
-      conversation: getConversationContext(inputs),
+      conversation: getDescriptionConversationContext(inputs),
       prompt:
         "The user is creating a skill (reusable capability) for an AI assistant. " +
         "Based on the provided purpose, instructions, and available tools, " +
         "suggest a short user-facing description of the skill. " +
         "Focus on what the skill does for the user.",
-      specifications,
-      forceToolCall: FUNCTION_NAME,
+      specifications: descriptionSpecifications,
+      forceToolCall: DESCRIPTION_FUNCTION_NAME,
     },
     {
       context: {
@@ -118,4 +121,193 @@ export async function getSkillDescriptionSuggestion(
   }
 
   return new Err(new Error("No suggestion found"));
+}
+
+// Curated list of icons suitable for skills, with semantic descriptions.
+const SKILL_ICON_OPTIONS = [
+  { name: "ActionAtomIcon", description: "Science, research, deep analysis" },
+  {
+    name: "ActionBookOpenIcon",
+    description: "Knowledge, learning, documentation",
+  },
+  { name: "ActionBrainIcon", description: "Thinking, AI, intelligence" },
+  { name: "ActionBriefcaseIcon", description: "Work, business, professional" },
+  { name: "ActionCalculatorIcon", description: "Math, calculations, numbers" },
+  { name: "ActionCalendarIcon", description: "Scheduling, events, planning" },
+  {
+    name: "ActionCheckCircleIcon",
+    description: "Tasks, completion, validation",
+  },
+  { name: "ActionClipboardIcon", description: "Notes, forms, checklists" },
+  {
+    name: "ActionCodeBlockIcon",
+    description: "Coding, programming, development",
+  },
+  { name: "ActionCommunityIcon", description: "People, team, collaboration" },
+  {
+    name: "ActionCustomerServiceIcon",
+    description: "Support, help, assistance",
+  },
+  { name: "ActionDashboardIcon", description: "Analytics, overview, metrics" },
+  { name: "ActionDatabaseIcon", description: "Data, storage, information" },
+  { name: "ActionDocumentTextIcon", description: "Documents, text, writing" },
+  {
+    name: "ActionEmotionLaughIcon",
+    description: "Fun, creative, entertainment",
+  },
+  { name: "ActionFilterIcon", description: "Filtering, sorting, organizing" },
+  { name: "ActionFrameIcon", description: "Structure, layout, design" },
+  {
+    name: "ActionGitBranchIcon",
+    description: "Version control, branches, code",
+  },
+  { name: "ActionGlobeAltIcon", description: "Web, international, global" },
+  {
+    name: "ActionGraduationCapIcon",
+    description: "Education, training, learning",
+  },
+  { name: "ActionImageIcon", description: "Images, visuals, graphics" },
+  { name: "ActionLightbulbIcon", description: "Ideas, insights, suggestions" },
+  { name: "ActionListCheckIcon", description: "Todo lists, tasks, workflows" },
+  { name: "ActionLockIcon", description: "Security, privacy, protection" },
+  {
+    name: "ActionMagnifyingGlassIcon",
+    description: "Search, discovery, investigation",
+  },
+  { name: "ActionMailIcon", description: "Email, messaging, communication" },
+  {
+    name: "ActionMegaphoneIcon",
+    description: "Announcements, marketing, outreach",
+  },
+  { name: "ActionNoiseIcon", description: "Audio, sound, voice" },
+  { name: "ActionPieChartIcon", description: "Charts, reports, visualization" },
+  { name: "ActionRobotIcon", description: "Automation, bots, AI agents" },
+  { name: "ActionRocketIcon", description: "Launch, speed, growth" },
+  { name: "ActionScanIcon", description: "Scanning, reading, extraction" },
+  { name: "ActionServerIcon", description: "Infrastructure, systems, backend" },
+  { name: "ActionSlideshowIcon", description: "Presentations, slides, demos" },
+  { name: "ActionSpeakIcon", description: "Speech, conversation, dialogue" },
+  { name: "ActionTableIcon", description: "Tables, spreadsheets, data grids" },
+  { name: "ActionTimeIcon", description: "Time, scheduling, deadlines" },
+  {
+    name: "ActionTranslateIcon",
+    description: "Translation, languages, localization",
+  },
+  { name: "ActionUserGroupIcon", description: "Team, groups, collaboration" },
+  { name: "ToolsIcon", description: "Tools, utilities, configuration" },
+] as const satisfies { name: ActionIcons; description: string }[];
+
+const iconSpecifications: AgentActionSpecification[] = [
+  {
+    name: ICON_FUNCTION_NAME,
+    description: "Select the most appropriate icon for the skill",
+    inputSchema: {
+      type: "object",
+      properties: {
+        icon: {
+          type: "string",
+          description:
+            "The name of the icon that best represents the skill. " +
+            "Must be one of the available icon names.",
+          enum: SKILL_ICON_OPTIONS.map((i) => i.name),
+        },
+      },
+      required: ["icon"],
+    },
+  },
+];
+
+export interface SkillIconSuggestionInputs {
+  name: string;
+  instructions: string;
+  agentFacingDescription: string;
+}
+
+function getIconConversationContext(
+  inputs: SkillIconSuggestionInputs
+): ModelConversationTypeMultiActions {
+  const parts: string[] = [];
+
+  parts.push(`## Skill name\n\n${inputs.name}`);
+
+  if (inputs.agentFacingDescription) {
+    parts.push(
+      `## Skill purpose (when to use)\n\n${inputs.agentFacingDescription}`
+    );
+  }
+
+  if (inputs.instructions) {
+    parts.push(`## Skill instructions (how to use)\n\n${inputs.instructions}`);
+  }
+
+  const iconList = SKILL_ICON_OPTIONS.map(
+    (i) => `- **${i.name}**: ${i.description}`
+  ).join("\n");
+  parts.push(`## Available icons\n\n${iconList}`);
+
+  return {
+    messages: [
+      {
+        role: "user",
+        content: [{ type: "text", text: parts.join("\n\n") }],
+        name: "",
+      },
+    ],
+  };
+}
+
+export async function getSkillIconSuggestion(
+  auth: Authenticator,
+  inputs: SkillIconSuggestionInputs
+): Promise<Result<string, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  const model = getLargeWhitelistedModel(owner);
+
+  if (!model) {
+    return new Err(
+      new Error("No whitelisted models were found for the workspace.")
+    );
+  }
+
+  const res = await runMultiActionsAgent(
+    auth,
+    {
+      functionCall: ICON_FUNCTION_NAME,
+      modelId: model.modelId,
+      providerId: model.providerId,
+      temperature: 0.2,
+      useCache: false,
+    },
+    {
+      conversation: getIconConversationContext(inputs),
+      prompt:
+        "The user is creating a skill (reusable capability) for an AI assistant. " +
+        "Based on the skill name, purpose, and instructions, " +
+        "select the most appropriate icon from the available options. " +
+        "Choose the icon that best represents what this skill does.",
+      specifications: iconSpecifications,
+      forceToolCall: ICON_FUNCTION_NAME,
+    },
+    {
+      context: {
+        operationType: "skill_builder_icon_suggestion",
+        userId: auth.user()?.sId,
+        workspaceId: owner.sId,
+      },
+    }
+  );
+
+  if (res.isErr()) {
+    return new Err(res.error);
+  }
+
+  if (res.value.actions?.[0]?.arguments?.icon) {
+    const { icon } = res.value.actions[0].arguments;
+
+    if (isString(icon) && SKILL_ICON_OPTIONS.some((i) => i.name === icon)) {
+      return new Ok(icon);
+    }
+  }
+
+  return new Err(new Error("No icon suggestion found"));
 }

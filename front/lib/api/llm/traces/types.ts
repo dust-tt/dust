@@ -23,6 +23,7 @@ interface LLMTraceContextBase {
     | "process_data_sources"
     | "process_schema_generator"
     | "skill_builder_description_suggestion"
+    | "skill_builder_icon_suggestion"
     | "skills_similarity_checker"
     | "trigger_cron_timezone_generator"
     | "trigger_webhook_filter_generator"
