@@ -1,14 +1,17 @@
 import { cva } from "class-variance-authority";
-import React, { ReactNode } from "react";
+import React, { ReactNode, useCallback, useState } from "react";
 
 import {
   Button,
   Card,
   CardProps,
+  Dialog,
+  DialogClose,
+  DialogContent,
   Spinner,
   Tooltip,
 } from "@sparkle/components/";
-import { XMarkIcon } from "@sparkle/icons/app";
+import { ArrowDownOnSquareIcon, XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 type CitationProps = CardProps & {
@@ -29,22 +32,31 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
     },
     ref
   ) => {
-    const hasDescription = React.useMemo(() => {
+    const { hasDescription, hasImage } = React.useMemo(() => {
       const childrenArray = React.Children.toArray(children);
-      return childrenArray.some(
-        (child) =>
-          React.isValidElement(child) && child.type === CitationDescription
-      );
+      return {
+        hasDescription: childrenArray.some(
+          (child) =>
+            React.isValidElement(child) && child.type === CitationDescription
+        ),
+        hasImage: childrenArray.some(
+          (child) =>
+            React.isValidElement(child) && child.type === CitationImage
+        ),
+      };
     }, [children]);
 
     // IMPORTANT: The order of elements is crucial for event handling.
     // The CitationDescription must always come after other elements to ensure
     // proper event propagation (especially for the close button's click events).
     // If auto-inserting a description, it must be appended after children.
+    // Skip auto-insertion for CitationImage children since they're self-contained.
     const contentWithDescription = (
       <>
         {children}
-        {!hasDescription && <CitationDescription>&nbsp;</CitationDescription>}
+        {!hasDescription && !hasImage && (
+          <CitationDescription>&nbsp;</CitationDescription>
+        )}
       </>
     );
     const cardButton = (
@@ -158,40 +170,187 @@ const CitationClose = React.forwardRef<HTMLButtonElement, CitationCloseProps>(
 
 CitationClose.displayName = "CitationClose";
 
-interface CitationImageProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CitationImageProps {
   imgSrc: string;
+  alt?: string;
+  title?: string;
+  downloadUrl?: string;
+  isLoading?: boolean;
+  onClose?: () => void;
+  className?: string;
 }
 
 const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
-  ({ imgSrc, className, ...props }, ref) => {
+  (
+    { imgSrc, alt = "", title = "", downloadUrl, isLoading, onClose, className },
+    ref
+  ) => {
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [imageLoaded, setImageLoaded] = useState(false);
+
+    const handleDownload = useCallback(
+      async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!downloadUrl || !title) {
+          return;
+        }
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = title;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      },
+      [downloadUrl, title]
+    );
+
+    const handleClose = useCallback(
+      (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onClose?.();
+      },
+      [onClose]
+    );
+
+    const handleImageClick = useCallback(
+      (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!isLoading) {
+          setIsDialogOpen(true);
+        }
+      },
+      [isLoading]
+    );
+
     return (
-      <div
-        ref={ref}
-        className={cn(
-          "s-absolute s-inset-0",
-          "s-bg-cover s-bg-center",
-          "s-rounded-xl",
-          "s-overflow-hidden",
-          "[mask-image:radial-gradient(white,black)]",
-          className
-        )}
-        style={{
-          backgroundImage: `url(${imgSrc})`,
-        }}
-        {...props}
-      >
+      <>
         <div
+          ref={ref}
+          onClick={handleImageClick}
           className={cn(
+            "s-group/citation-image",
             "s-absolute s-inset-0",
-            "s-z-0 s-h-full s-w-full",
-            "s-bg-primary-100/80 dark:s-bg-primary-100-night/80",
-            "s-backdrop-blur-sm",
-            "s-transition s-duration-200",
-            "group-hover:s-bg-primary-200/70 group-hover:s-backdrop-blur-none dark:group-hover:s-bg-primary-200-night/70",
-            "group-active:s-bg-primary-100/60 dark:group-active:s-bg-primary-100-night/60"
+            "s-cursor-pointer s-overflow-hidden s-rounded-xl",
+            className
           )}
-        />
-      </div>
+        >
+          {isLoading ? (
+            <div
+              className={cn(
+                "s-flex s-h-full s-w-full s-items-center s-justify-center",
+                "s-bg-muted-background dark:s-bg-muted-background-night"
+              )}
+            >
+              <Spinner variant="dark" size="md" />
+            </div>
+          ) : (
+            <>
+              <img
+                src={imgSrc}
+                alt={alt}
+                className="s-h-full s-w-full s-object-cover"
+              />
+              {/* Blur overlay with title - shown on hover */}
+              <div
+                className={cn(
+                  "s-absolute s-inset-0 s-z-10",
+                  "s-flex s-items-center s-justify-center",
+                  "s-bg-primary-100/80 dark:s-bg-primary-100-night/80",
+                  "s-backdrop-blur-sm",
+                  "s-opacity-0 s-transition s-duration-200",
+                  "group-hover/citation-image:s-opacity-100"
+                )}
+              >
+                <span
+                  className={cn(
+                    "s-max-w-[90%] s-truncate s-px-2 s-text-center",
+                    "s-text-sm s-font-medium",
+                    "s-text-foreground dark:s-text-foreground-night"
+                  )}
+                >
+                  {title}
+                </span>
+              </div>
+              {/* Action button - top right on hover, matching CardActions positioning */}
+              <div
+                className={cn(
+                  "s-absolute s-right-2 s-top-2 s-z-20",
+                  "s-opacity-0 s-transition-opacity s-duration-200",
+                  "group-hover/citation-image:s-opacity-100"
+                )}
+              >
+                {onClose && (
+                  <Button
+                    variant="ghost"
+                    size="mini"
+                    icon={XMarkIcon}
+                    onClick={handleClose}
+                  />
+                )}
+                {!onClose && downloadUrl && (
+                  <Button
+                    variant="ghost"
+                    size="mini"
+                    icon={ArrowDownOnSquareIcon}
+                    tooltip="Download"
+                    onClick={handleDownload}
+                  />
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent
+            size="xl"
+            className="s-max-w-[90vw] s-overflow-hidden s-p-3"
+          >
+            <div className="s-relative s-flex s-items-center s-justify-center">
+              {isLoading ? (
+                <div
+                  className={cn(
+                    "s-mx-auto s-flex s-aspect-square s-w-full s-min-w-[50vh]",
+                    "s-max-w-[80vh] s-items-center s-justify-center",
+                    "s-bg-muted-background dark:s-bg-muted-background-night"
+                  )}
+                >
+                  <Spinner variant="dark" size="lg" />
+                </div>
+              ) : (
+                <>
+                  <img
+                    src={imgSrc}
+                    alt={alt}
+                    className="s-max-h-full s-max-w-full s-rounded-lg s-object-contain"
+                    onLoad={() => setImageLoaded(true)}
+                  />
+                  <DialogClose asChild>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      icon={XMarkIcon}
+                      className="s-absolute s-right-2 s-top-2"
+                    />
+                  </DialogClose>
+                  {imageLoaded && downloadUrl && (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      icon={ArrowDownOnSquareIcon}
+                      tooltip="Download"
+                      className="s-absolute s-bottom-2 s-right-2"
+                      onClick={handleDownload}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 );
