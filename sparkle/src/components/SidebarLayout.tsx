@@ -1,6 +1,8 @@
 // This component is a work in ProgressEvent. Not ready for production.
 
-import { Allotment } from "allotment";
+import "../styles/allotment.css";
+
+import { Allotment, LayoutPriority } from "allotment";
 import * as React from "react";
 
 import { customColors } from "@sparkle/lib/colors";
@@ -56,7 +58,7 @@ export const SidebarLayout = React.forwardRef<
     sidebar,
     content,
     defaultSidebarWidth = 280,
-    minSidebarWidth: _minSidebarWidth = 200,
+    minSidebarWidth = 200,
     maxSidebarWidth = 400,
     collapsible = true,
     onSidebarToggle,
@@ -69,8 +71,7 @@ export const SidebarLayout = React.forwardRef<
   const allotmentRef = React.useRef<React.ComponentRef<typeof Allotment>>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [isHovering, setIsHovering] = React.useState(false);
-  const [lastSidebarSize, setLastSidebarSize] =
-    React.useState(defaultSidebarWidth);
+  const [sidebarWidth, setSidebarWidth] = React.useState(defaultSidebarWidth);
   const isTogglingRef = React.useRef(false);
 
   // Toggle sidebar function
@@ -78,10 +79,10 @@ export const SidebarLayout = React.forwardRef<
     if (allotmentRef.current) {
       isTogglingRef.current = true;
       if (isSidebarCollapsed) {
-        // Expand to last stored size - use requestAnimationFrame to ensure size is set correctly
+        // Expand to last stored width - use requestAnimationFrame to ensure size is set correctly
         requestAnimationFrame(() => {
           if (allotmentRef.current) {
-            allotmentRef.current.resize([lastSidebarSize]);
+            allotmentRef.current.resize([sidebarWidth]);
           }
         });
         setIsSidebarCollapsed(false);
@@ -99,7 +100,7 @@ export const SidebarLayout = React.forwardRef<
         isTogglingRef.current = false;
       }, 300);
     }
-  }, [isSidebarCollapsed, lastSidebarSize, onSidebarToggle]);
+  }, [isSidebarCollapsed, sidebarWidth, onSidebarToggle]);
 
   // Handle hover reveal when collapsed
   const handleLeftEdgeHover = React.useCallback(() => {
@@ -119,38 +120,13 @@ export const SidebarLayout = React.forwardRef<
   // Handle size changes from Allotment
   const handleChange = React.useCallback(
     (sizes: number[]) => {
-      let sidebarSize = sizes[0] ?? 0;
+      const sidebarSize = sizes[0] ?? 0;
       const wasCollapsed = isSidebarCollapsed;
       const nowCollapsed = sidebarSize === 0;
 
-      // Enforce 220px minimum when visible and not toggling
-      if (
-        !isTogglingRef.current &&
-        !wasCollapsed &&
-        sidebarSize > 0 &&
-        sidebarSize < 220 &&
-        collapsible
-      ) {
-        // Clamp to 220px minimum
-        sidebarSize = 220;
-        if (allotmentRef.current) {
-          allotmentRef.current.resize([sidebarSize]);
-        }
-      }
-
-      // Track manual resize (not from toggle or hover)
-      // Only save size when:
-      // - Not toggling
-      // - Not hovering
-      // - Sidebar is visible (not collapsed)
-      // - Size is greater than 0
-      if (
-        !isTogglingRef.current &&
-        !isHovering &&
-        sidebarSize > 0 &&
-        !wasCollapsed
-      ) {
-        setLastSidebarSize(sidebarSize);
+      // Track sidebar width whenever it changes (when not toggling and not collapsed)
+      if (!isTogglingRef.current && !wasCollapsed && sidebarSize > 0) {
+        setSidebarWidth(sidebarSize);
       }
 
       // Only update collapsed state if it's from toggle button
@@ -163,7 +139,7 @@ export const SidebarLayout = React.forwardRef<
         onSidebarToggle?.(nowCollapsed);
       }
     },
-    [isSidebarCollapsed, isHovering, collapsible, onSidebarToggle]
+    [isSidebarCollapsed, onSidebarToggle]
   );
 
   // Expose methods via ref
@@ -188,7 +164,7 @@ export const SidebarLayout = React.forwardRef<
           isTogglingRef.current = true;
           requestAnimationFrame(() => {
             if (allotmentRef.current) {
-              allotmentRef.current.resize([lastSidebarSize]);
+              allotmentRef.current.resize([sidebarWidth]);
             }
           });
           setIsSidebarCollapsed(false);
@@ -200,7 +176,7 @@ export const SidebarLayout = React.forwardRef<
         }
       },
     }),
-    [toggleSidebar, isSidebarCollapsed, lastSidebarSize, onSidebarToggle]
+    [toggleSidebar, isSidebarCollapsed, sidebarWidth, onSidebarToggle]
   );
 
   return (
@@ -252,15 +228,15 @@ export const SidebarLayout = React.forwardRef<
       <Allotment
         ref={allotmentRef}
         vertical={false}
+        proportionalLayout={false}
         onChange={handleChange}
         className="s-h-full s-w-full"
       >
         {/* Always render sidebar pane, but keep at width 0 when collapsed */}
         <Allotment.Pane
-          minSize={collapsible ? 0 : 220}
+          minSize={minSidebarWidth}
           maxSize={maxSidebarWidth}
-          preferredSize={isSidebarCollapsed ? 0 : lastSidebarSize}
-          snap={collapsible}
+          preferredSize={isSidebarCollapsed ? 0 : sidebarWidth}
           className={cn(
             "s-flex s-flex-col s-overflow-hidden",
             sidebarClassName
@@ -272,7 +248,10 @@ export const SidebarLayout = React.forwardRef<
           )}
         </Allotment.Pane>
 
-        <Allotment.Pane className={cn("s-flex s-flex-col", contentClassName)}>
+        <Allotment.Pane
+          priority={LayoutPriority.High}
+          className={cn("s-flex s-flex-col", contentClassName)}
+        >
           <div className="s-flex s-h-full s-w-full s-flex-col">{content}</div>
         </Allotment.Pane>
       </Allotment>

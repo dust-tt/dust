@@ -178,15 +178,15 @@ export function GroupConversationView({
   // Generate more conversations with varied dates
   const expandedConversations = useMemo(() => {
     if (conversations.length === 0) return [];
-    
+
     // Determine if this space should have no history (25% probability)
     const hash = space.id
       .split("")
       .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const shouldHaveNoHistory = (hash % 4) === 0;
-    
+    const shouldHaveNoHistory = hash % 4 === 0;
+
     if (shouldHaveNoHistory) return [];
-    
+
     // Generate at least 20 conversations, more if we have fewer originals
     const targetCount = Math.max(20, conversations.length * 4);
     return generateConversationsWithDates(conversations, targetCount);

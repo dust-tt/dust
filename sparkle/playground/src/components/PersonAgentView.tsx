@@ -117,7 +117,7 @@ export function PersonAgentView({
   // Generate more conversations with varied dates
   const expandedConversations = useMemo(() => {
     if (conversations.length === 0) return [];
-    
+
     // Determine if this collaborator should have no history (25% probability)
     const collaboratorId =
       collaborator.type === "agent"
@@ -126,10 +126,10 @@ export function PersonAgentView({
     const hash = collaboratorId
       .split("")
       .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const shouldHaveNoHistory = (hash % 4) === 0;
-    
+    const shouldHaveNoHistory = hash % 4 === 0;
+
     if (shouldHaveNoHistory) return [];
-    
+
     // Generate at least 20 conversations, more if we have fewer originals
     const targetCount = Math.max(20, conversations.length * 4);
     return generateConversationsWithDates(conversations, targetCount);
@@ -284,6 +284,24 @@ export function PersonAgentView({
                               <ConversationListItem
                                 key={conversation.id}
                                 conversation={conversation}
+                                creator={
+                                  isCreatedByUser
+                                    ? {
+                                        fullName: user.fullName,
+                                        portrait: user.portrait,
+                                      }
+                                    : collaborator.type === "agent"
+                                      ? {
+                                          fullName: (collaborator.data as Agent)
+                                            .name,
+                                        }
+                                      : {
+                                          fullName: (collaborator.data as User)
+                                            .fullName,
+                                          portrait: (collaborator.data as User)
+                                            .portrait,
+                                        }
+                                }
                                 avatar={
                                   isCreatedByUser
                                     ? userAvatar

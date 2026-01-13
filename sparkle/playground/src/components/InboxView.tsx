@@ -186,7 +186,7 @@ export function InboxView({
         >
           {visibleSpaces.length > 0 ? (
             <>
-              <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+              <h2 className="s-heading-2xl s-mb-4 s-text-foreground dark:s-text-foreground-night">
                 Inbox
               </h2>
               <div className="s-flex s-flex-col">
@@ -220,22 +220,18 @@ export function InboxView({
                         <div className="s-flex s-flex-col">
                           <ListItemSection
                             size="sm"
+                            onClick={() => onSpaceClick?.(space)}
                             action={
                               <Button
                                 label="Mark as read"
                                 icon={CheckIcon}
-                                size="sm"
+                                size="xs"
                                 variant="ghost-secondary"
                                 onClick={() => toggleSpaceCollapse(space.id)}
                               />
                             }
                           >
-                            <Button
-                              size="sm"
-                              variant="ghost-secondary"
-                              label={`Activity in "${space.name}"`}
-                              onClick={() => onSpaceClick?.(space)}
-                            />
+                            {space.name}
                           </ListItemSection>
                           <ListGroup>
                             {spaceConversations.map((conversation) => {
