@@ -402,11 +402,15 @@ export async function filterTriggers({
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const webhookRequestId = webhookRequest.id;
   const { provider } = webhookSource;
-  // Fetch all triggers based on the webhook source id.
-  const views = await WebhookSourcesViewResource.listByWebhookSource(
-    auth,
-    webhookSource.id
-  );
+  // Fetch all webhook source views for this webhook source.
+  // We use the internal method that skips space permission filtering because:
+  // 1. The webhook request was already authorized via the URL secret.
+  // 2. Webhook source views in private spaces should still trigger their associated agents.
+  const views =
+    await WebhookSourcesViewResource.listByWebhookSourceForInternalProcessing(
+      auth,
+      webhookSource.id
+    );
 
   // Fetch all triggers based on the webhook source id and flatten the result.
   const triggers = (
