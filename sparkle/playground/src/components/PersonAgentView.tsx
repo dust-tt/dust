@@ -315,6 +315,12 @@ export function PersonAgentView({
                                 }
                                 replySection={
                                   <>
+                                    <Avatar
+                                      {...(isCreatedByUser
+                                        ? collaboratorAvatar
+                                        : userAvatar)}
+                                      size="xs"
+                                    />
                                     {replyCount} replies.{" "}
                                     <span className="s-font-normal">
                                       {" "}
