@@ -1,5 +1,5 @@
 import type { Result, WorkspaceDomainType } from "@dust-tt/client";
-import { DustAPI, Err, Ok } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
 import type {} from "@slack/web-api/dist/types/response/UsersInfoResponse";
 
@@ -9,27 +9,13 @@ import {
   getSlackConversationInfo,
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
-import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { getDustAPI } from "@connectors/lib/api/dust_api";
 import { isActiveMemberOfWorkspace } from "@connectors/lib/bot/user_validation";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { DataSourceConfig } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
-
-function getDustAPI(dataSourceConfig: DataSourceConfig) {
-  return new DustAPI(
-    {
-      url: apiConfig.getDustFrontAPIUrl(),
-    },
-    {
-      apiKey: dataSourceConfig.workspaceAPIKey,
-      workspaceId: dataSourceConfig.workspaceId,
-    },
-    logger
-  );
-}
 
 async function getVerifiedDomainsForWorkspace(
   connector: ConnectorResource

@@ -8,7 +8,6 @@ import type {
   UpsertDatabaseTableRequestType,
   UpsertTableFromCsvRequestType,
 } from "@dust-tt/client";
-import { DustAPI } from "@dust-tt/client";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import type { AxiosError } from "axios";
 import axios from "axios";
@@ -22,6 +21,7 @@ import { toMarkdown } from "mdast-util-to-markdown";
 import { gfm } from "micromark-extension-gfm";
 
 import { apiConfig } from "@connectors/lib/api/config";
+import { getDustAPI } from "@connectors/lib/api/dust_api";
 import { DustConnectorWorkflowError, TablesError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
@@ -80,19 +80,6 @@ export type UpsertDataSourceDocumentParams = {
   mimeType: string;
   async: boolean;
 };
-
-function getDustAPI(dataSourceConfig: DataSourceConfig) {
-  return new DustAPI(
-    {
-      url: apiConfig.getDustFrontInternalAPIUrl(),
-    },
-    {
-      apiKey: dataSourceConfig.workspaceAPIKey,
-      workspaceId: dataSourceConfig.workspaceId,
-    },
-    logger
-  );
-}
 
 export const upsertDataSourceDocument = withRetries(
   logger,
@@ -1083,7 +1070,7 @@ export async function upsertDataSourceTableFromCsv({
     );
   }
 
-  const dustAPI = getDustAPI(dataSourceConfig);
+  const dustAPI = getDustAPI(dataSourceConfig, true);
 
   const fileRes = await dustAPI.uploadFile({
     contentType: "text/csv",
@@ -1552,7 +1539,7 @@ export async function _upsertDataSourceFolder({
 }) {
   const now = new Date();
 
-  const r = await getDustAPI(dataSourceConfig).upsertFolder({
+  const r = await getDustAPI(dataSourceConfig, true).upsertFolder({
     dataSourceId: dataSourceConfig.dataSourceId,
     folderId,
     timestamp: timestampMs ? timestampMs : now.getTime(),
@@ -1577,7 +1564,7 @@ export async function deleteDataSourceFolder({
   folderId: string;
   loggerArgs?: Record<string, string | number>;
 }) {
-  const r = await getDustAPI(dataSourceConfig).deleteFolder({
+  const r = await getDustAPI(dataSourceConfig, true).deleteFolder({
     dataSourceId: dataSourceConfig.dataSourceId,
     folderId,
   });
