@@ -41,6 +41,7 @@ import {
 } from "@connectors/lib/models/intercom";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
@@ -612,6 +613,16 @@ export async function getNextConversationBatchToSyncActivity({
       pageSize: INTERCOM_CONVO_BATCH_SIZE,
       closedAfter,
     });
+  }
+
+  const [oldestConversation] = result.conversations;
+  if (oldestConversation) {
+    const oldestCreatedAtMs = oldestConversation.created_at * 1000;
+    statsDClient.gauge(
+      "connectors.intercom.conversations.sync_max_age",
+      oldestCreatedAtMs,
+      [`connector_id:${connectorId}`]
+    );
   }
 
   const conversationIds = result.conversations.map((c) => c.id);
