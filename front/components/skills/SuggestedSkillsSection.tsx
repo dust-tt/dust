@@ -9,13 +9,8 @@ import {
 import { useRouter } from "next/router";
 import { useState } from "react";
 
-import { ResourceAvatar } from "@app/components/resources/resources_icons";
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
-import {
-  getSkillIcon,
-  SKILL_AVATAR_BACKGROUND_COLOR,
-  SKILL_AVATAR_ICON_COLOR,
-} from "@app/lib/skill";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUpdateSkillEditors } from "@app/lib/swr/skill_editors";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType, UserType } from "@app/types";
@@ -36,6 +31,7 @@ function SuggestedSkillCard({
 }: SuggestedSkillCardProps) {
   const router = useRouter();
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
+  const SkillAvatar = getSkillAvatarIcon(skill.icon);
   const updateSkillEditors = useUpdateSkillEditors({
     owner,
     skillId: skill.sId,
@@ -71,12 +67,8 @@ function SuggestedSkillCard({
         <div className="flex h-full w-full flex-col justify-between gap-3">
           <div className="flex flex-col">
             <div className="mb-2 flex items-center gap-2">
-              <ResourceAvatar
-                icon={getSkillIcon(skill.icon)}
-                size="sm"
-                backgroundColor={SKILL_AVATAR_BACKGROUND_COLOR}
-                iconColor={SKILL_AVATAR_ICON_COLOR}
-              />
+              {/* eslint-disable-next-line react-hooks/static-components */}
+              <SkillAvatar size="sm" />
               <span className="truncate text-sm font-medium">{skill.name}</span>
             </div>
             <p className="line-clamp-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
