@@ -175,9 +175,10 @@ class EventCoalescer {
 // Singleton instance.
 const globalCoalescer = new EventCoalescer();
 
-// Periodic cleanup every 5 minutes.
+// Periodic cleanup every 5 minutes. Unref so it doesn't block shutdown.
+// TODO: Remove once confident there is no memory leak.
 setInterval(() => {
   void globalCoalescer.cleanup();
-}, CLEANUP_INTERVAL_MS);
+}, CLEANUP_INTERVAL_MS).unref();
 
 export { globalCoalescer };
