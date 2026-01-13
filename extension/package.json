@@ -64,7 +64,7 @@
     "@dust-tt/client": "^1.2.3",
     "@dust-tt/sparkle": "^0.5.21",
     "@frontapp/plugin-sdk": "^1.8.1",
-    "@modelcontextprotocol/sdk": "^1.9.0",
+    "@modelcontextprotocol/sdk": "git://github.com:dust-tt/typescript-sdk.git#628ebe48388549faae7e35504611af9ac2c6f5e4",
     "@tailwindcss/forms": "^0.5.9",
     "@tiptap/extension-mention": "^3.10.1",
     "@tiptap/extension-placeholder": "^3.10.1",
