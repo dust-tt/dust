@@ -1216,6 +1216,7 @@ export async function updateAgentPermissions(
       | "user_not_found"
       | "user_not_member"
       | "user_already_member"
+      | "group_requirements_not_met"
     >
   >
 > {
