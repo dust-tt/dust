@@ -24,7 +24,7 @@ const CONTENT_SECURITY_POLICIES = [
   `object-src 'none';`,
   `form-action 'self' *.hsforms.com;`,
   `base-uri 'self';`,
-  `frame-ancestors 'self';`,
+  `frame-ancestors 'self' https://app.contentful.com;`,
   `manifest-src 'self';`,
   `worker-src 'self' blob:;`,
   `upgrade-insecure-requests;`,
