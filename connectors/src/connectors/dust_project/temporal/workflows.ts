@@ -12,6 +12,25 @@ const {
 });
 
 /**
+ * Generate workflow IDs for dust_project workflows
+ */
+export function dustProjectFullSyncWorkflowId(connectorId: ModelId): string {
+  return `dust-project-full-sync-${connectorId}`;
+}
+
+export function dustProjectIncrementalSyncWorkflowId(
+  connectorId: ModelId
+): string {
+  return `dust-project-incremental-sync-${connectorId}`;
+}
+
+export function dustProjectGarbageCollectWorkflowId(
+  connectorId: ModelId
+): string {
+  return `dust-project-gc-${connectorId}`;
+}
+
+/**
  * Full sync workflow for dust_project connector.
  * Syncs all conversations for a project from scratch.
  */
