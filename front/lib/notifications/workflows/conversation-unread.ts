@@ -14,7 +14,7 @@ import { renderEmail } from "@app/lib/notifications/email-templates/conversation
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { Result, UserMessageOrigin } from "@app/types";
+import type { Result, UserMessageOrigin, UserType } from "@app/types";
 import {
   assertNever,
   Err,
@@ -130,22 +130,25 @@ const DEFAULT_NOTIFICATION_DELAY: NotificationPreferencesDelay = isDevelopment()
   ? "5_minutes"
   : "1_hour";
 
-const getConversationDetails = async (
-  params: { payload: ConversationUnreadPayloadType } & (
-    | { auth: Authenticator; subscriberId?: never }
-    | { auth?: never; subscriberId: string }
-  )
-): Promise<ConversationDetailsType> => {
-  const { payload } = params;
-
+const getConversationDetails = async ({
+  payload,
+  auth: providedAuth,
+  subscriberId,
+}: { payload: ConversationUnreadPayloadType } & (
+  | { auth: Authenticator; subscriberId?: never }
+  | { auth?: never; subscriberId: string }
+)): Promise<ConversationDetailsType> => {
   // Get or create auth from the discriminated union.
-  const auth =
-    "auth" in params && params.auth
-      ? params.auth
-      : await Authenticator.fromUserIdAndWorkspaceId(
-          params.subscriberId,
-          payload.workspaceId
-        );
+  let auth: Authenticator;
+  if (providedAuth) {
+    auth = providedAuth;
+  } else {
+    assert(subscriberId, "subscriberId required when auth not provided");
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      subscriberId,
+      payload.workspaceId
+    );
+  }
 
   const conversation = await ConversationResource.fetchById(
     auth,
@@ -465,17 +468,10 @@ const filterParticipantsByNotifyCondition = async ({
   mentionedUserIds,
   totalParticipantCount,
 }: {
-  participants: {
-    id: number;
-    sId: string;
-    email: string;
-    firstName: string | null;
-    lastName: string | null;
-    unread: boolean;
-  }[];
+  participants: (UserType & { unread: boolean })[];
   mentionedUserIds: Set<string>;
   totalParticipantCount: number;
-}): Promise<typeof participants> => {
+}): Promise<(UserType & { unread: boolean })[]> => {
   const userModelIds = participants.map((p) => p.id);
 
   // Bulk query for all preferences.
