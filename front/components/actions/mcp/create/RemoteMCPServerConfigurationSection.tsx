@@ -15,7 +15,6 @@ import { useController, useFormContext } from "react-hook-form";
 
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 
 function getAuthMethodLabel(
   authMethod: CreateMCPServerDialogFormValues["authMethod"],
@@ -49,15 +48,14 @@ function getBearerPlaceholder(
 
 interface RemoteMCPServerConfigurationSectionProps {
   defaultServerConfig?: DefaultRemoteMCPServerConfig;
-  setAuthorization: (authorization: AuthorizationInfo | null) => void;
 }
 
 export function RemoteMCPServerConfigurationSection({
   defaultServerConfig,
-  setAuthorization,
 }: RemoteMCPServerConfigurationSectionProps) {
   const {
     register,
+    setValue,
     formState: { errors },
   } = useFormContext<CreateMCPServerDialogFormValues>();
 
@@ -147,7 +145,7 @@ export function RemoteMCPServerConfigurationSection({
                       label="Automatic"
                       onClick={() => {
                         authMethodField.onChange("oauth-dynamic");
-                        setAuthorization(null);
+                        setValue("authorization", null);
                       }}
                     />
                   )}
@@ -162,7 +160,7 @@ export function RemoteMCPServerConfigurationSection({
                       }
                       onClick={() => {
                         authMethodField.onChange("bearer");
-                        setAuthorization(null);
+                        setValue("authorization", null);
                       }}
                     />
                   )}
@@ -172,7 +170,7 @@ export function RemoteMCPServerConfigurationSection({
                       label="Static OAuth"
                       onClick={() => {
                         authMethodField.onChange("oauth-static");
-                        setAuthorization({
+                        setValue("authorization", {
                           provider: "mcp_static",
                           supported_use_cases: [
                             "platform_actions",

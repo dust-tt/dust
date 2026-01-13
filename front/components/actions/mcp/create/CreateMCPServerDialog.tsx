@@ -95,32 +95,34 @@ export function CreateMCPServerDialog({
     name: "useCase",
   });
 
-  const [
-    remoteMCPServerOAuthDiscoveryDone,
-    setRemoteMCPServerOAuthDiscoveryDone,
-  ] = useState(false);
+  // Watch workflow state from form instead of separate useState.
+  const authorization = useWatch({
+    control: form.control,
+    name: "authorization",
+  });
+  const remoteMCPServerOAuthDiscoveryDone = useWatch({
+    control: form.control,
+    name: "remoteMCPServerOAuthDiscoveryDone",
+  });
+
   const [isLoading, setIsLoading] = useState(false);
-  const [authorization, setAuthorization] = useState<AuthorizationInfo | null>(
-    null
-  );
 
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { createWithURL } = useCreateRemoteMCPServer(owner);
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
 
+  // Initialize authorization from internalMCPServer when dialog opens.
   useEffect(() => {
     if (internalMCPServer && isOpen) {
-      setAuthorization(internalMCPServer.authorization);
-    } else {
-      setAuthorization(null);
+      form.setValue("authorization", internalMCPServer.authorization);
+    } else if (!isOpen) {
+      // Reset when dialog closes - handled by resetState on close
     }
-  }, [internalMCPServer, isOpen]);
+  }, [form, internalMCPServer, isOpen]);
 
   const resetState = () => {
     setIsLoading(false);
     setExternalIsLoading(false);
-    setRemoteMCPServerOAuthDiscoveryDone(false);
-    setAuthorization(null);
     form.reset(defaultValues);
   };
 
@@ -130,8 +132,6 @@ export function CreateMCPServerDialog({
     const submitRes = await submitCreateMCPServerDialogForm({
       owner,
       internalMCPServer,
-      authorization,
-      remoteMCPServerOAuthDiscoveryDone,
       values,
       discoverOAuthMetadata,
       createWithURL,
@@ -144,25 +144,27 @@ export function CreateMCPServerDialog({
         error: submitRes.error,
         context: {
           remoteServerUrl: values.remoteServerUrl,
-          provider: authorization?.provider ?? null,
+          provider: values.authorization?.provider ?? null,
         },
         sendNotification: (title, description) =>
           sendNotification({ type: "error", title, description }),
         loading: {
           setIsLoading,
           setExternalIsLoading,
-          setRemoteMCPServerOAuthDiscoveryDone,
+          setRemoteMCPServerOAuthDiscoveryDone: (done: boolean) =>
+            form.setValue("remoteMCPServerOAuthDiscoveryDone", done),
         },
       });
       return;
     }
 
-    setRemoteMCPServerOAuthDiscoveryDone(
+    form.setValue(
+      "remoteMCPServerOAuthDiscoveryDone",
       submitRes.value.remoteMCPServerOAuthDiscoveryDone
     );
 
     if (submitRes.value.type === "oauth_required") {
-      setAuthorization(submitRes.value.authorization);
+      form.setValue("authorization", submitRes.value.authorization);
       form.setValue("authCredentials", submitRes.value.authCredentials);
       // Returning here as now the user must select the use case.
       setIsLoading(false);
@@ -228,14 +230,12 @@ export function CreateMCPServerDialog({
                 (!authorization || authorization.provider === "mcp_static") && (
                   <RemoteMCPServerConfigurationSection
                     defaultServerConfig={defaultServerConfig}
-                    setAuthorization={setAuthorization}
                   />
                 )}
 
               {authorization && (
                 <MCPServerOAuthConnexion
                   toolName={toolName}
-                  authorization={authorization}
                   documentationUrl={
                     internalMCPServer?.documentationUrl ?? undefined
                   }

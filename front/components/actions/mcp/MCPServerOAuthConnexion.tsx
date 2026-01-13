@@ -12,7 +12,10 @@ import {
 import { useEffect, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
-import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
+import type {
+  CreateMCPServerDialogFormValues,
+  MCPServerOAuthFormValues,
+} from "@app/components/actions/mcp/forms/types";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type {
   MCPOAuthUseCase,
@@ -40,17 +43,37 @@ export const AUTH_CREDENTIALS_ERROR_KEY = "authCredentials" as const;
 
 interface MCPServerOAuthConnexionProps {
   toolName: string;
-  authorization: AuthorizationInfo;
+  // Authorization can be passed as a prop or retrieved from form context.
+  // When used with CreateMCPServerDialog, it comes from form context.
+  // When used with ConnectMCPServerDialog, it's passed as a prop.
+  authorization?: AuthorizationInfo;
   documentationUrl?: string;
 }
 
 export function MCPServerOAuthConnexion({
   toolName,
-  authorization,
+  authorization: authorizationProp,
   documentationUrl,
 }: MCPServerOAuthConnexionProps) {
   const { setValue, setError, clearErrors } =
     useFormContext<MCPServerOAuthFormValues>();
+
+  // Try to get authorization from form context if not passed as prop.
+  // This is safe because CreateMCPServerDialogFormValues extends MCPServerOAuthFormValues.
+  const authorizationFromForm = useWatch<
+    CreateMCPServerDialogFormValues,
+    "authorization"
+  >({
+    name: "authorization",
+  });
+
+  // Use prop if provided, otherwise fall back to form context.
+  const authorization = authorizationProp ?? authorizationFromForm;
+
+  // Early return if no authorization available.
+  if (!authorization) {
+    return null;
+  }
 
   const useCase = useWatch<MCPServerOAuthFormValues, "useCase">({
     name: "useCase",

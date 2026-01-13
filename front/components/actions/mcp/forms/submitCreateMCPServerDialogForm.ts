@@ -75,8 +75,6 @@ type CreateInternalMCPServerFn = (args: {
 export async function submitCreateMCPServerDialogForm({
   owner,
   internalMCPServer,
-  authorization,
-  remoteMCPServerOAuthDiscoveryDone,
   values,
   discoverOAuthMetadata,
   createWithURL,
@@ -85,14 +83,15 @@ export async function submitCreateMCPServerDialogForm({
 }: {
   owner: WorkspaceType;
   internalMCPServer?: MCPServerType;
-  authorization: AuthorizationInfo | null;
-  remoteMCPServerOAuthDiscoveryDone: boolean;
   values: CreateMCPServerDialogFormValues;
   discoverOAuthMetadata: DiscoverOAuthMetadataFn;
   createWithURL: CreateRemoteMCPServerFn;
   createInternalMCPServer: CreateInternalMCPServerFn;
   onBeforeCreateServer: () => void;
 }): Promise<Result<CreateMCPServerDialogSubmitResult, Error>> {
+  // Extract workflow state from form values.
+  const { authorization, remoteMCPServerOAuthDiscoveryDone } = values;
+
   let oauthConnection: MCPConnectionType | undefined;
   let nextRemoteMCPServerOAuthDiscoveryDone = remoteMCPServerOAuthDiscoveryDone;
 

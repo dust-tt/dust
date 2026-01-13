@@ -96,5 +96,8 @@ export function getCreateMCPServerDialogDefaultValues(
   return createMCPServerDialogFormSchema.parse({
     remoteServerUrl: defaultServerConfig?.url,
     authMethod: defaultServerConfig?.authMethod ?? undefined,
+    // Workflow state defaults - explicitly listed for clarity.
+    authorization: null,
+    remoteMCPServerOAuthDiscoveryDone: false,
   });
 }
