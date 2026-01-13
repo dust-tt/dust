@@ -361,18 +361,25 @@ function DustMain() {
       }
       return false;
     });
-  }, [selectedCollaboratorId, selectedCollaboratorType, user, allConversations]);
+  }, [
+    selectedCollaboratorId,
+    selectedCollaboratorType,
+    user,
+    allConversations,
+  ]);
 
   // Get selected collaborator data
   const selectedCollaborator = useMemo(() => {
     if (!selectedCollaboratorId || !selectedCollaboratorType) return null;
-    return collaborators.find(
-      (c) =>
-        c.type === selectedCollaboratorType &&
-        (c.type === "agent"
-          ? (c.data as Agent).id === selectedCollaboratorId
-          : (c.data as User).id === selectedCollaboratorId)
-    ) || null;
+    return (
+      collaborators.find(
+        (c) =>
+          c.type === selectedCollaboratorType &&
+          (c.type === "agent"
+            ? (c.data as Agent).id === selectedCollaboratorId
+            : (c.data as User).id === selectedCollaboratorId)
+      ) || null
+    );
   }, [selectedCollaboratorId, selectedCollaboratorType, collaborators]);
 
   const getConversationMoreMenu = (conversation: Conversation) => {
@@ -1272,9 +1279,9 @@ function DustMain() {
       />
     ) : // Priority 3: Show person/agent view if a collaborator is selected
     selectedCollaborator &&
-    selectedCollaboratorId &&
-    selectedCollaboratorType &&
-    user ? (
+      selectedCollaboratorId &&
+      selectedCollaboratorType &&
+      user ? (
       <PersonAgentView
         collaborator={selectedCollaborator}
         user={user}
