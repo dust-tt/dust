@@ -6,11 +6,20 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import type { ConversationType, Result, UserMessageType } from "@app/types";
+import type {
+  ConversationType,
+  ModelConfigurationType,
+  Result,
+  UserMessageType,
+  WorkspaceType,
+} from "@app/types";
 import {
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   ConversationError,
   Err,
-  getSmallWhitelistedModel,
+  GEMINI_3_FLASH_MODEL_CONFIG,
+  getLargeWhitelistedModel,
+  isProviderWhitelisted,
   Ok,
 } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -116,7 +125,7 @@ async function generateConversationTitle(
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getSmallWhitelistedModel(owner);
+  const model = getFastModelConfig(owner);
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate title")
@@ -189,4 +198,16 @@ async function generateConversationTitle(
   }
 
   return new Err(new Error("No title found in LLM response"));
+}
+
+function getFastModelConfig(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
+  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+    return GEMINI_3_FLASH_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "anthropic")) {
+    return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
+  }
+  return getLargeWhitelistedModel(owner);
 }
