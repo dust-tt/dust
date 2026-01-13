@@ -1,5 +1,5 @@
 {
   "buildCommand": "npm run build-storybook",
   "outputDirectory": "storybook-static",
-  "ignoreCommand": "R=\"https://github.com/${VERCEL_GIT_REPO_OWNER}/${VERCEL_GIT_REPO_SLUG}.git\";[ -n \"$VERCEL_GIT_PULL_REQUEST_ID\" ]&&git fetch \"$R\" master&&git diff --quiet FETCH_HEAD HEAD -- sparkle/src||exit 1"
+  "ignoreCommand": "bash -lc 'echo \"Branch: $VERCEL_GIT_COMMIT_REF\"; case \"$VERCEL_GIT_COMMIT_REF\" in *sparkle*) exit 1 ;; *) exit 0 ;; esac'"
 }
