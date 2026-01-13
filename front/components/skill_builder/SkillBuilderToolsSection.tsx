@@ -61,7 +61,7 @@ export function SkillBuilderToolsSection() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
+        <h3 className="heading-large font-semibold text-foreground dark:text-foreground-night">
           Tools
         </h3>
         {headerActions}
