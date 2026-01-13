@@ -4,11 +4,10 @@ import {
   CheckIcon,
   Collapsible,
   CollapsibleContent,
-  Counter,
+  ConversationListItem,
   Icon,
   InboxIcon,
   ListGroup,
-  ListItem,
   ListItemSection,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
@@ -266,61 +265,37 @@ export function InboxView({
                                 Math.random() * 4 + 1
                               );
 
+                              // Generate random reply count (1-8)
+                              const replyCount = Math.floor(
+                                Math.random() * 8 + 1
+                              );
+
                               return (
-                                <ListItem
+                                <ConversationListItem
                                   key={conversation.id}
-                                  onClick={() => {
-                                    onConversationClick?.(conversation);
-                                  }}
-                                  groupName="conversation-item"
-                                >
-                                  {creator ? (
-                                    <Avatar
-                                      name={creator.fullName}
-                                      visual={creator.portrait}
-                                      size="sm"
-                                      isRounded={true}
-                                    />
-                                  ) : null}
-                                  <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-1">
-                                    <div className="s-heading-sm s-flex s-w-full s-items-center s-justify-between s-gap-2 s-text-foreground dark:s-text-foreground-night">
-                                      <div className="s-flex s-gap-2">
-                                        {creator && creator.fullName}
-                                        <span className="s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                          {conversation.title}
-                                        </span>
-                                      </div>
-                                      <div className="s-flex s-items-center s-gap-2 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                        <span className="s-font-normal">
-                                          {time}
-                                        </span>
-                                        <Counter
-                                          value={messageCount}
-                                          size="xs"
-                                          variant="highlight"
-                                        />
-                                      </div>
-                                    </div>
-                                    {conversation.description && (
-                                      <div className="s-line-clamp-2 s-text-sm s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                        {conversation.description}
-                                      </div>
-                                    )}
-                                    <div className="s-heading-xs s-flex s-items-center s-gap-2 s-pt-2 s-text-muted-foreground dark:s-text-muted-foreground-night">
+                                  conversation={conversation}
+                                  creator={creator || undefined}
+                                  time={time}
+                                  messageCount={messageCount}
+                                  replySection={
+                                    <>
                                       <Avatar.Stack
                                         avatars={avatarProps}
                                         nbVisibleItems={3}
-                                        onTop="first"
+                                        onTop={"first" as const}
                                         size="xs"
                                       />
-                                      {Math.floor(Math.random() * 8) + 1}{" "}
-                                      replies.
+                                      {replyCount} replies.
                                       <span className="s-font-normal">
+                                        {" "}
                                         Last from @seb 5 minutes ago.
                                       </span>
-                                    </div>
-                                  </div>
-                                </ListItem>
+                                    </>
+                                  }
+                                  onClick={() => {
+                                    onConversationClick?.(conversation);
+                                  }}
+                                />
                               );
                             })}
                           </ListGroup>

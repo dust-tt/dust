@@ -1,11 +1,11 @@
 import {
   Avatar,
-  Counter,
+  ConversationListItem,
   ListGroup,
-  ListItem,
   ListItemSection,
+  SearchInput,
 } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import type { Agent, Conversation, User } from "../data/types";
 import { getUserById } from "../data/users";
@@ -51,10 +51,7 @@ function getDateBucket(
 }
 
 // Helper function to get creator from conversation
-function getCreator(
-  conversation: Conversation,
-  _users: User[]
-): User | null {
+function getCreator(conversation: Conversation, _users: User[]): User | null {
   if (conversation.userParticipants.length === 0) {
     return null;
   }
@@ -70,9 +67,15 @@ function generateConversationsWithDates(
   const now = new Date();
   const generated: Conversation[] = [];
 
-  // Duplicate and vary existing conversations
+  // Shuffle conversations array to randomize selection
+  const shuffled = [...conversations].sort(() => Math.random() - 0.5);
+
+  // Randomly pick conversations instead of cycling through them
   for (let i = 0; i < count; i++) {
-    const baseConversation = conversations[i % conversations.length];
+    // Randomly select from shuffled array
+    const randomIndex = Math.floor(Math.random() * shuffled.length);
+    const baseConversation = shuffled[randomIndex];
+
     const daysAgo = Math.floor(Math.random() * 35); // Up to 35 days ago
     const hoursAgo = Math.floor(Math.random() * 24);
     const minutesAgo = Math.floor(Math.random() * 60);
@@ -101,10 +104,10 @@ export function PersonAgentView({
   collaborator,
   user,
   conversations,
-  users,
-  agents,
   onConversationClick,
 }: PersonAgentViewProps) {
+  const [searchText, setSearchText] = useState("");
+
   // Get collaborator name for placeholder
   const collaboratorName =
     collaborator.type === "agent"
@@ -114,10 +117,36 @@ export function PersonAgentView({
   // Generate more conversations with varied dates
   const expandedConversations = useMemo(() => {
     if (conversations.length === 0) return [];
+    
+    // Determine if this collaborator should have no history (25% probability)
+    const collaboratorId =
+      collaborator.type === "agent"
+        ? (collaborator.data as Agent).id
+        : (collaborator.data as User).id;
+    const hash = collaboratorId
+      .split("")
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const shouldHaveNoHistory = (hash % 4) === 0;
+    
+    if (shouldHaveNoHistory) return [];
+    
     // Generate at least 20 conversations, more if we have fewer originals
     const targetCount = Math.max(20, conversations.length * 4);
     return generateConversationsWithDates(conversations, targetCount);
-  }, [conversations]);
+  }, [conversations, collaborator]);
+
+  // Filter conversations by search text
+  const filteredConversations = useMemo(() => {
+    if (!searchText.trim()) {
+      return expandedConversations;
+    }
+    const searchLower = searchText.toLowerCase();
+    return expandedConversations.filter(
+      (conv) =>
+        conv.title.toLowerCase().includes(searchLower) ||
+        conv.description?.toLowerCase().includes(searchLower)
+    );
+  }, [expandedConversations, searchText]);
 
   // Group conversations by date bucket
   const conversationsByBucket = useMemo(() => {
@@ -133,7 +162,7 @@ export function PersonAgentView({
       "Last Month": [],
     };
 
-    expandedConversations.forEach((conversation) => {
+    filteredConversations.forEach((conversation) => {
       const bucket = getDateBucket(conversation.updatedAt);
       buckets[bucket].push(conversation);
     });
@@ -147,7 +176,7 @@ export function PersonAgentView({
     });
 
     return buckets;
-  }, [expandedConversations]);
+  }, [filteredConversations]);
 
   // Get collaborator avatar props
   const collaboratorAvatar = useMemo(() => {
@@ -169,37 +198,49 @@ export function PersonAgentView({
     }
   }, [collaborator]);
 
+  // Get user avatar props
+  const userAvatar = useMemo(() => {
+    return {
+      name: user.fullName,
+      visual: user.portrait,
+      isRounded: true,
+    };
+  }, [user]);
+
+  const hasHistory = expandedConversations.length > 0;
+
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background s-px-6">
-      <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-pt-3">
-        <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-py-8">
-          {/* New conversation section */}
-          <div className="s-flex s-flex-col s-gap-3">
-            <h2 className="s-heading-base s-text-foreground dark:s-text-foreground-night">
-              Start a conversation with{" "}
-              <span className="s-italic">"{collaboratorName}"</span>
+      <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto">
+        <div
+          className={`s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 ${
+            !hasHistory ? "s-h-full s-justify-center s-py-8" : "s-py-8"
+          }`}
+        >
+          <div className="s-flex s-items-center s-gap-3">
+            <Avatar {...collaboratorAvatar} size="sm" />
+            <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+              {collaboratorName}
             </h2>
-            <InputBar
-              placeholder={`Start a conversation with ${collaboratorName}`}
-            />
           </div>
+          <InputBar
+            placeholder={`Start a conversation with ${collaboratorName}`}
+          />
 
           {/* Conversations list */}
           <div className="s-flex s-flex-col s-gap-3">
-            {expandedConversations.length > 0 && (
+            {hasHistory && (
               <>
-                <h2 className="s-heading-base s-text-foreground dark:s-text-foreground-night">
-                  Past conversations with{" "}
-                  <span className="s-italic">"{collaboratorName}"</span>
-                </h2>
+                <SearchInput
+                  name="conversation-search"
+                  value={searchText}
+                  onChange={setSearchText}
+                  placeholder={`Search in conversations with ${collaboratorName}`}
+                  className="s-w-full"
+                />
                 <div className="s-flex s-flex-col">
                   {(
-                    [
-                      "Today",
-                      "Yesterday",
-                      "Last Week",
-                      "Last Month",
-                    ] as const
+                    ["Today", "Yesterday", "Last Week", "Last Month"] as const
                   ).map((bucketKey) => {
                     const bucketConversations =
                       conversationsByBucket[bucketKey];
@@ -224,60 +265,49 @@ export function PersonAgentView({
                               Math.random() * 3 + 1
                             );
 
-                            // Extract base conversation ID if this is an expanded conversation
-                            // Expanded IDs have pattern: {baseId}-{number} (e.g., "conv-1-5")
-                            // Check if ID matches expanded pattern (ends with -{digits})
-                            const expandedIdMatch =
-                              conversation.id.match(/^(.+)-(\d+)$/);
-                            const baseConversationId = expandedIdMatch
-                              ? expandedIdMatch[1] // Use the base ID before the last -{number}
-                              : conversation.id; // Use original ID if not expanded
+                            // Generate random reply count (1-8)
+                            const replyCount = Math.floor(
+                              Math.random() * 8 + 1
+                            );
 
-                            // Create a conversation object with the base ID for lookup
-                            const conversationForLookup = {
-                              ...conversation,
-                              id: baseConversationId,
-                            };
+                            // Randomly determine if conversation was created by user or collaborator
+                            // Use conversation ID as seed for consistent randomness per conversation
+                            const seed = conversation.id
+                              .split("")
+                              .reduce(
+                                (acc, char) => acc + char.charCodeAt(0),
+                                0
+                              );
+                            const isCreatedByUser = seed % 2 === 0;
 
                             return (
-                              <ListItem
+                              <ConversationListItem
                                 key={conversation.id}
+                                conversation={conversation}
+                                avatar={
+                                  isCreatedByUser
+                                    ? userAvatar
+                                    : collaboratorAvatar
+                                }
+                                time={time}
+                                messageCount={
+                                  bucketKey === "Today"
+                                    ? messageCount
+                                    : undefined
+                                }
+                                replySection={
+                                  <>
+                                    {replyCount} replies.{" "}
+                                    <span className="s-font-normal">
+                                      {" "}
+                                      Last from @seb.
+                                    </span>
+                                  </>
+                                }
                                 onClick={() => {
-                                  onConversationClick?.(conversationForLookup);
+                                  onConversationClick?.(conversation);
                                 }}
-                                groupName="conversation-item"
-                              >
-                                <Avatar
-                                  {...collaboratorAvatar}
-                                  size="sm"
-                                />
-                                <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-1">
-                                  <div className="s-heading-sm s-flex s-w-full s-items-center s-justify-between s-gap-2 s-text-foreground dark:s-text-foreground-night">
-                                    <div className="s-flex s-gap-2">
-                                      <span className="s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                        {conversation.title}
-                                      </span>
-                                    </div>
-                                    <div className="s-flex s-items-center s-gap-2 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                      <span className="s-font-normal">
-                                        {time}
-                                      </span>
-                                      {bucketKey === "Today" && (
-                                        <Counter
-                                          value={messageCount}
-                                          size="xs"
-                                          variant="highlight"
-                                        />
-                                      )}
-                                    </div>
-                                  </div>
-                                  {conversation.description && (
-                                    <div className="s-line-clamp-2 s-text-sm s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                      {conversation.description}
-                                    </div>
-                                  )}
-                                </div>
-                              </ListItem>
+                              />
                             );
                           })}
                         </ListGroup>

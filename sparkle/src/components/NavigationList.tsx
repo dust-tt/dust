@@ -387,32 +387,34 @@ const NavigationListCollapsibleSection = React.forwardRef<
   ) => {
     const isCollapsible = type !== "static";
     const labelElement = (
-      <div className="s-group/menu-item s-relative s-mt-2 s-flex s-flex-1 s-items-center s-justify-start s-gap-1">
-        <div className={collapseableStyles({ variant, isCollapsible })}>
-          {label}
-        </div>
-        {action && (
-          <div
-            className={cn(
-              "s-m-1.5 s-flex s-gap-1 s-pr-0.5 s-transition-opacity",
-              actionOnHover
-                ? "s-opacity-0 hover:s-opacity-100 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
-                : "s-opacity-100"
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          >
-            {action}
-          </div>
+      <div className={collapseableStyles({ variant, isCollapsible })}>
+        {label}
+      </div>
+    );
+
+    const actionElement = action && (
+      <div
+        className={cn(
+          "s-m-1.5 s-flex s-gap-1 s-pr-0.5 s-transition-opacity",
+          actionOnHover
+            ? "s-opacity-0 hover:s-opacity-100 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
+            : "s-opacity-100"
         )}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+      >
+        {action}
       </div>
     );
 
     if (type === "static") {
       return (
         <div ref={ref} className={className} {...props}>
-          {labelElement}
+          <div className="s-group/menu-item s-relative s-mt-2 s-flex s-flex-1 s-items-center s-justify-start s-gap-1">
+            {labelElement}
+            {actionElement}
+          </div>
           <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
         </div>
       );
@@ -428,7 +430,10 @@ const NavigationListCollapsibleSection = React.forwardRef<
     if (type === "collapseAndScroll") {
       return (
         <Collapsible ref={ref} className={className} {...collapsibleProps}>
-          <CollapsibleTrigger hideChevron>{labelElement}</CollapsibleTrigger>
+          <div className="s-group/menu-item s-relative s-mt-2 s-flex s-flex-1 s-items-center s-justify-start s-gap-1">
+            <CollapsibleTrigger hideChevron>{labelElement}</CollapsibleTrigger>
+            {actionElement}
+          </div>
           <CollapsibleContent>
             <ScrollArea>
               <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
@@ -442,7 +447,10 @@ const NavigationListCollapsibleSection = React.forwardRef<
     // type === "collapse" (default collapsible behavior)
     return (
       <Collapsible ref={ref} className={className} {...collapsibleProps}>
-        <CollapsibleTrigger hideChevron>{labelElement}</CollapsibleTrigger>
+        <div className="s-group/menu-item s-relative s-mt-2 s-flex s-flex-1 s-items-center s-justify-start s-gap-1">
+          <CollapsibleTrigger hideChevron>{labelElement}</CollapsibleTrigger>
+          {actionElement}
+        </div>
         <CollapsibleContent>
           <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
         </CollapsibleContent>
