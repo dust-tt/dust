@@ -283,6 +283,7 @@ export function AgentMessage({
         return true;
       default:
         assertNeverAndIgnore(messageStreamState.message.status);
+        return false;
     }
   })();
 
