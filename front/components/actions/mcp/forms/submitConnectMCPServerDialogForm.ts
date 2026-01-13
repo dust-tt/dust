@@ -6,16 +6,36 @@ import type { Result, WorkspaceType } from "@app/types";
 import { Err, Ok, setupOAuthConnection } from "@app/types";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 
-type CreateMCPServerConnectionFn = (args: {
+interface CreateMCPServerConnectionParams {
   connectionId: string;
   mcpServerId: string;
   mcpServerDisplayName: string;
   provider: OAuthProvider;
-}) => Promise<unknown>;
+}
 
-type UpdateMCPServerViewFn = (data: {
+// Returns the response body on success or null on error (error handling is done internally via notifications).
+type CreateMCPServerConnectionFn = (
+  args: CreateMCPServerConnectionParams
+) => Promise<unknown>;
+
+interface UpdateMCPServerViewParams {
   oAuthUseCase: NonNullable<MCPServerOAuthFormValues["useCase"]>;
-}) => Promise<unknown>;
+}
+
+// Returns true on success, false on error (error handling is done internally via notifications).
+type UpdateMCPServerViewFn = (
+  data: UpdateMCPServerViewParams
+) => Promise<boolean>;
+
+interface SubmitConnectMCPServerDialogFormParams {
+  owner: WorkspaceType;
+  mcpServerView: MCPServerViewType;
+  authorization: AuthorizationInfo;
+  values: MCPServerOAuthFormValues;
+  createMCPServerConnection: CreateMCPServerConnectionFn;
+  updateServerView: UpdateMCPServerViewFn;
+  onBeforeAssociateConnection: () => void;
+}
 
 export async function submitConnectMCPServerDialogForm({
   owner,
@@ -25,46 +45,41 @@ export async function submitConnectMCPServerDialogForm({
   createMCPServerConnection,
   updateServerView,
   onBeforeAssociateConnection,
-}: {
-  owner: WorkspaceType;
-  mcpServerView: MCPServerViewType;
-  authorization: AuthorizationInfo;
-  values: MCPServerOAuthFormValues;
-  createMCPServerConnection: CreateMCPServerConnectionFn;
-  updateServerView: UpdateMCPServerViewFn;
-  onBeforeAssociateConnection: () => void;
-}): Promise<Result<null, Error>> {
+}: SubmitConnectMCPServerDialogFormParams): Promise<Result<null, Error>> {
   if (!values.useCase) {
     return new Err(new Error("Use case is null while trying to connect"));
   }
 
-  const cRes = await setupOAuthConnection({
+  // Step 1: Setup OAuth connection
+  const connectionResult = await setupOAuthConnection({
     dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
     owner,
     provider: authorization.provider,
     // During setup, the use case is always "platform_actions".
     useCase: "platform_actions",
     extraConfig: {
-      ...values.oauthCredentials,
+      ...(values.authCredentials ?? {}),
       ...(authorization.scope ? { scope: authorization.scope } : {}),
     },
   });
 
-  if (cRes.isErr()) {
-    return new Err(cRes.error);
+  if (connectionResult.isErr()) {
+    return new Err(connectionResult.error);
   }
 
   onBeforeAssociateConnection();
 
-  // Then associate connection.
+  // Step 2: Associate connection with MCP server.
+  // Error handling for this step is done internally by the hook via notifications.
   await createMCPServerConnection({
-    connectionId: cRes.value.connection_id,
+    connectionId: connectionResult.value.connection_id,
     mcpServerId: mcpServerView.server.sId,
     mcpServerDisplayName: getMcpServerDisplayName(mcpServerView.server),
     provider: authorization.provider,
   });
 
-  // And update the oAuthUseCase for the MCP server.
+  // Step 3: Update the oAuthUseCase for the MCP server view.
+  // Error handling for this step is done internally by the hook via notifications.
   await updateServerView({
     oAuthUseCase: values.useCase,
   });

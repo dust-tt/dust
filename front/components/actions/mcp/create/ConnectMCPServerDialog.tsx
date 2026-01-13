@@ -7,14 +7,21 @@ import {
   DialogTitle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 import { submitConnectMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitConnectMCPServerDialogForm";
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
 import { mcpServerOAuthFormSchema } from "@app/components/actions/mcp/forms/types";
 import { getConnectMCPServerDialogDefaultValues } from "@app/components/actions/mcp/forms/utils";
-import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import {
+  AUTH_CREDENTIALS_ERROR_KEY,
+  MCPServerOAuthConnexion,
+} from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -23,6 +30,7 @@ import {
   getServerTypeAndIdFromSId,
   isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
@@ -55,9 +63,12 @@ export function ConnectMCPServerDialog({
     resolver: zodResolver(mcpServerOAuthFormSchema),
     defaultValues,
     mode: "onChange",
+    shouldUnregister: false,
   });
 
-  const { isValid: isSchemaValid } = form.formState;
+  // Check for credential validation errors set by MCPServerOAuthConnexion.
+  const hasCredentialErrors =
+    !!form.formState.errors[AUTH_CREDENTIALS_ERROR_KEY];
 
   const useCase = useWatch({
     control: form.control,
@@ -79,12 +90,27 @@ export function ConnectMCPServerDialog({
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { updateServerView } = useUpdateMCPServerView(owner, mcpServerView);
 
-  const serverType = getServerTypeAndIdFromSId(
-    mcpServerView.server.sId
-  ).serverType;
-  const toolName = getMcpServerDisplayName(mcpServerView.server);
-  const toolIcon = mcpServerView.server.icon;
+  const serverType = useMemo(
+    () => getServerTypeAndIdFromSId(mcpServerView.server.sId).serverType,
+    [mcpServerView]
+  );
 
+  const toolName = useMemo(() => {
+    if (mcpServerView.server) {
+      return getMcpServerDisplayName(mcpServerView.server);
+    }
+    return "MCP Server";
+  }, [mcpServerView]);
+
+  const toolIcon: InternalAllowedIconType | CustomResourceIconType =
+    useMemo(() => {
+      if (mcpServerView.server) {
+        return mcpServerView.server.icon;
+      }
+      return DEFAULT_MCP_SERVER_ICON;
+    }, [mcpServerView]);
+
+  // Discover OAuth metadata for remote MCP servers.
   useEffect(() => {
     const discoverOAuth = async () => {
       if (isOpen && mcpServerView) {
@@ -113,7 +139,7 @@ export function ConnectMCPServerDialog({
               provider: "mcp",
               supported_use_cases: ["platform_actions", "personal_actions"],
             });
-            form.setValue("oauthCredentials", {
+            form.setValue("authCredentials", {
               ...discoverOAuthMetadataRes.value.connectionMetadata,
             });
             setRemoteMCPServerOAuthDiscoveryDone(true);
@@ -155,7 +181,6 @@ export function ConnectMCPServerDialog({
       return;
     }
 
-    // First setup connection
     setIsLoading(true);
     const submitRes = await submitConnectMCPServerDialogForm({
       owner,
@@ -166,6 +191,7 @@ export function ConnectMCPServerDialog({
       updateServerView,
       onBeforeAssociateConnection: () => setExternalIsLoading(true),
     });
+
     if (submitRes.isErr()) {
       sendNotification({
         type: "error",
@@ -181,6 +207,9 @@ export function ConnectMCPServerDialog({
     setIsOpen(false);
     resetState();
   };
+
+  // Form is valid when: use case selected AND no credential validation errors.
+  const isFormValid = !!useCase && !hasCredentialErrors;
 
   return (
     <Dialog
@@ -223,9 +252,11 @@ export function ConnectMCPServerDialog({
                     onClick: (e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      void form.handleSubmit(handleSave)();
+                      if (isFormValid) {
+                        void form.handleSubmit(handleSave)();
+                      }
                     },
-                    disabled: !isSchemaValid || !useCase || isLoading,
+                    disabled: !isFormValid || isLoading,
                   }
                 : undefined
             }

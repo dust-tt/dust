@@ -20,7 +20,14 @@ import {
   getCreateMCPServerDialogDefaultValues,
   handleCreateMCPServerDialogSubmitError,
 } from "@app/components/actions/mcp/forms/utils";
-import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import {
+  AUTH_CREDENTIALS_ERROR_KEY,
+  MCPServerOAuthConnexion,
+} from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -80,10 +87,12 @@ export function CreateMCPServerDialog({
   const form = useForm<CreateMCPServerDialogFormValues>({
     resolver: zodResolver(createMCPServerDialogFormSchema),
     defaultValues,
-    mode: "onChange",
+    shouldUnregister: false,
   });
 
-  const { isValid: isSchemaValid } = form.formState;
+  // Check for credential validation errors set by MCPServerOAuthConnexion.
+  const hasCredentialErrors =
+    !!form.formState.errors[AUTH_CREDENTIALS_ERROR_KEY];
 
   const useCase = useWatch({
     control: form.control,
@@ -137,13 +146,17 @@ export function CreateMCPServerDialog({
     if (submitRes.isErr()) {
       handleCreateMCPServerDialogSubmitError({
         error: submitRes.error,
-        values,
-        authorization,
-        form,
-        sendNotification,
-        setRemoteMCPServerOAuthDiscoveryDone,
-        setExternalIsLoading,
-        setIsLoading,
+        context: {
+          remoteServerUrl: values.remoteServerUrl,
+          provider: authorization?.provider ?? null,
+        },
+        sendNotification: (title, description) =>
+          sendNotification({ type: "error", title, description }),
+        loading: {
+          setIsLoading,
+          setExternalIsLoading,
+          setRemoteMCPServerOAuthDiscoveryDone,
+        },
       });
       return;
     }
@@ -154,7 +167,7 @@ export function CreateMCPServerDialog({
 
     if (submitRes.value.type === "oauth_required") {
       setAuthorization(submitRes.value.authorization);
-      form.setValue("oauthCredentials", submitRes.value.oauthCredentials);
+      form.setValue("authCredentials", submitRes.value.authCredentials);
       // Returning here as now the user must select the use case.
       setIsLoading(false);
       return;
@@ -172,29 +185,32 @@ export function CreateMCPServerDialog({
     resetState();
   };
 
-  const { toolName, toolIcon } = useMemo(() => {
+  const toolName = useMemo(() => {
     if (internalMCPServer) {
-      return {
-        toolName: getMcpServerDisplayName(internalMCPServer),
-        toolIcon: internalMCPServer.icon,
-      };
+      return getMcpServerDisplayName(internalMCPServer);
     }
     if (defaultServerConfig) {
-      return {
-        toolName: defaultServerConfig.name,
-        toolIcon: defaultServerConfig.icon,
-      };
+      return defaultServerConfig.name;
     }
-    return {
-      toolName: "MCP Server",
-      toolIcon: DEFAULT_MCP_SERVER_ICON,
-    };
+    return "MCP Server";
   }, [internalMCPServer, defaultServerConfig]);
 
-  // Schema validation handles URL and bearer token requirements.
-  // Runtime check needed for OAuth: when authorization is discovered but useCase not yet selected.
-  const isOAuthPending = authorization && !useCase;
-  const isSubmitDisabled = !isSchemaValid || isOAuthPending || isLoading;
+  const toolIcon: InternalAllowedIconType | CustomResourceIconType =
+    useMemo(() => {
+      if (internalMCPServer) {
+        return internalMCPServer.icon;
+      }
+      if (defaultServerConfig) {
+        return defaultServerConfig.icon;
+      }
+      return DEFAULT_MCP_SERVER_ICON;
+    }, [internalMCPServer, defaultServerConfig]);
+
+  // When OAuth is required (authorization is set), form is valid when:
+  // - use case is selected AND no credential validation errors.
+  // When no OAuth needed (no authorization), form is always valid for OAuth fields.
+  const isOAuthValid = authorization ? !!useCase && !hasCredentialErrors : true;
+  const isSubmitDisabled = !isOAuthValid || isLoading;
 
   return (
     <Dialog
@@ -259,7 +275,9 @@ export function CreateMCPServerDialog({
               onClick: (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                void form.handleSubmit(handleSave)();
+                if (isOAuthValid) {
+                  void form.handleSubmit(handleSave)();
+                }
               },
             }}
           />

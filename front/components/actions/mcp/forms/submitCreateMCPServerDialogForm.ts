@@ -17,7 +17,7 @@ export type CreateMCPServerDialogSubmitResult =
   | {
       type: "oauth_required";
       authorization: AuthorizationInfo;
-      oauthCredentials: CreateMCPServerDialogFormValues["oauthCredentials"];
+      authCredentials: CreateMCPServerDialogFormValues["authCredentials"];
       remoteMCPServerOAuthDiscoveryDone: boolean;
     }
   | {
@@ -118,8 +118,8 @@ export async function submitCreateMCPServerDialogForm({
               provider: "mcp",
               supported_use_cases: ["platform_actions", "personal_actions"],
             },
-            oauthCredentials:
-              discoverOAuthMetadataRes.value.connectionMetadata ?? {},
+            authCredentials:
+              discoverOAuthMetadataRes.value.connectionMetadata ?? null,
             remoteMCPServerOAuthDiscoveryDone:
               nextRemoteMCPServerOAuthDiscoveryDone,
           });
@@ -159,7 +159,7 @@ export async function submitCreateMCPServerDialogForm({
       // During setup, the use case is always "platform_actions".
       useCase: "platform_actions",
       extraConfig: {
-        ...values.oauthCredentials,
+        ...(values.authCredentials ?? {}),
         ...(authorization.scope ? { scope: authorization.scope } : {}),
       },
     });

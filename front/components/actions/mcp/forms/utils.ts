@@ -1,6 +1,3 @@
-import type { NotificationType } from "@dust-tt/sparkle";
-import type { UseFormReturn } from "react-hook-form";
-
 import { CreateMCPServerDialogSubmitError } from "@app/components/actions/mcp/forms/submitCreateMCPServerDialogForm";
 import type {
   CreateMCPServerDialogFormValues,
@@ -12,36 +9,42 @@ import {
 } from "@app/components/actions/mcp/forms/types";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { OAUTH_PROVIDER_NAMES } from "@app/types";
+import type { OAuthProvider } from "@app/types/oauth/lib";
 
-type SendNotificationFn = (notification: NotificationType) => void;
+type SendErrorNotification = (title: string, description: string) => void;
+
+interface ErrorContext {
+  remoteServerUrl: string;
+  provider: OAuthProvider | null;
+}
+
+interface LoadingControls {
+  setIsLoading: (isLoading: boolean) => void;
+  setExternalIsLoading: (isLoading: boolean) => void;
+  setRemoteMCPServerOAuthDiscoveryDone: (done: boolean) => void;
+}
 
 interface HandleCreateMCPServerDialogSubmitErrorParams {
   error: Error;
-  values: CreateMCPServerDialogFormValues;
-  authorization: { provider: keyof typeof OAUTH_PROVIDER_NAMES } | null;
-  form: UseFormReturn<CreateMCPServerDialogFormValues>;
-  sendNotification: SendNotificationFn;
-  setRemoteMCPServerOAuthDiscoveryDone: (done: boolean) => void;
-  setExternalIsLoading: (isLoading: boolean) => void;
-  setIsLoading: (isLoading: boolean) => void;
+  context: ErrorContext;
+  sendNotification: SendErrorNotification;
+  loading: LoadingControls;
 }
 
 export function handleCreateMCPServerDialogSubmitError({
   error,
-  values,
-  authorization,
-  form,
+  context,
   sendNotification,
-  setRemoteMCPServerOAuthDiscoveryDone,
-  setExternalIsLoading,
-  setIsLoading,
+  loading,
 }: HandleCreateMCPServerDialogSubmitErrorParams): void {
+  const {
+    setIsLoading,
+    setExternalIsLoading,
+    setRemoteMCPServerOAuthDiscoveryDone,
+  } = loading;
+
   if (!(error instanceof CreateMCPServerDialogSubmitError)) {
-    sendNotification({
-      type: "error",
-      title: "Failed to create MCP server",
-      description: error.message,
-    });
+    sendNotification("Failed to create MCP server", error.message);
     setExternalIsLoading(false);
     setIsLoading(false);
     return;
@@ -51,43 +54,31 @@ export function handleCreateMCPServerDialogSubmitError({
 
   switch (error.kind) {
     case "discover_oauth_metadata": {
-      sendNotification({
-        type: "error",
-        title: "Failed to discover OAuth metadata for MCP server",
-        description: `${error.message} (${values.remoteServerUrl})`,
-      });
+      sendNotification(
+        "Failed to discover OAuth metadata for MCP server",
+        `${error.message} (${context.remoteServerUrl})`
+      );
       setIsLoading(false);
       return;
     }
 
     case "missing_use_case": {
-      sendNotification({
-        type: "error",
-        title: "Missing use case",
-        description: error.message,
-      });
+      sendNotification("Missing use case", error.message);
       setIsLoading(false);
       return;
     }
 
     case "oauth_connection": {
-      sendNotification({
-        type: "error",
-        title: authorization
-          ? `Failed to connect ${OAUTH_PROVIDER_NAMES[authorization.provider]}`
-          : "Failed to connect OAuth provider",
-        description: error.message,
-      });
+      const title = context.provider
+        ? `Failed to connect ${OAUTH_PROVIDER_NAMES[context.provider]}`
+        : "Failed to connect OAuth provider";
+      sendNotification(title, error.message);
       setIsLoading(false);
       return;
     }
 
     case "create_server": {
-      sendNotification({
-        type: "error",
-        title: "Failed to create MCP server",
-        description: error.message,
-      });
+      sendNotification("Failed to create MCP server", error.message);
       setExternalIsLoading(false);
       setIsLoading(false);
       return;
@@ -102,8 +93,6 @@ export function getConnectMCPServerDialogDefaultValues(): MCPServerOAuthFormValu
 export function getCreateMCPServerDialogDefaultValues(
   defaultServerConfig?: DefaultRemoteMCPServerConfig
 ): CreateMCPServerDialogFormValues {
-  // RHF initializes field values from defaultValues not from the zod resolver. Zod defaults apply when the schema
-  // is parsed
   const values = createMCPServerDialogFormSchema.parse({});
 
   if (defaultServerConfig?.url) {
