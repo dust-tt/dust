@@ -1,5 +1,5 @@
 {
   "buildCommand": "npm run build-storybook",
   "outputDirectory": "storybook-static",
-  "ignoreCommand": "git diff --quiet origin/main...HEAD -- sparkle/src && exit 0 || exit 1"
+  "ignoreCommand": "git fetch origin main master 2>/dev/null || true; (git diff --quiet origin/main...HEAD -- sparkle/src 2>/dev/null || git diff --quiet origin/master...HEAD -- sparkle/src 2>/dev/null) && exit 0 || exit 1"
 }
