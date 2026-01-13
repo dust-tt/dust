@@ -17,6 +17,7 @@ import { MembershipInvitationResource } from "@app/lib/resources/membership_invi
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { isString } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
 
 function isValidScreenHint(
@@ -284,14 +285,17 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 
     // Set session cookie and redirect to returnTo URL
     const domain = config.getWorkOSSessionCookieDomain();
+    // In development (localhost), omit Secure flag as it requires HTTPS
+    // Safari strictly enforces this and will not set cookies with Secure flag on HTTP
+    const secureFlag = isDevelopment() ? "" : "; Secure";
     if (domain) {
       res.setHeader("Set-Cookie", [
-        "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
-        `workos_session=${sealedCookie}; Domain=${domain}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+        `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
+        `workos_session=${sealedCookie}; Domain=${domain}; Path=/; HttpOnly${secureFlag}; SameSite=Lax; Max-Age=2592000`,
       ]);
     } else {
       res.setHeader("Set-Cookie", [
-        `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+        `workos_session=${sealedCookie}; Path=/; HttpOnly${secureFlag}; SameSite=Lax; Max-Age=2592000`,
       ]);
     }
 
@@ -323,14 +327,16 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const domain = config.getWorkOSSessionCookieDomain();
+  // In development (localhost), omit Secure flag as it requires HTTPS
+  const secureFlag = isDevelopment() ? "" : "; Secure";
   if (domain) {
     res.setHeader("Set-Cookie", [
-      "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
-      `workos_session=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax`,
+      `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
+      `workos_session=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
     ]);
   } else {
     res.setHeader("Set-Cookie", [
-      "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
+      `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
     ]);
   }
 

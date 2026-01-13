@@ -27,7 +27,8 @@ const CONTENT_SECURITY_POLICIES = [
   `frame-ancestors 'self';`,
   `manifest-src 'self';`,
   `worker-src 'self' blob:;`,
-  `upgrade-insecure-requests;`,
+  // Only upgrade insecure requests in production - in development we use HTTP
+  ...(isDev ? [] : ["upgrade-insecure-requests;"]),
 ].join(" ");
 
 const withBundleAnalyzer = bundleAnalyzer({
@@ -385,19 +386,25 @@ const config = {
   poweredByHeader: false,
   skipTrailingSlashRedirect: true,
   async headers() {
+    const headers = [
+      {
+        key: "Content-Security-Policy",
+        value: CONTENT_SECURITY_POLICIES,
+      },
+    ];
+
+    // Only add HSTS header in production - it forces HTTPS which breaks local development
+    if (!isDev) {
+      headers.push({
+        key: "Strict-Transport-Security",
+        value: "max-age=86400", // 1 day in seconds
+      });
+    }
+
     return [
       {
         source: "/:path*", // Match all paths
-        headers: [
-          {
-            key: "Content-Security-Policy",
-            value: CONTENT_SECURITY_POLICIES,
-          },
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=86400", // 1 day in seconds
-          },
-        ],
+        headers,
       },
     ];
   },
