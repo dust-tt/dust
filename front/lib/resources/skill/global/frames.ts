@@ -3,7 +3,7 @@ import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/regi
 
 export const framesSkill = {
   sId: "frames",
-  name: "Create Frames",
+  name: "Frames",
   userFacingDescription:
     "Turn insights into interactive dashboards and presentations your team can explore, customize, and share. Living documents that adapt to different stakeholders.",
   agentFacingDescription:
