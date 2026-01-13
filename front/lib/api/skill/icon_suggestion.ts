@@ -126,10 +126,11 @@ export async function getSkillIconSuggestion(
     {
       conversation: getConversationContext(inputs),
       prompt:
-        "The user is creating a skill (reusable capability) for an AI assistant. " +
+        "The user is creating a skill (reusable capability) for an AI agent. " +
         "Based on the skill name, purpose, and instructions, " +
         "pick the most appropriate icon from the available options. " +
         "Choose the icon that best represents what this skill does." +
+        'The "icon" property of the `skill_builder_icon_suggestion` function must be set to exactly one of the available icon names.' +
         "## Available icons\n\n" +
         SKILL_ICON_OPTIONS.map((i) => `- **${i.name}**: ${i.description}`).join(
           "\n"
