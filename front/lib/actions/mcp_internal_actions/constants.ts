@@ -136,6 +136,7 @@ import {
   PRODUCTBOARD_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/productboard/metadata";
 import { RUN_AGENT_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/metadata";
+import { RUN_DUST_APP_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app/metadata";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
   InternalMCPServerDefinitionType,
@@ -393,15 +394,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "run_dust_app",
-      version: "1.0.0",
-      description: "Run Dust Apps with specified parameters.",
-      icon: "CommandLineIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: RUN_DUST_APP_SERVER_INFO,
   },
   notion: {
     id: 11,

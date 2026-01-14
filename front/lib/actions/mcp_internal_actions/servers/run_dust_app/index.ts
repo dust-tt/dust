@@ -16,6 +16,7 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -53,8 +54,6 @@ import {
   safeParseJSON,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-
-import { ConfigurableToolInputSchemas } from "../input_schemas";
 
 const MIN_GENERATION_TOKENS = 2048;
 
