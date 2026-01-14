@@ -2,19 +2,12 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { Authenticator } from "@app/lib/auth";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
-
 import type {
   FreshserviceServiceItemField,
   FreshserviceTicket,
   FreshserviceTicketField,
-} from "./freshservice_api_helper";
-import { FreshserviceTicketSchema } from "./freshservice_api_helper";
+} from "@app/lib/actions/mcp_internal_actions/servers/freshservice/freshservice_api_helper";
+import { FreshserviceTicketSchema } from "@app/lib/actions/mcp_internal_actions/servers/freshservice/freshservice_api_helper";
 import {
   addTicketNoteSchema,
   addTicketReplySchema,
@@ -54,7 +47,13 @@ import {
   searchServiceItemsSchema,
   updateTicketSchema,
   updateTicketTaskSchema,
-} from "./metadata";
+} from "@app/lib/actions/mcp_internal_actions/servers/freshservice/metadata";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 function createServer(
   auth: Authenticator,

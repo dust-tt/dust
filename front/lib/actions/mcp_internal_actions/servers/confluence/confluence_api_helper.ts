@@ -2,10 +2,6 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
-
 import type {
   ConfluenceCreatePageRequest,
   ConfluenceCurrentUser,
@@ -17,7 +13,7 @@ import type {
   ConfluenceV1SearchResult,
   UpdatePagePayload,
   WithAuthParams,
-} from "./types";
+} from "@app/lib/actions/mcp_internal_actions/servers/confluence/types";
 import {
   AtlassianResourceSchema,
   ConfluenceCurrentUserSchema,
@@ -25,7 +21,10 @@ import {
   ConfluencePageSchema,
   ConfluenceV1SearchResultSchema,
   CreatePagePayloadSchema,
-} from "./types";
+} from "@app/lib/actions/mcp_internal_actions/servers/confluence/types";
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 // Generic wrapper for Confluence API calls
 async function confluenceApiCall<T extends z.ZodTypeAny>(

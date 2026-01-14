@@ -4,9 +4,6 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { JIRA_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
-import type { MCPToolType } from "@app/lib/api/mcp";
-import type { MCPOAuthUseCase } from "@app/types";
-
 import {
   ADFDocumentSchema,
   JiraCreateIssueLinkRequestSchema,
@@ -14,7 +11,9 @@ import {
   JiraSearchFilterSchema,
   JiraSortSchema,
   SEARCH_USERS_MAX_RESULTS,
-} from "./types";
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
+import type { MCPToolType } from "@app/lib/api/mcp";
+import type { MCPOAuthUseCase } from "@app/types";
 
 // Re-export for use in server.ts
 export { SEARCH_USERS_MAX_RESULTS };

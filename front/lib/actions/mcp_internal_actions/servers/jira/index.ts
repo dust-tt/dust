@@ -1,15 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
-import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
-import { Err, normalizeError, Ok } from "@app/types";
-
 import {
   createComment,
   createIssue,
@@ -36,7 +27,7 @@ import {
   updateIssue,
   uploadAttachmentsToJira,
   withAuth,
-} from "./jira_api_helper";
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
 import {
   createCommentSchema,
   createIssueLinkSchema,
@@ -62,8 +53,16 @@ import {
   transitionIssueSchema,
   updateIssueSchema,
   uploadAttachmentSchema,
-} from "./metadata";
-import { renderIssueWithEmbeddedComments } from "./rendering";
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/metadata";
+import { renderIssueWithEmbeddedComments } from "@app/lib/actions/mcp_internal_actions/servers/jira/rendering";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
+import { Err, normalizeError, Ok } from "@app/types";
 
 function createServer(
   auth: Authenticator,

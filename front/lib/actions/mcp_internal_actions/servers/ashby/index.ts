@@ -2,16 +2,8 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import sanitizeHtml from "sanitize-html";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { toCsv } from "@app/lib/api/csv";
-import type { Authenticator } from "@app/lib/auth";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
-
-import type { AshbyClient } from "./client";
-import { getAshbyClient } from "./client";
+import type { AshbyClient } from "@app/lib/actions/mcp_internal_actions/servers/ashby/client";
+import { getAshbyClient } from "@app/lib/actions/mcp_internal_actions/servers/ashby/client";
 import {
   ASHBY_TOOL_NAME,
   createCandidateNoteSchema,
@@ -19,14 +11,24 @@ import {
   getInterviewFeedbackSchema,
   getReportDataSchema,
   searchCandidatesSchema,
-} from "./metadata";
+} from "@app/lib/actions/mcp_internal_actions/servers/ashby/metadata";
 import {
   renderCandidateList,
   renderCandidateNotes,
   renderInterviewFeedbackRecap,
   renderReportInfo,
-} from "./rendering";
-import type { AshbyCandidate, AshbyFeedbackSubmission } from "./types";
+} from "@app/lib/actions/mcp_internal_actions/servers/ashby/rendering";
+import type {
+  AshbyCandidate,
+  AshbyFeedbackSubmission,
+} from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { toCsv } from "@app/lib/api/csv";
+import type { Authenticator } from "@app/lib/auth";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 const DEFAULT_SEARCH_LIMIT = 20;
 

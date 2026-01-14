@@ -1,4 +1,7 @@
-import type { SlabPost, SlabTopic } from "./slab_types";
+import type {
+  SlabPost,
+  SlabTopic,
+} from "@app/lib/actions/mcp_internal_actions/servers/slab/slab_types";
 
 export function formatPostSummary(post: SlabPost): string {
   const status = post.archivedAt

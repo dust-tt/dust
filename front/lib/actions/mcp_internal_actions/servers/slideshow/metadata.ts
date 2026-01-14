@@ -2,11 +2,10 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
+import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { InteractiveContentFileContentType } from "@app/types";
 import { frameContentType, INTERACTIVE_CONTENT_FILE_FORMATS } from "@app/types";
-
-import { SLIDESHOW_INSTRUCTIONS } from "./instructions";
 
 // Tool names.
 export const CREATE_SLIDESHOW_FILE_TOOL_NAME = "create_slideshow_file";

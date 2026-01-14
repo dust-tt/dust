@@ -1,12 +1,11 @@
-import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
-
 import type {
   RawPost,
   SlabPost,
   SlabSearchResult,
   SlabTopic,
-} from "./slab_types";
+} from "@app/lib/actions/mcp_internal_actions/servers/slab/slab_types";
+import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types";
 
 export const SLAB_GRAPHQL_URL = "https://api.slab.com/v1/graphql";
 export const MAX_LIMIT = 100;

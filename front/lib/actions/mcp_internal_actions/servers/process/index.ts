@@ -21,6 +21,7 @@ import {
   FIND_TAGS_TOOL_NAME,
   PROCESS_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/process/metadata";
+import { getExtractFileTitle } from "@app/lib/actions/mcp_internal_actions/servers/process/utils";
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
@@ -49,8 +50,6 @@ import type {
   UserMessageType,
 } from "@app/types";
 import { Err, isUserMessageType, Ok, timeFrameFromNow } from "@app/types";
-
-import { getExtractFileTitle } from "./utils";
 
 // Type definition for process action outputs
 type ProcessActionOutputsType = {

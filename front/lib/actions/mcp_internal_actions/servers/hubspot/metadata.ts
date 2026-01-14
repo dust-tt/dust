@@ -4,15 +4,14 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import type { MCPToolType } from "@app/lib/api/mcp";
-import type { MCPOAuthUseCase } from "@app/types";
-
 import {
   ALL_OBJECTS,
   MAX_COUNT_LIMIT,
   MAX_LIMIT,
   SIMPLE_OBJECTS,
-} from "./hubspot_api_helper";
+} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
+import type { MCPToolType } from "@app/lib/api/mcp";
+import type { MCPOAuthUseCase } from "@app/types";
 
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 export const HUBSPOT_TOOL_NAME = "hubspot" as const;

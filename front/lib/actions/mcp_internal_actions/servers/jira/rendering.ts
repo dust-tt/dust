@@ -1,7 +1,11 @@
 import { format } from "date-fns";
 
-import type { ADFContentNode, JiraComment, JiraIssue } from "./types";
-import { JiraCommentsListSchema } from "./types";
+import type {
+  ADFContentNode,
+  JiraComment,
+  JiraIssue,
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
+import { JiraCommentsListSchema } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 
 function formatDateTime(dateString: string): string {
   return format(new Date(dateString), "yyyy-MM-dd HH:mm");

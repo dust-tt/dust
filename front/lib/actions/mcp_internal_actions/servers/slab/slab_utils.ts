@@ -1,4 +1,4 @@
-import type { SlabPost } from "./slab_types";
+import type { SlabPost } from "@app/lib/actions/mcp_internal_actions/servers/slab/slab_types";
 
 export const ERROR_MESSAGES = {
   NO_ACCESS_TOKEN:

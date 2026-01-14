@@ -7,7 +7,7 @@ import type {
   ConfluenceV1SearchPage,
   RenderablePage,
   RenderConfluencePageOptions,
-} from "./types";
+} from "@app/lib/actions/mcp_internal_actions/servers/confluence/types";
 
 const turndownService = new TurndownService({
   headingStyle: "atx",

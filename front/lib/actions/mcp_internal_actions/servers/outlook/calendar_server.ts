@@ -1,12 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
-
 import {
   checkAvailabilitySchema,
   checkSelfAvailabilitySchema,
@@ -18,13 +12,18 @@ import {
   listEventsSchema,
   OUTLOOK_CALENDAR_TOOL_NAME,
   updateEventSchema,
-} from "./metadata";
-import * as OutlookApi from "./outlook_api_helper";
+} from "@app/lib/actions/mcp_internal_actions/servers/outlook/metadata";
+import * as OutlookApi from "@app/lib/actions/mcp_internal_actions/servers/outlook/outlook_api_helper";
 import {
   renderAvailabilityCheck,
   renderOutlookEvent,
   renderOutlookEventList,
-} from "./rendering";
+} from "@app/lib/actions/mcp_internal_actions/servers/outlook/rendering";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import { Err, Ok } from "@app/types";
 
 function createServer(
   auth: Authenticator,

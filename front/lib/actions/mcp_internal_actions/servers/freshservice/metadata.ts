@@ -4,10 +4,9 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { FRESHSERVICE_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
+import { FreshserviceTicketSchema } from "@app/lib/actions/mcp_internal_actions/servers/freshservice/freshservice_api_helper";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { MCPOAuthUseCase } from "@app/types";
-
-import { FreshserviceTicketSchema } from "./freshservice_api_helper";
 
 // =============================================================================
 // Constants - Exported for monitoring

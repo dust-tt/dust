@@ -4,14 +4,10 @@ import { markdownToAdf } from "marklassian";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
-import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
-import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
-
-import { createJQLFromSearchFilters, processFieldsForJira } from "./jira_utils";
+import {
+  createJQLFromSearchFilters,
+  processFieldsForJira,
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
 import type {
   ADFDocument,
   JiraConnectionInfoSchema,
@@ -25,7 +21,7 @@ import type {
   SearchFilter,
   SearchFilterField,
   SortDirection,
-} from "./types";
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
   ADFDocumentSchema,
   JiraAttachmentsResultSchema,
@@ -48,7 +44,13 @@ import {
   SEARCH_FILTER_FIELDS,
   SEARCH_ISSUES_MAX_RESULTS,
   SEARCH_USERS_MAX_RESULTS,
-} from "./types";
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
+import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
+import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
 
 // Type guard to check if a value is an ADFDocument
 function isADFDocument(value: unknown): value is ADFDocument {

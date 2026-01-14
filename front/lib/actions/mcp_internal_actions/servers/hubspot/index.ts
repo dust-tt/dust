@@ -1,7 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-
 import {
   ALL_OBJECTS,
   countObjectsByProperties,
@@ -37,7 +35,7 @@ import {
   updateCompany,
   updateContact,
   updateDeal,
-} from "./hubspot_api_helper";
+} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
 import {
   formatHubSpotCreateSuccess,
   formatHubSpotGetSuccess,
@@ -45,14 +43,14 @@ import {
   formatHubSpotSearchResults,
   formatHubSpotUpdateSuccess,
   formatTransformedPropertiesAsText,
-} from "./hubspot_response_helpers";
-import { HUBSPOT_ID_TO_OBJECT_TYPE } from "./hubspot_utils";
+} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_response_helpers";
+import { HUBSPOT_ID_TO_OBJECT_TYPE } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
 import {
   ERROR_MESSAGES,
   generateUrls,
   validateRequests,
   withAuth,
-} from "./hubspot_utils";
+} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
 import {
   countObjectsByPropertiesSchema,
   createAssociationSchema,
@@ -86,7 +84,8 @@ import {
   updateCompanySchema,
   updateContactSchema,
   updateDealSchema,
-} from "./metadata";
+} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/metadata";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 
 function createServer(): McpServer {
   const server = makeInternalMCPServer("hubspot");

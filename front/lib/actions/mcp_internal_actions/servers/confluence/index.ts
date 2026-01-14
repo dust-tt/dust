@@ -1,12 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
-
 import {
   createPage,
   getCurrentUser,
@@ -15,7 +9,7 @@ import {
   listSpaces,
   updatePage,
   withAuth,
-} from "./confluence_api_helper";
+} from "@app/lib/actions/mcp_internal_actions/servers/confluence/confluence_api_helper";
 import {
   CONFLUENCE_TOOL_NAME,
   createPageSchema,
@@ -24,12 +18,17 @@ import {
   getPagesSchema,
   getSpacesSchema,
   updatePageSchema,
-} from "./metadata";
+} from "@app/lib/actions/mcp_internal_actions/servers/confluence/metadata";
 import {
   renderConfluencePage,
   renderConfluencePageList,
   renderConfluenceSpacesList,
-} from "./rendering";
+} from "@app/lib/actions/mcp_internal_actions/servers/confluence/rendering";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import { Err, Ok } from "@app/types";
 
 function createServer(
   auth: Authenticator,

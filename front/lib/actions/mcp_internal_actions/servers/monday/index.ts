@@ -33,13 +33,7 @@ import {
   updateSubitemSchema,
   uploadFileToColumnSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/monday/metadata";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
-
-import type { SearchItemsFilters } from "./monday_api_helper";
+import type { SearchItemsFilters } from "@app/lib/actions/mcp_internal_actions/servers/monday/monday_api_helper";
 import {
   createBoard,
   createColumn,
@@ -70,7 +64,12 @@ import {
   updateItemName,
   updateSubitem,
   uploadFileToColumn,
-} from "./monday_api_helper";
+} from "@app/lib/actions/mcp_internal_actions/servers/monday/monday_api_helper";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import { Err, Ok } from "@app/types";
 
 function createServer(
   auth: Authenticator,

@@ -3,7 +3,7 @@ import type {
   AshbyCandidateNote,
   AshbyFeedbackSubmission,
   AshbyReportSynchronousResponse,
-} from "./types";
+} from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 
 function renderCandidate(candidate: AshbyCandidate): string {
   const lines = [`ID: ${candidate.id}`, `Name: ${candidate.name}`];

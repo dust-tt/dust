@@ -4,7 +4,7 @@ import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   INTERNAL_MCP_SERVERS,
   LEGACY_INTERNAL_MCP_SERVER_IDS,
-} from "./constants";
+} from "@app/lib/actions/mcp_internal_actions/constants";
 
 describe("INTERNAL_MCP_SERVERS", () => {
   it("should have unique IDs for all servers", () => {
