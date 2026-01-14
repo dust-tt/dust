@@ -1,8 +1,7 @@
 import { z } from "zod";
 
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { OAuthCredentials } from "@app/types";
-import { isSupportedOAuthCredential, isOAuthProvider } from "@app/types";
+import { isSupportedOAuthCredential } from "@app/types";
 
 // OAuth use cases
 export const MCP_SERVER_OAUTH_USE_CASES = [
@@ -53,29 +52,6 @@ const oAuthCredentialsSchema = z
   .nullable()
   .default(null);
 
-// Runtime validator for AuthorizationInfo.
-function isAuthorizationInfo(value: unknown): value is AuthorizationInfo {
-  if (value === null) {
-    return true;
-  }
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "provider" in value &&
-    isOAuthProvider((value as Record<string, unknown>).provider) &&
-    "supported_use_cases" in value &&
-    Array.isArray((value as Record<string, unknown>).supported_use_cases)
-  );
-}
-
-// Zod schema for AuthorizationInfo with runtime validation.
-const authorizationInfoSchema = z
-  .custom<AuthorizationInfo>(isAuthorizationInfo, {
-    message: "Invalid authorization info format",
-  })
-  .nullable()
-  .default(null);
-
 // Base OAuth form schema (used by ConnectMCPServerDialog)
 // Uses dynamic authCredentials from provider.
 // Validation is handled imperatively via setError/clearErrors since
@@ -87,10 +63,11 @@ export const mcpServerOAuthFormSchema = z.object({
 
 export type MCPServerOAuthFormValues = z.infer<typeof mcpServerOAuthFormSchema>;
 
-// Extended form schema for CreateMCPServerDialog
+// Extended form schema for CreateMCPServerDialog.
 // Inherits OAuth fields and adds remote server configuration fields.
-// Also includes workflow state (authorization, remoteMCPServerOAuthDiscoveryDone)
-// to centralize all form-related state.
+// Note: Workflow state (authorization, remoteMCPServerOAuthDiscoveryDone) is managed
+// via useState in the dialog component, not in form state, to maintain separation
+// between user input (form) and server-derived state (useState).
 export const createMCPServerDialogFormSchema = mcpServerOAuthFormSchema.extend({
   remoteServerUrl: z.string().default(""),
   authMethod: z
@@ -101,9 +78,6 @@ export const createMCPServerDialogFormSchema = mcpServerOAuthFormSchema.extend({
   customHeaders: z
     .array(z.object({ key: z.string(), value: z.string() }))
     .default([]),
-  // Workflow state - populated by OAuth metadata discovery, not user input.
-  authorization: authorizationInfoSchema,
-  remoteMCPServerOAuthDiscoveryDone: z.boolean().default(false),
 });
 
 export type CreateMCPServerDialogFormValues = z.infer<

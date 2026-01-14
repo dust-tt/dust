@@ -12,10 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
-import type {
-  CreateMCPServerDialogFormValues,
-  MCPServerOAuthFormValues,
-} from "@app/components/actions/mcp/forms/types";
+import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type {
   MCPOAuthUseCase,
@@ -43,29 +40,19 @@ export const AUTH_CREDENTIALS_ERROR_KEY = "authCredentials" as const;
 
 interface MCPServerOAuthConnexionProps {
   toolName: string;
-  // Authorization can be passed as a prop or retrieved from form context.
-  // When used with CreateMCPServerDialog, it comes from form context.
-  // When used with ConnectMCPServerDialog, it's passed as a prop.
-  authorization?: AuthorizationInfo;
+  // Authorization is always passed as a prop from the parent dialog.
+  // It's managed via useState in the dialog (workflow state), not in form state.
+  authorization: AuthorizationInfo;
   documentationUrl?: string;
 }
 
 export function MCPServerOAuthConnexion({
   toolName,
-  authorization: authorizationProp,
+  authorization,
   documentationUrl,
 }: MCPServerOAuthConnexionProps) {
   const { setValue, setError, clearErrors } =
     useFormContext<MCPServerOAuthFormValues>();
-
-  // Try to get authorization from form context if not passed as prop.
-  // This is safe because CreateMCPServerDialogFormValues extends MCPServerOAuthFormValues.
-  const authorizationFromForm = useWatch<
-    CreateMCPServerDialogFormValues,
-    "authorization"
-  >({
-    name: "authorization",
-  });
 
   const useCase = useWatch<MCPServerOAuthFormValues, "useCase">({
     name: "useCase",
@@ -83,16 +70,9 @@ export function MCPServerOAuthConnexion({
   // Dynamically fetched credential inputs based on provider and use case.
   const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
 
-  // Use prop if provided, otherwise fall back to form context.
-  const authorization = authorizationProp ?? authorizationFromForm;
-
   // Effect 1: Initialize use case and fetch credential inputs.
   // Handles both auto-selecting a default use case and fetching credentials when it changes.
   useEffect(() => {
-    if (!authorization) {
-      return;
-    }
-
     let effectiveUseCase = useCase;
 
     // Auto-select default use case if not already set.
@@ -178,11 +158,6 @@ export function MCPServerOAuthConnexion({
       clearErrors(AUTH_CREDENTIALS_ERROR_KEY);
     }
   }, [authCredentials, inputs, setError, clearErrors]);
-
-  // Early return if no authorization available.
-  if (!authorization) {
-    return null;
-  }
 
   const handleCredentialChange = (key: string, value: string) => {
     if (!isSupportedOAuthCredential(key)) {

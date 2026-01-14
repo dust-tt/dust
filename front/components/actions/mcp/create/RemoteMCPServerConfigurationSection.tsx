@@ -15,6 +15,7 @@ import { useController, useFormContext } from "react-hook-form";
 
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 
 function getAuthMethodLabel(
   authMethod: CreateMCPServerDialogFormValues["authMethod"],
@@ -48,14 +49,17 @@ function getBearerPlaceholder(
 
 interface RemoteMCPServerConfigurationSectionProps {
   defaultServerConfig?: DefaultRemoteMCPServerConfig;
+  // Callback to update authorization state in the parent dialog.
+  // Authorization is workflow state (useState), not form state.
+  onAuthorizationChange: (authorization: AuthorizationInfo | null) => void;
 }
 
 export function RemoteMCPServerConfigurationSection({
   defaultServerConfig,
+  onAuthorizationChange,
 }: RemoteMCPServerConfigurationSectionProps) {
   const {
     register,
-    setValue,
     formState: { errors },
   } = useFormContext<CreateMCPServerDialogFormValues>();
 
@@ -145,7 +149,7 @@ export function RemoteMCPServerConfigurationSection({
                       label="Automatic"
                       onClick={() => {
                         authMethodField.onChange("oauth-dynamic");
-                        setValue("authorization", null);
+                        onAuthorizationChange(null);
                       }}
                     />
                   )}
@@ -160,7 +164,7 @@ export function RemoteMCPServerConfigurationSection({
                       }
                       onClick={() => {
                         authMethodField.onChange("bearer");
-                        setValue("authorization", null);
+                        onAuthorizationChange(null);
                       }}
                     />
                   )}
@@ -170,7 +174,7 @@ export function RemoteMCPServerConfigurationSection({
                       label="Static OAuth"
                       onClick={() => {
                         authMethodField.onChange("oauth-static");
-                        setValue("authorization", {
+                        onAuthorizationChange({
                           provider: "mcp_static",
                           supported_use_cases: [
                             "platform_actions",

@@ -72,26 +72,33 @@ type CreateInternalMCPServerFn = (args: {
   customHeaders?: Array<{ key: string; value: string }>;
 }) => Promise<Result<CreateMCPServerResponseBody, Error>>;
 
-export async function submitCreateMCPServerDialogForm({
-  owner,
-  internalMCPServer,
-  values,
-  discoverOAuthMetadata,
-  createWithURL,
-  createInternalMCPServer,
-  onBeforeCreateServer,
-}: {
+interface SubmitCreateMCPServerDialogFormParams {
   owner: WorkspaceType;
   internalMCPServer?: MCPServerType;
   values: CreateMCPServerDialogFormValues;
+  // Workflow state - managed via useState in the dialog, not in form state.
+  // These are server-derived values, not user input.
+  authorization: AuthorizationInfo | null;
+  remoteMCPServerOAuthDiscoveryDone: boolean;
   discoverOAuthMetadata: DiscoverOAuthMetadataFn;
   createWithURL: CreateRemoteMCPServerFn;
   createInternalMCPServer: CreateInternalMCPServerFn;
   onBeforeCreateServer: () => void;
-}): Promise<Result<CreateMCPServerDialogSubmitResult, Error>> {
-  // Extract workflow state from form values.
-  const { authorization, remoteMCPServerOAuthDiscoveryDone } = values;
+}
 
+export async function submitCreateMCPServerDialogForm({
+  owner,
+  internalMCPServer,
+  values,
+  authorization,
+  remoteMCPServerOAuthDiscoveryDone,
+  discoverOAuthMetadata,
+  createWithURL,
+  createInternalMCPServer,
+  onBeforeCreateServer,
+}: SubmitCreateMCPServerDialogFormParams): Promise<
+  Result<CreateMCPServerDialogSubmitResult, Error>
+> {
   let oauthConnection: MCPConnectionType | undefined;
   let nextRemoteMCPServerOAuthDiscoveryDone = remoteMCPServerOAuthDiscoveryDone;
 

@@ -95,17 +95,18 @@ export function CreateMCPServerDialog({
     name: "useCase",
   });
 
-  // Watch workflow state from form instead of separate useState.
-  const authorization = useWatch({
-    control: form.control,
-    name: "authorization",
-  });
-  const remoteMCPServerOAuthDiscoveryDone = useWatch({
-    control: form.control,
-    name: "remoteMCPServerOAuthDiscoveryDone",
-  });
-
   const [isLoading, setIsLoading] = useState(false);
+
+  // Workflow state - managed via useState, not form state.
+  // These are server-derived values (from OAuth discovery or internal server config),
+  // not user input. Keeping them separate maintains clear separation of concerns.
+  const [authorization, setAuthorization] = useState<AuthorizationInfo | null>(
+    null
+  );
+  const [
+    remoteMCPServerOAuthDiscoveryDone,
+    setRemoteMCPServerOAuthDiscoveryDone,
+  ] = useState(false);
 
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { createWithURL } = useCreateRemoteMCPServer(owner);
@@ -114,15 +115,17 @@ export function CreateMCPServerDialog({
   // Initialize authorization from internalMCPServer when dialog opens.
   useEffect(() => {
     if (internalMCPServer && isOpen) {
-      form.setValue("authorization", internalMCPServer.authorization);
-    } else if (!isOpen) {
-      // Reset when dialog closes - handled by resetState on close
+      setAuthorization(internalMCPServer.authorization);
     }
-  }, [form, internalMCPServer, isOpen]);
+  }, [internalMCPServer, isOpen]);
 
   const resetState = () => {
     setIsLoading(false);
     setExternalIsLoading(false);
+    // Reset workflow state (useState).
+    setAuthorization(null);
+    setRemoteMCPServerOAuthDiscoveryDone(false);
+    // Reset form state.
     form.reset(defaultValues);
   };
 
@@ -133,6 +136,9 @@ export function CreateMCPServerDialog({
       owner,
       internalMCPServer,
       values,
+      // Pass workflow state as separate params (not from form).
+      authorization,
+      remoteMCPServerOAuthDiscoveryDone,
       discoverOAuthMetadata,
       createWithURL,
       createInternalMCPServer,
@@ -144,27 +150,26 @@ export function CreateMCPServerDialog({
         error: submitRes.error,
         context: {
           remoteServerUrl: values.remoteServerUrl,
-          provider: values.authorization?.provider ?? null,
+          provider: authorization?.provider ?? null,
         },
         sendNotification: (title, description) =>
           sendNotification({ type: "error", title, description }),
         loading: {
           setIsLoading,
           setExternalIsLoading,
-          setRemoteMCPServerOAuthDiscoveryDone: (done: boolean) =>
-            form.setValue("remoteMCPServerOAuthDiscoveryDone", done),
+          setRemoteMCPServerOAuthDiscoveryDone,
         },
       });
       return;
     }
 
-    form.setValue(
-      "remoteMCPServerOAuthDiscoveryDone",
+    // Update workflow state from submit result.
+    setRemoteMCPServerOAuthDiscoveryDone(
       submitRes.value.remoteMCPServerOAuthDiscoveryDone
     );
 
     if (submitRes.value.type === "oauth_required") {
-      form.setValue("authorization", submitRes.value.authorization);
+      setAuthorization(submitRes.value.authorization);
       form.setValue("authCredentials", submitRes.value.authCredentials);
       // Returning here as now the user must select the use case.
       setIsLoading(false);
@@ -230,12 +235,14 @@ export function CreateMCPServerDialog({
                 (!authorization || authorization.provider === "mcp_static") && (
                   <RemoteMCPServerConfigurationSection
                     defaultServerConfig={defaultServerConfig}
+                    onAuthorizationChange={setAuthorization}
                   />
                 )}
 
               {authorization && (
                 <MCPServerOAuthConnexion
                   toolName={toolName}
+                  authorization={authorization}
                   documentationUrl={
                     internalMCPServer?.documentationUrl ?? undefined
                   }
