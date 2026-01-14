@@ -67,6 +67,18 @@ export async function launchGoogleDriveFullSyncWorkflow(
   const client = await getTemporalClient();
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
+  // Create signals for both added and removed folders (only if specific folders provided)
+  const signalArgs: FolderUpdatesSignal[] = [
+    ...(addedFolderIds || []).map((sId) => ({
+      action: "added" as const,
+      folderId: sId,
+    })),
+    ...removedFolderIds.map((sId) => ({
+      action: "removed" as const,
+      folderId: sId,
+    })),
+  ];
+
   try {
     if (useParallelSync) {
       const workflowId = googleDriveFullSyncV2WorkflowId(connectorId);
@@ -105,19 +117,6 @@ export async function launchGoogleDriveFullSyncWorkflow(
         // Specific folders: use signalWithStart to either signal running workflow or start new one.
         // If workflow is running, it just signals. If not, it starts with foldersToBrowse and signals.
         // This handles the removal-only case gracefully: starts with empty folders, skips sync, runs GC.
-
-        // Create signals for both added and removed folders (only if specific folders provided)
-        const signalArgs: FolderUpdatesSignal[] = [
-          ...addedFolderIds.map((sId) => ({
-            action: "added" as const,
-            folderId: sId,
-          })),
-          ...removedFolderIds.map((sId) => ({
-            action: "removed" as const,
-            folderId: sId,
-          })),
-        ];
-
         await client.workflow.signalWithStart(googleDriveFullSyncV2, {
           args: [
             {
@@ -190,13 +189,6 @@ export async function launchGoogleDriveFullSyncWorkflow(
         return new Ok(workflowId);
       } else {
         if (addedFolderIds.length > 0) {
-          const signalArgs: FolderUpdatesSignal[] = addedFolderIds.map(
-            (sId) => ({
-              action: "added",
-              folderId: sId,
-            })
-          );
-
           await client.workflow.signalWithStart(googleDriveFullSync, {
             args: [
               {
