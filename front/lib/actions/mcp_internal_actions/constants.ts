@@ -1,7 +1,6 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
-  DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
@@ -18,6 +17,7 @@ import {
   AGENT_MANAGEMENT_TOOL_STAKES,
   AGENT_MANAGEMENT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/agent_management/metadata";
+import { AGENT_ROUTER_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/agent_router/metadata";
 import {
   GOOGLE_CALENDAR_SERVER_INFO,
   GOOGLE_CALENDAR_TOOL_STAKES,
@@ -346,15 +346,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: DEFAULT_AGENT_ROUTER_ACTION_NAME,
-      version: "1.0.0",
-      description: DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
-      icon: "ActionRobotIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: AGENT_ROUTER_SERVER_INFO,
   },
   include_data: {
     id: 9,
