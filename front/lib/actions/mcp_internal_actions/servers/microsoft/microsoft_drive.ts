@@ -1,8 +1,15 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type AdmZip from "adm-zip";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  getFileContentSchema,
+  MICROSOFT_DRIVE_TOOL_NAME,
+  searchDriveItemsSchema,
+  searchInFilesSchema,
+  updateWordDocumentSchema,
+  uploadFileSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_drive_metadata";
 import {
   downloadAndProcessMicrosoftFile,
   getDriveItemEndpoint,
@@ -23,8 +30,6 @@ import { untrustedFetch } from "@app/lib/egress/server";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
-
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -34,24 +39,10 @@ function createServer(
   server.tool(
     "search_in_files",
     "Search in files in Microsoft OneDrive and SharePoint using Microsoft Copilot retrieval API.",
-    {
-      query: z
-        .string()
-        .describe("Search query to find relevant files and content."),
-      dataSource: z
-        .enum(["oneDriveBusiness", "Sharepoint", "externalItem"])
-        .describe(
-          "Specific data source to search in (must be among 'oneDriveBusiness', 'Sharepoint', 'externalItem')."
-        ),
-      maximumResults: z
-        .number()
-        .optional()
-        .default(10)
-        .describe("Maximum number of results to return (max 25)."),
-    },
+    searchInFilesSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "microsoft_drive", agentLoopContext },
+      { toolNameForMonitoring: MICROSOFT_DRIVE_TOOL_NAME, agentLoopContext },
       async ({ query, dataSource, maximumResults }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
@@ -94,16 +85,10 @@ function createServer(
   server.tool(
     "search_drive_items",
     "Search OneDrive and SharePoint content using Microsoft Graph Search API to find relevant files and documents. This tool returns the results in relevance order.",
-    {
-      query: z
-        .string()
-        .describe(
-          "Search query to find relevant files and content in OneDrive and SharePoint."
-        ),
-    },
+    searchDriveItemsSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "microsoft_drive", agentLoopContext },
+      { toolNameForMonitoring: MICROSOFT_DRIVE_TOOL_NAME, agentLoopContext },
       async ({ query }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
@@ -138,29 +123,10 @@ function createServer(
   server.tool(
     "update_word_document",
     "Update an existing Word document on OneDrive/SharePoint by providing a new document.xml content. Uses driveId if provided, otherwise falls back to siteId.",
-    {
-      itemId: z.string().describe("The ID of the Word document to update."),
-      driveId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the drive containing the file. Takes priority over siteId if provided."
-        ),
-      siteId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the SharePoint site containing the file. Used if driveId is not provided."
-        ),
-      documentXml: z
-        .string()
-        .describe(
-          "The updated document.xml content to replace in the Word document."
-        ),
-    },
+    updateWordDocumentSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "microsoft_drive", agentLoopContext },
+      { toolNameForMonitoring: MICROSOFT_DRIVE_TOOL_NAME, agentLoopContext },
       async ({ itemId, driveId, siteId, documentXml }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
@@ -257,44 +223,10 @@ function createServer(
   server.tool(
     "get_file_content",
     "Retrieve the content of files from SharePoint/OneDrive (Powerpoint, Word, Excel, etc.). Uses driveId if provided, otherwise falls back to siteId.",
-    {
-      itemId: z
-        .string()
-        .describe("The ID of the file item to retrieve content from."),
-      driveId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the drive containing the file. Takes priority over siteId if provided."
-        ),
-      siteId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the SharePoint site containing the file. Used if driveId is not provided."
-        ),
-      offset: z
-        .number()
-        .default(0)
-        .describe(
-          "Character offset to start reading from (for pagination). Defaults to 0."
-        ),
-      limit: z
-        .number()
-        .default(MAX_CONTENT_SIZE)
-        .describe(
-          `Maximum number of characters to return. Defaults to ${MAX_CONTENT_SIZE}.`
-        ),
-      getAsXml: z
-        .boolean()
-        .optional()
-        .describe(
-          "If true, the content will be returned as XML (for .docx file only). Otherwise, it will be returned as text/html. Must be true if you want to edit the document."
-        ),
-    },
+    getFileContentSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "microsoft_drive", agentLoopContext },
+      { toolNameForMonitoring: MICROSOFT_DRIVE_TOOL_NAME, agentLoopContext },
       async (
         { itemId, driveId, siteId, offset, limit, getAsXml },
         { authInfo }
@@ -375,40 +307,10 @@ function createServer(
   server.tool(
     "upload_file",
     "Upload a file from Dust conversation to SharePoint or OneDrive. Supports files up to 250MB using the simple upload API. Uses driveId if provided, otherwise falls back to siteId. Automatically creates folders if they don't exist.",
-    {
-      fileId: z
-        .string()
-        .describe(
-          "The Dust fileId from the conversation attachments to upload."
-        ),
-      driveId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the drive to upload to. Takes priority over siteId if provided."
-        ),
-      siteId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the SharePoint site to upload to. Used if driveId is not provided."
-        ),
-      folderPath: z
-        .string()
-        .optional()
-        .describe(
-          "Optional path to folder where the file should be uploaded (e.g., 'Documents/Projects'). Folders will be created automatically if they don't exist. If not provided, uploads to the root of the drive."
-        ),
-      fileName: z
-        .string()
-        .optional()
-        .describe(
-          "Optional custom filename for the uploaded file. If not provided, uses the original filename from the attachment."
-        ),
-    },
+    uploadFileSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "microsoft_drive", agentLoopContext },
+      { toolNameForMonitoring: MICROSOFT_DRIVE_TOOL_NAME, agentLoopContext },
       async (
         { fileId, driveId, siteId, folderPath, fileName },
         { authInfo }

@@ -89,6 +89,11 @@ import {
   JIRA_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/metadata";
 import { JIT_TESTING_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/jit_testing/metadata";
+import {
+  MICROSOFT_DRIVE_SERVER_INFO,
+  MICROSOFT_DRIVE_TOOL_STAKES,
+  MICROSOFT_DRIVE_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_drive_metadata";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
@@ -904,30 +909,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      search_in_files: "never_ask",
-      search_drive_items: "never_ask",
-      update_word_document: "high",
-      get_file_content: "never_ask",
-      upload_file: "high",
-    },
+    tools_stakes: MICROSOFT_DRIVE_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "microsoft_drive",
-      version: "1.0.0",
-      description: "Tools for managing Microsoft files.",
-      authorization: {
-        provider: "microsoft_tools" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope:
-          "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All offline_access" as const,
-      },
-      icon: "MicrosoftLogo",
-      documentationUrl: "https://docs.dust.tt/docs/microsoft-drive-tool-setup",
-      instructions: null,
-    },
+    tools: MICROSOFT_DRIVE_TOOLS,
+    serverInfo: MICROSOFT_DRIVE_SERVER_INFO,
   },
   microsoft_teams: {
     id: 36,
