@@ -6,6 +6,4 @@ export interface ProjectMetadataType {
   description: string | null;
   urls: string[];
   tags: string[];
-  emoji: string | null;
-  color: string | null;
 }

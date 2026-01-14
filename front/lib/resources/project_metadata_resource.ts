@@ -103,8 +103,6 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       description: string | null;
       urls: string[];
       tags: string[];
-      emoji: string | null;
-      color: string | null;
     }>,
     transaction?: Transaction
   ): Promise<Result<void, Error>> {
@@ -132,8 +130,6 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       description: this.description,
       urls: this.urls,
       tags: this.tags,
-      emoji: this.emoji,
-      color: this.color,
     };
   }
 }
