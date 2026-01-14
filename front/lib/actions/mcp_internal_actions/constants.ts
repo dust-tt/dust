@@ -1895,7 +1895,9 @@ export const INTERNAL_MCP_SERVERS = {
     id: 47,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: undefined,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("snowflake_tool");
+    },
     isPreview: false,
     tools_stakes: {
       list_databases: "never_ask",
