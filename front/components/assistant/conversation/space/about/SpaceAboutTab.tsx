@@ -2,9 +2,10 @@ import { Button, ContentMessage } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
+import { ProjectMetadataSection } from "@app/components/assistant/conversation/space/about/ProjectMetadataSection";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
-import { useUpdateSpace } from "@app/lib/swr/spaces";
+import { useProjectMetadata, useUpdateSpace } from "@app/lib/swr/spaces";
 import type {
   GroupType,
   LightWorkspaceType,
@@ -20,6 +21,7 @@ interface SpaceAboutTabProps {
   initialManagementMode: "manual" | "group";
   initialIsRestricted: boolean;
   planAllowsSCIM: boolean;
+  canWriteInSpace: boolean;
 }
 
 export function SpaceAboutTab({
@@ -30,6 +32,7 @@ export function SpaceAboutTab({
   initialManagementMode,
   initialIsRestricted,
   planAllowsSCIM,
+  canWriteInSpace,
 }: SpaceAboutTabProps) {
   const [managementType, setManagementType] = useState<"manual" | "group">(
     initialManagementMode
@@ -44,6 +47,11 @@ export function SpaceAboutTab({
 
   const isManual = !planAllowsSCIM || managementType === "manual";
   const doUpdate = useUpdateSpace({ owner });
+
+  const { projectMetadata } = useProjectMetadata({
+    workspaceId: owner.sId,
+    spaceId: space.sId,
+  });
 
   const hasChanges = useMemo(() => {
     if (managementType !== initialManagementMode) {
@@ -127,6 +135,13 @@ export function SpaceAboutTab({
 
   return (
     <div className="flex w-full flex-col gap-y-4 px-4 py-8">
+      <ProjectMetadataSection
+        owner={owner}
+        space={space}
+        projectMetadata={projectMetadata}
+        canEdit={canWriteInSpace}
+      />
+
       <RestrictedAccessHeader
         isRestricted={isRestricted}
         onToggle={() => setIsRestricted(!isRestricted)}

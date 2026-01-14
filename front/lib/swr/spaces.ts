@@ -35,10 +35,17 @@ import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/space
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type { PatchSpaceMembersRequestBodyType } from "@app/pages/api/w/[wId]/spaces/[spaceId]/members";
 import type {
+  GetProjectMetadataResponseBody,
+  PostProjectMetadataResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
+import type {
   ContentNodesViewType,
   DataSourceViewCategoryWithoutApps,
   DataSourceViewType,
   LightWorkspaceType,
+  ProjectExternalLink,
+  ProjectMetadataType,
+  ProjectStatus,
   SearchWarningCode,
   SpaceType,
 } from "@app/types";
@@ -849,4 +856,94 @@ export function useSpacesSearchWithInfiniteScroll({
       await setSize((size) => size + 1);
     }, [setSize]),
   };
+}
+
+export function useProjectMetadata({
+  workspaceId,
+  spaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  spaceId: string | null;
+  disabled?: boolean;
+}) {
+  const projectMetadataFetcher: Fetcher<GetProjectMetadataResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    spaceId ? `/api/w/${workspaceId}/spaces/${spaceId}/project_metadata` : null,
+    projectMetadataFetcher,
+    { disabled }
+  );
+
+  return {
+    projectMetadata: data?.projectMetadata ?? null,
+    isProjectMetadataLoading: !error && !data && !disabled && spaceId !== null,
+    isProjectMetadataError: error,
+    mutate,
+  };
+}
+
+export function useUpdateProjectMetadata({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutate } = useProjectMetadata({
+    workspaceId: owner.sId,
+    spaceId,
+    disabled: true, // Needed just to mutate
+  });
+
+  const doUpdate = async ({
+    status,
+    description,
+    tags,
+    externalLinks,
+  }: {
+    status: ProjectStatus;
+    description: string | null;
+    tags: string[] | null;
+    externalLinks: ProjectExternalLink[] | null;
+  }): Promise<ProjectMetadataType | null> => {
+    const res = await clientFetch(
+      `/api/w/${owner.sId}/spaces/${spaceId}/project_metadata`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status,
+          description,
+          tags,
+          externalLinks,
+        }),
+      }
+    );
+
+    if (res.ok) {
+      void mutate();
+      const response: PostProjectMetadataResponseBody = await res.json();
+      sendNotification({
+        type: "success",
+        title: "Successfully updated project metadata",
+        description: "Project metadata was successfully updated.",
+      });
+      return response.projectMetadata;
+    } else {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error updating project metadata",
+        description: `Error: ${errorData.message}`,
+      });
+      return null;
+    }
+  };
+
+  return doUpdate;
 }

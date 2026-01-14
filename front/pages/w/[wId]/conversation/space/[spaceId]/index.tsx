@@ -388,6 +388,7 @@ export default function SpaceConversations({
                 }
                 initialManagementMode={spaceInfo.managementMode}
                 initialIsRestricted={spaceInfo.isRestricted}
+                canWriteInSpace={canWriteInSpace}
               />
             )}
           </TabsContent>
