@@ -186,19 +186,25 @@ const getConversationDetails = async ({
   // Retrieve the message that triggered the notification.
   const messageRes = await conversation.getMessageById(auth, payload.messageId);
   if (messageRes.isErr()) {
-    // Message was likely deleted during workflow delay.
+    // Message doesn't exist at all - unexpected.
+    throw new Error(`Message not found: ${payload.messageId}`);
+  }
+
+  const message = messageRes.value;
+  if (message.visibility === "deleted") {
+    // Message was deleted during workflow delay - expected.
     return new Err(new ConversationError("message_not_found"));
   }
 
   const rendered = await batchRenderMessages(
     auth,
     conversation,
-    [messageRes.value],
+    [message],
     "light"
   );
   if (rendered.isErr() || rendered.value.length !== 1) {
-    // Message rendering failed - likely deleted.
-    return new Err(new ConversationError("message_not_found"));
+    // Message exists and is visible but rendering failed - unexpected.
+    throw new Error(`Failed to render message: ${payload.messageId}`);
   }
 
   const lightMessage = rendered.value[0];
