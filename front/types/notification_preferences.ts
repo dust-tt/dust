@@ -57,3 +57,8 @@ export const isNotificationCondition = (
 export const CONVERSATION_NOTIFICATION_METADATA_KEYS = {
   notifyCondition: "conversation_notify_condition",
 } as const;
+
+/**
+ * Novu workflow trigger ID for conversation unread notifications.
+ */
+export const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread";

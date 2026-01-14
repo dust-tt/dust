@@ -31,13 +31,12 @@ import type {
 } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
+  CONVERSATION_UNREAD_TRIGGER_ID,
   isNotificationCondition,
   isNotificationPreferencesDelay,
   makeNotificationPreferencesUserMetadata,
   NOTIFICATION_DELAY_OPTIONS,
 } from "@app/types/notification_preferences";
-
-export const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread";
 
 const ConversationUnreadPayloadSchema = z.object({
   workspaceId: z.string(),

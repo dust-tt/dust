@@ -22,7 +22,6 @@ import {
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useNovuClient } from "@app/hooks/useNovuClient";
-import { CONVERSATION_UNREAD_TRIGGER_ID } from "@app/lib/notifications/workflows/conversation-unread";
 import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import type {
@@ -31,6 +30,7 @@ import type {
 } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
+  CONVERSATION_UNREAD_TRIGGER_ID,
   isNotificationCondition,
   isNotificationPreferencesDelay,
   makeNotificationPreferencesUserMetadata,
