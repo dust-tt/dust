@@ -1,6 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -16,8 +15,46 @@ import type {
   FreshserviceTicketField,
 } from "./freshservice_api_helper";
 import { FreshserviceTicketSchema } from "./freshservice_api_helper";
-
-const FRESHSERVICE_TOOL_NAME = "freshservice";
+import {
+  addTicketNoteSchema,
+  addTicketReplySchema,
+  ALLOWED_TICKET_INCLUDES,
+  createSolutionArticleSchema,
+  createTicketSchema,
+  createTicketTaskSchema,
+  deleteTicketTaskSchema,
+  FRESHSERVICE_TOOL_NAME,
+  getCannedResponseSchema,
+  getRequesterSchema,
+  getServiceItemFieldsSchema,
+  getServiceItemSchema,
+  getSolutionArticleSchema,
+  getTicketApprovalSchema,
+  getTicketReadFieldsSchema,
+  getTicketSchema,
+  getTicketTaskSchema,
+  getTicketWriteFieldsSchema,
+  listCannedResponsesSchema,
+  listDepartmentsSchema,
+  listOncallSchedulesSchema,
+  listProductsSchema,
+  listPurchaseOrdersSchema,
+  listRequestersSchema,
+  listServiceCategoriesSchema,
+  listServiceItemsSchema,
+  listSlaPoliciesSchema,
+  listSolutionArticlesSchema,
+  listSolutionCategoriesSchema,
+  listSolutionFoldersSchema,
+  listTicketApprovalsSchema,
+  listTicketsSchema,
+  listTicketTasksSchema,
+  requestServiceApprovalSchema,
+  requestServiceItemSchema,
+  searchServiceItemsSchema,
+  updateTicketSchema,
+  updateTicketTaskSchema,
+} from "./metadata";
 
 function createServer(
   auth: Authenticator,
@@ -147,18 +184,6 @@ function createServer(
     "due_by",
   ] as const satisfies ReadonlyArray<keyof FreshserviceTicket>;
 
-  const ALLOWED_TICKET_INCLUDES = [
-    "conversations",
-    "requester",
-    "stats",
-    "problem",
-    "assets",
-    "changes",
-    "related_tickets",
-    "onboarding_context",
-    "offboarding_context",
-  ] as const;
-
   function pickFields(
     obj: unknown,
     fields: ReadonlyArray<string>
@@ -176,33 +201,7 @@ function createServer(
   server.tool(
     "list_tickets",
     "Lists tickets with optional filtering and pagination. By default returns minimal fields (id, subject, status) for performance.",
-    {
-      filter: z
-        .object({
-          email: z.string().optional().describe("Requester email"),
-          requester_id: z.number().optional().describe("Requester ID"),
-          updated_since: z
-            .string()
-            .optional()
-            .describe(
-              "ISO 8601 date-time string to filter tickets updated since this time"
-            ),
-          type: z.string().optional().describe("Ticket type"),
-          filter_type: z
-            .enum(["new_and_my_open", "watching", "spam", "deleted"])
-            .optional()
-            .describe("Predefined Freshservice filter types"),
-        })
-        .optional(),
-      fields: z
-        .array(FreshserviceTicketSchema.keyof())
-        .optional()
-        .describe(
-          "Optional list of fields to include. Defaults to essential fields for performance."
-        ),
-      page: z.number().optional().default(1),
-      per_page: z.number().optional().default(30),
-    },
+    listTicketsSchema,
     withToolLogging(
       auth,
       {
@@ -268,21 +267,7 @@ function createServer(
   server.tool(
     "get_ticket",
     "Gets detailed information about a specific ticket. By default returns essential fields for performance, but you can specify specific fields.",
-    {
-      ticket_id: z.number().describe("The ID of the ticket"),
-      fields: z
-        .array(FreshserviceTicketSchema.keyof())
-        .optional()
-        .describe(
-          "Optional list of fields to include. Defaults to essential fields (id, subject, description_text, priority, status, requester_id, responder_id, department_id, group_id, type, created_at, updated_at, due_by) for performance."
-        ),
-      include: z
-        .array(z.enum(ALLOWED_TICKET_INCLUDES))
-        .optional()
-        .describe(
-          "Additional information to include (e.g., conversations, requester, stats, problem, assets, changes, related_tickets, onboarding_context, offboarding_context)."
-        ),
-    },
+    getTicketSchema,
     withToolLogging(
       auth,
       {
@@ -342,7 +327,7 @@ function createServer(
   server.tool(
     "get_ticket_read_fields",
     "Lists available Freshservice ticket field ids for use in the get_ticket.fields parameter (read-time).",
-    {},
+    getTicketReadFieldsSchema,
     withToolLogging(
       auth,
       {
@@ -378,25 +363,7 @@ function createServer(
   server.tool(
     "create_ticket",
     "Creates a new ticket in Freshservice. You MUST call get_ticket_write_fields first to get required fields, then provide all required field values in the custom_fields parameter.",
-    {
-      email: z.string().describe("Requester email address"),
-      subject: z.string().describe("Ticket subject"),
-      description: z.string().describe("Ticket description"),
-      priority: z
-        .enum(["1", "2", "3", "4"])
-        .optional()
-        .describe("Priority: 1=Low, 2=Medium, 3=High, 4=Urgent"),
-      status: z
-        .enum(["2", "3", "4", "5"])
-        .optional()
-        .describe("Status: 2=Open, 3=Pending, 4=Resolved, 5=Closed"),
-      type: z.string().optional().describe("Ticket type"),
-      tags: z.array(z.string()).optional().describe("Tags for the ticket"),
-      custom_fields: z
-        .record(z.any())
-        .optional()
-        .describe("Custom field values"),
-    },
+    createTicketSchema,
     withToolLogging(
       auth,
       {
@@ -498,24 +465,7 @@ function createServer(
   server.tool(
     "update_ticket",
     "Updates an existing ticket in Freshservice",
-    {
-      ticket_id: z.string().describe("Ticket ID to update"),
-      subject: z.string().optional().describe("Updated ticket subject"),
-      description: z.string().optional().describe("Updated ticket description"),
-      priority: z
-        .enum(["1", "2", "3", "4"])
-        .optional()
-        .describe("Priority: 1=Low, 2=Medium, 3=High, 4=Urgent"),
-      status: z
-        .enum(["2", "3", "4", "5"])
-        .optional()
-        .describe("Status: 2=Open, 3=Pending, 4=Resolved, 5=Closed"),
-      tags: z.array(z.string()).optional().describe("Ticket tags"),
-      custom_fields: z
-        .record(z.any())
-        .optional()
-        .describe("Custom field values"),
-    },
+    updateTicketSchema,
     withToolLogging(
       auth,
       {
@@ -584,15 +534,7 @@ function createServer(
   server.tool(
     "add_ticket_note",
     "Adds a note to an existing ticket",
-    {
-      ticket_id: z.number().describe("The ID of the ticket"),
-      body: z.string().describe("Content of the note in HTML format"),
-      private: z
-        .boolean()
-        .optional()
-        .default(false)
-        .describe("Whether the note is private"),
-    },
+    addTicketNoteSchema,
     withToolLogging(
       auth,
       {
@@ -632,10 +574,7 @@ function createServer(
   server.tool(
     "add_ticket_reply",
     "Adds a reply to a ticket conversation",
-    {
-      ticket_id: z.number().describe("The ID of the ticket"),
-      body: z.string().describe("Content of the note in HTML format"),
-    },
+    addTicketReplySchema,
     withToolLogging(
       auth,
       {
@@ -674,9 +613,7 @@ function createServer(
   server.tool(
     "list_ticket_tasks",
     "Lists all tasks associated with a ticket",
-    {
-      ticket_id: z.number().describe("The ID of the ticket"),
-    },
+    listTicketTasksSchema,
     withToolLogging(
       auth,
       {
@@ -714,10 +651,7 @@ function createServer(
   server.tool(
     "get_ticket_task",
     "Gets detailed information about a specific task on a ticket",
-    {
-      ticket_id: z.number().describe("The ID of the ticket"),
-      task_id: z.number().describe("The ID of the task"),
-    },
+    getTicketTaskSchema,
     withToolLogging(
       auth,
       {
@@ -750,28 +684,7 @@ function createServer(
   server.tool(
     "create_ticket_task",
     "Creates a new task on a ticket. Tasks help break down complex tickets into manageable subtasks.",
-    {
-      ticket_id: z.number().describe("The ID of the ticket"),
-      title: z.string().describe("Task title"),
-      description: z.string().optional().describe("Task description"),
-      status: z
-        .enum(["1", "2", "3"])
-        .optional()
-        .describe("Status: 1=Open, 2=In Progress, 3=Completed"),
-      due_date: z.string().optional().describe("Due date in ISO 8601 format"),
-      notify_before: z
-        .number()
-        .optional()
-        .describe("Number of hours before due date to send notification"),
-      agent_id: z
-        .number()
-        .optional()
-        .describe("Agent ID to assign the task to"),
-      group_id: z
-        .number()
-        .optional()
-        .describe("Group ID to assign the task to"),
-    },
+    createTicketTaskSchema,
     withToolLogging(
       auth,
       {
@@ -843,32 +756,7 @@ function createServer(
   server.tool(
     "update_ticket_task",
     "Updates an existing task on a ticket",
-    {
-      ticket_id: z.number().describe("The ID of the ticket"),
-      task_id: z.number().describe("The ID of the task to update"),
-      title: z.string().optional().describe("Updated task title"),
-      description: z.string().optional().describe("Updated task description"),
-      status: z
-        .enum(["1", "2", "3"])
-        .optional()
-        .describe("Updated status: 1=Open, 2=In Progress, 3=Completed"),
-      due_date: z
-        .string()
-        .optional()
-        .describe("Updated due date in ISO 8601 format"),
-      notify_before: z
-        .number()
-        .optional()
-        .describe("Updated notification time (hours before due date)"),
-      agent_id: z
-        .number()
-        .optional()
-        .describe("Updated agent ID to assign the task to"),
-      group_id: z
-        .number()
-        .optional()
-        .describe("Updated group ID to assign the task to"),
-    },
+    updateTicketTaskSchema,
     withToolLogging(
       auth,
       {
@@ -944,10 +832,7 @@ function createServer(
   server.tool(
     "delete_ticket_task",
     "Deletes a task from a ticket",
-    {
-      ticket_id: z.number().describe("The ID of the ticket"),
-      task_id: z.number().describe("The ID of the task to delete"),
-    },
+    deleteTicketTaskSchema,
     withToolLogging(
       auth,
       {
@@ -984,10 +869,7 @@ function createServer(
   server.tool(
     "list_departments",
     "Lists all departments in Freshservice",
-    {
-      page: z.number().optional().default(1),
-      per_page: z.number().optional().default(30),
-    },
+    listDepartmentsSchema,
     withToolLogging(
       auth,
       {
@@ -1031,10 +913,7 @@ function createServer(
   server.tool(
     "list_products",
     "Lists all products in Freshservice",
-    {
-      page: z.number().optional().default(1),
-      per_page: z.number().optional().default(30),
-    },
+    listProductsSchema,
     withToolLogging(
       auth,
       {
@@ -1078,10 +957,7 @@ function createServer(
   server.tool(
     "list_oncall_schedules",
     "Lists on-call schedules",
-    {
-      page: z.number().optional().default(1),
-      per_page: z.number().optional().default(30),
-    },
+    listOncallSchedulesSchema,
     withToolLogging(
       auth,
       {
@@ -1125,10 +1001,7 @@ function createServer(
   server.tool(
     "list_service_categories",
     "Lists service catalog categories. Use this first to get category IDs for filtering service items.",
-    {
-      page: z.number().optional().default(1),
-      per_page: z.number().optional().default(30),
-    },
+    listServiceCategoriesSchema,
     withToolLogging(
       auth,
       {
@@ -1171,16 +1044,7 @@ function createServer(
   server.tool(
     "list_service_items",
     "Lists service catalog items. To filter by category: 1) Use list_service_categories to get category IDs, 2) Use the category_id parameter here.",
-    {
-      category_id: z
-        .number()
-        .optional()
-        .describe(
-          "Filter by category ID - use list_service_categories to get available category IDs"
-        ),
-      page: z.number().optional().default(1),
-      per_page: z.number().optional().default(30),
-    },
+    listServiceItemsSchema,
     withToolLogging(
       auth,
       {
@@ -1227,28 +1091,7 @@ function createServer(
   server.tool(
     "search_service_items",
     "Searches for service items from the service catalog for a given search term. Only use this when specifically searching for items by keyword.",
-    {
-      search_term: z
-        .string()
-        .describe(
-          "The keywords for which the service items have to be searched (e.g. 'VPN issue', 'Adobe')"
-        ),
-      workspace_id: z
-        .number()
-        .optional()
-        .describe(
-          "ID of the workspace to which the service item belongs. Applicable only to accounts on Employee Support Mode."
-        ),
-      user_email: z
-        .string()
-        .email()
-        .optional()
-        .describe(
-          "By default, the API will search items for the user whose API key is provided. If you want to search items for a different user, provide their user_email."
-        ),
-      page: z.number().optional().default(1),
-      per_page: z.number().optional().default(30),
-    },
+    searchServiceItemsSchema,
     withToolLogging(
       auth,
       {
@@ -1302,11 +1145,7 @@ function createServer(
   server.tool(
     "get_service_item",
     "Gets detailed information about a specific service catalog item including fields and pricing",
-    {
-      display_id: z
-        .number()
-        .describe("The display ID of the service catalog item"),
-    },
+    getServiceItemSchema,
     withToolLogging(
       auth,
       {
@@ -1342,11 +1181,7 @@ function createServer(
   server.tool(
     "get_service_item_fields",
     "Gets the field configuration for a service catalog item. You must call this before request_service_item to get required fields. Returns required_fields and hidden_required_fields that must be provided.",
-    {
-      display_id: z
-        .number()
-        .describe("The display ID of the service catalog item"),
-    },
+    getServiceItemFieldsSchema,
     withToolLogging(
       auth,
       {
@@ -1395,27 +1230,7 @@ function createServer(
   server.tool(
     "request_service_item",
     "Creates a service request for a catalog item. This creates a new ticket. You MUST call get_service_item_fields first to get required fields, then provide all required field values in the fields parameter.",
-    {
-      display_id: z
-        .number()
-        .describe("The display ID of the service catalog item to request"),
-      email: z.string().describe("Requester email address"),
-      quantity: z.number().optional().describe("Quantity of items to request"),
-      requested_for: z
-        .string()
-        .optional()
-        .describe(
-          "Email of the person this is requested for (if different from requester)"
-        ),
-      fields: z
-        .record(z.any())
-        .optional()
-        .describe("Custom field values for the service request form"),
-      ticket_id: z
-        .number()
-        .optional()
-        .describe("Optional ticket ID to attach this service request to"),
-    },
+    requestServiceItemSchema,
     withToolLogging(
       auth,
       {
@@ -1517,10 +1332,7 @@ function createServer(
   server.tool(
     "list_solution_categories",
     "Lists solution categories. These are used to organize solution folders, which are mandatory for ticket listing.",
-    {
-      page: z.number().optional().default(1),
-      per_page: z.number().optional().default(30),
-    },
+    listSolutionCategoriesSchema,
     withToolLogging(
       auth,
       {
@@ -1563,11 +1375,7 @@ function createServer(
   server.tool(
     "list_solution_folders",
     "Lists solution folders within categories. Solution folders are mandatory for ticket listing. Use list_solution_categories first to get category IDs, then filter folders by category_id.",
-    {
-      category_id: z.number().optional().describe("Filter by category ID"),
-      page: z.number().optional().default(1),
-      per_page: z.number().optional().default(30),
-    },
+    listSolutionFoldersSchema,
     withToolLogging(
       auth,
       {
@@ -1614,19 +1422,7 @@ function createServer(
   server.tool(
     "list_solution_articles",
     "Lists solution articles within a specific folder (returns metadata only, use get_solution_article for full content). To get folder_id: 1) Use list_solution_categories to get category IDs, 2) Use list_solution_folders with category_id to get folder IDs, 3) Use the folder_id here.",
-    {
-      folder_id: z
-        .number()
-        .describe(
-          "Folder ID (required) - use list_solution_folders to get available folder IDs"
-        ),
-      category_id: z
-        .number()
-        .optional()
-        .describe("Filter by category ID (optional additional filter)"),
-      page: z.number().optional().default(1),
-      per_page: z.number().optional().default(30),
-    },
+    listSolutionArticlesSchema,
     withToolLogging(
       auth,
       {
@@ -1687,9 +1483,7 @@ function createServer(
   server.tool(
     "get_solution_article",
     "Gets detailed information about a specific solution article including its full content",
-    {
-      article_id: z.number().describe("The ID of the solution article"),
-    },
+    getSolutionArticleSchema,
     withToolLogging(
       auth,
       {
@@ -1725,20 +1519,7 @@ function createServer(
   server.tool(
     "create_solution_article",
     "Creates a new solution article in a specific folder. To get folder_id: 1) Use list_solution_categories to get category IDs, 2) Use list_solution_folders with category_id to get folder IDs, 3) Use the folder_id here.",
-    {
-      title: z.string().describe("Article title"),
-      description: z.string().describe("Article content"),
-      folder_id: z
-        .number()
-        .describe(
-          "Folder ID to place the article in (required) - use list_solution_folders to get available folder IDs"
-        ),
-      status: z
-        .enum(["1", "2"])
-        .optional()
-        .describe("Status: 1=Draft, 2=Published"),
-      tags: z.array(z.string()).optional().describe("Tags for the article"),
-    },
+    createSolutionArticleSchema,
     withToolLogging(
       auth,
       {
@@ -1792,13 +1573,7 @@ function createServer(
   server.tool(
     "list_requesters",
     "Lists requesters",
-    {
-      email: z.string().optional().describe("Filter by email"),
-      mobile: z.string().optional().describe("Filter by mobile"),
-      phone: z.string().optional().describe("Filter by phone"),
-      page: z.number().optional().default(1),
-      per_page: z.number().optional().default(30),
-    },
+    listRequestersSchema,
     withToolLogging(
       auth,
       {
@@ -1851,9 +1626,7 @@ function createServer(
   server.tool(
     "get_requester",
     "Gets detailed information about a specific requester",
-    {
-      requester_id: z.number().describe("The ID of the requester"),
-    },
+    getRequesterSchema,
     withToolLogging(
       auth,
       {
@@ -1890,10 +1663,7 @@ function createServer(
   server.tool(
     "list_purchase_orders",
     "Lists purchase orders",
-    {
-      page: z.number().optional().default(1),
-      per_page: z.number().optional().default(30),
-    },
+    listPurchaseOrdersSchema,
     withToolLogging(
       auth,
       {
@@ -1937,7 +1707,7 @@ function createServer(
   server.tool(
     "list_sla_policies",
     "Lists SLA policies",
-    {},
+    listSlaPoliciesSchema,
     withToolLogging(
       auth,
       {
@@ -1975,12 +1745,7 @@ function createServer(
   server.tool(
     "get_ticket_write_fields",
     "Lists all available ticket fields including standard and custom fields. Use this to discover what fields are available for use in create_ticket, update_ticket, and other operations.",
-    {
-      search: z
-        .string()
-        .optional()
-        .describe("Search term to filter fields by name or label"),
-    },
+    getTicketWriteFieldsSchema,
     withToolLogging(
       auth,
       {
@@ -2037,20 +1802,7 @@ function createServer(
   server.tool(
     "list_canned_responses",
     "Lists all canned responses available in Freshservice",
-    {
-      search: z
-        .string()
-        .optional()
-        .describe("Search term to filter canned responses by name or content"),
-      category_id: z.number().optional().describe("Filter by category ID"),
-      folder_id: z.number().optional().describe("Filter by folder ID"),
-      is_public: z
-        .boolean()
-        .optional()
-        .describe("Filter by public/private status"),
-      page: z.number().optional().default(1),
-      per_page: z.number().optional().default(30),
-    },
+    listCannedResponsesSchema,
     withToolLogging(
       auth,
       {
@@ -2109,9 +1861,7 @@ function createServer(
   server.tool(
     "get_canned_response",
     "Gets detailed information about a specific canned response",
-    {
-      response_id: z.number().describe("The ID of the canned response"),
-    },
+    getCannedResponseSchema,
     withToolLogging(
       auth,
       {
@@ -2147,10 +1897,7 @@ function createServer(
   server.tool(
     "get_ticket_approval",
     "Gets detailed information about a specific ticket approval",
-    {
-      ticket_id: z.number().describe("The ID of the ticket"),
-      approval_id: z.number().describe("The ID of the approval to retrieve"),
-    },
+    getTicketApprovalSchema,
     withToolLogging(
       auth,
       {
@@ -2186,9 +1933,7 @@ function createServer(
   server.tool(
     "list_ticket_approvals",
     "Lists all approvals for a specific ticket",
-    {
-      ticket_id: z.number().describe("The ID of the ticket"),
-    },
+    listTicketApprovalsSchema,
     withToolLogging(
       auth,
       {
@@ -2234,23 +1979,7 @@ function createServer(
   server.tool(
     "request_service_approval",
     "Requests approval for a ticket. This creates an approval request that needs to be approved before the ticket can be fulfilled. Only works on tickets that have approval workflow configured.",
-    {
-      ticket_id: z.number().describe("The ID of the ticket"),
-      approver_id: z
-        .number()
-        .describe("The ID of the user who should approve this request"),
-      approval_type: z
-        .enum(["1", "2"])
-        .describe(
-          "Approval type: 1=Everyone must approve, 2=Anyone can approve"
-        ),
-      email_content: z
-        .string()
-        .optional()
-        .describe(
-          "Custom email content for approval notification. If not provided, default notification will be sent."
-        ),
-    },
+    requestServiceApprovalSchema,
     withToolLogging(
       auth,
       {
