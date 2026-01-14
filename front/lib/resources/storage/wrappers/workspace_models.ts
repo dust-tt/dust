@@ -194,6 +194,17 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
 
     return model;
   }
+
+  public override reload(options?: FindOptions<Attributes<M>>): Promise<this> {
+    const optionsWithBypass: WorkspaceTenantIsolationSecurityBypassOptions<
+      Attributes<M>
+    > = {
+      ...options,
+      // WORKSPACE_ISOLATION_BYPASS: Reloading an instance does not require workspace isolation.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    };
+    return super.reload(optionsWithBypass);
+  }
 }
 
 export type ModelStaticWorkspaceAware<M extends WorkspaceAwareModel> =
