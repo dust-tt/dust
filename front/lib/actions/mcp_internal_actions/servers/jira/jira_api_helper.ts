@@ -53,6 +53,8 @@ import { isTextExtractionSupportedContentType } from "@app/types/shared/text_ext
 
 import { sanitizeFilename } from "../../utils/file_utils";
 
+const DEFAULT_ISSUE_FIELDS = ["*navigable"];
+
 // Type guard to check if a value is an ADFDocument
 function isADFDocument(value: unknown): value is ADFDocument {
   return ADFDocumentSchema.safeParse(value).success;
@@ -227,24 +229,10 @@ export async function getIssue({
   issueKey: string;
   fields?: string[];
 }): Promise<Result<z.infer<typeof JiraIssueSchema> | null, JiraErrorResult>> {
-  // Use a minimal default field set to reduce payload size while keeping key metadata
-  const defaultFields = [
-    "summary",
-    "issuetype",
-    "priority",
-    "assignee",
-    "reporter",
-    "labels",
-    "duedate",
-    "parent",
-    "project",
-    "status",
-  ];
-
   const params = new URLSearchParams();
-  const fieldList = (fields && fields.length > 0 ? fields : defaultFields).join(
-    ","
-  );
+  const fieldList = (
+    fields && fields.length > 0 ? fields : DEFAULT_ISSUE_FIELDS
+  ).join(",");
   params.set("fields", fieldList);
 
   const result = await jiraApiCall(
@@ -514,7 +502,7 @@ export async function searchIssues(
   const requestBody: z.infer<typeof JiraSearchRequestSchema> = {
     jql,
     maxResults,
-    fields: ["summary"],
+    fields: DEFAULT_ISSUE_FIELDS,
   };
 
   if (nextPageToken) {
@@ -568,7 +556,7 @@ export async function searchJiraIssuesUsingJql(
   const {
     nextPageToken,
     maxResults = SEARCH_ISSUES_MAX_RESULTS,
-    fields = ["summary"],
+    fields = DEFAULT_ISSUE_FIELDS,
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   } = options || {};
 
