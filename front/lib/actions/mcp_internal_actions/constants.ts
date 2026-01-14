@@ -7,7 +7,6 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import {
-  DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
   FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
@@ -31,6 +30,7 @@ import {
   CONFLUENCE_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files/metadata";
+import { DATA_SOURCES_FILE_SYSTEM_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/metadata";
 import {
   GOOGLE_CALENDAR_SERVER_INFO,
   GOOGLE_CALENDAR_TOOL_STAKES,
@@ -1491,15 +1491,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "data_sources_file_system",
-      version: "1.0.0",
-      description: "Browse and search content with filesystem-like navigation.",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
-    },
+    serverInfo: DATA_SOURCES_FILE_SYSTEM_SERVER_INFO,
   },
   agent_management: {
     id: 1011,
