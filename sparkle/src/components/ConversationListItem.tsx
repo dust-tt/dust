@@ -1,8 +1,55 @@
 import React, { ReactNode } from "react";
 
 import { Avatar } from "@sparkle/components/Avatar";
-import { Counter } from "@sparkle/components/Counter";
 import { ListItem } from "@sparkle/components/ListItem";
+
+export interface ReplySectionProps {
+  totalMessages: number;
+  newMessages: number;
+  avatars: Array<{
+    name?: string;
+    emoji?: string;
+    visual?: string | React.ReactNode;
+    isRounded?: boolean;
+    backgroundColor?: string;
+  }>;
+  lastMessageBy: string;
+}
+
+export function ReplySection({
+  totalMessages,
+  newMessages,
+  avatars,
+  lastMessageBy,
+}: ReplySectionProps) {
+  return (
+    <div className="s-flex s-items-center s-gap-2 s-pt-2">
+      <Avatar.Stack
+        avatars={avatars}
+        nbVisibleItems={3}
+        onTop={"first" as const}
+        size="xs"
+      />
+      <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+        {newMessages === 0 ? (
+          <span className="s-heading-xs">{totalMessages} Replies</span>
+        ) : newMessages === totalMessages ? (
+          <span className="s-heading-xs s-text-highlight">
+            {newMessages} Unread
+          </span>
+        ) : (
+          <>
+            <span className="s-heading-xs s-text-highlight">
+              {newMessages} Unread
+            </span>{" "}
+            ({totalMessages} replies)
+          </>
+        )}
+        . Last by <span className="s-heading-xs">{lastMessageBy}</span>.
+      </div>
+    </div>
+  );
+}
 
 export interface ConversationListItemProps {
   conversation: {
@@ -23,7 +70,6 @@ export interface ConversationListItemProps {
     portrait?: string;
   };
   time: string;
-  messageCount?: number;
   replySection?: ReactNode;
   onClick?: () => void;
 }
@@ -33,7 +79,6 @@ export function ConversationListItem({
   avatar,
   creator,
   time,
-  messageCount,
   replySection,
   onClick,
 }: ConversationListItemProps) {
@@ -66,9 +111,6 @@ export function ConversationListItem({
           </div>
           <div className="s-flex s-items-center s-gap-2 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
             <span className="s-font-normal">{time}</span>
-            {messageCount !== undefined && (
-              <Counter value={messageCount} size="xs" variant="outline" />
-            )}
           </div>
         </div>
         {conversation.description && (
@@ -76,11 +118,7 @@ export function ConversationListItem({
             {conversation.description}
           </div>
         )}
-        {replySection && (
-          <div className="s-heading-xs s-flex s-items-center s-gap-2 s-pt-2 s-text-muted-foreground dark:s-text-muted-foreground-night">
-            {replySection}
-          </div>
-        )}
+        {replySection && replySection}
       </div>
     </ListItem>
   );

@@ -6,6 +6,7 @@ import {
   InformationCircleIcon,
   ListGroup,
   ListItemSection,
+  ReplySection,
   SearchInput,
   Tabs,
   TabsContent,
@@ -26,6 +27,7 @@ interface GroupConversationViewProps {
   users: User[];
   agents: Agent[];
   onConversationClick?: (conversation: Conversation) => void;
+  showToolsAndAboutTabs?: boolean;
 }
 
 // Helper function to get random participants for a conversation
@@ -172,6 +174,7 @@ export function GroupConversationView({
   users,
   agents,
   onConversationClick,
+  showToolsAndAboutTabs = false,
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
 
@@ -252,13 +255,13 @@ export function GroupConversationView({
   const hasHistory = expandedConversations.length > 0;
 
   return (
-    <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background s-px-6">
+    <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background">
       {/* Tabs */}
       <Tabs
         defaultValue="conversations"
         className="s-flex s-min-h-0 s-flex-1 s-flex-col s-pt-3"
       >
-        <TabsList>
+        <TabsList className="s-px-6">
           <TabsTrigger
             value="conversations"
             label="Conversations"
@@ -269,12 +272,16 @@ export function GroupConversationView({
             label="Knowledge"
             icon={BookOpenIcon}
           />
-          <TabsTrigger value="Tools" label="Tools" icon={ToolsIcon} />
-          <TabsTrigger
-            value="about"
-            label="About"
-            icon={InformationCircleIcon}
-          />
+          {showToolsAndAboutTabs && (
+            <>
+              <TabsTrigger value="Tools" label="Tools" icon={ToolsIcon} />
+              <TabsTrigger
+                value="about"
+                label="About"
+                icon={InformationCircleIcon}
+              />
+            </>
+          )}
           <div className="s-flex-1" />
           <div className="s-flex s-h-8 s-items-center">
             <Avatar.Stack
@@ -396,25 +403,19 @@ export function GroupConversationView({
                                     conversation={conversation}
                                     creator={creator || undefined}
                                     time={time}
-                                    messageCount={
-                                      bucketKey === "Today"
-                                        ? messageCount
-                                        : undefined
-                                    }
                                     replySection={
-                                      <>
-                                        <Avatar.Stack
-                                          avatars={avatarProps}
-                                          nbVisibleItems={3}
-                                          onTop={"first" as const}
-                                          size="xs"
-                                        />
-                                        {replyCount} replies.
-                                        <span className="s-font-normal">
-                                          {" "}
-                                          Last from @seb.
-                                        </span>
-                                      </>
+                                      <ReplySection
+                                        totalMessages={replyCount}
+                                        newMessages={
+                                          bucketKey === "Today"
+                                            ? messageCount
+                                            : 0
+                                        }
+                                        avatars={avatarProps}
+                                        lastMessageBy={
+                                          avatarProps[0]?.name || "Unknown"
+                                        }
+                                      />
                                     }
                                     onClick={() => {
                                       onConversationClick?.(
@@ -447,19 +448,21 @@ export function GroupConversationView({
         </TabsContent>
 
         {/* About Tab */}
-        <TabsContent
-          value="about"
-          className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
-        >
-          <div className="s-flex s-flex-col s-gap-4">
-            <h2 className="s-heading-xl s-text-foreground dark:s-text-foreground-night">
-              About {space.name}
-            </h2>
-            <p className="s-text-foreground dark:s-text-foreground-night">
-              {space.description}
-            </p>
-          </div>
-        </TabsContent>
+        {showToolsAndAboutTabs && (
+          <TabsContent
+            value="about"
+            className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
+          >
+            <div className="s-flex s-flex-col s-gap-4">
+              <h2 className="s-heading-xl s-text-foreground dark:s-text-foreground-night">
+                About {space.name}
+              </h2>
+              <p className="s-text-foreground dark:s-text-foreground-night">
+                {space.description}
+              </p>
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

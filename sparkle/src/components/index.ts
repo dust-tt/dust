@@ -54,8 +54,8 @@ export {
   ConversationMessageContent,
   ConversationMessageTitle,
 } from "./ConversationMessages";
-export type { ConversationListItemProps } from "./ConversationListItem";
-export { ConversationListItem } from "./ConversationListItem";
+export type { ConversationListItemProps, ReplySectionProps } from "./ConversationListItem";
+export { ConversationListItem, ReplySection } from "./ConversationListItem";
 export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
 export {

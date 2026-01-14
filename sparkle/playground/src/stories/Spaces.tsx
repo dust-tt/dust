@@ -816,20 +816,20 @@ function DustMain() {
             </>
           ) : (
             <>
-              <NavigationListItem
-                label="Search Documents"
-                icon={MagnifyingGlassIcon}
-                onClick={() => {
-                  console.log("Start a Search Doc");
-                }}
-              />
-              <NavigationListItem
-                label="Start a Deep Dive"
-                icon={AtomIcon}
-                onClick={() => {
-                  console.log("Start a Deep Dive");
-                }}
-              />
+              <div className="s-flex s-w-full s-justify-end s-gap-1.5">
+                <Button
+                  size="xs"
+                  icon={MagnifyingGlassIcon}
+                  variant="highlight"
+                  label="Documents"
+                />
+                <Button
+                  size="xs"
+                  icon={AtomIcon}
+                  label="Deep Dive"
+                  variant="highlight"
+                />
+              </div>
             </>
           )}
           {(filteredSpaces.length > 0 || !searchText.trim()) && (
@@ -1464,6 +1464,7 @@ function DustMain() {
         conversations={spaceConversations}
         users={mockUsers}
         agents={mockAgents}
+        showToolsAndAboutTabs={true}
         onConversationClick={(conversation) => {
           // Store the current space ID before navigating to conversation
           setPreviousSpaceId(selectedSpaceId);

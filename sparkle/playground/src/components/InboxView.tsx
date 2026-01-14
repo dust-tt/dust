@@ -1,5 +1,4 @@
 import {
-  Avatar,
   Button,
   CheckIcon,
   Collapsible,
@@ -9,6 +8,7 @@ import {
   InboxIcon,
   ListGroup,
   ListItemSection,
+  ReplySection,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -123,6 +123,33 @@ export function InboxView({
     });
   };
 
+  const toggleMyConversationsCollapse = () => {
+    toggleSpaceCollapse("my-conversations");
+  };
+
+  // Filter conversations that don't have a spaceId (My conversations) and are "unread"
+  const myConversations = useMemo(() => {
+    const now = new Date();
+    const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+
+    const filtered = conversations.filter((conv) => {
+      // Must NOT have a spaceId
+      if (conv.spaceId) return false;
+      // For demo: consider conversations updated in the last 2 days as "unread"
+      return conv.updatedAt >= twoDaysAgo;
+    });
+
+    // Sort by updatedAt (most recent first) and limit to 1-3 items
+    const sorted = [...filtered].sort(
+      (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
+    );
+    const limit = Math.min(
+      Math.max(1, Math.floor(Math.random() * 3) + 1),
+      sorted.length
+    );
+    return sorted.slice(0, limit);
+  }, [conversations]);
+
   // Filter conversations that have a spaceId and are "unread" (for demo, use recent conversations)
   const unreadConversations = useMemo(() => {
     const now = new Date();
@@ -171,26 +198,120 @@ export function InboxView({
     return spaces.filter((space) => conversationsBySpace.has(space.id));
   }, [spaces, conversationsBySpace]);
 
-  // Filter out collapsed spaces from display
-  const visibleSpaces = useMemo(() => {
-    return spacesWithUnread.filter((space) => !collapsedSpaces.has(space.id));
-  }, [spacesWithUnread, collapsedSpaces]);
+  const hasAnyContent =
+    myConversations.length > 0 || spacesWithUnread.length > 0;
 
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background s-px-6">
       <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto">
         <div
           className={`s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-py-8 ${
-            visibleSpaces.length === 0 ? "s-flex-1" : ""
+            !hasAnyContent ? "s-flex-1" : ""
           }`}
         >
-          {visibleSpaces.length > 0 ? (
+          {hasAnyContent ? (
             <>
               <h2 className="s-heading-2xl s-mb-4 s-text-foreground dark:s-text-foreground-night">
                 Inbox
               </h2>
               <div className="s-flex s-flex-col">
-                {visibleSpaces.map((space) => {
+                {/* My Conversations Section */}
+                {myConversations.length > 0 && (
+                  <Collapsible
+                    key="my-conversations"
+                    open={!collapsedSpaces.has("my-conversations")}
+                    onOpenChange={(open) => {
+                      if (!open) {
+                        setCollapsedSpaces((prev) =>
+                          new Set(prev).add("my-conversations")
+                        );
+                      } else {
+                        setCollapsedSpaces((prev) => {
+                          const next = new Set(prev);
+                          next.delete("my-conversations");
+                          return next;
+                        });
+                      }
+                    }}
+                    className="s-flex s-flex-col"
+                  >
+                    <CollapsibleContent>
+                      <div className="s-flex s-flex-col">
+                        <ListItemSection
+                          size="sm"
+                          action={
+                            <Button
+                              label="Mark as read"
+                              icon={CheckIcon}
+                              size="xs"
+                              variant="ghost-secondary"
+                              onClick={toggleMyConversationsCollapse}
+                            />
+                          }
+                        >
+                          My conversations
+                        </ListItemSection>
+                        <ListGroup>
+                          {myConversations.map((conversation) => {
+                            const participants = getRandomParticipants(
+                              conversation,
+                              users,
+                              agents
+                            );
+                            const creator = getRandomCreator(
+                              conversation,
+                              users
+                            );
+                            const avatarProps =
+                              participantsToAvatarProps(participants);
+
+                            // Format time from updatedAt
+                            const time = conversation.updatedAt
+                              .toLocaleTimeString("en-US", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false,
+                              })
+                              .replace("24:", "00:");
+
+                            // Generate random message count (1-4)
+                            const messageCount = Math.floor(
+                              Math.random() * 4 + 1
+                            );
+
+                            // Generate random reply count (1-8)
+                            const replyCount = Math.floor(
+                              Math.random() * 8 + 1
+                            );
+
+                            return (
+                              <ConversationListItem
+                                key={conversation.id}
+                                conversation={conversation}
+                                creator={creator || undefined}
+                                time={time}
+                                replySection={
+                                  <ReplySection
+                                    totalMessages={replyCount}
+                                    newMessages={messageCount}
+                                    avatars={avatarProps}
+                                    lastMessageBy={
+                                      avatarProps[0]?.name || "Unknown"
+                                    }
+                                  />
+                                }
+                                onClick={() => {
+                                  onConversationClick?.(conversation);
+                                }}
+                              />
+                            );
+                          })}
+                        </ListGroup>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+                {spacesWithUnread.map((space) => {
                   const spaceConversations =
                     conversationsBySpace.get(space.id) || [];
                   if (spaceConversations.length === 0) return null;
@@ -272,21 +393,15 @@ export function InboxView({
                                   conversation={conversation}
                                   creator={creator || undefined}
                                   time={time}
-                                  messageCount={messageCount}
                                   replySection={
-                                    <>
-                                      <Avatar.Stack
-                                        avatars={avatarProps}
-                                        nbVisibleItems={3}
-                                        onTop={"first" as const}
-                                        size="xs"
-                                      />
-                                      {replyCount} replies.
-                                      <span className="s-font-normal">
-                                        {" "}
-                                        Last from @seb 5 minutes ago.
-                                      </span>
-                                    </>
+                                    <ReplySection
+                                      totalMessages={replyCount}
+                                      newMessages={messageCount}
+                                      avatars={avatarProps}
+                                      lastMessageBy={
+                                        avatarProps[0]?.name || "Unknown"
+                                      }
+                                    />
                                   }
                                   onClick={() => {
                                     onConversationClick?.(conversation);

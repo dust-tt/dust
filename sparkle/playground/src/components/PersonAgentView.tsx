@@ -3,6 +3,7 @@ import {
   ConversationListItem,
   ListGroup,
   ListItemSection,
+  ReplySection,
   SearchInput,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
@@ -308,25 +309,24 @@ export function PersonAgentView({
                                     : collaboratorAvatar
                                 }
                                 time={time}
-                                messageCount={
-                                  bucketKey === "Today"
-                                    ? messageCount
-                                    : undefined
-                                }
                                 replySection={
-                                  <>
-                                    <Avatar
-                                      {...(isCreatedByUser
+                                  <ReplySection
+                                    totalMessages={replyCount}
+                                    newMessages={
+                                      bucketKey === "Today" ? messageCount : 0
+                                    }
+                                    avatars={[
+                                      isCreatedByUser
                                         ? collaboratorAvatar
-                                        : userAvatar)}
-                                      size="xs"
-                                    />
-                                    {replyCount} replies.{" "}
-                                    <span className="s-font-normal">
-                                      {" "}
-                                      Last from @seb.
-                                    </span>
-                                  </>
+                                        : userAvatar,
+                                    ]}
+                                    lastMessageBy={
+                                      (isCreatedByUser
+                                        ? collaboratorAvatar
+                                        : userAvatar
+                                      )?.name || "Unknown"
+                                    }
+                                  />
                                 }
                                 onClick={() => {
                                   onConversationClick?.(conversation);
