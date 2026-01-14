@@ -25,8 +25,8 @@ import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdow
 import { SearchMembersDropdown } from "@app/components/spaces/SearchMembersDropdown";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
-  GroupType,
   LightWorkspaceType,
+  SpaceGroupType,
   SpaceUserType,
   UserType,
 } from "@app/types";
@@ -45,11 +45,11 @@ interface RestrictedAccessBodyProps {
   managementType: MembersManagementType;
   owner: LightWorkspaceType;
   selectedMembers: UserType[];
-  selectedGroups: GroupType[];
+  selectedGroups: SpaceGroupType[];
   canSetEditors?: boolean;
   onManagementTypeChange: (managementType: MembersManagementType) => void;
   onMembersUpdated: (members: UserType[]) => void;
-  onGroupsUpdated: (groups: GroupType[]) => void;
+  onGroupsUpdated: (groups: SpaceGroupType[]) => void;
   disabled?: boolean;
 }
 
@@ -248,6 +248,8 @@ export function RestrictedAccessBody({
               onGroupsUpdated={onGroupsUpdated}
               selectedGroups={selectedGroups}
               searchSelectedGroups={searchSelectedMembers}
+              canSetEditors={canSetEditors}
+              disabled={disabled}
             />
           </ScrollArea>
         </>
@@ -443,15 +445,19 @@ function MembersTable({
 }
 
 interface GroupsTableProps {
-  onGroupsUpdated: (groups: GroupType[]) => void;
-  selectedGroups: GroupType[];
+  onGroupsUpdated: (groups: SpaceGroupType[]) => void;
+  selectedGroups: SpaceGroupType[];
   searchSelectedGroups: string;
+  canSetEditors?: boolean;
+  disabled?: boolean;
 }
 
 function GroupsTable({
   onGroupsUpdated,
   selectedGroups,
   searchSelectedGroups,
+  canSetEditors = false,
+  disabled = false,
 }: GroupsTableProps) {
   const sendNotifications = useSendNotification();
   const [pagination, setPagination] = useState<PaginationState>({
@@ -459,8 +465,26 @@ function GroupsTable({
     pageSize: 50,
   });
 
+  const toggleEditor = useCallback(
+    (group: string) => {
+      if (!canSetEditors) {
+        return;
+      }
+      const toggledMember = selectedGroups.find((m) => m.sId === group);
+      onGroupsUpdated([
+        ...selectedGroups.slice(0, selectedGroups.indexOf(toggledMember!)),
+        {
+          ...toggledMember!,
+          isEditor: !toggledMember?.isEditor,
+        },
+        ...selectedGroups.slice(selectedGroups.indexOf(toggledMember!) + 1),
+      ]);
+    },
+    [canSetEditors, onGroupsUpdated, selectedGroups]
+  );
+
   const removeGroup = useCallback(
-    (group: GroupType) => {
+    (group: SpaceGroupType) => {
       if (selectedGroups.length === 1) {
         sendNotifications({
           title: "Cannot remove last group.",
@@ -478,7 +502,13 @@ function GroupsTable({
     <GroupsList
       groups={selectedGroups}
       searchTerm={searchSelectedGroups}
-      showColumns={["name", "memberCount", "action"]}
+      showColumns={
+        canSetEditors
+          ? ["name", "memberCount", "isEditor", "action"]
+          : ["name", "memberCount", "action"]
+      }
+      disabled={disabled}
+      onToggleEditor={toggleEditor}
       onRemoveGroupClick={removeGroup}
       pagination={pagination}
       setPagination={setPagination}

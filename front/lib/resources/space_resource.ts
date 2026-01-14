@@ -33,6 +33,7 @@ import type {
   SpaceType,
 } from "@app/types";
 import { Err, GLOBAL_SPACE_NAME, Ok, removeNulls } from "@app/types";
+import { log } from "console";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -472,7 +473,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       isRestricted: boolean;
     } & (
       | { memberIds: string[]; managementMode: "manual"; editorIds?: string[] }
-      | { groupIds: string[]; managementMode: "group" }
+      | {
+          groupIds: string[];
+          managementMode: "group";
+          editorGroupIds?: string[];
+        }
     )
   ): Promise<
     Result<
@@ -561,15 +566,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       if (previousManagementMode !== managementMode) {
         if (managementMode === "group") {
           // When switching to group mode, suspend all active members of the default group
-          await this.suspendDefaultGroupMembers(auth, t);
+          await this.suspendDefaultManualGroups(auth, t);
         } else if (
           managementMode === "manual" &&
           previousManagementMode === "group"
         ) {
           // When switching from group to manual mode, restore suspended members
-          await this.restoreDefaultGroupMembers(auth, t);
+          await this.restoreDefaultManualGroups(auth, t);
         }
       }
+
+      console.log("========= updatePermissions params =========", params);
 
       if (managementMode === "manual") {
         const memberIds = params.memberIds;
@@ -601,6 +608,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               { transaction: t }
             );
           }
+
+          console.log(
+            "========= updatePermissions editorGroup =========",
+            editorGroup
+          );
 
           // Set members of the editor group
           const setEditorsRes = await editorGroup.setMembers(
@@ -657,8 +669,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           return setMembersRes;
         }
       } else if (managementMode === "group") {
+        console.log("========= updatePermissions group mode =========");
         // Handle group-based management
         const groupIds = params.groupIds;
+        const editorGroupIds = params.editorGroupIds || [];
 
         // Remove existing external groups
         const existingExternalGroups = this.groups.filter(
@@ -682,8 +696,30 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         if (selectedGroupsResult.isErr()) {
           return selectedGroupsResult;
         }
-
         const selectedGroups = selectedGroupsResult.value;
+
+        if (editorGroupIds.length > 0) {
+          const editorGroupsResult = await GroupResource.fetchByIds(
+            auth,
+            editorGroupIds
+          );
+          if (editorGroupsResult.isErr()) {
+            return editorGroupsResult;
+          }
+          const selectedEditorGroups = editorGroupsResult.value;
+          for (const selectedEditorGroup of selectedEditorGroups) {
+            await GroupSpaceModel.create(
+              {
+                groupId: selectedEditorGroup.id,
+                vaultId: this.id,
+                workspaceId: this.workspaceId,
+                kind: "editor",
+              },
+              { transaction: t }
+            );
+          }
+        }
+
         for (const selectedGroup of selectedGroups) {
           await GroupSpaceModel.create(
             {
@@ -835,6 +871,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       `Expected exactly one space_members group for the space, but found ${spaceMembersGroups.length}.`
     );
     return spaceMembersGroups[0];
+  }
+
+  private getDefaultSpaceEditorGroup(): GroupResource {
+    const spaceEditorsGroups = this.groups.filter((group) =>
+      group.isSpaceEditorGroup()
+    );
+    assert(
+      spaceEditorsGroups.length <= 1,
+      `Expected up to one space_editors group for the space, but found ${spaceEditorsGroups.length}.`
+    );
+    return spaceEditorsGroups[0];
   }
 
   /**
@@ -1069,11 +1116,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   /**
    * Suspends all active members of the default group when switching to group management mode
    */
-  private async suspendDefaultGroupMembers(
+  private async suspendDefaultManualGroups(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
     const defaultSpaceGroup = this.getDefaultSpaceGroup();
+    const defaultSpaceEditorGroup = this.getDefaultSpaceEditorGroup();
 
     await GroupMembershipModel.update(
       { status: "suspended" },
@@ -1088,16 +1136,30 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         transaction,
       }
     );
+    await GroupMembershipModel.update(
+      { status: "suspended" },
+      {
+        where: {
+          groupId: defaultSpaceEditorGroup.id,
+          workspaceId: this.workspaceId,
+          status: "active",
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+        transaction,
+      }
+    );
   }
 
   /**
    * Restores all suspended members of the default group when switching to manual management mode
    */
-  private async restoreDefaultGroupMembers(
+  private async restoreDefaultManualGroups(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
     const defaultSpaceGroup = this.getDefaultSpaceGroup();
+    const defaultSpaceEditorGroup = this.getDefaultSpaceEditorGroup();
 
     await GroupMembershipModel.update(
       { status: "active" },
@@ -1112,12 +1174,31 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         transaction,
       }
     );
+
+    await GroupMembershipModel.update(
+      { status: "active" },
+      {
+        where: {
+          groupId: defaultSpaceEditorGroup.id,
+          workspaceId: this.workspaceId,
+          status: "suspended",
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+        transaction,
+      }
+    );
   }
 
   toJSON(): SpaceType {
     return {
       createdAt: this.createdAt.getTime(),
-      groupIds: this.groups.map((group) => group.sId),
+      groupIds: this.groups
+        .filter((group) => group.group_vaults?.kind === "member")
+        .map((group) => group.sId),
+      editorGroupIds: this.groups
+        .filter((group) => group.group_vaults?.kind === "editor")
+        .map((group) => group.sId),
       isRestricted:
         this.isRegularAndRestricted() || this.isProjectAndRestricted(),
 

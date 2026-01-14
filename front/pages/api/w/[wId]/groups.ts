@@ -7,11 +7,17 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { GroupKind, GroupType, WithAPIErrorResponse } from "@app/types";
+import type {
+  GroupKind,
+  SpaceGroupType,
+  WithAPIErrorResponse,
+} from "@app/types";
 import { GroupKindCodec } from "@app/types";
+import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 
 export type GetGroupsResponseBody = {
-  groups: GroupType[];
+  groups: SpaceGroupType[];
 };
 
 const GetGroupsQuerySchema = t.partial({
@@ -46,11 +52,27 @@ async function handler(
         : ["global", "space_members", "space_editors"];
 
       let groups: GroupResource[];
+      let groupKindMap = new Map<number, string>();
+
       if (spaceId) {
         // Fetch groups associated with the specific space
         groups = await GroupResource.listForSpaceById(auth, spaceId, {
           groupKinds,
         });
+        const space = await SpaceResource.fetchById(auth, spaceId);
+        if (space) {
+          const groupSpaces = await GroupSpaceModel.findAll({
+            where: {
+              vaultId: space.id,
+              workspaceId: auth.getNonNullableWorkspace().id,
+              groupId: groups.map((g) => g.id),
+            },
+            attributes: ["kind", "groupId"],
+          });
+          groupKindMap = new Map(
+            groupSpaces.map((gs) => [gs.groupId, gs.kind])
+          );
+        }
       } else {
         // Fetch all workspace groups (existing behavior)
         groups = await GroupResource.listAllWorkspaceGroups(auth, {
@@ -59,7 +81,13 @@ async function handler(
       }
 
       const groupsWithMemberCount = await Promise.all(
-        groups.map((group) => group.toJSONWithMemberCount(auth))
+        groups.map(async (group) => {
+          const groupJSON = await group.toJSONWithMemberCount(auth);
+          return {
+            ...groupJSON,
+            isEditor: !!spaceId && groupKindMap.get(group.id) === "editors",
+          };
+        })
       );
 
       return res.status(200).json({

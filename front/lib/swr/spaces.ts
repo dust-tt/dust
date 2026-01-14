@@ -545,6 +545,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
             isRestricted,
             managementMode,
             groupIds: params.groupIds,
+            editorGroupIds: params.editorGroupIds,
           }),
         })
       );

@@ -12,7 +12,7 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import React from "react";
+import React, { useMemo } from "react";
 import { useCallback, useState } from "react";
 
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
@@ -140,6 +140,7 @@ export default function SpaceConversations({
   const { spaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: spaceId,
+    includeAllMembers: true,
   });
 
   const { conversations, isConversationsLoading, mutateConversations } =
@@ -301,6 +302,28 @@ export default function SpaceConversations({
     );
   }
 
+  const initialGroups = useMemo(() => {
+    if (!planAllowsSCIM || !spaceInfo || !groups) {
+      return [];
+    }
+    if (
+      (spaceInfo.groupIds && spaceInfo.groupIds.length > 0) ||
+      (spaceInfo.editorGroupIds && spaceInfo.editorGroupIds.length > 0)
+    ) {
+      return groups
+        .filter(
+          (group) =>
+            spaceInfo?.groupIds.includes(group.sId) ||
+            spaceInfo?.editorGroupIds?.includes(group.sId)
+        )
+        .map((group) => ({
+          ...group,
+          isEditor: !!spaceInfo.editorGroupIds?.includes(group.sId),
+        }));
+    }
+    return [];
+  }, [planAllowsSCIM, spaceInfo, groups]);
+
   return (
     <div className="flex w-full items-center justify-center overflow-auto">
       <div className="flex max-h-dvh w-full flex-col gap-8 pb-2 pt-4 sm:w-full sm:max-w-3xl sm:pb-4">
@@ -380,16 +403,7 @@ export default function SpaceConversations({
                 space={spaceInfo}
                 initialMembers={spaceInfo.members}
                 planAllowsSCIM={planAllowsSCIM}
-                initialGroups={
-                  planAllowsSCIM &&
-                  spaceInfo.groupIds &&
-                  spaceInfo.groupIds.length > 0 &&
-                  groups
-                    ? groups.filter((group) =>
-                        spaceInfo.groupIds.includes(group.sId)
-                      )
-                    : []
-                }
+                initialGroups={initialGroups}
                 initialManagementMode={spaceInfo.managementMode}
                 initialIsRestricted={spaceInfo.isRestricted}
                 isSpaceEditor={spaceInfo.isEditor}

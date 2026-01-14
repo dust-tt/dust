@@ -1,13 +1,13 @@
 import { Button, ContentMessage } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type {
-  GroupType,
   LightWorkspaceType,
+  SpaceGroupType,
   SpaceType,
   SpaceUserType,
 } from "@app/types";
@@ -16,7 +16,7 @@ interface SpaceAboutTabProps {
   owner: LightWorkspaceType;
   space: SpaceType;
   initialMembers: SpaceUserType[];
-  initialGroups: GroupType[];
+  initialGroups: SpaceGroupType[];
   initialManagementMode: "manual" | "group";
   initialIsRestricted: boolean;
   isSpaceEditor: boolean;
@@ -46,13 +46,24 @@ export function SpaceAboutTab({
     useState<SpaceUserType[]>(initialMembers);
   const [selectedMembers, setSelectedMembers] =
     useState<SpaceUserType[]>(initialMembers);
-  const [savedGroups, setSavedGroups] = useState<GroupType[]>(initialGroups);
+  const [savedGroups, setSavedGroups] =
+    useState<SpaceGroupType[]>(initialGroups);
   const [selectedGroups, setSelectedGroups] =
-    useState<GroupType[]>(initialGroups);
+    useState<SpaceGroupType[]>(initialGroups);
   const [isSaving, setIsSaving] = useState(false);
 
   const isManual = !planAllowsSCIM || managementType === "manual";
   const doUpdate = useUpdateSpace({ owner });
+
+  useEffect(() => {
+    setSavedMembers(initialMembers);
+    setSelectedMembers(initialMembers);
+  }, [initialMembers]);
+
+  useEffect(() => {
+    setSavedGroups(initialGroups);
+    setSelectedGroups(initialGroups);
+  }, [initialGroups]);
 
   const hasChanges = useMemo(() => {
     if (managementType !== savedManagementType) {
@@ -84,7 +95,23 @@ export function SpaceAboutTab({
     } else {
       const currentGroupIds = selectedGroups.map((g) => g.sId).sort();
       const savedGroupIds = savedGroups.map((g) => g.sId).sort();
-      return JSON.stringify(currentGroupIds) !== JSON.stringify(savedGroupIds);
+      const groupIdsChanged =
+        JSON.stringify(currentGroupIds) !== JSON.stringify(savedGroupIds);
+
+      // Check if editor group IDs have changed
+      const selectedEditorGroupIds = selectedGroups
+        .filter((g) => g.isEditor)
+        .map((g) => g.sId)
+        .sort();
+      const savedEditorGroupIds = savedGroups
+        .filter((g) => g.isEditor)
+        .map((g) => g.sId)
+        .sort();
+      const editorGroupsChanged =
+        JSON.stringify(savedEditorGroupIds) !==
+        JSON.stringify(selectedEditorGroupIds);
+
+      return groupIdsChanged || editorGroupsChanged;
     }
   }, [
     managementType,
@@ -104,10 +131,16 @@ export function SpaceAboutTab({
     if (!hasChanges) {
       return false;
     }
-    if (managementType === "manual" && selectedMembers.length === 0) {
+    if (
+      managementType === "manual" &&
+      selectedMembers.filter((m) => m.isEditor).length === 0 // a project must have at least one editor
+    ) {
       return false;
     }
-    if (managementType === "group" && selectedGroups.length === 0) {
+    if (
+      managementType === "group" &&
+      selectedGroups.filter((g) => g.isEditor).length === 0 // a project must have at least one editor group
+    ) {
       return false;
     }
     return true;
@@ -123,7 +156,12 @@ export function SpaceAboutTab({
     if (planAllowsSCIM && managementType === "group") {
       const updatedtedSpace = await doUpdate(space, {
         isRestricted,
-        groupIds: selectedGroups.map((group) => group.sId),
+        groupIds: selectedGroups
+          .filter((group) => !group.isEditor)
+          .map((group) => group.sId),
+        editorGroupIds: selectedGroups
+          .filter((group) => group.isEditor)
+          .map((group) => group.sId),
         managementMode: "group",
         name: space.name,
       });
