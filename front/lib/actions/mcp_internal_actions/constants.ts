@@ -13,6 +13,11 @@ import {
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
+import {
+  GOOGLE_CALENDAR_SERVER_INFO,
+  GOOGLE_CALENDAR_TOOL_STAKES,
+  GOOGLE_CALENDAR_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/google_calendar/metadata";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
@@ -23,6 +28,7 @@ import {
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
+  MCPToolType,
 } from "@app/lib/api/mcp";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type {
@@ -544,34 +550,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      list_calendars: "never_ask",
-      list_events: "never_ask",
-      get_event: "never_ask",
-      create_event: "low",
-      update_event: "low",
-      delete_event: "low",
-      check_availability: "never_ask",
-      get_user_timezones: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
+    tools_stakes: GOOGLE_CALENDAR_TOOL_STAKES,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "google_calendar",
-      version: "1.0.0",
-      description: "Access calendar schedules and appointments.",
-      authorization: {
-        provider: "google_drive",
-        supported_use_cases: ["personal_actions"] as const,
-        scope:
-          "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events" as const,
-      },
-      icon: "GcalLogo",
-      documentationUrl: "https://docs.dust.tt/docs/google-calendar",
-      instructions:
-        "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool (3) use get_user_timezones to check attendee timezones for better scheduling.",
-    },
+    tools: GOOGLE_CALENDAR_TOOLS,
+    serverInfo: GOOGLE_CALENDAR_SERVER_INFO,
   },
   conversation_files: {
     id: 17,
@@ -1911,6 +1895,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: Record<string, string[]> | undefined;
     tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
     timeoutMs: number | undefined;
+    tools?: MCPToolType[];
     requiresBearerToken?: boolean;
     serverInfo: InternalMCPServerDefinitionType & { name: K };
   };
@@ -2074,4 +2059,39 @@ export const isInternalMCPServerOfName = (
   }
 
   return false;
+};
+
+/**
+ * Returns the static metadata for an internal MCP server, including tools if defined.
+ * This eliminates the need to connect to the server to fetch metadata.
+ */
+export const getInternalMCPServerStaticMetadata = (
+  name: InternalMCPServerNameType
+): {
+  name: string;
+  version: string;
+  description: string;
+  icon: InternalAllowedIconType;
+  authorization: InternalMCPServerDefinitionType["authorization"];
+  documentationUrl: string | null;
+  instructions: string | null;
+  developerSecretSelection?: InternalMCPServerDefinitionType["developerSecretSelection"];
+  developerSecretSelectionDescription?: string;
+  tools: MCPToolType[];
+} => {
+  const server = INTERNAL_MCP_SERVERS[name];
+  const serverInfo = server.serverInfo as InternalMCPServerDefinitionType;
+  return {
+    name: serverInfo.name,
+    version: serverInfo.version,
+    description: serverInfo.description,
+    icon: serverInfo.icon,
+    authorization: serverInfo.authorization,
+    documentationUrl: serverInfo.documentationUrl,
+    instructions: serverInfo.instructions ?? null,
+    developerSecretSelection: serverInfo.developerSecretSelection,
+    developerSecretSelectionDescription:
+      serverInfo.developerSecretSelectionDescription ?? undefined,
+    tools: "tools" in server ? (server.tools ?? []) : [],
+  };
 };

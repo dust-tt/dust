@@ -4,7 +4,6 @@ import assert from "assert";
 import { randomUUID } from "crypto";
 import { google } from "googleapis";
 import { DateTime, Interval } from "luxon";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -14,8 +13,17 @@ import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-// We use a single tool name for monitoring given the high granularity (can be revisited).
-const GOOGLE_CALENDAR_TOOL_NAME = "google_calendar";
+import {
+  checkAvailabilitySchema,
+  createEventSchema,
+  deleteEventSchema,
+  getEventSchema,
+  getUserTimezonesSchema,
+  GOOGLE_CALENDAR_TOOL_NAME,
+  listCalendarsSchema,
+  listEventsSchema,
+  updateEventSchema,
+} from "./metadata";
 
 interface GoogleCalendarEventDateTime {
   date?: string;
@@ -143,13 +151,7 @@ function createServer(
   server.tool(
     "list_calendars",
     "List all calendars accessible by the user. Supports pagination via pageToken.",
-    {
-      pageToken: z.string().optional().describe("Page token for pagination."),
-      maxResults: z
-        .number()
-        .optional()
-        .describe("Maximum number of calendars to return (max 250)."),
-    },
+    listCalendarsSchema,
     withToolLogging(
       auth,
       {
@@ -186,29 +188,7 @@ function createServer(
   server.tool(
     "list_events",
     "List or search events from a Google Calendar. If 'q' is provided, performs a free-text search.",
-    {
-      calendarId: z
-        .string()
-        .default("primary")
-        .describe("The calendar ID (default: 'primary')."),
-      q: z
-        .string()
-        .optional()
-        .describe("Free text search query for event fields."),
-      timeMin: z
-        .string()
-        .optional()
-        .describe("RFC3339 lower bound for event start time (inclusive)."),
-      timeMax: z
-        .string()
-        .optional()
-        .describe("RFC3339 upper bound for event end time (exclusive)."),
-      maxResults: z
-        .number()
-        .optional()
-        .describe("Maximum number of events to return (max 2500)."),
-      pageToken: z.string().optional().describe("Page token for pagination."),
-    },
+    listEventsSchema,
     withToolLogging(
       auth,
       {
@@ -267,13 +247,7 @@ function createServer(
   server.tool(
     "get_event",
     "Get a single event from a Google Calendar by event ID.",
-    {
-      calendarId: z
-        .string()
-        .default("primary")
-        .describe("The calendar ID (default: 'primary')."),
-      eventId: z.string().describe("The ID of the event to retrieve."),
-    },
+    getEventSchema,
     withToolLogging(
       auth,
       {
@@ -319,32 +293,7 @@ function createServer(
   server.tool(
     "create_event",
     "Create a new event in a Google Calendar.",
-    {
-      calendarId: z
-        .string()
-        .default("primary")
-        .describe("The calendar ID (default: 'primary')."),
-      summary: z.string().describe("Title of the event."),
-      description: z.string().optional().describe("Description of the event."),
-      start: z
-        .object({ dateTime: z.string().describe("RFC3339 start time") })
-        .describe("Start time object."),
-      end: z
-        .object({ dateTime: z.string().describe("RFC3339 end time") })
-        .describe("End time object."),
-      attendees: z
-        .array(z.string())
-        .optional()
-        .describe("List of attendee email addresses."),
-      location: z.string().optional().describe("Location of the event."),
-      colorId: z.string().optional().describe("Color ID for the event."),
-      createConference: z
-        .boolean()
-        .default(true)
-        .describe(
-          "Whether to create a conference (Google Meet) for the event. Defaults to true."
-        ),
-    },
+    createEventSchema,
     withToolLogging(
       auth,
       {
@@ -453,35 +402,7 @@ function createServer(
   server.tool(
     "update_event",
     "Update an existing event in a Google Calendar.",
-    {
-      calendarId: z
-        .string()
-        .default("primary")
-        .describe("The calendar ID (default: 'primary')."),
-      eventId: z.string().describe("The ID of the event to update."),
-      summary: z.string().optional().describe("Title of the event."),
-      description: z.string().optional().describe("Description of the event."),
-      start: z
-        .object({ dateTime: z.string().describe("RFC3339 start time") })
-        .optional()
-        .describe("Start time object."),
-      end: z
-        .object({ dateTime: z.string().describe("RFC3339 end time") })
-        .optional()
-        .describe("End time object."),
-      attendees: z
-        .array(z.string())
-        .optional()
-        .describe("List of attendee email addresses."),
-      location: z.string().optional().describe("Location of the event."),
-      colorId: z.string().optional().describe("Color ID for the event."),
-      createConference: z
-        .boolean()
-        .optional()
-        .describe(
-          "Whether to create a conference (Google Meet) for the event. If not provided, existing conference settings are preserved."
-        ),
-    },
+    updateEventSchema,
     withToolLogging(
       auth,
       {
@@ -601,13 +522,7 @@ function createServer(
   server.tool(
     "delete_event",
     "Delete an event from a Google Calendar.",
-    {
-      calendarId: z
-        .string()
-        .default("primary")
-        .describe("The calendar ID (default: 'primary')."),
-      eventId: z.string().describe("The ID of the event to delete."),
-    },
+    deleteEventSchema,
     withToolLogging(
       auth,
       {
@@ -643,64 +558,7 @@ function createServer(
   server.tool(
     "check_availability",
     "Compute combined availability across multiple participants within a date range.",
-    {
-      participants: z
-        .array(
-          z.object({
-            email: z
-              .string()
-              .describe(
-                "Email address of the participant whose calendar should be checked."
-              ),
-            timezone: z
-              .string()
-              .describe(
-                "IANA timezone identifier for this participant (e.g., 'America/New_York')."
-              ),
-            dailyTimeWindowStart: z
-              .string()
-              .regex(
-                /^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$/,
-                "Time must be in HH:mm or HH:mm:ss format (24-hour)"
-              )
-              .optional()
-              .describe(
-                "Optional start of the participant's working window (local time, HH:mm or HH:mm:ss)."
-              ),
-            dailyTimeWindowEnd: z
-              .string()
-              .regex(
-                /^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$/,
-                "Time must be in HH:mm or HH:mm:ss format (24-hour)"
-              )
-              .optional()
-              .describe(
-                "Optional end of the participant's working window (local time, HH:mm or HH:mm:ss)."
-              ),
-          })
-        )
-        .min(1, "Provide at least one participant.")
-        .max(10, "A maximum of 10 participants is supported.")
-        .describe(
-          "Participants to include in the availability check. Specify their timezone and optional daily working window."
-        ),
-      startTimeRange: z
-        .string()
-        .describe(
-          "ISO 8601 timestamp for the beginning of the range to analyze (UTC)."
-        ),
-      endTimeRange: z
-        .string()
-        .describe(
-          "ISO 8601 timestamp for the end of the range to analyze (UTC)."
-        ),
-      excludeWeekends: z
-        .boolean()
-        .default(false)
-        .describe(
-          "If true, Saturdays and Sundays (in each participant's timezone) are ignored when computing availability."
-        ),
-    },
+    checkAvailabilitySchema,
     withToolLogging(
       auth,
       {
@@ -828,12 +686,7 @@ function createServer(
   server.tool(
     "get_user_timezones",
     "Get timezone information for multiple users by attempting to access their calendars. Only works for calendars shared with you.",
-    {
-      emails: z
-        .array(z.string())
-        .max(50, "Maximum 50 email addresses allowed")
-        .describe("Array of email addresses to get timezone information for"),
-    },
+    getUserTimezonesSchema,
     withToolLogging(
       auth,
       {
