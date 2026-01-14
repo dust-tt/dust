@@ -1,10 +1,10 @@
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
-import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { WorkspaceDomainUseCaseModel } from "@app/lib/resources/storage/models/workspace_domain_use_case";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   LightWorkspaceType,
   ModelId,
@@ -71,14 +71,17 @@ export class WorkspaceDomainUseCaseResource extends BaseResource<WorkspaceDomain
   static async listByWorkspace(
     workspace: WorkspaceType | LightWorkspaceType
   ): Promise<WorkspaceDomainUseCaseResource[]> {
-    const useCases = await WorkspaceDomainUseCaseModel.findAll({
+    const useCases = await (
+      WorkspaceDomainUseCaseModel as ModelStaticWorkspaceAware<WorkspaceDomainUseCaseModel>
+    ).findAll({
       where: { workspaceId: workspace.id },
       // WORKSPACE_ISOLATION_BYPASS: Need to bypass isolation for workspace-level queries.
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
     return useCases.map(
-      (uc) => new WorkspaceDomainUseCaseResource(WorkspaceDomainUseCaseModel, uc.get())
+      (uc) =>
+        new WorkspaceDomainUseCaseResource(WorkspaceDomainUseCaseModel, uc.get())
     );
   }
 
@@ -89,7 +92,9 @@ export class WorkspaceDomainUseCaseResource extends BaseResource<WorkspaceDomain
     workspace: WorkspaceType | LightWorkspaceType,
     domain: string
   ): Promise<WorkspaceDomainUseCaseResource[]> {
-    const useCases = await WorkspaceDomainUseCaseModel.findAll({
+    const useCases = await (
+      WorkspaceDomainUseCaseModel as ModelStaticWorkspaceAware<WorkspaceDomainUseCaseModel>
+    ).findAll({
       where: {
         workspaceId: workspace.id,
         domain: domain.toLowerCase(),
@@ -99,7 +104,8 @@ export class WorkspaceDomainUseCaseResource extends BaseResource<WorkspaceDomain
     });
 
     return useCases.map(
-      (uc) => new WorkspaceDomainUseCaseResource(WorkspaceDomainUseCaseModel, uc.get())
+      (uc) =>
+        new WorkspaceDomainUseCaseResource(WorkspaceDomainUseCaseModel, uc.get())
     );
   }
 
@@ -110,7 +116,9 @@ export class WorkspaceDomainUseCaseResource extends BaseResource<WorkspaceDomain
     workspace: WorkspaceType | LightWorkspaceType,
     useCase: WorkspaceDomainUseCase
   ): Promise<string[]> {
-    const useCases = await WorkspaceDomainUseCaseModel.findAll({
+    const useCases = await (
+      WorkspaceDomainUseCaseModel as ModelStaticWorkspaceAware<WorkspaceDomainUseCaseModel>
+    ).findAll({
       where: {
         workspaceId: workspace.id,
         useCase,
@@ -131,7 +139,9 @@ export class WorkspaceDomainUseCaseResource extends BaseResource<WorkspaceDomain
     domain: string,
     useCase: WorkspaceDomainUseCase
   ): Promise<boolean> {
-    const useCaseRecord = await WorkspaceDomainUseCaseModel.findOne({
+    const useCaseRecord = await (
+      WorkspaceDomainUseCaseModel as ModelStaticWorkspaceAware<WorkspaceDomainUseCaseModel>
+    ).findOne({
       where: {
         workspaceId: workspace.id,
         domain: domain.toLowerCase(),

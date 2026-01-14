@@ -342,15 +342,6 @@ async function handleOrganizationDomainEvent(
       { domain, enabledCount },
       "Enabled pending use cases for verified domain"
     );
-
-    // 2. Auto-enable mcp_static_ip_egress for SSO-verified domains
-    // (This ensures SSO domains automatically get MCP static IP routing)
-    await WorkspaceDomainUseCaseResource.upsert(workspace, {
-      domain,
-      useCase: "mcp_static_ip_egress",
-      status: "enabled",
-    });
-    logger.info({ domain }, "Auto-enabled mcp_static_ip_egress for SSO domain");
   } else {
     domainResult = await workspaceResource.deleteDomain({ domain });
 

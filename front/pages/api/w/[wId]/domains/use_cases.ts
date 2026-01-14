@@ -181,7 +181,8 @@ async function handler(
         });
       }
 
-      return res.status(204).end();
+      res.status(204).end();
+      return;
     }
 
     default:
