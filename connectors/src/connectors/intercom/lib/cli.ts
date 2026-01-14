@@ -89,10 +89,7 @@ export const intercom = async ({
 
       const cursor = args.cursor ?? null;
 
-      logger.info(
-        { cursor },
-        "[Admin] Forcing resync of all conversations"
-      );
+      logger.info({ cursor }, "[Admin] Forcing resync of all conversations");
 
       await workspace.update({ syncAllConversations: "scheduled_activate" });
 
