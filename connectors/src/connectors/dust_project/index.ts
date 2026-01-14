@@ -1,6 +1,12 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
+import {
+  launchDustProjectFullSyncWorkflow,
+  launchDustProjectGarbageCollectWorkflow,
+  launchDustProjectIncrementalSyncWorkflow,
+  stopDustProjectSyncWorkflow,
+} from "@connectors/connectors/dust_project/temporal/client";
 import type {
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
@@ -90,24 +96,38 @@ export class DustProjectConnectorManager extends BaseConnectorManager<null> {
   }
 
   async stop({
-    reason: _reason,
+    reason,
   }: {
     reason: string;
   }): Promise<Result<undefined, Error>> {
-    return new Err(new Error("Not implemented yet"));
+    return stopDustProjectSyncWorkflow({
+      connectorId: this.connectorId,
+      stopReason: reason,
+    });
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    return new Err(new Error("Not implemented yet"));
+    // Resume by launching incremental sync workflow
+    const result = await launchDustProjectIncrementalSyncWorkflow(
+      this.connectorId
+    );
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+    return new Ok(undefined);
   }
 
   async sync({
-    fromTs: _fromTs,
+    fromTs,
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    // TODO: Trigger sync workflow
-    return new Err(new Error("Sync not implemented yet"));
+    // Launch full sync if fromTs is null, otherwise incremental sync
+    if (fromTs === null) {
+      return launchDustProjectFullSyncWorkflow(this.connectorId);
+    } else {
+      return launchDustProjectIncrementalSyncWorkflow(this.connectorId);
+    }
   }
 
   async retrievePermissions({
@@ -170,7 +190,6 @@ export class DustProjectConnectorManager extends BaseConnectorManager<null> {
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {
-    // TODO: Implement garbage collection workflow
-    return new Err(new Error("Not implemented yet"));
+    return launchDustProjectGarbageCollectWorkflow(this.connectorId);
   }
 }

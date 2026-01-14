@@ -2,6 +2,7 @@ import type { ConversationPublicType } from "@dust-tt/client";
 
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { renderDocumentTitleAndContent } from "@connectors/lib/data_sources";
+import { formatDateForUpsert } from "@connectors/lib/formatting";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types";
 
@@ -23,18 +24,20 @@ export async function formatConversationForUpsert({
     // Only take the last version of each rank
     const msg = versions[versions.length - 1];
 
-    if (!msg || msg.visibility === "deleted") continue;
+    if (!msg) continue;
 
     let prefix: string | null = null;
     let content: string | null = null;
+    const dateStr: string = formatDateForUpsert(new Date(msg.created));
 
     if (msg.type === "user_message") {
       const userName = msg.user?.fullName || msg.user?.username || "User";
-      prefix = `>> User (${userName}):\n`;
+      const userEmail = msg.user?.email || "Unknown";
+      prefix = `>> User (${userName}, ${userEmail}) [${dateStr}]:\n`;
       content = msg.content ? msg.content + "\n" : "\n";
     } else if (msg.type === "agent_message") {
       const agentName = msg.configuration?.name || "Assistant";
-      prefix = `>> Assistant (${agentName}):\n`;
+      prefix = `>> Assistant (${agentName}) [${dateStr}]:\n`;
 
       if (msg.content) {
         content = msg.content + "\n";
@@ -43,7 +46,7 @@ export async function formatConversationForUpsert({
         content = "\n";
       }
     } else if (msg.type === "content_fragment") {
-      prefix = `>> Content Fragment:\n`;
+      prefix = `>> Content Fragment [${dateStr}]:\n`;
       content = "ID: " + msg.contentFragmentId + "\n";
       content += "Content-Type: " + msg.contentType + "\n";
       content += "Title: " + msg.title + "\n";
@@ -54,7 +57,7 @@ export async function formatConversationForUpsert({
     if (prefix !== null && content !== null) {
       messageSections.push({
         prefix,
-        content,
+        content: msg.visibility === "deleted" ? "Deleted message\n" : content,
         sections: [],
       });
     }
