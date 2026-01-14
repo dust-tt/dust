@@ -180,6 +180,7 @@ import {
   SPEECH_GENERATOR_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator/metadata";
 import { TABLES_QUERY_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/metadata";
+import { TOOLSETS_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/toolsets/metadata";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -1028,15 +1029,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "toolsets",
-      version: "1.0.0",
-      description: "Browse available toolsets and functions.",
-      authorization: null,
-      icon: "ActionLightbulbIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: TOOLSETS_SERVER_INFO,
   },
   val_town: {
     id: 1014,
