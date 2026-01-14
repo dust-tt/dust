@@ -105,7 +105,10 @@ import {
   HUBSPOT_TOOL_STAKES,
   HUBSPOT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/metadata";
-import { IMAGE_GENERATION_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/image_generation/metadata";
+import {
+  IMAGE_GENERATION_SERVER_INFO,
+  IMAGE_GENERATION_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/image_generation/metadata";
 import {
   INCLUDE_DATA_SERVER_INFO,
   INCLUDE_DATA_TOOLS,
@@ -440,6 +443,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: IMAGE_GENERATION_TOOLS,
     serverInfo: IMAGE_GENERATION_SERVER_INFO,
   },
   file_generation: {

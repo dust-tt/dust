@@ -4,15 +4,13 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  EDIT_IMAGE_TOOL_NAME,
-  GENERATE_IMAGE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  EditImageInputSchema,
-  GenerateImageInputSchema,
-} from "@app/lib/actions/mcp_internal_actions/types";
+  EDIT_IMAGE_TOOL_NAME,
+  editImageSchema,
+  GENERATE_IMAGE_TOOL_NAME,
+  generateImageSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/image_generation/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -278,7 +276,7 @@ function createServer(
     "Generate an image from text descriptions. The more detailed and specific your prompt is, the" +
       " better the result will be. You can customize the output through various parameters to" +
       " match your needs.",
-    GenerateImageInputSchema.shape,
+    generateImageSchema,
     withToolLogging(
       auth,
       { toolNameForMonitoring: GENERATE_IMAGE_TOOL_NAME, agentLoopContext },
@@ -405,7 +403,7 @@ function createServer(
     "Edit an existing image using text instructions. Provide the file ID of an image from Dust" +
       " file storage and describe the changes you want to make. The tool preserves the original" +
       " image's aspect ratio by default, but you can optionally change it.",
-    EditImageInputSchema.shape,
+    editImageSchema,
     withToolLogging(
       auth,
       { toolNameForMonitoring: EDIT_IMAGE_TOOL_NAME, agentLoopContext },
