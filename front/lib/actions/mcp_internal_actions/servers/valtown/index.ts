@@ -1,8 +1,21 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import ValTown from "@valtown/sdk";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  callHttpEndpointSchema,
+  createFileSchema,
+  createValSchema,
+  deleteFileSchema,
+  getFileContentSchema,
+  getValSchema,
+  listValFilesSchema,
+  listValsSchema,
+  searchValsSchema,
+  updateFileContentSchema,
+  VALTOWN_TOOL_NAME,
+  writeFileSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/valtown/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -12,8 +25,6 @@ import { untrustedFetch } from "@app/lib/egress/server";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { decrypt, Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-
-const VALTOWN_TOOL_NAME = "val_town";
 
 interface ValTownError {
   status?: number;
@@ -70,32 +81,7 @@ function createServer(
   server.tool(
     "create_val",
     "Creates a new val in Val Town. Use create_file to add files to the val.",
-    {
-      name: z
-        .string()
-        .min(1)
-        .max(48)
-        .regex(
-          /^[a-zA-Z][a-zA-Z0-9\-_]*$/,
-          "Name must start with a letter and contain only letters, numbers, hyphens, and underscores"
-        )
-        .describe("The name of the val to create."),
-      privacy: z
-        .enum(["public", "private", "unlisted"])
-        .describe(
-          "This resource's privacy setting. Unlisted resources do not appear on profile pages or elsewhere, but you can link to them."
-        ),
-      description: z
-        .string()
-        .max(64)
-        .optional()
-        .describe("Optional description of what the val does."),
-      orgId: z
-        .string()
-        .uuid()
-        .optional()
-        .describe("ID of the org to create the val in."),
-    },
+    createValSchema,
     withToolLogging(
       auth,
       {
@@ -154,9 +140,7 @@ function createServer(
   server.tool(
     "get_val",
     "Gets a specific val by its ID",
-    {
-      valId: z.string().describe("The ID of the val to retrieve"),
-    },
+    getValSchema,
     withToolLogging(
       auth,
       {
@@ -211,27 +195,7 @@ function createServer(
   server.tool(
     "list_vals",
     "Lists vals available to the user's account",
-    {
-      limit: z
-        .number()
-        .int()
-        .positive()
-        .describe("Maximum number of vals to return"),
-      cursor: z
-        .string()
-        .optional()
-        .describe("Cursor to start the pagination from"),
-      privacy: z
-        .enum(["public", "private", "unlisted"])
-        .optional()
-        .describe("Filter vals by privacy level"),
-      user_id: z.string().optional().describe("User ID to filter by"),
-      list_only_user_vals: z
-        .boolean()
-        .optional()
-        .default(true)
-        .describe("List only the authenticated user's vals (default: true)"),
-    },
+    listValsSchema,
     withToolLogging(
       auth,
       {
@@ -311,24 +275,7 @@ function createServer(
   server.tool(
     "search_vals",
     "Searches for vals by name, description, or content",
-    {
-      query: z.string().describe("Search query to find vals"),
-      limit: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .default(20)
-        .describe("Maximum number of vals to return"),
-      cursor: z
-        .string()
-        .optional()
-        .describe("Cursor to start the pagination from"),
-      privacy: z
-        .enum(["public", "private", "unlisted"])
-        .optional()
-        .describe("Filter vals by privacy level"),
-    },
+    searchValsSchema,
     withToolLogging(
       auth,
       {
@@ -402,27 +349,7 @@ function createServer(
   server.tool(
     "list_val_files",
     "Lists all files in a specific val",
-    {
-      valId: z.string().describe("The ID of the val to list files for"),
-      path: z
-        .string()
-        .optional()
-        .describe(
-          "The path to list files from (default: root directory, use empty string for root)"
-        ),
-      limit: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .describe("Maximum number of files to return"),
-      offset: z
-        .number()
-        .int()
-        .min(0)
-        .optional()
-        .describe("Number of files to skip"),
-    },
+    listValFilesSchema,
     withToolLogging(
       auth,
       {
@@ -504,12 +431,7 @@ function createServer(
   server.tool(
     "get_file_content",
     "Gets the content of a specific file in a val using the Val Town API",
-    {
-      valId: z.string().describe("The ID of the val containing the file"),
-      filePath: z
-        .string()
-        .describe("The path of the file to retrieve (e.g., 'main.ts')"),
-    },
+    getFileContentSchema,
     withToolLogging(
       auth,
       {
@@ -558,12 +480,7 @@ function createServer(
   server.tool(
     "delete_file",
     "Deletes a specific file from a val using the Val Town API",
-    {
-      valId: z.string().describe("The ID of the val containing the file"),
-      filePath: z
-        .string()
-        .describe("The path of the file to delete (e.g., 'main.ts')"),
-    },
+    deleteFileSchema,
     withToolLogging(
       auth,
       {
@@ -607,16 +524,7 @@ function createServer(
   server.tool(
     "update_file_content",
     "Updates the content of a specific file in a val. Note: To change file type (e.g., to HTTP), use the file_update tool instead.",
-    {
-      valId: z.string().describe("The ID of the val containing the file"),
-      filePath: z
-        .string()
-        .describe("The path of the file to update (e.g., 'main.ts')"),
-      content: z
-        .string()
-        .max(80000)
-        .describe("The new content for the file (max 80,000 characters)"),
-    },
+    updateFileContentSchema,
     withToolLogging(
       auth,
       {
@@ -662,26 +570,7 @@ function createServer(
   server.tool(
     "write_file",
     "The primary function for writing content to files and updating file metadata. Use this to add content, change file type, rename files, or move files. For HTTP type: return value from serve handler must be a response or a promise resolving to a response.",
-    {
-      valId: z.string().describe("The ID of the val containing the file"),
-      filePath: z
-        .string()
-        .describe("The path of the file to update (e.g., 'main.ts')"),
-      content: z
-        .string()
-        .max(80000)
-        .optional()
-        .describe("The new content for the file (max 80,000 characters)"),
-      name: z.string().optional().describe("The new name for the file"),
-      type: z
-        .enum(["script", "http", "email", "file", "interval"])
-        .optional()
-        .describe("The new type for the file"),
-      parent_path: z
-        .string()
-        .optional()
-        .describe("Path to the directory you'd like to move this file to"),
-    },
+    writeFileSchema,
     withToolLogging(
       auth,
       {
@@ -741,12 +630,7 @@ function createServer(
   server.tool(
     "create_file",
     "Creates a new empty file in an existing val. Use write_file to add content and set the file type.",
-    {
-      valId: z.string().describe("The ID of the val to create the file in"),
-      filePath: z
-        .string()
-        .describe("The path of the file to create (e.g., 'main.ts')"),
-    },
+    createFileSchema,
     withToolLogging(
       auth,
       {
@@ -791,23 +675,7 @@ function createServer(
   server.tool(
     "call_http_endpoint",
     "Runs an HTTP val endpoint by getting the file's endpoint link and making a request to it",
-    {
-      valId: z.string().describe("The ID of the val containing the file"),
-      filePath: z
-        .string()
-        .describe("The path of the file to run (e.g., 'main.ts')"),
-      body: z
-        .string()
-        .optional()
-        .describe(
-          'Optional JSON string to send as the request body. Example: \'{"key": "value"}\''
-        ),
-      method: z
-        .enum(["GET", "POST", "PUT", "DELETE", "PATCH"])
-        .optional()
-        .default("POST")
-        .describe("HTTP method to use"),
-    },
+    callHttpEndpointSchema,
     withToolLogging(
       auth,
       {

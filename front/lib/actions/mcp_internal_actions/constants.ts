@@ -181,6 +181,11 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator/metadata";
 import { TABLES_QUERY_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/metadata";
 import { TOOLSETS_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/toolsets/metadata";
+import {
+  VALTOWN_SERVER_INFO,
+  VALTOWN_TOOL_STAKES,
+  VALTOWN_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/valtown/metadata";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -1037,32 +1042,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
-    tools_stakes: {
-      create_val: "low",
-      get_file_content: "low",
-      delete_file: "low",
-      update_file_content: "low",
-      write_file: "low",
-      create_file: "low",
-      call_http_endpoint: "low",
-      get_val: "never_ask",
-      list_vals: "never_ask",
-      search_vals: "never_ask",
-      list_val_files: "never_ask",
-    },
+    tools_stakes: VALTOWN_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "val_town",
-      version: "1.0.0",
-      description: "Create and execute vals in Val Town.",
-      authorization: null,
-      icon: "ValTownLogo",
-      documentationUrl: "https://docs.dust.tt/docs/val-town",
-      instructions: null,
-      developerSecretSelection: "required",
-    },
+    tools: VALTOWN_TOOLS,
+    serverInfo: VALTOWN_SERVER_INFO,
   },
   jit_testing: {
     id: 1016,
