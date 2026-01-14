@@ -868,7 +868,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   private getDefaultSpaceGroup(): GroupResource {
     const spaceMembersGroups = this.groups.filter(
-      (group) => group.group_vaults?.kind === "member"
+      (group) => group.kind === "space_members"
     );
     assert(
       spaceMembersGroups.length === 1,
