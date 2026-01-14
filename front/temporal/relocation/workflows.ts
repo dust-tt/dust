@@ -29,6 +29,9 @@ const CHUNK_SIZE = 3000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
 const TEMPORAL_CORE_DATA_SOURCE_RELOCATION_CONCURRENCY = 20;
 
+const INITIAL_BACKOFF_DELAY_MS = 1000;
+const MAX_BACKOFF_DELAY_MS = 60_000;
+
 interface RelocationWorkflowBase {
   sourceRegion: RegionType;
   destRegion: RegionType;
@@ -847,6 +850,7 @@ export async function workspaceRelocateTableStorageWorkflow({
 
   // Wait for the file storage transfer to complete.
   let isTableFilesTransferComplete = false;
+  let backoffDelayMs = INITIAL_BACKOFF_DELAY_MS;
   while (!isTableFilesTransferComplete) {
     isTableFilesTransferComplete =
       await sourceRegionActivities.isFileStorageTransferComplete({
@@ -854,8 +858,8 @@ export async function workspaceRelocateTableStorageWorkflow({
       });
 
     if (!isTableFilesTransferComplete) {
-      // Sleep for 1 minute before checking again.
-      await sleep("1m");
+      await sleep(backoffDelayMs);
+      backoffDelayMs = Math.min(backoffDelayMs * 2, MAX_BACKOFF_DELAY_MS);
     }
   }
 }
