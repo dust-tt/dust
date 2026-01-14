@@ -1,9 +1,16 @@
 import type { MCPProgressNotificationType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  CREATE_SLIDESHOW_FILE_TOOL_NAME,
+  createSlideshowFileSchema,
+  EDIT_SLIDESHOW_FILE_TOOL_NAME,
+  editSlideshowFileSchema,
+  RETRIEVE_SLIDESHOW_FILE_TOOL_NAME,
+  retrieveSlideshowFileSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/slideshow/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -13,21 +20,7 @@ import {
   getClientExecutableFileContent,
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
-import type { InteractiveContentFileContentType } from "@app/types";
-import {
-  Err,
-  frameContentType,
-  INTERACTIVE_CONTENT_FILE_FORMATS,
-  Ok,
-} from "@app/types";
-
-import {
-  CREATE_SLIDESHOW_FILE_TOOL_NAME,
-  EDIT_SLIDESHOW_FILE_TOOL_NAME,
-  RETRIEVE_SLIDESHOW_FILE_TOOL_NAME,
-} from "./types";
-
-const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
+import { Err, Ok } from "@app/types";
 
 /**
  * Slideshow Server - Allows the model to create and update slideshow files.
@@ -45,39 +38,7 @@ function createServer(
     CREATE_SLIDESHOW_FILE_TOOL_NAME,
     "Create a new slideshow file that users can view and navigate. Use this for " +
       "interactive presentations, tutorials, step-by-step analysis, comparisons, and reports.",
-    {
-      file_name: z
-        .string()
-        .describe(
-          "The name of the slideshow file to create, including extension (e.g. " +
-            "Presentation.tsx)"
-        ),
-      mime_type: z
-        .enum(
-          Object.keys(INTERACTIVE_CONTENT_FILE_FORMATS) as [
-            InteractiveContentFileContentType,
-          ]
-        )
-        .describe(
-          "The MIME type for the slideshow file. Currently supports " +
-            `'${frameContentType}' for client-side executable files.`
-        ),
-      content: z
-        .string()
-        .max(MAX_FILE_SIZE_BYTES)
-        .describe(
-          "The content for the slideshow file. Should be complete and ready for viewing. " +
-            "Must use the Slideshow component from @dust/slideshow/v1."
-        ),
-      description: z
-        .string()
-        .optional()
-        .describe(
-          "Optional description of what this slideshow does (e.g., " +
-            "'Q4 Revenue Analysis', 'Product Tutorial', " +
-            "'Team Onboarding Presentation')"
-        ),
-    },
+    createSlideshowFileSchema,
     withToolLogging(
       auth,
       {
@@ -177,35 +138,7 @@ function createServer(
       "3. Include minimum 3 lines of surrounding context BEFORE and AFTER the target " +
       "content for unique identification. " +
       "**Critical:** Multiple matches or inexact matches will cause failure.",
-    {
-      file_id: z
-        .string()
-        .describe(
-          "The ID of the slideshow file to update (e.g., 'fil_abc123')"
-        ),
-      old_string: z
-        .string()
-        .describe(
-          "The exact text to find and replace. Must match the file content exactly, " +
-            "including all spacing, formatting, and line breaks. Include surrounding context " +
-            "to ensure unique identification of the target text."
-        ),
-      new_string: z
-        .string()
-        .describe(
-          "The exact text to replace old_string with. Should maintain proper syntax " +
-            "and follow best practices for the file type."
-        ),
-      expected_replacements: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .describe(
-          "Optional number of expected replacements. Defaults to 1. Use when you want " +
-            "to replace multiple identical instances of the same text."
-        ),
-    },
+    editSlideshowFileSchema,
     withToolLogging(
       auth,
       {
@@ -279,13 +212,7 @@ function createServer(
       "Use this to read back the content of slideshow files you have previously created or " +
       `updated. Use this tool before calling ${EDIT_SLIDESHOW_FILE_TOOL_NAME} to ` +
       "understand the current file state and identify the exact text to replace.",
-    {
-      file_id: z
-        .string()
-        .describe(
-          "The ID of the slideshow file to retrieve (e.g., 'fil_abc123')"
-        ),
-    },
+    retrieveSlideshowFileSchema,
     withToolLogging(
       auth,
       {

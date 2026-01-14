@@ -9,11 +9,10 @@ import {
   VIZ_USE_FILE_EXAMPLES,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/viz/instructions";
 
-import {
-  CREATE_SLIDESHOW_FILE_TOOL_NAME,
-  EDIT_SLIDESHOW_FILE_TOOL_NAME,
-  RETRIEVE_SLIDESHOW_FILE_TOOL_NAME,
-} from "./types";
+// Tool names inlined to avoid circular dependency with metadata.ts
+const CREATE_SLIDESHOW_FILE_TOOL_NAME = "create_slideshow_file";
+const EDIT_SLIDESHOW_FILE_TOOL_NAME = "edit_slideshow_file";
+const RETRIEVE_SLIDESHOW_FILE_TOOL_NAME = "retrieve_slideshow_file";
 
 export const SLIDESHOW_INSTRUCTIONS = `
 ## CREATING SLIDESHOWS WITH INTERAXCTIVE CONTENT

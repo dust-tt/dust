@@ -199,7 +199,10 @@ import {
   SLACK_BOT_TOOL_STAKES,
   SLACK_BOT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack_bot/metadata";
-import { SLIDESHOW_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/metadata";
+import {
+  SLIDESHOW_SERVER_INFO,
+  SLIDESHOW_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/slideshow/metadata";
 import {
   SOUND_STUDIO_SERVER_INFO,
   SOUND_STUDIO_TOOL_STAKES,
@@ -723,6 +726,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: SLIDESHOW_TOOLS,
     serverInfo: SLIDESHOW_SERVER_INFO,
   },
   deep_dive: {
