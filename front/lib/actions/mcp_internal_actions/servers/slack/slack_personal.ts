@@ -1,7 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import uniqBy from "lodash/uniqBy";
-import { z } from "zod";
 
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -21,6 +20,18 @@ import {
   resolveUserDisplayName,
   SLACK_THREAD_LISTING_LIMIT,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
+import {
+  getUserSchema,
+  listThreadsSchema,
+  listUsersSchema,
+  postMessageSchema,
+  readThreadMessagesSchema,
+  scheduleMessageSchema,
+  searchChannelsSchema,
+  searchMessagesSchema,
+  semanticSearchMessagesSchema,
+  SLACK_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/slack/metadata";
 import {
   makeInternalMCPServer,
   makePersonalAuthenticationError,
@@ -69,9 +80,6 @@ type SlackSearchResponse = {
     }>;
   };
 };
-
-// We use a single tool name for monitoring given the high granularity (can be revisited).
-const SLACK_TOOL_LOG_NAME = "slack";
 
 export const slackSearch = async (
   query: string,
@@ -235,46 +243,6 @@ function buildSearchResults<T>(
   );
 }
 
-// Common Zod parameter schema parts shared by search tools.
-const buildCommonSearchParams = () => ({
-  channels: z
-    .string()
-    .array()
-    .optional()
-    .describe("Narrow the search to specific channels (optional)"),
-  usersFrom: z
-    .string()
-    .array()
-    .optional()
-    .describe(
-      "Narrow the search to messages wrote by specific users ids (optional)"
-    ),
-  usersTo: z
-    .string()
-    .array()
-    .optional()
-    .describe(
-      "Narrow the search to direct messages sent to specific user IDs (optional)"
-    ),
-  usersMentioned: z
-    .string()
-    .array()
-    .optional()
-    .describe(
-      "Narrow the search to messages mentioning specific users ids (optional)"
-    ),
-  relativeTimeFrame: z
-    .string()
-    .regex(/^(all|\d+[hdwmy])$/)
-    .describe(
-      "The time frame (relative to LOCAL_TIME) to restrict the search based" +
-        " on the user request and past conversation context." +
-        " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
-        " where {k} is a number. Be strict, do not invent invalid values." +
-        " Also, do not pass this unless the user explicitly asks for some timeframe."
-    ),
-});
-
 function buildSlackSearchQuery(
   initial: string,
   {
@@ -410,21 +378,11 @@ async function createServer(
     server.tool(
       "search_messages",
       "Search messages across public channels, private channels, DMs, and group DMs where the current user is a member",
-      {
-        keywords: z
-          .string()
-          .array()
-          .min(1)
-          .describe(
-            "Between 1 and 3 keywords to retrieve relevant messages " +
-              "based on the user request and conversation context."
-          ),
-        ...buildCommonSearchParams(),
-      },
+      searchMessagesSchema,
       withToolLogging(
         auth,
         {
-          toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+          toolNameForMonitoring: SLACK_TOOL_NAME,
           agentLoopContext,
         },
         async (
@@ -541,18 +499,11 @@ async function createServer(
     server.tool(
       "semantic_search_messages",
       "Use semantic search to find messages across public channels, private channels, DMs, and group DMs where the current user is a member",
-      {
-        query: z
-          .string()
-          .describe(
-            "A query to retrieve relevant messages based on the user request and conversation context. For it to be treated as semantic search, make sure it begins with a question word such as what, where, how, etc, and ends with a question mark. If the user asks to limit to certain channels, don't make them part of this query. Instead, use the `channels` parameter to limit the search to specific channels. But only do this if the user explicitly asks for it, otherwise, the search will be more effective if you don't limit it to specific channels."
-          ),
-        ...buildCommonSearchParams(),
-      },
+      semanticSearchMessagesSchema,
       withToolLogging(
         auth,
         {
-          toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+          toolNameForMonitoring: SLACK_TOOL_NAME,
           agentLoopContext,
         },
         async (
@@ -636,35 +587,11 @@ async function createServer(
   server.tool(
     "post_message",
     "Post a message to a public channel, private channel, or DM. You MUST ONLY post to channels or users that were explicitly specified by the user in their request. NEVER post to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
-    {
-      to: z
-        .string()
-        .describe(
-          "The channel or user to post the message to. Accepted values are the channel name, the channel id or the user id. If you need to find the user id, you can use the `list_users` tool. " +
-            "Messages sent to a user will be sent as a direct message."
-        ),
-      message: z
-        .string()
-        .describe(
-          "The message to post, must follow the Slack message formatting rules. " +
-            "To mention a user, use <@user_id> (use the user's id field, not name). " +
-            "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle)."
-        ),
-      threadTs: z
-        .string()
-        .optional()
-        .describe(
-          "The thread ts of the message to reply to. If you need to find the thread ts, you can use the `search_messages` tool, the thread ts is the id of the message you want to reply to. If you don't provide a thread ts, the message will be posted as a top-level message."
-        ),
-      fileId: z
-        .string()
-        .optional()
-        .describe("The file id of the file to attach to the message."),
-    },
+    postMessageSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        toolNameForMonitoring: SLACK_TOOL_NAME,
         agentLoopContext,
       },
       async ({ to, message, threadTs, fileId }, { authInfo }) => {
@@ -706,36 +633,11 @@ async function createServer(
   server.tool(
     "schedule_message",
     "Schedule a message to be posted to a channel at a future time. Messages can be scheduled up to 120 days in advance. Maximum of 30 scheduled messages per 5 minutes per channel. You MUST ONLY schedule messages to channels or users that were explicitly specified by the user in their request. NEVER schedule messages to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
-    {
-      to: z
-        .string()
-        .describe(
-          "The channel or user to schedule the message to. Accepted values are the channel name, the channel id or the user id. If you need to find the user id, you can use the `list_users` tool. " +
-            "Messages sent to a user will be sent as a direct message."
-        ),
-      message: z
-        .string()
-        .describe(
-          "The message to post, must follow the Slack message formatting rules. " +
-            "To mention a user, use <@user_id> (use the user's id field, not name). " +
-            "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle)."
-        ),
-      post_at: z
-        .union([z.number().int().positive(), z.string()])
-        .describe(
-          "When to post the message. Can be either: (1) A Unix timestamp in seconds (e.g., 1730380000), or (2) An ISO 8601 datetime string (e.g., '2025-10-31T14:55:00Z' or '2025-10-31T14:55:00+01:00'). The time must be in the future and within 120 days from now."
-        ),
-      threadTs: z
-        .string()
-        .optional()
-        .describe(
-          "The thread ts of the message to reply to. If you need to find the thread ts, you can use the `search_messages` tool, the thread ts is the id of the message you want to reply to. If you don't provide a thread ts, the message will be posted as a top-level message."
-        ),
-    },
+    scheduleMessageSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        toolNameForMonitoring: SLACK_TOOL_NAME,
         agentLoopContext,
       },
       async ({ to, message, post_at, threadTs }, { authInfo }) => {
@@ -772,22 +674,11 @@ async function createServer(
   server.tool(
     "list_users",
     "List all users in the workspace, and optionally user groups",
-    {
-      nameFilter: z
-        .string()
-        .optional()
-        .describe("The name of the user to filter by (optional)"),
-      includeUserGroups: z
-        .boolean()
-        .optional()
-        .describe(
-          "If true, also include user groups in the response (optional, default: false)"
-        ),
-    },
+    listUsersSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        toolNameForMonitoring: SLACK_TOOL_NAME,
         agentLoopContext,
       },
       async ({ nameFilter, includeUserGroups }, { authInfo }) => {
@@ -816,15 +707,11 @@ async function createServer(
   server.tool(
     "get_user",
     "Get user information given a Slack user ID. Use this to retrieve details about a user when you have their user ID.",
-    {
-      userId: z
-        .string()
-        .describe("The Slack user ID to look up (for example: U0123456789)."),
-    },
+    getUserSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        toolNameForMonitoring: SLACK_TOOL_NAME,
         agentLoopContext,
       },
       async ({ userId }, { authInfo }) => {
@@ -862,23 +749,11 @@ SCOPE BEHAVIOR (only applies to text searches, ignored for channel IDs):
 IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specific scope.
 
 `,
-    {
-      query: z
-        .string()
-        .describe(
-          "Channel ID (e.g., 'C01234ABCD'), channel name, or search keywords. Channel IDs are automatically detected."
-        ),
-      scope: z
-        .enum(["auto", "joined", "all"])
-        .default("auto")
-        .describe(
-          "'auto' (default, always use this unless user specifies), 'joined' (only joined channels), 'all' (only public channels). Ignored when query is a channel ID."
-        ),
-    },
+    searchChannelsSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        toolNameForMonitoring: SLACK_TOOL_NAME,
         agentLoopContext,
       },
       async ({ query, scope }, { authInfo }) => {
@@ -903,28 +778,13 @@ IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specifi
   );
 
   server.tool(
-    "list_messages",
-    "List messages for a given channel, private channel, or DM. Returns message headers with timestamps (ts field). Use read_thread_messages with the ts field to read the full thread content for messages that have replies.",
-    {
-      channel: z
-        .string()
-        .describe(
-          "The channel name, channel ID, or user ID to list threads for. Supports public channels, private channels, and DMs."
-        ),
-      relativeTimeFrame: z
-        .string()
-        .regex(/^(all|\d+[hdwmy])$/)
-        .describe(
-          "The time frame (relative to LOCAL_TIME) to restrict the search based" +
-            " on the user request and past conversation context." +
-            " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
-            " where {k} is a number. Be strict, do not invent invalid values."
-        ),
-    },
+    "list_threads",
+    "List threads for a given channel, private channel, or DM. Returns thread headers with timestamps (ts field). Use read_thread_messages with the ts field to read the full thread content.",
+    listThreadsSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        toolNameForMonitoring: SLACK_TOOL_NAME,
         agentLoopContext,
       },
       async ({ channel, relativeTimeFrame }, { authInfo }) => {
@@ -1071,39 +931,12 @@ IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specifi
 
   server.tool(
     "read_thread_messages",
-    "Read all messages in a specific thread from public channels, private channels, or DMs. Use list_messages first to find thread timestamps (ts field).",
-    {
-      channel: z
-        .string()
-        .describe(
-          "Channel name, channel ID, or user ID where the thread is located. Supports public channels, private channels, and DMs."
-        ),
-      threadTs: z
-        .string()
-        .describe(
-          "Thread timestamp (ts field from list_messages results, identifies the parent message)"
-        ),
-      limit: z
-        .number()
-        .optional()
-        .describe("Number of messages to retrieve (default: 20, max: 200)"),
-      cursor: z
-        .string()
-        .optional()
-        .describe("Pagination cursor from previous call to get next page"),
-      oldest: z
-        .string()
-        .optional()
-        .describe("Only messages after this timestamp (Unix timestamp)"),
-      latest: z
-        .string()
-        .optional()
-        .describe("Only messages before this timestamp (Unix timestamp)"),
-    },
+    "Read all messages in a specific thread from public channels, private channels, or DMs. Use list_threads first to find thread timestamps (ts field).",
+    readThreadMessagesSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        toolNameForMonitoring: SLACK_TOOL_NAME,
         agentLoopContext,
       },
       async (

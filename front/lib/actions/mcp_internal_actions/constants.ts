@@ -158,6 +158,11 @@ import {
   SLAB_TOOL_STAKES,
   SLAB_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/slab/metadata";
+import {
+  SLACK_SERVER_INFO,
+  SLACK_TOOL_STAKES,
+  SLACK_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/slack/metadata";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
   InternalMCPServerDefinitionType,
@@ -516,41 +521,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      // Read operations - never ask
-      search_messages: "never_ask",
-      semantic_search_messages: "never_ask",
-      list_users: "never_ask",
-      search_channels: "never_ask",
-      list_messages: "never_ask",
-      read_thread_messages: "never_ask",
-      get_user: "never_ask",
-
-      // Write operations - low stakes
-      post_message: "low",
-      schedule_message: "low",
-      add_reaction: "low",
-      remove_reaction: "low",
-    },
+    tools_stakes: SLACK_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "slack",
-      version: "1.0.0",
-      description:
-        "Slack tools for searching and posting messages. Works with your personal Slack account and supports all common Slack operations.",
-      authorization: {
-        provider: "slack_tools" as const,
-        supported_use_cases: ["personal_actions"] as const,
-      },
-      icon: "SlackLogo",
-      documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
-      instructions:
-        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
-        "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
-        "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
-    },
+    tools: SLACK_TOOLS,
+    serverInfo: SLACK_SERVER_INFO,
   },
   google_sheets: {
     id: 19,
