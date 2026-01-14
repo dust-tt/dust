@@ -1,13 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import sanitizeHtml from "sanitize-html";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  renderChannels,
-  renderChats,
-  renderUsers,
-} from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_teams_rendering";
 import type {
   TeamsChannel,
   TeamsChat,
@@ -15,6 +9,21 @@ import type {
   TeamsUser,
 } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
 import { getGraphClient } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
+import {
+  listChannelsSchema,
+  listChatsSchema,
+  listMessagesSchema,
+  listTeamsSchema,
+  listUsersSchema,
+  MICROSOFT_TEAMS_TOOL_NAME,
+  postMessageSchema,
+  searchMessagesContentSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/microsoft_teams/metadata";
+import {
+  renderChannels,
+  renderChats,
+  renderUsers,
+} from "@app/lib/actions/mcp_internal_actions/servers/microsoft_teams/rendering";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -30,19 +39,15 @@ function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer("microsoft_teams");
+  const server = makeInternalMCPServer(MICROSOFT_TEAMS_TOOL_NAME);
 
   server.tool(
     "search_messages_content",
     "Search for messages contentin Microsoft Teams chats and channels. Returns the results in relevance order.",
-    {
-      query: z
-        .string()
-        .describe("Search query to find relevant messages in Teams."),
-    },
+    searchMessagesContentSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "microsoft_teams", agentLoopContext },
+      { toolNameForMonitoring: MICROSOFT_TEAMS_TOOL_NAME, agentLoopContext },
       async ({ query }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
@@ -88,10 +93,10 @@ function createServer(
   server.tool(
     "list_teams",
     "List all Teams that the authenticated user has joined. Returns team details including name, description, and team ID.",
-    {},
+    listTeamsSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "microsoft_teams", agentLoopContext },
+      { toolNameForMonitoring: MICROSOFT_TEAMS_TOOL_NAME, agentLoopContext },
       async (_params, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
@@ -121,20 +126,10 @@ function createServer(
   server.tool(
     "list_users",
     "List all users in the organization. Returns user details including display name, email, and user ID.",
-    {
-      nameFilter: z
-        .string()
-        .optional()
-        .describe("The name of the user to filter by (optional)"),
-      limit: z
-        .number()
-        .optional()
-        .default(25)
-        .describe("Maximum number of users to return (default: 25, max: 25)."),
-    },
+    listUsersSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "microsoft_teams", agentLoopContext },
+      { toolNameForMonitoring: MICROSOFT_TEAMS_TOOL_NAME, agentLoopContext },
       async ({ nameFilter, limit }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
@@ -179,20 +174,10 @@ function createServer(
   server.tool(
     "list_channels",
     "List all channels in a specific team. Returns channel details including name, description, and channel ID. Can be filtered by channel name.",
-    {
-      teamId: z
-        .string()
-        .describe(
-          "The ID of the team to list channels from. Use list_teams to get team IDs."
-        ),
-      nameFilter: z
-        .string()
-        .optional()
-        .describe("Filter channels by name (optional, searches display name)."),
-    },
+    listChannelsSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "microsoft_teams", agentLoopContext },
+      { toolNameForMonitoring: MICROSOFT_TEAMS_TOOL_NAME, agentLoopContext },
       async ({ teamId, nameFilter }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
@@ -234,28 +219,10 @@ function createServer(
   server.tool(
     "list_chats",
     "List all chats (one-on-one or group chats) for the authenticated user. Returns chat details including chat ID, topic, and participants. Can be filtered by chat type and chat topic.",
-    {
-      limit: z
-        .number()
-        .optional()
-        .default(50)
-        .describe("Maximum number of chats to return (default: 50, max: 50)."),
-      chatType: z
-        .enum(["oneOnOne", "group", "meeting"])
-        .optional()
-        .describe(
-          "Filter chats by type: 'oneOnOne' for direct messages, 'group' for group chats, 'meeting' for meeting chats."
-        ),
-      nameFilter: z
-        .string()
-        .optional()
-        .describe(
-          "Filter chats by topic name (optional, searches chat topic for group chats)."
-        ),
-    },
+    listChatsSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "microsoft_teams", agentLoopContext },
+      { toolNameForMonitoring: MICROSOFT_TEAMS_TOOL_NAME, agentLoopContext },
       async ({ limit, chatType, nameFilter }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
@@ -307,27 +274,10 @@ function createServer(
   server.tool(
     "list_messages",
     "List all messages (and their replies) in a specific channel. Returns thread messages with their replies. Supports pagination to retrieve all results and filtering by date range.",
-    {
-      teamId: z.string().describe("The ID of the team containing the channel."),
-      channelId: z
-        .string()
-        .describe("The ID of the channel to list threads from."),
-      fromDate: z
-        .string()
-        .optional()
-        .describe(
-          "ISO 8601 date string (e.g., '2024-01-01T00:00:00Z'). Only retrieve messages modified after this date."
-        ),
-      toDate: z
-        .string()
-        .optional()
-        .describe(
-          "ISO 8601 date string (e.g., '2024-12-31T23:59:59Z'). Only retrieve messages modified before this date. Defaults to current time."
-        ),
-    },
+    listMessagesSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "microsoft_teams", agentLoopContext },
+      { toolNameForMonitoring: MICROSOFT_TEAMS_TOOL_NAME, agentLoopContext },
       async ({ teamId, channelId, fromDate, toDate }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
@@ -401,51 +351,10 @@ function createServer(
   server.tool(
     "post_message",
     "Post a message to a Teams channel, chat, or as a reply in a thread. Can send messages to channels, direct chats, or as threaded replies. For direct messages, you can provide userIds instead of chatId to automatically create a chat if it doesn't exist (one-on-one for 1 user, group chat for multiple users). By default (it no chat, channel or users are provided), the message will be sent to the current user's self-chat.",
-    {
-      messageContent: z
-        .string()
-        .describe(
-          "The content of the message to post (supports HTML formatting)."
-        ),
-      targetType: z
-        .enum(["channel", "chat"])
-        .describe(
-          "The type of target to post to: 'channel' for team channels, 'chat' for direct/group chats."
-        ),
-      teamId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the team (required when targetType is 'channel')."
-        ),
-      channelId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the channel (required when targetType is 'channel')."
-        ),
-      chatId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the chat (required when targetType is 'chat', unless userIds is provided)."
-        ),
-      userIds: z
-        .array(z.string())
-        .optional()
-        .describe(
-          "Array of user IDs to send a message to (optional, only for targetType 'chat'). If 1 user ID is provided, a one-on-one chat will be created/used. If multiple user IDs are provided, a group chat will be created. Cannot be used together with chatId."
-        ),
-      parentMessageId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the parent message to reply to (optional, creates a threaded reply). Only supported for channels."
-        ),
-    },
+    postMessageSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "microsoft_teams", agentLoopContext },
+      { toolNameForMonitoring: MICROSOFT_TEAMS_TOOL_NAME, agentLoopContext },
       async (
         {
           messageContent,

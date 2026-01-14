@@ -99,6 +99,11 @@ import {
   MICROSOFT_EXCEL_TOOL_STAKES,
   MICROSOFT_EXCEL_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/microsoft_excel/metadata";
+import {
+  MICROSOFT_TEAMS_SERVER_INFO,
+  MICROSOFT_TEAMS_TOOL_STAKES,
+  MICROSOFT_TEAMS_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/microsoft_teams/metadata";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
@@ -927,32 +932,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      search_messages_content: "never_ask",
-      list_teams: "never_ask",
-      list_users: "never_ask",
-      list_channels: "never_ask",
-      list_chats: "never_ask",
-      list_messages: "never_ask",
-      post_message: "low",
-    },
+    tools_stakes: MICROSOFT_TEAMS_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "microsoft_teams",
-      version: "1.0.0",
-      description: "Microsoft Teams for searching and posting messages.",
-      authorization: {
-        provider: "microsoft_tools" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope:
-          "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access" as const,
-      },
-      icon: "MicrosoftTeamsLogo",
-      documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
-      instructions: null,
-    },
+    tools: MICROSOFT_TEAMS_TOOLS,
+    serverInfo: MICROSOFT_TEAMS_SERVER_INFO,
   },
   sound_studio: {
     id: 37,
