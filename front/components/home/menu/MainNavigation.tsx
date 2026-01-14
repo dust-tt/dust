@@ -104,7 +104,6 @@ const ListItem = React.forwardRef<
           )}
           href={isExternal ? href : appendUTMParams(href)}
           target={isExternal ? "_blank" : undefined}
-          shallow={!isExternal}
           {...props}
         >
           <div className="flex h-6 items-center gap-0.5">

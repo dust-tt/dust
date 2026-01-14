@@ -5,7 +5,7 @@ import {
   CollapsibleTrigger,
   Pagination,
 } from "@dust-tt/sparkle";
-import type { GetStaticProps } from "next";
+import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -72,9 +72,18 @@ function extractFilterOptions(
   };
 }
 
-export const getStaticProps: GetStaticProps<
+export const getServerSideProps: GetServerSideProps<
   CustomerStoryListingPageProps
-> = async () => {
+> = async ({ res }) => {
+  // Avoid Contentful calls during `next build` (SSR runs at request time).
+  // Keep CDN caching semantics close to our previous ISR window.
+  res.setHeader(
+    "Cache-Control",
+    `public, s-maxage=${CONTENTFUL_REVALIDATE_SECONDS}, stale-while-revalidate=${
+      CONTENTFUL_REVALIDATE_SECONDS * 2
+    }`
+  );
+
   const storiesResult = await getAllCustomerStories();
 
   if (storiesResult.isErr()) {
@@ -93,7 +102,6 @@ export const getStaticProps: GetStaticProps<
         },
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       },
-      revalidate: CONTENTFUL_REVALIDATE_SECONDS,
     };
   }
 
@@ -105,7 +113,6 @@ export const getStaticProps: GetStaticProps<
       filterOptions: extractFilterOptions(stories),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
-    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
 };
 

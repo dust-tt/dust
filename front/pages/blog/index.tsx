@@ -1,4 +1,4 @@
-import type { GetStaticProps } from "next";
+import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -23,9 +23,18 @@ import type { BlogListingPageProps } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types";
 
-export const getStaticProps: GetStaticProps<
+export const getServerSideProps: GetServerSideProps<
   BlogListingPageProps
-> = async () => {
+> = async ({ res }) => {
+  // Avoid Contentful calls during `next build` (SSR runs at request time).
+  // Keep CDN caching semantics close to our previous ISR window.
+  res.setHeader(
+    "Cache-Control",
+    `public, s-maxage=${CONTENTFUL_REVALIDATE_SECONDS}, stale-while-revalidate=${
+      CONTENTFUL_REVALIDATE_SECONDS * 2
+    }`
+  );
+
   const postsResult = await getAllBlogPosts();
 
   if (postsResult.isErr()) {
@@ -38,7 +47,6 @@ export const getStaticProps: GetStaticProps<
         posts: [],
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       },
-      revalidate: CONTENTFUL_REVALIDATE_SECONDS,
     };
   }
 
@@ -47,7 +55,6 @@ export const getStaticProps: GetStaticProps<
       posts: postsResult.value,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
-    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
 };
 
