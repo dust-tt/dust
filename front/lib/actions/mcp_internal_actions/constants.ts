@@ -38,6 +38,7 @@ import {
   DATABRICKS_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/databricks/metadata";
 import { DEEP_DIVE_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive/metadata";
+import { FILE_GENERATION_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/file_generation/metadata";
 import {
   GOOGLE_CALENDAR_SERVER_INFO,
   GOOGLE_CALENDAR_TOOL_STAKES,
@@ -260,15 +261,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "file_generation",
-      version: "1.0.0",
-      description: "Generate and convert documents.",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: FILE_GENERATION_SERVER_INFO,
   },
   [DEFAULT_WEBSEARCH_ACTION_NAME]: {
     id: 5,
