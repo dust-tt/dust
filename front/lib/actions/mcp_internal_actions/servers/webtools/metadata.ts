@@ -11,15 +11,7 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 export const WEBSEARCH_TOOL_NAME = "websearch";
 export const WEBBROWSER_TOOL_NAME = "webbrowser";
 
-// =============================================================================
-// Zod Schemas - Re-exported from types.ts for convenience
-// =============================================================================
-
 export { WebbrowseInputSchema, WebsearchInputSchema };
-
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
 
 export const WEBTOOLS_TOOLS: MCPToolType[] = [
   {
@@ -35,10 +27,6 @@ export const WEBTOOLS_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(WebbrowseInputSchema) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const WEBTOOLS_SERVER_INFO = {
   name: "web_search_&_browse" as const,

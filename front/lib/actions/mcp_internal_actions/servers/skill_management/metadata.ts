@@ -7,17 +7,9 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 // Re-export tool name from constants for backward compatibility.
 export { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const enableSkillSchema = {
   skillName: z.string().describe("The name of the skill to enable"),
 };
-
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
 
 export const SKILL_MANAGEMENT_TOOLS: MCPToolType[] = [
   {
@@ -28,10 +20,6 @@ export const SKILL_MANAGEMENT_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(z.object(enableSkillSchema)) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const SKILL_MANAGEMENT_SERVER_INFO = {
   name: "skill_management" as const,

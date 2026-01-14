@@ -1,7 +1,3 @@
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -12,10 +8,6 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 export const HTTP_CLIENT_TOOL_NAME = "http_client" as const;
 
 const DEFAULT_TIMEOUT_MS = 30_000;
-
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
 
 export const sendRequestSchema = {
   url: z
@@ -77,10 +69,6 @@ export const webbrowserSchema = {
     .describe("If true, also retrieve outgoing links from the page."),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const HTTP_CLIENT_TOOLS: MCPToolType[] = [
   {
     name: "send_request",
@@ -102,10 +90,6 @@ export const HTTP_CLIENT_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const HTTP_CLIENT_SERVER_INFO = {
   name: "http_client" as const,
   version: "1.0.0",
@@ -119,10 +103,6 @@ export const HTTP_CLIENT_SERVER_INFO = {
     "This is optional. If set, this secret will be used as a default Bearer token (Authorization header) for HTTP requests.",
   developerSecretSelection: "optional" as const,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const HTTP_CLIENT_TOOL_STAKES = {
   send_request: "low",

@@ -22,10 +22,6 @@ export const MATH_OPERATION_TOOL_NAME = "math_operation";
 export const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
 export const MAX_WAIT_DURATION_MS = 3 * 60 * 1_000;
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const generateRandomNumberSchema = {
   max: z
     .number()
@@ -83,10 +79,6 @@ export const getMentionMarkdownSchema = {
     .describe("A mention to get the markdown directive for."),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const COMMON_UTILITIES_TOOLS: MCPToolType[] = [
   {
     name: GENERATE_RANDOM_NUMBER_TOOL_NAME,
@@ -136,10 +128,6 @@ export const COMMON_UTILITIES_TOOLS: MCPToolType[] = [
     ) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const COMMON_UTILITIES_SERVER_INFO = {
   name: "common_utilities" as const,

@@ -9,10 +9,6 @@ import type { MCPOAuthUseCase } from "@app/types";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 export const GOOGLE_CALENDAR_TOOL_NAME = "google_calendar" as const;
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const listCalendarsSchema = {
   pageToken: z.string().optional().describe("Page token for pagination."),
   maxResults: z
@@ -179,10 +175,6 @@ export const getUserTimezonesSchema = {
     .describe("Array of email addresses to get timezone information for"),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const GOOGLE_CALENDAR_TOOLS: MCPToolType[] = [
   {
     name: "list_calendars",
@@ -234,10 +226,6 @@ export const GOOGLE_CALENDAR_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const GOOGLE_CALENDAR_SERVER_INFO = {
   name: "google_calendar" as const,
   version: "1.0.0",
@@ -253,10 +241,6 @@ export const GOOGLE_CALENDAR_SERVER_INFO = {
   instructions:
     "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool (3) use get_user_timezones to check attendee timezones for better scheduling.",
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const GOOGLE_CALENDAR_TOOL_STAKES = {
   list_calendars: "never_ask",

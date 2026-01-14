@@ -8,10 +8,6 @@ import { FreshserviceTicketSchema } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { MCPOAuthUseCase } from "@app/types";
 
-// =============================================================================
-// Constants - Exported for monitoring
-// =============================================================================
-
 export const FRESHSERVICE_TOOL_NAME = "freshservice" as const;
 
 export const ALLOWED_TICKET_INCLUDES = [
@@ -25,10 +21,6 @@ export const ALLOWED_TICKET_INCLUDES = [
   "onboarding_context",
   "offboarding_context",
 ] as const;
-
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
 
 export const listTicketsSchema = {
   filter: z
@@ -377,10 +369,6 @@ export const requestServiceApprovalSchema = {
     ),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const FRESHSERVICE_TOOLS: MCPToolType[] = [
   {
     name: "list_tickets",
@@ -626,10 +614,6 @@ export const FRESHSERVICE_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const FRESHSERVICE_SERVER_INFO = {
   name: "freshservice" as const,
   icon: "FreshserviceLogo" as const,
@@ -645,10 +629,6 @@ export const FRESHSERVICE_SERVER_INFO = {
   documentationUrl: "https://docs.dust.tt/docs/freshservice",
   instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const FRESHSERVICE_TOOL_STAKES = {
   // Read operations - never ask

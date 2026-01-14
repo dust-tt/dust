@@ -10,15 +10,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/elevenlabs/constants";
 import type { MCPToolType } from "@app/lib/api/mcp";
 
-// =============================================================================
-// Constants - Exported for monitoring
-// =============================================================================
-
 export const SPEECH_GENERATOR_TOOL_NAME = "speech_generator" as const;
-
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
 
 export const textToSpeechSchema = {
   text: z
@@ -88,10 +80,6 @@ export const textToDialogueSchema = {
     .describe("Base filename (without extension) for the generated audio."),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const SPEECH_GENERATOR_TOOLS: MCPToolType[] = [
   {
     name: "text_to_speech",
@@ -105,10 +93,6 @@ export const SPEECH_GENERATOR_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const SPEECH_GENERATOR_SERVER_INFO = {
   name: "speech_generator" as const,
   version: "1.0.0",
@@ -118,10 +102,6 @@ export const SPEECH_GENERATOR_SERVER_INFO = {
   documentationUrl: null,
   instructions: null,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const SPEECH_GENERATOR_TOOL_STAKES = {
   text_to_speech: "low",

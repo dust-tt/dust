@@ -1,7 +1,3 @@
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 import type { JSONSchema7 } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -10,15 +6,9 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { MCPOAuthUseCase } from "@app/types";
 
-// =============================================================================
 // Exports for monitoring
-// =============================================================================
 
 export const SLACK_TOOL_NAME = "slack" as const;
-
-// =============================================================================
-// Shared Schemas - Used by multiple tools
-// =============================================================================
 
 // Common search parameters shared by search tools.
 const buildCommonSearchParams = () => ({
@@ -59,10 +49,6 @@ const buildCommonSearchParams = () => ({
         " Also, do not pass this unless the user explicitly asks for some timeframe."
     ),
 });
-
-// =============================================================================
-// Tool Schemas - Input schemas for each tool
-// =============================================================================
 
 export const searchMessagesSchema = {
   keywords: z
@@ -217,10 +203,6 @@ export const readThreadMessagesSchema = {
     .describe("Only messages before this timestamp (Unix timestamp)"),
 };
 
-// =============================================================================
-// Tool Definitions - Static tool metadata for constants registry
-// =============================================================================
-
 export const SLACK_TOOLS: MCPToolType[] = [
   {
     name: "search_messages",
@@ -283,10 +265,6 @@ export const SLACK_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const SLACK_SERVER_INFO = {
   name: "slack" as const,
   version: "1.0.0",
@@ -303,10 +281,6 @@ export const SLACK_SERVER_INFO = {
     "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
     "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const SLACK_TOOL_STAKES = {
   // Read operations - never ask

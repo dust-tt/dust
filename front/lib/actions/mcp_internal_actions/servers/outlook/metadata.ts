@@ -6,16 +6,10 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { MCPOAuthUseCase } from "@app/types";
 
-// =============================================================================
 // Exports for monitoring
-// =============================================================================
 
 export const OUTLOOK_TOOL_NAME = "outlook" as const;
 export const OUTLOOK_CALENDAR_TOOL_NAME = "outlook_calendar" as const;
-
-// =============================================================================
-// Tool Schemas - Input schemas for each tool
-// =============================================================================
 
 export const getMessagesSchema = {
   search: z
@@ -175,10 +169,6 @@ export const updateContactSchema = {
   department: z.string().optional().describe("Department"),
   officeLocation: z.string().optional().describe("Office location"),
 };
-
-// =============================================================================
-// Outlook Calendar Tool Schemas - Input schemas for calendar tools
-// =============================================================================
 
 export const getUserTimezoneSchema = {};
 
@@ -401,10 +391,6 @@ export const checkSelfAvailabilitySchema = {
     ),
 };
 
-// =============================================================================
-// Tool Definitions - Static tool metadata for constants registry
-// =============================================================================
-
 export const OUTLOOK_TOOLS: MCPToolType[] = [
   {
     name: "get_messages",
@@ -517,10 +503,6 @@ export const OUTLOOK_CALENDAR_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const OUTLOOK_SERVER_INFO = {
   name: "outlook" as const,
   version: "1.0.0",
@@ -550,10 +532,6 @@ export const OUTLOOK_CALENDAR_SERVER_INFO = {
   documentationUrl: "https://docs.dust.tt/docs/outlook-calendar-tool-setup",
   instructions: null,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const OUTLOOK_TOOL_STAKES = {
   get_messages: "never_ask",

@@ -6,15 +6,9 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { MCPOAuthUseCase } from "@app/types";
 
-// =============================================================================
 // Exports for monitoring
-// =============================================================================
 
 export const NOTION_TOOL_NAME = "notion" as const;
-
-// =============================================================================
-// Shared Schemas - Used by multiple tools
-// =============================================================================
 
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -228,10 +222,6 @@ export const NotionBlockSchema: z.ZodType = z.union([
   FallbackBlock,
 ]);
 
-// =============================================================================
-// Tool Schemas - Input schemas for each tool
-// =============================================================================
-
 export const searchSchema = {
   query: z.string().describe("Search query string."),
   relativeTimeFrame: z
@@ -373,10 +363,6 @@ export const getAboutUserSchema = {
   userId: z.string().describe("The Notion user ID."),
 };
 
-// =============================================================================
-// Tool Definitions - Static tool metadata for constants registry
-// =============================================================================
-
 export const NOTION_TOOLS: MCPToolType[] = [
   {
     name: "search",
@@ -499,10 +485,6 @@ export const NOTION_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const NOTION_SERVER_INFO = {
   name: "notion" as const,
   version: "1.0.0",
@@ -518,10 +500,6 @@ export const NOTION_SERVER_INFO = {
   documentationUrl: "https://docs.dust.tt/docs/notion-mcp",
   instructions: null,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const NOTION_TOOL_STAKES = {
   search: "never_ask",

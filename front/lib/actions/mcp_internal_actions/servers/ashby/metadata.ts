@@ -8,10 +8,6 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 export const ASHBY_TOOL_NAME = "ashby" as const;
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 const CandidateSearchInputSchema = z.object({
   email: z
     .string()
@@ -41,10 +37,6 @@ export const createCandidateNoteSchema = {
 };
 
 export const getCandidateNotesSchema = CandidateSearchInputSchema.shape;
-
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
 
 export const ASHBY_TOOLS: MCPToolType[] = [
   {
@@ -86,10 +78,6 @@ export const ASHBY_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const ASHBY_SERVER_INFO = {
   name: "ashby" as const,
   version: "1.0.0",
@@ -100,10 +88,6 @@ export const ASHBY_SERVER_INFO = {
   instructions: null,
   developerSecretSelection: "required" as const,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const ASHBY_TOOL_STAKES = {
   search_candidates: "never_ask",

@@ -10,10 +10,6 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 export const JIT_ALL_OPTIONALS_AND_DEFAULTS_TOOL_NAME =
   "jit_all_optionals_and_defaults";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const jitAllOptionalsAndDefaultsSchema = {
   // TIME_FRAME: default and optional variants
   timeFrameDefault: ConfigurableToolInputSchemas[
@@ -67,10 +63,6 @@ export const jitAllOptionalsAndDefaultsSchema = {
   note: z.string().describe("Optional note for debugging").optional(),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const JIT_TESTING_TOOLS: MCPToolType[] = [
   {
     name: JIT_ALL_OPTIONALS_AND_DEFAULTS_TOOL_NAME,
@@ -81,10 +73,6 @@ export const JIT_TESTING_TOOLS: MCPToolType[] = [
     ) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const JIT_TESTING_SERVER_INFO = {
   name: "jit_testing" as const,

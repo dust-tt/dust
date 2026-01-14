@@ -5,15 +5,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolType } from "@app/lib/api/mcp";
 
-// =============================================================================
-// Constants - Exported for monitoring
-// =============================================================================
-
 export const SOUND_STUDIO_TOOL_NAME = "sound_studio" as const;
-
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
 
 export const generateSoundEffectsSchema = {
   prompt: z
@@ -45,10 +37,6 @@ export const generateSoundEffectsSchema = {
     .describe("Base filename (without extension) for the generated audio."),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const SOUND_STUDIO_TOOLS: MCPToolType[] = [
   {
     name: "generate_sound_effects",
@@ -59,10 +47,6 @@ export const SOUND_STUDIO_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const SOUND_STUDIO_SERVER_INFO = {
   name: "sound_studio" as const,
   version: "1.0.0",
@@ -72,10 +56,6 @@ export const SOUND_STUDIO_SERVER_INFO = {
   documentationUrl: null,
   instructions: null,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const SOUND_STUDIO_TOOL_STAKES = {
   generate_sound_effects: "low",

@@ -17,10 +17,6 @@ export {
   SEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const catToolInputSchema = {
   dataSources:
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
@@ -211,10 +207,6 @@ export const findTagsToolInputSchema = {
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const DATA_SOURCES_FILE_SYSTEM_TOOLS: MCPToolType[] = [
   {
     name: "cat",
@@ -274,10 +266,6 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS: MCPToolType[] = [
     ) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const DATA_SOURCES_FILE_SYSTEM_SERVER_INFO = {
   name: "data_sources_file_system" as const,

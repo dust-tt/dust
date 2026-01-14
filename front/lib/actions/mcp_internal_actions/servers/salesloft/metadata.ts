@@ -8,10 +8,6 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 export const SALESLOFT_TOOL_NAME = "salesloft" as const;
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const getActionsSchema = {
   include_due_actions_only: z
     .boolean()
@@ -20,10 +16,6 @@ export const getActionsSchema = {
     )
     .default(true),
 };
-
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
 
 export const SALESLOFT_TOOLS: MCPToolType[] = [
   {
@@ -41,10 +33,6 @@ export const SALESLOFT_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const SALESLOFT_SERVER_INFO = {
   name: "salesloft" as const,
   version: "1.0.0",
@@ -55,10 +43,6 @@ export const SALESLOFT_SERVER_INFO = {
   instructions: null,
   developerSecretSelection: "required" as const,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const SALESLOFT_TOOL_STAKES = {
   get_actions: "never_ask",

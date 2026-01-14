@@ -1,7 +1,3 @@
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 import type { JSONSchema7 } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -10,15 +6,9 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { MCPOAuthUseCase } from "@app/types";
 
-// =============================================================================
 // Exports for monitoring
-// =============================================================================
 
 export const MONDAY_TOOL_NAME = "monday" as const;
-
-// =============================================================================
-// Tool Schemas - Input schemas for each tool
-// =============================================================================
 
 export const getBoardsSchema = {};
 
@@ -271,10 +261,6 @@ export const getBoardAnalyticsSchema = {
   boardId: z.string().describe("The board ID to retrieve analytics for"),
 };
 
-// =============================================================================
-// Tool Definitions - Static tool metadata for constants registry
-// =============================================================================
-
 export const MONDAY_TOOLS: MCPToolType[] = [
   {
     name: "get_boards",
@@ -453,10 +439,6 @@ export const MONDAY_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const MONDAY_SERVER_INFO = {
   name: "monday" as const,
   version: "1.0.0",
@@ -473,10 +455,6 @@ export const MONDAY_SERVER_INFO = {
     "https://developer.monday.com/api-reference/docs/introduction-to-graphql",
   instructions: null,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const MONDAY_TOOL_STAKES = {
   // Read operations

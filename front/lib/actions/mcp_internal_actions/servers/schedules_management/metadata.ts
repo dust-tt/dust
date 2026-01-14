@@ -5,10 +5,6 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolType } from "@app/lib/api/mcp";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const createScheduleSchema = {
   name: z
     .string()
@@ -43,10 +39,6 @@ export const disableScheduleSchema = {
     .describe("The schedule ID (get this from list_schedules)"),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const SCHEDULES_MANAGEMENT_TOOLS: MCPToolType[] = [
   {
     name: "create_schedule",
@@ -65,10 +57,6 @@ export const SCHEDULES_MANAGEMENT_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const SCHEDULES_MANAGEMENT_SERVER_INFO = {
   name: "schedules_management" as const,
   version: "1.0.0",
@@ -81,10 +69,6 @@ export const SCHEDULES_MANAGEMENT_SERVER_INFO = {
     "When a schedule triggers, it runs this agent with the specified prompt. " +
     "Limit: 20 schedule creations per user per day.",
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const SCHEDULES_MANAGEMENT_TOOL_STAKES = {
   create_schedule: "high",

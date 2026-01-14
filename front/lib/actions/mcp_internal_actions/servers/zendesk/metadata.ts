@@ -9,10 +9,6 @@ import type { MCPOAuthUseCase } from "@app/types";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 export const ZENDESK_TOOL_NAME = "zendesk" as const;
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const getTicketSchema = {
   ticketId: z
     .number()
@@ -62,10 +58,6 @@ export const draftReplySchema = {
   body: z.string().describe("The content of the draft reply."),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const ZENDESK_TOOLS: MCPToolType[] = [
   {
     name: "get_ticket",
@@ -95,10 +87,6 @@ export const ZENDESK_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const ZENDESK_SERVER_INFO = {
   name: "zendesk" as const,
   version: "1.0.0",
@@ -112,10 +100,6 @@ export const ZENDESK_SERVER_INFO = {
   documentationUrl: null,
   instructions: null,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const ZENDESK_TOOL_STAKES = {
   get_ticket: "never_ask",

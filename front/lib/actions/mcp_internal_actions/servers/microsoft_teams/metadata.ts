@@ -9,10 +9,6 @@ import type { MCPOAuthUseCase } from "@app/types";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 export const MICROSOFT_TEAMS_TOOL_NAME = "microsoft_teams" as const;
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const searchMessagesContentSchema = {
   query: z
     .string()
@@ -119,10 +115,6 @@ export const postMessageSchema = {
     ),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const MICROSOFT_TEAMS_TOOLS: MCPToolType[] = [
   {
     name: "search_messages_content",
@@ -170,10 +162,6 @@ export const MICROSOFT_TEAMS_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const MICROSOFT_TEAMS_SERVER_INFO = {
   name: "microsoft_teams" as const,
   version: "1.0.0",
@@ -188,10 +176,6 @@ export const MICROSOFT_TEAMS_SERVER_INFO = {
   documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
   instructions: null,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const MICROSOFT_TEAMS_TOOL_STAKES = {
   search_messages_content: "never_ask",

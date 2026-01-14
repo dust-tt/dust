@@ -10,10 +10,6 @@ export {
   GENERATE_IMAGE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const generateImageSchema = {
   prompt: z
     .string()
@@ -79,10 +75,6 @@ export const editImageSchema = {
     ),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const IMAGE_GENERATION_TOOLS: MCPToolType[] = [
   {
     name: "generate_image",
@@ -101,10 +93,6 @@ export const IMAGE_GENERATION_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(z.object(editImageSchema)) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const IMAGE_GENERATION_SERVER_INFO = {
   name: "image_generation" as const,

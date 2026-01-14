@@ -13,10 +13,6 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 export const PROCESS_TOOL_NAME = "extract_information_from_documents";
 export const FIND_TAGS_TOOL_NAME = "find_tags";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION =
   "A JSON schema that will be embedded in the following JSON schema:" +
   "\n```\n" +
@@ -40,7 +36,6 @@ export const EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION =
   "Must be a valid JSON schema. Use only standard JSON Schema 7 core fields (type, properties, required, description) and avoid custom keywords or extensions that are not part of the core specification.\n\n" +
   "This schema will be used as signature to extract the relevant information based on selected documents to properly follow instructions.";
 
-// Tag schemas - used when tags are dynamic.
 export const extractDataTagsInputSchema = {
   tagsIn: z
     .array(z.string())
@@ -58,7 +53,6 @@ export const extractDataTagsInputSchema = {
     ),
 };
 
-// Common inputs schema - base schema used by the extract tool.
 // Note: jsonSchema and timeFrame fields are dynamically configured at runtime
 // based on agent configuration, so we use the non-configured versions here.
 export const extractDataCommonInputsSchema = {
@@ -90,10 +84,6 @@ export const extractDataWithTagsInputSchema = z.object({
   ...extractDataTagsInputSchema,
 });
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const EXTRACT_DATA_TOOLS: MCPToolType[] = [
   {
     name: PROCESS_TOOL_NAME,
@@ -115,10 +105,6 @@ export const EXTRACT_DATA_TOOLS: MCPToolType[] = [
     ) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const EXTRACT_DATA_SERVER_INFO = {
   name: "extract_data" as const,

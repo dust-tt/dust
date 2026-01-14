@@ -10,10 +10,6 @@ export const SLAB_TOOL_NAME = "slab" as const;
 
 export const MAX_CONTENT_SIZE = 32000; // Max characters to return for post content
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const searchPostsSchema = {
   query: z
     .string()
@@ -67,10 +63,6 @@ export const getPostMetadataSchema = {
   postId: z.string().describe("The Slab post ID or URL"),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const SLAB_TOOLS: MCPToolType[] = [
   {
     name: "search_posts",
@@ -98,10 +90,6 @@ export const SLAB_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const SLAB_SERVER_INFO = {
   name: "slab" as const,
   version: "1.0.0",
@@ -111,10 +99,6 @@ export const SLAB_SERVER_INFO = {
   documentationUrl: null,
   instructions: null,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const SLAB_TOOL_STAKES = {
   search_posts: "never_ask",

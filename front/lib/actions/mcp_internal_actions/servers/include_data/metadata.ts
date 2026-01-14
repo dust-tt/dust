@@ -12,10 +12,6 @@ export {
   INCLUDE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const includeInputSchema = {
   timeFrame:
     ConfigurableToolInputSchemas[
@@ -61,10 +57,6 @@ export const findTagsSchema = {
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const INCLUDE_DATA_TOOLS: MCPToolType[] = [
   {
     name: "retrieve_recent_documents",
@@ -87,10 +79,6 @@ export const INCLUDE_DATA_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(z.object(findTagsSchema)) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const INCLUDE_DATA_SERVER_INFO = {
   name: "include_data" as const,

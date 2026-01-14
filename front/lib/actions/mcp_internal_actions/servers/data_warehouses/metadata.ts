@@ -19,10 +19,6 @@ export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const listSchema = {
   dataSources:
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE],
@@ -112,10 +108,6 @@ export const querySchema = {
   fileName: z.string().describe("The name of the file to save the results to."),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const DATA_WAREHOUSES_TOOLS: MCPToolType[] = [
   {
     name: DATA_WAREHOUSES_LIST_TOOL_NAME,
@@ -154,10 +146,6 @@ export const DATA_WAREHOUSES_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(z.object(querySchema)) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const DATA_WAREHOUSES_SERVER_INFO = {
   name: "data_warehouses" as const,

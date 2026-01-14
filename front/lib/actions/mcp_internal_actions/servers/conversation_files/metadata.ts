@@ -18,10 +18,6 @@ export {
 export const LIST_FILES_MONITORING_NAME = "jit_list_files";
 export const CAT_FILE_MONITORING_NAME = "jit_cat_file";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const listFilesSchema = {};
 
 export const catFileSchema = {
@@ -52,10 +48,6 @@ export const catFileSchema = {
     ),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const CONVERSATION_FILES_TOOLS: MCPToolType[] = [
   {
     name: DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
@@ -70,10 +62,6 @@ export const CONVERSATION_FILES_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(z.object(catFileSchema)) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const CONVERSATION_FILES_SERVER_INFO = {
   name: "conversation_files" as const,

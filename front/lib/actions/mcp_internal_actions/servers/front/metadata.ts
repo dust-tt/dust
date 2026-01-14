@@ -7,10 +7,6 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 
 export const FRONT_TOOL_NAME = "front" as const;
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const searchConversationsSchema = {
   q: z
     .string()
@@ -139,10 +135,6 @@ export const assignConversationSchema = {
   teammate_id: z.string().describe("The ID of the teammate to assign to"),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const FRONT_TOOLS: MCPToolType[] = [
   {
     name: "search_conversations",
@@ -254,10 +246,6 @@ export const FRONT_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const FRONT_SERVER_INFO = {
   name: "front" as const,
   version: "1.0.0",
@@ -275,10 +263,6 @@ export const FRONT_SERVER_INFO = {
     "- Include full context (metadata, custom fields) in responses",
   developerSecretSelection: "required" as const,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const FRONT_TOOL_STAKES = {
   search_conversations: "never_ask",

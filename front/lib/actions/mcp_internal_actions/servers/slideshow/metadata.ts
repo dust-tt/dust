@@ -15,10 +15,6 @@ export const RETRIEVE_SLIDESHOW_FILE_TOOL_NAME = "retrieve_slideshow_file";
 // Constants.
 export const MAX_SLIDESHOW_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const createSlideshowFileSchema = {
   file_name: z
     .string()
@@ -87,10 +83,6 @@ export const retrieveSlideshowFileSchema = {
     .describe("The ID of the slideshow file to retrieve (e.g., 'fil_abc123')"),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const SLIDESHOW_TOOLS: MCPToolType[] = [
   {
     name: CREATE_SLIDESHOW_FILE_TOOL_NAME,
@@ -132,10 +124,6 @@ export const SLIDESHOW_TOOLS: MCPToolType[] = [
     ) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const SLIDESHOW_SERVER_INFO = {
   name: "slideshow" as const,

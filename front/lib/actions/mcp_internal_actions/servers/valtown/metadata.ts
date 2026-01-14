@@ -8,10 +8,6 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 export const VALTOWN_TOOL_NAME = "val_town" as const;
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const createValSchema = {
   name: z
     .string()
@@ -171,10 +167,6 @@ export const callHttpEndpointSchema = {
     .describe("HTTP method to use"),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const VALTOWN_TOOLS: MCPToolType[] = [
   {
     name: "create_val",
@@ -243,10 +235,6 @@ export const VALTOWN_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const VALTOWN_SERVER_INFO = {
   name: "val_town" as const,
   version: "1.0.0",
@@ -257,10 +245,6 @@ export const VALTOWN_SERVER_INFO = {
   instructions: null,
   developerSecretSelection: "required" as const,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const VALTOWN_TOOL_STAKES = {
   create_val: "low",

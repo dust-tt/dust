@@ -7,10 +7,6 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import type { MCPToolType } from "@app/lib/api/mcp";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const runAgentConfigurablePropertiesSchema = {
   executionMode: z
     .object({
@@ -78,11 +74,8 @@ export const runAgentToolSchema = {
   ...runAgentConfigurablePropertiesSchema,
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
 // Note: The actual tool name is dynamic (run_${childAgentName}), but this
 // provides a representative definition for static metadata discovery.
-// =============================================================================
 
 export const RUN_AGENT_TOOLS: MCPToolType[] = [
   {
@@ -93,10 +86,6 @@ export const RUN_AGENT_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(z.object(runAgentToolSchema)) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const RUN_AGENT_SERVER_INFO = {
   name: "run_agent" as const,

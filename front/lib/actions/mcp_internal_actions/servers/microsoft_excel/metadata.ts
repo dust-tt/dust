@@ -9,10 +9,6 @@ import type { MCPOAuthUseCase } from "@app/types";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 export const MICROSOFT_EXCEL_TOOL_NAME = "microsoft_excel" as const;
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const listExcelFilesSchema = {
   query: z
     .string()
@@ -142,10 +138,6 @@ export const clearRangeSchema = {
     ),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const MICROSOFT_EXCEL_TOOLS: MCPToolType[] = [
   {
     name: "list_excel_files",
@@ -184,10 +176,6 @@ export const MICROSOFT_EXCEL_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const MICROSOFT_EXCEL_SERVER_INFO = {
   name: "microsoft_excel" as const,
   version: "1.0.0",
@@ -202,10 +190,6 @@ export const MICROSOFT_EXCEL_SERVER_INFO = {
   documentationUrl: null,
   instructions: null,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const MICROSOFT_EXCEL_TOOL_STAKES = {
   list_excel_files: "never_ask",

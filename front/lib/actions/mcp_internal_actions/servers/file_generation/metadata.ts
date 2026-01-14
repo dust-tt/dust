@@ -28,10 +28,6 @@ export const OUTPUT_FORMATS = [
   "xml",
 ] as const;
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const getSupportedSourceFormatsSchema = {
   output_format: z.enum(OUTPUT_FORMATS).describe("The format to check."),
 };
@@ -78,10 +74,6 @@ export const generateFileSchema = {
     ),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const FILE_GENERATION_TOOLS: MCPToolType[] = [
   {
     name: GET_SUPPORTED_SOURCE_FORMATS_TOOL_NAME,
@@ -104,10 +96,6 @@ export const FILE_GENERATION_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(z.object(generateFileSchema)) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const FILE_GENERATION_SERVER_INFO = {
   name: "file_generation" as const,

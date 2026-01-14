@@ -6,15 +6,9 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { MCPOAuthUseCase } from "@app/types";
 
-// =============================================================================
 // Exports for monitoring
-// =============================================================================
 
 export const SLACK_BOT_TOOL_NAME = "slack_bot" as const;
-
-// =============================================================================
-// Tool Schemas - Input schemas for each tool
-// =============================================================================
 
 export const postMessageSchema = {
   to: z
@@ -128,10 +122,6 @@ export const removeReactionSchema = {
     ),
 };
 
-// =============================================================================
-// Tool Definitions - Static tool metadata for constants registry
-// =============================================================================
-
 export const SLACK_BOT_TOOLS: MCPToolType[] = [
   {
     name: "post_message",
@@ -185,10 +175,6 @@ export const SLACK_BOT_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const SLACK_BOT_SERVER_INFO = {
   name: "slack_bot" as const,
   version: "1.0.0",
@@ -207,10 +193,6 @@ export const SLACK_BOT_SERVER_INFO = {
     "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
     "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const SLACK_BOT_TOOL_STAKES = {
   list_public_channels: "never_ask",

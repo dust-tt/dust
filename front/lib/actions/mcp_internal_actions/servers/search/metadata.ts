@@ -10,10 +10,6 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 // Tool name for the search tool.
 export const SEARCH_TOOL_NAME = "semantic_search";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 // Re-export from types.ts for convenience.
 export { SearchInputSchema, TagsInputSchema };
 
@@ -21,10 +17,6 @@ export { SearchInputSchema, TagsInputSchema };
 export const SearchWithTagsInputSchema = SearchInputSchema.extend(
   TagsInputSchema.shape
 );
-
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
 
 export const SEARCH_TOOLS: MCPToolType[] = [
   {
@@ -36,10 +28,6 @@ export const SEARCH_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(SearchWithTagsInputSchema) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const SEARCH_SERVER_INFO = {
   name: "search" as const,

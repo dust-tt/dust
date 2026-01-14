@@ -24,10 +24,6 @@ export const GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME =
 // Constants.
 export const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const createInteractiveContentFileSchema = {
   file_name: z
     .string()
@@ -129,10 +125,6 @@ export const getInteractiveContentFileShareUrlSchema = {
     ),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const INTERACTIVE_CONTENT_TOOLS: MCPToolType[] = [
   {
     name: CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
@@ -201,10 +193,6 @@ export const INTERACTIVE_CONTENT_TOOLS: MCPToolType[] = [
     ) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const INTERACTIVE_CONTENT_SERVER_INFO = {
   name: "interactive_content" as const,

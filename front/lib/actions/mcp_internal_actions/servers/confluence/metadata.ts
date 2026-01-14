@@ -6,15 +6,7 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { MCPOAuthUseCase } from "@app/types";
 
-// =============================================================================
-// Constants - Exported for monitoring
-// =============================================================================
-
 export const CONFLUENCE_TOOL_NAME = "confluence" as const;
-
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
 
 export const getCurrentUserSchema = {};
 
@@ -112,10 +104,6 @@ export const updatePageSchema = {
     .describe("New parent page ID to move the page under"),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const CONFLUENCE_TOOLS: MCPToolType[] = [
   {
     name: "get_current_user",
@@ -155,10 +143,6 @@ export const CONFLUENCE_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const CONFLUENCE_SERVER_INFO = {
   name: "confluence" as const,
   version: "1.0.0",
@@ -174,10 +158,6 @@ export const CONFLUENCE_SERVER_INFO = {
   documentationUrl: "https://docs.dust.tt/docs/confluence-tool",
   instructions: null,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const CONFLUENCE_TOOL_STAKES = {
   // Read operations - never ask

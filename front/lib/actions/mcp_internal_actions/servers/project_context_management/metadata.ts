@@ -9,10 +9,6 @@ export const LIST_PROJECT_FILES_TOOL_NAME = "list_project_files";
 export const ADD_PROJECT_FILE_TOOL_NAME = "add_project_file";
 export const UPDATE_PROJECT_FILE_TOOL_NAME = "update_project_file";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const listProjectFilesSchema = {};
 
 export const addProjectFileSchema = {
@@ -51,10 +47,6 @@ export const updateProjectFileSchema = {
     ),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const PROJECT_CONTEXT_MANAGEMENT_TOOLS: MCPToolType[] = [
   {
     name: LIST_PROJECT_FILES_TOOL_NAME,
@@ -81,10 +73,6 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS: MCPToolType[] = [
     ) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const PROJECT_CONTEXT_MANAGEMENT_SERVER_INFO = {
   name: "project_context_management" as const,

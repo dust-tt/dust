@@ -12,19 +12,11 @@ export const ENABLE_TOOLSET_TOOL_NAME = "enable";
 export const LIST_TOOLSETS_MONITORING_NAME = "list_toolsets";
 export const ENABLE_TOOLSET_MONITORING_NAME = "enable_toolset";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const listToolsetsSchema = {};
 
 export const enableToolsetSchema = {
   toolsetId: z.string(),
 };
-
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
 
 export const TOOLSETS_TOOLS: MCPToolType[] = [
   {
@@ -39,10 +31,6 @@ export const TOOLSETS_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(z.object(enableToolsetSchema)) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const TOOLSETS_SERVER_INFO = {
   name: "toolsets" as const,

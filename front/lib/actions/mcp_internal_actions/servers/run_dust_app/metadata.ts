@@ -6,21 +6,14 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPToolType } from "@app/lib/api/mcp";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const runDustAppSchema = {
   dustApp:
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP],
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
 // Note: The actual tool name and schema are dynamic based on the Dust app
 // configuration, but this provides a representative definition for static
 // metadata discovery.
-// =============================================================================
 
 export const RUN_DUST_APP_TOOLS: MCPToolType[] = [
   {
@@ -29,10 +22,6 @@ export const RUN_DUST_APP_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(z.object(runDustAppSchema)) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const RUN_DUST_APP_SERVER_INFO = {
   name: "run_dust_app" as const,

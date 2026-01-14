@@ -10,10 +10,6 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 export const TOOL_WITHOUT_USER_CONFIG_TOOL_NAME = "tool_without_user_config";
 export const PASS_THROUGH_TOOL_NAME = "pass_through";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const toolWithoutUserConfigSchema = {
   query: z.string(),
 };
@@ -84,10 +80,6 @@ export const passThroughSchema = {
     .describe("Indicate the choices the agent can select from"),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const PRIMITIVE_TYPES_DEBUGGER_TOOLS: MCPToolType[] = [
   {
     name: TOOL_WITHOUT_USER_CONFIG_TOOL_NAME,
@@ -102,10 +94,6 @@ export const PRIMITIVE_TYPES_DEBUGGER_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(z.object(passThroughSchema)) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const PRIMITIVE_TYPES_DEBUGGER_SERVER_INFO = {
   name: "primitive_types_debugger" as const,

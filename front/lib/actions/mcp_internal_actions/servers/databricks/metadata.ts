@@ -9,15 +9,7 @@ import type { MCPOAuthUseCase } from "@app/types";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 export const DATABRICKS_TOOL_NAME = "databricks" as const;
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const listWarehousesSchema = {};
-
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
 
 export const DATABRICKS_TOOLS: MCPToolType[] = [
   {
@@ -27,10 +19,6 @@ export const DATABRICKS_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(z.object(listWarehousesSchema)) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const DATABRICKS_SERVER_INFO = {
   name: "databricks" as const,
@@ -47,10 +35,6 @@ export const DATABRICKS_SERVER_INFO = {
   documentationUrl: "https://docs.dust.tt/docs/databricks",
   instructions: null,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const DATABRICKS_TOOL_STAKES = {
   list_warehouses: "never_ask",

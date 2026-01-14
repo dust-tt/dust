@@ -11,20 +11,12 @@ export const AGENT_ROUTER_TOOL_NAME = "agent_router" as const;
 export const LIST_ALL_AGENTS_TOOL_NAME = "list_all_published_agents";
 export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const listAllAgentsSchema = {};
 
 export const suggestAgentsSchema = {
   userMessage: z.string().describe("The user's message."),
   conversationId: z.string().describe("The conversation id."),
 };
-
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
 
 export const AGENT_ROUTER_TOOLS: MCPToolType[] = [
   {
@@ -46,10 +38,6 @@ export const AGENT_ROUTER_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(z.object(suggestAgentsSchema)) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const AGENT_ROUTER_SERVER_INFO = {
   name: "agent_router" as const,

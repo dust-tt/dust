@@ -8,10 +8,6 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 export const OPENAI_USAGE_TOOL_NAME = "openai_usage" as const;
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const getCompletionsUsageSchema = {
   start_time: z
     .string()
@@ -110,10 +106,6 @@ export const getOrganizationCostsSchema = {
     .describe("Return only costs for these projects. Optional."),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const OPENAI_USAGE_TOOLS: MCPToolType[] = [
   {
     name: "get_completions_usage",
@@ -133,10 +125,6 @@ export const OPENAI_USAGE_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const OPENAI_USAGE_SERVER_INFO = {
   name: "openai_usage" as const,
   version: "1.0.0",
@@ -147,10 +135,6 @@ export const OPENAI_USAGE_SERVER_INFO = {
   instructions: null,
   developerSecretSelection: "required" as const,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const OPENAI_USAGE_TOOL_STAKES = {
   get_completions_usage: "low",

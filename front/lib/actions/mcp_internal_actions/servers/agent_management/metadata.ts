@@ -7,10 +7,6 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 
 export const AGENT_MANAGEMENT_TOOL_NAME = "agent_management_create_agent";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const createAgentSchema = {
   name: z
     .string()
@@ -51,10 +47,6 @@ export const createAgentSchema = {
     ),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const AGENT_MANAGEMENT_TOOLS: MCPToolType[] = [
   {
     name: "create_agent",
@@ -62,10 +54,6 @@ export const AGENT_MANAGEMENT_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(z.object(createAgentSchema)) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const AGENT_MANAGEMENT_SERVER_INFO = {
   name: "agent_management" as const,
@@ -76,10 +64,6 @@ export const AGENT_MANAGEMENT_SERVER_INFO = {
   documentationUrl: null,
   instructions: null,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const AGENT_MANAGEMENT_TOOL_STAKES = {
   create_agent: "high",

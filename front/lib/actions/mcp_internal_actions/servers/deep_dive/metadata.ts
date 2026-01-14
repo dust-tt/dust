@@ -14,15 +14,7 @@ export const HANDOFF_TOOL_NAME = "handoff";
 // Tool monitoring names.
 export const HANDOFF_MONITORING_NAME = "handoff";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const handoffSchema = {};
-
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
 
 export const DEEP_DIVE_TOOLS: MCPToolType[] = [
   {
@@ -31,10 +23,6 @@ export const DEEP_DIVE_TOOLS: MCPToolType[] = [
     inputSchema: zodToJsonSchema(z.object(handoffSchema)) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const DEEP_DIVE_SERVER_INFO = {
   name: "deep_dive" as const,

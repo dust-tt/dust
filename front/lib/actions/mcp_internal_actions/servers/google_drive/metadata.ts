@@ -6,10 +6,6 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { MCPOAuthUseCase } from "@app/types";
 
-// =============================================================================
-// Constants - Exported for use by server and utils
-// =============================================================================
-
 // Defined here to avoid circular dependencies and allow client-side imports
 export const SUPPORTED_MIMETYPES = [
   "application/vnd.google-apps.document",
@@ -24,10 +20,6 @@ export const MAX_CONTENT_SIZE = 32000; // Max characters to return for file cont
 
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 export const GOOGLE_DRIVE_TOOL_NAME = "google_drive" as const;
-
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
 
 export const listDrivesSchema = {
   pageToken: z.string().optional().describe("Page token for pagination."),
@@ -133,10 +125,6 @@ export const getWorksheetSchema = {
     .describe("How values should be represented in the output."),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const GOOGLE_DRIVE_TOOLS: MCPToolType[] = [
   {
     name: "list_drives",
@@ -170,10 +158,6 @@ export const GOOGLE_DRIVE_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const GOOGLE_DRIVE_SERVER_INFO = {
   name: "google_drive" as const,
   version: "1.0.0",
@@ -187,10 +171,6 @@ export const GOOGLE_DRIVE_SERVER_INFO = {
   documentationUrl: "https://docs.dust.tt/docs/google-drive",
   instructions: null,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const GOOGLE_DRIVE_TOOL_STAKES = {
   list_drives: "never_ask",

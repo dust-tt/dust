@@ -10,10 +10,6 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 export const GET_DATABASE_SCHEMA_TOOL_NAME = "get_database_schema";
 export const EXECUTE_DATABASE_QUERY_TOOL_NAME = "execute_database_query";
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const getDatabaseSchemaSchema = {
   tables: ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
 };
@@ -27,10 +23,6 @@ export const executeDatabaseQuerySchema = {
     ),
   fileName: z.string().describe("The name of the file to save the results to."),
 };
-
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
 
 export const TABLES_QUERY_TOOLS: MCPToolType[] = [
   {
@@ -50,10 +42,6 @@ export const TABLES_QUERY_TOOLS: MCPToolType[] = [
     ) as JSONSchema,
   },
 ];
-
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
 
 export const TABLES_QUERY_SERVER_INFO = {
   name: "query_tables_v2" as const,

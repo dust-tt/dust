@@ -16,10 +16,6 @@ import type { MCPOAuthUseCase } from "@app/types";
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 export const HUBSPOT_TOOL_NAME = "hubspot" as const;
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const getObjectPropertiesSchema = {
   objectType: z.enum(ALL_OBJECTS),
   creatableOnly: z.boolean().optional(),
@@ -405,10 +401,6 @@ export const getUserActivitySchema = {
     ),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const HUBSPOT_TOOLS: MCPToolType[] = [
   {
     name: "get_object_properties",
@@ -619,10 +611,6 @@ export const HUBSPOT_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const HUBSPOT_SERVER_INFO = {
   name: "hubspot" as const,
   version: "1.0.0",
@@ -638,10 +626,6 @@ export const HUBSPOT_SERVER_INFO = {
   documentationUrl: "https://docs.dust.tt/docs/hubspot",
   instructions: null,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const HUBSPOT_TOOL_STAKES = {
   // Get operations.

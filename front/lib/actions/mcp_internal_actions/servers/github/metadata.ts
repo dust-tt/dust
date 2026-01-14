@@ -6,15 +6,9 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import type { MCPOAuthUseCase } from "@app/types";
 
-// =============================================================================
 // Exports for monitoring
-// =============================================================================
 
 export const GITHUB_TOOL_NAME = "github" as const;
-
-// =============================================================================
-// Tool Schemas - Input schemas for each tool
-// =============================================================================
 
 export const createIssueSchema = {
   owner: z
@@ -199,10 +193,6 @@ export const listPullRequestsSchema = {
   before: z.string().optional().describe("The cursor to start before."),
 };
 
-// =============================================================================
-// Tool Definitions - Static tool metadata for constants registry
-// =============================================================================
-
 export const GITHUB_TOOLS: MCPToolType[] = [
   {
     name: "create_issue",
@@ -274,10 +264,6 @@ export const GITHUB_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const GITHUB_SERVER_INFO = {
   name: "github" as const,
   version: "1.0.0",
@@ -293,10 +279,6 @@ export const GITHUB_SERVER_INFO = {
   documentationUrl: null,
   instructions: null,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const GITHUB_TOOL_STAKES = {
   create_issue: "low",

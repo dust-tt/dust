@@ -21,10 +21,6 @@ export { SEARCH_USERS_MAX_RESULTS };
 // We use a single tool name for monitoring given the high granularity (can be revisited).
 export const JIRA_TOOL_NAME = "jira" as const;
 
-// =============================================================================
-// Zod Schemas - Used by server file for runtime validation
-// =============================================================================
-
 export const getIssueReadFieldsSchema = {};
 
 export const getIssueSchema = {
@@ -218,10 +214,6 @@ export const readAttachmentSchema = {
   attachmentId: z.string().describe("The ID of the attachment to read"),
 };
 
-// =============================================================================
-// Tool Definitions - Used by constants.ts for static metadata
-// =============================================================================
-
 export const JIRA_TOOLS: MCPToolType[] = [
   {
     name: "get_issue_read_fields",
@@ -366,10 +358,6 @@ export const JIRA_TOOLS: MCPToolType[] = [
   },
 ];
 
-// =============================================================================
-// Server Info - Server metadata for the constants registry
-// =============================================================================
-
 export const JIRA_SERVER_INFO = {
   name: "jira" as const,
   version: "1.0.0",
@@ -385,10 +373,6 @@ export const JIRA_SERVER_INFO = {
   documentationUrl: "https://docs.dust.tt/docs/jira",
   instructions: JIRA_SERVER_INSTRUCTIONS,
 };
-
-// =============================================================================
-// Tool Stakes - Default permission levels for each tool
-// =============================================================================
 
 export const JIRA_TOOL_STAKES = {
   // Read operations - never ask (no side effects)
