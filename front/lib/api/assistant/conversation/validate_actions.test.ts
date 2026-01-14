@@ -28,11 +28,9 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   createAgentMessages,
   createUserMentions,
-} from "@app/lib/api/assistant/conversation/mentions";
-import {
   dismissMention,
-  validateAction,
-} from "@app/lib/api/assistant/conversation/validate_actions";
+} from "@app/lib/api/assistant/conversation/mentions";
+import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import {
   publishAgentMessagesEvents,
   publishMessageEventsOnMessagePostOrEdit,
