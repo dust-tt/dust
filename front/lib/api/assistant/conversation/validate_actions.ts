@@ -11,20 +11,12 @@ import {
   setUserAlwaysApprovedTool,
 } from "@app/lib/actions/tool_status";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import { getRelatedContentFragments } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import {
-  publishAgentMessagesEvents,
-  publishMessageEventsOnMessagePostOrEdit,
-} from "@app/lib/api/assistant/streaming/events";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
-import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
   AgentMessageModel,
-  MentionModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
@@ -33,22 +25,8 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
-import type {
-  AgentMessageType,
-  APIErrorWithStatusCode,
-  Result,
-  RichMentionWithStatus,
-  UserMessageType,
-} from "@app/types";
-import {
-  assertNever,
-  Err,
-  isAgentMessageType,
-  isContentFragmentType,
-  isUserMessageType,
-  Ok,
-  toMentionType,
-} from "@app/types";
+import type { APIErrorWithStatusCode, Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 async function getUserMessageIdFromMessageId(
   auth: Authenticator,
@@ -306,184 +284,6 @@ export async function validateAction(
     },
     `Action ${approvalState === "approved" ? "approved" : "rejected"} by user`
   );
-
-  return new Ok(undefined);
-}
-
-export async function dismissMention(
-  auth: Authenticator,
-  {
-    messageId,
-    conversationId,
-    type,
-    id,
-  }: {
-    messageId: string;
-    conversationId: string;
-    type: "user" | "agent";
-    id: string;
-  }
-): Promise<Result<void, APIErrorWithStatusCode>> {
-  const conversationRes = await getConversation(auth, conversationId);
-  if (conversationRes.isErr()) {
-    return new Err({
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found",
-      },
-    });
-  }
-
-  const conversation = conversationRes.value;
-
-  // Verify the message exists
-  const message = conversation.content.flat().find((m) => m.sId === messageId);
-
-  if (!message) {
-    return new Err({
-      status_code: 404,
-      api_error: {
-        type: "message_not_found",
-        message: "Message not found",
-      },
-    });
-  }
-
-  if (isUserMessageType(message)) {
-    // Verify user is authorized to edit the message by checking the message user.
-    if (message.user && message.user.id !== auth.getNonNullableUser().id) {
-      return new Err({
-        status_code: 403,
-        api_error: {
-          type: "invalid_request_error",
-          message: "User is not authorized to dismiss this mention",
-        },
-      });
-    }
-  } else if (isAgentMessageType(message)) {
-    // Verify user is authorized to edit the message by going back to the user message.
-    const { userMessageUserId } = await getUserMessageIdFromMessageId(auth, {
-      messageId,
-    });
-    if (
-      userMessageUserId !== null &&
-      userMessageUserId !== auth.getNonNullableUser().id
-    ) {
-      return new Err({
-        status_code: 403,
-        api_error: {
-          type: "invalid_request_error",
-          message: "User is not authorized to dismiss this mention",
-        },
-      });
-    }
-  } else if (isContentFragmentType(message)) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid message type",
-      },
-    });
-  } else {
-    assertNever(message);
-  }
-
-  const updatedMessages: {
-    userMessages: UserMessageType[];
-    agentMessages: AgentMessageType[];
-  } = {
-    userMessages: [],
-    agentMessages: [],
-  };
-
-  // For user mentions, convert sId to database ID
-  let userIdForQuery: number | undefined;
-  if (type === "user") {
-    const user = await getUserForWorkspace(auth, {
-      userId: id,
-    });
-    if (!user) {
-      return new Err({
-        status_code: 404,
-        api_error: {
-          type: "user_not_found",
-          message: "User not found",
-        },
-      });
-    }
-    userIdForQuery = user.id;
-  }
-
-  const predicate = (m: RichMentionWithStatus) =>
-    (m.status === "agent_restricted_by_space_usage" ||
-      m.status === "user_restricted_by_conversation_access") &&
-    m.type === type &&
-    m.id === id;
-
-  // Find all pending mentions for the same user on conversation messages latest versions.
-  for (const messageVersions of conversation.content) {
-    const latestMessage = messageVersions[messageVersions.length - 1];
-
-    if (
-      latestMessage.visibility !== "deleted" &&
-      !isContentFragmentType(latestMessage) &&
-      latestMessage.richMentions.some(predicate)
-    ) {
-      const mentionModel = await MentionModel.findOne({
-        where: {
-          workspaceId: conversation.owner.id,
-          messageId: latestMessage.id,
-          ...(type === "user"
-            ? { userId: userIdForQuery }
-            : { agentConfigurationId: id }),
-        },
-      });
-      if (!mentionModel) {
-        continue;
-      }
-      await mentionModel.update({ dismissed: true });
-      const newRichMentions = latestMessage.richMentions.map((m) =>
-        predicate(m)
-          ? {
-              ...m,
-              dismissed: true,
-            }
-          : m
-      );
-      if (isUserMessageType(latestMessage)) {
-        updatedMessages.userMessages.push({
-          ...latestMessage,
-          richMentions: newRichMentions,
-          mentions: newRichMentions.map(toMentionType),
-        });
-      } else if (isAgentMessageType(latestMessage)) {
-        updatedMessages.agentMessages.push({
-          ...latestMessage,
-          richMentions: newRichMentions,
-        });
-      }
-    }
-  }
-
-  for (const userMessage of updatedMessages.userMessages) {
-    await publishMessageEventsOnMessagePostOrEdit(
-      conversation,
-      {
-        ...userMessage,
-        contentFragments: getRelatedContentFragments(conversation, userMessage),
-      },
-      []
-    );
-  }
-
-  if (updatedMessages.agentMessages.length > 0) {
-    await publishAgentMessagesEvents(
-      conversation,
-      updatedMessages.agentMessages
-    );
-  }
 
   return new Ok(undefined);
 }

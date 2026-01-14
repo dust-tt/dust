@@ -3,8 +3,10 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { validateUserMention } from "@app/lib/api/assistant/conversation/mentions";
-import { dismissMention } from "@app/lib/api/assistant/conversation/validate_actions";
+import {
+  dismissMention,
+  validateUserMention,
+} from "@app/lib/api/assistant/conversation/mentions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
