@@ -136,6 +136,7 @@ export function getToolExtraFields(
   let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
   let serverTimeoutMs: number | undefined;
   let toolsRetryPolicies: Record<string, MCPToolRetryPolicyType> | undefined;
+  let toolsArgumentsRequiringApproval: Record<string, string[]> | undefined;
 
   const { serverType } = getServerTypeAndIdFromSId(mcpServerId);
   if (serverType === "internal") {
@@ -148,6 +149,8 @@ export function getToolExtraFields(
     toolsStakes = { ...defaultStakes };
     toolsRetryPolicies = INTERNAL_MCP_SERVERS[serverName].tools_retry_policies;
     serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
+    toolsArgumentsRequiringApproval =
+      INTERNAL_MCP_SERVERS[serverName].tools_arguments_requiring_approval;
 
     metadata.forEach(
       ({ toolName, permission }) => (toolsStakes[toolName] = permission)
@@ -172,12 +175,14 @@ export function getToolExtraFields(
     toolsStakes,
     toolsRetryPolicies,
     serverTimeoutMs,
+    toolsArgumentsRequiringApproval,
   });
 }
 
 function makeServerSideMCPToolConfigurations(
   config: ServerSideMCPServerConfigurationType,
-  tools: ServerSideMCPToolTypeWithStakeAndRetryPolicy[]
+  tools: ServerSideMCPToolTypeWithStakeAndRetryPolicy[],
+  toolsArgumentsRequiringApproval?: Record<string, string[]>
 ): ServerSideMCPToolConfigurationType[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
@@ -208,6 +213,7 @@ function makeServerSideMCPToolConfigurations(
     dustAppConfiguration: config.dustAppConfiguration,
     secretName: config.secretName,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
+    argumentsRequiringApproval: toolsArgumentsRequiringApproval?.[tool.name],
   }));
 }
 
@@ -1007,8 +1013,13 @@ export async function listToolsForServerSideMCPServer(
   if (r.isErr()) {
     return r;
   }
-  const { toolsEnabled, toolsStakes, serverTimeoutMs, toolsRetryPolicies } =
-    r.value;
+  const {
+    toolsEnabled,
+    toolsStakes,
+    serverTimeoutMs,
+    toolsRetryPolicies,
+    toolsArgumentsRequiringApproval,
+  } = r.value;
 
   const availability = getAvailabilityOfInternalMCPServerById(
     connectionParams.mcpServerId
@@ -1036,7 +1047,8 @@ export async function listToolsForServerSideMCPServer(
 
   const serverSideToolConfigs = makeServerSideMCPToolConfigurations(
     config,
-    toolsWithStakesRetryPoliciesAndTimeout
+    toolsWithStakesRetryPoliciesAndTimeout,
+    toolsArgumentsRequiringApproval
   );
   return new Ok(serverSideToolConfigs);
 }

@@ -4,7 +4,7 @@ import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards"
 import type { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentMessageType } from "@app/types";
-import { assertNever, isString } from "@app/types";
+import { assertNever, isNumberOrBoolean, isString } from "@app/types";
 
 export interface ToolInputContext {
   agentId: string;
@@ -159,7 +159,7 @@ export async function hasUserAlwaysApprovedTool({
 
 // Extracts the values of the approval-requiring arguments from the tool inputs,
 // converting them to strings for storage. Skips any arguments that are not provided.
-function extractArgRequiringApprovalValues(
+export function extractArgRequiringApprovalValues(
   argumentsRequiringApproval: string[],
   toolInputs: Record<string, unknown>
 ): Record<string, string> {
@@ -174,10 +174,17 @@ function extractArgRequiringApprovalValues(
 
     if (isString(value)) {
       result[argName] = value;
-    } else if (typeof value === "number" || typeof value === "boolean") {
+    } else if (isNumberOrBoolean(value)) {
       result[argName] = String(value);
+    } else if (
+      Array.isArray(value) &&
+      value.length === 1 &&
+      (isString(value[0]) || isNumberOrBoolean(value[0]))
+    ) {
+      // Handle single-element arrays (e.g., ["adrien@dust.tt"]).
+      result[argName] = value[0].toString();
     } else {
-      // For objects/arrays, we do not support approval. Skip them.
+      // For objects/arrays with multiple elements, we do not support approval. Skip them.
       // In fact, it's very unlikely the model will infer two times the same
       // object/array as identical, so storing the approval would be useless.
       continue;

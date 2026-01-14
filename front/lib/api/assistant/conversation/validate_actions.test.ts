@@ -11,6 +11,15 @@ vi.mock("@app/temporal/agent_loop/client", () => ({
   launchAgentLoopWorkflow: vi.fn().mockResolvedValue({ isOk: () => true }),
 }));
 
+// Mock Redis hybrid manager to prevent it from removing events
+vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
+  getRedisHybridManager: vi.fn().mockReturnValue({
+    removeEvent: vi.fn().mockResolvedValue(undefined),
+  }),
+}));
+
+import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   createConversation,
   postUserMessage,
@@ -20,16 +29,29 @@ import {
   createAgentMessages,
   createUserMentions,
 } from "@app/lib/api/assistant/conversation/mentions";
-import { dismissMention } from "@app/lib/api/assistant/conversation/validate_actions";
+import {
+  dismissMention,
+  validateAction,
+} from "@app/lib/api/assistant/conversation/validate_actions";
 import {
   publishAgentMessagesEvents,
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { Authenticator } from "@app/lib/auth";
+import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { MentionModel } from "@app/lib/models/agent/conversation";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
+import {
+  AgentMessageModel,
+  MentionModel,
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -873,6 +895,486 @@ describe("dismissMention", () => {
       // a 400 error with "Invalid message type"
       // The actual test would require creating a content fragment, which is complex
       // so we're documenting that the error path exists in the implementation
+    });
+  });
+});
+
+describe("validateAction", () => {
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
+  let conversation: ConversationType;
+
+  // Counter for unique step content indices
+  let stepContentIndex = 0;
+
+  beforeEach(async () => {
+    // Reset mocks before each test
+    vi.clearAllMocks();
+
+    // Reset counter for unique step content indices
+    stepContentIndex = 0;
+
+    // Create workspace, user, spaces, and groups using the helper
+    const setup = await createResourceTest({});
+    workspace = setup.workspace;
+    auth = setup.authenticator;
+
+    // Create a conversation using the factory
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+  });
+
+  /**
+   * Helper to create a blocked MCP action for testing.
+   */
+  async function createBlockedAction({
+    agentMessageId,
+    status = "blocked_validation_required",
+  }: {
+    agentMessageId: number;
+    status?: ToolExecutionStatus;
+  }) {
+    const functionCallId = generateRandomModelSId();
+    const currentIndex = stepContentIndex++;
+
+    // Create step content (function_call type required for MCP actions)
+    const stepContent = await AgentStepContentModel.create({
+      workspaceId: workspace.id,
+      agentMessageId,
+      step: 1,
+      index: currentIndex,
+      version: 0,
+      type: "function_call",
+      value: {
+        type: "function_call",
+        value: {
+          id: functionCallId,
+          name: "test_tool",
+          arguments: "{}",
+        },
+      },
+    });
+
+    // Create a tool configuration
+    const toolConfiguration: LightMCPToolConfigurationType = {
+      id: 1,
+      sId: generateRandomModelSId(),
+      type: "mcp_configuration",
+      name: "test_tool",
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      mcpServerViewId: "test-server-view",
+      dustAppConfiguration: null,
+      secretName: null,
+      internalMCPServerId: null,
+      availability: "auto",
+      permission: "low",
+      toolServerId: "test-server",
+      retryPolicy: "no_retry",
+      originalName: "test_tool",
+      mcpServerName: "test_server",
+    };
+
+    // Create MCP action
+    const action = await AgentMCPActionModel.create({
+      workspaceId: workspace.id,
+      agentMessageId,
+      stepContentId: stepContent.id,
+      mcpServerConfigurationId: generateRandomModelSId(),
+      version: 0,
+      status,
+      citationsAllocated: 0,
+      augmentedInputs: {},
+      toolConfiguration,
+      stepContext: {
+        citationsCount: 0,
+        citationsOffset: 0,
+        resumeState: null,
+        retrievalTopK: 10,
+        websearchResultCount: 5,
+      },
+    });
+
+    const actionSId = AgentMCPActionResource.modelIdToSId({
+      id: action.id,
+      workspaceId: workspace.id,
+    });
+
+    return { action, actionSId, stepContent };
+  }
+
+  describe("authorization", () => {
+    it("should return error when user is not authorized to validate action", async () => {
+      // Create another user who will try to validate
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "user",
+      });
+      const otherUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      // Create a user message and agent message as the original user
+      const { messageRow } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Test message",
+      });
+
+      // Create an agent message as a response
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        { name: "Test Agent" }
+      );
+
+      const agentMessageRow = await AgentMessageModel.create({
+        workspaceId: workspace.id,
+        status: "created",
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: 0,
+        skipToolsValidation: false,
+      });
+
+      const agentMessageMessage = await MessageModel.create({
+        workspaceId: workspace.id,
+        sId: generateRandomModelSId(),
+        conversationId: conversation.id,
+        rank: 1,
+        parentId: messageRow.id,
+        agentMessageId: agentMessageRow.id,
+      });
+
+      // Create a blocked action
+      const { actionSId } = await createBlockedAction({
+        agentMessageId: agentMessageRow.id,
+      });
+
+      // Get the conversation resource
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      // Try to validate as a different user (should fail)
+      const result = await validateAction(
+        otherUserAuth,
+        conversationResource!,
+        {
+          actionId: actionSId,
+          approvalState: "approved",
+          messageId: agentMessageMessage.sId,
+        }
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("unauthorized");
+      }
+    });
+
+    it("should successfully validate action when user is authorized", async () => {
+      // Create a user message and agent message
+      const { messageRow } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Test message",
+      });
+
+      // Create an agent message as a response
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        { name: "Test Agent" }
+      );
+
+      const agentMessageRow = await AgentMessageModel.create({
+        workspaceId: workspace.id,
+        status: "created",
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: 0,
+        skipToolsValidation: false,
+      });
+
+      const agentMessageMessage = await MessageModel.create({
+        workspaceId: workspace.id,
+        sId: generateRandomModelSId(),
+        conversationId: conversation.id,
+        rank: 1,
+        parentId: messageRow.id,
+        agentMessageId: agentMessageRow.id,
+      });
+
+      // Create a blocked action
+      const { action, actionSId } = await createBlockedAction({
+        agentMessageId: agentMessageRow.id,
+      });
+
+      // Get the conversation resource
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      // Validate as the same user (should succeed)
+      const result = await validateAction(auth, conversationResource!, {
+        actionId: actionSId,
+        approvalState: "approved",
+        messageId: agentMessageMessage.sId,
+      });
+
+      expect(result.isOk()).toBe(true);
+
+      // Verify action status was updated
+      await action.reload();
+      expect(action.status).toBe("ready_allowed_explicitly");
+
+      // Verify agent loop was launched
+      expect(vi.mocked(launchAgentLoopWorkflow)).toHaveBeenCalled();
+    });
+  });
+
+  describe("error cases", () => {
+    it("should return error when action is not found", async () => {
+      // Create a user message and agent message
+      const { messageRow } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Test message",
+      });
+
+      // Create an agent message as a response
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        { name: "Test Agent" }
+      );
+
+      const agentMessageRow = await AgentMessageModel.create({
+        workspaceId: workspace.id,
+        status: "created",
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: 0,
+        skipToolsValidation: false,
+      });
+
+      const agentMessageMessage = await MessageModel.create({
+        workspaceId: workspace.id,
+        sId: generateRandomModelSId(),
+        conversationId: conversation.id,
+        rank: 1,
+        parentId: messageRow.id,
+        agentMessageId: agentMessageRow.id,
+      });
+
+      // Get the conversation resource
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      // Try to validate a non-existent action
+      const result = await validateAction(auth, conversationResource!, {
+        actionId: "non-existent-action-id",
+        approvalState: "approved",
+        messageId: agentMessageMessage.sId,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("action_not_found");
+      }
+    });
+
+    it("should return error when action is not in blocked state", async () => {
+      // Create a user message and agent message
+      const { messageRow } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Test message",
+      });
+
+      // Create an agent message as a response
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        { name: "Test Agent" }
+      );
+
+      const agentMessageRow = await AgentMessageModel.create({
+        workspaceId: workspace.id,
+        status: "created",
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: 0,
+        skipToolsValidation: false,
+      });
+
+      const agentMessageMessage = await MessageModel.create({
+        workspaceId: workspace.id,
+        sId: generateRandomModelSId(),
+        conversationId: conversation.id,
+        rank: 1,
+        parentId: messageRow.id,
+        agentMessageId: agentMessageRow.id,
+      });
+
+      // Create an action that is NOT blocked (e.g., already succeeded)
+      const { actionSId } = await createBlockedAction({
+        agentMessageId: agentMessageRow.id,
+        status: "succeeded", // Not blocked
+      });
+
+      // Get the conversation resource
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      // Try to validate an action that is not blocked
+      const result = await validateAction(auth, conversationResource!, {
+        actionId: actionSId,
+        approvalState: "approved",
+        messageId: agentMessageMessage.sId,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("action_not_blocked");
+      }
+    });
+  });
+
+  describe("approval states", () => {
+    it("should handle 'rejected' approval state", async () => {
+      // Create a user message and agent message
+      const { messageRow } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Test message",
+      });
+
+      // Create an agent message as a response
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        { name: "Test Agent" }
+      );
+
+      const agentMessageRow = await AgentMessageModel.create({
+        workspaceId: workspace.id,
+        status: "created",
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: 0,
+        skipToolsValidation: false,
+      });
+
+      const agentMessageMessage = await MessageModel.create({
+        workspaceId: workspace.id,
+        sId: generateRandomModelSId(),
+        conversationId: conversation.id,
+        rank: 1,
+        parentId: messageRow.id,
+        agentMessageId: agentMessageRow.id,
+      });
+
+      // Create a blocked action
+      const { action, actionSId } = await createBlockedAction({
+        agentMessageId: agentMessageRow.id,
+      });
+
+      // Get the conversation resource
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      // Reject the action
+      const result = await validateAction(auth, conversationResource!, {
+        actionId: actionSId,
+        approvalState: "rejected",
+        messageId: agentMessageMessage.sId,
+      });
+
+      expect(result.isOk()).toBe(true);
+
+      // Verify action status was updated to denied
+      await action.reload();
+      expect(action.status).toBe("denied");
+    });
+  });
+
+  describe("agent loop launching", () => {
+    it("should not launch agent loop when there are remaining blocked actions", async () => {
+      // Create a user message and agent message
+      const { messageRow } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Test message",
+      });
+
+      // Create an agent message as a response
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        { name: "Test Agent" }
+      );
+
+      const agentMessageRow = await AgentMessageModel.create({
+        workspaceId: workspace.id,
+        status: "created",
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: 0,
+        skipToolsValidation: false,
+      });
+
+      const agentMessageMessage = await MessageModel.create({
+        workspaceId: workspace.id,
+        sId: generateRandomModelSId(),
+        conversationId: conversation.id,
+        rank: 1,
+        parentId: messageRow.id,
+        agentMessageId: agentMessageRow.id,
+      });
+
+      // Create two blocked actions for the same message
+      const { actionSId: actionSId1 } = await createBlockedAction({
+        agentMessageId: agentMessageRow.id,
+      });
+      await createBlockedAction({
+        agentMessageId: agentMessageRow.id,
+      });
+
+      // Get the conversation resource
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      // Validate only the first action
+      const result = await validateAction(auth, conversationResource!, {
+        actionId: actionSId1,
+        approvalState: "approved",
+        messageId: agentMessageMessage.sId,
+      });
+
+      expect(result.isOk()).toBe(true);
+
+      // Agent loop should NOT be launched because there's still a blocked action
+      expect(vi.mocked(launchAgentLoopWorkflow)).not.toHaveBeenCalled();
     });
   });
 });

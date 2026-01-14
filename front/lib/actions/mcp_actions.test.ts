@@ -294,7 +294,9 @@ describe("makeToolsWithStakesAndTimeout", () => {
         check_availability: "never_ask",
         get_user_timezones: "never_ask",
       },
+      toolsRetryPolicies: undefined,
       serverTimeoutMs: undefined,
+      toolsArgumentsRequiringApproval: undefined,
     });
   });
 
@@ -336,6 +338,7 @@ describe("makeToolsWithStakesAndTimeout", () => {
       },
       toolsRetryPolicies: undefined,
       serverTimeoutMs: undefined,
+      toolsArgumentsRequiringApproval: undefined,
     });
   });
 

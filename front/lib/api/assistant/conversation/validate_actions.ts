@@ -6,7 +6,11 @@ import {
   getMCPApprovalStateFromUserApprovalState,
   isMCPApproveExecutionEvent,
 } from "@app/lib/actions/mcp";
-import { setUserAlwaysApprovedTool } from "@app/lib/actions/tool_status";
+import {
+  extractArgRequiringApprovalValues,
+  setUserAlwaysApprovedTool,
+} from "@app/lib/actions/tool_status";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getRelatedContentFragments } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
@@ -19,6 +23,7 @@ import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
+  AgentMessageModel,
   MentionModel,
   MessageModel,
   UserMessageModel,
@@ -188,11 +193,44 @@ export async function validateAction(
   );
 
   if (approvalState === "always_approved" && user) {
-    await setUserAlwaysApprovedTool({
-      user,
-      mcpServerId: action.toolConfiguration.toolServerId,
-      functionCallName: action.functionCallName,
-    });
+    switch (action.toolConfiguration.permission) {
+      // TODO(adrien): move "low" to createToolApproval storage
+      case "low":
+        await setUserAlwaysApprovedTool({
+          user,
+          mcpServerId: action.toolConfiguration.toolServerId,
+          functionCallName: action.functionCallName,
+        });
+        break;
+      case "medium":
+        const agentMessage = await AgentMessageModel.findOne({
+          where: {
+            workspaceId: owner.id,
+            id: action.agentMessageId,
+          },
+        });
+        if (
+          agentMessage &&
+          isLightServerSideMCPToolConfiguration(action.toolConfiguration)
+        ) {
+          const argumentsRequiringApproval =
+            action.toolConfiguration.argumentsRequiringApproval ?? [];
+          const argsAndValues = extractArgRequiringApprovalValues(
+            argumentsRequiringApproval,
+            action.augmentedInputs
+          );
+
+          await user.createToolApproval(auth, {
+            mcpServerId: action.toolConfiguration.toolServerId,
+            toolName: action.functionCallName,
+            agentId: agentMessage.agentConfigurationId,
+            argsAndValues,
+          });
+        }
+        break;
+      default:
+        break;
+    }
   }
 
   if (updatedCount === 0) {
