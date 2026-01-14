@@ -8,13 +8,10 @@ This runbook provides step-by-step instructions for creating new internal MCP se
 
 ### Minimal Files Needed
 
-1. `lib/actions/mcp_internal_actions/constants.ts` - Add server to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES` and `INTERNAL_MCP_SERVERS`
-2. `lib/actions/mcp_internal_actions/servers/{provider}.ts` - Server implementation with tools
-3. `lib/actions/mcp_internal_actions/servers/index.ts` - Register server in switch statement
-
-If the server code does not fit in one file, it can be split into multiple files.
-In that case, they should be placed into a folder that contains a file `index.ts` from where
-the `createServer` function that creates the server will be default exported.
+1. `lib/actions/mcp_internal_actions/servers/{provider}/metadata.ts` - Tool schemas, server info, and tool stakes
+2. `lib/actions/mcp_internal_actions/servers/{provider}/index.ts` - Server implementation with tools
+3. `lib/actions/mcp_internal_actions/constants.ts` - Import metadata and add server to registries
+4. `lib/actions/mcp_internal_actions/servers/index.ts` - Register server in switch statement
 
 ### OAuth Requirements (if the platform requires OAuth)
 
@@ -85,8 +82,10 @@ For each internal MCP server, you'll create:
 ```
 front/lib/actions/mcp_internal_actions/servers/{provider}/
 ├── index.ts                    # Main server with tool definitions
-├── {provider}_api_helper.ts    # API client and helper functions
+├── metadata.ts                 # Zod schemas, tool definitions, server info, tool stakes
+├── {provider}_api_helper.ts    # API client and helper functions (optional)
 ├── {provider}_utils.ts         # Utility functions (optional)
+├── rendering.ts                # Response rendering helpers (optional)
 └── types.ts                    # TypeScript types (optional)
 ```
 
@@ -94,73 +93,108 @@ front/lib/actions/mcp_internal_actions/servers/{provider}/
 
 ## Step-by-Step Implementation
 
-### Step 1: Add Server to Constants
+### Step 1: Create Metadata File
 
-Edit `lib/actions/mcp_internal_actions/constants.ts`:
+Create `lib/actions/mcp_internal_actions/servers/{provider}/metadata.ts`.
+
+This file centralizes all metadata for the server: Zod schemas, tool definitions, server info, and tool stakes.
 
 ```typescript
-// 1. Add to AVAILABLE_INTERNAL_MCP_SERVER_NAMES array
-export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
-  // ... existing servers
-  "your_provider", // <- Add here (alphabetically sorted helps)
-  // ... more servers
-] as const;
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
-// 2. Add to INTERNAL_MCP_SERVERS object
-export const INTERNAL_MCP_SERVERS = {
-  // ... existing servers
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { MCPToolType } from "@app/lib/api/mcp";
+import type { MCPOAuthUseCase } from "@app/types";
 
-  your_provider: {
-    id: 99, // Use a unique ID - check existing IDs and pick the next available
-    availability: "manual", // or "auto" for always-available servers
-    allowMultipleInstances: true, // true for OAuth-based servers (multiple connections)
-    isRestricted: undefined, // or a function for feature flag gating
-    isPreview: false, // true if this is a preview feature
-    tools_stakes: {
-      // Read operations - typically "never_ask"
-      get_item: "never_ask",
-      list_items: "never_ask",
-      search_items: "never_ask",
+// Tool name constant for monitoring
+export const YOUR_PROVIDER_TOOL_NAME = "your_provider" as const;
 
-      // Write operations - "low" or "high" based on impact
-      create_item: "low",
-      update_item: "low",
-      delete_item: "high",
-    },
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    serverInfo: {
-      name: "your_provider",
-      version: "1.0.0",
-      description: "Short description of what this integration does.",
-      authorization: {
-        provider: "your_provider" as const, // Must match OAuth provider name
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-        // Optional: scope: "specific:scope" as const,
-      },
-      icon: "YourProviderLogo", // Must exist in resources_icons.tsx
-      documentationUrl: "https://docs.dust.tt/docs/your-provider", // Optional
-      instructions: null, // Optional server-level instructions
-    },
-  },
+// =============================================================================
+// Zod Schemas - Used by index.ts for runtime validation
+// =============================================================================
 
-  // ... more servers
+export const listItemsSchema = {
+  query: z.string().describe("Search query to filter items").optional(),
+  limit: z
+    .number()
+    .min(1)
+    .max(100)
+    .describe("Maximum number of items to return (1-100)")
+    .optional(),
 };
+
+export const getItemSchema = {
+  item_id: z.string().describe("The unique identifier of the item to retrieve"),
+};
+
+export const createItemSchema = {
+  name: z.string().describe("Name of the item to create"),
+  description: z.string().describe("Description of the item").optional(),
+};
+
+// =============================================================================
+// Tool Definitions - Used by constants.ts for static metadata
+// =============================================================================
+
+export const YOUR_PROVIDER_TOOLS: MCPToolType[] = [
+  {
+    name: "list_items",
+    description: "List items from Your Provider with optional filtering.",
+    inputSchema: zodToJsonSchema(z.object(listItemsSchema)) as JSONSchema,
+  },
+  {
+    name: "get_item",
+    description: "Get details of a specific item by its ID.",
+    inputSchema: zodToJsonSchema(z.object(getItemSchema)) as JSONSchema,
+  },
+  {
+    name: "create_item",
+    description: "Create a new item in Your Provider.",
+    inputSchema: zodToJsonSchema(z.object(createItemSchema)) as JSONSchema,
+  },
+];
+
+// =============================================================================
+// Server Info - Server metadata for the constants registry
+// =============================================================================
+
+export const YOUR_PROVIDER_SERVER_INFO = {
+  name: "your_provider" as const,
+  version: "1.0.0",
+  description: "Short description of what this integration does.",
+  authorization: {
+    provider: "your_provider" as const, // Must match OAuth provider name
+    supported_use_cases: [
+      "platform_actions",
+      "personal_actions",
+    ] as MCPOAuthUseCase[],
+    // Optional: scope: "specific:scope" as const,
+  },
+  // For servers without OAuth, use: authorization: null,
+  icon: "YourProviderLogo" as const, // Must exist in resources_icons.tsx
+  documentationUrl: "https://docs.dust.tt/docs/your-provider", // Optional, can be null
+  instructions: null, // Optional server-level instructions
+};
+
+// =============================================================================
+// Tool Stakes - Default permission levels for each tool
+// =============================================================================
+
+export const YOUR_PROVIDER_TOOL_STAKES = {
+  // Read operations - typically "never_ask"
+  list_items: "never_ask",
+  get_item: "never_ask",
+
+  // Write operations - "low" or "high" based on impact
+  create_item: "low",
+  update_item: "low",
+  delete_item: "high",
+} as const satisfies Record<string, MCPToolStakeLevelType>;
 ```
 
-**Server Configuration Properties:**
-
-| Property                 | Description                                                                                               |
-| ------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `id`                     | Unique stable ID - never change after deployment                                                          |
-| `availability`           | `"manual"` (user adds), `"auto"` (always available), `"auto_hidden_builder"` (auto but hidden in builder) |
-| `allowMultipleInstances` | `true` for OAuth-based (multiple connections), `false` for singleton servers                              |
-| `isRestricted`           | Function to check feature flags/plan restrictions, or `undefined`                                         |
-| `isPreview`              | `true` for beta features                                                                                  |
-| `tools_stakes`           | Map of tool names to stake levels (`"never_ask"`, `"low"`, `"high"`)                                      |
-| `authorization`          | OAuth provider configuration                                                                              |
-
-### Step 2: Create API Helper
+### Step 2: Create API Helper (Optional but Recommended)
 
 Create `lib/actions/mcp_internal_actions/servers/{provider}/{provider}_api_helper.ts`.
 
@@ -205,32 +239,156 @@ Create `lib/actions/mcp_internal_actions/servers/{provider}/index.ts`.
 This is the main file that defines the MCP server and its tools. It should:
 
 1. **Export a default function** that creates and returns the McpServer
-2. **Use `makeInternalMCPServer("your_provider")`** to create the server instance
-3. **Register tools using `server.tool()`** with:
+2. **Import schemas from metadata.ts** for tool parameter validation
+3. **Use `makeInternalMCPServer("your_provider")`** to create the server instance
+4. **Register tools using `server.tool()`** with:
    - Tool name (must match the key in `tools_stakes`)
    - Description (clear, actionable, explains what the tool does)
-   - Zod schema for input parameters (with `.describe()` for each field)
+   - The imported Zod schema from metadata.ts
    - Async handler function that calls API helpers and returns results
+
+```typescript
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  createItemSchema,
+  getItemSchema,
+  listItemsSchema,
+  YOUR_PROVIDER_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/your_provider/metadata";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import { Err, Ok } from "@app/types";
+
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
+  const server = makeInternalMCPServer("your_provider");
+
+  server.tool(
+    "list_items",
+    "List items from Your Provider with optional filtering.",
+    listItemsSchema,
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: YOUR_PROVIDER_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ query, limit }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        // Call your API helper here
+        // const result = await listItems(accessToken, { query, limit });
+
+        return new Ok([
+          {
+            type: "text",
+            text: "Found X items...",
+          },
+        ]);
+      }
+    )
+  );
+
+  // Register more tools...
+
+  return server;
+}
+
+export default createServer;
+```
 
 **Tool handler pattern:**
 
 - Use the `withAuth` wrapper for OAuth-protected tools
 - Call API helper functions
-- Return `{ isError: boolean, content: [{ type: "text", text: "..." }] }`
+- Return `new Ok([{ type: "text", text: "..." }])` for success
+- Return `new Err(new MCPError("..."))` for errors
 - Provide a summary message first, then the data
 
-See `servers/jira/index.ts` or `servers/notion.ts` for complete examples with multiple tools.
+See `servers/jira/index.ts` or `servers/vanta/index.ts` for complete examples with multiple tools.
 
-### Step 5: Register Server in Index
+### Step 5: Add Server to Constants
+
+Edit `lib/actions/mcp_internal_actions/constants.ts`:
+
+```typescript
+// 1. Add imports at the top of the file (alphabetically sorted)
+import {
+  YOUR_PROVIDER_SERVER_INFO,
+  YOUR_PROVIDER_TOOL_STAKES,
+  YOUR_PROVIDER_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/your_provider/metadata";
+
+// 2. Add to AVAILABLE_INTERNAL_MCP_SERVER_NAMES array
+export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
+  // ... existing servers (alphabetically sorted)
+  "your_provider",
+  // ... more servers
+] as const;
+
+// 3. Add to INTERNAL_MCP_SERVERS object
+export const INTERNAL_MCP_SERVERS = {
+  // ... existing servers
+
+  your_provider: {
+    id: 99, // Use a unique ID - check existing IDs and pick the next available
+    availability: "manual", // or "auto" for always-available servers
+    allowMultipleInstances: true, // true for OAuth-based servers (multiple connections)
+    isRestricted: undefined, // or a function for feature flag gating
+    isPreview: false, // true if this is a preview feature
+    tools_stakes: YOUR_PROVIDER_TOOL_STAKES, // imported from metadata.ts
+    tools: YOUR_PROVIDER_TOOLS, // imported from metadata.ts
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: YOUR_PROVIDER_SERVER_INFO, // imported from metadata.ts
+  },
+
+  // ... more servers
+};
+```
+
+**Server Configuration Properties:**
+
+| Property                 | Description                                                                                               |
+| ------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `id`                     | Unique stable ID - never change after deployment                                                          |
+| `availability`           | `"manual"` (user adds), `"auto"` (always available), `"auto_hidden_builder"` (auto but hidden in builder) |
+| `allowMultipleInstances` | `true` for OAuth-based (multiple connections), `false` for singleton servers                              |
+| `isRestricted`           | Function to check feature flags/plan restrictions, or `undefined`                                         |
+| `isPreview`              | `true` for beta features                                                                                  |
+| `tools_stakes`           | Imported from metadata.ts                                                                                 |
+| `tools`                  | Imported from metadata.ts                                                                                 |
+| `serverInfo`             | Imported from metadata.ts                                                                                 |
+
+### Step 6: Register Server in Index
 
 Edit `lib/actions/mcp_internal_actions/servers/index.ts`:
 
-1. **Add import** at the top of the file
+1. **Add import** at the top of the file (alphabetically sorted with other imports)
+
+```typescript
+import { default as yourProviderServer } from "@app/lib/actions/mcp_internal_actions/servers/your_provider";
+```
+
 2. **Add a case** in the `getInternalMCPServer` switch statement
+
+```typescript
+case "your_provider":
+  return yourProviderServer(auth, agentLoopContext);
+```
 
 The switch statement must be exhaustive - TypeScript will error if you add the server name to constants but forget to add the case here.
 
-### Step 6: Icon
+### Step 7: Icon
 
 For the icon, use an existing similar icon temporarily (e.g., `ActionDocumentTextIcon` or a similar provider's logo).
 
@@ -405,6 +563,7 @@ Study these existing implementations for patterns:
 - **Simple OAuth integration**: `servers/hubspot/` - Shows basic OAuth with many CRUD operations
 - **Complex API with pagination**: `servers/jira/` - GraphQL-like queries, pagination, transitions
 - **Multiple auth use cases**: `servers/github/` - Platform and personal actions
+- **Clean metadata structure**: `servers/vanta/` - Good example of metadata.ts organization
 
 ---
 
@@ -412,11 +571,12 @@ Study these existing implementations for patterns:
 
 Before marking implementation complete:
 
-- [ ] Server added to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES`
-- [ ] Server configuration added to `INTERNAL_MCP_SERVERS`
+- [ ] `metadata.ts` created with Zod schemas, tools array, server info, and tool stakes
+- [ ] `index.ts` created with server implementation importing from metadata.ts
+- [ ] Server added to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES` in constants.ts
+- [ ] Server configuration added to `INTERNAL_MCP_SERVERS` using imported metadata
 - [ ] Server registered in `servers/index.ts` switch statement
-- [ ] API helper functions created with proper error handling
-- [ ] All tools defined with appropriate stakes
+- [ ] API helper functions created with proper error handling (if needed)
 - [ ] Response pruning implemented (only return the necessary fields)
 - [ ] OAuth provider configured (if needed)
 - [ ] Temporary icon set (request final icon from designer)
