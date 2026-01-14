@@ -168,7 +168,7 @@ import {
   SLACK_BOT_TOOL_STAKES,
   SLACK_BOT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack_bot/metadata";
-import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
+import { SLIDESHOW_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/metadata";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -664,15 +664,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "slideshow",
-      version: "0.1.0",
-      description: "Create interactive slideshows.",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: SLIDESHOW_INSTRUCTIONS,
-    },
+    serverInfo: SLIDESHOW_SERVER_INFO,
   },
   deep_dive: {
     id: 29,

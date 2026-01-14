@@ -8,11 +8,12 @@ import {
   VIZ_STYLING_GUIDELINES,
   VIZ_USE_FILE_EXAMPLES,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/viz/instructions";
+
 import {
   CREATE_SLIDESHOW_FILE_TOOL_NAME,
   EDIT_SLIDESHOW_FILE_TOOL_NAME,
   RETRIEVE_SLIDESHOW_FILE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/slideshow/types";
+} from "./types";
 
 export const SLIDESHOW_INSTRUCTIONS = `
 ## CREATING SLIDESHOWS WITH INTERAXCTIVE CONTENT

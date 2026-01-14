@@ -4,11 +4,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  CREATE_SLIDESHOW_FILE_TOOL_NAME,
-  EDIT_SLIDESHOW_FILE_TOOL_NAME,
-  RETRIEVE_SLIDESHOW_FILE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/slideshow/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -25,6 +20,12 @@ import {
   INTERACTIVE_CONTENT_FILE_FORMATS,
   Ok,
 } from "@app/types";
+
+import {
+  CREATE_SLIDESHOW_FILE_TOOL_NAME,
+  EDIT_SLIDESHOW_FILE_TOOL_NAME,
+  RETRIEVE_SLIDESHOW_FILE_TOOL_NAME,
+} from "./types";
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
