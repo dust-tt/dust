@@ -117,25 +117,38 @@ const TriggerStatusSchema = t.union([
   t.literal("downgraded"),
 ]);
 
+// Note: Both enabled and status are optional for backward compatibility (BACK12).
+// Old clients send enabled: boolean, new clients send status: TriggerStatus.
+// The API handler should convert enabled to status using: status ?? (enabled ? "enabled" : "disabled") ?? "enabled"
 export const TriggerSchema = t.union([
-  t.type({
-    status: TriggerStatusSchema,
-    name: t.string,
-    kind: t.literal("schedule"),
-    customPrompt: t.string,
-    naturalLanguageDescription: t.union([t.string, t.null]),
-    configuration: ScheduleConfigSchema,
-    editor: t.union([t.number, t.undefined]),
-  }),
-  t.type({
-    status: TriggerStatusSchema,
-    name: t.string,
-    kind: t.literal("webhook"),
-    customPrompt: t.string,
-    naturalLanguageDescription: t.union([t.string, t.null]),
-    configuration: WebhookConfigSchema,
-    webhookSourceViewSId: t.string,
-    executionPerDayLimitOverride: t.number,
-    editor: t.union([t.number, t.undefined]),
-  }),
+  t.intersection([
+    t.type({
+      name: t.string,
+      kind: t.literal("schedule"),
+      customPrompt: t.string,
+      naturalLanguageDescription: t.union([t.string, t.null]),
+      configuration: ScheduleConfigSchema,
+      editor: t.union([t.number, t.undefined]),
+    }),
+    t.partial({
+      status: TriggerStatusSchema,
+      enabled: t.boolean, // deprecated, for backward compatibility
+    }),
+  ]),
+  t.intersection([
+    t.type({
+      name: t.string,
+      kind: t.literal("webhook"),
+      customPrompt: t.string,
+      naturalLanguageDescription: t.union([t.string, t.null]),
+      configuration: WebhookConfigSchema,
+      webhookSourceViewSId: t.string,
+      executionPerDayLimitOverride: t.number,
+      editor: t.union([t.number, t.undefined]),
+    }),
+    t.partial({
+      status: TriggerStatusSchema,
+      enabled: t.boolean, // deprecated, for backward compatibility
+    }),
+  ]),
 ]);
