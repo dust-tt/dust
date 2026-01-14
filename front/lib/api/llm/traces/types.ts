@@ -40,6 +40,28 @@ export type LLMTraceContext = LLMTraceContextBase & {
 };
 
 /**
+ * Optional trace customization for input/output display.
+ * Passed separately from context to keep tagging fields type-safe.
+ */
+export interface LLMTraceCustomization {
+  /**
+   * Transform the conversation for trace input display.
+   * Return the value to set as trace input, or undefined to use default (full conversation).
+   */
+  getTraceInput?: (
+    conversation: ModelConversationTypeMultiActions
+  ) => string | undefined;
+
+  /**
+   * Transform the LLM output for trace display.
+   * Return the value to set as trace output, or undefined to skip.
+   */
+  getTraceOutput?: (
+    output: LLMTraceOutput
+  ) => LLMTraceOutput | string | undefined;
+}
+
+/**
  * Input parameters for an LLM call
  */
 export interface LLMTraceInput {

@@ -52,7 +52,7 @@ import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activiti
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
-import { assertNever, removeNulls } from "@app/types";
+import { assertNever, isTextContent, removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
 const MAX_AUTO_RETRY = 3;
@@ -430,6 +430,19 @@ export async function runModelActivity(
     reasoningEffort: agentConfiguration.model.reasoningEffort,
     responseFormat: agentConfiguration.model.responseFormat,
     context: traceContext,
+    // Custom trace input: show only the last user message instead of full conversation.
+    getTraceInput: (conv) => {
+      const lastUserMessage = [...conv.messages]
+        .reverse()
+        .find((msg) => msg.role === "user");
+      return lastUserMessage?.content
+        .filter(isTextContent)
+        .map((item) => item.text)
+        .join("\n");
+    },
+    // Custom trace output: only set on final call (no tool calls, has content).
+    getTraceOutput: (output) =>
+      !output.toolCalls?.length && output.content ? output.content : undefined,
   });
 
   // Should not happen

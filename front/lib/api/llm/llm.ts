@@ -8,7 +8,10 @@ import {
   createLLMTraceId,
   LLMTraceBuffer,
 } from "@app/lib/api/llm/traces/buffer";
-import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
+import type {
+  LLMTraceContext,
+  LLMTraceCustomization,
+} from "@app/lib/api/llm/traces/types";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type {
@@ -22,13 +25,12 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type {
-  ModelConversationTypeMultiActions,
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES, isTextContent } from "@app/types";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -43,6 +45,8 @@ export abstract class LLM {
   protected readonly authenticator: Authenticator;
   protected readonly context?: LLMTraceContext;
   protected readonly traceId: LLMTraceId;
+  protected readonly getTraceInput?: LLMTraceCustomization["getTraceInput"];
+  protected readonly getTraceOutput?: LLMTraceCustomization["getTraceOutput"];
 
   protected constructor(
     auth: Authenticator,
@@ -50,6 +54,8 @@ export abstract class LLM {
       bypassFeatureFlag = false,
       context,
       clientId,
+      getTraceInput,
+      getTraceOutput,
       modelId,
       reasoningEffort = "none",
       responseFormat = null,
@@ -71,6 +77,8 @@ export abstract class LLM {
     this.authenticator = auth;
     this.context = context;
     this.traceId = createLLMTraceId(randomUUID());
+    this.getTraceInput = getTraceInput;
+    this.getTraceOutput = getTraceOutput;
   }
 
   private async *completeStream({
@@ -135,12 +143,11 @@ export abstract class LLM {
       { asType: "generation" }
     );
 
-    // For agent_conversation, extract the last user message text as trace input.
-    // For other operation types, keep the full conversation.
-    const traceInput =
-      this.context.operationType === "agent_conversation"
-        ? this.extractLastUserMessageText(conversation)
-        : [{ role: "system", content: prompt }, ...conversation.messages];
+    // Use custom trace input if provided, otherwise use the full conversation.
+    const traceInput = this.getTraceInput?.(conversation) ?? [
+      { role: "system", content: prompt },
+      ...conversation.messages,
+    ];
 
     generation.updateTrace({
       name: startCase(this.context.operationType),
@@ -260,16 +267,14 @@ export abstract class LLM {
         output: { ...rest },
       });
 
-      // For agent_conversation, only set trace output on final call (no tool calls, has content).
-      // This ensures the trace shows the actual agent answer, not intermediate tool calls.
-      const hasToolCalls = (rest.toolCalls?.length ?? 0) > 0;
-      const isAgentConversation =
-        this.context.operationType === "agent_conversation";
-
-      if (!isAgentConversation) {
+      // Use custom trace output transformer if provided, otherwise use the full output.
+      if (this.getTraceOutput) {
+        const traceOutput = this.getTraceOutput(rest);
+        if (traceOutput) {
+          generation.updateTrace({ output: traceOutput });
+        }
+      } else {
         generation.updateTrace({ output: { ...rest } });
-      } else if (!hasToolCalls && rest.content) {
-        generation.updateTrace({ output: rest.content });
       }
 
       if (tokenUsage) {
@@ -316,27 +321,6 @@ export abstract class LLM {
 
       break;
     }
-  }
-
-  /**
-   * Extracts the text content from the last user msg of a conversation.
-   */
-  private extractLastUserMessageText(
-    conversation: ModelConversationTypeMultiActions
-  ): string {
-    const lastUserMessage = conversation.messages
-      .slice()
-      .reverse()
-      .find((msg) => msg.role === "user");
-
-    if (!lastUserMessage) {
-      return "";
-    }
-
-    return lastUserMessage.content
-      .filter(isTextContent)
-      .map((item) => item.text)
-      .join("\n");
   }
 
   /**
