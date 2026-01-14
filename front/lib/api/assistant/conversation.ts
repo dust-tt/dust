@@ -1583,7 +1583,7 @@ async function checkMessagesLimit(
     return new Err({
       status_code: 403,
       api_error: {
-        type: "plan_message_limit_exceeded",
+        type: messageLimit.limitType,
         message:
           messageLimit.limitType === "plan_message_limit_exceeded"
             ? "The message limit for this plan has been exceeded."
