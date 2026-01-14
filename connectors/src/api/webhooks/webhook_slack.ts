@@ -162,7 +162,10 @@ const _webhookSlackAPIHandler = async (
             // Message from an actual user (a human)
             await handleDeprecatedChatBot(req, res, logger);
             break;
-          } else if (event.channel_type === "channel") {
+          } else if (
+            event.channel_type === "channel" ||
+            event.channel_type === "group"
+          ) {
             if (!event.channel) {
               return apiError(req, res, {
                 api_error: {
