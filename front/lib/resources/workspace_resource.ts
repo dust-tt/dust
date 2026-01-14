@@ -240,19 +240,19 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         logger.info(
           {
             domain,
-            workspaceId: existingDomainInRegion.workspace.id,
+            workspaceId: existingDomainInRegion.workspaceId,
           },
           "Dropping existing domain"
         );
 
-        const domainWorkspace = await WorkspaceResource.fetchById(
-          existingDomainInRegion.workspace.sId
-        );
+        const [domainWorkspace] = await WorkspaceResource.fetchByModelIds([
+          existingDomainInRegion.workspaceId,
+        ]);
 
         if (!domainWorkspace) {
           return new Err(
             new Error(
-              `Failed to fetch workspace ${existingDomainInRegion.workspace.sId} while dropping domain ${domain}`
+              `Failed to fetch workspace ${existingDomainInRegion.workspaceId} while dropping domain ${domain}`
             )
           );
         }
@@ -270,7 +270,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       } else {
         return new Err(
           new Error(
-            `Domain ${domain} already exists in workspace ${existingDomainInRegion.workspace.id}`
+            `Domain ${domain} already exists in workspace ${existingDomainInRegion.workspaceId}`
           )
         );
       }
