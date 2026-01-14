@@ -22,7 +22,7 @@ async function getVerifiedDomainsForWorkspace(
 ): Promise<WorkspaceDomainType[]> {
   const ds = dataSourceConfigFromConnector(connector);
 
-  const dustAPI = getDustAPI(ds);
+  const dustAPI = getDustAPI(ds, { useInternalAPI: false });
 
   const workspaceVerifiedDomainsRes =
     await dustAPI.getWorkspaceVerifiedDomains();

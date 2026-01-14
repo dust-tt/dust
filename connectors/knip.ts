@@ -3,6 +3,7 @@ import type { KnipConfig } from "knip";
 const config: KnipConfig = {
   entry: ["migrations/*.ts", "scripts/**/*.ts", "src/admin/db.ts"],
   ignoreFiles: [
+    "src/connectors/dust_project/**",
     "src/resources/dust_project_configuration_resource.ts",
     "src/resources/dust_project_conversation_resource.ts",
     "src/lib/conversation_rendering.ts",

@@ -1105,6 +1105,7 @@ export const ConversationSchema = ConversationWithoutContentSchema.extend({
       z.array(ContentFragmentSchema),
     ])
   ),
+  url: z.string(),
 });
 
 export type ConversationWithoutContentPublicType = z.infer<
@@ -2392,21 +2393,11 @@ export type CheckUpsertQueueResponseType = z.infer<
   typeof CheckUpsertQueueResponseSchema
 >;
 
-const PostRenderConversationForDataSourceRequestBodySchema = z.object({
-  excludeActions: z.boolean().optional(),
-  excludeImages: z.boolean().optional(),
+export const GetSpaceConversationsForDataSourceResponseSchema = z.object({
+  conversations: z.array(ConversationSchema),
 });
-export type PostRenderConversationForDataSourceRequestBody = z.infer<
-  typeof PostRenderConversationForDataSourceRequestBodySchema
->;
-
-export const PostRenderConversationForDataSourceResponseSchema = z.object({
-  //TODO(project): add the proper schema for the messages
-  messages: z.array(z.unknown()),
-  tokensUsed: z.number(),
-});
-export type PostRenderConversationForDataSourceResponseType = z.infer<
-  typeof PostRenderConversationForDataSourceResponseSchema
+export type GetSpaceConversationsForDataSourceResponseType = z.infer<
+  typeof GetSpaceConversationsForDataSourceResponseSchema
 >;
 
 const GetDocumentsResponseSchema = z.object({
