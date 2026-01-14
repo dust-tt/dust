@@ -110,6 +110,11 @@ import {
   MONDAY_TOOL_STAKES,
   MONDAY_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/monday/metadata";
+import {
+  NOTION_SERVER_INFO,
+  NOTION_TOOL_STAKES,
+  NOTION_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/notion/metadata";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
@@ -384,44 +389,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      search: "never_ask",
-      retrieve_page: "never_ask",
-      retrieve_database_schema: "never_ask",
-      retrieve_database_content: "never_ask",
-      query_database: "never_ask",
-      retrieve_block: "never_ask",
-      retrieve_block_children: "never_ask",
-      fetch_comments: "never_ask",
-      list_users: "never_ask",
-      get_about_user: "never_ask",
-
-      create_page: "low",
-      insert_row_into_database: "low",
-      create_database: "low",
-      update_page: "low",
-      add_page_content: "low",
-      create_comment: "low",
-      delete_block: "low",
-      delete_page: "low",
-      update_row_database: "low",
-      update_schema_database: "low",
-    },
+    tools_stakes: NOTION_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "notion",
-      version: "1.0.0",
-      description: "Access workspace pages and databases.",
-      authorization: {
-        provider: "notion" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "NotionLogo",
-      documentationUrl: "https://docs.dust.tt/docs/notion-mcp",
-      instructions: null,
-    },
+    tools: NOTION_TOOLS,
+    serverInfo: NOTION_SERVER_INFO,
   },
   extract_data: {
     id: 12,
