@@ -167,6 +167,10 @@ import {
   PRODUCTBOARD_TOOL_STAKES,
   PRODUCTBOARD_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/productboard/metadata";
+import {
+  PROJECT_CONTEXT_MANAGEMENT_SERVER_INFO,
+  PROJECT_CONTEXT_MANAGEMENT_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/project_context_management/metadata";
 import { RUN_AGENT_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/metadata";
 import { RUN_DUST_APP_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app/metadata";
 import {
@@ -1151,20 +1155,8 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "project_context_management",
-      version: "1.0.0",
-      description:
-        "Manage files in the project context. Add, update, delete, and list project files.",
-      icon: "ActionDocumentTextIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions:
-        "Project context files are shared across all conversations in this project. " +
-        "Only text-based files are supported for adding/updating. " +
-        "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
-        "Requires write permissions on the project space.",
-    },
+    tools: PROJECT_CONTEXT_MANAGEMENT_TOOLS,
+    serverInfo: PROJECT_CONTEXT_MANAGEMENT_SERVER_INFO,
   },
   databricks: {
     id: 45,

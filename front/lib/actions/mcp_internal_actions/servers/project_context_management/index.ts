@@ -1,7 +1,14 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  ADD_PROJECT_FILE_TOOL_NAME,
+  addProjectFileSchema,
+  LIST_PROJECT_FILES_TOOL_NAME,
+  listProjectFilesSchema,
+  UPDATE_PROJECT_FILE_TOOL_NAME,
+  updateProjectFileSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/project_context_management/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -25,10 +32,6 @@ import {
   Ok,
 } from "@app/types";
 
-const LIST_PROJECT_FILES_TOOL_NAME = "list_project_files";
-const ADD_PROJECT_FILE_TOOL_NAME = "add_project_file";
-const UPDATE_PROJECT_FILE_TOOL_NAME = "update_project_file";
-
 // Use cases that are not allowed for copying.
 const DISALLOWED_USE_CASES: FileUseCase[] = [
   "avatar",
@@ -46,7 +49,7 @@ function createServer(
   server.tool(
     LIST_PROJECT_FILES_TOOL_NAME,
     "List all files in the project context. Returns file metadata including names, IDs, and content types.",
-    {},
+    listProjectFilesSchema,
     withToolLogging(
       auth,
       {
@@ -122,27 +125,7 @@ function createServer(
     ADD_PROJECT_FILE_TOOL_NAME,
     "Add a new file to the project context. The file will be available to all conversations in this project. " +
       "Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
-    {
-      fileName: z.string().describe("Name of the file to add"),
-      content: z
-        .string()
-        .optional()
-        .describe(
-          "Text content of the file (provide either this or sourceFileId)"
-        ),
-      sourceFileId: z
-        .string()
-        .optional()
-        .describe(
-          "ID of an existing file to copy content from (provide either this or content)"
-        ),
-      contentType: z
-        .string()
-        .optional()
-        .describe(
-          "MIME type (default: text/plain, or inherited from sourceFileId if provided)"
-        ),
-    },
+    addProjectFileSchema,
     withToolLogging(
       auth,
       {
@@ -324,21 +307,7 @@ function createServer(
     UPDATE_PROJECT_FILE_TOOL_NAME,
     "Update the content of an existing file in the project context. This replaces the entire file content. " +
       "Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
-    {
-      fileId: z.string().describe("ID of the file to update"),
-      content: z
-        .string()
-        .optional()
-        .describe(
-          "New text content for the file (provide either this or sourceFileId)"
-        ),
-      sourceFileId: z
-        .string()
-        .optional()
-        .describe(
-          "ID of an existing file to copy content from (provide either this or content)"
-        ),
-    },
+    updateProjectFileSchema,
     withToolLogging(
       auth,
       {
