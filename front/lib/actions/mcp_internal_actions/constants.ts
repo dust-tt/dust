@@ -163,6 +163,11 @@ import {
   SLACK_TOOL_STAKES,
   SLACK_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/metadata";
+import {
+  SLACK_BOT_SERVER_INFO,
+  SLACK_BOT_TOOL_STAKES,
+  SLACK_BOT_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/slack_bot/metadata";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
   InternalMCPServerDefinitionType,
@@ -683,44 +688,18 @@ export const INTERNAL_MCP_SERVERS = {
   },
   slack_bot: {
     id: 31,
-    availability: "manual" as const,
+    availability: "manual",
     allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("slack_bot_mcp");
     },
     isPreview: true,
-    tools_stakes: {
-      list_public_channels: "never_ask" as const,
-      list_users: "never_ask" as const,
-      get_user: "never_ask" as const,
-      read_channel_history: "never_ask" as const,
-      read_thread_messages: "never_ask" as const,
-
-      post_message: "low" as const,
-      add_reaction: "low" as const,
-      remove_reaction: "low" as const,
-    },
+    tools_stakes: SLACK_BOT_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "slack_bot",
-      version: "1.0.0",
-      description:
-        "Specialized Slack bot integration for posting messages as the workspace bot. Limited to channels where the bot has been added.",
-      authorization: {
-        provider: "slack" as const,
-        supported_use_cases: ["platform_actions"] as const,
-      },
-      icon: "SlackLogo",
-      documentationUrl: null,
-      instructions:
-        "The Slack bot must be explicitly added to a channel before it can post messages or read history. " +
-        "Direct messages and search operations are not supported. " +
-        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
-        "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
-        "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
-    },
+    tools: SLACK_BOT_TOOLS,
+    serverInfo: SLACK_BOT_SERVER_INFO,
   },
   openai_usage: {
     id: 32,
