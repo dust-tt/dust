@@ -44,6 +44,8 @@ export {
   ContentMessageInline,
 } from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
+export type { ConversationListItemProps, ReplySectionProps } from "./ConversationListItem";
+export { ConversationListItem, ReplySection } from "./ConversationListItem";
 export {
   ConversationContainer,
   ConversationMessage,
@@ -54,8 +56,6 @@ export {
   ConversationMessageContent,
   ConversationMessageTitle,
 } from "./ConversationMessages";
-export type { ConversationListItemProps, ReplySectionProps } from "./ConversationListItem";
-export { ConversationListItem, ReplySection } from "./ConversationListItem";
 export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
 export {
