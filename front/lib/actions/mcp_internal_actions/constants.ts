@@ -104,6 +104,7 @@ import {
   MICROSOFT_TEAMS_TOOL_STAKES,
   MICROSOFT_TEAMS_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/microsoft_teams/metadata";
+import { MISSING_ACTION_CATCHER_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher/metadata";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
@@ -447,15 +448,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "missing_action_catcher",
-      version: "1.0.0",
-      description: "To be used to catch errors and avoid erroring.",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: MISSING_ACTION_CATCHER_SERVER_INFO,
   },
   salesforce: {
     id: 14,
