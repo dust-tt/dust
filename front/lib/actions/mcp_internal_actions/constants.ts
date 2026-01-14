@@ -174,6 +174,11 @@ import {
   SOUND_STUDIO_TOOL_STAKES,
   SOUND_STUDIO_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/sound_studio/metadata";
+import {
+  SPEECH_GENERATOR_SERVER_INFO,
+  SPEECH_GENERATOR_TOOL_STAKES,
+  SPEECH_GENERATOR_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/speech_generator/metadata";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -734,22 +739,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      text_to_speech: "low",
-      text_to_dialogue: "low",
-    },
+    tools_stakes: SPEECH_GENERATOR_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "speech_generator",
-      version: "1.0.0",
-      description: "Turn written text into spoken audio or dialog",
-      authorization: null,
-      icon: "ActionSpeakIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    tools: SPEECH_GENERATOR_TOOLS,
+    serverInfo: SPEECH_GENERATOR_SERVER_INFO,
   },
   microsoft_drive: {
     id: 35,
