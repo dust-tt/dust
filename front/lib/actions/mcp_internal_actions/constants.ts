@@ -30,6 +30,7 @@ import {
   CONFLUENCE_TOOL_STAKES,
   CONFLUENCE_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/metadata";
+import { CONVERSATION_FILES_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files/metadata";
 import {
   GOOGLE_CALENDAR_SERVER_INFO,
   GOOGLE_CALENDAR_TOOL_STAKES,
@@ -576,15 +577,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "conversation_files",
-      version: "1.0.0",
-      description: "Include files from conversation attachments.",
-      icon: "ActionDocumentTextIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: CONVERSATION_FILES_SERVER_INFO,
   },
   slack: {
     id: 18,
