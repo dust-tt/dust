@@ -1,8 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { UniqueConstraintError } from "sequelize";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  createScheduleSchema,
+  disableScheduleSchema,
+  listSchedulesSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/schedules_management/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -51,31 +55,7 @@ function createServer(
   server.tool(
     "create_schedule",
     "Create a schedule that runs this agent at specified times.",
-    {
-      name: z
-        .string()
-        .max(255)
-        .describe(
-          "A short, descriptive name for the schedule (max 255 chars). Examples: 'Daily email summary', 'Weekly PR review', 'Morning standup prep'. Schedule name MUST be unique."
-        ),
-      schedule: z
-        .string()
-        .describe(
-          "When to run, in natural language. Examples: 'every weekday at 9am', 'every Monday morning', 'daily at 8am', 'first day of each month at noon', 'every Friday at 5pm'"
-        ),
-      prompt: z
-        .string()
-        .optional()
-        .describe(
-          "What the agent should do when the schedule runs. Examples: 'Summarize my emails from yesterday', 'Show PRs that need my review', 'Generate a weekly status report'"
-        ),
-      timezone: z
-        .string()
-        .optional()
-        .describe(
-          "IANA timezone for the schedule. Examples: 'Europe/Paris', 'America/New_York', 'Asia/Tokyo'. If not provided, uses user's timezone from context."
-        ),
-    },
+    createScheduleSchema,
     withToolLogging(
       auth,
       {
@@ -185,7 +165,7 @@ function createServer(
   server.tool(
     "list_schedules",
     "List all schedules created for this agent.",
-    {},
+    listSchedulesSchema,
     withToolLogging(
       auth,
       {
@@ -245,11 +225,7 @@ function createServer(
   server.tool(
     "disable_schedule",
     "Disable a schedule.",
-    {
-      scheduleId: z
-        .string()
-        .describe("The schedule ID (get this from list_schedules)"),
-    },
+    disableScheduleSchema,
     withToolLogging(
       auth,
       {

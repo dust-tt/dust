@@ -146,6 +146,11 @@ import {
   SALESLOFT_TOOL_STAKES,
   SALESLOFT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/salesloft/metadata";
+import {
+  SCHEDULES_MANAGEMENT_SERVER_INFO,
+  SCHEDULES_MANAGEMENT_TOOL_STAKES,
+  SCHEDULES_MANAGEMENT_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/schedules_management/metadata";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
   InternalMCPServerDefinitionType,
@@ -1219,28 +1224,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
-    tools_stakes: {
-      create_schedule: "high",
-      list_schedules: "never_ask",
-      get_schedule: "never_ask",
-      update_schedule: "high",
-      delete_schedule: "high",
-    },
+    tools_stakes: SCHEDULES_MANAGEMENT_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "schedules_management",
-      version: "1.0.0",
-      description: "Create schedules to automate recurring tasks.",
-      icon: "ActionTimeIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions:
-        "Schedules are user-specific: each user can only view and manage their own schedules. " +
-        "When a schedule triggers, it runs this agent with the specified prompt. " +
-        "Limit: 20 schedule creations per user per day.",
-    },
+    tools: SCHEDULES_MANAGEMENT_TOOLS,
+    serverInfo: SCHEDULES_MANAGEMENT_SERVER_INFO,
   },
   project_context_management: {
     id: 1021,
