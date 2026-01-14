@@ -1,44 +1,18 @@
 import type {
-  RequestInfo as UndiciRequestInfo,
-  RequestInit as UndiciRequestInit,
-  Response as UndiciResponse,
-} from "undici";
-import { fetch as undiciFetch, ProxyAgent } from "undici";
+  Connection,
+  ConnectionOptions,
+  RowStatement,
+  SnowflakeError,
+} from "snowflake-sdk";
+import snowflake from "snowflake-sdk";
 
 import type { Result } from "@app/types";
 import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
 
-// Snowflake SQL API response types
-interface SnowflakeStatementResponse {
-  resultSetMetaData: {
-    numRows: number;
-    format: string;
-    partitionInfo: Array<{ rowCount: number }>;
-    rowType: Array<{
-      name: string;
-      database: string;
-      schema: string;
-      table: string;
-      type: string;
-      nullable: boolean;
-      precision?: number;
-      scale?: number;
-      length?: number;
-    }>;
-  };
-  data: string[][];
-  code: string;
-  statementHandle: string;
-  statementStatusUrl: string;
-  sqlState: string;
-  message: string;
-}
-
-interface SnowflakeErrorResponse {
-  code: string;
-  message: string;
-  sqlState?: string;
-}
+// Snowflake returns rows as Record<string, any>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SnowflakeRow = Record<string, any>;
+type SnowflakeRows = Array<SnowflakeRow>;
 
 export interface SnowflakeColumn {
   name: string;
@@ -53,29 +27,6 @@ export interface SnowflakeQueryResult {
   columns: SnowflakeColumn[];
   rows: Record<string, unknown>[];
   rowCount: number;
-}
-
-type FetchFn = (
-  url: UndiciRequestInfo,
-  init?: UndiciRequestInit
-) => Promise<UndiciResponse>;
-
-// Always use static IP proxy for Snowflake since URLs are always *.snowflakecomputing.com
-// This allows customers to whitelist our static IP in their Snowflake network policies
-function createSnowflakeFetch(): FetchFn {
-  const proxyUrl = `http://${EnvironmentConfig.getEnvVariable(
-    "PROXY_USER_NAME"
-  )}:${EnvironmentConfig.getEnvVariable(
-    "PROXY_USER_PASSWORD"
-  )}@${EnvironmentConfig.getEnvVariable(
-    "PROXY_HOST"
-  )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`;
-
-  return (url: UndiciRequestInfo, options?: UndiciRequestInit) =>
-    undiciFetch(url, {
-      ...options,
-      dispatcher: new ProxyAgent(proxyUrl),
-    });
 }
 
 /**
@@ -120,98 +71,173 @@ function getRowStringMultiKey(
 export class SnowflakeClient {
   private account: string;
   private accessToken: string;
-  private fetch: FetchFn;
 
   constructor(account: string, accessToken: string) {
     this.account = account.trim();
     this.accessToken = accessToken;
-    this.fetch = createSnowflakeFetch();
   }
 
-  private get baseUrl(): string {
-    return `https://${this.account}.snowflakecomputing.com`;
-  }
-
-  private async executeStatement(
-    sql: string,
-    database?: string,
-    schema?: string,
-    warehouse?: string
-  ): Promise<Result<SnowflakeQueryResult, Error>> {
-    const url = `${this.baseUrl}/api/v2/statements`;
-
-    const body: Record<string, unknown> = {
-      statement: sql,
-      timeout: 60,
-      resultSetMetaData: {
-        format: "jsonv2",
-      },
-    };
-
-    if (database) {
-      body.database = database;
-    }
-    if (schema) {
-      body.schema = schema;
-    }
-    if (warehouse) {
-      body.warehouse = warehouse;
-    }
+  /**
+   * Create a Snowflake connection using OAuth authentication.
+   * Uses proxy for static IP whitelisting support.
+   */
+  private async connect(): Promise<Result<Connection, Error>> {
+    // Configure SDK to suppress verbose logging
+    snowflake.configure({
+      logLevel: "OFF",
+    });
 
     try {
-      const response = await this.fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.accessToken}`,
-          Accept: "application/json",
-          "X-Snowflake-Authorization-Token-Type": "OAUTH",
-        },
-        body: JSON.stringify(body),
+      const connectionOptions: ConnectionOptions = {
+        // Replace any `_` with `-` in the account name for nginx proxy
+        account: this.account.replace(/_/g, "-"),
+        authenticator: "OAUTH",
+        token: this.accessToken,
+
+        // Use proxy if defined to have all requests coming from the same IP
+        proxyHost: EnvironmentConfig.getEnvVariable("PROXY_HOST"),
+        proxyPort: parseInt(
+          EnvironmentConfig.getEnvVariable("PROXY_PORT") || "0"
+        ),
+        proxyUser: EnvironmentConfig.getEnvVariable("PROXY_USER_NAME"),
+        proxyPassword: EnvironmentConfig.getEnvVariable("PROXY_USER_PASSWORD"),
+      };
+
+      const connection = await new Promise<Connection>((resolve, reject) => {
+        const connectTimeoutMs = 15000;
+
+        const conn = snowflake.createConnection(connectionOptions);
+        let settled = false;
+
+        const timeout = setTimeout(() => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          try {
+            conn.destroy((err: SnowflakeError | undefined) => {
+              if (err) {
+                reject(err as unknown as Error);
+                return;
+              }
+              reject(
+                new Error(
+                  "Connection attempt timed out while contacting Snowflake. This often indicates an invalid account or region hostname."
+                )
+              );
+            });
+          } catch (e) {
+            reject(e instanceof Error ? e : new Error(String(e)));
+          }
+        }, connectTimeoutMs);
+
+        conn.connect((err: SnowflakeError | undefined, c: Connection) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          clearTimeout(timeout);
+          if (err) {
+            reject(err);
+          } else {
+            resolve(c);
+          }
+        });
       });
 
-      if (!response.ok) {
-        const errorBody = (await response.json()) as SnowflakeErrorResponse;
-        return new Err(
-          new Error(
-            `Snowflake API error (${response.status}): ${errorBody.message || response.statusText}`
-          )
-        );
-      }
+      return new Ok(connection);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+  }
 
-      const data = (await response.json()) as SnowflakeStatementResponse;
+  /**
+   * Close a Snowflake connection.
+   */
+  private async closeConnection(conn: Connection): Promise<void> {
+    return new Promise((resolve) => {
+      conn.destroy((err: SnowflakeError | undefined) => {
+        // We don't throw on close errors - just log and continue
+        if (err) {
+          // Silently ignore close errors
+        }
+        resolve();
+      });
+    });
+  }
 
-      // Transform the response into a more usable format
-      const columns: SnowflakeColumn[] = data.resultSetMetaData.rowType.map(
-        (col) => ({
-          name: col.name,
-          type: col.type,
-          nullable: col.nullable,
-          database: col.database,
-          schema: col.schema,
-          table: col.table,
-        })
-      );
-
-      const rows = data.data.map((row) => {
-        const rowObj: Record<string, unknown> = {};
-        columns.forEach((col, idx) => {
-          rowObj[col.name] = row[idx];
+  /**
+   * Execute a SQL query on a connection and return the result.
+   */
+  private async executeQuery(
+    conn: Connection,
+    sql: string
+  ): Promise<Result<SnowflakeQueryResult, Error>> {
+    try {
+      const result = await new Promise<{
+        rows: SnowflakeRows | undefined;
+        columns: SnowflakeColumn[];
+      }>((resolve, reject) => {
+        conn.execute({
+          sqlText: sql,
+          complete: (
+            err: SnowflakeError | undefined,
+            stmt: RowStatement,
+            rows: SnowflakeRows | undefined
+          ) => {
+            if (err) {
+              reject(err);
+            } else {
+              // Extract column metadata from statement
+              const cols = stmt.getColumns() ?? [];
+              const columns: SnowflakeColumn[] = cols.map((col) => ({
+                name: col.getName(),
+                type: col.getType(),
+                nullable: col.isNullable(),
+              }));
+              resolve({ rows, columns });
+            }
+          },
         });
-        return rowObj;
+      });
+
+      const rows = result.rows ?? [];
+      // Convert rows to Record<string, unknown> for type safety
+      const typedRows: Record<string, unknown>[] = rows.map((row) => {
+        const typedRow: Record<string, unknown> = {};
+        for (const key of Object.keys(row)) {
+          typedRow[key] = row[key];
+        }
+        return typedRow;
       });
 
       return new Ok({
-        columns,
-        rows,
-        rowCount: data.resultSetMetaData.numRows,
+        columns: result.columns,
+        rows: typedRows,
+        rowCount: typedRows.length,
       });
-    } catch (e) {
-      return new Err(
-        new Error(
-          `Failed to execute Snowflake query: ${normalizeError(e).message}`
-        )
-      );
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+  }
+
+  /**
+   * Execute a statement with connection management.
+   */
+  private async executeStatement(
+    sql: string
+  ): Promise<Result<SnowflakeQueryResult, Error>> {
+    const connRes = await this.connect();
+    if (connRes.isErr()) {
+      return connRes;
+    }
+    const conn = connRes.value;
+
+    try {
+      const result = await this.executeQuery(conn, sql);
+      return result;
+    } finally {
+      await this.closeConnection(conn);
     }
   }
 
@@ -295,22 +321,15 @@ export class SnowflakeClient {
    * exactly what operations will be performed.
    */
   private async validateReadOnlyWithExplain(
-    sql: string,
-    database?: string,
-    schema?: string,
-    warehouse?: string
+    conn: Connection,
+    sql: string
   ): Promise<Result<void, Error>> {
     // Use EXPLAIN USING TABULAR to get the query plan as structured data.
     // The result includes an 'operation' column with values like
     // 'Insert', 'Update', 'Delete', 'Merge' for write operations.
     const explainSql = `EXPLAIN USING TABULAR ${sql}`;
 
-    const result = await this.executeStatement(
-      explainSql,
-      database,
-      schema,
-      warehouse
-    );
+    const result = await this.executeQuery(conn, explainSql);
 
     if (result.isErr()) {
       // If EXPLAIN fails, the query is likely invalid anyway
@@ -356,30 +375,67 @@ export class SnowflakeClient {
       trimmedSql.startsWith("DESCRIBE") ||
       trimmedSql.startsWith("DESC")
     ) {
-      return this.executeStatement(sql, database, schema, warehouse);
+      return this.executeStatement(sql);
     }
 
     // For SELECT/WITH queries, use EXPLAIN to validate they're read-only
     // (catches WITH...INSERT and other bypass attempts)
     if (trimmedSql.startsWith("SELECT") || trimmedSql.startsWith("WITH")) {
-      const validationResult = await this.validateReadOnlyWithExplain(
-        sql,
-        database,
-        schema,
-        warehouse
-      );
-
-      if (validationResult.isErr()) {
-        return new Err(validationResult.error);
+      const connRes = await this.connect();
+      if (connRes.isErr()) {
+        return connRes;
       }
+      const conn = connRes.value;
 
-      // Wrap query to enforce row limit. This handles all cases:
-      // - SELECT without LIMIT
-      // - SELECT with LIMIT > maxRows
-      // - WITH queries (which may or may not have LIMIT)
-      const wrappedSql = `SELECT * FROM (${sql.trim()}) AS _limited_query LIMIT ${maxRows}`;
+      try {
+        // Set context if provided
+        if (database) {
+          const useDbResult = await this.executeQuery(
+            conn,
+            `USE DATABASE "${escapeIdentifier(database)}"`
+          );
+          if (useDbResult.isErr()) {
+            return useDbResult;
+          }
+        }
+        if (schema) {
+          const useSchemaResult = await this.executeQuery(
+            conn,
+            `USE SCHEMA "${escapeIdentifier(schema)}"`
+          );
+          if (useSchemaResult.isErr()) {
+            return useSchemaResult;
+          }
+        }
+        if (warehouse) {
+          const useWhResult = await this.executeQuery(
+            conn,
+            `USE WAREHOUSE "${escapeIdentifier(warehouse)}"`
+          );
+          if (useWhResult.isErr()) {
+            return useWhResult;
+          }
+        }
 
-      return this.executeStatement(wrappedSql, database, schema, warehouse);
+        const validationResult = await this.validateReadOnlyWithExplain(
+          conn,
+          sql
+        );
+
+        if (validationResult.isErr()) {
+          return new Err(validationResult.error);
+        }
+
+        // Wrap query to enforce row limit. This handles all cases:
+        // - SELECT without LIMIT
+        // - SELECT with LIMIT > maxRows
+        // - WITH queries (which may or may not have LIMIT)
+        const wrappedSql = `SELECT * FROM (${sql.trim()}) AS _limited_query LIMIT ${maxRows}`;
+
+        return this.executeQuery(conn, wrappedSql);
+      } finally {
+        await this.closeConnection(conn);
+      }
     }
 
     // Reject anything else

@@ -191,6 +191,7 @@
     "redis": "^4.6.8",
     "sanitize-html": "^2.13.0",
     "sequelize": "^6.31.0",
+    "snowflake-sdk": "^2.0.2",
     "slackify-markdown": "^4.4.0",
     "sqids": "^0.3.0",
     "sqlite3": "^5.1.6",
