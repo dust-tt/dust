@@ -135,6 +135,7 @@ import {
   PRODUCTBOARD_TOOL_STAKES,
   PRODUCTBOARD_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/productboard/metadata";
+import { RUN_AGENT_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/metadata";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
   InternalMCPServerDefinitionType,
@@ -1060,15 +1061,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
-    serverInfo: {
-      name: "run_agent",
-      version: "1.0.0",
-      description: "Run a child agent (agent as tool).",
-      icon: "ActionRobotIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: RUN_AGENT_SERVER_INFO,
   },
   [TABLE_QUERY_V2_SERVER_NAME]: {
     id: 1009,
