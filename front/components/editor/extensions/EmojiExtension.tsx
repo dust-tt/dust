@@ -1,18 +1,28 @@
 import type { EmojiMartData } from "@emoji-mart/data";
-import data from "@emoji-mart/data";
 import type { EmojiItem } from "@tiptap/extension-emoji";
 import Emoji from "@tiptap/extension-emoji";
 
 import { createEmojiSuggestion } from "@app/components/editor/input_bar/emojiSuggestion";
 
-// Type the imported data
-const emojiData = data as unknown as EmojiMartData;
+// Cache for lazily loaded emoji data
+let emojiDataCache: EmojiMartData | null = null;
+let emojiMapCache: Map<string, EmojiItem> | null = null;
+let emojiListCache: EmojiItem[] | null = null;
 
-// Convert emoji-mart data to TipTap emoji format
-const emojiMartToTipTapEmojis = (): EmojiItem[] => {
+// Load emoji data lazily
+async function loadEmojiData(): Promise<void> {
+  if (emojiDataCache) {
+    return;
+  }
+
+  // Dynamically import emoji data to avoid bundling in server
+  // @emoji-mart/data exports JSON directly, so we cast it appropriately
+  const dataModule = await import("@emoji-mart/data");
+  emojiDataCache = dataModule as unknown as EmojiMartData;
+
+  // Convert emoji-mart data to TipTap emoji format
   const emojis: EmojiItem[] = [];
-
-  for (const [id, emoji] of Object.entries(emojiData.emojis)) {
+  for (const [id, emoji] of Object.entries(emojiDataCache.emojis)) {
     emojis.push({
       name: id,
       emoji: emoji.skins[0].native,
@@ -23,12 +33,16 @@ const emojiMartToTipTapEmojis = (): EmojiItem[] => {
     });
   }
 
-  return emojis;
-};
+  emojiListCache = emojis;
+  emojiMapCache = new Map(emojis.map((e) => [e.name, e]));
+}
 
-const emojiMartEmojis = emojiMartToTipTapEmojis();
-const emojiMap = new Map(emojiMartEmojis.map((e) => [e.name, e]));
+// Synchronous getter for emoji map (returns null if not loaded)
+function getEmojiFromCache(name: string): EmojiItem | undefined {
+  return emojiMapCache?.get(name);
+}
 
+// Create extension that lazily loads emoji data
 export const EmojiExtension = Emoji.extend({
   renderMarkdown: (node) => {
     const name = node.attrs?.name;
@@ -38,9 +52,13 @@ export const EmojiExtension = Emoji.extend({
       return "";
     }
 
-    const emojiItem = emojiMap.get(node.attrs?.name);
-
+    // Try to get from cache, fallback to shortcode format
+    const emojiItem = getEmojiFromCache(name);
     return emojiItem?.emoji ?? `:${name}:`;
+  },
+
+  onCreate() {
+    void loadEmojiData();
   },
 }).configure({
   // Enable emoticon conversion (e.g., <3 → ❤️, :) → 😊)
@@ -54,6 +72,17 @@ export const EmojiExtension = Emoji.extend({
   // Configure suggestion plugin for :emoji: syntax
   suggestion: createEmojiSuggestion(),
 
-  // Use emoji-mart emojis instead of default TipTap emojis
-  emojis: emojiMartEmojis,
+  // Start with empty emojis - emoticon conversion won't work until data loads
+  // The emoji picker/search uses EmojiDropdown which loads data independently
+  emojis: [],
 });
+
+// Export a function to preload emoji data if needed
+export async function preloadEmojiData(): Promise<void> {
+  await loadEmojiData();
+}
+
+// Export function to get emoji list (for components that need it synchronously after preload)
+export function getLoadedEmojiList(): EmojiItem[] {
+  return emojiListCache ?? [];
+}

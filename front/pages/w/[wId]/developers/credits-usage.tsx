@@ -7,6 +7,7 @@ import {
   Page,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
+import dynamic from "next/dynamic";
 import React, { useMemo, useState } from "react";
 import type Stripe from "stripe";
 
@@ -16,7 +17,14 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
 import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
-import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
+
+const ProgrammaticCostChart = dynamic(
+  () =>
+    import("@app/components/workspace/ProgrammaticCostChart").then(
+      (mod) => mod.ProgrammaticCostChart
+    ),
+  { ssr: false }
+);
 import {
   getBillingCycle,
   getPriceAsString,
