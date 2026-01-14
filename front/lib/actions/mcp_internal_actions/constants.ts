@@ -84,6 +84,7 @@ import {
   HUBSPOT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/metadata";
 import { IMAGE_GENERATION_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/image_generation/metadata";
+import { INCLUDE_DATA_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/include_data/metadata";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
@@ -329,16 +330,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "include_data",
-      version: "1.0.0",
-      description:
-        "Load complete content for full context up to memory limits.",
-      icon: "ActionTimeIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: INCLUDE_DATA_SERVER_INFO,
   },
   run_dust_app: {
     id: 10,
