@@ -6,20 +6,15 @@ import {
   Page,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
+import type React from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { getFeatureFlags } from "@app/lib/auth";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import type {
-  LabsFeatureItemType,
-  SubscriptionType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@app/types";
+import { useAuth, withAuth } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { LabsFeatureItemType, WhitelistableFeature } from "@app/types";
 
 const LABS_FEATURES: LabsFeatureItemType[] = [
   {
@@ -43,34 +38,6 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
   },
 ];
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  featureFlags: WhitelistableFeature[];
-  isAdmin: boolean;
-}>(async (_context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
-  const user = auth.user();
-
-  if (!owner || !subscription || !user) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const featureFlags = await getFeatureFlags(owner);
-
-  return {
-    props: {
-      owner,
-      subscription,
-      featureFlags,
-      isAdmin: auth.isAdmin(),
-    },
-  };
-});
-
 const getVisibleFeatures = (featureFlags: WhitelistableFeature[]) => {
   return LABS_FEATURES.filter(
     (feature) =>
@@ -78,12 +45,10 @@ const getVisibleFeatures = (featureFlags: WhitelistableFeature[]) => {
   );
 };
 
-export default function LabsTranscriptsIndex({
-  owner,
-  subscription,
-  featureFlags,
-  isAdmin,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function LabsPage() {
+  const { workspace: owner, subscription, isAdmin } = useAuth();
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   const visibleFeatures = getVisibleFeatures(featureFlags);
 
   return (
@@ -130,6 +95,10 @@ export default function LabsTranscriptsIndex({
   );
 }
 
-LabsTranscriptsIndex.getLayout = (page: React.ReactElement) => {
+const LabsPageWithAuth = withAuth(LabsPage);
+
+LabsPageWithAuth.getLayout = (page: React.ReactElement) => {
   return <AppRootLayout>{page}</AppRootLayout>;
 };
+
+export default LabsPageWithAuth;
