@@ -120,7 +120,10 @@ import {
   MICROSOFT_TEAMS_TOOL_STAKES,
   MICROSOFT_TEAMS_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/microsoft_teams/metadata";
-import { MISSING_ACTION_CATCHER_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher/metadata";
+import {
+  MISSING_ACTION_CATCHER_SERVER_INFO,
+  MISSING_ACTION_CATCHER_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher/metadata";
 import {
   MONDAY_SERVER_INFO,
   MONDAY_TOOL_STAKES,
@@ -513,6 +516,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: MISSING_ACTION_CATCHER_TOOLS,
     serverInfo: MISSING_ACTION_CATCHER_SERVER_INFO,
   },
   salesforce: {

@@ -1,6 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  PLACEHOLDER_TOOL_NAME,
+  placeholderToolSchema,
+  TOOL_NOT_FOUND_MONITORING_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -27,7 +32,10 @@ function createServer(
       {},
       withToolLogging(
         auth,
-        { toolNameForMonitoring: "tool_not_found", agentLoopContext },
+        {
+          toolNameForMonitoring: TOOL_NOT_FOUND_MONITORING_NAME,
+          agentLoopContext,
+        },
         async () => {
           return new Err(
             new MCPError(
@@ -44,12 +52,12 @@ function createServer(
     );
   } else {
     server.tool(
-      "placeholder_tool",
+      PLACEHOLDER_TOOL_NAME,
       "This tool is a placeholder to catch missing actions.",
-      {},
+      placeholderToolSchema,
       withToolLogging(
         auth,
-        { toolNameForMonitoring: "placeholder_tool", agentLoopContext },
+        { toolNameForMonitoring: PLACEHOLDER_TOOL_NAME, agentLoopContext },
         async () => {
           return new Ok([{ type: "text", text: "No action name found" }]);
         }
