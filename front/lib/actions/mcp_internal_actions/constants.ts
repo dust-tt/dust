@@ -145,7 +145,14 @@ import {
   OUTLOOK_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/outlook/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger/metadata";
-import { EXTRACT_DATA_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/process/metadata";
+import {
+  EXTRACT_DATA_SERVER_INFO,
+  EXTRACT_DATA_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/process/metadata";
+export {
+  FIND_TAGS_TOOL_NAME,
+  PROCESS_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/process/metadata";
 import {
   PRODUCTBOARD_SERVER_INFO,
   PRODUCTBOARD_TOOL_STAKES,
@@ -250,13 +257,10 @@ export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 export const USE_SUMMARY_SWITCH = "useSummary";
 
 export const INCLUDE_TOOL_NAME = "retrieve_recent_documents";
-export const PROCESS_TOOL_NAME = "extract_information_from_documents";
 
 export const QUERY_TABLES_TOOL_NAME = "query_tables";
 
 export const CREATE_AGENT_TOOL_NAME = "create_agent";
-
-export const FIND_TAGS_TOOL_NAME = "find_tags";
 export const FILESYSTEM_CAT_TOOL_NAME = "cat";
 export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
@@ -496,6 +500,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
+    tools: EXTRACT_DATA_TOOLS,
     serverInfo: EXTRACT_DATA_SERVER_INFO,
   },
   missing_action_catcher: {

@@ -10,13 +10,17 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
+  ConfigurableToolInputSchemas,
+  JsonSchemaSchema,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION,
+  extractDataTagsInputSchema,
   FIND_TAGS_TOOL_NAME,
   PROCESS_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { JsonSchemaSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+} from "@app/lib/actions/mcp_internal_actions/servers/process/metadata";
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
@@ -53,29 +57,6 @@ type ProcessActionOutputsType = {
   data: unknown[];
   total_documents?: number;
 };
-
-const EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION =
-  "A JSON schema that will be embedded in the following JSON schema:" +
-  "\n```\n" +
-  "{\n" +
-  '  "name": "extract_data",\n' +
-  '  "description": "Call this function with an array of extracted data points",\n' +
-  '  "parameters": {\n' +
-  '    "type": "object",\n' +
-  '    "properties": {\n' +
-  '      "data_points": {\n' +
-  '         "type": "array",\n' +
-  '         "items": $SCHEMA,\n' +
-  '          "description": "The data points extracted from provided documents, as many as required to follow instructions."\n' +
-  "        }\n" +
-  "      },\n" +
-  '      "required": ["data_points"]\n' +
-  "    }\n" +
-  "  }\n" +
-  "}\n" +
-  "```\n\n" +
-  "Must be a valid JSON schema. Use only standard JSON Schema 7 core fields (type, properties, required, description) and avoid custom keywords or extensions that are not part of the core specification.\n\n" +
-  "This schema will be used as signature to extract the relevant information based on selected documents to properly follow instructions.";
 
 function makeExtractInformationFromDocumentsTool(
   auth: Authenticator,
@@ -225,24 +206,6 @@ function createServer(
     ? shouldAutoGenerateTags(agentLoopContext)
     : false;
 
-  // Define tag schemas.
-  const tagsInputSchema = {
-    tagsIn: z
-      .array(z.string())
-      .describe(
-        "A list of labels (also called tags) to restrict the search based on the user request and past conversation context." +
-          "If multiple labels are provided, the search will return documents that have at least one of the labels." +
-          "You can't check that all labels are present, only that at least one is present." +
-          "If no labels are provided, the search will return all documents regardless of their labels."
-      ),
-    tagsNot: z
-      .array(z.string())
-      .describe(
-        "A list of labels (also called tags) to exclude from the search based on the user request and past conversation context." +
-          "Any document having one of these labels will be excluded from the search."
-      ),
-  };
-
   const commonInputsSchema = {
     dataSources:
       ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
@@ -290,7 +253,7 @@ function createServer(
       toolDescription,
       {
         ...commonInputsSchema,
-        ...tagsInputSchema,
+        ...extractDataTagsInputSchema,
       },
       toolImplementation
     );
