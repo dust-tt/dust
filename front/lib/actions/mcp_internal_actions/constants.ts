@@ -44,6 +44,11 @@ import {
   FRESHSERVICE_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/freshservice/metadata";
 import {
+  FRONT_SERVER_INFO,
+  FRONT_TOOL_STAKES,
+  FRONT_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/front/metadata";
+import {
   GOOGLE_CALENDAR_SERVER_INFO,
   GOOGLE_CALENDAR_TOOL_STAKES,
   GOOGLE_CALENDAR_TOOLS,
@@ -1557,46 +1562,12 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("front_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      search_conversations: "never_ask",
-      get_conversation: "never_ask",
-      get_conversation_messages: "never_ask",
-      get_contact: "never_ask",
-      list_tags: "never_ask",
-      list_teammates: "never_ask",
-      get_customer_history: "never_ask",
-      list_inboxes: "never_ask",
-
-      create_conversation: "low",
-      create_draft: "low",
-      add_tags: "low",
-      add_comment: "low",
-      add_links: "low",
-
-      send_message: "high",
-      update_conversation_status: "high",
-      assign_conversation: "high",
-    },
+    tools_stakes: FRONT_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "front",
-      version: "1.0.0",
-      description:
-        "Manage support conversations, messages, and customer interactions.",
-      authorization: null,
-      icon: "FrontLogo",
-      documentationUrl: "https://dev.frontapp.com/reference/introduction",
-      instructions:
-        "When handling support tickets:\n" +
-        "- Always check customer history before replying using get_customer_history\n" +
-        "- Auto-tag conversations based on issue type (bug, feature-request, billing)\n" +
-        "- Assign to teammate 'ilias' if T1 cannot resolve after three attempts\n" +
-        "- Use LLM-friendly timeline format for conversation data\n" +
-        "- Include full context (metadata, custom fields) in responses",
-      developerSecretSelection: "required",
-    },
+    tools: FRONT_TOOLS,
+    serverInfo: FRONT_SERVER_INFO,
   },
   skill_management: {
     id: 1019,

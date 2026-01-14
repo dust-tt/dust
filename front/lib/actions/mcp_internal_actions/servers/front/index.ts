@@ -1,9 +1,27 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  addCommentSchema,
+  addLinksSchema,
+  addTagsSchema,
+  assignConversationSchema,
+  createConversationSchema,
+  createDraftSchema,
+  FRONT_TOOL_NAME,
+  getContactSchema,
+  getConversationMessagesSchema,
+  getConversationSchema,
+  getCustomerHistorySchema,
+  listInboxesSchema,
+  listTagsSchema,
+  listTeammatesSchema,
+  searchConversationsSchema,
+  sendMessageSchema,
+  updateConversationStatusSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/front/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -237,24 +255,10 @@ const createServer = (
     "search_conversations",
     "Search conversations in Front by keywords, customer email, tags, status, or other criteria. " +
       "Returns matching conversations with their details.",
-    {
-      q: z
-        .string()
-        .describe(
-          "Search query. Can include keywords, email addresses (e.g., 'customer@example.com'), " +
-            "status filters (e.g., 'is:open', 'is:archived'), tag filters (e.g., 'tag:bug'), etc."
-        ),
-      limit: z
-        .number()
-        .optional()
-        .default(20)
-        .describe(
-          "Maximum number of conversations to return (default: 20, max: 100)"
-        ),
-    },
+    searchConversationsSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async ({ q, limit = 20 }) => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
@@ -309,14 +313,10 @@ const createServer = (
     "get_conversation",
     "Retrieve complete details of a specific conversation by its ID, including subject, status, " +
       "assignee, tags, inbox, and all metadata.",
-    {
-      conversation_id: z
-        .string()
-        .describe("The unique ID of the conversation (e.g., 'cnv_55c8c149')"),
-    },
+    getConversationSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async ({ conversation_id }) => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
@@ -356,14 +356,10 @@ const createServer = (
     "get_conversation_messages",
     "Retrieve all messages in a conversation, including both external messages (emails) and " +
       "internal comments. Returns the complete message timeline.",
-    {
-      conversation_id: z
-        .string()
-        .describe("The unique ID of the conversation (e.g., 'cnv_55c8c149')"),
-    },
+    getConversationMessagesSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async ({ conversation_id }) => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
@@ -405,19 +401,10 @@ const createServer = (
     "get_contact",
     "Look up customer/contact information by email address or contact ID. Returns contact details " +
       "including name, email, and custom fields.",
-    {
-      email: z
-        .string()
-        .optional()
-        .describe("Email address of the contact to look up"),
-      contact_id: z
-        .string()
-        .optional()
-        .describe("The unique ID of the contact (e.g., 'crd_55c8c149')"),
-    },
+    getContactSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async ({ email, contact_id }) => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
@@ -477,25 +464,10 @@ const createServer = (
   server.tool(
     "send_message",
     "Send a reply or internal comment to a conversation. Can send as email reply or internal note.",
-    {
-      conversation_id: z.string().describe("The unique ID of the conversation"),
-      body: z.string().describe("The message content (supports markdown)"),
-      type: z
-        .enum(["comment", "reply"])
-        .default("reply")
-        .describe(
-          "Type of message: 'comment' for internal note, 'reply' for customer-facing email (default: reply)"
-        ),
-      author_id: z
-        .string()
-        .optional()
-        .describe(
-          "Optional: Teammate ID to send as (defaults to API token owner)"
-        ),
-    },
+    sendMessageSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async ({ conversation_id, body, type = "reply", author_id }) => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
@@ -547,15 +519,10 @@ const createServer = (
   server.tool(
     "add_tags",
     "Add one or more tags to a conversation for categorization (e.g., bug, feature-request, billing).",
-    {
-      conversation_id: z.string().describe("The unique ID of the conversation"),
-      tag_ids: z
-        .array(z.string())
-        .describe("Array of tag IDs to add to the conversation"),
-    },
+    addTagsSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async ({ conversation_id, tag_ids }) => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
@@ -588,13 +555,10 @@ const createServer = (
   server.tool(
     "assign_conversation",
     "Assign a conversation to a specific teammate for handling.",
-    {
-      conversation_id: z.string().describe("The unique ID of the conversation"),
-      teammate_id: z.string().describe("The ID of the teammate to assign to"),
-    },
+    assignConversationSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async ({ conversation_id, teammate_id }) => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
@@ -629,17 +593,10 @@ const createServer = (
   server.tool(
     "update_conversation_status",
     "Update the status of a conversation (archive, reopen, delete, spam, trash).",
-    {
-      conversation_id: z.string().describe("The unique ID of the conversation"),
-      status: z
-        .enum(["archived", "deleted", "open", "spam", "trash"])
-        .describe(
-          "New status: 'archived' (close), 'open' (reopen), 'deleted', 'spam', 'trash'"
-        ),
-    },
+    updateConversationStatusSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async ({ conversation_id, status }) => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
@@ -674,10 +631,10 @@ const createServer = (
   server.tool(
     "list_tags",
     "Get all available tags for categorizing conversations.",
-    {},
+    listTagsSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async () => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
@@ -720,10 +677,10 @@ const createServer = (
   server.tool(
     "list_teammates",
     "Get all teammates in the workspace for assignment and collaboration.",
-    {},
+    listTeammatesSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async () => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
@@ -767,17 +724,10 @@ const createServer = (
   server.tool(
     "create_draft",
     "Create a draft reply to a conversation for review before sending.",
-    {
-      conversation_id: z.string().describe("The unique ID of the conversation"),
-      body: z.string().describe("The draft message content"),
-      author_id: z
-        .string()
-        .optional()
-        .describe("Optional: Teammate ID for the draft author"),
-    },
+    createDraftSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async ({ conversation_id, body, author_id }) => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
@@ -910,17 +860,10 @@ const createServer = (
   server.tool(
     "add_comment",
     "Add an internal comment/note to a conversation (only visible to team).",
-    {
-      conversation_id: z.string().describe("The unique ID of the conversation"),
-      body: z.string().describe("The comment content"),
-      author_id: z
-        .string()
-        .optional()
-        .describe("Optional: Teammate ID for the comment author"),
-    },
+    addCommentSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async ({ conversation_id, body, author_id }) => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
@@ -958,21 +901,10 @@ const createServer = (
   server.tool(
     "get_customer_history",
     "Retrieve past conversations with a specific customer by their email address.",
-    {
-      customer_email: z
-        .string()
-        .describe("Customer email address to search for"),
-      limit: z
-        .number()
-        .optional()
-        .default(10)
-        .describe(
-          "Maximum number of past conversations to return (default: 10)"
-        ),
-    },
+    getCustomerHistorySchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async ({ customer_email, limit = 10 }) => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
@@ -1030,10 +962,10 @@ const createServer = (
   server.tool(
     "list_inboxes",
     "Get all inboxes/channels available in the workspace.",
-    {},
+    listInboxesSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async () => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
@@ -1076,21 +1008,10 @@ const createServer = (
   server.tool(
     "create_conversation",
     "Start a new outbound conversation with a customer.",
-    {
-      inbox_id: z
-        .string()
-        .describe("The ID of the inbox to create the conversation in"),
-      to: z.array(z.string()).describe("Array of recipient email addresses"),
-      subject: z.string().describe("Subject line of the conversation"),
-      body: z.string().describe("Message body content"),
-      author_id: z
-        .string()
-        .optional()
-        .describe("Optional: Teammate ID for the message author"),
-    },
+    createConversationSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async ({ inbox_id, to, subject, body, author_id }) => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
@@ -1133,15 +1054,10 @@ const createServer = (
   server.tool(
     "add_links",
     "Link related conversations together for better tracking and context.",
-    {
-      conversation_id: z.string().describe("The unique ID of the conversation"),
-      linked_conversation_ids: z
-        .array(z.string())
-        .describe("Array of conversation IDs to link to"),
-    },
+    addLinksSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "front", agentLoopContext },
+      { toolNameForMonitoring: FRONT_TOOL_NAME, agentLoopContext },
       async ({ conversation_id, linked_conversation_ids }) => {
         try {
           const apiToken = await getFrontAPIToken(auth, agentLoopContext);
