@@ -24,7 +24,7 @@ const PROJECT_CONVERSATIONS_DATASOURCE_NAME_PREFIX =
 /**
  * Generates a unique data source name for project conversations connector.
  */
-function getProjectConversationsDatasourceName(spaceId: number): string {
+export function getProjectConversationsDatasourceName(spaceId: number): string {
   return `${PROJECT_CONVERSATIONS_DATASOURCE_NAME_PREFIX}${spaceId}`;
 }
 
@@ -177,6 +177,30 @@ export async function createDustProjectConnectorForSpace(
 
     // Link connector ID to data source
     await dataSource.setConnectorId(connectorsRes.value.id);
+
+    // Trigger initial full sync workflow
+    // The full sync workflow will automatically launch incremental sync workflow after completion
+    const syncResult = await connectorsAPI.syncConnector(
+      connectorsRes.value.id
+    );
+    if (syncResult.isErr()) {
+      localLogger.warn(
+        {
+          connectorId: connectorsRes.value.id,
+          error: syncResult.error,
+        },
+        "Failed to trigger initial sync for dust_project connector, connector was created but sync may need to be triggered manually"
+      );
+      // Don't fail connector creation if sync trigger fails - connector can be synced later
+    } else {
+      localLogger.info(
+        {
+          connectorId: connectorsRes.value.id,
+          workflowId: syncResult.value.workflowId,
+        },
+        "Triggered initial full sync workflow for dust_project connector (incremental sync will start automatically after full sync completes)"
+      );
+    }
 
     localLogger.info(
       {

@@ -151,6 +151,11 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
           status: infos.status.name,
         });
       }
+    } else {
+      logger.error(
+        { connectorId: dataSource.connectorId },
+        "Failed to get connector"
+      );
     }
   }
 
