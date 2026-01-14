@@ -261,10 +261,10 @@ export class SnowflakeClient {
     schema?: string,
     warehouse?: string
   ): Promise<Result<void, Error>> {
-    // Use EXPLAIN USING TABULAR to get the query plan
+    // Use EXPLAIN USING TABULAR to get the query plan as structured data.
     // The result includes an 'operation' column with values like
-    // 'Insert', 'Update', 'Delete', 'Merge' for write operations
-    const explainSql = `EXPLAIN ${sql}`;
+    // 'Insert', 'Update', 'Delete', 'Merge' for write operations.
+    const explainSql = `EXPLAIN USING TABULAR ${sql}`;
 
     const result = await this.executeStatement(
       explainSql,
