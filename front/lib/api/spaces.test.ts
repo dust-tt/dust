@@ -507,12 +507,13 @@ describe("createSpaceAndGroup", () => {
         memberIds: [],
       });
       expect(projectResult.isOk()).toBe(true);
-
-      const projectMetadata = await ProjectMetadataResource.fetchBySpace(
-        adminAuth,
-        projectResult.value
-      );
-      expect(projectMetadata).not.toBeNull();
+      if (projectResult.isOk()) {
+        const projectMetadata = await ProjectMetadataResource.fetchBySpace(
+          adminAuth,
+          projectResult.value
+        );
+        expect(projectMetadata).not.toBeNull();
+      }
 
       const regularResult = await createSpaceAndGroup(adminAuth, {
         name: "Test Regular",
@@ -522,12 +523,13 @@ describe("createSpaceAndGroup", () => {
         memberIds: [],
       });
       expect(regularResult.isOk()).toBe(true);
-
-      const regularMetadata = await ProjectMetadataResource.fetchBySpace(
-        adminAuth,
-        regularResult.value
-      );
-      expect(regularMetadata).toBeNull();
+      if (regularResult.isOk()) {
+        const regularMetadata = await ProjectMetadataResource.fetchBySpace(
+          adminAuth,
+          regularResult.value
+        );
+        expect(regularMetadata).toBeNull();
+      }
     });
   });
 });

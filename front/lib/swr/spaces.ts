@@ -35,6 +35,10 @@ import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/space
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type { PatchSpaceMembersRequestBodyType } from "@app/pages/api/w/[wId]/spaces/[spaceId]/members";
 import type {
+  GetProjectMetadataResponseBody,
+  PatchProjectMetadataResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
+import type {
   ContentNodesViewType,
   DataSourceViewCategoryWithoutApps,
   DataSourceViewType,
@@ -45,10 +49,6 @@ import type {
   SpaceType,
 } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
-import type {
-  GetProjectMetadataResponseBody,
-  PatchProjectMetadataResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
 
 export function useSpaces({
   workspaceId,

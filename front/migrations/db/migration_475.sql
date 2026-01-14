@@ -12,8 +12,5 @@ CREATE TABLE "project_metadata" (
     "color" VARCHAR(255)
 );
 
--- Unique constraint: one metadata per space
-CREATE UNIQUE INDEX "project_metadata_space_id_unique" ON "project_metadata" ("spaceId");
-
--- Index on spaceId for efficient lookups
-CREATE INDEX CONCURRENTLY "project_metadata_space_id" ON "project_metadata" ("spaceId");
+-- Unique constraint: one metadata per space (also provides efficient FK lookups per BACK13)
+CREATE UNIQUE INDEX CONCURRENTLY "project_metadata_space_id_unique" ON "project_metadata" ("spaceId");

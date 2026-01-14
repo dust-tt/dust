@@ -59,9 +59,8 @@ ProjectMetadataModel.init(
     sequelize: frontSequelize,
     indexes: [
       // Unique constraint: one metadata per space (1:1 relationship)
-      { unique: true, fields: ["spaceId"] },
-      // Index on spaceId for efficient lookups (required for FK per BACK13)
-      { fields: ["spaceId"], concurrently: true },
+      // Also satisfies BACK13 (FK indexing) since unique indexes support efficient lookups
+      { unique: true, fields: ["spaceId"], concurrently: true },
     ],
   }
 );

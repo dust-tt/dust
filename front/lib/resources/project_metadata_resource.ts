@@ -2,16 +2,15 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ModelId, ProjectMetadataType, Result } from "@app/types";
 import { Ok } from "@app/types";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ProjectMetadataResource
-  extends ReadonlyAttributesType<ProjectMetadataModel> {}
+export interface ProjectMetadataResource extends ReadonlyAttributesType<ProjectMetadataModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> {
