@@ -259,25 +259,13 @@ dust-hive sync
 
 ## Known Issues
 
-### npm install fails in dust-hive environments
+### Node modules structure in dust-hive environments
 
 In dust-hive environments, `node_modules` for `front` and `connectors` uses a **shallow copy** structure:
 - A real `node_modules` directory with symlinks to packages from the main repo
 - `@dust-tt/client` is overridden to point to the worktree's SDK (ensuring correct type resolution)
 
-Running `npm install` directly will **fail** with `ENOTEMPTY` errors because npm cannot handle this symlink structure.
-
-**Solution**: Delete node_modules before running npm install:
-```bash
-rm -rf node_modules && npm install
-```
-
-This is necessary when:
-- You modify `package.json` (add/remove dependencies)
-- You need to regenerate `package-lock.json`
-- You want fully isolated dependencies for this environment
-
-After running `npm install`, the shallow copy structure is replaced with a standard npm-managed node_modules.
+**Running `npm install` works automatically**: The shallow copy includes a `.dust-hive-shallow-copy` marker file that triggers a `preinstall` script in front/connectors to clean up the directory before npm proceeds. After install, you'll have a standard npm-managed node_modules.
 
 ### SDK watcher doesn't detect changes after git rebase
 

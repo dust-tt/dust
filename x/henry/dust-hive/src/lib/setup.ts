@@ -3,7 +3,7 @@
 // Running `npm install` in a worktree will modify the main repo's node_modules.
 // NOTE: cargo target is symlinked to share Rust compilation cache (including linked artifacts).
 
-import { mkdirSync, readdirSync, symlinkSync } from "node:fs";
+import { mkdirSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { ALL_BINARIES, buildBinaries } from "./cache";
@@ -73,6 +73,9 @@ function setupShallowNodeModules(
 
   // Link @dust-tt/client to worktree's SDK
   symlinkSync(worktreeSdk, join(target, "@dust-tt/client"));
+
+  // Create marker file so preinstall scripts can detect this structure
+  writeFileSync(join(target, ".dust-hive-shallow-copy"), "");
 }
 
 // Symlink cargo target directory to share compilation cache
