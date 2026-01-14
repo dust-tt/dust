@@ -115,6 +115,11 @@ import {
   NOTION_TOOL_STAKES,
   NOTION_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/notion/metadata";
+import {
+  OPENAI_USAGE_SERVER_INFO,
+  OPENAI_USAGE_TOOL_STAKES,
+  OPENAI_USAGE_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/openai_usage/metadata";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
@@ -788,23 +793,12 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("openai_usage_mcp");
     },
-    tools_stakes: {
-      get_completions_usage: "low",
-      get_organization_costs: "low",
-    },
+    tools_stakes: OPENAI_USAGE_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "openai_usage",
-      version: "1.0.0",
-      description: "Track API consumption and costs.",
-      authorization: null,
-      icon: "OpenaiLogo",
-      documentationUrl: null,
-      instructions: null,
-      developerSecretSelection: "required",
-    },
+    tools: OPENAI_USAGE_TOOLS,
+    serverInfo: OPENAI_USAGE_SERVER_INFO,
   },
   confluence: {
     id: 33,
