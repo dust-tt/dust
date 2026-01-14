@@ -388,3 +388,38 @@ export function makeToolValidationBlock({
     },
   ];
 }
+
+export function makeToolAuthenticationBlock({
+  agentName,
+  toolName,
+  conversationUrl,
+}: {
+  agentName: string;
+  toolName: string;
+  conversationUrl: string;
+}) {
+  return [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `Agent \`${agentName}\` requires personal authentication to use tool \`${toolName}\``,
+      },
+    },
+    {
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "Authenticate",
+            emoji: true,
+          },
+          url: conversationUrl,
+          style: "primary",
+        },
+      ],
+    },
+  ];
+}

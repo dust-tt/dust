@@ -22,6 +22,7 @@ import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/block
 import {
   makeAssistantSelectionBlock,
   makeMessageUpdateBlocksAndText,
+  makeToolAuthenticationBlock,
   makeToolValidationBlock,
   MAX_SLACK_MESSAGE_LENGTH,
 } from "@connectors/connectors/slack/chat/blocks";
@@ -224,22 +225,21 @@ async function streamAgentAnswerToSlack(
           connector.workspaceId,
           conversation.sId
         );
-        await throttledPostSlackMessageUpdate({
-          messageUpdate: {
-            text:
-              "The agent took an action that requires personal authentication. " +
-              `Please go to <${conversationUrl}|the conversation> to authenticate.`,
-            assistantName,
-            agentConfigurations,
-          },
-          ...conversationData,
-          canBeIgnored: false,
-          extraLogs: {
-            source: "streamAgentAnswerToSlack",
-            eventType: event.type,
-          },
-        });
-        return new Ok(undefined);
+
+        if (slackUserId && !slackUserInfo.is_bot && conversationUrl) {
+          await slackClient.chat.postEphemeral({
+            channel: slackChannelId,
+            user: slackUserId,
+            text: "Personal authentication required",
+            blocks: makeToolAuthenticationBlock({
+              agentName: event.metadata.agentName,
+              toolName: event.authError.toolName,
+              conversationUrl,
+            }),
+            thread_ts: slackMessageTs,
+          });
+        }
+        break;
       }
 
       case "user_message_error": {
