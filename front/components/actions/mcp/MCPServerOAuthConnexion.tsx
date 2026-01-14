@@ -71,19 +71,12 @@ export function MCPServerOAuthConnexion({
     if (useCase) {
       // We fetch the credential inputs for this provider and use case.
       const fetchCredentialInputs = async () => {
-        // eslint-disable-next-line no-console
-        console.log("[MCPServerOAuthConnexion] Fetching inputs for", {
-          provider: authorization.provider,
-          useCase,
-        });
         const credentialInputs = await getProviderRequiredOAuthCredentialInputs(
           {
             provider: authorization.provider,
             useCase: useCase,
           }
         );
-        // eslint-disable-next-line no-console
-        console.log("[MCPServerOAuthConnexion] Got credential inputs:", credentialInputs);
         setInputs(credentialInputs);
 
         // Set the auth credentials to the values in the credentials object

@@ -36,7 +36,7 @@ function createServer(
       { toolNameForMonitoring: "snowflake", agentLoopContext },
       async (_params, { authInfo }) => {
         const client = createSnowflakeClient(
-          authInfo?.metadata?.snowflake_account,
+          authInfo?.extra?.snowflake_account as string | undefined,
           authInfo?.token
         );
 
@@ -79,7 +79,7 @@ function createServer(
       { toolNameForMonitoring: "snowflake", agentLoopContext },
       async ({ database }, { authInfo }) => {
         const client = createSnowflakeClient(
-          authInfo?.metadata?.snowflake_account,
+          authInfo?.extra?.snowflake_account as string | undefined,
           authInfo?.token
         );
 
@@ -123,7 +123,7 @@ function createServer(
       { toolNameForMonitoring: "snowflake", agentLoopContext },
       async ({ database, schema }, { authInfo }) => {
         const client = createSnowflakeClient(
-          authInfo?.metadata?.snowflake_account,
+          authInfo?.extra?.snowflake_account as string | undefined,
           authInfo?.token
         );
 
@@ -168,7 +168,7 @@ function createServer(
       { toolNameForMonitoring: "snowflake", agentLoopContext },
       async ({ database, schema, table }, { authInfo }) => {
         const client = createSnowflakeClient(
-          authInfo?.metadata?.snowflake_account,
+          authInfo?.extra?.snowflake_account as string | undefined,
           authInfo?.token
         );
 
@@ -242,7 +242,7 @@ function createServer(
       { toolNameForMonitoring: "snowflake", agentLoopContext },
       async ({ sql, database, schema, warehouse, max_rows }, { authInfo }) => {
         const client = createSnowflakeClient(
-          authInfo?.metadata?.snowflake_account,
+          authInfo?.extra?.snowflake_account as string | undefined,
           authInfo?.token
         );
 

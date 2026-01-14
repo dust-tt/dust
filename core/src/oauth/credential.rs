@@ -48,6 +48,7 @@ impl From<ConnectionProvider> for CredentialProvider {
             ConnectionProvider::McpStatic => CredentialProvider::McpStatic,
             ConnectionProvider::Freshservice => CredentialProvider::Freshservice,
             ConnectionProvider::Databricks => CredentialProvider::Databricks,
+            ConnectionProvider::Snowflake => CredentialProvider::Snowflake,
             ConnectionProvider::Vanta => CredentialProvider::Vanta,
             _ => panic!("Unsupported provider: {:?}", provider),
         }
@@ -170,8 +171,12 @@ impl Credential {
 
         let keys_to_check = match provider {
             CredentialProvider::Snowflake => {
-                // Check if it's key-pair auth or password auth
-                if content.get("auth_type").and_then(|v| v.as_str()) == Some("keypair") {
+                // Check if it's OAuth (client_id + client_secret) or data warehouse auth
+                if content.contains_key("client_id") && content.contains_key("client_secret") {
+                    // OAuth credentials for MCP server integration
+                    vec!["client_id", "client_secret"]
+                } else if content.get("auth_type").and_then(|v| v.as_str()) == Some("keypair") {
+                    // Key-pair auth for data warehouse
                     vec![
                         "account",
                         "warehouse",
@@ -181,7 +186,7 @@ impl Credential {
                         "auth_type",
                     ]
                 } else {
-                    // Legacy or explicit password auth
+                    // Legacy or explicit password auth for data warehouse
                     vec!["account", "warehouse", "username", "password", "role"]
                 }
             }

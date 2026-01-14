@@ -50,14 +50,15 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
 
     const account = extraConfig.snowflake_account;
 
-    // Note: Snowflake OAuth scope is optional. When omitted, the user's default role is used.
-    // Refresh tokens are controlled by OAUTH_ISSUE_REFRESH_TOKENS in the security integration,
-    // not by an OAuth scope.
+    // Snowflake OAuth scope specifies the role to use. We use SYSADMIN by default
+    // since ACCOUNTADMIN/SECURITYADMIN are typically blocked for OAuth.
+    // Users can still access data based on SYSADMIN's privileges.
     const qs = querystring.stringify({
       response_type: "code",
       client_id: clientId,
       state: connection.connection_id,
       redirect_uri: finalizeUriForProvider("snowflake"),
+      scope: "session:role:SYSADMIN",
     });
 
     // Build account-specific authorization URL
@@ -159,7 +160,11 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
         client_secret,
         client_id: extraConfig.client_id,
       },
-      metadata: { workspace_id: workspaceId, user_id: userId },
+      metadata: {
+        workspace_id: workspaceId,
+        user_id: userId,
+        snowflake_account: extraConfig.snowflake_account,
+      },
     };
   }
 
