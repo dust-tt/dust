@@ -1,38 +1,27 @@
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
 
+import type {
+  VoiceGender as ConstantsVoiceGender,
+  VoiceLanguage as ConstantsVoiceLanguage,
+  VoiceUseCase as ConstantsVoiceUseCase,
+} from "@app/lib/actions/mcp_internal_actions/servers/elevenlabs/constants";
+import {
+  VOICE_GENDERS as CONSTANTS_VOICE_GENDERS,
+  VOICE_LANGUAGES as CONSTANTS_VOICE_LANGUAGES,
+  VOICE_USE_CASES as CONSTANTS_VOICE_USE_CASES,
+} from "@app/lib/actions/mcp_internal_actions/servers/elevenlabs/constants";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { dustManagedCredentials } from "@app/types";
 
-export const VOICE_GENDERS = ["female", "male"] as const;
+// Re-export from constants to maintain backward compatibility
+export const VOICE_GENDERS = CONSTANTS_VOICE_GENDERS;
+export const VOICE_LANGUAGES = CONSTANTS_VOICE_LANGUAGES;
+export const VOICE_USE_CASES = CONSTANTS_VOICE_USE_CASES;
 
-export type VoiceGender = (typeof VOICE_GENDERS)[number];
-
-export const VOICE_LANGUAGES = [
-  "english_american",
-  "english_british",
-  "french",
-  "german",
-  "dutch",
-  "italian",
-  "japanese",
-  "hindi",
-  "chinese",
-] as const;
-
-export type VoiceLanguage = (typeof VOICE_LANGUAGES)[number];
-
-export const VOICE_USE_CASES = [
-  "narrative_story",
-  "conversational",
-  "characters_animation",
-  "social_media",
-  "entertainment_tv",
-  "advertisement",
-  "informative_educational",
-] as const;
-
-export type VoiceUseCase = (typeof VOICE_USE_CASES)[number];
+export type VoiceGender = ConstantsVoiceGender;
+export type VoiceLanguage = ConstantsVoiceLanguage;
+export type VoiceUseCase = ConstantsVoiceUseCase;
 
 interface VoiceDefinition {
   voiceId: string;

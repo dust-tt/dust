@@ -169,6 +169,11 @@ import {
   SLACK_BOT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack_bot/metadata";
 import { SLIDESHOW_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/metadata";
+import {
+  SOUND_STUDIO_SERVER_INFO,
+  SOUND_STUDIO_TOOL_STAKES,
+  SOUND_STUDIO_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/sound_studio/metadata";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -778,22 +783,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      generate_music: "low",
-      generate_sound_effects: "low",
-    },
+    tools_stakes: SOUND_STUDIO_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "sound_studio",
-      version: "1.0.0",
-      description: "Create music tracks and sound effects",
-      authorization: null,
-      icon: "ActionNoiseIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    tools: SOUND_STUDIO_TOOLS,
+    serverInfo: SOUND_STUDIO_SERVER_INFO,
   },
   microsoft_excel: {
     id: 38,
