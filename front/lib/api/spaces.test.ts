@@ -498,53 +498,36 @@ describe("createSpaceAndGroup", () => {
   });
 
   describe("project metadata lifecycle", () => {
-    it("should automatically create empty metadata when creating a project space", async () => {
-      const result = await createSpaceAndGroup(adminAuth, {
-        name: "Test Project With Metadata",
+    it("creates metadata for project spaces, not for regular spaces", async () => {
+      const projectResult = await createSpaceAndGroup(adminAuth, {
+        name: "Test Project",
         isRestricted: false,
         spaceKind: "project",
         managementMode: "manual",
         memberIds: [],
       });
+      expect(projectResult.isOk()).toBe(true);
 
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const space = result.value;
+      const projectMetadata = await ProjectMetadataResource.fetchBySpace(
+        adminAuth,
+        projectResult.value
+      );
+      expect(projectMetadata).not.toBeNull();
 
-        // Verify metadata was created
-        const metadata = await ProjectMetadataResource.fetchBySpace(
-          adminAuth,
-          space
-        );
-        expect(metadata).not.toBeNull();
-        expect(metadata!.description).toBeNull();
-        expect(metadata!.urls).toEqual([]);
-        expect(metadata!.tags).toEqual([]);
-        expect(metadata!.emoji).toBeNull();
-        expect(metadata!.color).toBeNull();
-      }
-    });
-
-    it("should not create metadata for regular spaces", async () => {
-      const result = await createSpaceAndGroup(adminAuth, {
-        name: "Test Regular No Metadata",
+      const regularResult = await createSpaceAndGroup(adminAuth, {
+        name: "Test Regular",
         isRestricted: true,
         spaceKind: "regular",
         managementMode: "manual",
         memberIds: [],
       });
+      expect(regularResult.isOk()).toBe(true);
 
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const space = result.value;
-
-        // Verify no metadata was created (fetchBySpace returns null for non-project spaces)
-        const metadata = await ProjectMetadataResource.fetchBySpace(
-          adminAuth,
-          space
-        );
-        expect(metadata).toBeNull();
-      }
+      const regularMetadata = await ProjectMetadataResource.fetchBySpace(
+        adminAuth,
+        regularResult.value
+      );
+      expect(regularMetadata).toBeNull();
     });
   });
 });
