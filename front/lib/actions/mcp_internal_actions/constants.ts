@@ -151,6 +151,7 @@ import {
   SCHEDULES_MANAGEMENT_TOOL_STAKES,
   SCHEDULES_MANAGEMENT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/schedules_management/metadata";
+import { SEARCH_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/search/metadata";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
   InternalMCPServerDefinitionType,
@@ -1018,15 +1019,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: SEARCH_SERVER_NAME,
-      version: "1.0.0",
-      description: "Search content to find the most relevant information.",
-      icon: "ActionMagnifyingGlassIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: SEARCH_SERVER_INFO,
   },
   run_agent: {
     id: 1008,
