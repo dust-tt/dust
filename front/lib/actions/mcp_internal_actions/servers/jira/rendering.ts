@@ -4,7 +4,7 @@ import { jsonToMarkdown } from "@app/lib/actions/mcp_internal_actions/utils";
 import { isStringArray } from "@app/types/shared/utils/general";
 
 import type { ADFContentNode, JiraComment, JiraIssue } from "./types";
-import { JiraCommentsListSchema } from "./types";
+import { isADFDocument, JiraCommentsListSchema } from "./types";
 
 function formatDateTime(dateString: string): string {
   return format(new Date(dateString), "yyyy-MM-dd HH:mm");
@@ -25,17 +25,6 @@ const PRIORITY_FIELD_ORDER = [
   "created",
   "updated",
 ];
-
-function isADFDocument(
-  value: object
-): value is { type: "doc"; version: 1; content?: ADFContentNode[] } {
-  return (
-    "type" in value &&
-    value.type === "doc" &&
-    "version" in value &&
-    value.version === 1
-  );
-}
 
 function formatFieldName(fieldName: string): string {
   const mappings: Record<string, string> = {

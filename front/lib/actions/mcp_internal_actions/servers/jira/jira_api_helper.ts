@@ -23,7 +23,7 @@ import type {
   SortDirection,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
-  ADFDocumentSchema,
+  isADFDocument,
   JiraAttachmentsResultSchema,
   JiraCommentSchema,
   JiraCommentsListSchema,
@@ -54,11 +54,6 @@ import { isTextExtractionSupportedContentType } from "@app/types/shared/text_ext
 import { sanitizeFilename } from "../../utils/file_utils";
 
 const DEFAULT_ISSUE_FIELDS = ["*navigable"];
-
-// Type guard to check if a value is an ADFDocument
-function isADFDocument(value: unknown): value is ADFDocument {
-  return ADFDocumentSchema.safeParse(value).success;
-}
 
 // Generic helper to handle errors consistently
 function handleResults<T>(
