@@ -14,7 +14,7 @@ import type { DataSourceConfig } from "@connectors/types";
  */
 export function getDustAPI(
   dataSourceConfig: DataSourceConfig,
-  useInternalAPI = false
+  { useInternalAPI }: { useInternalAPI?: boolean } = { useInternalAPI: false }
 ): DustAPI {
   return new DustAPI(
     {

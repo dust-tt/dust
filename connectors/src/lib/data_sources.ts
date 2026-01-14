@@ -531,7 +531,7 @@ async function tokenize(text: string, ds: DataSourceConfig) {
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TOKENIZE_TIMEOUT_MS);
-  const tokensRes = await getDustAPI(ds).tokenize(
+  const tokensRes = await getDustAPI(ds, { useInternalAPI: true }).tokenize(
     sanitizedText,
     ds.dataSourceId,
     { signal: controller.signal }
@@ -1070,7 +1070,7 @@ export async function upsertDataSourceTableFromCsv({
     );
   }
 
-  const dustAPI = getDustAPI(dataSourceConfig, true);
+  const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: true });
 
   const fileRes = await dustAPI.uploadFile({
     contentType: "text/csv",
@@ -1539,7 +1539,9 @@ export async function _upsertDataSourceFolder({
 }) {
   const now = new Date();
 
-  const r = await getDustAPI(dataSourceConfig, true).upsertFolder({
+  const r = await getDustAPI(dataSourceConfig, {
+    useInternalAPI: true,
+  }).upsertFolder({
     dataSourceId: dataSourceConfig.dataSourceId,
     folderId,
     timestamp: timestampMs ? timestampMs : now.getTime(),
@@ -1564,7 +1566,9 @@ export async function deleteDataSourceFolder({
   folderId: string;
   loggerArgs?: Record<string, string | number>;
 }) {
-  const r = await getDustAPI(dataSourceConfig, true).deleteFolder({
+  const r = await getDustAPI(dataSourceConfig, {
+    useInternalAPI: true,
+  }).deleteFolder({
     dataSourceId: dataSourceConfig.dataSourceId,
     folderId,
   });
