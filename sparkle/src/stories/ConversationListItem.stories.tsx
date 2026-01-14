@@ -32,6 +32,7 @@ const mockConversationNoDescription = {
 };
 
 export const OneOnOneConversation: Story = {
+  args: {},
   render: () => (
     <ListGroup>
       <ConversationListItem
@@ -49,6 +50,7 @@ export const OneOnOneConversation: Story = {
 };
 
 export const OneOnOneWithReply: Story = {
+  args: {},
   render: () => (
     <ListGroup>
       <ConversationListItem
@@ -69,6 +71,7 @@ export const OneOnOneWithReply: Story = {
 };
 
 export const OneOnOneWithCounter: Story = {
+  args: {},
   render: () => (
     <ListGroup>
       <ConversationListItem
@@ -79,7 +82,6 @@ export const OneOnOneWithCounter: Story = {
           isRounded: true,
         }}
         time="14:30"
-        messageCount={3}
         onClick={() => console.log("Clicked")}
       />
     </ListGroup>
@@ -87,6 +89,7 @@ export const OneOnOneWithCounter: Story = {
 };
 
 export const GroupConversation: Story = {
+  args: {},
   render: () => (
     <ListGroup>
       <ConversationListItem
@@ -103,6 +106,7 @@ export const GroupConversation: Story = {
 };
 
 export const GroupConversationWithReply: Story = {
+  args: {},
   render: () => (
     <ListGroup>
       <ConversationListItem
@@ -150,6 +154,7 @@ export const GroupConversationWithReply: Story = {
 };
 
 export const AgentConversation: Story = {
+  args: {},
   render: () => (
     <ListGroup>
       <ConversationListItem
@@ -168,6 +173,7 @@ export const AgentConversation: Story = {
 };
 
 export const WithoutDescription: Story = {
+  args: {},
   render: () => (
     <ListGroup>
       <ConversationListItem
@@ -185,6 +191,7 @@ export const WithoutDescription: Story = {
 };
 
 export const WithDateSections: Story = {
+  args: {},
   render: () => (
     <div className="s-flex s-flex-col">
       <ListItemSection>Today</ListItemSection>
@@ -197,7 +204,6 @@ export const WithDateSections: Story = {
             isRounded: true,
           }}
           time="14:30"
-          messageCount={3}
           onClick={() => console.log("Clicked")}
         />
         <ConversationListItem
