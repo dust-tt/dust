@@ -206,6 +206,7 @@ impl Provider for SnowflakeConnectionProvider {
             serde_json::Value::Object(mut map) => {
                 map.remove("access_token");
                 map.remove("refresh_token");
+                map.remove("expires_in");
                 serde_json::Value::Object(map)
             }
             _ => Err(anyhow!("Invalid raw_json, not an object"))?,
