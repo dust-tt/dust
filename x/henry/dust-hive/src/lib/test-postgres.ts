@@ -1,6 +1,7 @@
 // Shared test Postgres management (global container, not per-environment)
 // Each environment gets its own database within this container.
 
+import { isContainerRunning } from "./docker";
 import {
   TEST_POSTGRES_CONTAINER_NAME,
   TEST_POSTGRES_PASSWORD,
@@ -10,17 +11,7 @@ import {
 
 // Check if the test postgres container is running
 export async function isTestPostgresRunning(): Promise<boolean> {
-  const proc = Bun.spawn(
-    ["docker", "inspect", "-f", "{{.State.Running}}", TEST_POSTGRES_CONTAINER_NAME],
-    {
-      stdout: "pipe",
-      stderr: "pipe",
-    }
-  );
-  const output = await new Response(proc.stdout).text();
-  await proc.exited;
-
-  return proc.exitCode === 0 && output.trim() === "true";
+  return isContainerRunning(TEST_POSTGRES_CONTAINER_NAME);
 }
 
 // Check if the test postgres container exists (running or stopped)

@@ -1,6 +1,10 @@
 import { join } from "node:path";
 import { setCacheSource } from "../lib/cache";
-import { writeDockerComposeOverride } from "../lib/docker";
+import {
+  clonePostgresVolume,
+  removePostgresVolume,
+  writeDockerComposeOverride,
+} from "../lib/docker";
 import { writeEnvSh } from "../lib/envgen";
 import {
   type Environment,
@@ -32,6 +36,7 @@ interface SpawnOptions {
   wait?: boolean;
   command?: string;
   compact?: boolean;
+  dbFrom?: string;
 }
 
 async function promptForName(): Promise<string> {
@@ -71,6 +76,32 @@ async function tryCreateTestDatabase(name: string): Promise<void> {
   } else {
     logger.warn(`Could not create test database: ${result.error}`);
   }
+}
+
+// Clone postgres database from source environment (if dbFrom is specified)
+async function tryClonePostgresDatabase(
+  targetEnv: string,
+  sourceEnv: string | undefined
+): Promise<Result<void, CommandError>> {
+  if (!sourceEnv) {
+    return Ok(undefined);
+  }
+
+  logger.step(`Cloning Postgres database from '${sourceEnv}'...`);
+  const cloneResult = await clonePostgresVolume(sourceEnv, targetEnv);
+  if (!cloneResult.ok) {
+    return Err(new CommandError(`Failed to clone database: ${cloneResult.error}`));
+  }
+  logger.success(`Postgres database cloned from '${sourceEnv}'`);
+  return Ok(undefined);
+}
+
+// Clean up cloned postgres volume if spawn fails after cloning
+async function cleanupClonedVolume(envName: string, dbFrom: string | undefined): Promise<void> {
+  if (!dbFrom) return;
+  await removePostgresVolume(envName).catch((e) =>
+    logger.warn(`Failed to clean up cloned volume: ${errorMessage(e)}`)
+  );
 }
 
 // Phase 1: Create environment files
@@ -241,6 +272,11 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
     return Err(new CommandError(`Environment '${name}' already exists`));
   }
 
+  // Validate source environment exists if cloning database
+  if (options.dbFrom && !(await environmentExists(options.dbFrom))) {
+    return Err(new CommandError(`Source environment '${options.dbFrom}' does not exist`));
+  }
+
   // Load settings for branch prefix
   const settings = await loadSettings();
 
@@ -272,9 +308,21 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   // Phase 1.5: Create test database (if test postgres is running)
   await tryCreateTestDatabase(name);
 
+  // Phase 1.6: Clone postgres volume if --db-from specified
+  const cloneResult = await tryClonePostgresDatabase(name, options.dbFrom);
+  if (!cloneResult.ok) {
+    await deleteEnvironmentDir(name).catch((e) =>
+      logger.warn(`Cleanup failed: ${errorMessage(e)}`)
+    );
+    return cloneResult;
+  }
+
   // Phase 2: Setup worktree
   const worktreeResult = await setupWorktree(metadata, worktreePath, workspaceBranch, settings);
-  if (!worktreeResult.ok) return worktreeResult;
+  if (!worktreeResult.ok) {
+    await cleanupClonedVolume(name, options.dbFrom);
+    return worktreeResult;
+  }
 
   // Phase 3: Start SDK
   const env: Environment = {
@@ -290,7 +338,10 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   // Otherwise, let the watch process run and show progress in zellij
   const shouldWaitForSdk = options.noOpen || options.wait;
   const sdkResult = await startSdk(env, worktreePath, Boolean(shouldWaitForSdk), settings);
-  if (!sdkResult.ok) return sdkResult;
+  if (!sdkResult.ok) {
+    await cleanupClonedVolume(name, options.dbFrom);
+    return sdkResult;
+  }
 
   logger.success(`Environment '${name}' created successfully!`);
   console.log();

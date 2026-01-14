@@ -3,6 +3,7 @@ import type { Environment } from "./environment";
 import { logger } from "./logger";
 import { getDockerComposePath, getDockerOverridePath } from "./paths";
 import type { PortAllocation } from "./ports";
+import { Err, Ok, type Result } from "./result";
 
 export interface DockerComposeOverride {
   services: {
@@ -34,13 +35,21 @@ export interface DockerComposeOverride {
 const VOLUME_KEYS = ["pgsql", "qdrant-primary", "qdrant-secondary", "elasticsearch"] as const;
 type VolumeKey = (typeof VOLUME_KEYS)[number];
 
-function getVolumeName(envName: string, volume: VolumeKey): string {
+// Volume name as declared in docker-compose.override.yml
+function getComposeVolumeName(envName: string, volume: VolumeKey): string {
   return `dust-hive-${envName}-${volume}`;
 }
 
-// Get list of volume names for an environment
+// Actual Docker volume name (Docker Compose prefixes with project name)
+function getDockerVolumeName(envName: string, volume: VolumeKey): string {
+  const projectName = getDockerProjectName(envName);
+  const composeVolumeName = getComposeVolumeName(envName, volume);
+  return `${projectName}_${composeVolumeName}`;
+}
+
+// Get list of volume names for an environment (as declared in docker-compose)
 export function getVolumeNames(name: string): string[] {
-  return VOLUME_KEYS.map((volume) => getVolumeName(name, volume));
+  return VOLUME_KEYS.map((volume) => getComposeVolumeName(name, volume));
 }
 
 // Generate docker-compose.override.yml content for an environment
@@ -52,21 +61,21 @@ export function generateDockerComposeOverride(
     services: {
       db: {
         ports: [`${ports.postgres}:5432`],
-        volumes: [`${getVolumeName(name, "pgsql")}:/var/lib/postgresql/data`],
+        volumes: [`${getComposeVolumeName(name, "pgsql")}:/var/lib/postgresql/data`],
       },
       redis: {
         ports: [`${ports.redis}:6379`],
       },
       qdrant_primary: {
         ports: [`${ports.qdrantHttp}:6333`, `${ports.qdrantGrpc}:6334`],
-        volumes: [`${getVolumeName(name, "qdrant-primary")}:/qdrant/storage`],
+        volumes: [`${getComposeVolumeName(name, "qdrant-primary")}:/qdrant/storage`],
       },
       qdrant_secondary: {
-        volumes: [`${getVolumeName(name, "qdrant-secondary")}:/qdrant/storage`],
+        volumes: [`${getComposeVolumeName(name, "qdrant-secondary")}:/qdrant/storage`],
       },
       elasticsearch: {
         ports: [`${ports.elasticsearch}:9200`],
-        volumes: [`${getVolumeName(name, "elasticsearch")}:/usr/share/elasticsearch/data`],
+        volumes: [`${getComposeVolumeName(name, "elasticsearch")}:/usr/share/elasticsearch/data`],
       },
       "apache-tika": {
         ports: [`${ports.apacheTika}:9998`],
@@ -201,4 +210,131 @@ export async function removeDockerVolumes(envName: string): Promise<string[]> {
   }
 
   return failed;
+}
+
+// Check if a docker volume exists
+async function volumeExists(volumeName: string): Promise<boolean> {
+  const proc = Bun.spawn(["docker", "volume", "inspect", volumeName], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await proc.exited;
+  return proc.exitCode === 0;
+}
+
+// Check if a docker container is running
+export async function isContainerRunning(containerName: string): Promise<boolean> {
+  const proc = Bun.spawn(["docker", "inspect", "-f", "{{.State.Running}}", containerName], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const stdout = await new Response(proc.stdout).text();
+  await proc.exited;
+  return proc.exitCode === 0 && stdout.trim() === "true";
+}
+
+// Run a docker command on a container (pause, unpause, etc.)
+async function dockerContainerCommand(
+  command: "pause" | "unpause",
+  containerName: string
+): Promise<boolean> {
+  const proc = Bun.spawn(["docker", command, containerName], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await proc.exited;
+  return proc.exitCode === 0;
+}
+
+// Remove a single docker volume
+async function removeVolume(volumeName: string): Promise<void> {
+  const proc = Bun.spawn(["docker", "volume", "rm", "-f", volumeName], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await proc.exited;
+}
+
+// Remove the postgres volume for an environment
+export async function removePostgresVolume(envName: string): Promise<void> {
+  await removeVolume(getDockerVolumeName(envName, "pgsql"));
+}
+
+// Clone postgres volume from source environment to target environment
+export async function clonePostgresVolume(
+  sourceEnv: string,
+  targetEnv: string
+): Promise<Result<void, string>> {
+  const sourceVolume = getDockerVolumeName(sourceEnv, "pgsql");
+  const targetVolume = getDockerVolumeName(targetEnv, "pgsql");
+  const sourceContainer = `${getDockerProjectName(sourceEnv)}-db-1`;
+
+  // Check source volume exists
+  if (!(await volumeExists(sourceVolume))) {
+    return Err(`Source volume '${sourceVolume}' does not exist`);
+  }
+
+  // Check target volume doesn't already exist
+  if (await volumeExists(targetVolume)) {
+    return Err(`Target volume '${targetVolume}' already exists`);
+  }
+
+  // Check if source container is running - if so, pause it during copy
+  const wasRunning = await isContainerRunning(sourceContainer);
+  if (wasRunning) {
+    logger.step(`Pausing ${sourceContainer} during volume copy...`);
+    const paused = await dockerContainerCommand("pause", sourceContainer);
+    if (!paused) {
+      return Err(`Failed to pause container '${sourceContainer}'`);
+    }
+  }
+
+  try {
+    // Create target volume
+    logger.step(`Creating volume ${targetVolume}...`);
+    const createProc = Bun.spawn(["docker", "volume", "create", targetVolume], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const createStderr = await new Response(createProc.stderr).text();
+    await createProc.exited;
+    if (createProc.exitCode !== 0) {
+      return Err(`Failed to create volume: ${createStderr}`);
+    }
+
+    // Copy data using alpine container
+    logger.step(`Copying data from ${sourceVolume} to ${targetVolume}...`);
+    const copyProc = Bun.spawn(
+      [
+        "docker",
+        "run",
+        "--rm",
+        "-v",
+        `${sourceVolume}:/from:ro`,
+        "-v",
+        `${targetVolume}:/to`,
+        "alpine:3.21",
+        "cp",
+        "-a",
+        "/from/.",
+        "/to/",
+      ],
+      { stdout: "pipe", stderr: "pipe" }
+    );
+    const copyStderr = await new Response(copyProc.stderr).text();
+    await copyProc.exited;
+    if (copyProc.exitCode !== 0) {
+      // Clean up the created volume on failure
+      await removeVolume(targetVolume);
+      return Err(`Failed to copy volume data: ${copyStderr}`);
+    }
+
+    return Ok(undefined);
+  } finally {
+    // Always unpause if we paused
+    if (wasRunning) {
+      logger.step(`Resuming ${sourceContainer}...`);
+      await dockerContainerCommand("unpause", sourceContainer);
+    }
+  }
 }
