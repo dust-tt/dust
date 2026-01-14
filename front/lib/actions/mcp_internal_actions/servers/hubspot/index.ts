@@ -1,6 +1,6 @@
-import { FilterOperatorEnum } from "@hubspot/api-client/lib/codegen/crm/contacts";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
+
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 
 import {
   ALL_OBJECTS,
@@ -37,7 +37,7 @@ import {
   updateCompany,
   updateContact,
   updateDeal,
-} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
+} from "./hubspot_api_helper";
 import {
   formatHubSpotCreateSuccess,
   formatHubSpotGetSuccess,
@@ -45,15 +45,48 @@ import {
   formatHubSpotSearchResults,
   formatHubSpotUpdateSuccess,
   formatTransformedPropertiesAsText,
-} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_response_helpers";
-import { HUBSPOT_ID_TO_OBJECT_TYPE } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
+} from "./hubspot_response_helpers";
+import { HUBSPOT_ID_TO_OBJECT_TYPE } from "./hubspot_utils";
 import {
   ERROR_MESSAGES,
   generateUrls,
   validateRequests,
   withAuth,
-} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+} from "./hubspot_utils";
+import {
+  countObjectsByPropertiesSchema,
+  createAssociationSchema,
+  createCommunicationSchema,
+  createCompanySchema,
+  createContactSchema,
+  createDealSchema,
+  createLeadSchema,
+  createMeetingSchema,
+  createNoteSchema,
+  createTaskSchema,
+  exportCrmObjectsCsvSchema,
+  getAssociatedMeetingsSchema,
+  getCompanySchema,
+  getContactSchema,
+  getCurrentUserIdSchema,
+  getDealSchema,
+  getFilePublicUrlSchema,
+  getHubspotLinkSchema,
+  getHubspotPortalIdSchema,
+  getLatestObjectsSchema,
+  getMeetingSchema,
+  getObjectByEmailSchema,
+  getObjectPropertiesSchema,
+  getUserActivitySchema,
+  listAssociationsSchema,
+  listOwnersSchema,
+  removeAssociationSchema,
+  searchCrmObjectsSchema,
+  searchOwnersSchema,
+  updateCompanySchema,
+  updateContactSchema,
+  updateDealSchema,
+} from "./metadata";
 
 function createServer(): McpServer {
   const server = makeInternalMCPServer("hubspot");
@@ -61,10 +94,7 @@ function createServer(): McpServer {
   server.tool(
     "get_object_properties",
     "Lists all available properties for a Hubspot object. When creatableOnly is true, returns only properties that can be modified through forms (excludes hidden, calculated, read-only and file upload fields).",
-    {
-      objectType: z.enum(ALL_OBJECTS),
-      creatableOnly: z.boolean().optional(),
-    },
+    getObjectPropertiesSchema,
     async ({ objectType, creatableOnly = true }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -94,20 +124,7 @@ function createServer(): McpServer {
   server.tool(
     "create_contact",
     "Creates a new contact in Hubspot, with optional associations.",
-    {
-      properties: z
-        .record(z.string())
-        .describe("An object containing the properties for the contact."),
-      associations: z
-        .array(
-          z.object({
-            toObjectId: z.string(),
-            toObjectType: z.string().describe("e.g., companies, deals"),
-          })
-        )
-        .optional()
-        .describe("Optional array of associations to create."),
-    },
+    createContactSchema,
     async ({ properties, associations }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -133,10 +150,7 @@ function createServer(): McpServer {
   server.tool(
     "get_object_by_email",
     `Retrieves a Hubspot object using an email address. Supports ${ALL_OBJECTS.join(", ")}.`,
-    {
-      objectType: z.enum(ALL_OBJECTS),
-      email: z.string().describe("The email address of the object."),
-    },
+    getObjectByEmailSchema,
     async ({ objectType, email }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -203,7 +217,7 @@ function createServer(): McpServer {
     "Lists all owners (users) in the HubSpot account with their IDs, names, and email addresses. " +
       "Use this to find owner IDs for get_user_activity calls when you want to get activity for other users. " +
       "For your own activity, use get_current_user_id instead.",
-    {},
+    listOwnersSchema,
     async (_, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -232,13 +246,7 @@ function createServer(): McpServer {
     "Searches for specific owners (users) in the HubSpot account by email, name, ID, or user ID. " +
       "Supports partial matching for names and emails, and exact matching for IDs. " +
       "Use this to find owner information when you have partial details about a user.",
-    {
-      searchQuery: z
-        .string()
-        .describe(
-          "The search query - can be email, first name, last name, full name, owner ID, or user ID"
-        ),
-    },
+    searchOwnersSchema,
     async ({ searchQuery }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -273,31 +281,7 @@ function createServer(): McpServer {
   server.tool(
     "count_objects_by_properties",
     `Count objects in Hubspot with matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}. Max limit is ${MAX_COUNT_LIMIT} objects.`,
-    {
-      objectType: z.enum(SIMPLE_OBJECTS),
-      filters: z
-        .array(
-          z.object({
-            propertyName: z
-              .string()
-              .describe("The name of the property to search by."),
-            operator: z
-              .nativeEnum(FilterOperatorEnum)
-              .describe("The operator to use for comparison."),
-            value: z
-              .string()
-              .optional()
-              .describe("The value to compare against"),
-            values: z
-              .array(z.string())
-              .optional()
-              .describe(
-                "The values to compare against. Required for IN/NOT_IN operators."
-              ),
-          })
-        )
-        .describe("Array of property filters to apply."),
-    },
+    countObjectsByPropertiesSchema,
     async ({ objectType, filters }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -345,10 +329,7 @@ function createServer(): McpServer {
   server.tool(
     "get_latest_objects",
     `Get latest objects from Hubspot. Supports ${SIMPLE_OBJECTS.join(", ")}. Limit is ${MAX_LIMIT}.`,
-    {
-      objectType: z.enum(SIMPLE_OBJECTS),
-      limit: z.number().optional(),
-    },
+    getLatestObjectsSchema,
     async ({ objectType, limit = MAX_LIMIT }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -382,20 +363,7 @@ function createServer(): McpServer {
   server.tool(
     "create_company",
     "Creates a new company in Hubspot, with optional associations.",
-    {
-      properties: z
-        .record(z.string())
-        .describe("An object containing the properties for the company."),
-      associations: z
-        .array(
-          z.object({
-            toObjectId: z.string(),
-            toObjectType: z.string().describe("e.g., contacts, deals"),
-          })
-        )
-        .optional()
-        .describe("Optional array of associations to create."),
-    },
+    createCompanySchema,
     async ({ properties, associations }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -421,20 +389,7 @@ function createServer(): McpServer {
   server.tool(
     "create_deal",
     "Creates a new deal in Hubspot, with optional associations.",
-    {
-      properties: z
-        .record(z.string())
-        .describe("An object containing the properties for the deal."),
-      associations: z
-        .array(
-          z.object({
-            toObjectId: z.string(),
-            toObjectType: z.string().describe("e.g., contacts, companies"),
-          })
-        )
-        .optional()
-        .describe("Optional array of associations to create."),
-    },
+    createDealSchema,
     async ({ properties, associations }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -459,22 +414,7 @@ function createServer(): McpServer {
   server.tool(
     "create_lead",
     "Creates a new lead in Hubspot (as a Deal), with optional associations. Ensure properties correctly define it as a lead.",
-    {
-      properties: z
-        .record(z.string())
-        .describe(
-          "Properties for the lead (deal), including those that identify it as a lead."
-        ),
-      associations: z
-        .array(
-          z.object({
-            toObjectId: z.string(),
-            toObjectType: z.string().describe("e.g., contacts, companies"),
-          })
-        )
-        .optional()
-        .describe("Optional array of associations to create."),
-    },
+    createLeadSchema,
     async ({ properties, associations }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -499,24 +439,7 @@ function createServer(): McpServer {
   server.tool(
     "create_task",
     "Creates a new task in Hubspot, with optional associations.",
-    {
-      properties: z
-        .record(z.string())
-        .describe(
-          "Properties for the task (e.g., hs_task_subject, hs_task_body, hs_timestamp, hs_task_status, hs_task_priority)."
-        ),
-      associations: z
-        .array(
-          z.object({
-            toObjectId: z.string(),
-            toObjectType: z
-              .string()
-              .describe("e.g., contacts, companies, deals"),
-          })
-        )
-        .optional()
-        .describe("Optional array of associations to create."),
-    },
+    createTaskSchema,
     async (input, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -541,28 +464,7 @@ function createServer(): McpServer {
   server.tool(
     "create_note",
     "Creates a new note in Hubspot, with optional associations.",
-    {
-      properties: z
-        .object({
-          hs_note_body: z.string().describe("The content of the note."),
-          hs_timestamp: z
-            .string()
-            .optional()
-            .describe(
-              "The timestamp of the note (ISO 8601 format). Defaults to current time if not provided."
-            ),
-        })
-        .describe("Properties for the note."),
-      associations: z
-        .object({
-          contactIds: z.array(z.string()).optional(),
-          companyIds: z.array(z.string()).optional(),
-          dealIds: z.array(z.string()).optional(),
-          ownerIds: z.array(z.string()).optional(),
-        })
-        .optional()
-        .describe("Direct IDs of objects to associate the note with."),
-    },
+    createNoteSchema,
     async ({ properties, associations }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -587,21 +489,7 @@ function createServer(): McpServer {
   server.tool(
     "create_communication",
     "Creates a new communication (WhatsApp, LinkedIn, SMS) in Hubspot as an engagement. Requires hs_communication_channel_type in properties.",
-    {
-      properties: z
-        .record(z.any())
-        .describe(
-          "Properties, including hs_engagement_type (e.g., 'COMMUNICATION'), hs_communication_channel_type, and message content (e.g., hs_communication_body)."
-        ),
-      associations: z
-        .object({
-          contactIds: z.array(z.string()).optional(),
-          companyIds: z.array(z.string()).optional(),
-          dealIds: z.array(z.string()).optional(),
-        })
-        .optional()
-        .describe("Direct IDs of objects to associate the communication with."),
-    },
+    createCommunicationSchema,
     async ({ properties, associations }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -630,21 +518,7 @@ function createServer(): McpServer {
   server.tool(
     "create_meeting",
     "Creates a new meeting in Hubspot as an engagement. Ensure hs_engagement_type='MEETING' and meeting details are in properties.",
-    {
-      properties: z
-        .record(z.any())
-        .describe(
-          "Properties, including hs_engagement_type='MEETING', hs_meeting_title, hs_meeting_start_time, etc."
-        ),
-      associations: z
-        .object({
-          contactIds: z.array(z.string()).optional(),
-          companyIds: z.array(z.string()).optional(),
-          dealIds: z.array(z.string()).optional(),
-        })
-        .optional()
-        .describe("Direct IDs of objects to associate the meeting with."),
-    },
+    createMeetingSchema,
     async ({ properties, associations }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -670,9 +544,7 @@ function createServer(): McpServer {
   server.tool(
     "get_contact",
     "Retrieves a Hubspot contact by its ID.",
-    {
-      contactId: z.string().describe("The ID of the contact to retrieve."),
-    },
+    getContactSchema,
     async ({ contactId }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -703,15 +575,7 @@ function createServer(): McpServer {
   server.tool(
     "get_company",
     "Retrieves a Hubspot company by its ID. Returns default properties plus any additional properties specified.",
-    {
-      companyId: z.string().describe("The ID of the company to retrieve."),
-      extraProperties: z
-        .array(z.string())
-        .optional()
-        .describe(
-          "Optional additional properties to retrieve beyond the default set (createdate, domain, name, hubspot_owner_id)."
-        ),
-    },
+    getCompanySchema,
     async ({ companyId, extraProperties }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -746,15 +610,7 @@ function createServer(): McpServer {
   server.tool(
     "get_deal",
     "Retrieves a Hubspot deal by its ID. Returns default properties plus any additional properties specified.",
-    {
-      dealId: z.string().describe("The ID of the deal to retrieve."),
-      extraProperties: z
-        .array(z.string())
-        .optional()
-        .describe(
-          "Optional additional properties to retrieve beyond the default set (amount, hubspot_owner_id, closedate, createdate, dealname, dealstage, hs_lastmodifieddate, hs_object_id, pipeline)."
-        ),
-    },
+    getDealSchema,
     async ({ dealId, extraProperties }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -784,11 +640,7 @@ function createServer(): McpServer {
   server.tool(
     "get_meeting",
     "Retrieves a Hubspot meeting (engagement) by its ID.",
-    {
-      meetingId: z
-        .string()
-        .describe("The ID of the meeting (engagement) to retrieve."),
-    },
+    getMeetingSchema,
     async ({ meetingId }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -823,9 +675,7 @@ function createServer(): McpServer {
   server.tool(
     "get_file_public_url",
     "Retrieves a publicly available URL for a file in HubSpot.",
-    {
-      fileId: z.string().describe("The ID of the file."),
-    },
+    getFilePublicUrlSchema,
     async ({ fileId }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -858,12 +708,7 @@ function createServer(): McpServer {
   server.tool(
     "get_associated_meetings",
     "Retrieves meetings associated with a specific object (contact, company, or deal).",
-    {
-      fromObjectType: z
-        .enum(["contacts", "companies", "deals"])
-        .describe("The type of the object (contacts, companies, or deals)."),
-      fromObjectId: z.string().describe("The ID of the object."),
-    },
+    getAssociatedMeetingsSchema,
     async ({ fromObjectType, fromObjectId }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -897,32 +742,10 @@ function createServer(): McpServer {
   );
 
   // Definition for searchCrmObjects tool
-  const searchableObjectTypes = z.enum([
-    "contacts",
-    "companies",
-    "deals",
-    "tasks",
-    "notes",
-    "meetings",
-    "calls",
-    "emails",
-    "products",
-    "line_items",
-    "quotes",
-    "feedback_submissions",
-  ]); // Add other searchable types as needed
-
   server.tool(
     "update_contact",
     "Updates properties of a HubSpot contact by ID.",
-    {
-      contactId: z.string().describe("The ID of the contact to update."),
-      properties: z
-        .record(z.string())
-        .describe(
-          "An object containing the properties to update with their new values."
-        ),
-    },
+    updateContactSchema,
     async ({ contactId, properties }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -948,14 +771,7 @@ function createServer(): McpServer {
   server.tool(
     "update_company",
     "Updates properties of a HubSpot company by ID.",
-    {
-      companyId: z.string().describe("The ID of the company to update."),
-      properties: z
-        .record(z.string())
-        .describe(
-          "An object containing the properties to update with their new values."
-        ),
-    },
+    updateCompanySchema,
     async ({ companyId, properties }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -977,14 +793,7 @@ function createServer(): McpServer {
   server.tool(
     "update_deal",
     "Updates properties of a HubSpot deal by ID.",
-    {
-      dealId: z.string().describe("The ID of the deal to update."),
-      properties: z
-        .record(z.string())
-        .describe(
-          "An object containing the properties to update with their new values."
-        ),
-    },
+    updateDealSchema,
     async ({ dealId, properties }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -1010,27 +819,7 @@ function createServer(): McpServer {
       "date ranges, owners, and free-text queries. Enhanced to support owner filtering across all engagement types. " +
       "IMPORTANT: For enumeration properties (like industry), always use get_object_properties first to discover the exact values. " +
       "Use this for specific searches, or use get_user_activity for comprehensive user activity across all types.",
-    {
-      objectType: searchableObjectTypes,
-      filters: z
-        .array(
-          z.object({
-            propertyName: z.string(),
-            operator: z.nativeEnum(FilterOperatorEnum),
-            value: z.string().optional(),
-            values: z.array(z.string()).optional(),
-          })
-        )
-        .optional()
-        .describe("Array of property filters."),
-      query: z.string().optional().describe("Free-text query string."),
-      propertiesToReturn: z
-        .array(z.string())
-        .optional()
-        .describe("Specific properties to return."),
-      limit: z.number().optional().default(MAX_LIMIT),
-      after: z.string().optional().describe("Pagination cursor."),
-    },
+    searchCrmObjectsSchema,
     async (input, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -1079,29 +868,7 @@ function createServer(): McpServer {
   server.tool(
     "export_crm_objects_csv",
     "Exports CRM objects of a given type to CSV, with filters, property selection, and row limits. The resulting file is available for table queries.",
-    {
-      objectType: searchableObjectTypes,
-      propertiesToExport: z
-        .array(z.string())
-        .min(1)
-        .describe("Properties to include in the CSV."),
-      filters: z
-        .array(
-          z.object({
-            propertyName: z.string(),
-            operator: z.nativeEnum(FilterOperatorEnum),
-            value: z.string().optional(),
-            values: z.array(z.string()).optional(),
-          })
-        )
-        .optional(),
-      query: z.string().optional().describe("Free-text query string."),
-      maxRows: z
-        .number()
-        .optional()
-        .default(2000)
-        .describe("Maximum number of rows to export (hard limit: 2000)."),
-    },
+    exportCrmObjectsCsvSchema,
     async (input, { authInfo }) => {
       // Hard cap for safety
       const HARD_ROW_LIMIT = 2000;
@@ -1200,17 +967,7 @@ function createServer(): McpServer {
       "Prerequisites: Use the hubspot-get-portal-id tool to get the PortalId and UiDomain. " +
       "Usage Guidance: Use to generate links to HubSpot UI pages when users need to reference specific HubSpot records. " +
       "Validates that object type IDs exist in the HubSpot system.",
-    {
-      portalId: z.string().describe("The HubSpot portal/account ID"),
-      uiDomain: z.string().describe("The HubSpot UI domain"),
-      pageRequests: z.array(
-        z.object({
-          pagetype: z.enum(["record", "index"]),
-          objectTypeId: z.string(),
-          objectId: z.string().optional(),
-        })
-      ),
-    },
+    getHubspotLinkSchema,
     async ({ portalId, uiDomain, pageRequests }) => {
       const validationResult = validateRequests(pageRequests);
       if (validationResult.errors.length > 0) {
@@ -1255,7 +1012,7 @@ function createServer(): McpServer {
   server.tool(
     "get_hubspot_portal_id",
     "Gets the current user's portal ID. To use before calling get_hubspot_link",
-    {},
+    getHubspotPortalIdSchema,
     async (_, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -1282,16 +1039,7 @@ function createServer(): McpServer {
   server.tool(
     "create_association",
     "Creates an association between two existing HubSpot objects (e.g., associate a contact with a company).",
-    {
-      fromObjectType: z
-        .enum(["contacts", "companies", "deals"])
-        .describe("The type of the source object"),
-      fromObjectId: z.string().describe("The ID of the source object"),
-      toObjectType: z
-        .enum(["contacts", "companies", "deals"])
-        .describe("The type of the target object"),
-      toObjectId: z.string().describe("The ID of the target object"),
-    },
+    createAssociationSchema,
     async (
       { fromObjectType, fromObjectId, toObjectType, toObjectId },
       { authInfo }
@@ -1324,16 +1072,7 @@ function createServer(): McpServer {
   server.tool(
     "list_associations",
     "Lists all associations for a given HubSpot object (e.g., list all contacts associated with a company).",
-    {
-      objectType: z
-        .enum(["contacts", "companies", "deals"])
-        .describe("The type of the object"),
-      objectId: z.string().describe("The ID of the object"),
-      toObjectType: z
-        .enum(["contacts", "companies", "deals"])
-        .optional()
-        .describe("Optional: specific object type to filter associations"),
-    },
+    listAssociationsSchema,
     async ({ objectType, objectId, toObjectType }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -1362,16 +1101,7 @@ function createServer(): McpServer {
   server.tool(
     "remove_association",
     "Removes an association between two HubSpot objects.",
-    {
-      fromObjectType: z
-        .enum(["contacts", "companies", "deals"])
-        .describe("The type of the source object"),
-      fromObjectId: z.string().describe("The ID of the source object"),
-      toObjectType: z
-        .enum(["contacts", "companies", "deals"])
-        .describe("The type of the target object"),
-      toObjectId: z.string().describe("The ID of the target object"),
-    },
+    removeAssociationSchema,
     async (
       { fromObjectType, fromObjectId, toObjectType, toObjectId },
       { authInfo }
@@ -1409,7 +1139,7 @@ function createServer(): McpServer {
     "Gets the current authenticated user's HubSpot owner ID and profile information. " +
       "Essential first step for getting your own activity data. Returns user_id (needed for get_user_activity), " +
       "user details, and hub_id. Use this before calling get_user_activity with your own data.",
-    {},
+    getCurrentUserIdSchema,
     async (_, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
@@ -1438,30 +1168,7 @@ function createServer(): McpServer {
       "Perfect for queries like 'show my activity for the last week' or 'what did I do this month'. " +
       "Returns both detailed activity list and summary statistics by activity type. " +
       "For your own activity: first call get_current_user_id to get your ownerId.",
-    {
-      ownerId: z
-        .string()
-        .describe(
-          "The HubSpot owner/user ID to get activity for. Get your own ID with get_current_user_id, or use another user's ID from list_owners."
-        ),
-      startDate: z
-        .string()
-        .describe(
-          "Start date for the activity period. Accepts ISO date strings (e.g., '2024-01-01') or timestamps. For 'last week', calculate 7 days ago."
-        ),
-      endDate: z
-        .string()
-        .describe(
-          "End date for the activity period. Accepts ISO date strings (e.g., '2024-01-08') or timestamps. For current time, use new Date().toISOString()."
-        ),
-      limit: z
-        .number()
-        .optional()
-        .default(MAX_LIMIT)
-        .describe(
-          "Maximum number of activities to return across all engagement types (default: 200)"
-        ),
-    },
+    getUserActivitySchema,
     async ({ ownerId, startDate, endDate, limit }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
