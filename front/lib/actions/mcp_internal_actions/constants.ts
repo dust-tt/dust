@@ -218,7 +218,10 @@ export {
   EXECUTE_DATABASE_QUERY_TOOL_NAME,
   GET_DATABASE_SCHEMA_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/metadata";
-import { TOOLSETS_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/toolsets/metadata";
+import {
+  TOOLSETS_SERVER_INFO,
+  TOOLSETS_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/toolsets/metadata";
 import {
   VALTOWN_SERVER_INFO,
   VALTOWN_TOOL_STAKES,
@@ -1035,6 +1038,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: TOOLSETS_TOOLS,
     serverInfo: TOOLSETS_SERVER_INFO,
   },
   val_town: {

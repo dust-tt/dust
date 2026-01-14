@@ -1,6 +1,5 @@
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
@@ -8,6 +7,14 @@ import {
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import {
+  ENABLE_TOOLSET_MONITORING_NAME,
+  ENABLE_TOOLSET_TOOL_NAME,
+  enableToolsetSchema,
+  LIST_TOOLSETS_MONITORING_NAME,
+  LIST_TOOLSETS_TOOL_NAME,
+  listToolsetsSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/toolsets/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -26,12 +33,15 @@ function createServer(
   const server = makeInternalMCPServer("toolsets");
 
   server.tool(
-    "list",
+    LIST_TOOLSETS_TOOL_NAME,
     "List the available toolsets with their names and descriptions. This is like using 'ls' in Unix.",
-    {},
+    listToolsetsSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "list_toolsets", agentLoopContext },
+      {
+        toolNameForMonitoring: LIST_TOOLSETS_MONITORING_NAME,
+        agentLoopContext,
+      },
       async () => {
         const mcpServerViewIdsFromAgentConfiguration =
           agentLoopContext?.runContext?.agentConfiguration.actions
@@ -92,14 +102,15 @@ function createServer(
   );
 
   server.tool(
-    "enable",
+    ENABLE_TOOLSET_TOOL_NAME,
     "Enable a toolset for this conversation.",
-    {
-      toolsetId: z.string(),
-    },
+    enableToolsetSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "enable_toolset", agentLoopContext },
+      {
+        toolNameForMonitoring: ENABLE_TOOLSET_MONITORING_NAME,
+        agentLoopContext,
+      },
       async ({ toolsetId }) => {
         const conversationId = agentLoopContext?.runContext?.conversation.sId;
         if (!conversationId) {
