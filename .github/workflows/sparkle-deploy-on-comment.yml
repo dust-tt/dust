@@ -1,0 +1,79 @@
+name: Sparkle - Deploy Vercel Preview (on PR comment)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: sparkle-preview-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    if: >
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/sparkle-preview')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Guard (only members/collaborators)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const assoc = context.payload.comment.author_association
+            const allowed = ['MEMBER', 'OWNER', 'COLLABORATOR']
+            if (!allowed.includes(assoc)) {
+              core.setFailed(`Not allowed to deploy (author_association=${assoc}).`)
+            }
+
+      - name: Fetch PR info
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prUrl = context.payload.issue.pull_request.url
+            const pr = await github.request(prUrl)
+            core.setOutput('head_ref', pr.data.head.ref)
+            core.setOutput('head_sha', pr.data.head.sha)
+
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.head_ref }}
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+
+      - name: Pull Vercel env (preview)
+        working-directory: sparkle
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_SPARKLE_PROJECT_ID }}
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build
+        working-directory: sparkle
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy preview
+        id: deploy
+        working-directory: sparkle
+        run: |
+          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> $GITHUB_OUTPUT
+
+      - name: Comment preview URL on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = `${{ steps.deploy.outputs.url }}`
+            const sha = `${{ steps.pr.outputs.head_sha }}`.slice(0, 7)
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `Sparkle preview deployed for \`${sha}\`:\n\n${url}`
+            })
