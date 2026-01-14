@@ -187,13 +187,19 @@ First warm runs everything in parallel:
 ### Cache System
 
 dust-hive uses the main Dust repo as a cache source for:
-1. **Node modules**: Symlinked from main repo (instant, but shared - see warning below)
+1. **Node modules**: Shallow copy with symlinks from main repo (see warning below)
 2. **Cargo target**: Symlinked from main repo (shared compilation + linking cache)
 3. **Rust binaries**: Pre-compiled for init scripts (qdrant, elasticsearch, init_db)
 
-**WARNING**: node_modules are symlinked, not copied. Running `npm install` in a worktree
-will modify the main repo's node_modules. If you need isolation, manually run:
-`rm -rf node_modules && npm ci`
+For `front` and `connectors`, dust-hive creates a **shallow copy** of node_modules:
+- A real directory with symlinks to all packages from the main repo
+- `@dust-tt/client` is overridden to point to the worktree's SDK
+
+This ensures correct SDK type resolution when your branch has newer types than main.
+
+**Note**: Running `npm install` works automatically. dust-hive injects a `preinstall` script into
+package.json and creates a `.dust-hive-shallow-copy` marker file. The preinstall detects the marker
+and cleans up the shallow copy before npm proceeds.
 
 **sccache** (optional): When worktree code differs from main, cargo recompiles. sccache
 caches compilations by content hash, making rebuilds after branch switches faster.

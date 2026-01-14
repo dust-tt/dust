@@ -3,6 +3,13 @@
 // Running `npm install` in a worktree will modify the main repo's node_modules.
 // NOTE: cargo target is symlinked to share Rust compilation cache (including linked artifacts).
 
+import { mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
+// Preinstall script that detects and cleans up dust-hive shallow copy
+const PREINSTALL_SCRIPT =
+  "[ -f node_modules/.dust-hive-shallow-copy ] && echo 'Cleaning dust-hive shallow copy...' && rm -rf node_modules || true";
+
 import { ALL_BINARIES, buildBinaries } from "./cache";
 import { directoryExists } from "./fs";
 import { logger } from "./logger";
@@ -36,6 +43,65 @@ async function symlinkNodeModules(srcDir: string, destDir: string): Promise<bool
   });
   await proc.exited;
   return proc.exitCode === 0;
+}
+
+// Setup shallow node_modules with SDK override
+// Creates a real node_modules directory with symlinks to main repo packages,
+// but overrides @dust-tt/client to point to the worktree's SDK.
+// This ensures TypeScript and runtime resolve the SDK from the worktree,
+// not the main repo (which may have stale types).
+function setupShallowNodeModules(
+  mainNodeModules: string,
+  worktreeSdk: string,
+  targetDir: string
+): void {
+  const target = join(targetDir, "node_modules");
+
+  // Create target/node_modules/@dust-tt directory
+  mkdirSync(join(target, "@dust-tt"), { recursive: true });
+
+  // Symlink all top-level packages except @dust-tt
+  for (const item of readdirSync(mainNodeModules)) {
+    if (item !== "@dust-tt") {
+      symlinkSync(join(mainNodeModules, item), join(target, item));
+    }
+  }
+
+  // Symlink @dust-tt contents except client
+  const dustTtDir = join(mainNodeModules, "@dust-tt");
+  for (const item of readdirSync(dustTtDir)) {
+    if (item !== "client") {
+      symlinkSync(join(dustTtDir, item), join(target, "@dust-tt", item));
+    }
+  }
+
+  // Link @dust-tt/client to worktree's SDK
+  symlinkSync(worktreeSdk, join(target, "@dust-tt/client"));
+
+  // Create marker file so preinstall scripts can detect this structure
+  writeFileSync(join(target, ".dust-hive-shallow-copy"), "");
+
+  // Inject preinstall script into package.json to auto-cleanup on npm install
+  injectPreinstallScript(targetDir);
+}
+
+// Inject preinstall script into package.json
+// This allows `npm install` to work automatically in dust-hive environments
+// by cleaning up the shallow copy before npm proceeds.
+function injectPreinstallScript(targetDir: string): void {
+  const packageJsonPath = join(targetDir, "package.json");
+  const content = readFileSync(packageJsonPath, "utf-8");
+  const pkg = JSON.parse(content) as { scripts?: Record<string, string> };
+
+  if (!pkg.scripts) {
+    pkg.scripts = {};
+  }
+
+  // Only add if not already present
+  if (pkg.scripts["preinstall"] !== PREINSTALL_SCRIPT) {
+    pkg.scripts["preinstall"] = PREINSTALL_SCRIPT;
+    writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
+  }
 }
 
 // Symlink cargo target directory to share compilation cache
@@ -177,37 +243,55 @@ export async function installAllDependencies(
     }
   }
 
-  // Handle node_modules for each project
-  const projects = [
-    {
-      key: "sdks" as const,
-      name: "sdks/js",
-      src: `${repoRoot}/sdks/js`,
-      dest: `${worktreePath}/sdks/js`,
-    },
+  // Handle node_modules for sdks/js (simple symlink, it IS the SDK)
+  if (config.sdks === "symlink") {
+    logger.step("sdks/js: Linking from cache...");
+    const success = await symlinkNodeModules(`${repoRoot}/sdks/js`, `${worktreePath}/sdks/js`);
+    if (!success) {
+      failed.push("sdks/js");
+    } else {
+      logger.success("sdks/js: Linked");
+    }
+  } else {
+    logger.step("sdks/js: Installing dependencies...");
+    const success = await runNpmInstall(`${worktreePath}/sdks/js`);
+    if (!success) {
+      failed.push("sdks/js");
+    } else {
+      logger.success("sdks/js: Installed");
+    }
+  }
+
+  // Handle node_modules for front and connectors
+  // These use shallow copy with SDK override to ensure @dust-tt/client
+  // resolves to the worktree's SDK (not main repo's potentially stale SDK)
+  const worktreeSdk = `${worktreePath}/sdks/js`;
+  const projectsWithSdkDep = [
     {
       key: "front" as const,
       name: "front",
-      src: `${repoRoot}/front`,
+      mainNodeModules: `${repoRoot}/front/node_modules`,
       dest: `${worktreePath}/front`,
     },
     {
       key: "connectors" as const,
       name: "connectors",
-      src: `${repoRoot}/connectors`,
+      mainNodeModules: `${repoRoot}/connectors/node_modules`,
       dest: `${worktreePath}/connectors`,
     },
   ];
 
-  for (const { key, name, src, dest } of projects) {
+  for (const { key, name, mainNodeModules, dest } of projectsWithSdkDep) {
     const mode = config[key];
     if (mode === "symlink") {
-      logger.step(`${name}: Linking from cache...`);
-      const success = await symlinkNodeModules(src, dest);
-      if (!success) {
-        failed.push(name);
-      } else {
+      logger.step(`${name}: Linking from cache (with SDK override)...`);
+      try {
+        setupShallowNodeModules(mainNodeModules, worktreeSdk, dest);
         logger.success(`${name}: Linked`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error(`${name}: Failed to link - ${message}`);
+        failed.push(name);
       }
     } else {
       logger.step(`${name}: Installing dependencies...`);
