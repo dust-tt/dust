@@ -85,7 +85,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/metadata";
 import { IMAGE_GENERATION_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/include_data/metadata";
-import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
+import { INTERACTIVE_CONTENT_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/metadata";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
@@ -695,16 +695,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "interactive_content",
-      version: "1.0.0",
-      description:
-        "Create dashboards, presentations, or any interactive content.",
-      authorization: null,
-      icon: "ActionFrameIcon",
-      documentationUrl: null,
-      instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
-    },
+    serverInfo: INTERACTIVE_CONTENT_SERVER_INFO,
   },
   outlook: {
     id: 24,
