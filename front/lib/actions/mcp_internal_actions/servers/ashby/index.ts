@@ -1,20 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import sanitizeHtml from "sanitize-html";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { AshbyClient } from "@app/lib/actions/mcp_internal_actions/servers/ashby/client";
-import { getAshbyClient } from "@app/lib/actions/mcp_internal_actions/servers/ashby/client";
-import {
-  renderCandidateList,
-  renderCandidateNotes,
-  renderInterviewFeedbackRecap,
-  renderReportInfo,
-} from "@app/lib/actions/mcp_internal_actions/servers/ashby/rendering";
-import type {
-  AshbyCandidate,
-  AshbyFeedbackSubmission,
-} from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -23,18 +10,25 @@ import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-const DEFAULT_SEARCH_LIMIT = 20;
+import type { AshbyClient } from "./client";
+import { getAshbyClient } from "./client";
+import {
+  ASHBY_TOOL_NAME,
+  createCandidateNoteSchema,
+  getCandidateNotesSchema,
+  getInterviewFeedbackSchema,
+  getReportDataSchema,
+  searchCandidatesSchema,
+} from "./metadata";
+import {
+  renderCandidateList,
+  renderCandidateNotes,
+  renderInterviewFeedbackRecap,
+  renderReportInfo,
+} from "./rendering";
+import type { AshbyCandidate, AshbyFeedbackSubmission } from "./types";
 
-const CandidateSearchInputSchema = z.object({
-  email: z
-    .string()
-    .optional()
-    .describe("Email address to search for (partial matches supported)."),
-  name: z
-    .string()
-    .optional()
-    .describe("Name to search for (partial matches supported)."),
-});
+const DEFAULT_SEARCH_LIMIT = 20;
 
 function createServer(
   auth: Authenticator,
@@ -46,10 +40,10 @@ function createServer(
     "search_candidates",
     "Search for candidates by name and/or email. " +
       `Returns up to ${DEFAULT_SEARCH_LIMIT} matching candidates by default.`,
-    CandidateSearchInputSchema.shape,
+    searchCandidatesSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "ashby_search_candidates", agentLoopContext },
+      { toolNameForMonitoring: ASHBY_TOOL_NAME, agentLoopContext },
       async ({ email, name }) => {
         if (!email && !name) {
           return new Err(
@@ -123,16 +117,10 @@ function createServer(
   server.tool(
     "get_report_data",
     "Retrieve report data and save it as a CSV file.",
-    {
-      reportUrl: z
-        .string()
-        .describe(
-          "Full URL of the Ashby report (e.g., https://app.ashbyhq.com/reports/saved/[reportId])."
-        ),
-    },
+    getReportDataSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "ashby_get_report_data", agentLoopContext },
+      { toolNameForMonitoring: ASHBY_TOOL_NAME, agentLoopContext },
       async ({ reportUrl }) => {
         const clientResult = await getAshbyClient(auth, agentLoopContext);
         if (clientResult.isErr()) {
@@ -233,11 +221,11 @@ function createServer(
     "Retrieve interview feedback for a candidate. " +
       "This tool will search for the candidate by name or email and return all submitted " +
       "interview feedback for the most recent application.",
-    CandidateSearchInputSchema.shape,
+    getInterviewFeedbackSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "ashby_get_interview_feedback",
+        toolNameForMonitoring: ASHBY_TOOL_NAME,
         agentLoopContext,
       },
       async ({ email, name }) => {
@@ -342,16 +330,11 @@ function createServer(
     "create_candidate_note",
     "Create a note on a candidate's profile in Ashby. " +
       "The note content can include basic HTML formatting (supported tags: h1-h6, p, b, i, u, a, ul, ol, li, code, pre).",
-    {
-      ...CandidateSearchInputSchema.shape,
-      noteContent: z
-        .string()
-        .describe("The content of the note in HTML format."),
-    },
+    createCandidateNoteSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "ashby_create_candidate_note",
+        toolNameForMonitoring: ASHBY_TOOL_NAME,
         agentLoopContext,
       },
       async ({ email, name, noteContent }) => {
@@ -414,11 +397,11 @@ function createServer(
     "get_candidate_notes",
     "Retrieve all notes for a candidate. " +
       "This tool will search for the candidate by name or email and return all notes on their profile.",
-    CandidateSearchInputSchema.shape,
+    getCandidateNotesSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "ashby_get_candidate_notes",
+        toolNameForMonitoring: ASHBY_TOOL_NAME,
         agentLoopContext,
       },
       async ({ email, name }) => {
@@ -526,7 +509,7 @@ async function assertCandidateNotHired(
 
 async function findUniqueCandidate(
   client: AshbyClient,
-  { email, name }: z.infer<typeof CandidateSearchInputSchema>
+  { email, name }: { email?: string; name?: string }
 ): Promise<Result<AshbyCandidate, MCPError>> {
   if (!email && !name) {
     return new Err(

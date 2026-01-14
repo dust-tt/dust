@@ -1,6 +1,14 @@
 import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import type { Authenticator } from "@app/lib/auth";
+import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { decrypt, Err, Ok } from "@app/types";
+
 import type {
   AshbyApplicationFeedbackListRequest,
   AshbyApplicationInfoRequest,
@@ -10,7 +18,7 @@ import type {
   AshbyCandidateSearchRequest,
   AshbyFeedbackSubmission,
   AshbyReportSynchronousRequest,
-} from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
+} from "./types";
 import {
   AshbyApplicationFeedbackListResponseSchema,
   AshbyApplicationInfoResponseSchema,
@@ -18,14 +26,7 @@ import {
   AshbyCandidateListNotesResponseSchema,
   AshbyCandidateSearchResponseSchema,
   AshbyReportSynchronousResponseSchema,
-} from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import type { Authenticator } from "@app/lib/auth";
-import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
-import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { decrypt, Err, Ok } from "@app/types";
+} from "./types";
 
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
 

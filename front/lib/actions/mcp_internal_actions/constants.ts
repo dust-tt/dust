@@ -20,6 +20,11 @@ import {
 import { AGENT_ROUTER_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/agent_router/metadata";
 import { AGENT_MEMORY_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory/metadata";
 import {
+  ASHBY_SERVER_INFO,
+  ASHBY_TOOL_STAKES,
+  ASHBY_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/ashby/metadata";
+import {
   GOOGLE_CALENDAR_SERVER_INFO,
   GOOGLE_CALENDAR_TOOL_STAKES,
   GOOGLE_CALENDAR_TOOLS,
@@ -1281,26 +1286,12 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("ashby_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      search_candidates: "never_ask",
-      get_report_data: "never_ask",
-      get_interview_feedback: "never_ask",
-      get_candidate_notes: "never_ask",
-      create_candidate_note: "high",
-    },
+    tools_stakes: ASHBY_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "ashby",
-      version: "1.0.0",
-      description: "Access and manage Ashby ATS data.",
-      authorization: null,
-      icon: "AshbyLogo",
-      documentationUrl: null,
-      instructions: null,
-      developerSecretSelection: "required",
-    },
+    tools: ASHBY_TOOLS,
+    serverInfo: ASHBY_SERVER_INFO,
   },
   salesloft: {
     id: 41,
