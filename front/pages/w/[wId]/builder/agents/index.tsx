@@ -26,6 +26,7 @@ import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
+import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -38,7 +39,6 @@ import {
 } from "@app/lib/utils";
 import type {
   LightAgentConfigurationType,
-  PlanType,
   SubscriptionType,
   UserType,
   WorkspaceType,
@@ -82,20 +82,23 @@ export type AssistantManagerTabsType =
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  plan: PlanType;
   user: UserType;
-}>(async (_context, auth) => {
+}>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  const plan = auth.plan();
 
-  if (!owner || !subscription || !plan) {
+  if (!owner || !subscription) {
     return {
       notFound: true,
     };
   }
 
-  // Ensure MCP auto tools are created (server-side side effect)
+  if (await isRestrictedFromAgentCreation(owner)) {
+    return {
+      notFound: true,
+    };
+  }
+
   await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
   const user = auth.getNonNullableUser();
 
@@ -103,7 +106,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      plan,
       user: user.toJSON(),
     },
   };
