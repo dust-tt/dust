@@ -489,9 +489,7 @@ export async function googleDriveFullSyncV2({
             // Cancel running workflow if present
             const folderWorkflow = runningFolderWorkflows[folderId];
             if (folderWorkflow) {
-              cancelChildWorkflow(folderWorkflow.workflowId).catch(() => {
-                // Workflow may have already completed, ignore
-              });
+              void cancelChildWorkflow(folderWorkflow.workflowId);
               delete runningFolderWorkflows[folderId];
             }
           }
@@ -569,7 +567,7 @@ export async function googleDriveFullSyncV2({
 
       // Check again in case a removal signal arrived while starting
       if (removedFolderIds.has(folderId)) {
-        cancelChildWorkflow(childWorkflowId).catch(() => {});
+        void cancelChildWorkflow(childWorkflowId);
         delete runningFolderWorkflows[folderId];
         return;
       }
