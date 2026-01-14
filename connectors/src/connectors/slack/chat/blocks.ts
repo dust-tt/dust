@@ -388,3 +388,34 @@ export function makeToolValidationBlock({
     },
   ];
 }
+
+/**
+ * Creates Slack blocks for notifying a user that personal authentication is required.
+ * This is used when an agent sends a tool_personal_auth_required event to Slack.
+ */
+export function makeToolAuthenticationBlock({
+  agentName,
+  toolName,
+  conversationUrl,
+}: {
+  agentName: string;
+  toolName: string;
+  conversationUrl: string;
+}) {
+  return [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `Agent \`${agentName}\` requires authentication for tool \`${toolName}\``,
+      },
+    },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `<${conversationUrl}|*Click here to authenticate*>`,
+      },
+    },
+  ];
+}
