@@ -50,7 +50,7 @@ export class DustProjectConversationModel extends ConnectorBaseModel<DustProject
   declare conversationId: string;
   declare projectId: string;
   declare lastSyncedAt: CreationOptional<Date | null>;
-  declare sourceUpdatedAt: CreationOptional<Date | null>;
+  declare sourceUpdatedAt: Date;
 }
 
 DustProjectConversationModel.init(
@@ -78,13 +78,9 @@ DustProjectConversationModel.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
-    lastMessageAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
     sourceUpdatedAt: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: false,
     },
   },
   {
