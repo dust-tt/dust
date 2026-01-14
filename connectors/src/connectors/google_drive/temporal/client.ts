@@ -87,31 +87,49 @@ export async function launchGoogleDriveFullSyncWorkflow(
   try {
     // Full resync (null): terminate any running workflow and start fresh
     if (addedFolderIds === null) {
-      const workflowFn = useParallelSync
-        ? googleDriveFullSyncV2
-        : googleDriveFullSync;
-
       await terminateWorkflow(workflowId);
-      await client.workflow.start(workflowFn, {
-        args: [
-          {
-            connectorId,
-            garbageCollect: true,
-            startSyncTs: undefined,
-            foldersToBrowse: null,
-            totalCount: 0,
-            mimeTypeFilter,
+      if (useParallelSync) {
+        await client.workflow.start(googleDriveFullSyncV2, {
+          args: [
+            {
+              connectorId,
+              garbageCollect: true,
+              startSyncTs: undefined,
+              foldersToBrowse: null,
+              mimeTypeFilter,
+            },
+          ],
+          taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
+          workflowId,
+          searchAttributes: {
+            connectorId: [connectorId],
           },
-        ],
-        taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
-        workflowId,
-        searchAttributes: {
-          connectorId: [connectorId],
-        },
-        memo: {
-          connectorId,
-        },
-      });
+          memo: {
+            connectorId,
+          },
+        });
+      } else {
+        await client.workflow.start(googleDriveFullSync, {
+          args: [
+            {
+              connectorId,
+              garbageCollect: true,
+              startSyncTs: undefined,
+              foldersToBrowse: [],
+              totalCount: 0,
+              mimeTypeFilter,
+            },
+          ],
+          taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
+          workflowId,
+          searchAttributes: {
+            connectorId: [connectorId],
+          },
+          memo: {
+            connectorId,
+          },
+        });
+      }
       localLogger.info(
         {
           workspaceId: dataSourceConfig.workspaceId,
