@@ -54,7 +54,7 @@ async function handler(
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message: "Only admins can update project metadata.",
+            message: "Only project members can update project metadata.",
           },
         });
       }
