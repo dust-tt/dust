@@ -22,7 +22,12 @@ async function runBinary(
     cwd: string;
     env: Record<string, string>;
   }
-): Promise<{ success: boolean; usedCache: boolean; stdout: string; stderr: string }> {
+): Promise<{
+  success: boolean;
+  usedCache: boolean;
+  stdout: string;
+  stderr: string;
+}> {
   const cacheSource = await getCacheSource();
   const hasCachedBinary = cacheSource ? await binaryExists(cacheSource, binary) : false;
 
@@ -77,7 +82,14 @@ async function initPostgres(envVars: Record<string, string>): Promise<void> {
 
   for (const db of databases) {
     const existsProc = Bun.spawn(
-      ["psql", uri, "-tAc", `SELECT 1 FROM pg_database WHERE datname='${db}';`],
+      [
+        "psql",
+        uri,
+        "-tAc",
+        `SELECT 1
+                                   FROM pg_database
+                                   WHERE datname = '${db}';`,
+      ],
       { stdout: "pipe", stderr: "pipe" }
     );
     const existsOut = await new Response(existsProc.stdout).text();
@@ -333,7 +345,10 @@ async function runCoreDbInit(env: Environment): Promise<{ success: boolean; used
   const alreadyExists =
     result.stderr.includes("already exists") || result.stdout.includes("already exists");
 
-  return { success: result.success || alreadyExists, usedCache: result.usedCache };
+  return {
+    success: result.success || alreadyExists,
+    usedCache: result.usedCache,
+  };
 }
 
 // Run front database init
@@ -437,7 +452,7 @@ export async function runAllDbInits(env: Environment, projectName: string): Prom
     // Postgres: wait for container → create DBs → run schema inits
     waitForContainer(projectName, "db").then(() => initAllPostgres(env)),
     // Qdrant: wait for container → create collections
-    waitForContainer(projectName, "qdrant_primary").then(() => initAllQdrant(env)),
+    waitForContainer(projectName, "qdrant").then(() => initAllQdrant(env)),
     // Elasticsearch: wait for container → create indices
     waitForContainer(projectName, "elasticsearch").then(() => initAllElasticsearch(env)),
   ]);
