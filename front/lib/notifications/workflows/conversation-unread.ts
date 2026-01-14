@@ -17,6 +17,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { Result, UserMessageOrigin, UserType } from "@app/types";
 import {
   assertNever,
+  ConversationError,
   Err,
   isContentFragmentType,
   isDevelopment,
@@ -96,6 +97,17 @@ const ConversationDetailsSchema = z.object({
 
 type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
 
+// Wrapper for workflow step that may fail when conversation is deleted.
+const ConversationDetailsResultSchema = z.discriminatedUnion("success", [
+  z.object({
+    success: z.literal(true),
+    data: ConversationDetailsSchema,
+  }),
+  z.object({
+    success: z.literal(false),
+  }),
+]);
+
 const UserNotificationDelaySchema = z.object({
   delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
 });
@@ -136,7 +148,7 @@ const getConversationDetails = async ({
 }: { payload: ConversationUnreadPayloadType } & (
   | { auth: Authenticator; subscriberId?: never }
   | { auth?: never; subscriberId: string }
-)): Promise<ConversationDetailsType> => {
+)): Promise<Result<ConversationDetailsType, ConversationError>> => {
   // Get or create auth from the discriminated union.
   let auth: Authenticator;
   if (providedAuth) {
@@ -153,7 +165,19 @@ const getConversationDetails = async ({
     auth,
     payload.conversationId
   );
-  assert(conversation, `Conversation not found: ${payload.conversationId}`);
+  if (!conversation) {
+    // Check if the conversation was deleted (expected during workflow delay).
+    const deletedConversation = await ConversationResource.fetchById(
+      auth,
+      payload.conversationId,
+      { includeDeleted: true }
+    );
+    if (deletedConversation) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+    // Conversation never existed - unexpected.
+    throw new Error(`Conversation not found: ${payload.conversationId}`);
+  }
 
   const workspaceName = auth.getNonNullableWorkspace().name;
   const subject = conversation.title ?? "Dust conversation";
@@ -161,7 +185,10 @@ const getConversationDetails = async ({
 
   // Retrieve the message that triggered the notification.
   const messageRes = await conversation.getMessageById(auth, payload.messageId);
-  assert(messageRes.isOk(), `Message not found: ${payload.messageId}`);
+  if (messageRes.isErr()) {
+    // Message was likely deleted during workflow delay.
+    return new Err(new ConversationError("message_not_found"));
+  }
 
   const rendered = await batchRenderMessages(
     auth,
@@ -169,10 +196,10 @@ const getConversationDetails = async ({
     [messageRes.value],
     "light"
   );
-  assert(
-    rendered.isOk() && rendered.value.length === 1,
-    `Failed to render message: ${payload.messageId}`
-  );
+  if (rendered.isErr() || rendered.value.length !== 1) {
+    // Message rendering failed - likely deleted.
+    return new Err(new ConversationError("message_not_found"));
+  }
 
   const lightMessage = rendered.value[0];
 
@@ -202,7 +229,7 @@ const getConversationDetails = async ({
     authorIsAgent = true;
   }
 
-  return {
+  return new Ok({
     subject,
     author,
     authorIsAgent,
@@ -210,7 +237,7 @@ const getConversationDetails = async ({
     isFromTrigger,
     workspaceName,
     mentionedUserIds,
-  };
+  });
 };
 
 const getUserNotificationDelay = async ({
@@ -292,19 +319,35 @@ const shouldSkipConversation = async ({
 export const conversationUnreadWorkflow = workflow(
   CONVERSATION_UNREAD_TRIGGER_ID,
   async ({ step, payload, subscriber }) => {
-    const details = await step.custom(
+    const detailsResult = await step.custom(
       "get-conversation-details",
       async () => {
-        assert(subscriber.subscriberId, "subscriberId is required in workflow");
-        return getConversationDetails({
-          subscriberId: subscriber.subscriberId,
+        // In local development, subscriberId may be empty when previewing the workflow.
+        assert(
+          isDevelopment() || subscriber.subscriberId,
+          "subscriberId is required in workflow"
+        );
+        const result = await getConversationDetails({
+          subscriberId: subscriber.subscriberId ?? "",
           payload,
         });
+        if (result.isErr()) {
+          // Conversation or message was deleted during workflow delay - skip notification.
+          return { success: false as const };
+        }
+        return { success: true as const, data: result.value };
       },
       {
-        outputSchema: ConversationDetailsSchema,
+        outputSchema: ConversationDetailsResultSchema,
       }
     );
+
+    if (!detailsResult.success) {
+      // Conversation or message was deleted - abort workflow.
+      return;
+    }
+
+    const details = detailsResult.data;
 
     await step.inApp(
       "send-in-app",
@@ -399,18 +442,23 @@ export const conversationUnreadWorkflow = workflow(
           }
 
           const payload = event.payload as ConversationUnreadPayloadType;
+          // In local development, subscriberId may be empty when previewing the workflow.
           assert(
-            subscriber.subscriberId,
+            isDevelopment() || subscriber.subscriberId,
             "subscriberId is required in workflow"
           );
-          const details = await getConversationDetails({
-            subscriberId: subscriber.subscriberId,
+          const detailsResult = await getConversationDetails({
+            subscriberId: subscriber.subscriberId ?? "",
             payload,
           });
+          if (detailsResult.isErr()) {
+            // Conversation or message was deleted during workflow delay - skip this event.
+            continue;
+          }
 
           conversations.push({
             id: payload.conversationId,
-            title: details.subject as string,
+            title: detailsResult.value.subject,
           });
         }
 
@@ -534,7 +582,7 @@ export const triggerConversationUnreadNotifications = async (
   }
 
   // Get conversation details including mentioned user IDs.
-  const details = await getConversationDetails({
+  const detailsResult = await getConversationDetails({
     auth,
     payload: {
       workspaceId: auth.getNonNullableWorkspace().sId,
@@ -542,11 +590,15 @@ export const triggerConversationUnreadNotifications = async (
       messageId,
     },
   });
+  if (detailsResult.isErr()) {
+    // Conversation or message was deleted - no notification needed.
+    return new Ok(undefined);
+  }
 
   // Filter participants based on their notification condition preference.
   const participants = await filterParticipantsByNotifyCondition({
     participants: allParticipants,
-    mentionedUserIds: new Set(details.mentionedUserIds),
+    mentionedUserIds: new Set(detailsResult.value.mentionedUserIds),
     totalParticipantCount: totalParticipants.length,
   });
 
