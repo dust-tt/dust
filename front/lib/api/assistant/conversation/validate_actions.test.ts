@@ -1057,7 +1057,7 @@ describe("validateAction", () => {
       // Create a blocked action
       const { actionSId } = await createBlockedAction({
         agentMessageId: agentMessageRow.id,
-              });
+      });
 
       // Get the conversation resource
       const conversationResource = await ConversationResource.fetchById(
@@ -1120,7 +1120,7 @@ describe("validateAction", () => {
       // Create a blocked action
       const { action, actionSId } = await createBlockedAction({
         agentMessageId: agentMessageRow.id,
-              });
+      });
 
       // Get the conversation resource
       const conversationResource = await ConversationResource.fetchById(
@@ -1239,7 +1239,7 @@ describe("validateAction", () => {
       // Create an action that is NOT blocked (e.g., already succeeded)
       const { actionSId } = await createBlockedAction({
         agentMessageId: agentMessageRow.id,
-                status: "succeeded", // Not blocked
+        status: "succeeded", // Not blocked
       });
 
       // Get the conversation resource
@@ -1301,7 +1301,7 @@ describe("validateAction", () => {
       // Create a blocked action
       const { action, actionSId } = await createBlockedAction({
         agentMessageId: agentMessageRow.id,
-              });
+      });
 
       // Get the conversation resource
       const conversationResource = await ConversationResource.fetchById(
@@ -1363,10 +1363,10 @@ describe("validateAction", () => {
       // Create two blocked actions for the same message
       const { actionSId: actionSId1 } = await createBlockedAction({
         agentMessageId: agentMessageRow.id,
-              });
+      });
       await createBlockedAction({
         agentMessageId: agentMessageRow.id,
-              });
+      });
 
       // Get the conversation resource
       const conversationResource = await ConversationResource.fetchById(
