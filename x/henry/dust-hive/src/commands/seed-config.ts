@@ -169,7 +169,7 @@ export async function seedConfigCommand(postgresUri?: string): Promise<Result<vo
   } else if (users.length > 1) {
     logger.info(`Found ${users.length} users`);
 
-    const result = await p.select({
+    const result = await p.select<UserRow>({
       message: "Select user to copy",
       options: users.map((user) => ({
         value: user,
@@ -184,7 +184,7 @@ export async function seedConfigCommand(postgresUri?: string): Promise<Result<vo
       return Err(new CommandError("User selection cancelled"));
     }
 
-    selectedUser = result as UserRow;
+    selectedUser = result;
     logger.success(`Selected user: ${selectedUser.email} (${selectedUser.name})`);
   } else {
     // This shouldn't happen since extractUsers returns an error if no users found
