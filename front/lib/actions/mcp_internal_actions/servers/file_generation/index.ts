@@ -6,9 +6,17 @@ import type { UploadResult } from "convertapi";
 import ConvertAPI from "convertapi";
 import { marked } from "marked";
 import { extname } from "path";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  CONVERT_FILE_FORMAT_TOOL_NAME,
+  convertFileFormatSchema,
+  GENERATE_FILE_TOOL_NAME,
+  generateFileSchema,
+  GET_SUPPORTED_SOURCE_FORMATS_TOOL_NAME,
+  getSupportedSourceFormatsSchema,
+  OUTPUT_FORMATS,
+} from "@app/lib/actions/mcp_internal_actions/servers/file_generation/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -19,22 +27,6 @@ import { cacheWithRedis } from "@app/lib/utils/cache";
 import type { SupportedFileContentType } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, validateUrl } from "@app/types";
 
-const OUTPUT_FORMATS = [
-  "csv",
-  "docx",
-  "gif",
-  "html",
-  "jpg",
-  "md",
-  "pdf",
-  "png",
-  "pptx",
-  "txt",
-  "webp",
-  "xls",
-  "xlsx",
-  "xml",
-] as const;
 type OutputFormatType = (typeof OUTPUT_FORMATS)[number];
 
 const BINARY_FORMATS: OutputFormatType[] = [
@@ -100,11 +92,9 @@ function createServer(
 ): McpServer {
   const server = makeInternalMCPServer("file_generation");
   server.tool(
-    "get_supported_source_formats_for_output_format",
+    GET_SUPPORTED_SOURCE_FORMATS_TOOL_NAME,
     "Get a list of source formats supported for a target output format.",
-    {
-      output_format: z.enum(OUTPUT_FORMATS).describe("The format to check."),
-    },
+    getSupportedSourceFormatsSchema,
     withToolLogging(
       auth,
       {
@@ -144,28 +134,9 @@ function createServer(
   );
 
   server.tool(
-    "convert_file_format",
+    CONVERT_FILE_FORMAT_TOOL_NAME,
     "Converts a file from one format to another.",
-    {
-      file_name: z
-        .string()
-        .describe(
-          "The name of the file to generate. Must be a valid filename without the format extension."
-        ),
-      file_id_or_url: z
-        .string()
-        .describe(
-          "The ID or URL of the file to convert. You can either provide the ID of a file in the conversation (note: if the file ID is already in the desired format, no conversion is needed) or the URL to a file."
-        ),
-      source_format: z
-        .string()
-        .describe(
-          "The format of the source file. Use the `get_source_format_to_convert_to` tool to get the list of formats you can use."
-        ),
-      output_format: z
-        .enum(OUTPUT_FORMATS)
-        .describe("The format of the output file."),
-    },
+    convertFileFormatSchema,
     withToolLogging(
       auth,
       { toolNameForMonitoring: "file_generation", agentLoopContext },
@@ -245,28 +216,9 @@ function createServer(
   );
 
   server.tool(
-    "generate_file",
+    GENERATE_FILE_TOOL_NAME,
     "Generate a file with some content.",
-    {
-      file_name: z
-        .string()
-        .describe(
-          "The name of the file to generate. Must be a valid filename with the format extension."
-        ),
-      file_content: z
-        .string()
-        .max(64000)
-        .describe(
-          "The content of the file to generate. You can either provide the id of a file in the conversation (note: if the file ID is already in the desired format, no conversion is needed), the url to a file or the content directly."
-        ),
-      source_format: z
-        .enum(["text", "markdown", "html"])
-        .optional()
-        .default("text")
-        .describe(
-          "The format of the input content. Use 'markdown' for markdown-formatted text, 'html' for HTML content, or 'text' for plain text (default)."
-        ),
-    },
+    generateFileSchema,
     withToolLogging(
       auth,
       { toolNameForMonitoring: "file_generation", agentLoopContext },

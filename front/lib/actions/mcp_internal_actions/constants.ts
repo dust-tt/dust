@@ -47,7 +47,10 @@ import {
   DATABRICKS_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/databricks/metadata";
 import { DEEP_DIVE_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive/metadata";
-import { FILE_GENERATION_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/file_generation/metadata";
+import {
+  FILE_GENERATION_SERVER_INFO,
+  FILE_GENERATION_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/file_generation/metadata";
 import {
   FRESHSERVICE_SERVER_INFO,
   FRESHSERVICE_TOOL_STAKES,
@@ -402,6 +405,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: FILE_GENERATION_TOOLS,
     serverInfo: FILE_GENERATION_SERVER_INFO,
   },
   [DEFAULT_WEBSEARCH_ACTION_NAME]: {
