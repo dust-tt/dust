@@ -1,10 +1,17 @@
 import {
   Avatar,
+  Button,
   ConversationListItem,
   ListGroup,
   ListItemSection,
+  PencilSquareIcon,
   ReplySection,
   SearchInput,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -108,6 +115,7 @@ export function PersonAgentView({
   onConversationClick,
 }: PersonAgentViewProps) {
   const [searchText, setSearchText] = useState("");
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   // Get collaborator name for placeholder
   const collaboratorName =
@@ -218,11 +226,30 @@ export function PersonAgentView({
             !hasHistory ? "s-h-full s-justify-center s-py-8" : "s-py-8"
           }`}
         >
-          <div className="s-flex s-items-center s-gap-3">
-            <Avatar {...collaboratorAvatar} size="sm" />
-            <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-              {collaboratorName}
-            </h2>
+          <div className="s-flex s-w-full s-items-center s-justify-between s-gap-3">
+            <div className="s-flex s-items-center s-gap-3">
+              <Avatar {...collaboratorAvatar} size="sm" />
+              <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+                {collaboratorName}
+              </h2>
+            </div>
+            <div className="s-flex s-items-center s-gap-2">
+              <Button
+                label="About"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsSheetOpen(true)}
+              />
+              {collaborator.type === "agent" && (
+                <Button
+                  label={`Edit`}
+                  size="sm"
+                  variant="outline"
+                  icon={PencilSquareIcon}
+                  onClick={() => setIsSheetOpen(true)}
+                />
+              )}
+            </div>
           </div>
           <InputBar
             placeholder={`Start a conversation with ${collaboratorName}`}
@@ -344,6 +371,18 @@ export function PersonAgentView({
           </div>
         </div>
       </div>
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>About {collaboratorName}</SheetTitle>
+          </SheetHeader>
+          <SheetContainer>
+            <div className="s-text-foreground dark:s-text-foreground-night">
+              DetailView
+            </div>
+          </SheetContainer>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

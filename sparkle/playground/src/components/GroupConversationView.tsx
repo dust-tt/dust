@@ -296,7 +296,7 @@ export function GroupConversationView({
 
         {/* Conversations Tab */}
         <TabsContent value="conversations">
-          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto">
+          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
             <div
               className={`s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 ${
                 !hasHistory ? "s-h-full s-justify-center s-py-8" : "s-py-8"

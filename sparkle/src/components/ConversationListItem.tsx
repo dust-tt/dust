@@ -30,7 +30,7 @@ export function ReplySection({
         onTop={"first" as const}
         size="xs"
       />
-      <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+      <div className="s-min-w-0 s-flex-1 s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
         {newMessages === 0 ? (
           <span className="s-heading-xs">{totalMessages} Replies</span>
         ) : newMessages === totalMessages ? (
@@ -103,9 +103,9 @@ export function ConversationListItem({
       ) : null}
       <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-1">
         <div className="s-heading-sm s-flex s-w-full s-items-center s-justify-between s-gap-2 s-text-foreground dark:s-text-foreground-night">
-          <div className="s-flex s-gap-2">
-            {creator && creator.fullName}
-            <span className="s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <div className="s-flex s-min-w-0 s-gap-2 s-truncate">
+            {creator && <span className="s-shrink-0">{creator.fullName}</span>}
+            <span className="s-min-w-0 s-truncate s-text-muted-foreground dark:s-text-muted-foreground-night">
               {conversation.title}
             </span>
           </div>
