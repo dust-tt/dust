@@ -5,9 +5,21 @@ import type {
   RequestInit as UndiciRequestInit,
 } from "undici";
 import { fetch as undiciFetch, ProxyAgent } from "undici";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  addIssueToProjectSchema,
+  commentOnIssueSchema,
+  createIssueSchema,
+  createPullRequestReviewSchema,
+  getIssueSchema,
+  getPullRequestSchema,
+  GITHUB_TOOL_NAME,
+  listIssuesSchema,
+  listOrganizationProjectsSchema,
+  listPullRequestsSchema,
+  searchAdvancedSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/github/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -55,27 +67,10 @@ function createServer(
   server.tool(
     "create_issue",
     "Create a new issue on a specified GitHub repository.",
-    {
-      owner: z
-        .string()
-        .describe(
-          "The owner of the repository (account or organization name)."
-        ),
-      repo: z.string().describe("The name of the repository."),
-      title: z.string().describe("The title of the issue."),
-      body: z.string().describe("The contents of the issue (GitHub markdown)."),
-      assignees: z
-        .array(z.string())
-        .optional()
-        .describe("Logins for Users to assign to this issue."),
-      labels: z
-        .array(z.string())
-        .optional()
-        .describe("Labels to associate with this issue."),
-    },
+    createIssueSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github", agentLoopContext },
+      { toolNameForMonitoring: GITHUB_TOOL_NAME, agentLoopContext },
       async ({ owner, repo, title, body, assignees, labels }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -112,18 +107,10 @@ function createServer(
     "get_pull_request",
     "Retrieve a pull request from a specified GitHub repository including" +
       " its associated description, diff, comments and reviews.",
-    {
-      owner: z
-        .string()
-        .describe(
-          "The owner of the repository (account or organization name)."
-        ),
-      repo: z.string().describe("The name of the repository."),
-      pullNumber: z.number().describe("The pull request number."),
-    },
+    getPullRequestSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github", agentLoopContext },
+      { toolNameForMonitoring: GITHUB_TOOL_NAME, agentLoopContext },
       async ({ owner, repo, pullNumber }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -400,46 +387,10 @@ function createServer(
   server.tool(
     "create_pull_request_review",
     "Create a review on a pull request with optional line comments.",
-    {
-      owner: z
-        .string()
-        .describe(
-          "The owner of the repository (account or organization name)."
-        ),
-      repo: z.string().describe("The name of the repository."),
-      pullNumber: z
-        .number()
-        .describe("The number that identifies the pull request."),
-      body: z.string().describe("The body text of the review."),
-      event: z
-        .enum(["APPROVE", "REQUEST_CHANGES", "COMMENT"])
-        .describe(
-          "The review action you want to perform. The review actions include: APPROVE, REQUEST_CHANGES, or COMMENT."
-        ),
-      comments: z
-        .array(
-          z.object({
-            path: z
-              .string()
-              .describe(
-                "The relative path to the file that necessitates a review comment."
-              ),
-            position: z
-              .number()
-              .optional()
-              .describe(
-                "The position in the diff to add a review comment as prepended in " +
-                  "the diff retrieved by `get_pull_request`"
-              ),
-            body: z.string().describe("The text of the review comment."),
-          })
-        )
-        .describe("File comments to leave as part of the review.")
-        .optional(),
-    },
+    createPullRequestReviewSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github", agentLoopContext },
+      { toolNameForMonitoring: GITHUB_TOOL_NAME, agentLoopContext },
       async (
         { owner, repo, pullNumber, body, event, comments = [] },
         { authInfo }
@@ -481,16 +432,10 @@ function createServer(
   server.tool(
     "list_organization_projects",
     "List the open projects of a GitHub organization along with their single select fields (generally used as columns)",
-    {
-      owner: z
-        .string()
-        .describe(
-          "The owner of the repository (account or organization name)."
-        ),
-    },
+    listOrganizationProjectsSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github", agentLoopContext },
+      { toolNameForMonitoring: GITHUB_TOOL_NAME, agentLoopContext },
       async ({ owner }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -600,38 +545,10 @@ function createServer(
   server.tool(
     "add_issue_to_project",
     "Add an existing issue to a GitHub project, optionally setting a field value.",
-    {
-      owner: z
-        .string()
-        .describe(
-          "The owner of the repository (account or organization name)."
-        ),
-      repo: z.string().describe("The name of the repository."),
-      issueNumber: z
-        .number()
-        .describe("The issue number to add to the project."),
-      projectId: z
-        .string()
-        .describe("The node ID of the GitHub project (GraphQL ID)."),
-      field: z
-        .object({
-          fieldId: z
-            .string()
-            .describe("The node ID of the field to update (GraphQL ID)."),
-          optionId: z
-            .string()
-            .describe(
-              "The node ID of the option to update the field to (GraphQL ID)."
-            ),
-        })
-        .optional()
-        .describe(
-          "Optional field configuration with both fieldId and optionId required if provided."
-        ),
-    },
+    addIssueToProjectSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github", agentLoopContext },
+      { toolNameForMonitoring: GITHUB_TOOL_NAME, agentLoopContext },
       async ({ owner, repo, issueNumber, projectId, field }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -730,21 +647,10 @@ function createServer(
   server.tool(
     "comment_on_issue",
     "Add a comment to an existing GitHub issue.",
-    {
-      owner: z
-        .string()
-        .describe(
-          "The owner of the repository (account or organization name)."
-        ),
-      repo: z.string().describe("The name of the repository."),
-      issueNumber: z.number().describe("The issue number."),
-      body: z
-        .string()
-        .describe("The contents of the comment (GitHub markdown)."),
-    },
+    commentOnIssueSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github", agentLoopContext },
+      { toolNameForMonitoring: GITHUB_TOOL_NAME, agentLoopContext },
       async ({ owner, repo, issueNumber, body }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -781,18 +687,10 @@ function createServer(
   server.tool(
     "get_issue",
     "Retrieve an issue from a specified GitHub repository including its description, comments, and labels.",
-    {
-      owner: z
-        .string()
-        .describe(
-          "The owner of the repository (account or organization name)."
-        ),
-      repo: z.string().describe("The name of the repository."),
-      issueNumber: z.number().describe("The issue number."),
-    },
+    getIssueSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github", agentLoopContext },
+      { toolNameForMonitoring: GITHUB_TOOL_NAME, agentLoopContext },
       async ({ owner, repo, issueNumber }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -917,41 +815,10 @@ function createServer(
   server.tool(
     "list_issues",
     "List issues from a specified GitHub repository with optional filtering.",
-    {
-      owner: z
-        .string()
-        .describe(
-          "The owner of the repository (account or organization name)."
-        ),
-      repo: z.string().describe("The name of the repository."),
-      state: z
-        .enum(["OPEN", "CLOSED", "ALL"])
-        .optional()
-        .describe("Filter issues by state. Defaults to OPEN."),
-      labels: z
-        .array(z.string())
-        .optional()
-        .describe("Filter issues by labels."),
-      sort: z
-        .enum(["CREATED_AT", "UPDATED_AT", "COMMENTS"])
-        .optional()
-        .describe("What to sort results by. Defaults to CREATED_AT."),
-      direction: z
-        .enum(["ASC", "DESC"])
-        .optional()
-        .describe("The direction of the sort. Defaults to DESC."),
-      perPage: z
-        .number()
-        .min(1)
-        .max(100)
-        .optional()
-        .describe("Results per page. Defaults to 50, max 100."),
-      after: z.string().optional().describe("The cursor to start after."),
-      before: z.string().optional().describe("The cursor to start before."),
-    },
+    listIssuesSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github", agentLoopContext },
+      { toolNameForMonitoring: GITHUB_TOOL_NAME, agentLoopContext },
       async (
         {
           owner,
@@ -1108,26 +975,10 @@ function createServer(
     "Search issues and pull requests using GitHub's advanced search syntax with AND/OR operators and nested searches. " +
       "Supports advanced query syntax like 'is:issue AND assignee:@me AND (label:support OR comments:>5)' or 'is:pr AND assignee:@me'. " +
       "Use 'is:issue' to search for issues, 'is:pr' to search for pull requests, or omit to search both. ",
-    {
-      query: z
-        .string()
-        .describe(
-          "The advanced search query string. Supports AND/OR operators and nested searches. " +
-            "Examples: 'is:issue AND assignee:username AND (label:bug OR comments:>5)', 'is:pr AND assignee:@me', or 'assignee:username' to search both. " +
-            "Note: Spaces between multiple repo/org/user filters are treated as AND operators."
-        ),
-      first: z
-        .number()
-        .min(1)
-        .max(100)
-        .optional()
-        .describe("Number of results to return. Defaults to 30, max 100."),
-      after: z.string().optional().describe("The cursor to start after."),
-      before: z.string().optional().describe("The cursor to start before."),
-    },
+    searchAdvancedSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github", agentLoopContext },
+      { toolNameForMonitoring: GITHUB_TOOL_NAME, agentLoopContext },
       async ({ query, first = 30, after, before }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -1420,37 +1271,10 @@ function createServer(
   server.tool(
     "list_pull_requests",
     "List pull requests from a specified GitHub repository with optional filtering.",
-    {
-      owner: z
-        .string()
-        .describe(
-          "The owner of the repository (account or organization name)."
-        ),
-      repo: z.string().describe("The name of the repository."),
-      state: z
-        .enum(["OPEN", "CLOSED", "MERGED", "ALL"])
-        .optional()
-        .describe("Filter pull requests by state. Defaults to OPEN."),
-      sort: z
-        .enum(["CREATED_AT", "UPDATED_AT"])
-        .optional()
-        .describe("What to sort results by. Defaults to CREATED_AT."),
-      direction: z
-        .enum(["ASC", "DESC"])
-        .optional()
-        .describe("The direction of the sort. Defaults to DESC."),
-      perPage: z
-        .number()
-        .min(1)
-        .max(65)
-        .optional()
-        .describe("Results per page. Defaults to 30, max 65."),
-      after: z.string().optional().describe("The cursor to start after."),
-      before: z.string().optional().describe("The cursor to start before."),
-    },
+    listPullRequestsSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "github", agentLoopContext },
+      { toolNameForMonitoring: GITHUB_TOOL_NAME, agentLoopContext },
       async (
         {
           owner,
