@@ -6,7 +6,6 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import { SALESFORCE_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import {
   AGENT_MANAGEMENT_SERVER_INFO,
   AGENT_MANAGEMENT_TOOL_STAKES,
@@ -137,6 +136,11 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/productboard/metadata";
 import { RUN_AGENT_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/metadata";
 import { RUN_DUST_APP_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app/metadata";
+import {
+  SALESFORCE_SERVER_INFO,
+  SALESFORCE_TOOL_STAKES,
+  SALESFORCE_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/salesforce/metadata";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
   InternalMCPServerDefinitionType,
@@ -444,29 +448,12 @@ export const INTERNAL_MCP_SERVERS = {
       return !isAvailable;
     },
     isPreview: false,
-    tools_stakes: {
-      execute_read_query: "never_ask",
-      list_objects: "never_ask",
-      describe_object: "never_ask",
-      list_attachments: "never_ask",
-      read_attachment: "never_ask",
-      update_object: "high",
-    },
+    tools_stakes: SALESFORCE_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "salesforce",
-      version: "1.0.0",
-      description: "Salesforce tools.",
-      authorization: {
-        provider: "salesforce" as const,
-        supported_use_cases: ["personal_actions", "platform_actions"] as const,
-      },
-      icon: "SalesforceLogo",
-      documentationUrl: "https://docs.dust.tt/docs/salesforce",
-      instructions: SALESFORCE_SERVER_INSTRUCTIONS,
-    },
+    tools: SALESFORCE_TOOLS,
+    serverInfo: SALESFORCE_SERVER_INFO,
   },
   gmail: {
     id: 15,

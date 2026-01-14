@@ -1,8 +1,16 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import jsforce from "jsforce";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  describeObjectSchema,
+  executeReadQuerySchema,
+  listAttachmentsSchema,
+  listObjectsSchema,
+  readAttachmentSchema,
+  SALESFORCE_TOOL_NAME,
+  updateObjectSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/salesforce/metadata";
 import {
   downloadSalesforceContent,
   extractTextFromSalesforceAttachment,
@@ -21,9 +29,6 @@ import { Err, Ok } from "@app/types";
 
 const SF_API_VERSION = "57.0";
 
-// We use a single tool name for monitoring given the high granularity (can be revisited).
-const SALESFORCE_TOOL_LOG_NAME = "salesforce";
-
 interface SalesforceRecord {
   Id: string;
   [key: string]: any;
@@ -38,13 +43,11 @@ function createServer(
   server.tool(
     "execute_read_query",
     "Execute a read query on Salesforce",
-    {
-      query: z.string().describe("The SOQL read query to execute"),
-    },
+    executeReadQuerySchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
+        toolNameForMonitoring: SALESFORCE_TOOL_NAME,
         agentLoopContext,
       },
       async ({ query }, { authInfo }) => {
@@ -88,17 +91,11 @@ function createServer(
   server.tool(
     "list_objects",
     "List the objects in Salesforce: standard and custom objects",
-    {
-      filter: z
-        .enum(["all", "standard", "custom"])
-        .optional()
-        .default("all")
-        .describe("Filter objects by type: all, standard, or custom"),
-    },
+    listObjectsSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
+        toolNameForMonitoring: SALESFORCE_TOOL_NAME,
         agentLoopContext,
       },
       async ({ filter }, { authInfo }) => {
@@ -135,13 +132,11 @@ function createServer(
   server.tool(
     "describe_object",
     "Describe an object in Salesforce",
-    {
-      objectName: z.string().describe("The name of the object to describe"),
-    },
+    describeObjectSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
+        toolNameForMonitoring: SALESFORCE_TOOL_NAME,
         agentLoopContext,
       },
       async ({ objectName }, { authInfo }) => {
@@ -248,32 +243,11 @@ function createServer(
   server.tool(
     "update_object",
     "Update one or more records in Salesforce",
-    {
-      objectName: z
-        .string()
-        .describe("The name of the Salesforce object (e.g., Account, Contact)"),
-      records: z
-        .array(
-          z
-            .object({
-              Id: z.string().min(1).describe("The Salesforce record ID"),
-            })
-            .passthrough()
-        )
-        .min(1)
-        .describe(
-          "Record(s) to update. Must include Id field and any fields to update"
-        ),
-      allOrNone: z
-        .boolean()
-        .optional()
-        .default(false)
-        .describe("If true, all updates must succeed or all fail"),
-    },
+    updateObjectSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
+        toolNameForMonitoring: SALESFORCE_TOOL_NAME,
         agentLoopContext,
         enableAlerting: false,
       },
@@ -323,13 +297,11 @@ function createServer(
   server.tool(
     "list_attachments",
     "List all attachments and files for a Salesforce record.",
-    {
-      recordId: z.string().describe("The Salesforce record ID"),
-    },
+    listAttachmentsSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
+        toolNameForMonitoring: SALESFORCE_TOOL_NAME,
         agentLoopContext,
       },
       async ({ recordId }, { authInfo }) => {
@@ -385,16 +357,11 @@ function createServer(
   server.tool(
     "read_attachment",
     "Read content from any attachment or file on a Salesforce record.",
-    {
-      recordId: z.string().describe("The Salesforce record ID"),
-      attachmentId: z
-        .string()
-        .describe("The ID of the attachment or file to read"),
-    },
+    readAttachmentSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME,
+        toolNameForMonitoring: SALESFORCE_TOOL_NAME,
         agentLoopContext,
       },
       async ({ recordId, attachmentId }, { authInfo }) => {
