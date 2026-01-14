@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: dev
       POSTGRES_PASSWORD: dev
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dev"]
+      test: [ "CMD-SHELL", "pg_isready -U dev" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -18,39 +18,23 @@ services:
   redis:
     image: redis
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  qdrant_primary:
+  qdrant:
     image: "qdrant/qdrant:v1.13.0"
-    environment:
-      QDRANT__CLUSTER__ENABLED: "true"
     ulimits:
       nofile:
         soft: 64000
         hard: 64000
-    command: ["./qdrant", "--uri", "http://qdrant_primary:6335"]
     healthcheck:
-      test: ["CMD-SHELL", "sleep 1"]
+      test: [ "CMD-SHELL", "sleep 1" ]
       interval: 5s
       timeout: 10s
       retries: 3
       start_period: 10s
-
-  qdrant_secondary:
-    image: "qdrant/qdrant:v1.13.0"
-    environment:
-      QDRANT__CLUSTER__ENABLED: "true"
-    ulimits:
-      nofile:
-        soft: 64000
-        hard: 64000
-    command: ["./qdrant", "--bootstrap", "http://qdrant_primary:6335"]
-    depends_on:
-      qdrant_primary:
-        condition: service_healthy
 
   elasticsearch:
     build:
@@ -69,7 +53,7 @@ services:
         soft: -1
         hard: -1
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      test: [ "CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1" ]
       interval: 10s
       timeout: 10s
       retries: 10
@@ -77,7 +61,7 @@ services:
   apache-tika:
     image: apache/tika:2.9.2.1-full
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:9998/tika || exit 1"]
+      test: [ "CMD-SHELL", "wget -q --spider http://localhost:9998/tika || exit 1" ]
       interval: 5s
       timeout: 5s
       retries: 5

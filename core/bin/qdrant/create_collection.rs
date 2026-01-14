@@ -120,34 +120,43 @@ async fn create_qdrant_collection(
         false => Err(anyhow!("Aborted"))?,
     }
 
+    // Check if sharding is enabled (defaults to true for production)
+    let use_sharding = std::env::var("QDRANT_USE_SHARDING")
+        .map(|v| v.to_lowercase() != "false")
+        .unwrap_or(true);
+
+    if !use_sharding {
+        println!("QDRANT_USE_SHARDING=false, creating collection without distributed features");
+    }
+
     // See https://www.notion.so/dust-tt/Design-Doc-Qdrant-re-arch-d0ebdd6ae8244ff593cdf10f08988c27.
 
     // First, we create the collection.
-    let res = raw_client
-        .create_collection(
-            CreateCollectionBuilder::new(collection_name.clone())
-                .vectors_config(
-                    VectorParamsBuilder::new(
-                        embedder.embedding_size() as u64,
-                        qdrant::Distance::Cosine,
-                    )
-                    .distance(qdrant::Distance::Cosine)
-                    .on_disk(true),
-                )
-                .hnsw_config(HnswConfigDiffBuilder::default().payload_m(16).m(0))
-                .optimizers_config(OptimizersConfigDiffBuilder::default().memmap_threshold(16384))
-                .quantization_config(Quantization::Scalar(qdrant::ScalarQuantization {
-                    r#type: qdrant::QuantizationType::Int8.into(),
-                    quantile: Some(0.99),
-                    always_ram: Some(true),
-                }))
-                .on_disk_payload(true)
-                .sharding_method(qdrant::ShardingMethod::Custom.into())
-                .shard_number(2)
-                .replication_factor(2)
-                .write_consistency_factor(1),
+    let mut builder = CreateCollectionBuilder::new(collection_name.clone())
+        .vectors_config(
+            VectorParamsBuilder::new(embedder.embedding_size() as u64, qdrant::Distance::Cosine)
+                .distance(qdrant::Distance::Cosine)
+                .on_disk(true),
         )
-        .await?;
+        .hnsw_config(HnswConfigDiffBuilder::default().payload_m(16).m(0))
+        .optimizers_config(OptimizersConfigDiffBuilder::default().memmap_threshold(16384))
+        .quantization_config(Quantization::Scalar(qdrant::ScalarQuantization {
+            r#type: qdrant::QuantizationType::Int8.into(),
+            quantile: Some(0.99),
+            always_ram: Some(true),
+        }))
+        .on_disk_payload(true);
+
+    // Only use distributed features when sharding is enabled
+    if use_sharding {
+        builder = builder
+            .sharding_method(qdrant::ShardingMethod::Custom.into())
+            .shard_number(2)
+            .replication_factor(2)
+            .write_consistency_factor(1);
+    }
+
+    let res = raw_client.create_collection(builder).await?;
 
     match res.result {
         true => {
@@ -161,31 +170,36 @@ async fn create_qdrant_collection(
         false => Err(anyhow!("Collection not created!")),
     }?;
 
-    // Then, we create the 24 shard_keys.
-    for i in 0..SHARD_KEY_COUNT {
-        let shard_key = format!("{}_{}", client.shard_key_prefix(), i);
+    // Only create shard keys when sharding is enabled
+    if use_sharding {
+        // Then, we create the 24 shard_keys.
+        for i in 0..SHARD_KEY_COUNT {
+            let shard_key = format!("{}_{}", client.shard_key_prefix(), i);
 
-        let operation_result = raw_client
-            .create_shard_key(
-                CreateShardKeyRequestBuilder::new(collection_name.clone()).request(
-                    CreateShardKeyBuilder::default()
-                        .shard_key(qdrant::shard_key::Key::Keyword(shard_key.clone())),
-                ),
-            )
-            .await
-            .map_err(|e| anyhow!("Error creating shard key: {}", e))?;
+            let operation_result = raw_client
+                .create_shard_key(
+                    CreateShardKeyRequestBuilder::new(collection_name.clone()).request(
+                        CreateShardKeyBuilder::default()
+                            .shard_key(qdrant::shard_key::Key::Keyword(shard_key.clone())),
+                    ),
+                )
+                .await
+                .map_err(|e| anyhow!("Error creating shard key: {}", e))?;
 
-        match operation_result.result {
-            true => {
-                println!(
-                    "Done creating shard key [{}] for collection {} on cluster {}",
-                    shard_key, collection_name, cluster
-                );
+            match operation_result.result {
+                true => {
+                    println!(
+                        "Done creating shard key [{}] for collection {} on cluster {}",
+                        shard_key, collection_name, cluster
+                    );
 
-                Ok(())
-            }
-            false => Err(anyhow!("Collection not created!")),
-        }?;
+                    Ok(())
+                }
+                false => Err(anyhow!("Collection not created!")),
+            }?;
+        }
+    } else {
+        println!("Skipping shard key creation (QDRANT_USE_SHARDING=false)");
     }
 
     create_indexes_for_collection(&raw_client, &cluster, &collection_name)
