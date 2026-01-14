@@ -317,7 +317,7 @@ describe("retryAgentMessage", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.status_code).toBe(403);
-      expect(result.error.api_error.type).toBe("plan_message_limit_exceeded");
+      expect(result.error.api_error.type).toBe("rate_limit_error");
     }
     expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
     expect(publishAgentMessagesEvents).not.toHaveBeenCalled();
