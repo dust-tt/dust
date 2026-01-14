@@ -1,0 +1,29 @@
+// Zellij configuration for dust-hive
+// This config is optimized for long-running sessions to prevent input lag
+
+// Limit scrollback buffer to prevent unbounded memory growth
+// Default is 10000, but for log-watching tabs that output continuously,
+// this can accumulate significant memory over hours/days
+// 5000 lines is usually sufficient for debugging while limiting memory
+scroll_buffer_size 5000
+
+// Disable mouse mode to reduce input processing overhead
+// (Users can still scroll with Ctrl+o then [)
+mouse_mode false
+
+// Simplify copy command (reduces overhead)
+copy_on_select true
+
+// Session serialization settings to limit state accumulation
+// Setting scrollback_lines_to_serialize limits what's saved on detach
+pane_viewport_serialization false
+
+// Theme and UI settings (minimal to reduce rendering overhead)
+default_mode "normal"
+simplified_ui true
+
+// Disable automatic layout serialization to reduce I/O
+session_serialization false
+
+// Reduce styled underlines which can cause rendering overhead
+styled_underlines false
