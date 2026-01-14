@@ -19,8 +19,6 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       description: "Test description",
       urls: ["https://github.com/test"],
       tags: ["frontend"],
-      emoji: "🚀",
-      color: "#FF0000",
     });
 
     await handler(req, res);

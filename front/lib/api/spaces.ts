@@ -444,8 +444,6 @@ export async function createSpaceAndGroup(
           description: null,
           urls: [],
           tags: [],
-          emoji: null,
-          color: null,
         },
         t
       );

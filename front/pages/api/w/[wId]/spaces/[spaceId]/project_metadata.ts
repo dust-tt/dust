@@ -81,8 +81,6 @@ async function handler(
           description: body.description ?? null,
           urls: body.urls ?? [],
           tags: body.tags ?? [],
-          emoji: body.emoji ?? null,
-          color: body.color ?? null,
         });
       } else {
         // Update existing metadata

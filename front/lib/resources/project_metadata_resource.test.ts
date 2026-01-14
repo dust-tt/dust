@@ -34,8 +34,6 @@ describe("ProjectMetadataResource", () => {
         description: "Test",
         urls: ["https://example.com"],
         tags: ["tag1"],
-        emoji: "🚀",
-        color: "#FF0000",
       });
 
       const metadata = await ProjectMetadataResource.fetchBySpace(
@@ -56,8 +54,6 @@ describe("ProjectMetadataResource", () => {
           description: "Full metadata",
           urls: ["https://github.com"],
           tags: ["frontend"],
-          emoji: "✨",
-          color: "#00FF00",
         }
       );
 
@@ -76,8 +72,6 @@ describe("ProjectMetadataResource", () => {
           description: "Initial",
           urls: [],
           tags: [],
-          emoji: null,
-          color: null,
         }
       );
 
@@ -104,8 +98,6 @@ describe("ProjectMetadataResource", () => {
           description: "To delete",
           urls: [],
           tags: [],
-          emoji: null,
-          color: null,
         }
       );
 
@@ -128,8 +120,6 @@ describe("ProjectMetadataResource", () => {
           description: "JSON test",
           urls: ["https://test.com"],
           tags: ["test"],
-          emoji: "📋",
-          color: "#123456",
         }
       );
 
