@@ -36,7 +36,10 @@ import {
   CONVERSATION_FILES_SERVER_INFO,
   CONVERSATION_FILES_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files/metadata";
-import { DATA_SOURCES_FILE_SYSTEM_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/metadata";
+import {
+  DATA_SOURCES_FILE_SYSTEM_SERVER_INFO,
+  DATA_SOURCES_FILE_SYSTEM_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/metadata";
 import {
   DATA_WAREHOUSES_SERVER_INFO,
   DATA_WAREHOUSES_TOOLS,
@@ -1047,6 +1050,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: DATA_SOURCES_FILE_SYSTEM_TOOLS,
     serverInfo: DATA_SOURCES_FILE_SYSTEM_SERVER_INFO,
   },
   agent_management: {
