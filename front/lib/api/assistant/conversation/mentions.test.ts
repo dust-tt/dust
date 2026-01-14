@@ -3030,7 +3030,7 @@ describe("createUserMessage", () => {
         metadata: {
           type: "create",
           user: userJson,
-          rank: 0,
+          rank: 1,
           context: {
             username: userJson.username,
             timezone: "UTC",
@@ -3473,7 +3473,7 @@ describe("createUserMessage", () => {
         metadata: {
           type: "create",
           user: userJson,
-          rank: 0,
+          rank: 1,
           context,
         },
         transaction,
