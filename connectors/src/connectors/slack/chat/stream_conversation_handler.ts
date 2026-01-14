@@ -639,14 +639,14 @@ async function postSlackMessageUpdate({
           ts: mainMessage.ts as string,
           // Note: file_ids is not supported by chat.update API, so we need to delete and repost the message
         });
-      } catch (e) {
+      } catch (error) {
         if (
-          isSlackWebAPIPlatformError(e) &&
-          e.data.error === "message_not_found"
+          isSlackWebAPIPlatformError(error) &&
+          error.data.error === "message_not_found"
         ) {
           return undefined;
         }
-        throw e;
+        throw error;
       }
     },
     extraLogs
