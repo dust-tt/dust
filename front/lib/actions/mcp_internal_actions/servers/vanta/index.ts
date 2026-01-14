@@ -1,13 +1,22 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { Authenticator } from "@app/lib/auth";
-import { Ok } from "@app/types";
-
-import { vantaGet } from "./api";
+import { vantaGet } from "@app/lib/actions/mcp_internal_actions/servers/vanta/api";
+import {
+  listControlDocumentsSchema,
+  listControlsSchema,
+  listControlTestsSchema,
+  listDocumentResourcesSchema,
+  listDocumentsSchema,
+  listFrameworkControlsSchema,
+  listFrameworksSchema,
+  listIntegrationsSchema,
+  listPeopleSchema,
+  listRisksSchema,
+  listTestEntitiesSchema,
+  listTestsSchema,
+  listVulnerabilitiesSchema,
+  VANTA_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/vanta/metadata";
 import {
   renderControls,
   renderDocumentResources,
@@ -29,76 +38,23 @@ import {
   VantaTestEntitiesResponseSchema,
   VantaTestsResponseSchema,
   VantaVulnerabilitiesResponseSchema,
-} from "./renderers";
-
-const PaginationInput = {
-  pageSize: z
-    .number()
-    .min(1)
-    .max(100)
-    .describe("Maximum number of results per page (1-100), default is 10")
-    .optional(),
-  pageCursor: z
-    .string()
-    .describe("Pagination cursor from a previous response")
-    .optional(),
-};
+} from "@app/lib/actions/mcp_internal_actions/servers/vanta/renderers";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import { Ok } from "@app/types";
 
 export default function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer("vanta");
+  const server = makeInternalMCPServer(VANTA_TOOL_NAME);
+
   server.tool(
     "list_tests",
     "List Vanta's automated security and compliance tests with optional filtering by status, category, framework, or integration",
-    {
-      statusFilter: z
-        .enum([
-          "OK",
-          "DEACTIVATED",
-          "NEEDS_ATTENTION",
-          "IN_PROGRESS",
-          "INVALID",
-          "NOT_APPLICABLE",
-        ])
-        .describe(
-          "Filter tests by status: OK, DEACTIVATED, NEEDS_ATTENTION, IN_PROGRESS, INVALID, NOT_APPLICABLE"
-        )
-        .optional(),
-      categoryFilter: z
-        .enum([
-          "ACCOUNTS_ACCESS",
-          "ACCOUNT_SECURITY",
-          "ACCOUNT_SETUP",
-          "COMPUTERS",
-          "CUSTOM",
-          "DATA_STORAGE",
-          "EMPLOYEES",
-          "INFRASTRUCTURE",
-          "IT",
-          "LOGGING",
-          "MONITORING_ALERTS",
-          "PEOPLE",
-          "POLICIES",
-          "RISK_ANALYSIS",
-          "SECURITY_ALERT_MANAGEMENT",
-          "SOFTWARE_DEVELOPMENT",
-          "VENDORS",
-          "VULNERABILITY_MANAGEMENT",
-        ])
-        .describe("Filter tests by category")
-        .optional(),
-      frameworkFilter: z
-        .string()
-        .describe("Filter tests by framework ID")
-        .optional(),
-      integrationFilter: z
-        .string()
-        .describe("Filter tests by integration ID")
-        .optional(),
-      ...PaginationInput,
-    },
+    listTestsSchema,
     withToolLogging(
       auth,
       { toolNameForMonitoring: "vanta_list_tests", agentLoopContext },
@@ -122,14 +78,7 @@ export default function createServer(
   server.tool(
     "list_test_entities",
     "Get the resources monitored by a specific security test, filter by status using FAILING or DEACTIVATED",
-    {
-      testId: z.string().describe("The ID of the test to get entities for"),
-      statusFilter: z
-        .enum(["FAILING", "DEACTIVATED"])
-        .describe("Filter entities by status using Vanta API filters")
-        .optional(),
-      ...PaginationInput,
-    },
+    listTestEntitiesSchema,
     withToolLogging(
       auth,
       { toolNameForMonitoring: "vanta_list_test_entities", agentLoopContext },
@@ -154,17 +103,7 @@ export default function createServer(
   server.tool(
     "list_controls",
     "List security controls in your Vanta account or retrieve a specific control by ID with framework mapping details",
-    {
-      controlId: z
-        .string()
-        .describe("Specific control ID to retrieve, omit to list all controls")
-        .optional(),
-      frameworkFilter: z
-        .string()
-        .describe("Filter controls by framework ID")
-        .optional(),
-      ...PaginationInput,
-    },
+    listControlsSchema,
     withToolLogging(
       auth,
       { toolNameForMonitoring: "vanta_list_controls", agentLoopContext },
@@ -190,10 +129,7 @@ export default function createServer(
   server.tool(
     "list_control_tests",
     "Enumerate automated tests that validate a specific security control, including status and failing entity information",
-    {
-      controlId: z.string().describe("The ID of the control to get tests for"),
-      ...PaginationInput,
-    },
+    listControlTestsSchema,
     withToolLogging(
       auth,
       { toolNameForMonitoring: "vanta_list_control_tests", agentLoopContext },
@@ -218,12 +154,7 @@ export default function createServer(
   server.tool(
     "list_control_documents",
     "List documents mapped to a control to locate supporting evidence quickly",
-    {
-      controlId: z
-        .string()
-        .describe("The ID of the control to get documents for"),
-      ...PaginationInput,
-    },
+    listControlDocumentsSchema,
     withToolLogging(
       auth,
       {
@@ -251,15 +182,7 @@ export default function createServer(
   server.tool(
     "list_documents",
     "List compliance documents in your Vanta account or retrieve a specific document by ID",
-    {
-      documentId: z
-        .string()
-        .describe(
-          "Specific document ID to retrieve, omit to list all documents"
-        )
-        .optional(),
-      ...PaginationInput,
-    },
+    listDocumentsSchema,
     withToolLogging(
       auth,
       { toolNameForMonitoring: "vanta_list_documents", agentLoopContext },
@@ -287,13 +210,7 @@ export default function createServer(
   server.tool(
     "list_document_resources",
     "Retrieve resources linked to a document (controls, links, uploads) by choosing the desired resource type",
-    {
-      documentId: z.string().describe("The ID of the document"),
-      resourceType: z
-        .enum(["controls", "links", "uploads"])
-        .describe("The type of resources to retrieve"),
-      ...PaginationInput,
-    },
+    listDocumentResourcesSchema,
     withToolLogging(
       auth,
       {
@@ -324,13 +241,7 @@ export default function createServer(
   server.tool(
     "list_integrations",
     "List integrations connected to your Vanta account or retrieve details for a specific integration",
-    {
-      integrationId: z
-        .string()
-        .describe("Specific integration ID to retrieve, omit to list all")
-        .optional(),
-      ...PaginationInput,
-    },
+    listIntegrationsSchema,
     withToolLogging(
       auth,
       { toolNameForMonitoring: "vanta_list_integrations", agentLoopContext },
@@ -358,13 +269,7 @@ export default function createServer(
   server.tool(
     "list_frameworks",
     "List compliance frameworks in your Vanta account with completion status and progress metrics",
-    {
-      frameworkId: z
-        .string()
-        .describe("Specific framework ID to retrieve, omit to list all")
-        .optional(),
-      ...PaginationInput,
-    },
+    listFrameworksSchema,
     withToolLogging(
       auth,
       { toolNameForMonitoring: "vanta_list_frameworks", agentLoopContext },
@@ -392,12 +297,7 @@ export default function createServer(
   server.tool(
     "list_framework_controls",
     "Retrieve the controls associated with a compliance framework, including descriptions and implementation guidance",
-    {
-      frameworkId: z
-        .string()
-        .describe("The ID of the framework to get controls for"),
-      ...PaginationInput,
-    },
+    listFrameworkControlsSchema,
     withToolLogging(
       auth,
       {
@@ -425,13 +325,7 @@ export default function createServer(
   server.tool(
     "list_people",
     "List people in your Vanta account or retrieve a specific person by ID with role and group membership",
-    {
-      personId: z
-        .string()
-        .describe("Specific person ID to retrieve, omit to list all")
-        .optional(),
-      ...PaginationInput,
-    },
+    listPeopleSchema,
     withToolLogging(
       auth,
       { toolNameForMonitoring: "vanta_list_people", agentLoopContext },
@@ -457,13 +351,7 @@ export default function createServer(
   server.tool(
     "list_risks",
     "List risk scenarios in your risk register or retrieve a specific scenario to review status, scoring, and treatment",
-    {
-      riskId: z
-        .string()
-        .describe("Specific risk scenario ID to retrieve, omit to list all")
-        .optional(),
-      ...PaginationInput,
-    },
+    listRisksSchema,
     withToolLogging(
       auth,
       { toolNameForMonitoring: "vanta_list_risks", agentLoopContext },
@@ -491,59 +379,7 @@ export default function createServer(
   server.tool(
     "list_vulnerabilities",
     "List vulnerabilities detected across your infrastructure with CVE details, severity, and impacted assets",
-    {
-      q: z
-        .string()
-        .describe("Filter vulnerabilities by search query")
-        .optional(),
-      isDeactivated: z
-        .boolean()
-        .describe("Filter vulnerabilities by deactivation status")
-        .optional(),
-      externalVulnerabilityId: z
-        .string()
-        .describe("Filter vulnerabilities based on a specific external ID")
-        .optional(),
-      isFixAvailable: z
-        .boolean()
-        .describe("Filter vulnerabilities that have an available fix")
-        .optional(),
-      packageIdentifier: z
-        .string()
-        .describe("Filter vulnerabilities that are from a specific package")
-        .optional(),
-      slaDeadlineAfterDate: z
-        .string()
-        .describe(
-          "Filter vulnerabilities with a fix due after a specific timestamp"
-        )
-        .optional(),
-      slaDeadlineBeforeDate: z
-        .string()
-        .describe(
-          "Filter vulnerabilities with a fix due before a specific timestamp"
-        )
-        .optional(),
-      severity: z
-        .enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"])
-        .describe("Filter vulnerabilities by severity")
-        .optional(),
-      integrationId: z
-        .string()
-        .describe(
-          "Filter vulnerabilities by the vulnerability scanner that detected them"
-        )
-        .optional(),
-      includeVulnerabilitiesWithoutSlas: z
-        .boolean()
-        .describe("Filter vulnerabilities without an SLA due date")
-        .optional(),
-      vulnerableAssetId: z
-        .string()
-        .describe("Filter vulnerabilities by a specific asset ID")
-        .optional(),
-      ...PaginationInput,
-    },
+    listVulnerabilitiesSchema,
     withToolLogging(
       auth,
       {

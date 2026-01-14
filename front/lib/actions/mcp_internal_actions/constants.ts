@@ -186,6 +186,11 @@ import {
   VALTOWN_TOOL_STAKES,
   VALTOWN_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/valtown/metadata";
+import {
+  VANTA_SERVER_INFO,
+  VANTA_TOOL_STAKES,
+  VANTA_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/vanta/metadata";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -900,38 +905,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      list_tests: "never_ask",
-      list_test_entities: "never_ask",
-      list_controls: "never_ask",
-      list_control_tests: "never_ask",
-      list_control_documents: "never_ask",
-      list_documents: "never_ask",
-      list_document_resources: "never_ask",
-      list_integrations: "never_ask",
-      list_integration_resources: "never_ask",
-      list_frameworks: "never_ask",
-      list_framework_controls: "never_ask",
-      list_people: "never_ask",
-      list_risks: "never_ask",
-      list_vulnerabilities: "never_ask",
-    },
+    tools_stakes: VANTA_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "vanta",
-      version: "1.0.0",
-      description:
-        "Review compliance posture powered by Vanta's security platform.",
-      authorization: {
-        provider: "vanta" as const,
-        supported_use_cases: ["platform_actions"] as const,
-      },
-      icon: "VantaLogo",
-      documentationUrl: "https://docs.dust.tt/docs/vanta",
-      instructions: null,
-    },
+    tools: VANTA_TOOLS,
+    serverInfo: VANTA_SERVER_INFO,
   },
   primitive_types_debugger: {
     id: 1004,
