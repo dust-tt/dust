@@ -1,7 +1,6 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
-import { Op } from "sequelize";
 
 import { DustProjectConversationModel } from "@connectors/lib/models/dust_project";
 import logger from "@connectors/logger/logger";
@@ -35,13 +34,13 @@ export class DustProjectConversationResource extends BaseResource<DustProjectCon
     connectorId,
     conversationId,
     projectId,
-    lastMessageAt,
+    sourceUpdatedAt,
     transaction,
   }: {
     connectorId: ModelId;
     conversationId: string;
     projectId: string;
-    lastMessageAt: Date;
+    sourceUpdatedAt: Date;
     transaction?: Transaction;
   }): Promise<DustProjectConversationResource> {
     const model = await DustProjectConversationModel.create(
@@ -49,7 +48,7 @@ export class DustProjectConversationResource extends BaseResource<DustProjectCon
         connectorId,
         conversationId,
         projectId,
-        lastMessageAt,
+        sourceUpdatedAt,
       },
       { transaction }
     );
@@ -96,33 +95,6 @@ export class DustProjectConversationResource extends BaseResource<DustProjectCon
     );
   }
 
-  static async fetchByConnectorIdAndLastMessageAt(
-    connectorId: ModelId,
-    fromTs: number | null
-  ): Promise<DustProjectConversationResource[]> {
-    const where: { connectorId: ModelId; lastMessageAt?: object } = {
-      connectorId,
-    };
-
-    if (fromTs !== null) {
-      where.lastMessageAt = {
-        [Op.gt]: new Date(fromTs),
-      };
-    }
-
-    const models = await DustProjectConversationModel.findAll({
-      where,
-      order: [["lastMessageAt", "ASC"]],
-    });
-
-    return models.map(
-      (model) =>
-        new DustProjectConversationResource(DustProjectConversationModel, {
-          ...model.get({ plain: true }),
-        })
-    );
-  }
-
   async updateLastSyncedAt(
     lastSyncedAt: Date | null,
     transaction?: Transaction
@@ -146,12 +118,12 @@ export class DustProjectConversationResource extends BaseResource<DustProjectCon
   }
 
   async updateLastMessageAt(
-    lastMessageAt: Date,
+    sourceUpdatedAt: Date,
     transaction?: Transaction
   ): Promise<Result<void, Error>> {
     try {
       await DustProjectConversationModel.update(
-        { lastMessageAt },
+        { sourceUpdatedAt },
         {
           where: { id: this.id },
           transaction,
@@ -161,7 +133,7 @@ export class DustProjectConversationResource extends BaseResource<DustProjectCon
     } catch (err) {
       logger.error(
         { connectorId: this.connectorId, error: err },
-        "Error updating lastMessageAt"
+        "Error updating sourceUpdatedAt"
       );
       return new Err(normalizeError(err));
     }
@@ -183,6 +155,18 @@ export class DustProjectConversationResource extends BaseResource<DustProjectCon
     }
   }
 
+  static async getMaxSourceUpdatedAt(
+    connectorId: ModelId
+  ): Promise<Date | null> {
+    const model = await DustProjectConversationModel.max<
+      Date | null,
+      DustProjectConversationModel
+    >("sourceUpdatedAt", {
+      where: { connectorId },
+    });
+    return model;
+  }
+
   toJSON(): Record<string, unknown> {
     return {
       id: this.id,
@@ -190,7 +174,7 @@ export class DustProjectConversationResource extends BaseResource<DustProjectCon
       conversationId: this.conversationId,
       projectId: this.projectId,
       lastSyncedAt: this.lastSyncedAt,
-      lastMessageAt: this.lastMessageAt,
+      sourceUpdatedAt: this.sourceUpdatedAt,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

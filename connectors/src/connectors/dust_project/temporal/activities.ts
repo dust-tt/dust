@@ -186,17 +186,16 @@ export async function dustProjectIncrementalSyncActivity({
       "Starting incremental sync for dust_project connector"
     );
 
-    // Get lastSyncedAt from configuration
-    const lastSyncedAt = configuration.lastSyncedAt
-      ? configuration.lastSyncedAt.getTime()
-      : null;
+    // Use the max synced conversation's sourceUpdatedAt as the updatedSince parameter to get only the delta from last sync
+    const maxSourceUpdatedAt =
+      await DustProjectConversationResource.getMaxSourceUpdatedAt(connectorId);
 
     // Fetch conversations updated since lastSyncedAt from Front API
     const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: false });
     const conversationsResult =
       await dustAPI.getSpaceConversationsForDataSource({
         spaceId: configuration.projectId,
-        updatedSince: lastSyncedAt,
+        updatedSince: maxSourceUpdatedAt?.getTime(),
       });
 
     if (conversationsResult.isErr()) {
@@ -210,7 +209,7 @@ export async function dustProjectIncrementalSyncActivity({
       {
         projectId: configuration.projectId,
         count: conversations.length,
-        lastSyncedAt,
+        lastSourceUpdatedAt: maxSourceUpdatedAt,
       },
       "Fetched conversations for incremental sync (including deleted)"
     );
