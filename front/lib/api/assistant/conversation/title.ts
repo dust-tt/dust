@@ -17,8 +17,9 @@ import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   ConversationError,
   Err,
-  GEMINI_3_FLASH_MODEL_CONFIG,
-  getLargeWhitelistedModel,
+  GEMINI_2_5_FLASH_MODEL_CONFIG,
+  getSmallWhitelistedModel,
+  GPT_5_1_MODEL_CONFIG,
   isProviderWhitelisted,
   Ok,
 } from "@app/types";
@@ -203,11 +204,15 @@ async function generateConversationTitle(
 function getFastModelConfig(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
-  if (isProviderWhitelisted(owner, "google_ai_studio")) {
-    return GEMINI_3_FLASH_MODEL_CONFIG;
+  if (isProviderWhitelisted(owner, "openai")) {
+    return GPT_5_1_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "anthropic")) {
     return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
   }
-  return getLargeWhitelistedModel(owner);
+  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+    return GEMINI_2_5_FLASH_MODEL_CONFIG;
+  }
+
+  return getSmallWhitelistedModel(owner);
 }
