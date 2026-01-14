@@ -13,9 +13,10 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import type { Organization } from "@workos-inc/node";
-import React from "react";
+import React, { useState } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
+import { AddDomainModal } from "@app/components/workspace/AddDomainModal";
 import UserProvisioning from "@app/components/workspace/DirectorySync";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
 import SSOConnection from "@app/components/workspace/SSOConnection";
@@ -82,6 +83,8 @@ function DomainVerification({
   isDomainsLoading,
   owner,
 }: DomainVerificationProps) {
+  const [isAddDomainModalOpen, setIsAddDomainModalOpen] = useState(false);
+
   return (
     <WorkspaceSection icon={ActionGlobeAltIcon} title="Domain Verification">
       <Page.P variant="secondary">
@@ -98,27 +101,33 @@ function DomainVerification({
               label="Add Domain"
               variant="primary"
               icon={PlusIcon}
-              href={addDomainLink}
+              onClick={() => setIsAddDomainModalOpen(true)}
             />
           }
         />
       ) : (
         <DomainVerificationTable
-          addDomainLink={addDomainLink}
           domains={domains}
           workspaceVerifiedDomains={workspaceVerifiedDomains}
           owner={owner}
+          onAddDomain={() => setIsAddDomainModalOpen(true)}
         />
       )}
+      <AddDomainModal
+        isOpen={isAddDomainModalOpen}
+        onClose={() => setIsAddDomainModalOpen(false)}
+        owner={owner}
+        addDomainLink={addDomainLink}
+      />
     </WorkspaceSection>
   );
 }
 
 interface DomainVerificationTableProps {
-  addDomainLink?: string;
   domains: Organization["domains"];
   workspaceVerifiedDomains: WorkspaceDomain[];
   owner: LightWorkspaceType;
+  onAddDomain: () => void;
 }
 
 // Define the row data type that extends TBaseData
@@ -130,10 +139,10 @@ interface DomainRowData {
 }
 
 function DomainVerificationTable({
-  addDomainLink,
   domains,
   workspaceVerifiedDomains,
   owner,
+  onAddDomain,
 }: DomainVerificationTableProps) {
   const confirm = React.useContext(ConfirmContext);
   const { doRemoveWorkspaceDomain } = useRemoveWorkspaceDomain({ owner });
@@ -223,17 +232,14 @@ function DomainVerificationTable({
   return (
     <div className="flex w-auto flex-col gap-6">
       <DataTable className="pt-6" columns={columns} data={data} />
-      {addDomainLink && (
-        <div>
-          <Button
-            label="Add Domain"
-            variant="primary"
-            href={addDomainLink}
-            target="_blank"
-            icon={PlusIcon}
-          />
-        </div>
-      )}
+      <div>
+        <Button
+          label="Add Domain"
+          variant="primary"
+          onClick={onAddDomain}
+          icon={PlusIcon}
+        />
+      </div>
     </div>
   );
 }
