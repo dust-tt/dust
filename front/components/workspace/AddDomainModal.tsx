@@ -30,13 +30,16 @@ export function AddDomainModal({
   addDomainLink,
 }: AddDomainModalProps) {
   const [domain, setDomain] = useState("");
+  const [ssoEnabled, setSsoEnabled] = useState(true);
   const [mcpEnabled, setMcpEnabled] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { doCreateDomainUseCase } = useCreateDomainUseCase({ owner });
 
+  const hasAtLeastOneUseCase = ssoEnabled || mcpEnabled;
+
   const handleSubmit = async () => {
-    if (!domain.trim()) {
+    if (!domain.trim() || !hasAtLeastOneUseCase) {
       return;
     }
 
@@ -57,6 +60,21 @@ export function AddDomainModal({
         }
       }
 
+      // If SSO is not enabled, create a disabled entry to track this
+      // (The domain will still be verified but won't enable SSO auto-join)
+      if (!ssoEnabled) {
+        const success = await doCreateDomainUseCase({
+          domain: domain.trim().toLowerCase(),
+          useCase: "sso_auto_join",
+          status: "disabled",
+        });
+
+        if (!success) {
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       // Redirect to WorkOS to complete domain verification
       if (addDomainLink) {
         window.open(addDomainLink, "_blank");
@@ -64,6 +82,7 @@ export function AddDomainModal({
 
       // Reset form and close modal
       setDomain("");
+      setSsoEnabled(true);
       setMcpEnabled(false);
       onClose();
     } finally {
@@ -73,6 +92,7 @@ export function AddDomainModal({
 
   const handleClose = () => {
     setDomain("");
+    setSsoEnabled(true);
     setMcpEnabled(false);
     onClose();
   };
@@ -109,12 +129,16 @@ export function AddDomainModal({
 
             <div className="flex flex-col gap-2">
               <Label>What will this domain be used for?</Label>
+              <p className="text-sm text-muted-foreground">
+                Select at least one use case.
+              </p>
               <div className="flex flex-col gap-3 pt-1">
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="sso"
-                    checked={true}
-                    disabled={true}
+                    checked={ssoEnabled}
+                    onClick={() => setSsoEnabled(!ssoEnabled)}
+                    disabled={isSubmitting}
                   />
                   <div className="flex flex-col">
                     <Label htmlFor="sso" className="font-normal">
@@ -159,7 +183,7 @@ export function AddDomainModal({
             label: isSubmitting ? "Adding..." : "Continue to Verification",
             variant: "primary",
             onClick: handleSubmit,
-            disabled: !domain.trim() || isSubmitting,
+            disabled: !domain.trim() || !hasAtLeastOneUseCase || isSubmitting,
             icon: isSubmitting ? Spinner : undefined,
           }}
         />
