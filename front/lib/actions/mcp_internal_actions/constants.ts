@@ -129,6 +129,7 @@ import {
   OUTLOOK_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/outlook/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger/metadata";
+import { EXTRACT_DATA_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/process/metadata";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
@@ -420,15 +421,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "extract_data",
-      version: "1.0.0",
-      description: "Parse documents to create structured datasets.",
-      icon: "ActionScanIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: EXTRACT_DATA_SERVER_INFO,
   },
   missing_action_catcher: {
     id: 13,
