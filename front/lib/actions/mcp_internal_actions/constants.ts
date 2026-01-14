@@ -152,6 +152,7 @@ import {
   SCHEDULES_MANAGEMENT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/search/metadata";
+import { SKILL_MANAGEMENT_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/skill_management/metadata";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
   InternalMCPServerDefinitionType,
@@ -1201,15 +1202,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "skill_management",
-      version: "1.0.0",
-      description: "",
-      icon: "PuzzleIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: SKILL_MANAGEMENT_SERVER_INFO,
   },
   schedules_management: {
     id: 1020,
