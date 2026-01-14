@@ -78,6 +78,14 @@ function createSnowflakeFetch(): FetchFn {
     });
 }
 
+/**
+ * Escape a Snowflake identifier for use in double-quoted SQL.
+ * Doubles any internal double-quote characters to prevent SQL injection.
+ */
+function escapeIdentifier(identifier: string): string {
+  return identifier.replace(/"/g, '""');
+}
+
 export class SnowflakeClient {
   private account: string;
   private accessToken: string;
@@ -188,7 +196,7 @@ export class SnowflakeClient {
 
   async listSchemas(database: string): Promise<Result<string[], Error>> {
     const result = await this.executeStatement(
-      `SHOW SCHEMAS IN DATABASE "${database}"`
+      `SHOW SCHEMAS IN DATABASE "${escapeIdentifier(database)}"`
     );
     if (result.isErr()) {
       return result;
@@ -203,7 +211,7 @@ export class SnowflakeClient {
     schema: string
   ): Promise<Result<Array<{ name: string; kind: string }>, Error>> {
     const result = await this.executeStatement(
-      `SHOW TABLES IN "${database}"."${schema}"`
+      `SHOW TABLES IN "${escapeIdentifier(database)}"."${escapeIdentifier(schema)}"`
     );
     if (result.isErr()) {
       return result;
@@ -214,9 +222,9 @@ export class SnowflakeClient {
       kind: (row.kind as string) || "TABLE",
     }));
 
-    // Also get views
+    // Also get views (failure is non-fatal - some schemas may not have view permissions)
     const viewsResult = await this.executeStatement(
-      `SHOW VIEWS IN "${database}"."${schema}"`
+      `SHOW VIEWS IN "${escapeIdentifier(database)}"."${escapeIdentifier(schema)}"`
     );
     if (viewsResult.isOk()) {
       const views = viewsResult.value.rows.map((row) => ({
@@ -235,7 +243,7 @@ export class SnowflakeClient {
     table: string
   ): Promise<Result<SnowflakeColumn[], Error>> {
     const result = await this.executeStatement(
-      `DESCRIBE TABLE "${database}"."${schema}"."${table}"`
+      `DESCRIBE TABLE "${escapeIdentifier(database)}"."${escapeIdentifier(schema)}"."${escapeIdentifier(table)}"`
     );
     if (result.isErr()) {
       return result;
@@ -280,12 +288,14 @@ export class SnowflakeClient {
       );
     }
 
-    // Check the 'operation' column in each row for write operations
-    const writeOperations = ["Insert", "Update", "Delete", "Merge"];
+    // Check the 'operation' column in each row for write operations.
+    // Snowflake returns column names in uppercase, so we need case-insensitive lookup.
+    const writeOperations = ["INSERT", "UPDATE", "DELETE", "MERGE"];
 
     for (const row of result.value.rows) {
-      const operation = row.operation as string | undefined;
-      if (operation && writeOperations.includes(operation)) {
+      // Try both uppercase (Snowflake default) and lowercase column names
+      const operation = (row.operation ?? row.OPERATION) as string | undefined;
+      if (operation && writeOperations.includes(operation.toUpperCase())) {
         return new Err(
           new Error(
             `Write operations are not allowed: ${operation} operation detected`
