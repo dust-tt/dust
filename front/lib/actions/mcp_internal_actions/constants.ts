@@ -88,6 +88,7 @@ import {
   JIRA_TOOL_STAKES,
   JIRA_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/metadata";
+import { JIT_TESTING_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/jit_testing/metadata";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
@@ -1359,15 +1360,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "jit_testing",
-      version: "1.0.0",
-      description: "Demo server to test if can be added to JIT.",
-      icon: "ActionEmotionLaughIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: JIT_TESTING_SERVER_INFO,
   },
   common_utilities: {
     id: 1017,
