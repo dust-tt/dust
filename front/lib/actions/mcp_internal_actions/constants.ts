@@ -105,6 +105,11 @@ import {
   MICROSOFT_TEAMS_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/microsoft_teams/metadata";
 import { MISSING_ACTION_CATCHER_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher/metadata";
+import {
+  MONDAY_SERVER_INFO,
+  MONDAY_TOOL_STAKES,
+  MONDAY_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/monday/metadata";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
@@ -588,52 +593,12 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("monday_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      // Read operations
-      get_boards: "never_ask",
-      get_board_items: "never_ask",
-      get_item_details: "never_ask",
-      search_items: "never_ask",
-      get_items_by_column_value: "never_ask",
-      find_user_by_name: "never_ask",
-      get_board_values: "never_ask",
-      get_column_values: "never_ask",
-      get_file_column_values: "never_ask",
-      get_group_details: "never_ask",
-      get_subitem_values: "never_ask",
-      get_user_details: "never_ask",
-
-      // Write operations - High stakes
-      create_item: "high",
-      update_item: "high",
-      update_item_name: "high",
-      create_update: "high",
-      create_board: "high",
-      create_column: "high",
-      create_group: "high",
-      create_subitem: "high",
-      update_subitem: "high",
-      duplicate_group: "high",
-      upload_file_to_column: "high",
-      delete_item: "high",
-      delete_group: "high",
-    },
+    tools_stakes: MONDAY_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "monday",
-      version: "1.0.0",
-      description: "Manage project boards, items and updates.",
-      authorization: {
-        provider: "monday" as const,
-        supported_use_cases: ["personal_actions", "platform_actions"] as const,
-      },
-      icon: "MondayLogo",
-      documentationUrl:
-        "https://developer.monday.com/api-reference/docs/introduction-to-graphql",
-      instructions: null,
-    },
+    tools: MONDAY_TOOLS,
+    serverInfo: MONDAY_SERVER_INFO,
   },
   [AGENT_MEMORY_SERVER_NAME]: {
     id: 21,
