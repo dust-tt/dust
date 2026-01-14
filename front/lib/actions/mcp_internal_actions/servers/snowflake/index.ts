@@ -12,14 +12,13 @@ import { Err, Ok } from "@app/types";
 const MAX_QUERY_ROWS = 1000;
 
 function createSnowflakeClient(
-  auth: Authenticator,
   account: string | undefined,
   accessToken: string | undefined
 ): SnowflakeClient | null {
   if (!account || !accessToken) {
     return null;
   }
-  return new SnowflakeClient(account, accessToken, auth.getNonNullableWorkspace());
+  return new SnowflakeClient(account, accessToken);
 }
 
 function createServer(
@@ -37,7 +36,6 @@ function createServer(
       { toolNameForMonitoring: "snowflake", agentLoopContext },
       async (_params, { authInfo }) => {
         const client = createSnowflakeClient(
-          auth,
           authInfo?.extra?.snowflake_account as string | undefined,
           authInfo?.token
         );
@@ -81,7 +79,6 @@ function createServer(
       { toolNameForMonitoring: "snowflake", agentLoopContext },
       async ({ database }, { authInfo }) => {
         const client = createSnowflakeClient(
-          auth,
           authInfo?.extra?.snowflake_account as string | undefined,
           authInfo?.token
         );
@@ -126,7 +123,6 @@ function createServer(
       { toolNameForMonitoring: "snowflake", agentLoopContext },
       async ({ database, schema }, { authInfo }) => {
         const client = createSnowflakeClient(
-          auth,
           authInfo?.extra?.snowflake_account as string | undefined,
           authInfo?.token
         );
@@ -172,7 +168,6 @@ function createServer(
       { toolNameForMonitoring: "snowflake", agentLoopContext },
       async ({ database, schema, table }, { authInfo }) => {
         const client = createSnowflakeClient(
-          auth,
           authInfo?.extra?.snowflake_account as string | undefined,
           authInfo?.token
         );
@@ -247,7 +242,6 @@ function createServer(
       { toolNameForMonitoring: "snowflake", agentLoopContext },
       async ({ sql, database, schema, warehouse, max_rows }, { authInfo }) => {
         const client = createSnowflakeClient(
-          auth,
           authInfo?.extra?.snowflake_account as string | undefined,
           authInfo?.token
         );

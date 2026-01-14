@@ -5,9 +5,7 @@ import type {
 } from "undici";
 import { fetch as undiciFetch, ProxyAgent } from "undici";
 
-import { getUntrustedEgressAgent } from "@app/lib/egress/server";
-import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
-import type { LightWorkspaceType, Result } from "@app/types";
+import type { Result } from "@app/types";
 import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
 
 // Snowflake SQL API response types
@@ -62,28 +60,22 @@ type FetchFn = (
   init?: UndiciRequestInit
 ) => Promise<UndiciResponse>;
 
-function createSnowflakeFetch(workspace: LightWorkspaceType): FetchFn {
-  if (isWorkspaceUsingStaticIP(workspace)) {
-    // Use static IP proxy for workspaces that require IP whitelisting
-    return (url: UndiciRequestInfo, options?: UndiciRequestInit) =>
-      undiciFetch(url, {
-        ...options,
-        dispatcher: new ProxyAgent(
-          `http://${EnvironmentConfig.getEnvVariable(
-            "PROXY_USER_NAME"
-          )}:${EnvironmentConfig.getEnvVariable(
-            "PROXY_USER_PASSWORD"
-          )}@${EnvironmentConfig.getEnvVariable(
-            "PROXY_HOST"
-          )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`
-        ),
-      });
-  }
+// Always use static IP proxy for Snowflake since URLs are always *.snowflakecomputing.com
+// This allows customers to whitelist our static IP in their Snowflake network policies
+function createSnowflakeFetch(): FetchFn {
+  const proxyUrl = `http://${EnvironmentConfig.getEnvVariable(
+    "PROXY_USER_NAME"
+  )}:${EnvironmentConfig.getEnvVariable(
+    "PROXY_USER_PASSWORD"
+  )}@${EnvironmentConfig.getEnvVariable(
+    "PROXY_HOST"
+  )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`;
 
-  // Use untrusted egress proxy for regular workspaces
-  const dispatcher = getUntrustedEgressAgent();
   return (url: UndiciRequestInfo, options?: UndiciRequestInit) =>
-    undiciFetch(url, dispatcher ? { ...options, dispatcher } : options);
+    undiciFetch(url, {
+      ...options,
+      dispatcher: new ProxyAgent(proxyUrl),
+    });
 }
 
 export class SnowflakeClient {
@@ -91,14 +83,10 @@ export class SnowflakeClient {
   private accessToken: string;
   private fetch: FetchFn;
 
-  constructor(
-    account: string,
-    accessToken: string,
-    workspace: LightWorkspaceType
-  ) {
+  constructor(account: string, accessToken: string) {
     this.account = account.trim();
     this.accessToken = accessToken;
-    this.fetch = createSnowflakeFetch(workspace);
+    this.fetch = createSnowflakeFetch();
   }
 
   private get baseUrl(): string {
