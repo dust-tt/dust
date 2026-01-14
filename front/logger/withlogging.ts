@@ -115,7 +115,7 @@ export function withLogging<T>(
 
         const value = req.query[key];
         if (typeof value === "string" && value.length > 0) {
-          route = route.replaceAll(value, `[${key}]`);
+          route = route.replaceAll(encodeURIComponent(value), `[${key}]`);
         }
       }
     }
