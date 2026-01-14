@@ -930,11 +930,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       action,
       user,
       transaction,
+      unread = false,
     }: {
       conversation: ConversationWithoutContentType;
       action: ParticipantActionType;
       user: UserType | null;
       transaction?: Transaction;
+      unread?: boolean;
     }
   ): Promise<"added" | "updated" | "none"> {
     if (!user) {
@@ -976,7 +978,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             action,
             userId: user.id,
             workspaceId: auth.getNonNullableWorkspace().id,
-            unread: false,
+            unread,
             actionRequired: false,
           },
           { transaction: t }
