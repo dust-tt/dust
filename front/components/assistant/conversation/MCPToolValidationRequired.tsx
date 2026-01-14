@@ -95,6 +95,28 @@ export function MCPToolValidationRequired({
     isTriggeredByCurrentUser,
   ]);
 
+  const alwaysAllowLabel = useMemo(() => {
+    if (blockedAction.stake !== "medium") {
+      return "Always allow";
+    }
+
+    const args = blockedAction.argumentsRequiringApproval ?? [];
+    const argValues = args
+      .filter((arg) => blockedAction.inputs[arg] != null)
+      .map((arg) => `${blockedAction.inputs[arg]}`);
+
+    return `Always allow @${blockedAction.metadata.agentName} to ${asDisplayName(blockedAction.metadata.toolName)}` +
+      argValues.length
+      ? ` using ${argValues.join(", ")}`
+      : "";
+  }, [
+    blockedAction.stake,
+    blockedAction.argumentsRequiringApproval,
+    blockedAction.inputs,
+    blockedAction.metadata.agentName,
+    blockedAction.metadata.toolName,
+  ]);
+
   return (
     <ContentMessage
       title={title}
@@ -126,31 +148,15 @@ export function MCPToolValidationRequired({
           <div className="mt-3 flex flex-row items-center gap-3">
             {(blockedAction.stake === "low" ||
               blockedAction.stake === "medium") && (
-              <div className="flex flex-col gap-0.5">
-                <Label className="flex w-fit cursor-pointer flex-row items-center gap-2 py-1 pr-2 text-xs">
-                  <Checkbox
-                    checked={neverAskAgain}
-                    onCheckedChange={(check) => {
-                      setNeverAskAgain(!!check);
-                    }}
-                  />
-                  <span>
-                    Always allow{" "}
-                    {blockedAction.stake === "medium" &&
-                      blockedAction.argumentsRequiringApproval &&
-                      blockedAction.argumentsRequiringApproval.length > 0 && (
-                        <span className="font-normal">
-                          @{blockedAction.metadata.agentName} to{" "}
-                          {asDisplayName(blockedAction.metadata.toolName)} using{" "}
-                          {blockedAction.argumentsRequiringApproval
-                            .filter((arg) => blockedAction.inputs[arg] != null)
-                            .map((arg) => `${blockedAction.inputs[arg]}`)
-                            .join(", ")}
-                        </span>
-                      )}
-                  </span>
-                </Label>
-              </div>
+              <Label className="flex w-fit cursor-pointer flex-row items-center gap-2 py-1 pr-2 text-xs">
+                <Checkbox
+                  checked={neverAskAgain}
+                  onCheckedChange={(check) => {
+                    setNeverAskAgain(!!check);
+                  }}
+                />
+                <span>{alwaysAllowLabel}</span>
+              </Label>
             )}
             <div className="flex-grow" />
             <Button

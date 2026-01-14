@@ -203,9 +203,12 @@ export async function validateAction(
         });
         break;
       case "medium":
-        const agentMessage = await AgentMessageModel.findByPk(
-          action.agentMessageId
-        );
+        const agentMessage = await AgentMessageModel.findOne({
+          where: {
+            workspaceId: owner.id,
+            id: action.agentMessageId,
+          },
+        });
         if (
           agentMessage &&
           isLightServerSideMCPToolConfiguration(action.toolConfiguration)
