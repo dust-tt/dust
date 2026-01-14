@@ -63,6 +63,11 @@ import {
   GOOGLE_CALENDAR_TOOL_STAKES,
   GOOGLE_CALENDAR_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/google_calendar/metadata";
+import {
+  GOOGLE_DRIVE_SERVER_INFO,
+  GOOGLE_DRIVE_TOOL_STAKES,
+  GOOGLE_DRIVE_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/google_drive/metadata";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
@@ -865,29 +870,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      list_drives: "never_ask",
-      search_files: "never_ask",
-      get_file_content: "never_ask",
-      get_spreadsheet: "never_ask",
-      get_worksheet: "never_ask",
-    },
+    tools_stakes: GOOGLE_DRIVE_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "google_drive",
-      version: "1.0.0",
-      description: "Search and read files (Docs, Sheets, Presentations).",
-      authorization: {
-        provider: "google_drive" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope: "https://www.googleapis.com/auth/drive.readonly" as const,
-      },
-      icon: "DriveLogo",
-      documentationUrl: "https://docs.dust.tt/docs/google-drive",
-      instructions: null,
-    },
+    tools: GOOGLE_DRIVE_TOOLS,
+    serverInfo: GOOGLE_DRIVE_SERVER_INFO,
   },
   slideshow: {
     id: 28,

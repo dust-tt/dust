@@ -1,8 +1,15 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  getFileContentSchema,
+  getSpreadsheetSchema,
+  getWorksheetSchema,
+  GOOGLE_DRIVE_TOOL_NAME,
+  listDrivesSchema,
+  searchFilesSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/google_drive/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -10,14 +17,11 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   getGoogleDriveClient,
   getGoogleSheetsClient,
-  MAX_CONTENT_SIZE,
   MAX_FILE_SIZE,
   SUPPORTED_MIMETYPES,
 } from "@app/lib/providers/google_drive/utils";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-
-const GOOGLE_DRIVE_TOOL_NAME = "google_drive";
 
 function createServer(
   auth: Authenticator,
@@ -44,9 +48,7 @@ function createServer(
   server.tool(
     "list_drives",
     "List all shared drives accessible by the user.",
-    {
-      pageToken: z.string().optional().describe("Page token for pagination."),
-    },
+    listDrivesSchema,
     withToolLogging(
       auth,
       {
@@ -83,64 +85,7 @@ function createServer(
   server.tool(
     "search_files",
     "Search for files in Google Drive. Can search in personal drive, all shared drives, or a specific drive.",
-    {
-      q: z.string().optional().describe(`\
-Search query to filter files. Uses Google Drive's search syntax. Leave empty to list all supported files. Examples:
-- Files with the name "hello": name = 'hello'
-- Files with a name containing the words "hello" and "goodbye": name contains 'hello' and name contains 'goodbye'
-- Files with a name that does not contain the word "hello": not name contains 'hello'
-- Files that contain the text "important" and in the trash: fullText contains 'important' and trashed = true
-- Files that contain the word "hello": fullText contains 'hello'
-- Files that don't have the word "hello": not fullText contains 'hello'
-- Files that contain the exact phrase "hello world": fullText contains '"hello world"'
-- Files with a query that contains the "\\" character (for example, "\\authors"): fullText contains '\\\\authors'
-- Files that are folders: mimeType = 'application/vnd.google-apps.folder'
-- Files that are not folders: mimeType != 'application/vnd.google-apps.folder'
-- Files modified after a given date (default time zone is UTC)	modifiedTime > '2012-06-04T12:00:00'
-- Image or video files modified after a specific date: modifiedTime > '2012-06-04T12:00:00' and (mimeType contains 'image/' or mimeType contains 'video/')
-- Files that are starred: starred = true
-- Files within a collection (for example, the folder ID in the parents collection): '1234567' in parents
-- Files in an application data folder in a collection: 'appDataFolder' in parents
-- Files for which user "test@example.org" is the owner: 'test@example.org' in owners
-- Files for which user "test@example.org" has write permission: 'test@example.org' in writers
-- Files for which members of the group "group@example.org" have write permission: 'group@example.org' in writers
-- Files shared with the authorized user with "hello" in the name: sharedWithMe and name contains 'hello'
-- Files with a custom file property visible to all apps: properties has { key='mass' and value='1.3kg' }
-- Files with a custom file property private to the requesting app: appProperties has { key='additionalID' and value='8e8aceg2af2ge72e78' }
-- Files that have not been shared with anyone or domains (only private, or shared with specific users or groups): visibility = 'limited'
-`),
-      driveId: z
-        .string()
-        .optional()
-        .describe(
-          "ID of a specific shared drive to search in. If set, only searches that drive."
-        ),
-      includeSharedDrives: z
-        .boolean()
-        .default(true)
-        .describe(
-          "Whether both My Drive and shared drive items should be included in results. Defaults to true."
-        ),
-      orderBy: z.string().optional().describe(`\
-A comma-separated list of sort key. Valid keys are:
-\`createdTime\`: When the file was created.
-\`folder\`: The folder ID. This field is sorted using alphabetical ordering.
-\`modifiedByMeTime\`: The last time the file was modified by the user.
-\`modifiedTime\`: The last time the file was modified by anyone.
-\`name\`: The name of the file. This field is sorted using alphabetical ordering, so 1, 12, 2, 22.
-\`name_natural\`: The name of the file. This field is sorted using natural sort ordering, so 1, 2, 12, 22.
-\`quotaBytesUsed\`: The number of storage quota bytes used by the file.
-\`recency\`: The most recent timestamp from the file's date-time fields.
-\`sharedWithMeTime\`: When the file was shared with the user, if applicable.
-\`starred\`: Whether the user has starred the file.
-\`viewedByMeTime\`: The last time the file was viewed by the user.
-Each key sorts ascending by default, but can be reversed with desc modified. Example: \`folder,modifiedTime desc,name\``),
-      pageSize: z
-        .number()
-        .optional()
-        .describe("Maximum number of files to return (max 1000)."),
-      pageToken: z.string().optional().describe("Page token for pagination."),
-    },
+    searchFilesSchema,
     withToolLogging(
       auth,
       {
@@ -213,23 +158,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     "get_file_content",
     `Get the content of a Google Drive file with offset-based pagination. ` +
       `Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}.`,
-    {
-      fileId: z
-        .string()
-        .describe("The ID of the file to retrieve content from."),
-      offset: z
-        .number()
-        .default(0)
-        .describe(
-          "Character offset to start reading from (for pagination). Defaults to 0."
-        ),
-      limit: z
-        .number()
-        .default(MAX_CONTENT_SIZE)
-        .describe(
-          `Maximum number of characters to return. Defaults to ${MAX_CONTENT_SIZE}.`
-        ),
-    },
+    getFileContentSchema,
     withToolLogging(
       auth,
       {
@@ -360,11 +289,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
   server.tool(
     "get_spreadsheet",
     "Get metadata and properties of a specific Google Sheets spreadsheet.",
-    {
-      spreadsheetId: z
-        .string()
-        .describe("The ID of the spreadsheet to retrieve."),
-    },
+    getSpreadsheetSchema,
     withToolLogging(
       auth,
       {
@@ -401,22 +326,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
   server.tool(
     "get_worksheet",
     "Get data from a specific worksheet in a Google Sheets spreadsheet.",
-    {
-      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
-      range: z
-        .string()
-        .describe(
-          "The A1 notation of the range to retrieve (e.g., 'Sheet1!A1:D10' or 'A1:D10')."
-        ),
-      majorDimension: z
-        .enum(["ROWS", "COLUMNS"])
-        .default("ROWS")
-        .describe("The major dimension of the values."),
-      valueRenderOption: z
-        .enum(["FORMATTED_VALUE", "UNFORMATTED_VALUE", "FORMULA"])
-        .default("FORMATTED_VALUE")
-        .describe("How values should be represented in the output."),
-    },
+    getWorksheetSchema,
     withToolLogging(
       auth,
       {
