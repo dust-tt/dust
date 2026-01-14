@@ -66,7 +66,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
     const resource = new this(TriggerModel, trigger.get());
 
-    if (resource.enabled) {
+    if (resource.status === "enabled") {
       const r = await resource.upsertTemporalWorkflow(auth);
       if (r.isErr()) {
         return r;
@@ -239,7 +239,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     await trigger.update(blob, transaction);
 
     let r = null;
-    if (trigger.enabled) {
+    if (trigger.status === "enabled") {
       r = await trigger.upsertTemporalWorkflow(auth);
     } else {
       r = await trigger.removeTemporalWorkflow(auth);
@@ -383,7 +383,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     // Only disable enabled triggers
-    const enabledTriggers = triggers.filter((t) => t.enabled);
+    const enabledTriggers = triggers.filter((t) => t.status === "enabled");
     if (enabledTriggers.length === 0) {
       return new Ok(undefined);
     }
@@ -462,7 +462,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     // Only enable disabled triggers that point to non-archived agents
-    const disabledTriggers = triggers.filter((t) => !t.enabled);
+    const disabledTriggers = triggers.filter((t) => t.status !== "enabled");
     if (disabledTriggers.length === 0) {
       return new Ok(undefined);
     }
@@ -538,12 +538,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   async enable(auth: Authenticator): Promise<Result<undefined, Error>> {
-    if (this.enabled) {
+    if (this.status === "enabled") {
       return new Ok(undefined);
     }
 
     try {
-      await this.update({ enabled: true });
+      await this.update({ status: "enabled" });
     } catch (error) {
       return new Err(normalizeError(error));
     }
@@ -567,12 +567,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   async disable(auth: Authenticator): Promise<Result<undefined, Error>> {
-    if (!this.enabled) {
+    if (this.status === "disabled") {
       return new Ok(undefined);
     }
 
     try {
-      await this.update({ enabled: false });
+      await this.update({ status: "disabled" });
     } catch (error) {
       return new Err(normalizeError(error));
     }
@@ -726,7 +726,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       agentConfigurationId: this.agentConfigurationId,
       editor: this.editor,
       customPrompt: this.customPrompt,
-      enabled: this.enabled,
+      status: this.status,
+      enabled: this.status === "enabled", // deprecated, for backward compatibility (BACK12)
       naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
       origin: this.origin,

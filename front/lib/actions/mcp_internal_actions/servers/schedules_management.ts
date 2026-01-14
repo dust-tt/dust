@@ -26,7 +26,7 @@ function renderSchedule(schedule: ScheduleTriggerType): string {
   if (schedule.customPrompt) {
     lines.push(`  Prompt: ${schedule.customPrompt}`);
   }
-  lines.push(`  Enabled: ${schedule.enabled ? "Yes" : "No"}`);
+  lines.push(`  Status: ${schedule.status}`);
   return lines.join("\n");
 }
 
@@ -128,7 +128,7 @@ function createServer(
             agentConfigurationId: agentConfiguration.sId,
             name,
             kind: "schedule",
-            enabled: true,
+            status: "enabled",
             configuration: {
               cron,
               timezone: resultTimezone,

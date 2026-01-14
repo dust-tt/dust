@@ -92,7 +92,7 @@ async function getTriggersWithAgentAccesibleAgent({
     where: {
       workspaceId: owner.id,
       kind: "webhook",
-      enabled: true,
+      status: "enabled",
       webhookSourceViewId: {
         [Op.ne]: null,
       },

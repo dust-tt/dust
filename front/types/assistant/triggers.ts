@@ -39,7 +39,8 @@ export type TriggerType = {
   agentConfigurationId: AgentConfigurationType["sId"];
   editor: UserType["id"];
   customPrompt: string | null;
-  enabled: boolean;
+  status: TriggerStatus;
+  enabled: boolean; // deprecated, for backward compatibility (BACK12)
   createdAt: number;
   naturalLanguageDescription: string | null;
   origin: TriggerOrigin;
@@ -52,6 +53,18 @@ export function isValidTriggerKind(kind: string): kind is TriggerKind {
 }
 
 export type TriggerExecutionMode = "fair_use" | "programmatic";
+
+export const TRIGGER_STATUSES = [
+  "enabled",
+  "disabled",
+  "relocating",
+  "downgraded",
+] as const;
+export type TriggerStatus = (typeof TRIGGER_STATUSES)[number];
+
+export function isValidTriggerStatus(status: string): status is TriggerStatus {
+  return (TRIGGER_STATUSES as readonly string[]).includes(status);
+}
 
 export type TriggerOrigin = "user" | "agent";
 
@@ -98,25 +111,45 @@ const WebhookConfigSchema = t.intersection([
   }),
 ]);
 
+const TriggerStatusSchema = t.union([
+  t.literal("enabled"),
+  t.literal("disabled"),
+  t.literal("relocating"),
+  t.literal("downgraded"),
+]);
+
+// Note: Both enabled and status are optional for backward compatibility (BACK12).
+// Old clients send enabled: boolean, new clients send status: TriggerStatus.
+// The API handler should convert enabled to status using: status ?? (enabled ? "enabled" : "disabled") ?? "enabled"
 export const TriggerSchema = t.union([
-  t.type({
-    enabled: t.boolean,
-    name: t.string,
-    kind: t.literal("schedule"),
-    customPrompt: t.string,
-    naturalLanguageDescription: t.union([t.string, t.null]),
-    configuration: ScheduleConfigSchema,
-    editor: t.union([t.number, t.undefined]),
-  }),
-  t.type({
-    enabled: t.boolean,
-    name: t.string,
-    kind: t.literal("webhook"),
-    customPrompt: t.string,
-    naturalLanguageDescription: t.union([t.string, t.null]),
-    configuration: WebhookConfigSchema,
-    webhookSourceViewSId: t.string,
-    executionPerDayLimitOverride: t.number,
-    editor: t.union([t.number, t.undefined]),
-  }),
+  t.intersection([
+    t.type({
+      name: t.string,
+      kind: t.literal("schedule"),
+      customPrompt: t.string,
+      naturalLanguageDescription: t.union([t.string, t.null]),
+      configuration: ScheduleConfigSchema,
+      editor: t.union([t.number, t.undefined]),
+    }),
+    t.partial({
+      status: TriggerStatusSchema,
+      enabled: t.boolean, // deprecated, for backward compatibility
+    }),
+  ]),
+  t.intersection([
+    t.type({
+      name: t.string,
+      kind: t.literal("webhook"),
+      customPrompt: t.string,
+      naturalLanguageDescription: t.union([t.string, t.null]),
+      configuration: WebhookConfigSchema,
+      webhookSourceViewSId: t.string,
+      executionPerDayLimitOverride: t.number,
+      editor: t.union([t.number, t.undefined]),
+    }),
+    t.partial({
+      status: TriggerStatusSchema,
+      enabled: t.boolean, // deprecated, for backward compatibility
+    }),
+  ]),
 ]);

@@ -11,8 +11,12 @@ import type {
   TriggerExecutionMode,
   TriggerKind,
   TriggerOrigin,
+  TriggerStatus,
 } from "@app/types/assistant/triggers";
-import { isValidTriggerKind } from "@app/types/assistant/triggers";
+import {
+  isValidTriggerKind,
+  isValidTriggerStatus,
+} from "@app/types/assistant/triggers";
 
 export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare createdAt: CreationOptional<Date>;
@@ -20,7 +24,7 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
 
   declare name: string;
   declare customPrompt: string | null;
-  declare enabled: CreationOptional<boolean>;
+  declare status: TriggerStatus;
 
   declare kind: TriggerKind;
   declare configuration: TriggerConfigurationType;
@@ -76,10 +80,9 @@ TriggerModel.init(
       allowNull: true,
       defaultValue: null,
     },
-    enabled: {
-      type: DataTypes.BOOLEAN,
+    status: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: true,
     },
     configuration: {
       type: DataTypes.JSONB,
@@ -110,6 +113,12 @@ TriggerModel.init(
       beforeValidate: (trigger: TriggerModel) => {
         if (trigger.changed("kind") && !isValidTriggerKind(trigger.kind)) {
           throw new Error(`Invalid trigger kind: ${trigger.kind}`);
+        }
+        if (
+          trigger.changed("status") &&
+          !isValidTriggerStatus(trigger.status)
+        ) {
+          throw new Error(`Invalid trigger status: ${trigger.status}`);
         }
       },
     },

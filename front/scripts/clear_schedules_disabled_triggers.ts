@@ -12,7 +12,7 @@ import { makeScript } from "@app/scripts/helpers";
 makeScript({}, async ({ execute }, logger) => {
   // List all disabled triggers.
   const triggers = await TriggerModel.findAll({
-    where: { enabled: false },
+    where: { status: "disabled" },
   });
 
   if (triggers.length === 0) {

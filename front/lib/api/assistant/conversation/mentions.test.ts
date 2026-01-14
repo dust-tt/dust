@@ -1915,7 +1915,7 @@ describe("createUserMentions", () => {
         agentConfigurationId: triggerAgentConfig.sId,
         editor: auth.getNonNullableUser().id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: { includePayload: true },
         origin: "user",
       });
@@ -2074,7 +2074,7 @@ describe("createUserMentions", () => {
         agentConfigurationId: triggerAgentConfig.sId,
         editor: auth.getNonNullableUser().id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: { includePayload: true },
         origin: "user",
       });
@@ -2232,7 +2232,7 @@ describe("createUserMentions", () => {
         agentConfigurationId: triggerAgentConfig.sId,
         editor: auth.getNonNullableUser().id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: { includePayload: true },
         origin: "user",
       });
