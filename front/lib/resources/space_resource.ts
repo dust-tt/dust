@@ -1127,19 +1127,21 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         transaction,
       }
     );
-    await GroupMembershipModel.update(
-      { status: "suspended" },
-      {
-        where: {
-          groupId: defaultSpaceEditorGroup.id,
-          workspaceId: this.workspaceId,
-          status: "active",
-          startAt: { [Op.lte]: new Date() },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-        },
-        transaction,
-      }
-    );
+    if (defaultSpaceEditorGroup) {
+      await GroupMembershipModel.update(
+        { status: "suspended" },
+        {
+          where: {
+            groupId: defaultSpaceEditorGroup.id,
+            workspaceId: this.workspaceId,
+            status: "active",
+            startAt: { [Op.lte]: new Date() },
+            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          },
+          transaction,
+        }
+      );
+    }
   }
 
   /**
@@ -1166,19 +1168,21 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       }
     );
 
-    await GroupMembershipModel.update(
-      { status: "active" },
-      {
-        where: {
-          groupId: defaultSpaceEditorGroup.id,
-          workspaceId: this.workspaceId,
-          status: "suspended",
-          startAt: { [Op.lte]: new Date() },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-        },
-        transaction,
-      }
-    );
+    if (defaultSpaceEditorGroup) {
+      await GroupMembershipModel.update(
+        { status: "active" },
+        {
+          where: {
+            groupId: defaultSpaceEditorGroup.id,
+            workspaceId: this.workspaceId,
+            status: "suspended",
+            startAt: { [Op.lte]: new Date() },
+            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          },
+          transaction,
+        }
+      );
+    }
   }
 
   toJSON(): SpaceType {
