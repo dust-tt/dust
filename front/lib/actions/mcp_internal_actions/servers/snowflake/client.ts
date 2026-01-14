@@ -1,6 +1,14 @@
-import { untrustedFetch } from "@app/lib/egress/server";
-import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type {
+  RequestInfo as UndiciRequestInfo,
+  RequestInit as UndiciRequestInit,
+  Response as UndiciResponse,
+} from "undici";
+import { fetch as undiciFetch, ProxyAgent } from "undici";
+
+import { getUntrustedEgressAgent } from "@app/lib/egress/server";
+import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
+import type { LightWorkspaceType, Result } from "@app/types";
+import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
 
 // Snowflake SQL API response types
 interface SnowflakeStatementResponse {
@@ -49,13 +57,48 @@ export interface SnowflakeQueryResult {
   rowCount: number;
 }
 
+type FetchFn = (
+  url: UndiciRequestInfo,
+  init?: UndiciRequestInit
+) => Promise<UndiciResponse>;
+
+function createSnowflakeFetch(workspace: LightWorkspaceType): FetchFn {
+  if (isWorkspaceUsingStaticIP(workspace)) {
+    // Use static IP proxy for workspaces that require IP whitelisting
+    return (url: UndiciRequestInfo, options?: UndiciRequestInit) =>
+      undiciFetch(url, {
+        ...options,
+        dispatcher: new ProxyAgent(
+          `http://${EnvironmentConfig.getEnvVariable(
+            "PROXY_USER_NAME"
+          )}:${EnvironmentConfig.getEnvVariable(
+            "PROXY_USER_PASSWORD"
+          )}@${EnvironmentConfig.getEnvVariable(
+            "PROXY_HOST"
+          )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`
+        ),
+      });
+  }
+
+  // Use untrusted egress proxy for regular workspaces
+  const dispatcher = getUntrustedEgressAgent();
+  return (url: UndiciRequestInfo, options?: UndiciRequestInit) =>
+    undiciFetch(url, dispatcher ? { ...options, dispatcher } : options);
+}
+
 export class SnowflakeClient {
   private account: string;
   private accessToken: string;
+  private fetch: FetchFn;
 
-  constructor(account: string, accessToken: string) {
+  constructor(
+    account: string,
+    accessToken: string,
+    workspace: LightWorkspaceType
+  ) {
     this.account = account.trim();
     this.accessToken = accessToken;
+    this.fetch = createSnowflakeFetch(workspace);
   }
 
   private get baseUrl(): string {
@@ -89,7 +132,7 @@ export class SnowflakeClient {
     }
 
     try {
-      const response = await untrustedFetch(url, {
+      const response = await this.fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
