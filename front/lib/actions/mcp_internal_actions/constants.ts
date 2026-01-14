@@ -179,6 +179,7 @@ import {
   SPEECH_GENERATOR_TOOL_STAKES,
   SPEECH_GENERATOR_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator/metadata";
+import { TABLES_QUERY_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/metadata";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -974,16 +975,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "query_tables_v2",
-      version: "1.0.0",
-      description:
-        "Query structured data like a spreadsheet or database for data analyses.",
-      icon: "ActionTableIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: TABLES_QUERY_SERVER_INFO,
   },
   data_sources_file_system: {
     id: 1010,
