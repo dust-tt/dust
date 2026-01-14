@@ -107,7 +107,10 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/metadata";
 import { IMAGE_GENERATION_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/include_data/metadata";
-import { INTERACTIVE_CONTENT_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/metadata";
+import {
+  INTERACTIVE_CONTENT_SERVER_INFO,
+  INTERACTIVE_CONTENT_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/metadata";
 import {
   JIRA_SERVER_INFO,
   JIRA_TOOL_STAKES,
@@ -202,7 +205,10 @@ import {
   SEARCH_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/search/metadata";
 export { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/search/metadata";
-import { SKILL_MANAGEMENT_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/skill_management/metadata";
+import {
+  SKILL_MANAGEMENT_SERVER_INFO,
+  SKILL_MANAGEMENT_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/skill_management/metadata";
 import {
   SLAB_SERVER_INFO,
   SLAB_TOOL_STAKES,
@@ -680,6 +686,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: INTERACTIVE_CONTENT_TOOLS,
     serverInfo: INTERACTIVE_CONTENT_SERVER_INFO,
   },
   outlook: {

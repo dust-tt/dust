@@ -8,13 +8,18 @@ import {
   VIZ_STYLING_GUIDELINES,
   VIZ_USE_FILE_EXAMPLES,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/viz/instructions";
-import {
-  CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-  EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-  RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-  RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-  REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/types";
+
+// Tool names are inlined here to avoid circular dependency with metadata.ts.
+// metadata.ts imports instructions.ts, so instructions.ts cannot import from metadata.ts.
+const CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
+  "create_interactive_content_file";
+const EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME = "edit_interactive_content_file";
+const RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
+  "retrieve_interactive_content_file";
+const REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
+  "revert_interactive_content_file";
+const RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
+  "rename_interactive_content_file";
 
 export const INTERACTIVE_CONTENT_INSTRUCTIONS = `\
 ## CREATING VISUALIZATIONS WITH INTERACTIVE CONTENT

@@ -1,17 +1,22 @@
 import type { MCPProgressNotificationType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  createInteractiveContentFileSchema,
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  editInteractiveContentFileSchema,
   GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME,
+  getInteractiveContentFileShareUrlSchema,
   RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  renameInteractiveContentFileSchema,
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  retrieveInteractiveContentFileSchema,
   REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/types";
+  revertInteractiveContentFileSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -25,15 +30,7 @@ import {
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
-import type { InteractiveContentFileContentType } from "@app/types";
-import {
-  Err,
-  frameContentType,
-  INTERACTIVE_CONTENT_FILE_FORMATS,
-  Ok,
-} from "@app/types";
-
-const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
+import { Err, Ok } from "@app/types";
 
 /**
  * Builds a progress notification for interactive content file operations
@@ -80,39 +77,7 @@ function createServer(
     CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     "Create a new Interactive Content file that users can execute or interact with. Use this for " +
       "content that provides functionality beyond static viewing.",
-    {
-      file_name: z
-        .string()
-        .describe(
-          "The name of the Interactive Content file to create, including extension (e.g. " +
-            "DataVisualization.tsx)"
-        ),
-      mime_type: z
-        .enum(
-          Object.keys(INTERACTIVE_CONTENT_FILE_FORMATS) as [
-            InteractiveContentFileContentType,
-          ]
-        )
-        .describe(
-          "The MIME type for the Interactive Content file. Use " +
-            `'${frameContentType}' for Frame components (React/JSX).`
-        ),
-      content: z
-        .string()
-        .max(MAX_FILE_SIZE_BYTES)
-        .describe(
-          "The content for the Interactive Content file. Should be complete and ready for execution or " +
-            "interaction."
-        ),
-      description: z
-        .string()
-        .optional()
-        .describe(
-          "Optional description of what this Interactive Content file does (e.g., " +
-            "'Interactive data visualization', 'Executable analysis script', " +
-            "'Dynamic dashboard')"
-        ),
-    },
+    createInteractiveContentFileSchema,
     withToolLogging(
       auth,
       {
@@ -202,35 +167,7 @@ function createServer(
       "3. Include minimum 3 lines of surrounding context BEFORE and AFTER the target " +
       "content for unique identification. " +
       "**Critical:** Multiple matches or inexact matches will cause failure.",
-    {
-      file_id: z
-        .string()
-        .describe(
-          "The ID of the Interactive Content file to update (e.g., 'fil_abc123')"
-        ),
-      old_string: z
-        .string()
-        .describe(
-          "The exact text to find and replace. Must match the file content exactly, " +
-            "including all spacing, formatting, and line breaks. Include surrounding context " +
-            "to ensure unique identification of the target text."
-        ),
-      new_string: z
-        .string()
-        .describe(
-          "The exact text to replace old_string with. Should maintain proper syntax " +
-            "and follow best practices for the file type."
-        ),
-      expected_replacements: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .describe(
-          "Optional number of expected replacements. Defaults to 1. Use when you want " +
-            "to replace multiple identical instances of the same text."
-        ),
-    },
+    editInteractiveContentFileSchema,
     withToolLogging(
       auth,
       {
@@ -292,13 +229,7 @@ function createServer(
     REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     "Resets an Interactive Content file to its previous version. " +
       "Each revert goes back one version in the file's history. ",
-    {
-      file_id: z
-        .string()
-        .describe(
-          "The ID of the Interactive Content file to revert (e.g., 'fil_abc123')"
-        ),
-    },
+    revertInteractiveContentFileSchema,
     withToolLogging(
       auth,
       {
@@ -357,18 +288,7 @@ function createServer(
   server.tool(
     RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     "Rename an Interactive Content file. Use this to change the file name while keeping the content unchanged.",
-    {
-      file_id: z
-        .string()
-        .describe(
-          "The ID of the Interactive Content file to rename (e.g., 'fil_abc123')"
-        ),
-      new_file_name: z
-        .string()
-        .describe(
-          "The new name for the file, including extension (e.g., 'UpdatedChart.tsx')"
-        ),
-    },
+    renameInteractiveContentFileSchema,
     withToolLogging(
       auth,
       {
@@ -424,13 +344,7 @@ function createServer(
       "Use this to read back the content of Interactive Content files you have previously created " +
       `or updated. Use this tool before calling ${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME} to ` +
       "understand the current file state and identify the exact text to replace.",
-    {
-      file_id: z
-        .string()
-        .describe(
-          "The ID of the Interactive Content file to retrieve (e.g., 'fil_abc123')"
-        ),
-    },
+    retrieveInteractiveContentFileSchema,
     withToolLogging(
       auth,
       {
@@ -466,13 +380,7 @@ function createServer(
     GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME,
     "Get the share URL for an Interactive Content file. Returns the share URL if the file is " +
       "currently shared.",
-    {
-      file_id: z
-        .string()
-        .describe(
-          "The ID of the Interactive Content file to get share URL for (e.g., 'fil_abc123')"
-        ),
-    },
+    getInteractiveContentFileShareUrlSchema,
     withToolLogging(
       auth,
       {
