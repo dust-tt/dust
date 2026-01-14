@@ -10,8 +10,8 @@ import {
   AGENT_MANAGEMENT_TOOL_STAKES,
   AGENT_MANAGEMENT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/agent_management/metadata";
-import { AGENT_ROUTER_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/agent_router/metadata";
 import { AGENT_MEMORY_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory/metadata";
+import { AGENT_ROUTER_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/agent_router/metadata";
 import {
   ASHBY_SERVER_INFO,
   ASHBY_TOOL_STAKES,
