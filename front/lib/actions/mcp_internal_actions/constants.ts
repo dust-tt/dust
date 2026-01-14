@@ -191,6 +191,11 @@ import {
   VANTA_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/vanta/metadata";
 import { WEBTOOLS_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/webtools/metadata";
+import {
+  ZENDESK_SERVER_INFO,
+  ZENDESK_TOOL_STAKES,
+  ZENDESK_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/zendesk/metadata";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -853,27 +858,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      get_ticket: "never_ask",
-      search_tickets: "never_ask",
-      draft_reply: "low", // Low because it's a draft.
-    },
+    tools_stakes: ZENDESK_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "zendesk",
-      version: "1.0.0",
-      description:
-        "Access and manage support tickets, help center, and customer interactions.",
-      authorization: {
-        provider: "zendesk" as const,
-        supported_use_cases: ["platform_actions"] as const,
-      },
-      icon: "ZendeskLogo",
-      documentationUrl: null,
-      instructions: null,
-    },
+    tools: ZENDESK_TOOLS,
+    serverInfo: ZENDESK_SERVER_INFO,
   },
   slab: {
     id: 43,

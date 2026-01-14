@@ -1,5 +1,4 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
@@ -7,6 +6,12 @@ import {
   getZendeskClient,
   ZendeskApiError,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
+import {
+  draftReplySchema,
+  getTicketSchema,
+  searchTicketsSchema,
+  ZENDESK_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/zendesk/metadata";
 import {
   renderTicket,
   renderTicketComments,
@@ -24,13 +29,11 @@ function isTrackedError(error: Error): boolean {
   return !(error instanceof ZendeskApiError && error.isInvalidInput);
 }
 
-const ZENDESK_TOOL_NAME = "zendesk";
-
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer("zendesk");
+  const server = makeInternalMCPServer(ZENDESK_TOOL_NAME);
 
   server.tool(
     "get_ticket",
@@ -38,25 +41,7 @@ function createServer(
       "description, status, priority, assignee, and other metadata. Optionally include ticket metrics " +
       "such as resolution times, wait times, and reply counts. Optionally include the full conversation " +
       "with all comments.",
-    {
-      ticketId: z
-        .number()
-        .int()
-        .positive()
-        .describe("The ID of the Zendesk ticket to retrieve."),
-      includeMetrics: z
-        .boolean()
-        .optional()
-        .describe(
-          "Whether to include ticket metrics (resolution times, wait times, reopens, replies, etc.). Defaults to false."
-        ),
-      includeConversation: z
-        .boolean()
-        .optional()
-        .describe(
-          "Whether to include the full conversation (all comments) for the ticket. Defaults to false."
-        ),
-    },
+    getTicketSchema,
     withToolLogging(
       auth,
       {
@@ -157,25 +142,7 @@ function createServer(
       "details. You can search by status, priority, assignee, tags, and other fields. Query " +
       "examples: 'status:open', 'priority:high', 'status:open priority:urgent', 'assignee:me', " +
       "'tags:bug'.",
-    {
-      query: z
-        .string()
-        .describe(
-          "The search query using Zendesk query syntax. Examples: 'status:open', 'priority:high' " +
-            "status:pending', 'assignee:123', 'tags:bug tags:critical'." +
-            "Do not include 'type:ticket' as it is automatically added."
-        ),
-      sortBy: z
-        .enum(["updated_at", "created_at", "priority", "status", "ticket_type"])
-        .optional()
-        .describe(
-          "Field to sort results by. Defaults to relevance if not specified."
-        ),
-      sortOrder: z
-        .enum(["asc", "desc"])
-        .optional()
-        .describe("Sort order. Defaults to 'desc' if not specified."),
-    },
+    searchTicketsSchema,
     withToolLogging(
       auth,
       {
@@ -238,14 +205,7 @@ function createServer(
     "Draft a reply to a Zendesk ticket. Creates a private comment (not visible to the end user) " +
       "that can be edited before being published. This is useful for preparing responses before " +
       "making them public.",
-    {
-      ticketId: z
-        .number()
-        .int()
-        .positive()
-        .describe("The ID of the Zendesk ticket to reply to."),
-      body: z.string().describe("The content of the draft reply."),
-    },
+    draftReplySchema,
     withToolLogging(
       auth,
       {
