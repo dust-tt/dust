@@ -1142,6 +1142,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: SKILL_MANAGEMENT_TOOLS,
     serverInfo: SKILL_MANAGEMENT_SERVER_INFO,
   },
   schedules_management: {
