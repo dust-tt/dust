@@ -1,6 +1,6 @@
 import { EventEmitter } from "events";
 import type { RedisClientType } from "redis";
-import { createClient } from "redis";
+import { commandOptions, createClient } from "redis";
 
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { fromEvent } from "@app/lib/utils/events";
@@ -108,6 +108,10 @@ class RedisHybridManager {
           reconnectStrategy: (retries) => {
             return Math.min(retries * 100, 3000); // Exponential backoff with max 3s
           },
+        },
+        isolationPoolOptions: {
+          min: 1,
+          max: 100, // Pool of 100 connections for concurrent stream operations.
         },
       });
 
@@ -421,8 +425,10 @@ class RedisHybridManager {
     );
 
     try {
+      // Use an isolated connection to avoid blocking the main connection.
       const result = await streamClient
         .xRead(
+          commandOptions({ isolated: true }),
           { key: streamName, id: lastEventId },
           { COUNT: HISTORY_FETCH_COUNT }
         )
