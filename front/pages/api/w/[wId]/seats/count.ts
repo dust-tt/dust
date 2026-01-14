@@ -12,7 +12,9 @@ export type GetWorkspaceSeatsCountResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetWorkspaceSeatsCountResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetWorkspaceSeatsCountResponseBody>
+  >,
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isAdmin()) {

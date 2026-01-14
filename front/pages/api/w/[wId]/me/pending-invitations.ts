@@ -14,9 +14,7 @@ export type GetPendingInvitationsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetPendingInvitationsResponseBody>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<GetPendingInvitationsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const userResource = auth.user();

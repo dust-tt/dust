@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import type { Authenticator } from "@app/lib/auth";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse, WorkspaceDomain } from "@app/types";
 
@@ -28,11 +28,25 @@ async function handler(
     });
   }
 
+  const workspace = auth.getNonNullableWorkspace();
+
   switch (req.method) {
     case "GET": {
-      const verifiedDomains = await getWorkspaceVerifiedDomains(
-        auth.getNonNullableWorkspace()
+      const workspaceResource = await WorkspaceResource.fetchById(
+        workspace.sId
       );
+
+      if (!workspaceResource) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to fetch the workspace.",
+          },
+        });
+      }
+
+      const verifiedDomains = await workspaceResource.getVerifiedDomains();
       return res.status(200).json({ verifiedDomains });
     }
 

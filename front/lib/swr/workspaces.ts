@@ -302,7 +302,8 @@ export function useWorkspaceSeatsCount({
   workspaceId: string;
   disabled?: boolean;
 }) {
-  const seatsCountFetcher: Fetcher<GetWorkspaceSeatsCountResponseBody> = fetcher;
+  const seatsCountFetcher: Fetcher<GetWorkspaceSeatsCountResponseBody> =
+    fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/seats/count`,
