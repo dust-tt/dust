@@ -201,15 +201,36 @@ export function InboxView({
   const hasAnyContent =
     myConversations.length > 0 || spacesWithUnread.length > 0;
 
+  // Check if all sections are collapsed (marked as read)
+  const allSectionsCollapsed = useMemo(() => {
+    if (!hasAnyContent) return true;
+
+    // Check if My conversations section is collapsed (if it exists)
+    const myConversationsCollapsed =
+      myConversations.length === 0 || collapsedSpaces.has("my-conversations");
+
+    // Check if all spaces are collapsed
+    const allSpacesCollapsed =
+      spacesWithUnread.length === 0 ||
+      spacesWithUnread.every((space) => collapsedSpaces.has(space.id));
+
+    return myConversationsCollapsed && allSpacesCollapsed;
+  }, [
+    hasAnyContent,
+    myConversations.length,
+    spacesWithUnread,
+    collapsedSpaces,
+  ]);
+
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background s-px-6">
       <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto">
         <div
           className={`s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-py-8 ${
-            !hasAnyContent ? "s-flex-1" : ""
+            !hasAnyContent || allSectionsCollapsed ? "s-flex-1" : ""
           }`}
         >
-          {hasAnyContent ? (
+          {hasAnyContent && !allSectionsCollapsed ? (
             <>
               <h2 className="s-heading-2xl s-mb-4 s-text-foreground dark:s-text-foreground-night">
                 Inbox
@@ -419,9 +440,11 @@ export function InboxView({
             </>
           ) : (
             <>
-              <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-gap-2 s-text-foreground dark:s-text-foreground-night">
-                <Icon size="md" visual={InboxIcon} />
-                <h2 className="s-heading-2xl">Inbox</h2>
+              <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-gap-2">
+                <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-0 s-text-foreground dark:s-text-foreground-night">
+                  <Icon size="md" visual={InboxIcon} />
+                  <h2 className="s-text-2xl">Inbox</h2>
+                </div>
                 <p className="s-text-center s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">
                   You're all caught up!
                   <br />
