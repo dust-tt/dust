@@ -69,7 +69,7 @@ ProjectMetadataModel.init(
 // Define the relationship: ProjectMetadata belongs to Space
 ProjectMetadataModel.belongsTo(SpaceModel, {
   foreignKey: { name: "spaceId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 
 // Define the reverse relationship: Space has one ProjectMetadata
