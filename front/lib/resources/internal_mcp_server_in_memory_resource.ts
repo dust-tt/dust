@@ -15,11 +15,11 @@ import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerNameAndWorkspaceId,
+  getInternalMCPServerStaticMetadata,
   isAutoInternalMCPServerName,
   isInternalMCPServerOfName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/enabled";
-import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -39,7 +39,12 @@ export class InternalMCPServerInMemoryResource {
     MCPServerType,
     "sId" | "allowMultipleInstances" | "availability"
   > = {
-    ...extractMetadataFromServerVersion(undefined),
+    name: "",
+    version: "",
+    description: "",
+    icon: "ActionDocumentTextIcon",
+    authorization: null,
+    documentationUrl: null,
     tools: [],
   };
   private internalServerCredential: InternalMCPServerCredentialModel | null =
@@ -78,16 +83,11 @@ export class InternalMCPServerInMemoryResource {
 
     const server = new this(id, availability);
 
-    // TODO(SKILLS 2025-12-16 flav): Temporary dynamic import to avoid circular dependency.
-    // Bigger refactoring to extract this logic from the resource will come later.
-    const { getCachedMetadata } =
-      await import("@app/lib/actions/mcp_cached_metadata");
-    const cachedMetadata = await getCachedMetadata(auth, id);
-    if (!cachedMetadata) {
-      return null;
-    }
+    // Get static metadata from constants (breaks circular dependency).
+    // Tools are only available for servers with static tool definitions.
+    const staticMetadata = getInternalMCPServerStaticMetadata(name);
+    server.metadata = staticMetadata;
 
-    server.metadata = cachedMetadata;
     server.internalServerCredential =
       await server.fetchInternalServerCredential(auth);
 
