@@ -49,16 +49,15 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
     }
 
     const account = extraConfig.snowflake_account;
-    // Snowflake uses "session:role:PUBLIC" as the default scope
-    // refresh_token scope is required to get refresh tokens
-    const scopes = ["refresh_token", "session:role:PUBLIC"];
 
+    // Note: Snowflake OAuth scope is optional. When omitted, the user's default role is used.
+    // Refresh tokens are controlled by OAUTH_ISSUE_REFRESH_TOKENS in the security integration,
+    // not by an OAuth scope.
     const qs = querystring.stringify({
       response_type: "code",
       client_id: clientId,
       state: connection.connection_id,
       redirect_uri: finalizeUriForProvider("snowflake"),
-      scope: scopes.join(" "),
     });
 
     // Build account-specific authorization URL
