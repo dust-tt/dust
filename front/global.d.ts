@@ -10,9 +10,6 @@ type DataLayer =
       gclid: string | null;
     }
   | {
-      event: "hubspot_form_submitted";
-    }
-  | {
       event: "contact_form_submitted";
       is_qualified: boolean;
     }
@@ -34,16 +31,6 @@ interface DefaultConfig {
   last_name?: string;
 }
 
-// Default.com SDK methods
-interface DefaultSDK {
-  identify: (data: {
-    email: string;
-    first_name?: string;
-    last_name?: string;
-  }) => void;
-  book: () => void;
-}
-
 declare global {
   interface Window {
     gtag: (command: string, action: string, params: object) => void;
@@ -57,7 +44,6 @@ declare global {
     };
     // Default.com SDK
     __default__?: DefaultConfig;
-    Default?: DefaultSDK;
   }
 }
 

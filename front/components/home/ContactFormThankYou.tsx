@@ -67,7 +67,7 @@ export function ContactFormThankYou({
     }
     defaultTriggeredRef.current = true;
 
-    // Initialize Default.com configuration
+    // Update Default.com configuration with user data
     window.__default__ = window.__default__ ?? {};
     window.__default__.form_id = DEFAULT_FORM_ID;
     window.__default__.team_id = DEFAULT_TEAM_ID;
@@ -75,57 +75,18 @@ export function ContactFormThankYou({
     window.__default__.first_name = firstName;
     window.__default__.last_name = lastName;
 
-    console.log("[Default.com] Initializing with config:", window.__default__);
+    // Give Default.com time to set up its form listeners, then trigger form submit
+    const timeoutId = setTimeout(() => {
+      if (formRef.current) {
+        const submitEvent = new Event("submit", {
+          bubbles: true,
+          cancelable: true,
+        });
+        formRef.current.dispatchEvent(submitEvent);
+      }
+    }, 1000);
 
-    const triggerFormSubmit = () => {
-      // Give Default.com time to set up its form listeners
-      setTimeout(() => {
-        if (formRef.current) {
-          console.log("[Default.com] Form element:", formRef.current);
-          console.log("[Default.com] Form ID:", formRef.current.id);
-          console.log("[Default.com] Form data-default-form-id:", formRef.current.getAttribute("data-default-form-id"));
-          console.log("[Default.com] Form fields:", {
-            email: formRef.current.querySelector('input[name="email"]')?.getAttribute("value"),
-            firstname: formRef.current.querySelector('input[name="firstname"]')?.getAttribute("value"),
-          });
-          console.log("[Default.com] window.__default__:", window.__default__);
-          console.log("[Default.com] window.Default:", window.Default ?? "undefined");
-
-          console.log("[Default.com] Dispatching submit event on form");
-          const submitEvent = new Event("submit", {
-            bubbles: true,
-            cancelable: true,
-          });
-          const dispatched = formRef.current.dispatchEvent(submitEvent);
-          console.log("[Default.com] Event dispatched, default prevented:", !dispatched);
-        } else {
-          console.error("[Default.com] formRef.current is null!");
-        }
-      }, 1000);
-    };
-
-    // Check if script is already loaded
-    const existingScript = document.querySelector(
-      'script[src*="default.com"]'
-    );
-
-    if (existingScript) {
-      console.log("[Default.com] Script already loaded");
-      triggerFormSubmit();
-    } else {
-      // Load the Default.com script
-      const script = document.createElement("script");
-      script.src = "https://import-cdn.default.com/sdk.js";
-      script.async = true;
-      script.onload = () => {
-        console.log("[Default.com] Script loaded successfully");
-        triggerFormSubmit();
-      };
-      script.onerror = () => {
-        console.error("[Default.com] Failed to load script");
-      };
-      document.body.appendChild(script);
-    }
+    return () => clearTimeout(timeoutId);
   }, [isQualified, email, firstName, lastName]);
 
   return (

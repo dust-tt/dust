@@ -134,29 +134,3 @@ export async function submitToHubSpotForm(params: {
     );
   }
 }
-
-/**
- * Get Default.com scheduling URL with prefilled data.
- */
-export function getDefaultSchedulingUrl(params: {
-  email: string;
-  firstName: string;
-  lastName: string;
-}): string {
-  const { email, firstName, lastName } = params;
-
-  // Default.com team scheduling URL
-  // The form_id and team_id are from the current configuration
-  const baseUrl = "https://app.default.com/dust-team";
-
-  const searchParams = new URLSearchParams();
-  searchParams.set("email", email);
-  if (firstName) {
-    searchParams.set("first_name", firstName);
-  }
-  if (lastName) {
-    searchParams.set("last_name", lastName);
-  }
-
-  return `${baseUrl}?${searchParams.toString()}`;
-}

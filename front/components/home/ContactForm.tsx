@@ -15,7 +15,7 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 // Default.com form ID (used in form data-attribute for tracking)
-const DEFAULT_FORM_ID = 503792;
+const DEFAULT_FORM_ID = 130084;
 
 import type {
   ContactFormData,
@@ -35,7 +35,6 @@ import { getStoredUTMParams } from "@app/lib/utils/utm";
 
 interface ContactFormProps {
   prefillEmail?: string;
-  prefillCompany?: string;
   prefillHeadcount?: string;
   prefillRegion?: string;
 }
@@ -84,14 +83,6 @@ export function ContactForm({
         sessionStorage.getItem("li_fat_id") ??
         undefined,
     };
-
-    // Debug logging for tracking params
-    console.log("[ContactForm] Tracking params:", {
-      storedParams,
-      sessionGclid: sessionStorage.getItem("gclid"),
-      sessionUtmData: sessionStorage.getItem("utm_data"),
-      finalTracking: tracking,
-    });
 
     // Track form submission attempt
     trackEvent({
@@ -185,6 +176,7 @@ export function ContactForm({
 
   return (
     <form
+      id="dust-contact-form"
       onSubmit={form.handleSubmit(onSubmit)}
       className="flex flex-col gap-6"
       data-default-form-id={DEFAULT_FORM_ID}

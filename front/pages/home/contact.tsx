@@ -1,5 +1,6 @@
 import type { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
+import Script from "next/script";
 import type { ReactElement } from "react";
 
 import { ContactForm } from "@app/components/home/ContactForm";
@@ -59,8 +60,27 @@ export default function Contact() {
   );
 
   return (
-    <UTMPageWrapper>
-      <PageMetadata
+    <>
+      {/* Default.com script - must be loaded early for form detection */}
+      <Script
+        id="default-com-init"
+        strategy="beforeInteractive"
+        dangerouslySetInnerHTML={{
+          __html: `
+            window.__default__ = window.__default__ || {};
+            window.__default__.form_id = 130084;
+            window.__default__.team_id = 579;
+            window.__default__.listenToIds = ["dust-contact-form", "dust-contact-thankyou-form"];
+          `,
+        }}
+      />
+      <Script
+        id="default-com-sdk"
+        src="https://import-cdn.default.com"
+        strategy="beforeInteractive"
+      />
+      <UTMPageWrapper>
+        <PageMetadata
         title="Contact Dust: Schedule a Demo for AI Agents"
         description="Get in touch with the Dust team. Schedule a demo call to learn how AI agents can help address your team's challenges and improve productivity."
         pathname={router.asPath}
@@ -97,6 +117,7 @@ export default function Contact() {
         <TrustedBy />
       </div>
     </UTMPageWrapper>
+    </>
   );
 }
 
