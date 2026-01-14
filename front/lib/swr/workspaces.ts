@@ -8,7 +8,12 @@ import type {
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
+import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
+import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
+import type { GetSubscriptionPricingResponseBody } from "@app/pages/api/w/[wId]/subscriptions/pricing";
+import type { GetSubscriptionTrialInfoResponseBody } from "@app/pages/api/w/[wId]/subscriptions/trial-info";
+import type { GetWorkspaceVerifiedDomainsResponseBody } from "@app/pages/api/w/[wId]/verified-domains";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type { LightWorkspaceType, WhitelistableFeature } from "@app/types";
 
@@ -194,5 +199,122 @@ export function useWorkspaceProgrammaticCost({
     isProgrammaticCostLoading: !error && !data && !disabled,
     isProgrammaticCostError: error,
     isProgrammaticCostValidating: isValidating,
+  };
+}
+
+export function useWorkspaceSeatAvailability({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const seatAvailabilityFetcher: Fetcher<GetSeatAvailabilityResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/seats/availability`,
+    seatAvailabilityFetcher,
+    { disabled }
+  );
+
+  return {
+    hasAvailableSeats: data?.hasAvailableSeats ?? false,
+    isSeatAvailabilityLoading: !error && !data && !disabled,
+    isSeatAvailabilityError: error,
+    mutateSeatAvailability: mutate,
+  };
+}
+
+export function usePerSeatPricing({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const pricingFetcher: Fetcher<GetSubscriptionPricingResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/subscriptions/pricing`,
+    pricingFetcher,
+    { disabled }
+  );
+
+  return {
+    perSeatPricing: data?.perSeatPricing ?? null,
+    isPerSeatPricingLoading: !error && !data && !disabled,
+    isPerSeatPricingError: error,
+  };
+}
+
+export function useWorkspaceVerifiedDomains({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const verifiedDomainsFetcher: Fetcher<GetWorkspaceVerifiedDomainsResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/verified-domains`,
+    verifiedDomainsFetcher,
+    { disabled }
+  );
+
+  return {
+    verifiedDomains: data?.verifiedDomains ?? emptyArray(),
+    isVerifiedDomainsLoading: !error && !data && !disabled,
+    isVerifiedDomainsError: error,
+    mutateVerifiedDomains: mutate,
+  };
+}
+
+export function useSubscriptionTrialInfo({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const trialInfoFetcher: Fetcher<GetSubscriptionTrialInfoResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/subscriptions/trial-info`,
+    trialInfoFetcher,
+    { disabled }
+  );
+
+  return {
+    trialDaysRemaining: data?.trialDaysRemaining ?? null,
+    isTrialInfoLoading: !error && !data && !disabled,
+    isTrialInfoError: error,
+  };
+}
+
+export function useWorkspaceSeatsCount({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const seatsCountFetcher: Fetcher<GetWorkspaceSeatsCountResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/seats/count`,
+    seatsCountFetcher,
+    { disabled }
+  );
+
+  return {
+    seatsCount: data?.seatsCount ?? 0,
+    isSeatsCountLoading: !error && !data && !disabled,
+    isSeatsCountError: error,
+    mutateSeatsCount: mutate,
   };
 }

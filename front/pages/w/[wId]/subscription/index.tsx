@@ -34,9 +34,12 @@ import {
   isProPlan,
   isWhitelistedBusinessPlan,
 } from "@app/lib/plans/plan_codes";
-import { getStripeSubscription } from "@app/lib/plans/stripe";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import {
+  useFeatureFlags,
+  usePerSeatPricing,
+  useSubscriptionTrialInfo,
+  useWorkspaceSeatsCount,
+} from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type {
@@ -48,48 +51,20 @@ import type {
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  trialDaysRemaining: number | null;
-  workspaceSeats: number;
-  perSeatPricing: SubscriptionPerSeatPricing | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
-  const subscriptionResource = auth.subscriptionResource();
+  const subscription = auth.subscription();
   const user = auth.user();
-  if (!owner || !auth.isAdmin() || !user || !subscriptionResource) {
+  if (!owner || !auth.isAdmin() || !user || !subscription) {
     return {
       notFound: true,
     };
   }
 
-  let trialDaysRemaining = null;
-  const subscription = subscriptionResource.toJSON();
-
-  if (subscription.trialing && subscription.stripeSubscriptionId) {
-    const stripeSubscription = await getStripeSubscription(
-      subscription.stripeSubscriptionId
-    );
-    if (!stripeSubscription) {
-      return {
-        notFound: true,
-      };
-    }
-    trialDaysRemaining = stripeSubscription.trial_end
-      ? Math.ceil(
-          (stripeSubscription.trial_end * 1000 - Date.now()) /
-            (1000 * 60 * 60 * 24)
-        )
-      : null;
-  }
-
-  const workspaceSeats = await countActiveSeatsInWorkspace(owner.sId);
-  const perSeatPricing = await subscriptionResource.getPerSeatPricing();
   return {
     props: {
       owner,
       subscription,
-      trialDaysRemaining,
-      workspaceSeats,
-      perSeatPricing,
     },
   };
 });
@@ -97,9 +72,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function Subscription({
   owner,
   subscription,
-  trialDaysRemaining,
-  workspaceSeats,
-  perSeatPricing,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const sendNotification = useSendNotification();
@@ -111,6 +83,17 @@ export default function Subscription({
     useState(false);
 
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { trialDaysRemaining, isTrialInfoLoading } = useSubscriptionTrialInfo({
+    workspaceId: owner.sId,
+  });
+  const { seatsCount: workspaceSeats, isSeatsCountLoading } =
+    useWorkspaceSeatsCount({ workspaceId: owner.sId });
+  const { perSeatPricing, isPerSeatPricingLoading } = usePerSeatPricing({
+    workspaceId: owner.sId,
+  });
+
+  const isLoading =
+    isTrialInfoLoading || isSeatsCountLoading || isPerSeatPricingLoading;
 
   useEffect(() => {
     if (router.query.type === "succeeded") {
@@ -303,6 +286,24 @@ export default function Subscription({
         day: "numeric",
       })
     : null;
+
+  if (isLoading) {
+    return (
+      <AppCenteredLayout
+        subscription={subscription}
+        owner={owner}
+        subNavigation={subNavigationAdmin({
+          owner,
+          current: "subscription",
+          featureFlags,
+        })}
+      >
+        <div className="flex h-full items-center justify-center">
+          <Spinner size="lg" />
+        </div>
+      </AppCenteredLayout>
+    );
+  }
 
   return (
     <AppCenteredLayout
