@@ -58,7 +58,11 @@ makeScript({}, async ({ execute }, logger) => {
     const idsResult = getIdsFromSId(mcpServerId);
     if (idsResult.isErr()) {
       logger.info(
-        { userId: metadata.userId, mcpServerId, error: idsResult.error.message },
+        {
+          userId: metadata.userId,
+          mcpServerId,
+          error: idsResult.error.message,
+        },
         "Skipping invalid mcpServerId"
       );
       skippedCount++;
@@ -80,24 +84,14 @@ makeScript({}, async ({ execute }, logger) => {
     for (const toolName of toolNames) {
       try {
         if (execute) {
-          await UserToolApprovalModel.findOrCreate({
-            where: {
-              workspaceId: workspaceModelId,
-              userId: metadata.userId,
-              mcpServerId,
-              toolName,
-              agentId: { [Op.is]: null },
-              argsAndValuesMd5: { [Op.is]: null },
-            },
-            defaults: {
-              workspaceId: workspaceModelId,
-              userId: metadata.userId,
-              mcpServerId,
-              toolName,
-              agentId: null,
-              argsAndValues: null,
-              argsAndValuesMd5: null,
-            },
+          await UserToolApprovalModel.create({
+            workspaceId: workspaceModelId,
+            userId: metadata.userId,
+            mcpServerId,
+            toolName,
+            agentId: null,
+            argsAndValues: null,
+            argsAndValuesMd5: null,
           });
         }
         migratedCount++;
@@ -117,10 +111,7 @@ makeScript({}, async ({ execute }, logger) => {
     }
   }
 
-  logger.info(
-    { migratedCount, skippedCount, errorCount },
-    "Migration results"
-  );
+  logger.info({ migratedCount, skippedCount, errorCount }, "Migration results");
 
   // Delete the old metadata entries.
   if (execute) {

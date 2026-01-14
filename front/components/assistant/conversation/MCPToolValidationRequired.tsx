@@ -96,7 +96,6 @@ export function MCPToolValidationRequired({
   ]);
 
   const alwaysAllowLabel = useMemo(() => {
-    console.log("blockedAction.stake", blockedAction.stake);
     if (blockedAction.stake !== "medium") {
       return "Always allow";
     }

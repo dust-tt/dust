@@ -34,6 +34,7 @@ export interface SearchMembersPaginationParams {
 
 const USER_METADATA_COMMA_SEPARATOR = ",";
 const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
+const TOOLS_VALIDATION_WILDCARD = "*";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -585,7 +586,9 @@ export class UserResource extends BaseResource<UserModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         userId: this.id,
         mcpServerId,
-        toolName: isLowStake ? { [Op.in]: [toolName, "*"] } : toolName,
+        toolName: isLowStake
+          ? { [Op.in]: [toolName, TOOLS_VALIDATION_WILDCARD] }
+          : toolName,
         agentId: agentId ?? { [Op.is]: null },
         argsAndValuesMd5: argsAndValues
           ? md5(JSON.stringify(sortedArgsAndValues))

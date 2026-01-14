@@ -140,7 +140,6 @@ export async function hasUserAlwaysApprovedTool(
     throw new Error("functionCallName is required");
   }
 
-  // Wildcard check is handled inside hasApprovedTool for low-stake tools.
   return user.hasApprovedTool(auth, {
     mcpServerId,
     toolName: functionCallName,
