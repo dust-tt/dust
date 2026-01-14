@@ -24,6 +24,7 @@ import {
   ASHBY_TOOL_STAKES,
   ASHBY_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/metadata";
+import { COMMON_UTILITIES_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/common_utilities/metadata";
 import {
   GOOGLE_CALENDAR_SERVER_INFO,
   GOOGLE_CALENDAR_TOOL_STAKES,
@@ -1642,16 +1643,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "common_utilities",
-      version: "1.0.0",
-      description:
-        "Miscellaneous helper tools such as random numbers, time retrieval, and timers.",
-      icon: "ActionAtomIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: COMMON_UTILITIES_SERVER_INFO,
   },
   front: {
     id: 1018,
