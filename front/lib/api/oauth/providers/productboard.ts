@@ -41,7 +41,12 @@ export class ProductboardOAuthProvider implements BaseOAuthStrategyProvider {
     return getStringFromQuery(query, "state");
   }
 
-  isExtraConfigValid(extraConfig: ExtraConfigType) {
+  isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
+    if (useCase === "personal_actions") {
+      if (extraConfig.mcp_server_id) {
+        return true;
+      }
+    }
     // Productboard doesn't require any extra configuration (like subdomain)
     return Object.keys(extraConfig).length === 0;
   }
