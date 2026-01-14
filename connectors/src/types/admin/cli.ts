@@ -299,6 +299,7 @@ export const IntercomCommandSchema = t.type({
       t.union([t.literal("open"), t.literal("closed")]),
       t.undefined,
     ]),
+    cursor: t.union([t.string, t.undefined]),
   }),
 });
 
