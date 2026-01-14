@@ -33,7 +33,6 @@ import type {
   SpaceType,
 } from "@app/types";
 import { Err, GLOBAL_SPACE_NAME, Ok, removeNulls } from "@app/types";
-import { log } from "console";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -576,8 +575,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         }
       }
 
-      console.log("========= updatePermissions params =========", params);
-
       if (managementMode === "manual") {
         const memberIds = params.memberIds;
         const editorIds = params.editorIds ?? [];
@@ -608,11 +605,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               { transaction: t }
             );
           }
-
-          console.log(
-            "========= updatePermissions editorGroup =========",
-            editorGroup
-          );
 
           // Set members of the editor group
           const setEditorsRes = await editorGroup.setMembers(
@@ -669,10 +661,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           return setMembersRes;
         }
       } else if (managementMode === "group") {
-        console.log("========= updatePermissions group mode =========");
         // Handle group-based management
         const groupIds = params.groupIds;
-        const editorGroupIds = params.editorGroupIds || [];
+        const editorGroupIds = params.editorGroupIds ?? [];
 
         // Remove existing external groups
         const existingExternalGroups = this.groups.filter(

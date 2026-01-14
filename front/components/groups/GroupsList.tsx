@@ -28,7 +28,7 @@ export type GroupsListProps = {
   isLoading?: boolean;
   groups: SpaceGroupType[];
   showColumns: ("name" | "memberCount" | "isEditor" | "action")[];
-  onToggleEditor: (groupId: string) => void;
+  onToggleEditor?: (groupId: string) => void;
   onRemoveGroupClick?: (group: SpaceGroupType) => void;
   pagination?: PaginationState;
   setPagination?: (pagination: PaginationState) => void;
@@ -58,14 +58,6 @@ export function GroupsList({
       onRemoveGroupClick: () => onRemoveGroupClick?.(group),
     }));
   }, [groups, onRemoveGroupClick]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
 
   const getTableColumns = useCallback(() => {
     return [
@@ -105,7 +97,9 @@ export function GroupsList({
           <DataTable.CellContent>
             <Checkbox
               checked={info.row.original.isEditor ?? false}
-              onCheckedChange={() => onToggleEditor(info.row.original.groupId)}
+              onCheckedChange={() =>
+                onToggleEditor?.(info.row.original.groupId)
+              }
               disabled={disabled}
             />
           </DataTable.CellContent>
@@ -131,9 +125,17 @@ export function GroupsList({
         },
       },
     ].filter((column) => showColumns.includes(column.id));
-  }, [showColumns]);
+  }, [showColumns, onToggleEditor, disabled]);
 
   const columns = useMemo(() => getTableColumns(), [getTableColumns]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <DataTable

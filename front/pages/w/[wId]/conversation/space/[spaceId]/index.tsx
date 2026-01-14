@@ -12,7 +12,7 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useCallback, useState } from "react";
 
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
@@ -175,8 +175,30 @@ export default function SpaceConversations({
 
   const [currentTab, setCurrentTab] = useState<SpaceTab>(getCurrentTabFromHash);
 
+  const initialGroups = useMemo(() => {
+    if (!planAllowsSCIM || !spaceInfo || !groups) {
+      return [];
+    }
+    if (
+      (spaceInfo.groupIds && spaceInfo.groupIds.length > 0) ||
+      (spaceInfo.editorGroupIds && spaceInfo.editorGroupIds.length > 0)
+    ) {
+      return groups
+        .filter(
+          (group) =>
+            spaceInfo?.groupIds.includes(group.sId) ||
+            spaceInfo?.editorGroupIds?.includes(group.sId)
+        )
+        .map((group) => ({
+          ...group,
+          isEditor: !!spaceInfo.editorGroupIds?.includes(group.sId),
+        }));
+    }
+    return [];
+  }, [planAllowsSCIM, spaceInfo, groups]);
+
   // Sync current tab with URL hash
-  React.useEffect(() => {
+  useEffect(() => {
     const updateTabFromHash = () => {
       const newTab = getCurrentTabFromHash();
       setCurrentTab(newTab);
@@ -301,28 +323,6 @@ export default function SpaceConversations({
       />
     );
   }
-
-  const initialGroups = useMemo(() => {
-    if (!planAllowsSCIM || !spaceInfo || !groups) {
-      return [];
-    }
-    if (
-      (spaceInfo.groupIds && spaceInfo.groupIds.length > 0) ||
-      (spaceInfo.editorGroupIds && spaceInfo.editorGroupIds.length > 0)
-    ) {
-      return groups
-        .filter(
-          (group) =>
-            spaceInfo?.groupIds.includes(group.sId) ||
-            spaceInfo?.editorGroupIds?.includes(group.sId)
-        )
-        .map((group) => ({
-          ...group,
-          isEditor: !!spaceInfo.editorGroupIds?.includes(group.sId),
-        }));
-    }
-    return [];
-  }, [planAllowsSCIM, spaceInfo, groups]);
 
   return (
     <div className="flex w-full items-center justify-center overflow-auto">
