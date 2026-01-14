@@ -36,3 +36,15 @@ export const GetPostNotionSyncResponseBodySchema = t.type({
 export type GetPostNotionSyncResponseBody = t.TypeOf<
   typeof GetPostNotionSyncResponseBodySchema
 >;
+
+export const PatchProjectMetadataBodySchema = t.partial({
+  description: t.union([t.string, t.null]),
+  urls: t.array(t.string),
+  tags: t.array(t.string),
+  emoji: t.union([t.string, t.null]),
+  color: t.union([t.string, t.null]),
+});
+
+export type PatchProjectMetadataBodyType = t.TypeOf<
+  typeof PatchProjectMetadataBodySchema
+>;

@@ -6,6 +6,7 @@ import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -808,6 +809,42 @@ describe("createSpaceAndGroup", () => {
         const space = result.value;
         // When isRestricted is false, managementMode should be forced to "manual"
         expect(space.managementMode).toBe("manual");
+      }
+    });
+  });
+
+  describe("project metadata lifecycle", () => {
+    it("creates metadata for project spaces, not for regular spaces", async () => {
+      const projectResult = await createSpaceAndGroup(adminAuth, {
+        name: "Test Project",
+        isRestricted: false,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+      expect(projectResult.isOk()).toBe(true);
+      if (projectResult.isOk()) {
+        const projectMetadata = await ProjectMetadataResource.fetchBySpace(
+          adminAuth,
+          projectResult.value
+        );
+        expect(projectMetadata).not.toBeNull();
+      }
+
+      const regularResult = await createSpaceAndGroup(adminAuth, {
+        name: "Test Regular",
+        isRestricted: true,
+        spaceKind: "regular",
+        managementMode: "manual",
+        memberIds: [],
+      });
+      expect(regularResult.isOk()).toBe(true);
+      if (regularResult.isOk()) {
+        const regularMetadata = await ProjectMetadataResource.fetchBySpace(
+          adminAuth,
+          regularResult.value
+        );
+        expect(regularMetadata).toBeNull();
       }
     });
   });
