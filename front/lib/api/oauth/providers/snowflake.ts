@@ -1,6 +1,7 @@
 import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
 
+import config from "@app/lib/api/config";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -14,7 +15,6 @@ import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_conne
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
 import { OAuthAPI } from "@app/types";
-import config from "@app/lib/api/config";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 import { isString } from "@app/types/shared/utils/general";
 

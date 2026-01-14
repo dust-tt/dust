@@ -1,3 +1,4 @@
+import { untrustedFetch } from "@app/lib/egress/server";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
@@ -88,7 +89,7 @@ export class SnowflakeClient {
     }
 
     try {
-      const response = await fetch(url, {
+      const response = await untrustedFetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
