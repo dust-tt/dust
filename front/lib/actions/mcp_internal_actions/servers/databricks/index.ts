@@ -1,27 +1,30 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import {
+  listWarehouses,
+  withAuth,
+} from "@app/lib/actions/mcp_internal_actions/servers/databricks/databricks_api_helper";
+import {
+  DATABRICKS_TOOL_NAME,
+  listWarehousesSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/databricks/metadata";
+import { renderWarehouse } from "@app/lib/actions/mcp_internal_actions/servers/databricks/rendering";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Ok } from "@app/types";
 
-import { withAuth } from "./databricks_api_helper";
-import { listWarehouses } from "./databricks_api_helper";
-import { renderWarehouse } from "./rendering";
-
-const DATABRICKS_TOOL_NAME = "databricks";
-
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer("databricks");
+  const server = makeInternalMCPServer(DATABRICKS_TOOL_NAME);
 
   server.tool(
     "list_warehouses",
     "List all SQL warehouses available in the Databricks workspace.",
-    {},
+    listWarehousesSchema,
     withToolLogging(
       auth,
       {

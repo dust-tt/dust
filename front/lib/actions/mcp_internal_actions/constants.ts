@@ -33,6 +33,11 @@ import { CONVERSATION_FILES_SERVER_INFO } from "@app/lib/actions/mcp_internal_ac
 import { DATA_SOURCES_FILE_SYSTEM_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/metadata";
 import {
+  DATABRICKS_SERVER_INFO,
+  DATABRICKS_TOOL_STAKES,
+  DATABRICKS_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/databricks/metadata";
+import {
   GOOGLE_CALENDAR_SERVER_INFO,
   GOOGLE_CALENDAR_TOOL_STAKES,
   GOOGLE_CALENDAR_TOOLS,
@@ -1748,25 +1753,12 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("databricks_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      list_warehouses: "never_ask",
-    },
+    tools_stakes: DATABRICKS_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "databricks",
-      version: "1.0.0",
-      description:
-        "Execute SQL queries and manage databases in Databricks SQL.",
-      authorization: {
-        provider: "databricks" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "ActionTableIcon",
-      documentationUrl: "https://docs.dust.tt/docs/databricks",
-      instructions: null,
-    },
+    tools: DATABRICKS_TOOLS,
+    serverInfo: DATABRICKS_SERVER_INFO,
   },
   productboard: {
     id: 46,
