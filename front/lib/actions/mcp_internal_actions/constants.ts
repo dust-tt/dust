@@ -83,6 +83,7 @@ import {
   HUBSPOT_TOOL_STAKES,
   HUBSPOT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/metadata";
+import { IMAGE_GENERATION_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/image_generation/metadata";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
@@ -259,16 +260,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "image_generation",
-      version: "1.0.0",
-      description:
-        "Create or edit visual content from text descriptions and images.",
-      icon: "ActionImageIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: IMAGE_GENERATION_SERVER_INFO,
   },
   file_generation: {
     id: 3,
