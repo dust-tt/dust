@@ -89,7 +89,7 @@ export function ContactFormThankYou({
             firstname: formRef.current.querySelector('input[name="firstname"]')?.getAttribute("value"),
           });
           console.log("[Default.com] window.__default__:", window.__default__);
-          console.log("[Default.com] window.Default:", window.Default);
+          console.log("[Default.com] window.Default:", window.Default ?? "undefined");
 
           console.log("[Default.com] Dispatching submit event on form");
           const submitEvent = new Event("submit", {
