@@ -3,15 +3,23 @@ import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  createContactSchema,
+  createDraftSchema,
+  createReplyDraftSchema,
+  deleteDraftSchema,
+  getContactsSchema,
+  getDraftsSchema,
+  getMessagesSchema,
+  OUTLOOK_TOOL_NAME,
+  updateContactSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/outlook/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types";
-
-// We use a single tool name for monitoring given the high granularity (can be revisited).
-const OUTLOOK_TOOL_NAME = "outlook";
 
 const OutlookEmailAddressSchema = z.object({
   address: z.string(),
@@ -84,28 +92,7 @@ function createServer(
   server.tool(
     "get_messages",
     "Get messages from Outlook inbox. Supports search queries to filter messages.",
-    {
-      search: z
-        .string()
-        .optional()
-        .describe(
-          'Search query to filter messages. Examples: "from:someone@example.com", "subject:meeting", "hasAttachments:true". Leave empty to get recent messages.'
-        ),
-      top: z
-        .number()
-        .optional()
-        .describe(
-          "Maximum number of messages to return (default: 10, max: 100)"
-        ),
-      skip: z
-        .number()
-        .optional()
-        .describe("Number of messages to skip for pagination."),
-      select: z
-        .array(z.string())
-        .optional()
-        .describe("Fields to include in the response."),
-    },
+    getMessagesSchema,
     withToolLogging(
       auth,
       {
@@ -176,22 +163,7 @@ function createServer(
   server.tool(
     "get_drafts",
     "Get draft emails from Outlook. Returns a limited number of drafts by default to avoid overwhelming responses.",
-    {
-      search: z
-        .string()
-        .optional()
-        .describe(
-          'Search query to filter drafts. Examples: "subject:meeting", "to:someone@example.com".'
-        ),
-      top: z
-        .number()
-        .optional()
-        .describe("Maximum number of drafts to return (default: 10, max: 100)"),
-      skip: z
-        .number()
-        .optional()
-        .describe("Number of drafts to skip for pagination."),
-    },
+    getDraftsSchema,
     withToolLogging(
       auth,
       {
@@ -269,24 +241,7 @@ function createServer(
     `Create a new email draft in Outlook.
 - The draft will be saved in the user's Outlook account and can be reviewed and sent later.
 - The draft will include proper email headers and formatting`,
-    {
-      to: z.array(z.string()).describe("The email addresses of the recipients"),
-      cc: z.array(z.string()).optional().describe("The email addresses to CC"),
-      bcc: z
-        .array(z.string())
-        .optional()
-        .describe("The email addresses to BCC"),
-      subject: z.string().describe("The subject line of the email"),
-      contentType: z
-        .string()
-        .default("text")
-        .describe("The content type of the email (text or html)."),
-      body: z.string().describe("The body of the email"),
-      importance: z
-        .string()
-        .optional()
-        .describe("The importance level of the email"),
-    },
+    createDraftSchema,
     withToolLogging(
       auth,
       {
@@ -365,11 +320,7 @@ function createServer(
   server.tool(
     "delete_draft",
     "Delete a draft email from Outlook.",
-    {
-      messageId: z.string().describe("The ID of the draft to delete"),
-      subject: z.string().describe("The subject of the draft to delete"),
-      to: z.array(z.string()).describe("The email addresses of the recipients"),
-    },
+    deleteDraftSchema,
     withToolLogging(
       auth,
       {
@@ -412,32 +363,7 @@ function createServer(
 - The draft will be saved in the user's Outlook account and can be reviewed and sent later.
 - The reply will be properly formatted with the original message quoted.
 - The draft will include proper email headers and threading information.`,
-    {
-      messageId: z.string().describe("The ID of the message to reply to"),
-      body: z.string().describe("The body of the reply email"),
-      contentType: z
-        .string()
-        .optional()
-        .describe(
-          "The content type of the email (text or html). Defaults to html."
-        ),
-      replyAll: z
-        .boolean()
-        .optional()
-        .describe("Whether to reply to all recipients. Defaults to false."),
-      to: z
-        .array(z.string())
-        .optional()
-        .describe("Override the To recipients for the reply."),
-      cc: z
-        .array(z.string())
-        .optional()
-        .describe("Override the CC recipients for the reply."),
-      bcc: z
-        .array(z.string())
-        .optional()
-        .describe("Override the BCC recipients for the reply."),
-    },
+    createReplyDraftSchema,
     withToolLogging(
       auth,
       {
@@ -576,28 +502,7 @@ function createServer(
   server.tool(
     "get_contacts",
     "Get contacts from Outlook. Supports search queries to filter contacts.",
-    {
-      search: z
-        .string()
-        .optional()
-        .describe(
-          'Search query to filter contacts. Examples: "name:John", "company:Microsoft". Leave empty to get recent contacts.'
-        ),
-      top: z
-        .number()
-        .optional()
-        .describe(
-          "Maximum number of contacts to return (default: 20, max: 100)"
-        ),
-      skip: z
-        .number()
-        .optional()
-        .describe("Number of contacts to skip for pagination."),
-      select: z
-        .array(z.string())
-        .optional()
-        .describe("Fields to include in the response."),
-    },
+    getContactsSchema,
     withToolLogging(
       auth,
       {
@@ -668,30 +573,7 @@ function createServer(
   server.tool(
     "create_contact",
     "Create a new contact in Outlook.",
-    {
-      displayName: z.string().describe("Display name of the contact"),
-      givenName: z.string().optional().describe("First name of the contact"),
-      surname: z.string().optional().describe("Last name of the contact"),
-      emailAddresses: z
-        .array(
-          z.object({
-            address: z.string(),
-            name: z.string().optional(),
-          })
-        )
-        .optional()
-        .describe("Email addresses for the contact"),
-      businessPhones: z
-        .array(z.string())
-        .optional()
-        .describe("Business phone numbers"),
-      homePhones: z.array(z.string()).optional().describe("Home phone numbers"),
-      mobilePhone: z.string().optional().describe("Mobile phone number"),
-      jobTitle: z.string().optional().describe("Job title"),
-      companyName: z.string().optional().describe("Company name"),
-      department: z.string().optional().describe("Department"),
-      officeLocation: z.string().optional().describe("Office location"),
-    },
+    createContactSchema,
     withToolLogging(
       auth,
       {
@@ -787,34 +669,7 @@ function createServer(
   server.tool(
     "update_contact",
     "Update an existing contact in Outlook.",
-    {
-      contactId: z.string().describe("ID of the contact to update"),
-      displayName: z
-        .string()
-        .optional()
-        .describe("Display name of the contact"),
-      givenName: z.string().optional().describe("First name of the contact"),
-      surname: z.string().optional().describe("Last name of the contact"),
-      emailAddresses: z
-        .array(
-          z.object({
-            address: z.string(),
-            name: z.string().optional(),
-          })
-        )
-        .optional()
-        .describe("Email addresses for the contact"),
-      businessPhones: z
-        .array(z.string())
-        .optional()
-        .describe("Business phone numbers"),
-      homePhones: z.array(z.string()).optional().describe("Home phone numbers"),
-      mobilePhone: z.string().optional().describe("Mobile phone number"),
-      jobTitle: z.string().optional().describe("Job title"),
-      companyName: z.string().optional().describe("Company name"),
-      department: z.string().optional().describe("Department"),
-      officeLocation: z.string().optional().describe("Office location"),
-    },
+    updateContactSchema,
     withToolLogging(
       auth,
       {

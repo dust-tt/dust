@@ -120,6 +120,14 @@ import {
   OPENAI_USAGE_TOOL_STAKES,
   OPENAI_USAGE_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/openai_usage/metadata";
+import {
+  OUTLOOK_CALENDAR_SERVER_INFO,
+  OUTLOOK_CALENDAR_TOOL_STAKES,
+  OUTLOOK_CALENDAR_TOOLS,
+  OUTLOOK_SERVER_INFO,
+  OUTLOOK_TOOL_STAKES,
+  OUTLOOK_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/outlook/metadata";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
@@ -621,33 +629,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      get_messages: "never_ask",
-      get_drafts: "never_ask",
-      create_draft: "low",
-      delete_draft: "low",
-      create_reply_draft: "low",
-      get_contacts: "never_ask",
-      create_contact: "high",
-      update_contact: "high",
-    },
+    tools_stakes: OUTLOOK_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "outlook",
-      version: "1.0.0",
-      description: "Read emails, manage drafts and contacts.",
-      authorization: {
-        provider: "microsoft_tools" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope:
-          "Mail.ReadWrite Mail.ReadWrite.Shared Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read offline_access" as const,
-      },
-      icon: "MicrosoftOutlookLogo",
-      documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
-      instructions: null,
-    },
+    tools: OUTLOOK_TOOLS,
+    serverInfo: OUTLOOK_SERVER_INFO,
   },
   outlook_calendar: {
     id: 25,
@@ -655,34 +642,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      get_user_timezone: "never_ask",
-      list_calendars: "never_ask",
-      list_events: "never_ask",
-      get_event: "never_ask",
-      create_event: "low",
-      update_event: "low",
-      delete_event: "low",
-      check_availability: "never_ask",
-      check_self_availability: "never_ask",
-    },
+    tools_stakes: OUTLOOK_CALENDAR_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "outlook_calendar",
-      version: "1.0.0",
-      description: "Tools for managing Outlook calendars and events.",
-      authorization: {
-        provider: "microsoft_tools" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope:
-          "Calendars.ReadWrite Calendars.ReadWrite.Shared User.Read MailboxSettings.Read offline_access" as const,
-      },
-      icon: "MicrosoftOutlookLogo",
-      documentationUrl: "https://docs.dust.tt/docs/outlook-calendar-tool-setup",
-      instructions: null,
-    },
+    tools: OUTLOOK_CALENDAR_TOOLS,
+    serverInfo: OUTLOOK_CALENDAR_SERVER_INFO,
   },
   freshservice: {
     id: 26,

@@ -1,8 +1,9 @@
 import DOMPurify from "isomorphic-dompurify";
 import moment from "moment-timezone";
 
-import type { OutlookEvent } from "@app/lib/actions/mcp_internal_actions/servers/outlook/outlook_api_helper";
 import { pluralize } from "@app/types";
+
+import type { OutlookEvent } from "./outlook_api_helper";
 
 const OUTLOOK_EVENT_BODY_SANITIZE_CONFIG = {
   ALLOWED_TAGS: [],
