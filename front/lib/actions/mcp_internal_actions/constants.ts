@@ -37,6 +37,7 @@ import {
   DATABRICKS_TOOL_STAKES,
   DATABRICKS_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/databricks/metadata";
+import { DEEP_DIVE_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive/metadata";
 import {
   GOOGLE_CALENDAR_SERVER_INFO,
   GOOGLE_CALENDAR_TOOL_STAKES,
@@ -45,10 +46,6 @@ import {
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
-import {
-  DEEP_DIVE_NAME,
-  DEEP_DIVE_SERVER_INSTRUCTIONS,
-} from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -999,15 +996,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "deep_dive",
-      version: "0.1.0",
-      description: `Hand off complex questions to the @${DEEP_DIVE_NAME} agent for comprehensive analysis across company data, databases, and web sources—thorough analysis that may take several minutes.`,
-      authorization: null,
-      icon: "ActionAtomIcon",
-      documentationUrl: "https://docs.dust.tt/docs/go-deep",
-      instructions: DEEP_DIVE_SERVER_INSTRUCTIONS,
-    },
+    serverInfo: DEEP_DIVE_SERVER_INFO,
   },
   slack_bot: {
     id: 31,
