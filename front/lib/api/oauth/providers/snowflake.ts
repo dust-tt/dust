@@ -50,15 +50,15 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
 
 		const account = extraConfig.snowflake_account;
 
-		// Snowflake OAuth scope specifies the role to use. We use SYSADMIN by default
-		// since ACCOUNTADMIN/SECURITYADMIN are typically blocked for OAuth.
-		// Users can still access data based on SYSADMIN's privileges.
+		// Use session:role-any to use the user's default role in Snowflake.
+		// This respects each user's own permissions - admins should configure
+		// appropriate default roles for users in Snowflake.
 		const qs = querystring.stringify({
 			response_type: "code",
 			client_id: clientId,
 			state: connection.connection_id,
 			redirect_uri: finalizeUriForProvider("snowflake"),
-			scope: "session:role:SYSADMIN",
+			scope: "session:role-any",
 		});
 
 		// Build account-specific authorization URL
