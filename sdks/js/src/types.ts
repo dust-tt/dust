@@ -2936,6 +2936,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "PuzzleIcon"
   | "SalesforceLogo"
   | "SlackLogo"
+  | "SnowflakeLogo"
   | "StripeLogo"
   | "SupabaseLogo"
   | "ValTownLogo"
