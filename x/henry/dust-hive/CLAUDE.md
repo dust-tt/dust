@@ -197,9 +197,8 @@ For `front` and `connectors`, dust-hive creates a **shallow copy** of node_modul
 
 This ensures correct SDK type resolution when your branch has newer types than main.
 
-**WARNING**: Running `npm install` in a worktree will **fail** because npm cannot handle
-the shallow copy structure. You must delete node_modules first:
-`rm -rf node_modules && npm install`
+**Note**: Running `npm install` works automatically. A `preinstall` script in front and connectors
+detects the shallow copy structure and cleans it up before npm proceeds.
 
 **sccache** (optional): When worktree code differs from main, cargo recompiles. sccache
 caches compilations by content hash, making rebuilds after branch switches faster.

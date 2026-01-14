@@ -428,15 +428,7 @@ This ensures TypeScript and runtime resolve `@dust-tt/client` from the worktree'
 
 For `sdks/js`, a simple symlink is used (it IS the SDK).
 
-> **Warning**: Running `npm install` in a worktree will **fail** because npm cannot handle the shallow copy structure. You must delete node_modules first:
-> ```bash
-> rm -rf node_modules && npm install
-> ```
->
-> This is necessary when:
-> - You modify `package.json` (add/remove dependencies)
-> - You need to regenerate `package-lock.json`
-> - You want fully isolated dependencies for this environment
+> **Note**: Running `npm install` in a worktree works automatically. A `preinstall` script detects the shallow copy structure and cleans it up before npm proceeds. After install, you'll have a standard npm-managed node_modules (no longer using the shallow copy).
 
 > **sccache** (optional but recommended): When worktree code differs from main, cargo recompiles. sccache caches these compilations by content hash, so rebuilding after switching branches is faster.
 
