@@ -22,6 +22,22 @@ export function renderIssueWithEmbeddedComments(issue: JiraIssue): string {
 export function renderIssue(issue: JiraIssue, comments: JiraComment[]): string {
   const lines: string[] = [];
   const fields = issue.fields;
+  const renderedFields = new Set([
+    "summary",
+    "project",
+    "issuetype",
+    "status",
+    "priority",
+    "assignee",
+    "reporter",
+    "labels",
+    "duedate",
+    "parent",
+    "created",
+    "updated",
+    "description",
+    "comment",
+  ]);
 
   lines.push(`# ${issue.key}: ${fields?.summary ?? "No summary"}`);
   lines.push("");
@@ -76,6 +92,20 @@ export function renderIssue(issue: JiraIssue, comments: JiraComment[]): string {
 
   if (fields?.updated) {
     lines.push(`**Updated:** ${formatDateTime(fields.updated)}`);
+  }
+
+  // Additional fields (custom fields, fixVersions, etc.)
+  const additionalFields = Object.entries(fields ?? {})
+    .filter(([key]) => !renderedFields.has(key))
+    .filter(([, value]) => value != null);
+
+  if (additionalFields.length > 0) {
+    lines.push("");
+    lines.push("## Additional Fields");
+    lines.push("");
+    for (const [key, value] of additionalFields) {
+      lines.push(`**${key}:** ${JSON.stringify(value)}`);
+    }
   }
 
   lines.push("");
