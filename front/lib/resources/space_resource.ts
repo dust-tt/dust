@@ -456,7 +456,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         `Group for ${this.isProject() ? "project" : "space"} ${newName}`
       );
     }
-    let spaceEditorGroup = this.getDefaultSpaceEditorGroup();
+    const spaceEditorGroup = this.getDefaultSpaceEditorGroup();
     if (spaceEditorGroup && (this.isRegular() || this.isPublic())) {
       await spaceEditorGroup.updateName(
         auth,
