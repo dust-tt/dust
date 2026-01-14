@@ -1,9 +1,16 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import { escape } from "html-escaper";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  createDraftSchema,
+  createReplyDraftSchema,
+  deleteDraftSchema,
+  getDraftsSchema,
+  getMessagesSchema,
+  GMAIL_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/gmail/metadata";
 import {
   jsonToMarkdown,
   makeInternalMCPServer,
@@ -78,22 +85,11 @@ function createServer(
   server.tool(
     "get_drafts",
     "Get all drafts from Gmail.",
-    {
-      q: z
-        .string()
-        .optional()
-        .describe(
-          'Only return draft messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread".'
-        ),
-      pageToken: z
-        .string()
-        .optional()
-        .describe("Token for fetching the next page of results."),
-    },
+    getDraftsSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "gmail",
+        toolNameForMonitoring: GMAIL_TOOL_NAME,
         agentLoopContext,
       },
       async ({ q, pageToken }, { authInfo }) => {
@@ -164,23 +160,11 @@ function createServer(
 - The draft will be saved in the user's Gmail account and can be reviewed and sent later.
 - The user can review and send the draft later
 - The draft will include proper email headers and formatting`,
-    {
-      to: z.array(z.string()).describe("The email addresses of the recipients"),
-      cc: z.array(z.string()).optional().describe("The email addresses to CC"),
-      bcc: z
-        .array(z.string())
-        .optional()
-        .describe("The email addresses to BCC"),
-      subject: z.string().describe("The subject line of the email"),
-      contentType: z
-        .enum(["text/plain", "text/html"])
-        .describe("The content type of the email (text/plain or text/html)."),
-      body: z.string().describe("The body of the email"),
-    },
+    createDraftSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "gmail",
+        toolNameForMonitoring: GMAIL_TOOL_NAME,
         agentLoopContext,
       },
       async ({ to, cc, bcc, subject, contentType, body }, { authInfo }) => {
@@ -258,15 +242,11 @@ function createServer(
   server.tool(
     "delete_draft",
     "Delete a draft email from Gmail.",
-    {
-      draftId: z.string().describe("The ID of the draft to delete"),
-      subject: z.string().describe("The subject of the draft to delete"),
-      to: z.array(z.string()).describe("The email addresses of the recipients"),
-    },
+    deleteDraftSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "gmail",
+        toolNameForMonitoring: GMAIL_TOOL_NAME,
         agentLoopContext,
       },
       async ({ draftId, subject, to }, { authInfo }) => {
@@ -301,28 +281,11 @@ function createServer(
   server.tool(
     "get_messages",
     "Get messages from Gmail inbox. Supports Gmail search queries to filter messages.",
-    {
-      q: z
-        .string()
-        .optional()
-        .describe(
-          'Gmail search query to filter messages. Supports the same query format as the Gmail search box. Examples: "from:someone@example.com", to:example.com, "subject:meeting", "is:unread", "label:important". Leave empty to get recent messages.'
-        ),
-      maxResults: z
-        .number()
-        .optional()
-        .describe(
-          "Maximum number of messages to return (default: 10, max: 100)"
-        ),
-      pageToken: z
-        .string()
-        .optional()
-        .describe("Token for fetching the next page of results."),
-    },
+    getMessagesSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "gmail",
+        toolNameForMonitoring: GMAIL_TOOL_NAME,
         agentLoopContext,
       },
       async ({ q, maxResults = 10, pageToken }, { authInfo }) => {
@@ -443,32 +406,11 @@ function createServer(
 - The draft will be saved in the user's Gmail account and can be reviewed and sent later.
 - The reply will be properly formatted with the original message quoted.
 - The draft will include proper email headers and threading information.`,
-    {
-      messageId: z.string().describe("The ID of the message to reply to"),
-      body: z.string().describe("The body of the reply email"),
-      contentType: z
-        .enum(["text/plain", "text/html"])
-        .optional()
-        .describe(
-          "The content type of the email (text/plain or text/html). Defaults to text/plain."
-        ),
-      to: z
-        .array(z.string())
-        .optional()
-        .describe("Override the To recipients for the reply."),
-      cc: z
-        .array(z.string())
-        .optional()
-        .describe("Override the CC recipients for the reply."),
-      bcc: z
-        .array(z.string())
-        .optional()
-        .describe("Override the BCC recipients for the reply."),
-    },
+    createReplyDraftSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "gmail",
+        toolNameForMonitoring: GMAIL_TOOL_NAME,
         agentLoopContext,
       },
       async (

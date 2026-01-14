@@ -54,6 +54,11 @@ import {
   GITHUB_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/github/metadata";
 import {
+  GMAIL_SERVER_INFO,
+  GMAIL_TOOL_STAKES,
+  GMAIL_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/gmail/metadata";
+import {
   GOOGLE_CALENDAR_SERVER_INFO,
   GOOGLE_CALENDAR_TOOL_STAKES,
   GOOGLE_CALENDAR_TOOLS,
@@ -520,29 +525,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      get_drafts: "never_ask",
-      create_draft: "low",
-      get_messages: "never_ask",
-      create_reply_draft: "low",
-    },
+    tools_stakes: GMAIL_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "gmail",
-      version: "1.0.0",
-      description: "Access messages and email drafts.",
-      authorization: {
-        provider: "google_drive" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope:
-          "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose" as const,
-      },
-      icon: "GmailLogo",
-      documentationUrl: "https://docs.dust.tt/docs/gmail",
-      instructions: null,
-    },
+    tools: GMAIL_TOOLS,
+    serverInfo: GMAIL_SERVER_INFO,
   },
   google_calendar: {
     id: 16,
