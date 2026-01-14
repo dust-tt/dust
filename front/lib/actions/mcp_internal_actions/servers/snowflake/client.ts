@@ -352,7 +352,7 @@ export class SnowflakeClient {
     return new Ok(undefined);
   }
 
-  async query(
+  async readOnlyQuery(
     sql: string,
     database?: string,
     schema?: string,
@@ -364,80 +364,66 @@ export class SnowflakeClient {
 
     const trimmedSql = sql.trim().toUpperCase();
 
-    // SHOW/DESCRIBE are inherently read-only, allow them directly
-    if (
-      trimmedSql.startsWith("SHOW") ||
-      trimmedSql.startsWith("DESCRIBE") ||
-      trimmedSql.startsWith("DESC")
-    ) {
-      return this.executeStatement(sql);
+    // Only allow SELECT/WITH queries - use dedicated tools for SHOW/DESCRIBE
+    if (!trimmedSql.startsWith("SELECT") && !trimmedSql.startsWith("WITH")) {
+      return new Err(
+        new Error("Only SELECT and WITH queries are allowed in this tool")
+      );
     }
 
-    // For SELECT/WITH queries, use EXPLAIN to validate they're read-only
-    // (catches WITH...INSERT and other bypass attempts)
-    if (trimmedSql.startsWith("SELECT") || trimmedSql.startsWith("WITH")) {
-      const connRes = await this.connect();
-      if (connRes.isErr()) {
-        return connRes;
-      }
-      const conn = connRes.value;
+    const connRes = await this.connect();
+    if (connRes.isErr()) {
+      return connRes;
+    }
+    const conn = connRes.value;
 
-      try {
-        // Set context if provided
-        if (database) {
-          const useDbResult = await this.executeQuery(
-            conn,
-            `USE DATABASE "${escapeIdentifier(database)}"`
-          );
-          if (useDbResult.isErr()) {
-            return useDbResult;
-          }
-        }
-        if (schema) {
-          const useSchemaResult = await this.executeQuery(
-            conn,
-            `USE SCHEMA "${escapeIdentifier(schema)}"`
-          );
-          if (useSchemaResult.isErr()) {
-            return useSchemaResult;
-          }
-        }
-        if (warehouse) {
-          const useWhResult = await this.executeQuery(
-            conn,
-            `USE WAREHOUSE "${escapeIdentifier(warehouse)}"`
-          );
-          if (useWhResult.isErr()) {
-            return useWhResult;
-          }
-        }
-
-        const validationResult = await this.validateReadOnlyWithExplain(
+    try {
+      // Set context if provided
+      if (database) {
+        const useDbResult = await this.executeQuery(
           conn,
-          sql
+          `USE DATABASE "${escapeIdentifier(database)}"`
         );
-
-        if (validationResult.isErr()) {
-          return new Err(validationResult.error);
+        if (useDbResult.isErr()) {
+          return useDbResult;
         }
-
-        // Wrap query to enforce row limit. This handles all cases:
-        // - SELECT without LIMIT
-        // - SELECT with LIMIT > maxRows
-        // - WITH queries (which may or may not have LIMIT)
-        const wrappedSql = `SELECT * FROM (${sql.trim()}) AS _limited_query LIMIT ${maxRows}`;
-
-        return this.executeQuery(conn, wrappedSql);
-      } finally {
-        await this.closeConnection(conn);
       }
-    }
+      if (schema) {
+        const useSchemaResult = await this.executeQuery(
+          conn,
+          `USE SCHEMA "${escapeIdentifier(schema)}"`
+        );
+        if (useSchemaResult.isErr()) {
+          return useSchemaResult;
+        }
+      }
+      if (warehouse) {
+        const useWhResult = await this.executeQuery(
+          conn,
+          `USE WAREHOUSE "${escapeIdentifier(warehouse)}"`
+        );
+        if (useWhResult.isErr()) {
+          return useWhResult;
+        }
+      }
 
-    // Reject anything else
-    return new Err(
-      new Error(
-        "Only read-only queries are allowed (SELECT, SHOW, DESCRIBE, WITH)"
-      )
-    );
+      // Use EXPLAIN to validate the query is truly read-only
+      // (catches WITH...INSERT and other bypass attempts)
+      const validationResult = await this.validateReadOnlyWithExplain(
+        conn,
+        sql
+      );
+
+      if (validationResult.isErr()) {
+        return new Err(validationResult.error);
+      }
+
+      // Wrap query to enforce row limit
+      const wrappedSql = `SELECT * FROM (${sql.trim()}) AS _limited_query LIMIT ${maxRows}`;
+
+      return this.executeQuery(conn, wrappedSql);
+    } finally {
+      await this.closeConnection(conn);
+    }
   }
 }

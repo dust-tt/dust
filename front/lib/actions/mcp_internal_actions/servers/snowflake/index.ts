@@ -195,12 +195,12 @@ function createServer(
 
   server.tool(
     "query",
-    "Execute a read-only SQL query against Snowflake. Only SELECT, SHOW, DESCRIBE, and WITH statements are allowed.",
+    "Execute a read-only SQL query against Snowflake. Only SELECT and WITH statements are allowed. Use the dedicated tools for listing databases, schemas, tables, and describing table structure.",
     {
       sql: z
         .string()
         .describe(
-          "The SQL query to execute. Must be a read-only query (SELECT, SHOW, DESCRIBE, WITH)."
+          "The SQL query to execute. Must be a SELECT or WITH query."
         ),
       database: z
         .string()
@@ -232,7 +232,7 @@ function createServer(
           return clientRes;
         }
 
-        const result = await clientRes.value.query(
+        const result = await clientRes.value.readOnlyQuery(
           sql,
           database,
           schema,
