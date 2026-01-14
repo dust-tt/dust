@@ -29,7 +29,10 @@ import {
   CONFLUENCE_TOOL_STAKES,
   CONFLUENCE_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/metadata";
-import { CONVERSATION_FILES_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files/metadata";
+import {
+  CONVERSATION_FILES_SERVER_INFO,
+  CONVERSATION_FILES_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/conversation_files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/metadata";
 import {
   DATA_WAREHOUSES_SERVER_INFO,
@@ -579,6 +582,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: CONVERSATION_FILES_TOOLS,
     serverInfo: CONVERSATION_FILES_SERVER_INFO,
   },
   slack: {

@@ -1,12 +1,15 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { computeTextByteSize } from "@app/lib/actions/action_output_limits";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
+  CAT_FILE_MONITORING_NAME,
+  catFileSchema,
   DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
-} from "@app/lib/actions/constants";
-import { MCPError } from "@app/lib/actions/mcp_errors";
+  LIST_FILES_MONITORING_NAME,
+  listFilesSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/conversation_files/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -51,11 +54,11 @@ function createServer(
   server.tool(
     DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
     "List all files attached to the conversation.",
-    {},
+    listFilesSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "jit_list_files",
+        toolNameForMonitoring: LIST_FILES_MONITORING_NAME,
         agentLoopContext,
       },
       async () => {
@@ -97,36 +100,10 @@ function createServer(
     DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
     "Read the contents of a large file from conversation attachments with offset/limit and optional grep filtering (named after the 'cat' unix tool). " +
       "Use this when files are too large to read in full, or when you need to search for specific patterns within a file.",
-    {
-      fileId: z
-        .string()
-        .describe(
-          "The fileId of the attachment to read, as returned by the conversation_list_files action"
-        ),
-      offset: z
-        .number()
-        .optional()
-        .describe(
-          "The character position to start reading from (0-based). If not provided, starts from " +
-            "the beginning."
-        ),
-      limit: z
-        .number()
-        .optional()
-        .describe(
-          "The maximum number of characters to read. If not provided, reads all characters."
-        ),
-      grep: z
-        .string()
-        .optional()
-        .describe(
-          "A regular expression to filter lines. Applied after offset/limit slicing. Only lines " +
-            "matching this pattern will be returned."
-        ),
-    },
+    catFileSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jit_cat_file", agentLoopContext },
+      { toolNameForMonitoring: CAT_FILE_MONITORING_NAME, agentLoopContext },
       async ({ fileId, offset, limit, grep }) => {
         if (!agentLoopContext?.runContext) {
           return new Err(new MCPError("No conversation context available"));
