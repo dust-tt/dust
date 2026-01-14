@@ -88,6 +88,7 @@ import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
+import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import {
@@ -117,6 +118,7 @@ async function main() {
   await TagModel.sync({ alter: true });
 
   await SpaceModel.sync({ alter: true });
+  await ProjectMetadataModel.sync({ alter: true });
   await AppModel.sync({ alter: true });
   await DatasetModel.sync({ alter: true });
   await ProviderModel.sync({ alter: true });

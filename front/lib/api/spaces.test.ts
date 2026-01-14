@@ -4,6 +4,7 @@ import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -492,6 +493,57 @@ describe("createSpaceAndGroup", () => {
         const space = result.value;
         // When isRestricted is false, managementMode should be forced to "manual"
         expect(space.managementMode).toBe("manual");
+      }
+    });
+  });
+
+  describe("project metadata lifecycle", () => {
+    it("should automatically create empty metadata when creating a project space", async () => {
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Project With Metadata",
+        isRestricted: false,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const space = result.value;
+
+        // Verify metadata was created
+        const metadata = await ProjectMetadataResource.fetchBySpace(
+          adminAuth,
+          space
+        );
+        expect(metadata).not.toBeNull();
+        expect(metadata!.description).toBeNull();
+        expect(metadata!.urls).toEqual([]);
+        expect(metadata!.tags).toEqual([]);
+        expect(metadata!.emoji).toBeNull();
+        expect(metadata!.color).toBeNull();
+      }
+    });
+
+    it("should not create metadata for regular spaces", async () => {
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Regular No Metadata",
+        isRestricted: true,
+        spaceKind: "regular",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const space = result.value;
+
+        // Verify no metadata was created (fetchBySpace returns null for non-project spaces)
+        const metadata = await ProjectMetadataResource.fetchBySpace(
+          adminAuth,
+          space
+        );
+        expect(metadata).toBeNull();
       }
     });
   });
