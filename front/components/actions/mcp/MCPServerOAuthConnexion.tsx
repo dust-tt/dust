@@ -67,14 +67,6 @@ export function MCPServerOAuthConnexion({
     name: "authorization",
   });
 
-  // Use prop if provided, otherwise fall back to form context.
-  const authorization = authorizationProp ?? authorizationFromForm;
-
-  // Early return if no authorization available.
-  if (!authorization) {
-    return null;
-  }
-
   const useCase = useWatch<MCPServerOAuthFormValues, "useCase">({
     name: "useCase",
   });
@@ -91,9 +83,16 @@ export function MCPServerOAuthConnexion({
   // Dynamically fetched credential inputs based on provider and use case.
   const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
 
+  // Use prop if provided, otherwise fall back to form context.
+  const authorization = authorizationProp ?? authorizationFromForm;
+
   // Effect 1: Initialize use case and fetch credential inputs.
   // Handles both auto-selecting a default use case and fetching credentials when it changes.
   useEffect(() => {
+    if (!authorization) {
+      return;
+    }
+
     let effectiveUseCase = useCase;
 
     // Auto-select default use case if not already set.
@@ -133,12 +132,7 @@ export function MCPServerOAuthConnexion({
     };
 
     void fetchCredentialInputs();
-  }, [
-    authorization.supported_use_cases,
-    authorization.provider,
-    setValue,
-    useCase,
-  ]);
+  }, [authorization, setValue, useCase]);
 
   // Validate credentials based on dynamic requirements.
   // Runs when credentials or inputs change, uses setError/clearErrors.
@@ -184,6 +178,11 @@ export function MCPServerOAuthConnexion({
       clearErrors(AUTH_CREDENTIALS_ERROR_KEY);
     }
   }, [authCredentials, inputs, setError, clearErrors]);
+
+  // Early return if no authorization available.
+  if (!authorization) {
+    return null;
+  }
 
   const handleCredentialChange = (key: string, value: string) => {
     if (!isSupportedOAuthCredential(key)) {

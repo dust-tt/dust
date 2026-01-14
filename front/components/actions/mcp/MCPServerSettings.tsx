@@ -47,11 +47,9 @@ export function MCPServerSettings({
   const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedUseCase, setSelectedUseCase] =
-    useState<MCPOAuthUseCase | null>();
+    useState<MCPOAuthUseCase | null>(null);
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const useCase = (selectedUseCase ||
-    mcpServerView.oAuthUseCase) as MCPOAuthUseCase;
+  const useCase = selectedUseCase ?? mcpServerView.oAuthUseCase;
 
   const handleDeleteConnection = () => {
     if (!connection) {
