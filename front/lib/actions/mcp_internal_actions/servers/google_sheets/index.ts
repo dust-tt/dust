@@ -1,8 +1,23 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  addWorksheetSchema,
+  appendDataSchema,
+  clearRangeSchema,
+  copySheetSchema,
+  createSpreadsheetSchema,
+  deleteWorksheetSchema,
+  formatCellsSchema,
+  getSpreadsheetSchema,
+  getWorksheetSchema,
+  GOOGLE_SHEETS_TOOL_NAME,
+  listSpreadsheetsSchema,
+  moveWorksheetSchema,
+  renameWorksheetSchema,
+  updateCellsSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/google_sheets/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -13,9 +28,6 @@ import {
 } from "@app/lib/providers/google_drive/utils";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-
-// We use a single tool name for monitoring given the high granularity (can be revisited).
-const GOOGLE_SHEET_TOOL_NAME = "google_sheets";
 
 function createServer(
   auth: Authenticator,
@@ -42,23 +54,11 @@ function createServer(
   server.tool(
     "list_spreadsheets",
     "List Google Sheets spreadsheets accessible by the user from both personal drive and shared drives. Supports pagination and search.",
-    {
-      nameFilter: z
-        .string()
-        .optional()
-        .describe(
-          "The text to search for in file names. Uses Google Drive's 'contains' operator which is case-insensitive and performs prefix matching only. For example, searching 'hello' will match 'HelloWorld' but not 'WorldHello'."
-        ),
-      pageToken: z.string().optional().describe("Page token for pagination."),
-      pageSize: z
-        .number()
-        .optional()
-        .describe("Maximum number of spreadsheets to return (max 1000)."),
-    },
+    listSpreadsheetsSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        toolNameForMonitoring: GOOGLE_SHEETS_TOOL_NAME,
         agentLoopContext,
       },
       async ({ nameFilter, pageToken, pageSize }, { authInfo }) => {
@@ -102,15 +102,11 @@ function createServer(
   server.tool(
     "get_spreadsheet",
     "Get metadata and properties of a specific Google Sheets spreadsheet.",
-    {
-      spreadsheetId: z
-        .string()
-        .describe("The ID of the spreadsheet to retrieve."),
-    },
+    getSpreadsheetSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        toolNameForMonitoring: GOOGLE_SHEETS_TOOL_NAME,
         agentLoopContext,
       },
       async ({ spreadsheetId }, { authInfo }) => {
@@ -143,26 +139,11 @@ function createServer(
   server.tool(
     "get_worksheet",
     "Get data from a specific worksheet in a Google Sheets spreadsheet.",
-    {
-      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
-      range: z
-        .string()
-        .describe(
-          "The A1 notation of the range to retrieve (e.g., 'Sheet1!A1:D10' or 'A1:D10')."
-        ),
-      majorDimension: z
-        .enum(["ROWS", "COLUMNS"])
-        .default("ROWS")
-        .describe("The major dimension of the values."),
-      valueRenderOption: z
-        .enum(["FORMATTED_VALUE", "UNFORMATTED_VALUE", "FORMULA"])
-        .default("FORMATTED_VALUE")
-        .describe("How values should be represented in the output."),
-    },
+    getWorksheetSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        toolNameForMonitoring: GOOGLE_SHEETS_TOOL_NAME,
         agentLoopContext,
       },
       async (
@@ -201,29 +182,11 @@ function createServer(
   server.tool(
     "update_cells",
     "Update cells in a Google Sheets spreadsheet.",
-    {
-      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
-      range: z
-        .string()
-        .describe(
-          "The A1 notation of the range to update (e.g., 'Sheet1!A1:D10')."
-        ),
-      values: z
-        .array(z.array(z.union([z.string(), z.number(), z.boolean()])))
-        .describe("The values to update. Each sub-array represents a row."),
-      majorDimension: z
-        .enum(["ROWS", "COLUMNS"])
-        .default("ROWS")
-        .describe("The major dimension of the values."),
-      valueInputOption: z
-        .enum(["RAW", "USER_ENTERED"])
-        .default("USER_ENTERED")
-        .describe("How the input data should be interpreted."),
-    },
+    updateCellsSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        toolNameForMonitoring: GOOGLE_SHEETS_TOOL_NAME,
         agentLoopContext,
       },
       async (
@@ -265,33 +228,11 @@ function createServer(
   server.tool(
     "append_data",
     "Append data to a Google Sheets spreadsheet.",
-    {
-      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
-      range: z
-        .string()
-        .describe(
-          "The A1 notation of the range to append to (e.g., 'Sheet1!A1:D1')."
-        ),
-      values: z
-        .array(z.array(z.union([z.string(), z.number(), z.boolean()])))
-        .describe("The values to append. Each sub-array represents a row."),
-      majorDimension: z
-        .enum(["ROWS", "COLUMNS"])
-        .default("ROWS")
-        .describe("The major dimension of the values."),
-      valueInputOption: z
-        .enum(["RAW", "USER_ENTERED"])
-        .default("USER_ENTERED")
-        .describe("How the input data should be interpreted."),
-      insertDataOption: z
-        .enum(["OVERWRITE", "INSERT_ROWS"])
-        .default("INSERT_ROWS")
-        .describe("How the input data should be inserted."),
-    },
+    appendDataSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        toolNameForMonitoring: GOOGLE_SHEETS_TOOL_NAME,
         agentLoopContext,
       },
       async (
@@ -339,18 +280,11 @@ function createServer(
   server.tool(
     "clear_range",
     "Clear values from a range in a Google Sheets spreadsheet.",
-    {
-      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
-      range: z
-        .string()
-        .describe(
-          "The A1 notation of the range to clear (e.g., 'Sheet1!A1:D10')."
-        ),
-    },
+    clearRangeSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        toolNameForMonitoring: GOOGLE_SHEETS_TOOL_NAME,
         agentLoopContext,
       },
       async ({ spreadsheetId, range }, { authInfo }) => {
@@ -382,19 +316,11 @@ function createServer(
   server.tool(
     "create_spreadsheet",
     "Create a new Google Sheets spreadsheet.",
-    {
-      title: z.string().describe("The title of the new spreadsheet."),
-      sheetTitles: z
-        .array(z.string())
-        .optional()
-        .describe(
-          "Titles for initial sheets. If not provided, creates one sheet with default title."
-        ),
-    },
+    createSpreadsheetSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        toolNameForMonitoring: GOOGLE_SHEETS_TOOL_NAME,
         agentLoopContext,
       },
       async ({ title, sheetTitles }, { authInfo }) => {
@@ -435,22 +361,11 @@ function createServer(
   server.tool(
     "add_worksheet",
     "Add a new worksheet to an existing Google Sheets spreadsheet.",
-    {
-      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
-      title: z.string().describe("The title of the new worksheet."),
-      rowCount: z
-        .number()
-        .optional()
-        .describe("Number of rows in the new worksheet."),
-      columnCount: z
-        .number()
-        .optional()
-        .describe("Number of columns in the new worksheet."),
-    },
+    addWorksheetSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        toolNameForMonitoring: GOOGLE_SHEETS_TOOL_NAME,
         agentLoopContext,
       },
       async ({ spreadsheetId, title, rowCount, columnCount }, { authInfo }) => {
@@ -498,14 +413,11 @@ function createServer(
   server.tool(
     "delete_worksheet",
     "Delete a worksheet from a Google Sheets spreadsheet.",
-    {
-      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
-      sheetId: z.number().describe("The ID of the worksheet to delete."),
-    },
+    deleteWorksheetSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        toolNameForMonitoring: GOOGLE_SHEETS_TOOL_NAME,
         agentLoopContext,
       },
       async ({ spreadsheetId, sheetId }, { authInfo }) => {
@@ -547,44 +459,11 @@ function createServer(
   server.tool(
     "format_cells",
     "Apply formatting to cells in a Google Sheets spreadsheet.",
-    {
-      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
-      sheetId: z.number().describe("The ID of the worksheet to format."),
-      startRowIndex: z.number().describe("The start row index (0-based)."),
-      endRowIndex: z.number().describe("The end row index (exclusive)."),
-      startColumnIndex: z
-        .number()
-        .describe("The start column index (0-based)."),
-      endColumnIndex: z.number().describe("The end column index (exclusive)."),
-      format: z
-        .object({
-          backgroundColor: z
-            .object({
-              red: z.number().min(0).max(1).optional(),
-              green: z.number().min(0).max(1).optional(),
-              blue: z.number().min(0).max(1).optional(),
-            })
-            .optional()
-            .describe("Background color in RGB format (values 0-1)."),
-          textFormat: z
-            .object({
-              bold: z.boolean().optional(),
-              italic: z.boolean().optional(),
-              fontSize: z.number().optional(),
-            })
-            .optional()
-            .describe("Text formatting options."),
-          horizontalAlignment: z
-            .enum(["LEFT", "CENTER", "RIGHT"])
-            .optional()
-            .describe("Horizontal alignment."),
-        })
-        .describe("Formatting options to apply."),
-    },
+    formatCellsSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        toolNameForMonitoring: GOOGLE_SHEETS_TOOL_NAME,
         agentLoopContext,
       },
       async (
@@ -647,25 +526,11 @@ function createServer(
   server.tool(
     "copy_sheet",
     "Copy a sheet from one Google Sheets spreadsheet to another spreadsheet.",
-    {
-      sourceSpreadsheetId: z
-        .string()
-        .describe(
-          "The ID of the source spreadsheet containing the sheet to copy."
-        ),
-      sheetId: z
-        .number()
-        .describe("The ID of the sheet to copy from the source spreadsheet."),
-      destinationSpreadsheetId: z
-        .string()
-        .describe(
-          "The ID of the destination spreadsheet where the sheet will be copied."
-        ),
-    },
+    copySheetSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        toolNameForMonitoring: GOOGLE_SHEETS_TOOL_NAME,
         agentLoopContext,
       },
       async (
@@ -703,15 +568,11 @@ function createServer(
   server.tool(
     "rename_worksheet",
     "Rename a worksheet in a Google Sheets spreadsheet.",
-    {
-      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
-      sheetId: z.number().describe("The ID of the worksheet to rename."),
-      newTitle: z.string().describe("The new title for the worksheet."),
-    },
+    renameWorksheetSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        toolNameForMonitoring: GOOGLE_SHEETS_TOOL_NAME,
         agentLoopContext,
       },
       async ({ spreadsheetId, sheetId, newTitle }, { authInfo }) => {
@@ -757,20 +618,11 @@ function createServer(
   server.tool(
     "move_worksheet",
     "Move a worksheet to a new position in a Google Sheets spreadsheet.",
-    {
-      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
-      sheetId: z.number().describe("The ID of the worksheet to move."),
-      newIndex: z
-        .number()
-        .min(0)
-        .describe(
-          "The new zero-based index position for the worksheet. 0 = first position, 1 = second position, etc."
-        ),
-    },
+    moveWorksheetSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: GOOGLE_SHEET_TOOL_NAME,
+        toolNameForMonitoring: GOOGLE_SHEETS_TOOL_NAME,
         agentLoopContext,
       },
       async ({ spreadsheetId, sheetId, newIndex }, { authInfo }) => {

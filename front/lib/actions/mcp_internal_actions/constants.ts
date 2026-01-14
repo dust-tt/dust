@@ -68,6 +68,11 @@ import {
   GOOGLE_DRIVE_TOOL_STAKES,
   GOOGLE_DRIVE_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/google_drive/metadata";
+import {
+  GOOGLE_SHEETS_SERVER_INFO,
+  GOOGLE_SHEETS_TOOL_STAKES,
+  GOOGLE_SHEETS_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/google_sheets/metadata";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
@@ -612,38 +617,12 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("google_sheets_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      list_spreadsheets: "never_ask",
-      get_spreadsheet: "never_ask",
-      get_worksheet: "never_ask",
-      update_cells: "low",
-      append_data: "low",
-      clear_range: "low",
-      create_spreadsheet: "low",
-      add_worksheet: "low",
-      delete_worksheet: "low",
-      format_cells: "low",
-      copy_sheet: "low",
-      rename_worksheet: "low",
-      move_worksheet: "low",
-    },
+    tools_stakes: GOOGLE_SHEETS_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "google_sheets",
-      version: "1.0.0",
-      description: "Work with spreadsheet data and tables.",
-      authorization: {
-        provider: "gmail",
-        supported_use_cases: ["personal_actions", "platform_actions"] as const,
-        scope:
-          "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly" as const,
-      },
-      icon: "GoogleSpreadsheetLogo",
-      documentationUrl: "https://docs.dust.tt/docs/google-sheets",
-      instructions: null,
-    },
+    tools: GOOGLE_SHEETS_TOOLS,
+    serverInfo: GOOGLE_SHEETS_SERVER_INFO,
   },
   monday: {
     id: 20,
