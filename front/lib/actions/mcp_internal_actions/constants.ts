@@ -130,7 +130,11 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/outlook/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger/metadata";
 import { EXTRACT_DATA_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/process/metadata";
-import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
+import {
+  PRODUCTBOARD_SERVER_INFO,
+  PRODUCTBOARD_TOOL_STAKES,
+  PRODUCTBOARD_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/productboard/metadata";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
   InternalMCPServerDefinitionType,
@@ -1326,32 +1330,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      get_note: "never_ask",
-      query_notes: "never_ask",
-      create_note: "low",
-      update_note: "low",
-      query_entities: "never_ask",
-      get_relationships: "never_ask",
-      create_entity: "low",
-      update_entity: "low",
-      get_configuration: "never_ask",
-    },
+    tools_stakes: PRODUCTBOARD_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "productboard",
-      version: "1.0.0",
-      description: "Manage productboard entities and notes.",
-      authorization: {
-        provider: "productboard" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "ProductboardLogo",
-      documentationUrl: "https://docs.dust.tt/docs/productboard",
-      instructions: PRODUCTBOARD_SERVER_INSTRUCTIONS,
-    },
+    tools: PRODUCTBOARD_TOOLS,
+    serverInfo: PRODUCTBOARD_SERVER_INFO,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
