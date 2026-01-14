@@ -359,21 +359,20 @@ export const conversationUnreadWorkflow = workflow(
       }
     );
 
-    if (!detailsResult.success) {
-      // Conversation or message was deleted - abort workflow.
-      return;
-    }
-
-    const details = detailsResult.data;
+    // Extract details if available (null when conversation/message was deleted).
+    // We don't return early here because Novu needs to discover all steps.
+    const details = detailsResult.success ? detailsResult.data : null;
 
     await step.inApp(
       "send-in-app",
       async () => {
+        // details is guaranteed non-null here because skip prevents execution otherwise.
+        const d = details!;
         return {
-          subject: `New message from ${details.author}`,
-          body: details.authorIsAgent
-            ? `${details.author} replied in the conversation "${details.subject}".`
-            : `You have a new message from ${details.author} in the conversation "${details.subject}".`,
+          subject: `New message from ${d.author}`,
+          body: d.authorIsAgent
+            ? `${d.author} replied in the conversation "${d.subject}".`
+            : `You have a new message from ${d.author} in the conversation "${d.subject}".`,
           primaryAction: {
             label: "View",
             redirect: {
@@ -386,13 +385,14 @@ export const conversationUnreadWorkflow = workflow(
           data: {
             // This custom flag means that the in-app message should be deleted automatically after it is received (we don't want to clutter the user's inbox).
             autoDelete: true,
-            skipPushNotification: details.isFromTrigger,
+            skipPushNotification: d.isFromTrigger,
             conversationId: payload.conversationId,
           },
         };
       },
       {
         skip: async () =>
+          !details ||
           shouldSkipConversation({
             subscriberId: subscriber.subscriberId,
             payload,
@@ -413,6 +413,7 @@ export const conversationUnreadWorkflow = workflow(
       },
       {
         outputSchema: UserNotificationDelaySchema,
+        skip: async () => !details,
       }
     );
 
@@ -429,6 +430,7 @@ export const conversationUnreadWorkflow = workflow(
       {
         // No email from trigger until we give more control over the notification to the users.
         skip: async () =>
+          !details ||
           shouldSkipConversation({
             subscriberId: subscriber.subscriberId,
             payload,
@@ -479,11 +481,12 @@ export const conversationUnreadWorkflow = workflow(
           });
         }
 
+        // details is guaranteed non-null here because skip prevents execution otherwise.
         const body = await renderEmail({
           name: subscriber.firstName ?? "You",
           workspace: {
             id: payload.workspaceId,
-            name: details.workspaceName,
+            name: details!.workspaceName,
           },
           conversations,
         });
@@ -498,6 +501,9 @@ export const conversationUnreadWorkflow = workflow(
       {
         // No email from trigger until we give more control over the notification to the users.
         skip: async () => {
+          if (!details) {
+            return true;
+          }
           const shouldSkip = await Promise.all(
             events.map(async (event) =>
               shouldSkipConversation({
