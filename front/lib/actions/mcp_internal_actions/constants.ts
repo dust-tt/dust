@@ -14,6 +14,11 @@ import {
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
 import {
+  AGENT_MANAGEMENT_SERVER_INFO,
+  AGENT_MANAGEMENT_TOOL_STAKES,
+  AGENT_MANAGEMENT_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/agent_management/metadata";
+import {
   GOOGLE_CALENDAR_SERVER_INFO,
   GOOGLE_CALENDAR_TOOL_STAKES,
   GOOGLE_CALENDAR_TOOLS,
@@ -1549,21 +1554,12 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("agent_management_tool");
     },
-    tools_stakes: {
-      create_agent: "high",
-    },
+    tools_stakes: AGENT_MANAGEMENT_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "agent_management",
-      version: "1.0.0",
-      description: "Tools for managing agent configurations.",
-      authorization: null,
-      icon: "ActionRobotIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    tools: AGENT_MANAGEMENT_TOOLS,
+    serverInfo: AGENT_MANAGEMENT_SERVER_INFO,
   },
   [DATA_WAREHOUSE_SERVER_NAME]: {
     id: 1012,
