@@ -479,7 +479,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                               label="Edit agent"
                             />
                             <DropdownMenuPortal>
-                              <DropdownMenuSubContent className="pointer-events-auto">
+                              <DropdownMenuSubContent className="pointer-events-auto max-h-150">
                                 <DropdownMenuSearchbar
                                   ref={agentsSearchInputRef}
                                   name="search"
