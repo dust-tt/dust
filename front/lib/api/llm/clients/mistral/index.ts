@@ -27,6 +27,8 @@ export class MistralLLM extends LLM {
     {
       bypassFeatureFlag,
       context,
+      getTraceInput,
+      getTraceOutput,
       modelId,
       reasoningEffort,
       temperature,
@@ -35,6 +37,8 @@ export class MistralLLM extends LLM {
     super(auth, {
       bypassFeatureFlag,
       context,
+      getTraceInput,
+      getTraceOutput,
       modelId,
       reasoningEffort,
       temperature,

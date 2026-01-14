@@ -20,6 +20,8 @@ import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 export async function getLLM(
   auth: Authenticator,
   {
+    getTraceInput,
+    getTraceOutput,
     modelId,
     temperature,
     reasoningEffort,
@@ -37,6 +39,8 @@ export async function getLLM(
 
   if (isMistralWhitelistedModelId(modelId)) {
     return new MistralLLM(auth, {
+      getTraceInput,
+      getTraceOutput,
       modelId,
       temperature,
       reasoningEffort,
@@ -47,6 +51,8 @@ export async function getLLM(
 
   if (isGoogleAIStudioWhitelistedModelId(modelId)) {
     return new GoogleLLM(auth, {
+      getTraceInput,
+      getTraceOutput,
       modelId,
       temperature,
       reasoningEffort,
@@ -58,6 +64,8 @@ export async function getLLM(
 
   if (isOpenAIResponsesWhitelistedModelId(modelId)) {
     return new OpenAIResponsesLLM(auth, {
+      getTraceInput,
+      getTraceOutput,
       modelId,
       temperature,
       reasoningEffort,
@@ -69,6 +77,8 @@ export async function getLLM(
 
   if (isAnthropicWhitelistedModelId(modelId)) {
     return new AnthropicLLM(auth, {
+      getTraceInput,
+      getTraceOutput,
       modelId,
       temperature,
       reasoningEffort,
@@ -80,6 +90,8 @@ export async function getLLM(
 
   if (isFireworksWhitelistedModelId(modelId)) {
     return new FireworksLLM(auth, {
+      getTraceInput,
+      getTraceOutput,
       modelId,
       temperature,
       reasoningEffort,
@@ -89,6 +101,8 @@ export async function getLLM(
   }
   if (isNoopWhitelistedModelId(modelId)) {
     return new NoopLLM(auth, {
+      getTraceInput,
+      getTraceOutput,
       modelId,
       temperature,
       reasoningEffort,
@@ -97,6 +111,8 @@ export async function getLLM(
 
   if (isXaiWhitelistedModelId(modelId)) {
     return new XaiLLM(auth, {
+      getTraceInput,
+      getTraceOutput,
       modelId,
       temperature,
       reasoningEffort,

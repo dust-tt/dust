@@ -46,6 +46,8 @@ export class NoopLLM extends LLM {
     {
       bypassFeatureFlag,
       context,
+      getTraceInput,
+      getTraceOutput,
       modelId,
       reasoningEffort,
       temperature,
@@ -54,6 +56,8 @@ export class NoopLLM extends LLM {
     super(auth, {
       bypassFeatureFlag,
       context,
+      getTraceInput,
+      getTraceOutput,
       modelId,
       reasoningEffort,
       temperature,

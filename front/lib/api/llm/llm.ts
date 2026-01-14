@@ -24,6 +24,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
+import type { Content, TextContent } from "@app/types/assistant/generation";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -31,6 +32,17 @@ import type {
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types";
+
+function isTextContentBlock(content: Content): content is TextContent {
+  return content.type === "text";
+}
+
+function contentToText(content: Content[]): string {
+  return content
+    .filter(isTextContentBlock)
+    .map((c) => c.text)
+    .join("\n");
+}
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -119,10 +131,26 @@ export abstract class LLM {
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
     const buffer = new LLMTraceBuffer(this.traceId, workspaceId, this.context);
 
+    const langfuseConversationMessages: unknown[] = conversation.messages.map(
+      (message): unknown => {
+        if (message.role !== "user") {
+          return message;
+        }
+
+        return { ...message, content: contentToText(message.content) };
+      }
+    );
+
+    // Use custom trace input if provided, otherwise use the full conversation.
+    const traceInput = this.getTraceInput?.(conversation) ?? [
+      { role: "system", content: prompt },
+      ...langfuseConversationMessages,
+    ];
+
     const generation = startObservation(
       "llm-completion",
       {
-        input: [{ role: "system", content: prompt }, ...conversation.messages],
+        input: traceInput,
         model: this.modelId,
         modelParameters: {
           reasoningEffort: this.reasoningEffort ?? "",
@@ -135,12 +163,6 @@ export abstract class LLM {
       },
       { asType: "generation" }
     );
-
-    // Use custom trace input if provided, otherwise use the full conversation.
-    const traceInput = this.getTraceInput?.(conversation) ?? [
-      { role: "system", content: prompt },
-      ...conversation.messages,
-    ];
 
     generation.updateTrace({
       name: startCase(this.context.operationType),
