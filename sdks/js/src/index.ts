@@ -75,6 +75,7 @@ import {
   GetFeedbacksResponseSchema,
   GetMCPServerViewsResponseSchema,
   GetMentionSuggestionsResponseBodySchema,
+  GetSpaceConversationIdsResponseSchema,
   GetSpaceConversationsForDataSourceResponseSchema,
   GetSpacesResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
@@ -1248,6 +1249,22 @@ export class DustAPI {
 
     return this._resultFromResponse(
       GetSpaceConversationsForDataSourceResponseSchema,
+      res
+    );
+  }
+
+  async getSpaceConversationIds({
+    spaceId,
+  }: {
+    spaceId: string;
+  }) {
+    const res = await this.request({
+      method: "GET",
+      path: `spaces/${spaceId}/conversation_ids`,
+    });
+
+    return this._resultFromResponse(
+      GetSpaceConversationIdsResponseSchema,
       res
     );
   }

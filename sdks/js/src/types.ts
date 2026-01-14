@@ -2400,6 +2400,13 @@ export type GetSpaceConversationsForDataSourceResponseType = z.infer<
   typeof GetSpaceConversationsForDataSourceResponseSchema
 >;
 
+export const GetSpaceConversationIdsResponseSchema = z.object({
+  conversationIds: z.array(z.string()),
+});
+export type GetSpaceConversationIdsResponseType = z.infer<
+  typeof GetSpaceConversationIdsResponseSchema
+>;
+
 const GetDocumentsResponseSchema = z.object({
   documents: z.array(CoreAPIDocumentSchema),
   total: z.number(),

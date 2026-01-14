@@ -234,6 +234,10 @@ export async function dustProjectIncrementalSyncActivity({
     await configuration.update({ lastSyncedAt: new Date() });
 
     await syncSucceeded(connectorId);
+
+    // Run garbage collection to remove hard-deleted conversations
+    // This checks for conversations that were completely removed from the database
+    await dustProjectGarbageCollectActivity({ connectorId });
   } catch (error) {
     localLogger.error(
       { error, projectId: configuration.projectId },
@@ -241,5 +245,115 @@ export async function dustProjectIncrementalSyncActivity({
     );
     await syncFailed(connectorId, "third_party_internal_error");
     throw error;
+  }
+}
+
+/**
+ * Garbage collection activity: Removes conversations that were hard-deleted
+ * (completely removed from the database, not just soft-deleted).
+ * This is called after incremental sync to clean up conversations that no longer exist.
+ */
+async function dustProjectGarbageCollectActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<void> {
+  const localLogger = logger.child({ connectorId });
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const configuration =
+    await DustProjectConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`Configuration not found for connector ${connectorId}`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  try {
+    localLogger.info(
+      { projectId: configuration.projectId },
+      "Starting garbage collection for hard-deleted conversations"
+    );
+
+    // Fetch all visible conversation IDs from Front API
+    // This endpoint only returns conversations that still exist (not hard-deleted)
+    const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: false });
+    const conversationIdsResult = await dustAPI.getSpaceConversationIds({
+      spaceId: configuration.projectId,
+    });
+
+    if (conversationIdsResult.isErr()) {
+      throw new Error(
+        `Failed to fetch conversation IDs: ${conversationIdsResult.error.message}`
+      );
+    }
+
+    const currentConversationIds = new Set(
+      conversationIdsResult.value.conversationIds
+    );
+
+    // Fetch all conversation IDs from dust_project_conversations table
+    const syncedConversations =
+      await DustProjectConversationResource.fetchByConnectorId(connectorId);
+
+    // Find conversations that exist in DB but not in the current list (hard-deleted)
+    const conversationsToDelete = syncedConversations.filter(
+      (c) => !currentConversationIds.has(c.conversationId)
+    );
+
+    if (conversationsToDelete.length === 0) {
+      localLogger.info(
+        {
+          projectId: configuration.projectId,
+          currentCount: currentConversationIds.size,
+          syncedCount: syncedConversations.length,
+        },
+        "No hard-deleted conversations found"
+      );
+      return;
+    }
+
+    localLogger.info(
+      {
+        projectId: configuration.projectId,
+        currentCount: currentConversationIds.size,
+        syncedCount: syncedConversations.length,
+        toDeleteCount: conversationsToDelete.length,
+      },
+      "Identified hard-deleted conversations to remove"
+    );
+
+    // Delete conversations from data source and database
+    await concurrentExecutor(
+      conversationsToDelete,
+      async (conversation) => {
+        await deleteConversation({
+          connectorId,
+          dataSourceConfig,
+          projectId: configuration.projectId,
+          conversationId: conversation.conversationId,
+        });
+      },
+      { concurrency: 5 }
+    );
+
+    localLogger.info(
+      {
+        projectId: configuration.projectId,
+        deletedCount: conversationsToDelete.length,
+      },
+      "Garbage collection completed for hard-deleted conversations"
+    );
+  } catch (error) {
+    localLogger.error(
+      { error, projectId: configuration.projectId },
+      "Garbage collection failed for dust_project connector"
+    );
+    // Don't throw - garbage collection failures shouldn't fail the sync
+    // Log the error and continue
   }
 }
