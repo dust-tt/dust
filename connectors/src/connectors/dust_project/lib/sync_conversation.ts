@@ -1,6 +1,7 @@
 import type { ConversationPublicType } from "@dust-tt/client";
 
 import {
+  deleteDataSourceDocument,
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
@@ -16,7 +17,59 @@ import {
 } from "./conversation_formatting";
 
 /**
+ * Deletes a conversation from the data source and database.
+ */
+export async function deleteConversation({
+  connectorId,
+  dataSourceConfig,
+  projectId,
+  conversationId,
+}: {
+  connectorId: ModelId;
+  dataSourceConfig: DataSourceConfig;
+  projectId: string;
+  conversationId: string;
+}): Promise<void> {
+  const localLogger = logger.child({
+    connectorId,
+    conversationId,
+    projectId,
+  });
+
+  try {
+    const messageInternalId = getConversationMessageInternalId(
+      connectorId,
+      projectId,
+      conversationId
+    );
+
+    // Delete from data source
+    await deleteDataSourceDocument(dataSourceConfig, messageInternalId, {
+      conversationId,
+      projectId,
+    });
+
+    // Delete from database
+    const existingConversation =
+      await DustProjectConversationResource.fetchByConnectorIdAndConversationId(
+        connectorId,
+        conversationId
+      );
+
+    if (existingConversation) {
+      await existingConversation.delete();
+    }
+
+    localLogger.info("Successfully deleted conversation");
+  } catch (error) {
+    localLogger.error({ error }, "Failed to delete conversation");
+    throw error;
+  }
+}
+
+/**
  * Syncs a single conversation: formats it from raw content and upserts it to the data source.
+ * If the conversation is deleted (visibility === "deleted"), it will be removed from the data source.
  */
 export async function syncConversation({
   connectorId,
@@ -37,6 +90,17 @@ export async function syncConversation({
     conversationId: conversation.sId,
     projectId,
   });
+
+  // If conversation is deleted, remove it from the data source
+  if (conversation.visibility === "deleted") {
+    await deleteConversation({
+      connectorId,
+      dataSourceConfig,
+      projectId,
+      conversationId: conversation.sId,
+    });
+    return;
+  }
 
   const lastMessageAt = new Date(conversation.updated ?? conversation.created);
 

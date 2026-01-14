@@ -52,6 +52,7 @@ export type FetchConversationOptions = {
   includeDeleted?: boolean;
   includeTest?: boolean;
   dangerouslySkipPermissionFiltering?: boolean;
+  updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
 };
 
 interface UserParticipation {
@@ -142,16 +143,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   private static getOptions(
     options?: FetchConversationOptions
   ): ResourceFindOptions<ConversationModel> {
-    if (options?.includeDeleted) {
-      return {
-        where: {},
-      };
+    const where: WhereOptions<ConversationModel> = {};
+
+    if (!options?.includeDeleted) {
+      where.visibility = { [Op.ne]: "deleted" };
+    }
+
+    if (options?.updatedSince !== undefined) {
+      where.updatedAt = { [Op.gte]: new Date(options.updatedSince) };
     }
 
     return {
-      where: {
-        visibility: { [Op.ne]: "deleted" },
-      },
+      where,
     };
   }
 

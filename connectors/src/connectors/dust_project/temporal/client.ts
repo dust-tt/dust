@@ -7,8 +7,6 @@ import { QUEUE_NAME } from "@connectors/connectors/dust_project/temporal/config"
 import {
   dustProjectFullSyncWorkflow,
   dustProjectFullSyncWorkflowId,
-  dustProjectGarbageCollectWorkflow,
-  dustProjectGarbageCollectWorkflowId,
   dustProjectIncrementalSyncWorkflow,
   dustProjectIncrementalSyncWorkflowId,
 } from "@connectors/connectors/dust_project/temporal/workflows";
@@ -74,9 +72,31 @@ export async function launchDustProjectIncrementalSyncWorkflow(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const workflowId = dustProjectIncrementalSyncWorkflowId(connectorId);
 
+  // minuteOffset ensures jobs are distributed across the 30-minute intervals based on connector ID
+  // Run incremental sync every 30 minutes
+  const minuteOffset = connector.id % 30;
+  const cronSchedule = `${minuteOffset},${minuteOffset + 30} * * * *`;
+
   try {
-    // Terminate existing workflow if running
-    await terminateWorkflow(workflowId);
+    // Check if workflow already exists
+    const workflowAlreadyRunning = await (async () => {
+      try {
+        const wfHandle: WorkflowHandle<
+          typeof dustProjectIncrementalSyncWorkflow
+        > = client.workflow.getHandle(workflowId);
+        const description = await wfHandle.describe();
+        return description.status.name === "RUNNING";
+      } catch (_err) {
+        return false;
+      }
+    })();
+
+    // Use start with cron schedule for periodic incremental syncs
+    // If workflow already exists, terminate it first to update the schedule
+    if (workflowAlreadyRunning) {
+      await terminateWorkflow(workflowId);
+    }
+
     await client.workflow.start(dustProjectIncrementalSyncWorkflow, {
       args: [{ connectorId }],
       taskQueue: QUEUE_NAME,
@@ -87,13 +107,16 @@ export async function launchDustProjectIncrementalSyncWorkflow(
       memo: {
         connectorId,
       },
+      // Every 30 minutes, with minute offset based on connector ID
+      cronSchedule,
     });
     logger.info(
       {
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
+        cronSchedule,
       },
-      `Started dust_project incremental sync workflow.`
+      `Started dust_project incremental sync workflow with cron schedule.`
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -104,74 +127,6 @@ export async function launchDustProjectIncrementalSyncWorkflow(
         error: e,
       },
       `Failed starting dust_project incremental sync workflow.`
-    );
-    return new Err(normalizeError(e));
-  }
-}
-
-export async function launchDustProjectGarbageCollectWorkflow(
-  connectorId: ModelId
-): Promise<Result<string, Error>> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    return new Err(new Error(`Connector ${connectorId} not found`));
-  }
-  const client = await getTemporalClient();
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const workflowId = dustProjectGarbageCollectWorkflowId(connectorId);
-
-  try {
-    const handle: WorkflowHandle<typeof dustProjectGarbageCollectWorkflow> =
-      client.workflow.getHandle(workflowId);
-
-    // If the workflow is running, do nothing
-    try {
-      const description = await handle.describe();
-      if (description.status.name === "RUNNING") {
-        logger.info(
-          {
-            workspaceId: dataSourceConfig.workspaceId,
-            workflowId,
-          },
-          `Dust project GC workflow is already running, not relaunching.`
-        );
-        return new Ok(workflowId);
-      }
-    } catch (e) {
-      if (!(e instanceof WorkflowNotFoundError)) {
-        throw e;
-      }
-    }
-
-    await client.workflow.start(dustProjectGarbageCollectWorkflow, {
-      args: [{ connectorId }],
-      taskQueue: QUEUE_NAME,
-      workflowId,
-      searchAttributes: {
-        connectorId: [connectorId],
-      },
-      // Run garbage collection daily
-      cronSchedule: "0 2 * * *",
-      memo: {
-        connectorId,
-      },
-    });
-    logger.info(
-      {
-        workspaceId: dataSourceConfig.workspaceId,
-        workflowId,
-      },
-      `Started dust_project garbage collection workflow.`
-    );
-    return new Ok(workflowId);
-  } catch (e) {
-    logger.error(
-      {
-        workspaceId: dataSourceConfig.workspaceId,
-        workflowId,
-        error: e,
-      },
-      `Failed starting dust_project garbage collection workflow.`
     );
     return new Err(normalizeError(e));
   }

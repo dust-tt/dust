@@ -1,7 +1,10 @@
-import { syncConversation } from "@connectors/connectors/dust_project/lib/sync_conversation";
+import {
+  deleteConversation,
+  syncConversation,
+} from "@connectors/connectors/dust_project/lib/sync_conversation";
+import { launchDustProjectIncrementalSyncWorkflow } from "@connectors/connectors/dust_project/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getDustAPI } from "@connectors/lib/api/dust_api";
-import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
 import {
   syncFailed,
   syncStarted,
@@ -62,10 +65,45 @@ export async function dustProjectFullSyncActivity({
     const conversations = conversationsResult.value.conversations;
     localLogger.info(
       { projectId: configuration.projectId, count: conversations.length },
-      "Fetched conversations for full sync"
+      "Fetched conversations for full sync (including deleted)"
     );
 
-    // Sync each conversation
+    // Get all currently synced conversation IDs
+    const syncedConversations =
+      await DustProjectConversationResource.fetchByConnectorId(connectorId);
+
+    // Get all conversation IDs from the fetched list (including deleted ones)
+    const fetchedConversationIds = new Set(conversations.map((c) => c.sId));
+
+    // Find conversations that exist in DB but not in fetched list (should be deleted)
+    const conversationsToDelete = syncedConversations.filter(
+      (c) => !fetchedConversationIds.has(c.conversationId)
+    );
+
+    // Delete conversations that no longer exist
+    if (conversationsToDelete.length > 0) {
+      localLogger.info(
+        {
+          projectId: configuration.projectId,
+          count: conversationsToDelete.length,
+        },
+        "Deleting conversations that no longer exist"
+      );
+      await concurrentExecutor(
+        conversationsToDelete,
+        async (conversation) => {
+          await deleteConversation({
+            connectorId,
+            dataSourceConfig,
+            projectId: configuration.projectId,
+            conversationId: conversation.conversationId,
+          });
+        },
+        { concurrency: 5 }
+      );
+    }
+
+    // Sync each conversation (including deleted ones - syncConversation handles deletion)
     // conversations is an array of ConversationSchema objects (full ConversationType)
     await concurrentExecutor(
       conversations,
@@ -85,6 +123,28 @@ export async function dustProjectFullSyncActivity({
     await configuration.update({ lastSyncedAt: new Date() });
 
     await syncSucceeded(connectorId);
+
+    // Launch incremental sync workflow after successful full sync
+    const incrementalSyncResult =
+      await launchDustProjectIncrementalSyncWorkflow(connectorId);
+    if (incrementalSyncResult.isErr()) {
+      localLogger.error(
+        {
+          error: incrementalSyncResult.error,
+          projectId: configuration.projectId,
+        },
+        "Failed to launch incremental sync workflow after full sync"
+      );
+      // Don't fail the full sync if incremental sync launch fails
+    } else {
+      localLogger.info(
+        {
+          workflowId: incrementalSyncResult.value,
+          projectId: configuration.projectId,
+        },
+        "Launched incremental sync workflow after successful full sync"
+      );
+    }
   } catch (error) {
     localLogger.error(
       { error, projectId: configuration.projectId },
@@ -152,10 +212,10 @@ export async function dustProjectIncrementalSyncActivity({
         count: conversations.length,
         lastSyncedAt,
       },
-      "Fetched conversations for incremental sync"
+      "Fetched conversations for incremental sync (including deleted)"
     );
 
-    // Sync each conversation
+    // Sync each conversation (including deleted ones - syncConversation handles deletion)
     // conversations is an array of ConversationSchema objects (full ConversationType)
     await concurrentExecutor(
       conversations,
@@ -181,111 +241,6 @@ export async function dustProjectIncrementalSyncActivity({
       "Incremental sync failed for dust_project connector"
     );
     await syncFailed(connectorId, "third_party_internal_error");
-    throw error;
-  }
-}
-
-/**
- * Garbage collection activity: Removes conversations that no longer exist in the project.
- */
-export async function dustProjectGarbageCollectActivity({
-  connectorId,
-}: {
-  connectorId: ModelId;
-}): Promise<void> {
-  const localLogger = logger.child({ connectorId });
-
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error(`Connector ${connectorId} not found`);
-  }
-
-  const configuration =
-    await DustProjectConfigurationResource.fetchByConnectorId(connectorId);
-  if (!configuration) {
-    throw new Error(`Configuration not found for connector ${connectorId}`);
-  }
-
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
-  try {
-    localLogger.info(
-      { projectId: configuration.projectId },
-      "Starting garbage collection for dust_project connector"
-    );
-
-    // Fetch all conversation IDs currently in the project from Front API
-    const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: false });
-    const conversationsResult =
-      await dustAPI.getSpaceConversationsForDataSource({
-        spaceId: configuration.projectId,
-      });
-
-    if (conversationsResult.isErr()) {
-      throw new Error(
-        `Failed to fetch conversations: ${conversationsResult.error.message}`
-      );
-    }
-
-    const currentConversationIds = new Set(
-      conversationsResult.value.conversations.map((c) => c.sId)
-    );
-
-    // Fetch all conversation IDs from dust_project_conversations table
-    const syncedConversations =
-      await DustProjectConversationResource.fetchByConnectorId(connectorId);
-
-    // Find conversations that exist in DB but not in project
-    const conversationsToDelete = syncedConversations.filter(
-      (c) => !currentConversationIds.has(c.conversationId)
-    );
-
-    localLogger.info(
-      {
-        projectId: configuration.projectId,
-        currentCount: currentConversationIds.size,
-        syncedCount: syncedConversations.length,
-        toDeleteCount: conversationsToDelete.length,
-      },
-      "Identified conversations to delete"
-    );
-
-    // Delete conversations from data source and database
-    await concurrentExecutor(
-      conversationsToDelete,
-      async (conversation) => {
-        const messageInternalId = `dust-project-${connectorId}-project-${configuration.projectId}-conversation-${conversation.conversationId}`;
-
-        // Delete from data source
-        try {
-          await deleteDataSourceDocument(dataSourceConfig, messageInternalId, {
-            conversationId: conversation.conversationId,
-          });
-        } catch (error) {
-          localLogger.warn(
-            { conversationId: conversation.conversationId, error },
-            "Failed to delete conversation from data source, continuing"
-          );
-        }
-
-        // Delete from database
-        await conversation.delete();
-      },
-      { concurrency: 5 }
-    );
-
-    localLogger.info(
-      {
-        projectId: configuration.projectId,
-        deletedCount: conversationsToDelete.length,
-      },
-      "Garbage collection completed for dust_project connector"
-    );
-  } catch (error) {
-    localLogger.error(
-      { error, projectId: configuration.projectId },
-      "Garbage collection failed for dust_project connector"
-    );
     throw error;
   }
 }
