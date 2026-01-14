@@ -121,9 +121,7 @@ impl Provider for SnowflakeConnectionProvider {
 
         let access_token = match raw_json["access_token"].as_str() {
             Some(token) => token,
-            None => Err(anyhow!(
-                "Missing `access_token` in response from Snowflake"
-            ))?,
+            None => Err(anyhow!("Missing `access_token` in response from Snowflake"))?,
         };
 
         // expires_in is the number of seconds until the token expires (typically 600 = 10 minutes).
@@ -203,9 +201,7 @@ impl Provider for SnowflakeConnectionProvider {
 
         let access_token = match raw_json["access_token"].as_str() {
             Some(token) => token,
-            None => Err(anyhow!(
-                "Missing `access_token` in response from Snowflake"
-            ))?,
+            None => Err(anyhow!("Missing `access_token` in response from Snowflake"))?,
         };
 
         // expires_in is the number of seconds until the token expires.
