@@ -673,7 +673,10 @@ export async function googleDriveIncrementalSyncPerDrive({
           newFolders,
           async (folderId) => {
             await startChild(googleDriveFolderSync, {
-              workflowId: googleDriveFolderSyncWorkflowId(connectorId, folderId),
+              workflowId: googleDriveFolderSyncWorkflowId(
+                connectorId,
+                folderId
+              ),
               searchAttributes: { connectorId: [connectorId] },
               args: [
                 {
