@@ -1,16 +1,35 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getProjectConversationsDatasourceName } from "@app/lib/api/project_connectors";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { ConnectorsAPI, CoreAPI, Ok } from "@app/types";
+
+// Mock config to avoid requiring environment variables
+vi.mock("@app/lib/api/config", () => ({
+  default: {
+    getCoreAPIConfig: () => ({
+      url: "http://localhost:3001",
+      apiKey: "test-api-key",
+    }),
+    getConnectorsAPIConfig: () => ({
+      url: "http://localhost:3002",
+      secret: "test-secret",
+      webhookSecret: "test-webhook-secret",
+    }),
+  },
+}));
 
 describe("createSpaceAndGroup", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
@@ -140,6 +159,303 @@ describe("createSpaceAndGroup", () => {
         expect(space.name).toBe("Test Project Space");
         expect(space.kind).toBe("project");
       }
+    });
+
+    it("should create dust_project connector when creating a project space", async () => {
+      // Mock CoreAPI methods
+      const mockProjectId = Math.floor(Math.random() * 1000000);
+      const mockDataSourceId = "test-data-source-id-" + Math.random();
+
+      const createProjectSpy = vi
+        .spyOn(CoreAPI.prototype, "createProject")
+        .mockResolvedValue(
+          new Ok({
+            project: {
+              project_id: mockProjectId,
+            },
+          })
+        );
+
+      const createDataSourceSpy = vi
+        .spyOn(CoreAPI.prototype, "createDataSource")
+        .mockResolvedValue(
+          new Ok({
+            data_source: {
+              created: Date.now(),
+              data_source_id: mockDataSourceId,
+              data_source_internal_id: `internal-${mockDataSourceId}`,
+              name: getProjectConversationsDatasourceName(0), // Will be updated in actual call
+              config: {
+                embedder_config: {
+                  embedder: {
+                    provider_id: "openai",
+                    model_id: "text-embedding-ada-002",
+                    splitter_id: "base_v0",
+                    max_chunk_size: 512,
+                  },
+                },
+                qdrant_config: {
+                  cluster: "cluster-0",
+                  shadow_write_cluster: null,
+                },
+              },
+            },
+          })
+        );
+
+      // Mock ConnectorsAPI methods
+      const mockConnectorId = "test-connector-id-" + Math.random();
+      const mockWorkflowId = "test-workflow-id-" + Math.random();
+
+      const createConnectorSpy = vi
+        .spyOn(ConnectorsAPI.prototype, "createConnector")
+        .mockResolvedValue(
+          new Ok({
+            id: mockConnectorId,
+            type: "dust_project",
+            workspaceId: workspace.sId,
+            dataSourceId: "test-data-source-id",
+            connectionId: "test-connection-id",
+            useProxy: false,
+            configuration: null,
+            updatedAt: Date.now(),
+          })
+        );
+
+      const syncConnectorSpy = vi
+        .spyOn(ConnectorsAPI.prototype, "syncConnector")
+        .mockResolvedValue(
+          new Ok({
+            workflowId: mockWorkflowId,
+          })
+        );
+
+      // Mock getOrCreateSystemApiKey - create a real KeyResource
+      const mockSystemKey = await KeyFactory.system(globalGroup);
+      const getSystemKeySpy = vi
+        .spyOn(await import("@app/lib/auth"), "getOrCreateSystemApiKey")
+        .mockResolvedValue(new Ok(mockSystemKey));
+
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Project With Connector",
+        isRestricted: false,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const space = result.value;
+        expect(space.kind).toBe("project");
+
+        // Verify CoreAPI.createProject was called
+        expect(createProjectSpy).toHaveBeenCalledTimes(1);
+
+        // Verify CoreAPI.createDataSource was called with correct parameters
+        expect(createDataSourceSpy).toHaveBeenCalledTimes(1);
+        const createDataSourceCall = createDataSourceSpy.mock.calls[0][0];
+        expect(createDataSourceCall.projectId).toBe(mockProjectId.toString());
+        expect(createDataSourceCall.name).toBe(
+          getProjectConversationsDatasourceName(space.id)
+        );
+
+        // Verify ConnectorsAPI.createConnector was called with correct parameters
+        expect(createConnectorSpy).toHaveBeenCalledTimes(1);
+        const createConnectorCall = createConnectorSpy.mock.calls[0][0];
+        expect(createConnectorCall.provider).toBe("dust_project");
+        expect(createConnectorCall.workspaceId).toBe(workspace.sId);
+        expect(createConnectorCall.workspaceAPIKey).toBe(mockSystemKey.secret);
+        expect(createConnectorCall.connectionId).toBe(space.sId);
+
+        // Verify ConnectorsAPI.syncConnector was called to trigger initial sync
+        expect(syncConnectorSpy).toHaveBeenCalledTimes(1);
+        expect(syncConnectorSpy).toHaveBeenCalledWith(mockConnectorId);
+
+        // Verify getOrCreateSystemApiKey was called
+        expect(getSystemKeySpy).toHaveBeenCalledTimes(1);
+        // getOrCreateSystemApiKey is called with the workspace object
+        expect(getSystemKeySpy.mock.calls[0][0].sId).toBe(workspace.sId);
+
+        // Verify data source was created and linked to connector
+        const dataSource = await DataSourceResource.fetchByNameOrId(
+          adminAuth,
+          getProjectConversationsDatasourceName(space.id)
+        );
+        expect(dataSource).toBeDefined();
+        expect(dataSource?.connectorProvider).toBe("dust_project");
+        expect(dataSource?.connectorId?.toString()).toBe(mockConnectorId);
+        expect(dataSource?.name).toBe(
+          getProjectConversationsDatasourceName(space.id)
+        );
+      }
+
+      // Cleanup spies
+      createProjectSpy.mockRestore();
+      createDataSourceSpy.mockRestore();
+      createConnectorSpy.mockRestore();
+      syncConnectorSpy.mockRestore();
+      getSystemKeySpy.mockRestore();
+    });
+
+    it("should not create connector when creating a regular space", async () => {
+      const createConnectorSpy = vi.spyOn(
+        ConnectorsAPI.prototype,
+        "createConnector"
+      );
+
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Regular Space No Connector",
+        isRestricted: false,
+        spaceKind: "regular",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const space = result.value;
+        expect(space.kind).toBe("regular");
+
+        // Verify connector was NOT created for regular spaces
+        expect(createConnectorSpy).not.toHaveBeenCalled();
+
+        // Verify no dust_project data source exists
+        const dataSource = await DataSourceResource.fetchByNameOrId(
+          adminAuth,
+          getProjectConversationsDatasourceName(space.id)
+        );
+        expect(dataSource).toBeNull();
+      }
+
+      createConnectorSpy.mockRestore();
+    });
+
+    it("should handle connector creation failure gracefully", async () => {
+      // Mock CoreAPI methods to succeed
+      const mockProjectId = Math.floor(Math.random() * 1000000);
+      const mockDataSourceId = "test-data-source-id-" + Math.random();
+
+      const createProjectSpy = vi
+        .spyOn(CoreAPI.prototype, "createProject")
+        .mockResolvedValue(
+          new Ok({
+            project: {
+              project_id: mockProjectId,
+            },
+          })
+        );
+
+      const createDataSourceSpy = vi
+        .spyOn(CoreAPI.prototype, "createDataSource")
+        .mockResolvedValue(
+          new Ok({
+            data_source: {
+              created: Date.now(),
+              data_source_id: mockDataSourceId,
+              data_source_internal_id: `internal-${mockDataSourceId}`,
+              name: getProjectConversationsDatasourceName(0),
+              config: {
+                embedder_config: {
+                  embedder: {
+                    provider_id: "openai",
+                    model_id: "text-embedding-ada-002",
+                    splitter_id: "base_v0",
+                    max_chunk_size: 512,
+                  },
+                },
+                qdrant_config: {
+                  cluster: "cluster-0",
+                  shadow_write_cluster: null,
+                },
+              },
+            },
+          })
+        );
+
+      // Mock getOrCreateSystemApiKey to succeed - create a real KeyResource
+      const mockSystemKey = await KeyFactory.system(globalGroup);
+      const getSystemKeySpy = vi
+        .spyOn(await import("@app/lib/auth"), "getOrCreateSystemApiKey")
+        .mockResolvedValue(new Ok(mockSystemKey));
+
+      // Mock ConnectorsAPI.createConnector to fail
+      const createConnectorError = new Error("Failed to create connector");
+      const createConnectorSpy = vi
+        .spyOn(ConnectorsAPI.prototype, "createConnector")
+        .mockResolvedValue({
+          isErr: () => true,
+          isOk: () => false,
+          error: createConnectorError,
+        } as any);
+
+      // Mock delete methods for rollback
+      const deleteDataSourceSpy = vi
+        .spyOn(DataSourceResource.prototype, "delete")
+        .mockResolvedValue(new Ok(undefined));
+      const deleteCoreDataSourceSpy = vi
+        .spyOn(CoreAPI.prototype, "deleteDataSource")
+        .mockResolvedValue(
+          new Ok({
+            data_source: {
+              created: Date.now(),
+              data_source_id: mockDataSourceId,
+              data_source_internal_id: `internal-${mockDataSourceId}`,
+              name: getProjectConversationsDatasourceName(0),
+              config: {
+                embedder_config: {
+                  embedder: {
+                    provider_id: "openai",
+                    model_id: "text-embedding-ada-002",
+                    splitter_id: "base_v0",
+                    max_chunk_size: 512,
+                  },
+                },
+                qdrant_config: {
+                  cluster: "cluster-0",
+                  shadow_write_cluster: null,
+                },
+              },
+            },
+          })
+        );
+      const deleteProjectSpy = vi
+        .spyOn(CoreAPI.prototype, "deleteProject")
+        .mockResolvedValue(new Ok({ success: true }));
+
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Project Connector Failure",
+        isRestricted: false,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      // Space creation should still succeed even if connector creation fails
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const space = result.value;
+        expect(space.kind).toBe("project");
+
+        // Verify connector creation was attempted
+        expect(createConnectorSpy).toHaveBeenCalled();
+
+        // Verify rollback was attempted (data source deletion)
+        // Note: Rollback happens inside createDustProjectConnectorForSpace
+        // The data source should be deleted if connector creation fails
+        expect(deleteDataSourceSpy).toHaveBeenCalled();
+        expect(deleteCoreDataSourceSpy).toHaveBeenCalled();
+        expect(deleteProjectSpy).toHaveBeenCalled();
+      }
+
+      // Cleanup
+      createProjectSpy.mockRestore();
+      createDataSourceSpy.mockRestore();
+      getSystemKeySpy.mockRestore();
+      createConnectorSpy.mockRestore();
+      deleteDataSourceSpy.mockRestore();
+      deleteCoreDataSourceSpy.mockRestore();
+      deleteProjectSpy.mockRestore();
     });
 
     it("should create a non-restricted space with global group", async () => {

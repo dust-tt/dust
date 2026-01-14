@@ -31,6 +31,7 @@ export class ConversationFactory {
       messagesCreatedAt,
       conversationCreatedAt,
       requestedSpaceIds,
+      spaceId,
       visibility = "unlisted",
       t,
     }: {
@@ -38,6 +39,7 @@ export class ConversationFactory {
       messagesCreatedAt: Date[];
       conversationCreatedAt?: Date;
       requestedSpaceIds?: ModelId[];
+      spaceId?: ModelId;
       visibility?: ConversationVisibility;
       t?: Transaction;
     }
@@ -48,7 +50,7 @@ export class ConversationFactory {
     const conversation = await createConversation(auth, {
       title: "Test Conversation",
       visibility,
-      spaceId: null,
+      spaceId: spaceId ?? null,
     });
 
     if (conversationCreatedAt) {
