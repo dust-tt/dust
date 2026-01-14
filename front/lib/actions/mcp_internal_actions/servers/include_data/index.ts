@@ -4,26 +4,24 @@ import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  FIND_TAGS_TOOL_NAME,
-  INCLUDE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   IncludeResultResourceType,
   WarningResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
+import {
+  FIND_TAGS_TOOL_NAME,
+  INCLUDE_TOOL_NAME,
+  includeInputSchema,
+  tagsInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/include_data/metadata";
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import {
   checkConflictingTags,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import {
-  IncludeInputSchema,
-  TagsInputSchema,
-} from "@app/lib/actions/mcp_internal_actions/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -230,7 +228,7 @@ function createServer(
     server.tool(
       INCLUDE_TOOL_NAME,
       "Fetch the most recent documents in reverse chronological order up to a pre-allocated size. This tool retrieves content that is already pre-configured by the user, ensuring the latest information is included.",
-      IncludeInputSchema.shape,
+      includeInputSchema,
       withToolLogging(
         auth,
         { toolNameForMonitoring: "include", agentLoopContext },
@@ -242,8 +240,8 @@ function createServer(
       INCLUDE_TOOL_NAME,
       "Fetch the most recent documents in reverse chronological order up to a pre-allocated size. This tool retrieves content that is already pre-configured by the user, ensuring the latest information is included.",
       {
-        ...IncludeInputSchema.shape,
-        ...TagsInputSchema.shape,
+        ...includeInputSchema,
+        ...tagsInputSchema,
       },
       withToolLogging(
         auth,
