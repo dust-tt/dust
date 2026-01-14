@@ -536,16 +536,16 @@ export class UserResource extends BaseResource<UserModel> {
       ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
       : null;
 
-    await UserToolApprovalModel.upsert({
-      workspaceId: auth.getNonNullableWorkspace().id,
-      userId: this.id,
-      mcpServerId,
-      toolName,
-      agentId: agentId ?? "",
-      argsAndValues: sortedArgsAndValues,
-      argsAndValuesMd5: sortedArgsAndValues
-        ? md5(JSON.stringify(sortedArgsAndValues))
-        : "",
+    await UserToolApprovalModel.findOrCreate({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: this.id,
+        mcpServerId,
+        toolName,
+        agentId,
+        argsAndValues: sortedArgsAndValues,
+        argsAndValuesMd5: md5(JSON.stringify(sortedArgsAndValues)),
+      },
     });
   }
 
@@ -554,7 +554,7 @@ export class UserResource extends BaseResource<UserModel> {
     {
       mcpServerId,
       toolName,
-      agentId = "",
+      agentId = null,
       argsAndValues = null,
     }: {
       mcpServerId: string;
@@ -567,14 +567,9 @@ export class UserResource extends BaseResource<UserModel> {
       ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
       : null;
 
-    const normalizedAgentId = agentId ?? "";
-    const argsAndValuesMd5Hash = sortedArgsAndValues
-      ? md5(JSON.stringify(sortedArgsAndValues))
-      : "";
-
-    // For low-stake tools (agentId="", argsAndValues=null), also check for
+    // For low-stake tools (agentId=null, argsAndValues=null), also check for
     // wildcard "*" approval which approves all tools for the server.
-    const isLowStake = normalizedAgentId === "" && argsAndValues === null;
+    const isLowStake = agentId === null && argsAndValues === null;
 
     const approval = await UserToolApprovalModel.findOne({
       where: {
@@ -582,8 +577,8 @@ export class UserResource extends BaseResource<UserModel> {
         userId: this.id,
         mcpServerId,
         toolName: isLowStake ? { [Op.in]: [toolName, "*"] } : toolName,
-        agentId: normalizedAgentId,
-        argsAndValuesMd5: argsAndValuesMd5Hash,
+        agentId,
+        argsAndValuesMd5: md5(JSON.stringify(sortedArgsAndValues)),
       },
     });
 

@@ -179,13 +179,12 @@ export class UserToolApprovalModel extends WorkspaceAwareModel<UserToolApprovalM
   declare toolName: string;
 
   // For medium-stake tools, we tie the approval to an agent, and eventually to arg-values couples.
-  // For low-stake tools, these are empty strings.
-  declare agentId: string;
+  // For low-stake tools, these are null.
+  declare agentId: string | null;
   declare argsAndValues: Record<string, string> | null;
 
   // Md5 hash of argsAndValues for quick lookup and uniqueness constraint.
-  // Empty string for low-stake tools (when argsAndValues is null).
-  declare argsAndValuesMd5: string;
+  declare argsAndValuesMd5: string | null;
 }
 
 UserToolApprovalModel.init(
@@ -210,8 +209,8 @@ UserToolApprovalModel.init(
     },
     agentId: {
       type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "",
+      allowNull: true,
+      defaultValue: null,
     },
     argsAndValues: {
       type: DataTypes.JSONB,
@@ -220,8 +219,8 @@ UserToolApprovalModel.init(
     },
     argsAndValuesMd5: {
       type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "",
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
