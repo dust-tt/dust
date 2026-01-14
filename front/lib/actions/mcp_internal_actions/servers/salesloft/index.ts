@@ -1,7 +1,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  getActionsSchema,
+  SALESLOFT_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/salesloft/metadata";
 import type { SalesloftActionWithDetails } from "@app/lib/actions/mcp_internal_actions/servers/salesloft/salesloft_api_helper";
 import { getActionsWithDetails } from "@app/lib/actions/mcp_internal_actions/servers/salesloft/salesloft_api_helper";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -133,7 +136,7 @@ function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer("salesloft");
+  const server = makeInternalMCPServer(SALESLOFT_TOOL_NAME);
 
   server.tool(
     "get_actions",
@@ -145,14 +148,7 @@ function createServer(
       "3. Gets actions for those steps using step_id filter (more efficient than querying all actions) " +
       "4. Gets person/contact information for each action (complete contact details) " +
       "This provides comprehensive context needed to understand and execute each action.",
-    {
-      include_due_actions_only: z
-        .boolean()
-        .describe(
-          "Whether to only include actions that are currently due or overdue. Defaults to true."
-        )
-        .default(true),
-    },
+    getActionsSchema,
     withToolLogging(
       auth,
       {

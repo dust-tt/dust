@@ -141,6 +141,11 @@ import {
   SALESFORCE_TOOL_STAKES,
   SALESFORCE_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/salesforce/metadata";
+import {
+  SALESLOFT_SERVER_INFO,
+  SALESLOFT_TOOL_STAKES,
+  SALESLOFT_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/salesloft/metadata";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
   InternalMCPServerDefinitionType,
@@ -882,25 +887,12 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("salesloft_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      get_current_user: "never_ask",
-      get_cadences: "never_ask",
-      get_tasks: "never_ask",
-      get_actions: "never_ask",
-    },
+    tools_stakes: SALESLOFT_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "salesloft",
-      version: "1.0.0",
-      description: "Access Salesloft cadences, tasks, and actions.",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: null,
-      developerSecretSelection: "required",
-    },
+    tools: SALESLOFT_TOOLS,
+    serverInfo: SALESLOFT_SERVER_INFO,
   },
   zendesk: {
     id: 42,
