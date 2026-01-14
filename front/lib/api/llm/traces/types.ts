@@ -40,6 +40,15 @@ export type LLMTraceContext = LLMTraceContextBase & {
   [key: string]: string | undefined;
 };
 
+export interface LLMTraceCustomization {
+  getTraceInput?: (
+    conversation: ModelConversationTypeMultiActions
+  ) => string | undefined;
+  getTraceOutput?: (
+    output: LLMTraceOutput
+  ) => LLMTraceOutput | string | undefined;
+}
+
 /**
  * Input parameters for an LLM call
  */

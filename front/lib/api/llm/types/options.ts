@@ -1,5 +1,8 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
+import type {
+  LLMTraceContext,
+  LLMTraceCustomization,
+} from "@app/lib/api/llm/traces/types";
 import type {
   ModelConversationTypeMultiActions,
   ModelIdType,
@@ -13,7 +16,7 @@ export type LLMParameters = {
   reasoningEffort?: ReasoningEffort | null;
   responseFormat?: string | null;
   temperature?: number | null;
-};
+} & LLMTraceCustomization;
 
 export type LLMClientMetadata = {
   clientId: string;

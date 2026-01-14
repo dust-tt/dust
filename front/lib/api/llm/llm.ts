@@ -1,13 +1,17 @@
 import { startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
 import pickBy from "lodash/pickBy";
+import startCase from "lodash/startCase";
 
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
   LLMTraceBuffer,
 } from "@app/lib/api/llm/traces/buffer";
-import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
+import type {
+  LLMTraceContext,
+  LLMTraceCustomization,
+} from "@app/lib/api/llm/traces/types";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type {
@@ -41,6 +45,8 @@ export abstract class LLM {
   protected readonly authenticator: Authenticator;
   protected readonly context?: LLMTraceContext;
   protected readonly traceId: LLMTraceId;
+  protected readonly getTraceInput?: LLMTraceCustomization["getTraceInput"];
+  protected readonly getTraceOutput?: LLMTraceCustomization["getTraceOutput"];
 
   protected constructor(
     auth: Authenticator,
@@ -48,6 +54,8 @@ export abstract class LLM {
       bypassFeatureFlag = false,
       context,
       clientId,
+      getTraceInput,
+      getTraceOutput,
       modelId,
       reasoningEffort = "none",
       responseFormat = null,
@@ -69,6 +77,8 @@ export abstract class LLM {
     this.authenticator = auth;
     this.context = context;
     this.traceId = createLLMTraceId(randomUUID());
+    this.getTraceInput = getTraceInput;
+    this.getTraceOutput = getTraceOutput;
   }
 
   private async *completeStream(
@@ -126,7 +136,15 @@ export abstract class LLM {
       { asType: "generation" }
     );
 
+    // Use custom trace input if provided, otherwise use the full conversation.
+    const traceInput = this.getTraceInput?.(conversation) ?? [
+      { role: "system", content: prompt },
+      ...conversation.messages,
+    ];
+
     generation.updateTrace({
+      name: startCase(this.context.operationType),
+      input: traceInput,
       metadata: {
         dustTraceId: this.traceId,
         // All contextual data as key-value pairs for better filtering in Langfuse UI.
@@ -168,7 +186,6 @@ export abstract class LLM {
     ];
     statsDClient.increment("llm_interaction.count", 1, metricTags);
 
-    // TODO(LLM-Router 13/11/2025): Temporary logs, TBRemoved
     let currentEvent: LLMEvent | null = null;
     let timeToFirstEventMs: number | undefined = undefined;
 
@@ -238,6 +255,16 @@ export abstract class LLM {
       generation.update({
         output: { ...rest },
       });
+
+      // Use custom trace output transformer if provided, otherwise use the full output.
+      if (this.getTraceOutput) {
+        const traceOutput = this.getTraceOutput(rest);
+        if (traceOutput) {
+          generation.updateTrace({ output: traceOutput });
+        }
+      } else {
+        generation.updateTrace({ output: { ...rest } });
+      }
 
       if (tokenUsage) {
         generation.update({
