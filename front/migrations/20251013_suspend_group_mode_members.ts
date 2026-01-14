@@ -6,6 +6,7 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { makeScript } from "@app/scripts/helpers";
+import { cons } from "fp-ts/lib/ReadonlyNonEmptyArray";
 
 async function suspendGroupModeMembers(
   logger: Logger,
@@ -43,13 +44,27 @@ async function suspendGroupModeMembers(
     // Get the group IDs from the junction table
     const groupIds = groupSpaceJunctions.map((gs) => gs.groupId);
 
-    // Find regular groups among those associated with the space
+    // Find groups of members among those associated with the space
     const spaceMemberGroups = await GroupModel.findAll({
       where: {
         id: {
           [Op.in]: groupIds,
         },
-        kind: "space_members",
+        kind: {
+          [Op.in]: ["space_members"],
+        },
+        workspaceId: space.workspaceId,
+      },
+    });
+
+    const spaceEditorGroups = await GroupModel.findAll({
+      where: {
+        id: {
+          [Op.in]: groupIds,
+        },
+        kind: {
+          [Op.in]: ["space_editors"],
+        },
         workspaceId: space.workspaceId,
       },
     });
@@ -66,7 +81,20 @@ async function suspendGroupModeMembers(
       continue;
     }
 
+    if (spaceEditorGroups.length > 1) {
+      logger.warn(
+        {
+          spaceId: space.id,
+          spaceName: space.name,
+          spaceEditorGroupsCount: spaceEditorGroups.length,
+        },
+        "Space has unexpected number of space_editors groups, expected at most 1. Skipping..."
+      );
+      continue;
+    }
+
     const defaultGroup = spaceMemberGroups[0];
+    const editorGroup = spaceEditorGroups[0];
 
     // Find all active memberships in this group
     const activeMemberships = await GroupMembershipModel.findAll({
@@ -88,6 +116,27 @@ async function suspendGroupModeMembers(
       continue;
     }
 
+    if (editorGroup) {
+      const activeEditorMemberships = await GroupMembershipModel.findAll({
+        where: {
+          groupId: editorGroup.id,
+          workspaceId: space.workspaceId,
+          status: "active",
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+      });
+
+      if (activeEditorMemberships.length === 0) {
+        logger.info(
+          { spaceId: space.id, spaceName: space.name },
+          "Space has no active editors to suspend"
+        );
+        processedSpaces++;
+        continue;
+      }
+    }
+
     logger.info(
       {
         spaceId: space.id,
@@ -101,7 +150,7 @@ async function suspendGroupModeMembers(
 
     if (execute) {
       // Update all active memberships to suspended
-      const [updatedCount] = await GroupMembershipModel.update(
+      let [updatedCount] = await GroupMembershipModel.update(
         { status: "suspended" },
         {
           where: {
@@ -113,6 +162,22 @@ async function suspendGroupModeMembers(
           },
         }
       );
+
+      if (editorGroup) {
+        const [updatedEditorCount] = await GroupMembershipModel.update(
+          { status: "suspended" },
+          {
+            where: {
+              groupId: editorGroup.id,
+              workspaceId: space.workspaceId,
+              status: "active",
+              startAt: { [Op.lte]: new Date() },
+              [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+            },
+          }
+        );
+        updatedCount += updatedEditorCount;
+      }
 
       totalUpdated += updatedCount;
       logger.info(

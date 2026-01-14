@@ -72,7 +72,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             groupId: group.id,
             vaultId: space.id,
             workspaceId: space.workspaceId,
-            kind: "member",
+            kind: "member", // Attached groups on space creation are member groups by default
           },
           { transaction: t }
         );
@@ -461,6 +461,18 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         `Group for ${this.isProject() ? "project" : "space"} ${newName}`
       );
     }
+    const spaceEditorGroups = this.groups.filter(
+      (g) => g.group_vaults?.kind === "editor"
+    );
+    if (
+      spaceEditorGroups.length === 1 &&
+      (this.isRegular() || this.isPublic())
+    ) {
+      await spaceEditorGroups[0].updateName(
+        auth,
+        `Editors for ${this.isProject() ? "project" : "space"} ${newName}`
+      );
+    }
 
     return new Ok(undefined);
   }
@@ -589,7 +601,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             // Create a new editor group
             editorGroup = await GroupResource.makeNew(
               {
-                name: `Editors for space ${this.name}`,
+                name: `Editors for ${this.kind === "project" ? "project" : "space"} ${this.name}`,
                 kind: "space_editors",
                 workspaceId: this.workspaceId,
               },

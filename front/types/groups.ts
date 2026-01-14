@@ -25,6 +25,7 @@ import { isRoleType } from "./user";
  *  provisioned group: Contains all users from a provisioned group.
  */
 export const GROUP_KINDS = [
+  // space_members and space_editors are only used to know if a member of a manual group can edit the group
   "space_members",
   "space_editors",
   "global",

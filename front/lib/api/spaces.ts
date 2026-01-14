@@ -395,7 +395,7 @@ export async function createSpaceAndGroup(
         // Create editor group
         editorGroup = await GroupResource.makeNew(
           {
-            name: `Editors for space ${name}`,
+            name: `Editors for ${spaceKind === "project" ? "project" : "space"} ${name}`,
             workspaceId: owner.id,
             kind: "space_editors",
           },
@@ -440,7 +440,7 @@ export async function createSpaceAndGroup(
                 groups: [
                   {
                     id: editorGroup.id,
-                    permissions: ["read", "write"],
+                    permissions: ["admin", "read", "write"],
                   },
                 ],
                 workspaceId: owner.id,

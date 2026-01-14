@@ -1484,7 +1484,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           groups: [
             {
               id: this.id,
-              permissions: ["read", "write"],
+              permissions: ["admin", "read", "write"],
             },
           ],
           roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],

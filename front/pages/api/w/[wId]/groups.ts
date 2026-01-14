@@ -52,27 +52,12 @@ async function handler(
         : ["global", "space_members", "space_editors"];
 
       let groups: GroupResource[];
-      let groupKindMap = new Map<number, string>();
 
       if (spaceId) {
         // Fetch groups associated with the specific space
         groups = await GroupResource.listForSpaceById(auth, spaceId, {
           groupKinds,
         });
-        const space = await SpaceResource.fetchById(auth, spaceId);
-        if (space) {
-          const groupSpaces = await GroupSpaceModel.findAll({
-            where: {
-              vaultId: space.id,
-              workspaceId: auth.getNonNullableWorkspace().id,
-              groupId: groups.map((g) => g.id),
-            },
-            attributes: ["kind", "groupId"],
-          });
-          groupKindMap = new Map(
-            groupSpaces.map((gs) => [gs.groupId, gs.kind])
-          );
-        }
       } else {
         // Fetch all workspace groups (existing behavior)
         groups = await GroupResource.listAllWorkspaceGroups(auth, {
@@ -81,13 +66,7 @@ async function handler(
       }
 
       const groupsWithMemberCount = await Promise.all(
-        groups.map(async (group) => {
-          const groupJSON = await group.toJSONWithMemberCount(auth);
-          return {
-            ...groupJSON,
-            isEditor: !!spaceId && groupKindMap.get(group.id) === "editors",
-          };
-        })
+        groups.map((group) => group.toJSONWithMemberCount(auth))
       );
 
       return res.status(200).json({

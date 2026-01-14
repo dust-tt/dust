@@ -114,12 +114,9 @@ async function handler(
       })[] = uniqBy(
         (
           await concurrentExecutor(
-            // Get members from the space_member group only.
+            // Get members and editors from manual groups only.
             space.groups.filter((g) => {
-              return (
-                g.group_vaults?.kind === "member" ||
-                g.group_vaults?.kind === "editor"
-              );
+              return g.kind === "space_members" || g.kind === "space_editors";
             }),
             async (group) => {
               const members = includeAllMembers
@@ -127,7 +124,7 @@ async function handler(
                 : await group.getActiveMembers(auth);
               return members.map((member) => ({
                 ...member.toJSON(),
-                isEditor: group.group_vaults?.kind === "editor",
+                isEditor: group.group_vaults?.kind === "editor", // we rely on the information stored in group_vaults to know if the group is an editor group
               }));
             },
             { concurrency: 10 }
