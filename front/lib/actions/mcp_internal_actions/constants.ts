@@ -3,7 +3,6 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
-  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import {
@@ -191,6 +190,7 @@ import {
   VANTA_TOOL_STAKES,
   VANTA_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/vanta/metadata";
+import { WEBTOOLS_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/webtools/metadata";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -388,15 +388,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: DEFAULT_WEBSEARCH_ACTION_NAME,
-      version: "1.0.0",
-      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-      icon: "ActionGlobeAltIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: WEBTOOLS_SERVER_INFO,
   },
   hubspot: {
     id: 7,
