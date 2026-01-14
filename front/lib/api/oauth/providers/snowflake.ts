@@ -81,6 +81,12 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       if (extraConfig.mcp_server_id) {
         return true;
       }
+      // Initial admin setup - requires full credentials
+      return !!(
+        extraConfig.client_id &&
+        extraConfig.client_secret &&
+        extraConfig.snowflake_account
+      );
     } else if (useCase === "platform_actions") {
       return !!(
         extraConfig.client_id &&
