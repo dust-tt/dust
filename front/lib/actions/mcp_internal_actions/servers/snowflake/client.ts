@@ -9,13 +9,13 @@ import snowflake from "snowflake-sdk";
 import type { Result } from "@app/types";
 import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
 
-export interface SnowflakeColumn {
+interface SnowflakeColumn {
   name: string;
   type: string;
   nullable: boolean;
 }
 
-export interface SnowflakeQueryResult {
+interface SnowflakeQueryResult {
   columns: SnowflakeColumn[];
   rows: Record<string, unknown>[];
   rowCount: number;
