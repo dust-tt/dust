@@ -73,6 +73,11 @@ import {
   GOOGLE_SHEETS_TOOL_STAKES,
   GOOGLE_SHEETS_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/google_sheets/metadata";
+import {
+  HTTP_CLIENT_SERVER_INFO,
+  HTTP_CLIENT_TOOL_STAKES,
+  HTTP_CLIENT_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/http_client/metadata";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
@@ -1122,27 +1127,12 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("http_client_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      send_request: "low",
-      websearch: "never_ask",
-      webbrowser: "never_ask",
-    },
+    tools_stakes: HTTP_CLIENT_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "http_client",
-      version: "1.0.0",
-      description:
-        "Make HTTP requests to external APIs with optional Bearer token authentication.",
-      authorization: null,
-      icon: "ActionGlobeAltIcon",
-      documentationUrl: null,
-      instructions: null,
-      developerSecretSelectionDescription:
-        "This is optional. If set, this secret will be used as a default Bearer token (Authorization header) for HTTP requests.",
-      developerSecretSelection: "optional",
-    },
+    tools: HTTP_CLIENT_TOOLS,
+    serverInfo: HTTP_CLIENT_SERVER_INFO,
   },
   ashby: {
     id: 40,

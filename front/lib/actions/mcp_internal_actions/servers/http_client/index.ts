@@ -1,7 +1,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  HTTP_CLIENT_TOOL_NAME,
+  sendRequestSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/http_client/metadata";
 import {
   registerWebBrowserTool,
   registerWebSearchTool,
@@ -107,43 +110,11 @@ function createServer(
   server.tool(
     "send_request",
     "Send an HTTP request to an external API. Returns the response status, headers, and body. If a secret is configured for this server, it will be automatically used as a Bearer token for authentication.",
-    {
-      url: z
-        .string()
-        .url()
-        .describe(
-          "The full URL to make the request to (must include protocol, e.g., https://api.example.com/endpoint)"
-        ),
-      method: z
-        .enum(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
-        .default("GET")
-        .describe("The HTTP method to use. Defaults to GET."),
-      headers: z
-        .record(z.string())
-        .optional()
-        .describe(
-          "Optional HTTP headers to include in the request as a key-value object (e.g., {'Authorization': 'Bearer token', 'Content-Type': 'application/json'})"
-        ),
-      body: z
-        .string()
-        .optional()
-        .describe(
-          "Optional request body as a string. For JSON APIs, stringify your JSON object. Not applicable for GET, HEAD, or OPTIONS requests."
-        ),
-      timeout_ms: z
-        .number()
-        .int()
-        .positive()
-        .max(60_000)
-        .optional()
-        .describe(
-          `Request timeout in milliseconds. Defaults to ${DEFAULT_TIMEOUT_MS}ms. Maximum is 60 seconds.`
-        ),
-    },
+    sendRequestSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "http_request",
+        toolNameForMonitoring: `${HTTP_CLIENT_TOOL_NAME}_send_request`,
         agentLoopContext,
         enableAlerting: true,
       },
