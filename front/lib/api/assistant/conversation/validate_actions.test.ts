@@ -44,6 +44,7 @@ import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content"
 import {
   AgentMessageModel,
   MentionModel,
+  MessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -1043,9 +1044,7 @@ describe("validateAction", () => {
         skipToolsValidation: false,
       });
 
-      const agentMessageMessage = await (
-        await import("@app/lib/models/agent/conversation")
-      ).MessageModel.create({
+      const agentMessageMessage = await MessageModel.create({
         workspaceId: workspace.id,
         sId: generateRandomModelSId(),
         conversationId: conversation.id,
@@ -1106,9 +1105,7 @@ describe("validateAction", () => {
         skipToolsValidation: false,
       });
 
-      const agentMessageMessage = await (
-        await import("@app/lib/models/agent/conversation")
-      ).MessageModel.create({
+      const agentMessageMessage = await MessageModel.create({
         workspaceId: workspace.id,
         sId: generateRandomModelSId(),
         conversationId: conversation.id,
@@ -1171,9 +1168,7 @@ describe("validateAction", () => {
         skipToolsValidation: false,
       });
 
-      const agentMessageMessage = await (
-        await import("@app/lib/models/agent/conversation")
-      ).MessageModel.create({
+      const agentMessageMessage = await MessageModel.create({
         workspaceId: workspace.id,
         sId: generateRandomModelSId(),
         conversationId: conversation.id,
@@ -1225,9 +1220,7 @@ describe("validateAction", () => {
         skipToolsValidation: false,
       });
 
-      const agentMessageMessage = await (
-        await import("@app/lib/models/agent/conversation")
-      ).MessageModel.create({
+      const agentMessageMessage = await MessageModel.create({
         workspaceId: workspace.id,
         sId: generateRandomModelSId(),
         conversationId: conversation.id,
@@ -1287,9 +1280,7 @@ describe("validateAction", () => {
         skipToolsValidation: false,
       });
 
-      const agentMessageMessage = await (
-        await import("@app/lib/models/agent/conversation")
-      ).MessageModel.create({
+      const agentMessageMessage = await MessageModel.create({
         workspaceId: workspace.id,
         sId: generateRandomModelSId(),
         conversationId: conversation.id,
@@ -1349,9 +1340,7 @@ describe("validateAction", () => {
         skipToolsValidation: false,
       });
 
-      const agentMessageMessage = await (
-        await import("@app/lib/models/agent/conversation")
-      ).MessageModel.create({
+      const agentMessageMessage = await MessageModel.create({
         workspaceId: workspace.id,
         sId: generateRandomModelSId(),
         conversationId: conversation.id,
