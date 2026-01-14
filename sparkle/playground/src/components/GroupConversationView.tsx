@@ -3,6 +3,7 @@ import {
   BookOpenIcon,
   ChatBubbleLeftRightIcon,
   ConversationListItem,
+  ContactsUserIcon,
   InformationCircleIcon,
   ListGroup,
   ListItemSection,
@@ -13,12 +14,14 @@ import {
   TabsList,
   TabsTrigger,
   ToolsIcon,
+  Cog6ToothIcon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 import { getAgentById } from "../data/agents";
 import type { Agent, Conversation, Space, User } from "../data/types";
 import { getUserById } from "../data/users";
+import { ConversationSuggestion } from "./ConversationSuggestion";
 import { InputBar } from "./InputBar";
 
 interface GroupConversationViewProps {
@@ -26,7 +29,9 @@ interface GroupConversationViewProps {
   conversations: Conversation[];
   users: User[];
   agents: Agent[];
+  spaceMemberIds?: string[];
   onConversationClick?: (conversation: Conversation) => void;
+  onInviteMembers?: () => void;
   showToolsAndAboutTabs?: boolean;
 }
 
@@ -168,12 +173,23 @@ function generateConversationsWithDates(
   return generated;
 }
 
+// Seeded random function for deterministic randomness
+function seededRandom(seed: string, index: number): number {
+  const hash = seed
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const x = Math.sin((hash + index) * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+}
+
 export function GroupConversationView({
   space,
   conversations,
   users,
   agents,
+  spaceMemberIds = [],
   onConversationClick,
+  onInviteMembers,
   showToolsAndAboutTabs = false,
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
@@ -238,19 +254,59 @@ export function GroupConversationView({
     return buckets;
   }, [filteredConversations]);
 
-  // Get random users for avatar stack (up to 16)
-  const randomUsers = useMemo(() => {
-    const shuffled = [...users].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, Math.min(16, users.length));
-  }, [users]);
+  // Determine if space is new (no conversations and no members)
+  const isNew = useMemo(() => {
+    return (
+      conversations.length === 0 &&
+      (!spaceMemberIds || spaceMemberIds.length === 0)
+    );
+  }, [conversations.length, spaceMemberIds]);
 
-  const randomUserAvatars = useMemo(() => {
-    return randomUsers.map((user) => ({
+  // Get avatar count (3-15) based on space ID for deterministic randomness
+  const avatarCount = useMemo(() => {
+    const hash = space.id
+      .split("")
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return 3 + (hash % 13); // 3 to 15
+  }, [space.id]);
+
+  // Get avatars for this space - deterministic per space, or from invited members
+  const spaceAvatars = useMemo(() => {
+    // New spaces show no avatars
+    if (isNew) return [];
+
+    // If space has invited members, use those
+    if (spaceMemberIds.length > 0) {
+      const memberAvatars: Array<{
+        name: string;
+        visual?: string;
+        isRounded: boolean;
+      }> = [];
+      spaceMemberIds.forEach((id) => {
+        const user = users.find((u) => u.id === id);
+        if (user) {
+          memberAvatars.push({
+            name: user.fullName,
+            visual: user.portrait,
+            isRounded: true,
+          });
+        }
+      });
+      return memberAvatars;
+    }
+
+    // Generate deterministic random avatars based on space.id
+    const shuffled = [...users].sort((a, b) => {
+      const aHash = space.id + a.id;
+      const bHash = space.id + b.id;
+      return seededRandom(aHash, 0) - seededRandom(bHash, 0);
+    });
+    return shuffled.slice(0, avatarCount).map((user) => ({
       name: user.fullName,
       visual: user.portrait,
       isRounded: true,
     }));
-  }, [randomUsers]);
+  }, [space.id, isNew, spaceMemberIds, users, avatarCount]);
 
   const hasHistory = expandedConversations.length > 0;
 
@@ -282,16 +338,23 @@ export function GroupConversationView({
               />
             </>
           )}
+          <TabsTrigger
+            value="settings"
+            icon={Cog6ToothIcon}
+            tooltip={"Room settings"}
+          />
           <div className="s-flex-1" />
-          <div className="s-flex s-h-8 s-items-center">
-            <Avatar.Stack
-              avatars={randomUserAvatars}
-              nbVisibleItems={16}
-              orientation="horizontal"
-              hasMagnifier={false}
-              size="xs"
-            />
-          </div>
+          {spaceAvatars.length > 0 && (
+            <div className="s-flex s-h-8 s-items-center">
+              <Avatar.Stack
+                avatars={spaceAvatars}
+                nbVisibleItems={spaceAvatars.length}
+                orientation="horizontal"
+                hasMagnifier={false}
+                size="xs"
+              />
+            </div>
+          )}
         </TabsList>
 
         {/* Conversations Tab */}
@@ -311,6 +374,30 @@ export function GroupConversationView({
                   placeholder={`Start a conversation in ${space.name}`}
                 />
               </div>
+
+              {/* Suggestions for empty rooms */}
+              {!hasHistory && (
+                <ConversationSuggestion
+                  suggestions={[
+                    {
+                      id: "add-knowledge",
+                      label: "Add knowledge",
+                      icon: BookOpenIcon,
+                      onClick: () => {
+                        console.log("Add knowledge clicked");
+                      },
+                    },
+                    {
+                      id: "invite-members",
+                      label: "Invite members",
+                      icon: ContactsUserIcon,
+                      onClick: () => {
+                        onInviteMembers?.();
+                      },
+                    },
+                  ]}
+                />
+              )}
 
               {/* Conversations list */}
               <div className="s-flex s-flex-col s-gap-3">

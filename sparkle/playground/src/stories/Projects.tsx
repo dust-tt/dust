@@ -52,12 +52,15 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ConversationView } from "../components/ConversationView";
+import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InputBar } from "../components/InputBar";
+import { InviteUsersScreen } from "../components/InviteUsersScreen";
 import {
   type Agent,
   type Conversation,
   createConversationsWithMessages,
+  createSpace,
   getAgentById,
   getConversationsBySpaceId,
   getRandomAgents,
@@ -126,6 +129,15 @@ function DustMain() {
   const [conversationsWithMessages, setConversationsWithMessages] = useState<
     Conversation[]
   >([]);
+  const [isCreateRoomDialogOpen, setIsCreateRoomDialogOpen] = useState(false);
+  const [isInviteUsersScreenOpen, setIsInviteUsersScreenOpen] = useState(false);
+  const [lastCreatedSpaceId, setLastCreatedSpaceId] = useState<string | null>(
+    null
+  );
+  const [inviteSpaceId, setInviteSpaceId] = useState<string | null>(null);
+  const [spaceMembers, setSpaceMembers] = useState<Map<string, string[]>>(
+    new Map()
+  );
 
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -165,6 +177,15 @@ function DustMain() {
     const convsWithMessages = createConversationsWithMessages(randomUser.id);
     setConversationsWithMessages(convsWithMessages);
   }, []);
+
+  // Auto-select newly created space when it's added to the spaces array
+  useEffect(() => {
+    if (lastCreatedSpaceId && spaces.find((s) => s.id === lastCreatedSpaceId)) {
+      setSelectedSpaceId(lastCreatedSpaceId);
+      setSelectedConversationId(null);
+      setLastCreatedSpaceId(null);
+    }
+  }, [spaces, lastCreatedSpaceId]);
 
   // Combine mock conversations with conversations that have messages
   const allConversations = useMemo(() => {
@@ -532,6 +553,7 @@ function DustMain() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          setIsCreateRoomDialogOpen(true);
                         }}
                       />
                       <DropdownMenu>
@@ -563,7 +585,7 @@ function DustMain() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Create Space");
+                              setIsCreateRoomDialogOpen(true);
                             }}
                           />
                         </DropdownMenuContent>
@@ -937,6 +959,44 @@ function DustMain() {
     }
   };
 
+  // Handle room creation flow
+  const handleRoomNameNext = (name: string, _isPublic: boolean) => {
+    // Create the new space directly
+    const newSpace = createSpace(name);
+
+    // Update spaces state
+    setSpaces((prev) => [...prev, newSpace]);
+
+    // Track the newly created space ID for auto-selection
+    setLastCreatedSpaceId(newSpace.id);
+
+    // Close dialog
+    setIsCreateRoomDialogOpen(false);
+
+    // Note: isPublic could be used later to set space visibility
+    // Note: Space selection is handled by useEffect that watches for lastCreatedSpaceId
+  };
+
+  // Handle invite members for a space
+  const handleInviteMembers = (spaceId: string) => {
+    setInviteSpaceId(spaceId);
+    setIsInviteUsersScreenOpen(true);
+  };
+
+  const handleInviteUsersComplete = (selectedUserIds: string[]) => {
+    // Store invited members for the space
+    if (inviteSpaceId) {
+      setSpaceMembers((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(inviteSpaceId, selectedUserIds);
+        return newMap;
+      });
+    }
+    // Close the invite dialog
+    setIsInviteUsersScreenOpen(false);
+    setInviteSpaceId(null);
+  };
+
   // Main content
   const mainContent =
     // Priority 1: Show conversation view if a conversation is selected (not "new-conversation")
@@ -960,12 +1020,14 @@ function DustMain() {
         conversations={spaceConversations}
         users={mockUsers}
         agents={mockAgents}
+        spaceMemberIds={spaceMembers.get(selectedSpaceId) || []}
         onConversationClick={(conversation) => {
           // Store the current space ID before navigating to conversation
           setPreviousSpaceId(selectedSpaceId);
           setSelectedConversationId(conversation.id);
           // Keep selectedSpaceId set so the space NavigationItem stays selected
         }}
+        onInviteMembers={() => handleInviteMembers(selectedSpaceId)}
       />
     ) : (
       // Priority 3: Show welcome/new conversation view
@@ -1003,6 +1065,22 @@ function DustMain() {
         maxSidebarWidth={400}
         collapsible={true}
         onSidebarToggle={setIsSidebarCollapsed}
+      />
+      <CreateRoomDialog
+        isOpen={isCreateRoomDialogOpen}
+        onClose={() => {
+          setIsCreateRoomDialogOpen(false);
+        }}
+        onNext={handleRoomNameNext}
+      />
+      <InviteUsersScreen
+        isOpen={isInviteUsersScreenOpen}
+        spaceId={inviteSpaceId}
+        onClose={() => {
+          setIsInviteUsersScreenOpen(false);
+          setInviteSpaceId(null);
+        }}
+        onInvite={handleInviteUsersComplete}
       />
     </div>
   );
