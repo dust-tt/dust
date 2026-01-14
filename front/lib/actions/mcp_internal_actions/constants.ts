@@ -156,7 +156,10 @@ import {
   OUTLOOK_TOOL_STAKES,
   OUTLOOK_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/outlook/metadata";
-import { PRIMITIVE_TYPES_DEBUGGER_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger/metadata";
+import {
+  PRIMITIVE_TYPES_DEBUGGER_SERVER_INFO,
+  PRIMITIVE_TYPES_DEBUGGER_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger/metadata";
 import {
   EXTRACT_DATA_SERVER_INFO,
   EXTRACT_DATA_TOOLS,
@@ -965,6 +968,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: PRIMITIVE_TYPES_DEBUGGER_TOOLS,
     serverInfo: PRIMITIVE_TYPES_DEBUGGER_SERVER_INFO,
   },
   [SEARCH_SERVER_NAME]: {
