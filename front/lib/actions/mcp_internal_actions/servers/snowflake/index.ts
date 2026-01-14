@@ -7,18 +7,26 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 const MAX_QUERY_ROWS = 1000;
+const CONNECTION_ERROR = new MCPError(
+  "Snowflake connection not configured. Please connect your Snowflake account."
+);
 
-function createSnowflakeClient(
-  account: string | undefined,
-  accessToken: string | undefined
-): SnowflakeClient | null {
-  if (!account || !accessToken) {
-    return null;
+function getClientFromAuthInfo(authInfo: {
+  extra?: Record<string, unknown>;
+  token?: string;
+} | null | undefined): Result<SnowflakeClient, MCPError> {
+  const account = authInfo?.extra?.snowflake_account;
+  const token = authInfo?.token;
+
+  if (typeof account !== "string" || !token) {
+    return new Err(CONNECTION_ERROR);
   }
-  return new SnowflakeClient(account, accessToken);
+
+  return new Ok(new SnowflakeClient(account, token));
 }
 
 function createServer(
@@ -35,20 +43,12 @@ function createServer(
       auth,
       { toolNameForMonitoring: "snowflake", agentLoopContext },
       async (_params, { authInfo }) => {
-        const client = createSnowflakeClient(
-          authInfo?.extra?.snowflake_account as string | undefined,
-          authInfo?.token
-        );
-
-        if (!client) {
-          return new Err(
-            new MCPError(
-              "Snowflake connection not configured. Please connect your Snowflake account."
-            )
-          );
+        const clientRes = getClientFromAuthInfo(authInfo);
+        if (clientRes.isErr()) {
+          return clientRes;
         }
 
-        const result = await client.listDatabases();
+        const result = await clientRes.value.listDatabases();
         if (result.isErr()) {
           return new Err(new MCPError(result.error.message));
         }
@@ -80,20 +80,12 @@ function createServer(
       auth,
       { toolNameForMonitoring: "snowflake", agentLoopContext },
       async ({ database }, { authInfo }) => {
-        const client = createSnowflakeClient(
-          authInfo?.extra?.snowflake_account as string | undefined,
-          authInfo?.token
-        );
-
-        if (!client) {
-          return new Err(
-            new MCPError(
-              "Snowflake connection not configured. Please connect your Snowflake account."
-            )
-          );
+        const clientRes = getClientFromAuthInfo(authInfo);
+        if (clientRes.isErr()) {
+          return clientRes;
         }
 
-        const result = await client.listSchemas(database);
+        const result = await clientRes.value.listSchemas(database);
         if (result.isErr()) {
           return new Err(new MCPError(result.error.message));
         }
@@ -126,20 +118,12 @@ function createServer(
       auth,
       { toolNameForMonitoring: "snowflake", agentLoopContext },
       async ({ database, schema }, { authInfo }) => {
-        const client = createSnowflakeClient(
-          authInfo?.extra?.snowflake_account as string | undefined,
-          authInfo?.token
-        );
-
-        if (!client) {
-          return new Err(
-            new MCPError(
-              "Snowflake connection not configured. Please connect your Snowflake account."
-            )
-          );
+        const clientRes = getClientFromAuthInfo(authInfo);
+        if (clientRes.isErr()) {
+          return clientRes;
         }
 
-        const result = await client.listTables(database, schema);
+        const result = await clientRes.value.listTables(database, schema);
         if (result.isErr()) {
           return new Err(new MCPError(result.error.message));
         }
@@ -171,20 +155,16 @@ function createServer(
       auth,
       { toolNameForMonitoring: "snowflake", agentLoopContext },
       async ({ database, schema, table }, { authInfo }) => {
-        const client = createSnowflakeClient(
-          authInfo?.extra?.snowflake_account as string | undefined,
-          authInfo?.token
-        );
-
-        if (!client) {
-          return new Err(
-            new MCPError(
-              "Snowflake connection not configured. Please connect your Snowflake account."
-            )
-          );
+        const clientRes = getClientFromAuthInfo(authInfo);
+        if (clientRes.isErr()) {
+          return clientRes;
         }
 
-        const result = await client.describeTable(database, schema, table);
+        const result = await clientRes.value.describeTable(
+          database,
+          schema,
+          table
+        );
         if (result.isErr()) {
           return new Err(new MCPError(result.error.message));
         }
@@ -247,20 +227,12 @@ function createServer(
       auth,
       { toolNameForMonitoring: "snowflake", agentLoopContext },
       async ({ sql, database, schema, warehouse, max_rows }, { authInfo }) => {
-        const client = createSnowflakeClient(
-          authInfo?.extra?.snowflake_account as string | undefined,
-          authInfo?.token
-        );
-
-        if (!client) {
-          return new Err(
-            new MCPError(
-              "Snowflake connection not configured. Please connect your Snowflake account."
-            )
-          );
+        const clientRes = getClientFromAuthInfo(authInfo);
+        if (clientRes.isErr()) {
+          return clientRes;
         }
 
-        const result = await client.query(
+        const result = await clientRes.value.query(
           sql,
           database,
           schema,

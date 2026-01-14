@@ -122,12 +122,6 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
         extraConfig.client_secret &&
         extraConfig.snowflake_account
       );
-    } else if (useCase === "platform_actions") {
-      return !!(
-        extraConfig.client_id &&
-        extraConfig.client_secret &&
-        extraConfig.snowflake_account
-      );
     }
     return Object.keys(extraConfig).length === 0;
   }
