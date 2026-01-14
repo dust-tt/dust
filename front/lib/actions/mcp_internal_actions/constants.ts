@@ -26,6 +26,11 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/metadata";
 import { COMMON_UTILITIES_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/common_utilities/metadata";
 import {
+  CONFLUENCE_SERVER_INFO,
+  CONFLUENCE_TOOL_STAKES,
+  CONFLUENCE_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/confluence/metadata";
+import {
   GOOGLE_CALENDAR_SERVER_INFO,
   GOOGLE_CALENDAR_TOOL_STAKES,
   GOOGLE_CALENDAR_TOOLS,
@@ -1080,32 +1085,12 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("confluence_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      // Read operations - never ask
-      get_current_user: "never_ask",
-      get_page: "never_ask",
-      get_pages: "never_ask",
-      get_spaces: "never_ask",
-
-      // Write operations - ask
-      create_page: "low",
-      update_page: "low",
-    },
+    tools_stakes: CONFLUENCE_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "confluence",
-      version: "1.0.0",
-      description: "Retrieve page information.",
-      authorization: {
-        provider: "confluence_tools" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "ConfluenceLogo",
-      documentationUrl: "https://docs.dust.tt/docs/confluence-tool",
-      instructions: null,
-    },
+    tools: CONFLUENCE_TOOLS,
+    serverInfo: CONFLUENCE_SERVER_INFO,
   },
   speech_generator: {
     id: 34,
