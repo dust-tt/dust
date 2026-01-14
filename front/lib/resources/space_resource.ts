@@ -449,7 +449,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await this.update({ name: newName });
     // For regular spaces that only have a single group, update
     // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
-    const spaceMemberGroups = this.groups.filter((g) => g.isSpaceMemberGroup());
+    const spaceMemberGroups = this.groups.filter(
+      (g) => g.group_vaults?.kind === "member"
+    );
     if (
       spaceMemberGroups.length === 1 &&
       (this.isRegular() || this.isPublic())
@@ -513,11 +515,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const { isRestricted } = params;
 
-    const spaceMembersGroups = this.groups.filter((group) =>
-      group.isSpaceMemberGroup()
+    const spaceMembersGroups = this.groups.filter(
+      (group) => group.group_vaults?.kind === "member"
     );
-    const spaceEditorsGroups = this.groups.filter((group) =>
-      group.isSpaceEditorGroup()
+    const spaceEditorsGroups = this.groups.filter(
+      (group) => group.group_vaults?.kind === "editor"
     );
 
     // Ensure exactly one space_members group is associated with the space.
@@ -636,24 +638,23 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           {
             users: users.map((u) => u.toJSON()),
             // Editors and admins can add members to the space
-            permissionsToWrite:
-              memberGroup.isSpaceMemberGroup() && editorGroup
-                ? {
-                    groups: [
-                      {
-                        id: editorGroup.id,
-                        permissions: ["admin", "write", "read"],
-                      },
-                    ],
-                    roles: [
-                      {
-                        role: "admin",
-                        permissions: ["read", "write", "admin"],
-                      },
-                    ],
-                    workspaceId: this.workspaceId,
-                  }
-                : undefined,
+            permissionsToWrite: editorGroup
+              ? {
+                  groups: [
+                    {
+                      id: editorGroup.id,
+                      permissions: ["admin", "write", "read"],
+                    },
+                  ],
+                  roles: [
+                    {
+                      role: "admin",
+                      permissions: ["read", "write", "admin"],
+                    },
+                  ],
+                  workspaceId: this.workspaceId,
+                }
+              : undefined,
           },
           { transaction: t }
         );
@@ -854,8 +855,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   private getDefaultSpaceGroup(): GroupResource {
-    const spaceMembersGroups = this.groups.filter((group) =>
-      group.isSpaceMemberGroup()
+    const spaceMembersGroups = this.groups.filter(
+      (group) => group.group_vaults?.kind === "member"
     );
     assert(
       spaceMembersGroups.length === 1,
@@ -865,8 +866,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   private getDefaultSpaceEditorGroup(): GroupResource {
-    const spaceEditorsGroups = this.groups.filter((group) =>
-      group.isSpaceEditorGroup()
+    const spaceEditorsGroups = this.groups.filter(
+      (group) => group.group_vaults?.kind === "editor"
     );
     assert(
       spaceEditorsGroups.length <= 1,

@@ -144,7 +144,13 @@ export function SpaceAboutTab({
       return false;
     }
     return true;
-  }, [hasChanges, managementType, selectedMembers, selectedGroups]);
+  }, [
+    hasChanges,
+    managementType,
+    selectedMembers,
+    selectedGroups,
+    isSpaceEditor,
+  ]);
 
   const onSave = useCallback(async () => {
     if (!canSave) {
@@ -154,7 +160,7 @@ export function SpaceAboutTab({
     setIsSaving(true);
 
     if (planAllowsSCIM && managementType === "group") {
-      const updatedtedSpace = await doUpdate(space, {
+      const updatedSpace = await doUpdate(space, {
         isRestricted,
         groupIds: selectedGroups
           .filter((group) => !group.isEditor)
@@ -165,13 +171,14 @@ export function SpaceAboutTab({
         managementMode: "group",
         name: space.name,
       });
-      if (updatedtedSpace) {
+      if (updatedSpace) {
+        // reset only if the update was successful
         setSavedGroups(selectedGroups);
         setSavedManagementType("group");
         setSavedIsRestricted(isRestricted);
       }
     } else {
-      const updatedtedSpace = await doUpdate(space, {
+      const updatedSpace = await doUpdate(space, {
         isRestricted,
         memberIds: selectedMembers
           .filter((m) => !m.isEditor)
@@ -180,7 +187,8 @@ export function SpaceAboutTab({
         managementMode: "manual",
         name: space.name,
       });
-      if (updatedtedSpace) {
+      if (updatedSpace) {
+        // reset only if the update was successful
         setSavedMembers(selectedMembers);
         setSavedManagementType("manual");
         setSavedIsRestricted(isRestricted);

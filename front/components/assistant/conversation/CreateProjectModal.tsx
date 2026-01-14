@@ -75,7 +75,7 @@ export function CreateProjectModal({
       isRestricted,
       managementMode: "manual",
       memberIds: [],
-      editorIds: user?.sId ? [user.sId] : [],
+      editorIds: user?.sId ? [user.sId] : [], // add the project creator as editor
       spaceKind: "project",
     });
 

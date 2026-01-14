@@ -316,7 +316,7 @@ export async function createSpaceAndGroup(
     spaceKind: "regular" | "project";
   } & (
     | { memberIds: string[]; editorIds?: string[]; managementMode: "manual" }
-    | { groupIds: string[]; managementMode: "group" }
+    | { groupIds: string[]; editorGroupIds?: string[]; managementMode: "group" }
   ),
   { ignoreWorkspaceLimit = false }: { ignoreWorkspaceLimit?: boolean } = {}
 ): Promise<
@@ -434,19 +434,18 @@ export async function createSpaceAndGroup(
         // Space creators can add members to the space
         {
           users,
-          permissionsToWrite:
-            memberGroup.isSpaceMemberGroup() && editorGroup
-              ? {
-                  roles: [],
-                  groups: [
-                    {
-                      id: editorGroup.id,
-                      permissions: ["read", "write"],
-                    },
-                  ],
-                  workspaceId: owner.id,
-                }
-              : undefined,
+          permissionsToWrite: editorGroup
+            ? {
+                roles: [],
+                groups: [
+                  {
+                    id: editorGroup.id,
+                    permissions: ["read", "write"],
+                  },
+                ],
+                workspaceId: owner.id,
+              }
+            : undefined,
         },
         {
           transaction: t,
@@ -469,25 +468,51 @@ export async function createSpaceAndGroup(
     // Handle group-based space creation
     if (params.managementMode === "group") {
       // For group-based spaces, we need to associate the selected groups with the space
-      const selectedGroupsResult = await GroupResource.fetchByIds(
-        auth,
-        params.groupIds
-      );
-      if (selectedGroupsResult.isErr()) {
-        logger.error(
-          {
-            error: selectedGroupsResult.error,
-          },
-          "The space cannot be created - failed to fetch groups"
+      if (params.groupIds.length > 0) {
+        const selectedGroupsResult = await GroupResource.fetchByIds(
+          auth,
+          params.groupIds
         );
-        return new Err(
-          new DustError("internal_error", "The space cannot be created.")
-        );
+        if (selectedGroupsResult.isErr()) {
+          logger.error(
+            {
+              error: selectedGroupsResult.error,
+            },
+            "The space cannot be created - failed to fetch groups"
+          );
+          return new Err(
+            new DustError("internal_error", "The space cannot be created.")
+          );
+        }
+
+        const selectedGroups = selectedGroupsResult.value;
+        for (const selectedGroup of selectedGroups) {
+          await space.linkGroup(selectedGroup, "member", t);
+        }
       }
 
-      const selectedGroups = selectedGroupsResult.value;
-      for (const selectedGroup of selectedGroups) {
-        await space.linkGroup(selectedGroup, "member", t);
+      if (params.editorGroupIds && params.editorGroupIds.length > 0) {
+        // This section is not used for the moment, since we can't add editor groups on creation yet from the front-end
+        const selectedEditorGroupsResult = await GroupResource.fetchByIds(
+          auth,
+          params.editorGroupIds
+        );
+        if (selectedEditorGroupsResult.isErr()) {
+          logger.error(
+            {
+              error: selectedEditorGroupsResult.error,
+            },
+            "The space cannot be created - failed to fetch groups"
+          );
+          return new Err(
+            new DustError("internal_error", "The space cannot be created.")
+          );
+        }
+
+        const selectedEditorGroups = selectedEditorGroupsResult.value;
+        for (const selectedGroup of selectedEditorGroups) {
+          await space.linkGroup(selectedGroup, "editor", t);
+        }
       }
     }
 

@@ -1478,7 +1478,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       ];
     }
 
-    if (this.isSpaceEditorGroup()) {
+    if (this.kind === "space_editors") {
       return [
         {
           groups: [
@@ -1526,14 +1526,6 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   isGlobal(): boolean {
     return this.kind === "global";
-  }
-
-  isSpaceMemberGroup(): boolean {
-    return this.kind === "space_members";
-  }
-
-  isSpaceEditorGroup(): boolean {
-    return this.kind === "space_editors";
   }
 
   isProvisioned(): boolean {
