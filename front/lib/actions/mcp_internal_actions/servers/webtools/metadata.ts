@@ -1,3 +1,41 @@
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { zodToJsonSchema } from "zod-to-json-schema";
+
+import {
+  WebbrowseInputSchema,
+  WebsearchInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
+import type { MCPToolType } from "@app/lib/api/mcp";
+
+// Tool names.
+export const WEBSEARCH_TOOL_NAME = "websearch";
+export const WEBBROWSER_TOOL_NAME = "webbrowser";
+
+// =============================================================================
+// Zod Schemas - Re-exported from types.ts for convenience
+// =============================================================================
+
+export { WebbrowseInputSchema, WebsearchInputSchema };
+
+// =============================================================================
+// Tool Definitions - Used by constants.ts for static metadata
+// =============================================================================
+
+export const WEBTOOLS_TOOLS: MCPToolType[] = [
+  {
+    name: WEBSEARCH_TOOL_NAME,
+    description:
+      "A tool that performs a Google web search based on a string query.",
+    inputSchema: zodToJsonSchema(WebsearchInputSchema) as JSONSchema,
+  },
+  {
+    name: WEBBROWSER_TOOL_NAME,
+    description:
+      "A tool to browse websites, you can provide a list of urls to browse all at once.",
+    inputSchema: zodToJsonSchema(WebbrowseInputSchema) as JSONSchema,
+  },
+];
+
 // =============================================================================
 // Server Info - Server metadata for the constants registry
 // =============================================================================

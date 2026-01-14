@@ -1,10 +1,16 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  AGENT_MEMORY_TOOL_NAME,
+  compactMemorySchema,
+  editEntriesSchema,
+  eraseEntriesSchema,
+  recordEntriesSchema,
+  retrieveSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/agent_memory/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -17,7 +23,7 @@ function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer(AGENT_MEMORY_SERVER_NAME);
+  const server = makeInternalMCPServer(AGENT_MEMORY_TOOL_NAME);
 
   const isUserScopedMemory = true;
 
@@ -104,13 +110,10 @@ function createServer(
   server.tool(
     "retrieve",
     `Retrieve all agent memories${isUserScopedMemory ? " for the current user" : ""}`,
-    {
-      // shared_across_users:
-      //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
-    },
+    retrieveSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "agent_memory", agentLoopContext },
+      { toolNameForMonitoring: AGENT_MEMORY_TOOL_NAME, agentLoopContext },
       async () => {
         assert(
           agentLoopContext?.runContext,
@@ -130,16 +133,10 @@ function createServer(
   server.tool(
     "record_entries",
     `Record new memory entries${isUserScopedMemory ? " for the current user" : ""}`,
-    {
-      // shared_across_users:
-      //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
-      entries: z
-        .array(z.string())
-        .describe("The array of new memory entries to record."),
-    },
+    recordEntriesSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "agent_memory", agentLoopContext },
+      { toolNameForMonitoring: AGENT_MEMORY_TOOL_NAME, agentLoopContext },
       async ({ entries }) => {
         assert(
           agentLoopContext?.runContext,
@@ -165,16 +162,10 @@ function createServer(
   server.tool(
     "erase_entries",
     `Erase memory entries by indexes${isUserScopedMemory ? " for the current user" : ""}`,
-    {
-      // shared_across_users:
-      //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
-      indexes: z
-        .array(z.number())
-        .describe("The indexes of the memory entries to erase."),
-    },
+    eraseEntriesSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "agent_memory", agentLoopContext },
+      { toolNameForMonitoring: AGENT_MEMORY_TOOL_NAME, agentLoopContext },
       async ({ indexes }) => {
         assert(
           agentLoopContext?.runContext,
@@ -195,25 +186,10 @@ function createServer(
   server.tool(
     "edit_entries",
     `Edit (overwrite) memory entries by indexes${isUserScopedMemory ? " for the current user" : ""}`,
-    {
-      // shared_across_users:
-      //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
-      edits: z
-        .array(
-          z.object({
-            index: z
-              .number()
-              .describe("The index of the memory entry to overwrite."),
-            content: z
-              .string()
-              .describe("The new content for the memory entry."),
-          })
-        )
-        .describe("The array of memory entries to edit."),
-    },
+    editEntriesSchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "agent_memory", agentLoopContext },
+      { toolNameForMonitoring: AGENT_MEMORY_TOOL_NAME, agentLoopContext },
       async ({ edits }) => {
         assert(
           agentLoopContext?.runContext,
@@ -239,23 +215,10 @@ function createServer(
   server.tool(
     "compact_memory",
     `Compact the memory by removing duplicate entries and summarizing long entries${isUserScopedMemory ? " for the current user" : ""}`,
-    {
-      edits: z
-        .array(
-          z.object({
-            index: z
-              .number()
-              .describe("The index of the memory entry to overwrite."),
-            content: z
-              .string()
-              .describe("The new compacted content for the memory entry."),
-          })
-        )
-        .describe("The array of memory entries to compact/edit."),
-    },
+    compactMemorySchema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "agent_memory", agentLoopContext },
+      { toolNameForMonitoring: AGENT_MEMORY_TOOL_NAME, agentLoopContext },
       async ({ edits }) => {
         assert(
           agentLoopContext?.runContext,

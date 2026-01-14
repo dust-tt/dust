@@ -8,19 +8,17 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { MAXED_OUTPUT_FILE_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  USE_SUMMARY_SWITCH,
-  WEBBROWSER_TOOL_NAME,
-  WEBSEARCH_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import { USE_SUMMARY_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   WebbrowseInputSchema,
+  WEBBROWSER_TOOL_NAME,
+  WEBSEARCH_TOOL_NAME,
   WebsearchInputSchema,
-} from "@app/lib/actions/mcp_internal_actions/types";
+} from "@app/lib/actions/mcp_internal_actions/servers/webtools/metadata";
 import { summarizeWithAgent } from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";

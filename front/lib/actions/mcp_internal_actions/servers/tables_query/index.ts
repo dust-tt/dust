@@ -1,6 +1,5 @@
 import { assertNever, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import {
   generateCSVFileAndSnippet,
@@ -8,11 +7,6 @@ import {
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  EXECUTE_DATABASE_QUERY_TOOL_NAME,
-  GET_DATABASE_SCHEMA_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   SqlQueryOutputType,
   ThinkingOutputType,
@@ -23,6 +17,12 @@ import {
   EXECUTE_TABLES_QUERY_MARKER,
   GET_DATABASE_SCHEMA_MARKER,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  EXECUTE_DATABASE_QUERY_TOOL_NAME,
+  executeDatabaseQuerySchema,
+  GET_DATABASE_SCHEMA_TOOL_NAME,
+  getDatabaseSchemaSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/tables_query/metadata";
 import {
   getDatabaseExampleRowsContent,
   getQueryWritingInstructionsContent,
@@ -110,10 +110,7 @@ function createServer(
   server.tool(
     GET_DATABASE_SCHEMA_TOOL_NAME,
     "Retrieves the database schema. You MUST call this tool at least once before attempting to query tables to understand their structure. This tool provides essential information about table columns, types, and relationships needed to write accurate SQL queries.",
-    {
-      tables:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
-    },
+    getDatabaseSchemaSchema,
     withToolLogging(
       auth,
       {
@@ -235,18 +232,7 @@ function createServer(
   server.tool(
     EXECUTE_DATABASE_QUERY_TOOL_NAME,
     "Executes a query on the database. You MUST call the get_database_schema tool for that database at least once before attempting to execute a query. The query must respect the guidelines and schema provided by the get_database_schema tool.",
-    {
-      tables:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
-      query: z
-        .string()
-        .describe(
-          "The query to execute. Must respect the guidelines provided by the `get_database_schema` tool."
-        ),
-      fileName: z
-        .string()
-        .describe("The name of the file to save the results to."),
-    },
+    executeDatabaseQuerySchema,
     withToolLogging(
       auth,
       {

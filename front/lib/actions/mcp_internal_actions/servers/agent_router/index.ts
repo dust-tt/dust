@@ -1,9 +1,14 @@
 import { DustAPI } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
-import { DEFAULT_AGENT_ROUTER_ACTION_NAME } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  AGENT_ROUTER_TOOL_NAME,
+  LIST_ALL_AGENTS_TOOL_NAME,
+  listAllAgentsSchema,
+  SUGGEST_AGENTS_TOOL_NAME,
+  suggestAgentsSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/agent_router/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -18,25 +23,23 @@ import { Err, Ok } from "@app/types";
 import { getHeaderFromGroupIds } from "@app/types/groups";
 
 const MAX_INSTRUCTIONS_LENGTH = 1000;
-const LIST_ALL_AGENTS_TOOL_NAME = "list_all_published_agents";
-export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content";
 
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer(DEFAULT_AGENT_ROUTER_ACTION_NAME);
+  const server = makeInternalMCPServer("agent_router");
 
   server.tool(
     LIST_ALL_AGENTS_TOOL_NAME,
     "Returns a complete list of all published agents in the workspace. " +
       "Each agent includes its name, description, and mention directive " +
       "(e.g., `:mention[agent-name]{sId=xyz}`) to display a clickable link to the agent.",
-    {},
+    listAllAgentsSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "agent_router",
+        toolNameForMonitoring: AGENT_ROUTER_TOOL_NAME,
         agentLoopContext,
         enableAlerting: true,
       },
@@ -94,14 +97,11 @@ function createServer(
       "whose capabilities align with the query content. Each suggested agent includes its " +
       "mention directive (e.g., `:mention[agent-name]{sId=xyz}`) to display a clickable link, " +
       "along with its description and instructions.",
-    {
-      userMessage: z.string().describe("The user's message."),
-      conversationId: z.string().describe("The conversation id."),
-    },
+    suggestAgentsSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "agent_router",
+        toolNameForMonitoring: AGENT_ROUTER_TOOL_NAME,
         agentLoopContext,
         enableAlerting: true,
       },
@@ -175,5 +175,7 @@ function createServer(
 
   return server;
 }
+
+export { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/agent_router/metadata";
 
 export default createServer;

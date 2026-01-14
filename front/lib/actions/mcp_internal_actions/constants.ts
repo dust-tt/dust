@@ -10,8 +10,14 @@ import {
   AGENT_MANAGEMENT_TOOL_STAKES,
   AGENT_MANAGEMENT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/agent_management/metadata";
-import { AGENT_MEMORY_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory/metadata";
-import { AGENT_ROUTER_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/agent_router/metadata";
+import {
+  AGENT_MEMORY_SERVER_INFO,
+  AGENT_MEMORY_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/agent_memory/metadata";
+import {
+  AGENT_ROUTER_SERVER_INFO,
+  AGENT_ROUTER_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/agent_router/metadata";
 import {
   ASHBY_SERVER_INFO,
   ASHBY_TOOL_STAKES,
@@ -25,7 +31,16 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/metadata";
-import { DATA_WAREHOUSES_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/metadata";
+import {
+  DATA_WAREHOUSES_SERVER_INFO,
+  DATA_WAREHOUSES_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/metadata";
+export {
+  DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
+  DATA_WAREHOUSES_FIND_TOOL_NAME,
+  DATA_WAREHOUSES_LIST_TOOL_NAME,
+  DATA_WAREHOUSES_QUERY_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/metadata";
 import {
   DATABRICKS_SERVER_INFO,
   DATABRICKS_TOOL_STAKES,
@@ -150,7 +165,11 @@ import {
   SCHEDULES_MANAGEMENT_TOOL_STAKES,
   SCHEDULES_MANAGEMENT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/schedules_management/metadata";
-import { SEARCH_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/search/metadata";
+import {
+  SEARCH_SERVER_INFO,
+  SEARCH_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/search/metadata";
+export { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/search/metadata";
 import { SKILL_MANAGEMENT_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/skill_management/metadata";
 import {
   SLAB_SERVER_INFO,
@@ -178,7 +197,14 @@ import {
   SPEECH_GENERATOR_TOOL_STAKES,
   SPEECH_GENERATOR_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator/metadata";
-import { TABLES_QUERY_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/metadata";
+import {
+  TABLES_QUERY_SERVER_INFO,
+  TABLES_QUERY_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/tables_query/metadata";
+export {
+  EXECUTE_DATABASE_QUERY_TOOL_NAME,
+  GET_DATABASE_SCHEMA_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/tables_query/metadata";
 import { TOOLSETS_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/toolsets/metadata";
 import {
   VALTOWN_SERVER_INFO,
@@ -190,7 +216,14 @@ import {
   VANTA_TOOL_STAKES,
   VANTA_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/vanta/metadata";
-import { WEBTOOLS_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/webtools/metadata";
+import {
+  WEBTOOLS_SERVER_INFO,
+  WEBTOOLS_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/webtools/metadata";
+export {
+  WEBBROWSER_TOOL_NAME,
+  WEBSEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/webtools/metadata";
 import {
   ZENDESK_SERVER_INFO,
   ZENDESK_TOOL_STAKES,
@@ -213,17 +246,10 @@ import { Err, Ok } from "@app/types";
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 export const USE_SUMMARY_SWITCH = "useSummary";
 
-export const SEARCH_TOOL_NAME = "semantic_search";
 export const INCLUDE_TOOL_NAME = "retrieve_recent_documents";
 export const PROCESS_TOOL_NAME = "extract_information_from_documents";
 
-export const WEBSEARCH_TOOL_NAME = "websearch";
-export const WEBBROWSER_TOOL_NAME = "webbrowser";
-
 export const QUERY_TABLES_TOOL_NAME = "query_tables";
-
-export const GET_DATABASE_SCHEMA_TOOL_NAME = "get_database_schema";
-export const EXECUTE_DATABASE_QUERY_TOOL_NAME = "execute_database_query";
 
 export const CREATE_AGENT_TOOL_NAME = "create_agent";
 
@@ -232,11 +258,6 @@ export const FILESYSTEM_CAT_TOOL_NAME = "cat";
 export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
-
-export const DATA_WAREHOUSES_LIST_TOOL_NAME = "list";
-export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
-export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
-export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
 
 export const AGENT_MEMORY_RETRIEVE_TOOL_NAME = "retrieve";
 export const AGENT_MEMORY_RECORD_TOOL_NAME = "record_entries";
@@ -393,6 +414,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
+    tools: WEBTOOLS_TOOLS,
     serverInfo: WEBTOOLS_SERVER_INFO,
   },
   hubspot: {
@@ -418,6 +440,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: AGENT_ROUTER_TOOLS,
     serverInfo: AGENT_ROUTER_SERVER_INFO,
   },
   include_data: {
@@ -592,6 +615,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: AGENT_MEMORY_TOOLS,
     serverInfo: AGENT_MEMORY_SERVER_INFO,
   },
   jira: {
@@ -918,6 +942,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
+    tools: SEARCH_TOOLS,
     serverInfo: SEARCH_SERVER_INFO,
   },
   run_agent: {
@@ -942,6 +967,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: TABLES_QUERY_TOOLS,
     serverInfo: TABLES_QUERY_SERVER_INFO,
   },
   data_sources_file_system: {
@@ -983,6 +1009,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: DATA_WAREHOUSES_TOOLS,
     serverInfo: DATA_WAREHOUSES_SERVER_INFO,
   },
   toolsets: {

@@ -1,21 +1,24 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
-  DATA_WAREHOUSES_FIND_TOOL_NAME,
-  DATA_WAREHOUSES_LIST_TOOL_NAME,
-  DATA_WAREHOUSES_QUERY_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   getAvailableWarehouses,
   getWarehouseNodes,
   makeBrowseResource,
   validateTables,
 } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/helpers";
+import {
+  DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
+  DATA_WAREHOUSES_FIND_TOOL_NAME,
+  DATA_WAREHOUSES_LIST_TOOL_NAME,
+  DATA_WAREHOUSES_QUERY_TOOL_NAME,
+  DATA_WAREHOUSES_TOOL_NAME,
+  describeTablesSchema,
+  findSchema,
+  listSchema,
+  querySchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/metadata";
 import { executeQuery } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import {
   getDatabaseExampleRowsContent,
@@ -33,8 +36,6 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI, Err, Ok } from "@app/types";
 
-const TABLES_FILESYSTEM_TOOL_NAME = "tables_filesystem_navigation";
-
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
@@ -51,36 +52,11 @@ function createServer(
       "all available data warehouses at the root level. Hierarchy supports: warehouse → database → schema → " +
       "nested schemas → tables. Schemas can be arbitrarily nested within other schemas. Results are paginated " +
       "with a default limit and you can fetch additional pages using the nextPageCursor.",
-    {
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE
-        ],
-      nodeId: z
-        .string()
-        .nullable()
-        .describe(
-          "The ID of the warehouse, database, or schema to list contents of. " +
-            "If not provided, lists all available data warehouses at the root."
-        ),
-      limit: z
-        .number()
-        .optional()
-        .describe(
-          `Maximum number of results to return. Default is ${DEFAULT_LIMIT}, max is ${MAX_LIMIT}.`
-        ),
-      nextPageCursor: z
-        .string()
-        .optional()
-        .describe(
-          "Cursor for fetching the next page of results. Use the 'nextPageCursor' from " +
-            "the previous list result to fetch additional items."
-        ),
-    },
+    listSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: TABLES_FILESYSTEM_TOOL_NAME,
+        toolNameForMonitoring: DATA_WAREHOUSES_TOOL_NAME,
         agentLoopContext,
         enableAlerting: true,
       },
@@ -157,45 +133,11 @@ function createServer(
       "Can be used to search for tables by name across warehouses, databases, and schemas. " +
       "The query supports partial matching - for example, searching for 'sales' will find " +
       "'sales_2024', 'monthly_sales_report', etc. This is like using 'find' in Unix for tables.",
-    {
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE
-        ],
-      query: z
-        .string()
-        .optional()
-        .describe(
-          "The table name to search for. This supports partial matching and does not require the " +
-            "exact name. For example, searching for 'revenue' will find 'revenue_2024', " +
-            "'monthly_revenue', 'revenue_by_region', etc. If omitted, lists all tables."
-        ),
-      rootNodeId: z
-        .string()
-        .optional()
-        .describe(
-          "The node ID to start the search from (warehouse, database, or schema ID). " +
-            "If not provided, searches across all available warehouses. This restricts the " +
-            "search to the specified node and all its descendants."
-        ),
-      limit: z
-        .number()
-        .optional()
-        .describe(
-          `Maximum number of results to return. Default is ${DEFAULT_LIMIT}, max is ${MAX_LIMIT}.`
-        ),
-      nextPageCursor: z
-        .string()
-        .optional()
-        .describe(
-          "Cursor for fetching the next page of results. Use the 'nextPageCursor' from " +
-            "the previous find result to fetch additional items."
-        ),
-    },
+    findSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: TABLES_FILESYSTEM_TOOL_NAME,
+        toolNameForMonitoring: DATA_WAREHOUSES_TOOL_NAME,
         agentLoopContext,
         enableAlerting: true,
       },
@@ -267,23 +209,11 @@ function createServer(
       "SQL dialect-specific query guidelines, and example rows. All tables must be from the same " +
       "warehouse - cross-warehouse schema requests are not supported. Use this to understand table " +
       "structure before writing queries.",
-    {
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE
-        ],
-      tableIds: z
-        .array(z.string())
-        .min(1)
-        .describe(
-          "Array of table identifiers in the format 'table-<dataSourceId>-<nodeId>'. " +
-            "All tables must be from the same warehouse (same dataSourceId)."
-        ),
-    },
+    describeTablesSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: TABLES_FILESYSTEM_TOOL_NAME,
+        toolNameForMonitoring: DATA_WAREHOUSES_TOOL_NAME,
         agentLoopContext,
         enableAlerting: true,
       },
@@ -370,31 +300,11 @@ function createServer(
     "Execute SQL queries on tables from the same warehouse. You MUST call describe_tables at least once " +
       "before attempting to query tables to understand their structure. The query must respect the SQL dialect " +
       `and guidelines provided by ${DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME}. All tables in a single query must be from the same warehouse.`,
-    {
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE
-        ],
-      tableIds: z
-        .array(z.string())
-        .min(1)
-        .describe(
-          "Array of table identifiers in the format 'table-<dataSourceId>-<nodeId>'. " +
-            "All tables must be from the same warehouse (same dataSourceId)."
-        ),
-      query: z
-        .string()
-        .describe(
-          "The SQL query to execute. Must respect the SQL dialect and guidelines provided by describe_tables."
-        ),
-      fileName: z
-        .string()
-        .describe("The name of the file to save the results to."),
-    },
+    querySchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: TABLES_FILESYSTEM_TOOL_NAME,
+        toolNameForMonitoring: DATA_WAREHOUSES_TOOL_NAME,
         agentLoopContext,
         enableAlerting: true,
       },
