@@ -3,10 +3,6 @@ import { useEffect, useRef } from "react";
 
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 
-// Default.com configuration
-const DEFAULT_FORM_ID = 503792;
-const DEFAULT_TEAM_ID = 579;
-
 interface ContactFormThankYouProps {
   firstName: string;
   isQualified: boolean;
@@ -21,11 +17,10 @@ export function ContactFormThankYou({
   lastName,
 }: ContactFormThankYouProps) {
   const hasTrackedRef = useRef(false);
-  const defaultInitializedRef = useRef(false);
+  const defaultTriggeredRef = useRef(false);
 
+  // Fire qualified lead tracking event
   useEffect(() => {
-    // Fire qualified lead event only once, after a short delay
-    // This delay allows the thank you page to render before the conversion fires
     if (isQualified && !hasTrackedRef.current) {
       hasTrackedRef.current = true;
 
@@ -39,87 +34,56 @@ export function ContactFormThankYou({
         });
 
         // Push qualified lead event to GTM
-        // This is the conversion event that should be used for paid campaign tracking
         if (typeof window !== "undefined") {
           window.dataLayer = window.dataLayer ?? [];
           window.dataLayer.push({
             event: "contact_form_qualified_lead",
           });
         }
-      }, 1500); // 1.5 second delay
+      }, 1500);
 
       return () => clearTimeout(timeoutId);
     }
   }, [isQualified]);
 
-  // Load Default.com SDK for qualified leads (webform integration)
+  // Trigger Default.com scheduler for qualified leads
+  // The Default.com script is already loaded in ContactForm
   useEffect(() => {
-    console.log("[Default.com] useEffect triggered", {
-      isQualified,
-      defaultInitialized: defaultInitializedRef.current,
-    });
-
-    if (!isQualified || defaultInitializedRef.current) {
-      console.log("[Default.com] Skipping - not qualified or already initialized");
+    if (!isQualified || defaultTriggeredRef.current) {
       return;
     }
-    defaultInitializedRef.current = true;
+    defaultTriggeredRef.current = true;
 
-    // Initialize Default.com SDK configuration
-    window.__default__ = window.__default__ ?? {};
-    window.__default__.form_id = DEFAULT_FORM_ID;
-    window.__default__.team_id = DEFAULT_TEAM_ID;
+    console.log("[Default.com] Thank you page - checking for Default.com SDK");
+    console.log("[Default.com] window.__default__:", window.__default__);
+    console.log("[Default.com] window.Default:", window.Default);
 
-    console.log("[Default.com] Initialized __default__", window.__default__);
+    // Default.com should have been loaded by ContactForm
+    // Try to trigger the scheduler by simulating a form submission
+    // Default.com listens for form submissions and will show the scheduler
 
-    // Load the Default.com script
-    const script = document.createElement("script");
-    script.async = true;
-    script.src = "https://import-cdn.default.com/v2/index.js";
-
-    script.onload = () => {
-      console.log("[Default.com] Script loaded");
-      console.log("[Default.com] window.Default:", window.Default);
+    // Wait a bit for Default.com to fully initialize
+    const timeoutId = setTimeout(() => {
+      console.log("[Default.com] Attempting to trigger scheduler");
       console.log(
-        "[Default.com] Available methods:",
+        "[Default.com] Available methods on Default:",
         window.Default ? Object.keys(window.Default) : "Default not found"
       );
 
-      // After SDK loads, identify the lead and trigger scheduler
-      // Default.com webform integration expects form submission data
-      if (window.Default?.identify) {
-        console.log("[Default.com] Calling identify with:", {
-          email,
-          first_name: firstName,
-          last_name: lastName,
-        });
-        window.Default.identify({
-          email,
-          first_name: firstName,
-          last_name: lastName,
-        });
-      } else {
-        console.log("[Default.com] identify method not found");
+      // Try various methods that Default.com might expose
+      if (window.Default) {
+        // Log all available methods for debugging
+        for (const key of Object.keys(window.Default)) {
+          console.log(`[Default.com] Method: ${key}`, typeof (window.Default as Record<string, unknown>)[key]);
+        }
       }
 
-      if (window.Default?.book) {
-        console.log("[Default.com] Calling book()");
-        window.Default.book();
-      } else {
-        console.log("[Default.com] book method not found");
-      }
-    };
+      // Default.com typically auto-shows after detecting a form submission
+      // Since we submitted via API, we need to check if there's a way to trigger it
+      // The scheduler should appear automatically if Default.com detected our form
+    }, 500);
 
-    script.onerror = (error) => {
-      console.error("[Default.com] Script failed to load:", error);
-    };
-
-    document.head.appendChild(script);
-    console.log("[Default.com] Script appended to head");
-
-    return () => {
-      script.remove();
-    };
+    return () => clearTimeout(timeoutId);
   }, [isQualified, email, firstName, lastName]);
 
   return (
@@ -139,9 +103,9 @@ export function ContactFormThankYou({
           : "We've received your request. Our team will be in touch soon."}
       </p>
 
-      {/* Default.com SDK will render the scheduler here */}
+      {/* Default.com scheduler will appear as a popup/modal after form submission */}
       {isQualified && (
-        <div id="default-scheduler-container" className="w-full" />
+        <div id="default-scheduler-container" className="w-full min-h-[400px]" />
       )}
     </div>
   );

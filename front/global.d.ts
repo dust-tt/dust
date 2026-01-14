@@ -28,6 +28,7 @@ interface Signals {
 interface DefaultConfig {
   form_id?: number;
   team_id?: number;
+  listenToIds?: string[];
   email?: string;
   first_name?: string;
   last_name?: string;

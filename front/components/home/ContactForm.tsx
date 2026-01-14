@@ -11,8 +11,13 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+
+// Default.com configuration
+const DEFAULT_FORM_ID = 503792;
+const DEFAULT_TEAM_ID = 579;
+const HUBSPOT_FORM_ID = "95a83867-b22c-440a-8ba0-2733d35e4a7b";
 
 import type {
   ContactFormData,
@@ -46,6 +51,35 @@ export function ContactForm({
   const [submitResult, setSubmitResult] =
     useState<ContactSubmitResponse | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const defaultScriptLoadedRef = useRef(false);
+
+  // Load Default.com script on mount
+  useEffect(() => {
+    if (defaultScriptLoadedRef.current) {
+      return;
+    }
+    defaultScriptLoadedRef.current = true;
+
+    // Initialize Default.com configuration
+    window.__default__ = window.__default__ ?? {};
+    window.__default__.form_id = DEFAULT_FORM_ID;
+    window.__default__.team_id = DEFAULT_TEAM_ID;
+    window.__default__.listenToIds = [HUBSPOT_FORM_ID];
+
+    console.log("[Default.com] Initializing with config:", window.__default__);
+
+    // Load the Default.com script
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://import-cdn.default.com";
+    script.onload = () => {
+      console.log("[Default.com] Script loaded successfully");
+    };
+    script.onerror = () => {
+      console.error("[Default.com] Script failed to load");
+    };
+    document.head.appendChild(script);
+  }, []);
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(ContactFormSchema),
@@ -137,6 +171,26 @@ export function ContactForm({
         action: "submit_success",
       });
 
+      // Notify Default.com about the successful form submission
+      // Default.com expects to intercept form submissions, but since we use API,
+      // we need to manually trigger it
+      console.log("[Default.com] Form submitted successfully, notifying Default.com");
+      console.log("[Default.com] window.Default:", window.Default);
+
+      // Try to dispatch a custom event that Default.com might listen to
+      const formElement = document.querySelector(
+        `form[data-default-form-id="${DEFAULT_FORM_ID}"]`
+      );
+      if (formElement) {
+        // Dispatch a submit event that Default.com can intercept
+        const submitEvent = new Event("submit", {
+          bubbles: true,
+          cancelable: true,
+        });
+        console.log("[Default.com] Dispatching submit event on form");
+        formElement.dispatchEvent(submitEvent);
+      }
+
       // Scroll to top so the thank you message is visible
       window.scrollTo({ top: 0, behavior: "smooth" });
 
@@ -173,6 +227,7 @@ export function ContactForm({
     <form
       onSubmit={form.handleSubmit(onSubmit)}
       className="flex flex-col gap-6"
+      data-default-form-id={DEFAULT_FORM_ID}
     >
       {/* First Name / Last Name */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
