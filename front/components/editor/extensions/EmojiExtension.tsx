@@ -7,7 +7,7 @@ import { createEmojiSuggestion } from "@app/components/editor/input_bar/emojiSug
 // Cache for lazily loaded emoji data
 let emojiDataCache: EmojiMartData | null = null;
 let emojiMapCache: Map<string, EmojiItem> | null = null;
-let emojiListCache: EmojiItem[] | null = null;
+const emojis: EmojiItem[] = [];
 
 // Load emoji data lazily
 async function loadEmojiData(): Promise<void> {
@@ -21,7 +21,6 @@ async function loadEmojiData(): Promise<void> {
   emojiDataCache = dataModule as unknown as EmojiMartData;
 
   // Convert emoji-mart data to TipTap emoji format
-  const emojis: EmojiItem[] = [];
   for (const [id, emoji] of Object.entries(emojiDataCache.emojis)) {
     emojis.push({
       name: id,
@@ -33,7 +32,6 @@ async function loadEmojiData(): Promise<void> {
     });
   }
 
-  emojiListCache = emojis;
   emojiMapCache = new Map(emojis.map((e) => [e.name, e]));
 }
 
@@ -57,8 +55,8 @@ export const EmojiExtension = Emoji.extend({
     return emojiItem?.emoji ?? `:${name}:`;
   },
 
-  onCreate() {
-    void loadEmojiData();
+  async onCreate() {
+    await loadEmojiData();
   },
 }).configure({
   // Enable emoticon conversion (e.g., <3 → ❤️, :) → 😊)
@@ -74,15 +72,5 @@ export const EmojiExtension = Emoji.extend({
 
   // Start with empty emojis - emoticon conversion won't work until data loads
   // The emoji picker/search uses EmojiDropdown which loads data independently
-  emojis: [],
+  emojis,
 });
-
-// Export a function to preload emoji data if needed
-export async function preloadEmojiData(): Promise<void> {
-  await loadEmojiData();
-}
-
-// Export function to get emoji list (for components that need it synchronously after preload)
-export function getLoadedEmojiList(): EmojiItem[] {
-  return emojiListCache ?? [];
-}

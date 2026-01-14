@@ -85,7 +85,7 @@ export const EmojiDropdown = forwardRef<
         // Dynamically import emoji data to avoid bundling in server
         // @emoji-mart/data exports JSON directly, so we cast it appropriately
         const dataModule = await import("@emoji-mart/data");
-        emojiDataCache = dataModule as unknown as EmojiMartData;
+        emojiDataCache = dataModule.default as unknown as EmojiMartData;
         popularEmojisCache = getPopularEmojis(emojiDataCache);
       }
       await init({ data: emojiDataCache });
