@@ -1,5 +1,4 @@
 import assert from "assert";
-
 import uniq from "lodash/uniq";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
