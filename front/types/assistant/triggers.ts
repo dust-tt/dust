@@ -40,6 +40,7 @@ export type TriggerType = {
   editor: UserType["id"];
   customPrompt: string | null;
   status: TriggerStatus;
+  enabled: boolean; // deprecated, for backward compatibility (BACK12)
   createdAt: number;
   naturalLanguageDescription: string | null;
   origin: TriggerOrigin;

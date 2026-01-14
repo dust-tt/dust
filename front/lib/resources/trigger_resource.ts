@@ -727,6 +727,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       editor: this.editor,
       customPrompt: this.customPrompt,
       status: this.status,
+      enabled: this.status === "enabled", // deprecated, for backward compatibility (BACK12)
       naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
       origin: this.origin,
