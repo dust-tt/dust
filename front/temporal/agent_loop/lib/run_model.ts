@@ -419,6 +419,7 @@ export async function runModelActivity(
 
   const traceContext: LLMTraceContext = {
     operationType: "agent_conversation",
+    agentConfigurationId: agentConfiguration.sId,
     conversationId: conversation.sId,
     userId: auth.user()?.sId,
     workspaceId: conversation.owner.sId,
