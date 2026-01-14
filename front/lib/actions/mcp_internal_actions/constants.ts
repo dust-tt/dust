@@ -153,6 +153,11 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/search/metadata";
 import { SKILL_MANAGEMENT_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/skill_management/metadata";
+import {
+  SLAB_SERVER_INFO,
+  SLAB_TOOL_STAKES,
+  SLAB_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/slab/metadata";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
   InternalMCPServerDefinitionType,
@@ -938,24 +943,12 @@ export const INTERNAL_MCP_SERVERS = {
     },
     isPreview: true,
     requiresBearerToken: true,
-    tools_stakes: {
-      search_posts: "never_ask",
-      get_post_contents: "never_ask",
-      get_topics: "never_ask",
-      get_post_metadata: "never_ask",
-    },
+    tools_stakes: SLAB_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "slab",
-      version: "1.0.0",
-      description: "Search and read from your Slab knowledge base",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    tools: SLAB_TOOLS,
+    serverInfo: SLAB_SERVER_INFO,
   },
   vanta: {
     id: 44,

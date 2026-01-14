@@ -1,70 +1,48 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  getPostContentsSchema,
+  getPostMetadataSchema,
+  getTopicsSchema,
+  MAX_CONTENT_SIZE,
+  searchPostsSchema,
+  SLAB_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/slab/metadata";
+import {
+  getPosts,
+  getTopics,
+  MAX_LIMIT,
+  searchPosts,
+} from "@app/lib/actions/mcp_internal_actions/servers/slab/slab_api_helper";
+import {
+  formatPostAsText,
+  formatPostListAsText,
+  formatPostSummary,
+  formatTopicsAsText,
+} from "@app/lib/actions/mcp_internal_actions/servers/slab/slab_response_helpers";
+import {
+  ERROR_MESSAGES,
+  extractPostId,
+  filterByArchived,
+  filterByPublished,
+} from "@app/lib/actions/mcp_internal_actions/servers/slab/slab_utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 
-import { getPosts, getTopics, MAX_LIMIT, searchPosts } from "./slab_api_helper";
-import {
-  formatPostAsText,
-  formatPostListAsText,
-  formatPostSummary,
-  formatTopicsAsText,
-} from "./slab_response_helpers";
-import {
-  ERROR_MESSAGES,
-  extractPostId,
-  filterByArchived,
-  filterByPublished,
-} from "./slab_utils";
-
-const MAX_CONTENT_SIZE = 32000; // Max characters to return for post content
-
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer("slab");
+  const server = makeInternalMCPServer(SLAB_TOOL_NAME);
 
   server.tool(
     "search_posts",
     "Search for posts across the Slab workspace. Returns posts matching the query.",
-    {
-      query: z
-        .string()
-        .describe(
-          "Search query string. Searches across post titles and content."
-        ),
-      limit: z
-        .number()
-        .optional()
-        .default(20)
-        .describe(
-          "Maximum number of results to return (default: 20, max: 100)"
-        ),
-      topicId: z
-        .string()
-        .optional()
-        .describe(
-          "Optional: Filter results to posts within a specific topic ID"
-        ),
-      includeArchived: z
-        .boolean()
-        .optional()
-        .default(false)
-        .describe("Whether to include archived posts (default: false)"),
-      publishedOnly: z
-        .boolean()
-        .optional()
-        .default(true)
-        .describe(
-          "Only return published posts, exclude drafts (default: true)"
-        ),
-    },
+    searchPostsSchema,
     withToolLogging(
       auth,
       {
@@ -115,27 +93,7 @@ function createServer(
   server.tool(
     "get_post_contents",
     "Retrieve specific posts by their IDs or URLs with full content and metadata. Supports pagination for large posts.",
-    {
-      postIds: z
-        .array(z.string())
-        .min(1)
-        .max(50)
-        .describe(
-          "Array of Slab post IDs or full URLs (e.g., ['abc123'] or ['https://team.slab.com/posts/abc123'])"
-        ),
-      offset: z
-        .number()
-        .default(0)
-        .describe(
-          "Character offset to start reading from (for pagination). Defaults to 0."
-        ),
-      limit: z
-        .number()
-        .default(MAX_CONTENT_SIZE)
-        .describe(
-          `Maximum number of characters to return per post. Defaults to ${MAX_CONTENT_SIZE}.`
-        ),
-    },
+    getPostContentsSchema,
     withToolLogging(
       auth,
       {
@@ -201,7 +159,7 @@ function createServer(
   server.tool(
     "get_topics",
     "Retrieve all topics for navigation and organization understanding.",
-    {},
+    getTopicsSchema,
     withToolLogging(
       auth,
       {
@@ -226,9 +184,7 @@ function createServer(
   server.tool(
     "get_post_metadata",
     "Get metadata about a post without retrieving full content (faster for large posts).",
-    {
-      postId: z.string().describe("The Slab post ID or URL"),
-    },
+    getPostMetadataSchema,
     withToolLogging(
       auth,
       {
