@@ -1,25 +1,30 @@
 import type { Resource } from "@opentelemetry/resources";
 import { resourceFromAttributes } from "@opentelemetry/resources";
-import { NodeSDK } from "@opentelemetry/sdk-node";
-import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 
 import config from "@app/lib/api/config";
 import { FilteredLangfuseSpanProcessor } from "@app/lib/api/instrumentation/processor";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-let sdk: NodeSDK | undefined;
+// Semantic convention constant inlined to avoid importing the large semantic-conventions package
+const ATTR_SERVICE_NAME = "service.name";
+
+let provider: NodeTracerProvider | undefined;
 export let resource: Resource | undefined;
 
 /**
  * Initialize OpenTelemetry with Langfuse instrumentation for agent-loop observability.
  * This sets up manual tracing for LLM and agent operations only.
+ *
+ * Uses NodeTracerProvider directly instead of NodeSDK to avoid bundling
+ * unnecessary exporters (OTLP, Prometheus, Zipkin, etc.) that add ~1.5MB to the bundle.
  */
 export function initializeOpenTelemetryInstrumentation({
   serviceName,
 }: {
   serviceName: "dust-agent-loop" | "dust-front";
 }): void {
-  if (!config.isLangfuseEnabled() || sdk) {
+  if (!config.isLangfuseEnabled() || provider) {
     return;
   }
 
@@ -28,15 +33,13 @@ export function initializeOpenTelemetryInstrumentation({
       [ATTR_SERVICE_NAME]: serviceName,
     });
 
-    sdk = new NodeSDK({
-      autoDetectResources: false,
-      // Disable auto-instrumentation to avoid capturing all API calls.
-      instrumentations: [],
+    provider = new NodeTracerProvider({
       resource,
       spanProcessors: [new FilteredLangfuseSpanProcessor()],
     });
 
-    sdk.start();
+    // Register the provider globally
+    provider.register();
   } catch (error) {
     // Use console.warn as this code is called in a specific context in Next.js.
     console.warn(
