@@ -11,7 +11,11 @@ qdrant_storage
 core-api-keys.json
 oauth-api-keys.json
 /extension/build/
-**/.claude
+**/.claude/*
+!**/.claude/skills/
+**/.claude/skills/*
+!**/.claude/skills/dust-*/
+**/.claude/skills/dust-hive/
 **/.codex
 **/.yalc
 yalc.lock
