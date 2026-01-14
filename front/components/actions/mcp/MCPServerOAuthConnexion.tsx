@@ -10,7 +10,7 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
-import { useController, useFormContext, useWatch } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
@@ -51,14 +51,18 @@ export function MCPServerOAuthConnexion({
   authorization,
   documentationUrl,
 }: MCPServerOAuthConnexionProps) {
-  const { setValue, setError, clearErrors } =
-    useFormContext<MCPServerOAuthFormValues>();
+  const { setError, clearErrors } = useFormContext<MCPServerOAuthFormValues>();
 
-  const useCase = useWatch<MCPServerOAuthFormValues, "useCase">({
+  // Use useController for form fields to get field.onChange for proper lifecycle integration.
+  // field.onChange triggers validation and updates dirty/touched states correctly.
+  const { field: useCaseField } = useController<
+    MCPServerOAuthFormValues,
+    "useCase"
+  >({
     name: "useCase",
   });
+  const useCase = useCaseField.value;
 
-  // Use useController for authCredentials to get field.onChange for user interactions.
   const { field: credentialsField } = useController<
     MCPServerOAuthFormValues,
     "authCredentials"
@@ -83,7 +87,7 @@ export function MCPServerOAuthConnexion({
         effectiveUseCase = authorization.supported_use_cases[0];
       }
       if (effectiveUseCase) {
-        setValue("useCase", effectiveUseCase);
+        useCaseField.onChange(effectiveUseCase);
       }
     }
 
@@ -107,12 +111,12 @@ export function MCPServerOAuthConnexion({
             nextCredentials[key] = inputData.value ?? "";
           }
         }
-        setValue("authCredentials", nextCredentials);
+        credentialsField.onChange(nextCredentials);
       }
     };
 
     void fetchCredentialInputs();
-  }, [authorization, setValue, useCase]);
+  }, [authorization, useCaseField, credentialsField, useCase]);
 
   // Validate credentials based on dynamic requirements.
   // Runs when credentials or inputs change, uses setError/clearErrors.
@@ -167,7 +171,7 @@ export function MCPServerOAuthConnexion({
   };
 
   const handleUseCaseSelect = (selectedUseCase: MCPOAuthUseCase) => {
-    setValue("useCase", selectedUseCase);
+    useCaseField.onChange(selectedUseCase);
   };
 
   const supportsPersonalActions =

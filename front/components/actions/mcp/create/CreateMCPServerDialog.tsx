@@ -83,6 +83,7 @@ export function CreateMCPServerDialog({
   const form = useForm<CreateMCPServerDialogFormValues>({
     resolver: zodResolver(createMCPServerDialogFormSchema),
     defaultValues,
+    mode: "onChange",
     shouldUnregister: false,
   });
 
@@ -277,9 +278,8 @@ export function CreateMCPServerDialog({
               onClick: (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (isOAuthValid) {
-                  void form.handleSubmit(handleSave)();
-                }
+                // handleSubmit gates on form validity (including errors set via setError).
+                void form.handleSubmit(handleSave)();
               },
             }}
           />

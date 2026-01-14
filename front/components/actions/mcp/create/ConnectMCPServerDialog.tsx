@@ -252,9 +252,8 @@ export function ConnectMCPServerDialog({
                     onClick: (e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      if (isFormValid) {
-                        void form.handleSubmit(handleSave)();
-                      }
+                      // handleSubmit gates on form validity (including errors set via setError).
+                      void form.handleSubmit(handleSave)();
                     },
                     disabled: !isFormValid || isLoading,
                   }
