@@ -9,12 +9,10 @@ import _ from "lodash";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  AGENT_CONFIGURATION_URI_PATTERN,
-  ConfigurableToolInputSchemas,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
+import { runAgentConfigurablePropertiesSchema } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/metadata";
 import { isTransientStreamError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/network_errors";
 import type {
   ChildAgentBlob,
@@ -159,45 +157,6 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
   };
 }
 
-const configurableProperties = {
-  executionMode: z
-    .object({
-      options: z
-        .union([
-          z
-            .object({
-              value: z.literal("run-agent"),
-              label: z.literal("Agent runs in the background"),
-            })
-            .describe(
-              "The selected agent runs in a background conversation and passes results back to " +
-                "the main agent.\nThis is the default behavior, well suited for breaking down " +
-                "complex work by delegating specific research/analysis subtasks while " +
-                "maintaining control of the overall response."
-            ),
-          z
-            .object({
-              value: z.literal("handoff"),
-              label: z.literal("Agent responds in conversation"),
-            })
-            .describe(
-              "The selected agent takes over and responds directly in the conversation." +
-                "\nWell suited for a routing use case where the sub-agent should handle " +
-                "the entire interaction going forward."
-            ),
-        ])
-        .optional(),
-      value: z.string(),
-      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
-    })
-    .default({
-      value: "run-agent",
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
-    }),
-  childAgent:
-    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
-};
-
 export default async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -243,7 +202,7 @@ export default async function createServer(
       "run_agent_tool_not_available",
       "No child agent configured for this tool, as the child agent was probably archived. " +
         "Do not attempt to run the tool and warn the user instead.",
-      configurableProperties,
+      runAgentConfigurablePropertiesSchema,
       withToolLogging(
         auth,
         {
@@ -296,7 +255,7 @@ export default async function createServer(
         )
         .optional()
         .nullable(),
-      ...configurableProperties,
+      ...runAgentConfigurablePropertiesSchema,
     },
     withToolLogging(
       auth,

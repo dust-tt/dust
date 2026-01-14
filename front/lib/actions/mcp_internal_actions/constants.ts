@@ -186,7 +186,10 @@ import {
   PROJECT_CONTEXT_MANAGEMENT_SERVER_INFO,
   PROJECT_CONTEXT_MANAGEMENT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/project_context_management/metadata";
-import { RUN_AGENT_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/metadata";
+import {
+  RUN_AGENT_SERVER_INFO,
+  RUN_AGENT_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/metadata";
 import { RUN_DUST_APP_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app/metadata";
 import {
   SALESFORCE_SERVER_INFO,
@@ -1008,6 +1011,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+    tools: RUN_AGENT_TOOLS,
     serverInfo: RUN_AGENT_SERVER_INFO,
   },
   [TABLE_QUERY_V2_SERVER_NAME]: {
