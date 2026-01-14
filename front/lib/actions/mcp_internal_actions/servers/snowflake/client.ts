@@ -250,6 +250,53 @@ export class SnowflakeClient {
 		return new Ok(columns);
 	}
 
+	/**
+	 * Validate that a query is read-only using EXPLAIN.
+	 * This is the authoritative check - Snowflake's query planner tells us
+	 * exactly what operations will be performed.
+	 */
+	private async validateReadOnlyWithExplain(
+		sql: string,
+		database?: string,
+		schema?: string,
+		warehouse?: string,
+	): Promise<Result<void, Error>> {
+		// Use EXPLAIN USING TABULAR to get the query plan
+		// The result includes an 'operation' column with values like
+		// 'Insert', 'Update', 'Delete', 'Merge' for write operations
+		const explainSql = `EXPLAIN ${sql}`;
+
+		const result = await this.executeStatement(
+			explainSql,
+			database,
+			schema,
+			warehouse,
+		);
+
+		if (result.isErr()) {
+			// If EXPLAIN fails, the query is likely invalid anyway
+			return new Err(
+				new Error(`Failed to validate query: ${result.error.message}`),
+			);
+		}
+
+		// Check the 'operation' column in each row for write operations
+		const writeOperations = ["Insert", "Update", "Delete", "Merge"];
+
+		for (const row of result.value.rows) {
+			const operation = row.operation as string | undefined;
+			if (operation && writeOperations.includes(operation)) {
+				return new Err(
+					new Error(
+						`Write operations are not allowed: ${operation} operation detected`,
+					),
+				);
+			}
+		}
+
+		return new Ok(undefined);
+	}
+
 	async query(
 		sql: string,
 		database?: string,
@@ -257,62 +304,48 @@ export class SnowflakeClient {
 		warehouse?: string,
 		maxRows: number = 1000,
 	): Promise<Result<SnowflakeQueryResult, Error>> {
-		// Defense-in-depth SQL validation. Primary security is via Snowflake role permissions.
-		// This validation catches obvious mistakes and provides a secondary safety layer.
+		// Primary security is via Snowflake role permissions.
+		// This EXPLAIN-based validation provides defense-in-depth.
 
-		// Remove comments to prevent bypass attempts
-		const sqlWithoutComments = sql
-			.replace(/--.*$/gm, "") // Single-line comments
-			.replace(/\/\*[\s\S]*?\*\//g, ""); // Multi-line comments
+		const trimmedSql = sql.trim().toUpperCase();
 
-		const upperSql = sqlWithoutComments.trim().toUpperCase();
+		// SHOW/DESCRIBE are inherently read-only, allow them directly
+		if (
+			trimmedSql.startsWith("SHOW") ||
+			trimmedSql.startsWith("DESCRIBE") ||
+			trimmedSql.startsWith("DESC")
+		) {
+			return this.executeStatement(sql, database, schema, warehouse);
+		}
 
-		// Check query starts with allowed read-only prefix
-		const allowedPrefixes = ["SELECT", "SHOW", "DESCRIBE", "DESC", "WITH"];
-		const hasAllowedPrefix = allowedPrefixes.some((prefix) =>
-			upperSql.startsWith(prefix),
-		);
-
-		if (!hasAllowedPrefix) {
-			return new Err(
-				new Error(
-					"Only read-only queries are allowed (SELECT, SHOW, DESCRIBE, WITH)",
-				),
+		// For SELECT/WITH queries, use EXPLAIN to validate they're read-only
+		// (catches WITH...INSERT and other bypass attempts)
+		if (trimmedSql.startsWith("SELECT") || trimmedSql.startsWith("WITH")) {
+			const validationResult = await this.validateReadOnlyWithExplain(
+				sql,
+				database,
+				schema,
+				warehouse,
 			);
-		}
 
-		// Check for DML/DDL keywords anywhere in query (catches WITH ... INSERT, etc.)
-		const forbiddenKeywords = [
-			"INSERT",
-			"UPDATE",
-			"DELETE",
-			"MERGE",
-			"TRUNCATE",
-			"DROP",
-			"ALTER",
-			"CREATE",
-			"GRANT",
-			"REVOKE",
-			"CALL",
-			"EXECUTE",
-			"PUT",
-			"COPY",
-		];
-		for (const keyword of forbiddenKeywords) {
-			// Match whole word only
-			if (new RegExp(`\\b${keyword}\\b`).test(upperSql)) {
-				return new Err(
-					new Error(`Write operations are not allowed: ${keyword} detected`),
-				);
+			if (validationResult.isErr()) {
+				return new Err(validationResult.error);
 			}
+
+			// Add LIMIT if not already present for SELECT queries
+			let finalSql = sql;
+			if (trimmedSql.startsWith("SELECT") && !trimmedSql.includes("LIMIT")) {
+				finalSql = `${sql.trim()} LIMIT ${maxRows}`;
+			}
+
+			return this.executeStatement(finalSql, database, schema, warehouse);
 		}
 
-		// Add LIMIT if not already present for SELECT queries
-		let finalSql = sql;
-		if (upperSql.startsWith("SELECT") && !upperSql.includes("LIMIT")) {
-			finalSql = `${sql.trim()} LIMIT ${maxRows}`;
-		}
-
-		return this.executeStatement(finalSql, database, schema, warehouse);
+		// Reject anything else
+		return new Err(
+			new Error(
+				"Only read-only queries are allowed (SELECT, SHOW, DESCRIBE, WITH)",
+			),
+		);
 	}
 }
