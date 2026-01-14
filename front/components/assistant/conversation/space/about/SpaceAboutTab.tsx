@@ -1,10 +1,14 @@
-import { Button, ContentMessage } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { Button, ContentMessage, Input, Label } from "@dust-tt/sparkle";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
-import { useUpdateSpace } from "@app/lib/swr/spaces";
+import {
+  useProjectMetadata,
+  useUpdateProjectMetadata,
+  useUpdateSpace,
+} from "@app/lib/swr/spaces";
 import type {
   GroupType,
   LightWorkspaceType,
@@ -41,6 +45,25 @@ export function SpaceAboutTab({
   const [isSaving, setIsSaving] = useState(false);
 
   const [isRestricted, setIsRestricted] = useState(initialIsRestricted);
+
+  // Project metadata state
+  const [description, setDescription] = useState("");
+  const [isSavingDescription, setIsSavingDescription] = useState(false);
+  const { projectMetadata, isProjectMetadataLoading } = useProjectMetadata({
+    workspaceId: owner.sId,
+    spaceId: space.sId,
+  });
+  const doUpdateMetadata = useUpdateProjectMetadata({
+    owner,
+    spaceId: space.sId,
+  });
+
+  // Sync description state with loaded metadata
+  useEffect(() => {
+    if (projectMetadata?.description) {
+      setDescription(projectMetadata.description);
+    }
+  }, [projectMetadata?.description]);
 
   const isManual = !planAllowsSCIM || managementType === "manual";
   const doUpdate = useUpdateSpace({ owner });
@@ -90,6 +113,19 @@ export function SpaceAboutTab({
     return true;
   }, [hasChanges, managementType, selectedMembers, selectedGroups]);
 
+  const hasDescriptionChanges = useMemo(() => {
+    return description !== (projectMetadata?.description ?? "");
+  }, [description, projectMetadata?.description]);
+
+  const onSaveDescription = useCallback(async () => {
+    if (!hasDescriptionChanges) {
+      return;
+    }
+    setIsSavingDescription(true);
+    await doUpdateMetadata({ description: description || null });
+    setIsSavingDescription(false);
+  }, [hasDescriptionChanges, doUpdateMetadata, description]);
+
   const onSave = useCallback(async () => {
     if (!canSave) {
       return;
@@ -127,6 +163,35 @@ export function SpaceAboutTab({
 
   return (
     <div className="flex w-full flex-col gap-y-4 px-4 py-8">
+      <div className="flex flex-col gap-y-2">
+        <Label>Description</Label>
+        <Input
+          placeholder={
+            isProjectMetadataLoading
+              ? "Loading..."
+              : "Describe what this project is about..."
+          }
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          disabled={isProjectMetadataLoading}
+        />
+        <div className="flex justify-end">
+          <Button
+            variant="primary"
+            size="sm"
+            label={isSavingDescription ? "Saving..." : "Save description"}
+            onClick={onSaveDescription}
+            disabled={
+              !hasDescriptionChanges ||
+              isSavingDescription ||
+              isProjectMetadataLoading
+            }
+          />
+        </div>
+      </div>
+
+      <div className="border-t pt-4" />
+
       <RestrictedAccessHeader
         isRestricted={isRestricted}
         onToggle={() => setIsRestricted(!isRestricted)}
