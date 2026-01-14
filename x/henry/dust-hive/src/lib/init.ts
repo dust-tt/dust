@@ -437,7 +437,7 @@ export async function runAllDbInits(env: Environment, projectName: string): Prom
     // Postgres: wait for container → create DBs → run schema inits
     waitForContainer(projectName, "db").then(() => initAllPostgres(env)),
     // Qdrant: wait for container → create collections
-    waitForContainer(projectName, "qdrant").then(() => initAllQdrant(env)),
+    waitForContainer(projectName, "qdrant_primary").then(() => initAllQdrant(env)),
     // Elasticsearch: wait for container → create indices
     waitForContainer(projectName, "elasticsearch").then(() => initAllElasticsearch(env)),
   ]);

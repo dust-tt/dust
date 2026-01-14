@@ -13,8 +13,11 @@ export interface DockerComposeOverride {
     redis: {
       ports: string[];
     };
-    qdrant: {
+    qdrant_primary: {
       ports: string[];
+      volumes: string[];
+    };
+    qdrant_secondary: {
       volumes: string[];
     };
     elasticsearch: {
@@ -28,7 +31,7 @@ export interface DockerComposeOverride {
   volumes: Record<string, null>;
 }
 
-const VOLUME_KEYS = ["pgsql", "qdrant", "elasticsearch"] as const;
+const VOLUME_KEYS = ["pgsql", "qdrant-primary", "qdrant-secondary", "elasticsearch"] as const;
 type VolumeKey = (typeof VOLUME_KEYS)[number];
 
 function getVolumeName(envName: string, volume: VolumeKey): string {
@@ -54,9 +57,12 @@ export function generateDockerComposeOverride(
       redis: {
         ports: [`${ports.redis}:6379`],
       },
-      qdrant: {
+      qdrant_primary: {
         ports: [`${ports.qdrantHttp}:6333`, `${ports.qdrantGrpc}:6334`],
-        volumes: [`${getVolumeName(name, "qdrant")}:/qdrant/storage`],
+        volumes: [`${getVolumeName(name, "qdrant-primary")}:/qdrant/storage`],
+      },
+      qdrant_secondary: {
+        volumes: [`${getVolumeName(name, "qdrant-secondary")}:/qdrant/storage`],
       },
       elasticsearch: {
         ports: [`${ports.elasticsearch}:9200`],
