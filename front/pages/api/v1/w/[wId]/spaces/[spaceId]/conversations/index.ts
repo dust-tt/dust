@@ -76,27 +76,23 @@ async function handler(
         });
       }
 
-      // Get all conversations for the space
+      // Get all conversations for the space (including deleted ones)
+      // Filter by updatedSince at the database level if provided
       const spaceConversations =
         await ConversationResource.listConversationsInSpace(auth, {
           spaceId,
           options: {
             dangerouslySkipPermissionFiltering: true, // System key has access
+            includeDeleted: true, // Include deleted conversations so sync can detect and remove them
+            updatedSince: updatedSinceMs ?? undefined,
           },
         });
 
-      // Filter by updatedSince if provided
-      let filteredConversations = spaceConversations;
-      if (updatedSinceMs !== null) {
-        filteredConversations = spaceConversations.filter(
-          (c) => c.updatedAt.getTime() >= updatedSinceMs
-        );
-      }
-
       // Fetch full conversations (returns raw ConversationType)
+      // Include deleted conversations so sync can detect and remove them
       const conversationsFull = await concurrentExecutor(
-        filteredConversations,
-        async (c) => getConversation(auth, c.sId),
+        spaceConversations,
+        async (c) => getConversation(auth, c.sId, true), // includeDeleted = true
         { concurrency: 10 }
       );
 

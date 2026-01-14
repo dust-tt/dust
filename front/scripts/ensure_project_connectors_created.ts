@@ -85,7 +85,7 @@ async function processProjectSpace(
     ) {
       stats.alreadyHasConnector++;
 
-      // Check if sync needs to be started
+      // Check if sync needs to be started and ensure garbage collection is running
       if (execute) {
         const connectorsAPI = new ConnectorsAPI(
           config.getConnectorsAPIConfig(),
@@ -108,7 +108,9 @@ async function processProjectSpace(
           stats.syncStarted++;
         }
       } else {
-        localLogger.info("Would resume connector sync");
+        localLogger.info(
+          "Would resume connector sync and ensure garbage collection is running"
+        );
       }
       return;
     }

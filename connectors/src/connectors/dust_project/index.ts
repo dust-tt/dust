@@ -3,7 +3,6 @@ import { Err, Ok } from "@dust-tt/client";
 
 import {
   launchDustProjectFullSyncWorkflow,
-  launchDustProjectGarbageCollectWorkflow,
   launchDustProjectIncrementalSyncWorkflow,
   stopDustProjectSyncWorkflow,
 } from "@connectors/connectors/dust_project/temporal/client";
@@ -18,6 +17,7 @@ import {
 } from "@connectors/connectors/interface";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { DustProjectConfigurationResource } from "@connectors/resources/dust_project_configuration_resource";
 import type {
   ConnectorPermission,
   ContentNode,
@@ -107,14 +107,47 @@ export class DustProjectConnectorManager extends BaseConnectorManager<null> {
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    // Resume by launching incremental sync workflow
-    const result = await launchDustProjectIncrementalSyncWorkflow(
-      this.connectorId
-    );
-    if (result.isErr()) {
-      return new Err(result.error);
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(new Error(`Connector ${this.connectorId} not found`));
     }
-    return new Ok(undefined);
+
+    // Check if there has been a successful sync
+    const configuration =
+      await DustProjectConfigurationResource.fetchByConnectorId(
+        this.connectorId
+      );
+    if (!configuration) {
+      return new Err(
+        new Error(`Configuration not found for connector ${this.connectorId}`)
+      );
+    }
+
+    // If no successful sync yet, start with full sync
+    // Otherwise, launch incremental sync workflow with cron schedule
+    if (!configuration.lastSyncedAt) {
+      logger.info(
+        { connectorId: this.connectorId },
+        "No previous sync found, launching full sync"
+      );
+      const result = await launchDustProjectFullSyncWorkflow(this.connectorId);
+      if (result.isErr()) {
+        return new Err(result.error);
+      }
+      return new Ok(undefined);
+    } else {
+      logger.info(
+        { connectorId: this.connectorId },
+        "Previous sync found, launching incremental sync workflow"
+      );
+      const result = await launchDustProjectIncrementalSyncWorkflow(
+        this.connectorId
+      );
+      if (result.isErr()) {
+        return new Err(result.error);
+      }
+      return new Ok(undefined);
+    }
   }
 
   async sync({
@@ -190,6 +223,12 @@ export class DustProjectConnectorManager extends BaseConnectorManager<null> {
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {
-    return launchDustProjectGarbageCollectWorkflow(this.connectorId);
+    // Garbage collection is now handled automatically during sync
+    // Deleted conversations are detected and removed during full and incremental syncs
+    return new Err(
+      new Error(
+        "Garbage collection is no longer needed - deleted conversations are handled during sync"
+      )
+    );
   }
 }
