@@ -88,8 +88,9 @@ function DomainVerification({
     <WorkspaceSection icon={ActionGlobeAltIcon} title="Domain Verification">
       <Page.P variant="secondary">
         Verify one or multiple company domains to enable Single Sign-On (SSO),
-        allow team members to auto-join your workspace, and whitelist MCP
-        servers for static IP firewall access.
+        allow team members to auto-join your workspace, and let Dust connect to
+        your MCP servers through a dedicated IP you can whitelist in your
+        firewall.
       </Page.P>
       {isDomainsLoading ? (
         <LoadingBlock className="h-32 w-full rounded-xl" />

@@ -159,8 +159,8 @@ export function ConfigureDomainUseCasesModal({
                       MCP Server Whitelisting
                     </Label>
                     <p className="text-sm text-muted-foreground">
-                      Allow MCP servers on this domain to use our static IP for
-                      firewall whitelisting
+                      Connect to MCP servers on this domain through a dedicated
+                      IP you can whitelist in your firewall
                     </p>
                   </div>
                 </div>
