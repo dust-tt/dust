@@ -212,6 +212,24 @@ describe("workspace_verification", () => {
       }
     });
 
+    it("should return error if phone is flagged for review", async () => {
+      mockLookupPhoneNumber.mockResolvedValue(
+        new Err(
+          new PhoneLookupError("flagged_for_review", "Flagged for review")
+        )
+      );
+
+      const result = await startVerification(authW1, validPhoneNumber);
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe("invalid_request_error");
+        expect(result.error.message).toBe(
+          "This phone number cannot be used for verification."
+        );
+      }
+    });
+
     it("should return error if phone number is invalid", async () => {
       mockLookupPhoneNumber.mockResolvedValue(
         new Err(
