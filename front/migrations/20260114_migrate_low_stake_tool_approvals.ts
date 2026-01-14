@@ -5,6 +5,7 @@ import {
   UserMetadataModel,
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
+import { makeScript } from "@app/scripts/helpers";
 
 const COMMA_SEPARATOR = ",";
 const COMMA_REPLACEMENT = "DUST_COMMA";
@@ -17,8 +18,8 @@ const COMMA_REPLACEMENT = "DUST_COMMA";
  * The workspace ID is extracted from the mcpServerId (e.g., ims_...) which encodes
  * the workspace ID in the string ID.
  */
-async function main() {
-  console.log("Migrating low-stake tool approvals from UserMetadataModel...\n");
+makeScript({}, async ({ execute }, logger) => {
+  logger.info("Starting low-stake tool approvals migration");
 
   const toolValidationMetadata = await UserMetadataModel.findAll({
     where: {
@@ -28,8 +29,9 @@ async function main() {
     },
   });
 
-  console.log(
-    `Found ${toolValidationMetadata.length} tool validation metadata entries to migrate.\n`
+  logger.info(
+    { count: toolValidationMetadata.length },
+    "Found tool validation metadata entries to migrate"
   );
 
   let migratedCount = 0;
@@ -44,8 +46,9 @@ async function main() {
       .filter((name) => name.length > 0);
 
     if (toolNames.length === 0) {
-      console.log(
-        `Skipping empty metadata entry for user ${metadata.userId}, mcpServerId ${mcpServerId}`
+      logger.info(
+        { userId: metadata.userId, mcpServerId },
+        "Skipping empty metadata entry"
       );
       skippedCount++;
       continue;
@@ -54,8 +57,9 @@ async function main() {
     // Extract workspace ID from the mcpServerId (e.g., ims_xxxx encodes workspace ID).
     const idsResult = getIdsFromSId(mcpServerId);
     if (idsResult.isErr()) {
-      console.log(
-        `Skipping invalid mcpServerId ${mcpServerId} for user ${metadata.userId}: ${idsResult.error.message}`
+      logger.info(
+        { userId: metadata.userId, mcpServerId, error: idsResult.error.message },
+        "Skipping invalid mcpServerId"
       );
       skippedCount++;
       continue;
@@ -63,57 +67,74 @@ async function main() {
 
     const { workspaceModelId } = idsResult.value;
 
-    console.log(
-      `Migrating ${toolNames.length} tool approvals for user ${metadata.userId}, mcpServerId ${mcpServerId}, workspace ${workspaceModelId}`
+    logger.info(
+      {
+        userId: metadata.userId,
+        mcpServerId,
+        workspaceId: workspaceModelId,
+        toolCount: toolNames.length,
+      },
+      "Migrating tool approvals"
     );
 
     for (const toolName of toolNames) {
       try {
-        await UserToolApprovalModel.upsert({
-          workspaceId: workspaceModelId,
-          userId: metadata.userId,
-          mcpServerId,
-          toolName,
-          agentId: "",
-          argsAndValues: null,
-          argsAndValuesMd5: "",
-        });
+        if (execute) {
+          await UserToolApprovalModel.findOrCreate({
+            where: {
+              workspaceId: workspaceModelId,
+              userId: metadata.userId,
+              mcpServerId,
+              toolName,
+              agentId: { [Op.is]: null },
+              argsAndValuesMd5: { [Op.is]: null },
+            },
+            defaults: {
+              workspaceId: workspaceModelId,
+              userId: metadata.userId,
+              mcpServerId,
+              toolName,
+              agentId: null,
+              argsAndValues: null,
+              argsAndValuesMd5: null,
+            },
+          });
+        }
         migratedCount++;
       } catch (error) {
-        console.error(
-          `Error migrating tool approval for user ${metadata.userId}, workspace ${workspaceModelId}, mcpServerId ${mcpServerId}, toolName ${toolName}:`,
-          error
+        logger.error(
+          {
+            userId: metadata.userId,
+            workspaceId: workspaceModelId,
+            mcpServerId,
+            toolName,
+            error,
+          },
+          "Error migrating tool approval"
         );
         errorCount++;
       }
     }
   }
 
-  console.log(`\nMigration results:`);
-  console.log(`  - Migrated: ${migratedCount} tool approval entries`);
-  console.log(`  - Skipped: ${skippedCount} metadata entries`);
-  console.log(`  - Errors: ${errorCount}`);
+  logger.info(
+    { migratedCount, skippedCount, errorCount },
+    "Migration results"
+  );
 
   // Delete the old metadata entries.
-  console.log("\nDeleting old metadata entries...");
-
-  const deletedCount = await UserMetadataModel.destroy({
-    where: {
-      key: {
-        [Op.like]: "toolsValidations:%",
+  if (execute) {
+    const deletedCount = await UserMetadataModel.destroy({
+      where: {
+        key: {
+          [Op.like]: "toolsValidations:%",
+        },
       },
-    },
-  });
+    });
+    logger.info({ deletedCount }, "Deleted old metadata entries");
+  } else {
+    logger.info("Dry run - skipping deletion of old metadata entries");
+  }
 
-  console.log(`Deleted ${deletedCount} old metadata entries.`);
-}
-
-main()
-  .then(() => {
-    console.log("\nDone.");
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error("Migration failed:", error);
-    process.exit(1);
-  });
+  logger.info("Low-stake tool approvals migration completed");
+});

@@ -96,6 +96,7 @@ export function MCPToolValidationRequired({
   ]);
 
   const alwaysAllowLabel = useMemo(() => {
+    console.log("blockedAction.stake", blockedAction.stake);
     if (blockedAction.stake !== "medium") {
       return "Always allow";
     }
@@ -105,10 +106,9 @@ export function MCPToolValidationRequired({
       .filter((arg) => blockedAction.inputs[arg] != null)
       .map((arg) => `${blockedAction.inputs[arg]}`);
 
-    return `Always allow @${blockedAction.metadata.agentName} to ${asDisplayName(blockedAction.metadata.toolName)}` +
-      argValues.length
-      ? ` using ${argValues.join(", ")}`
-      : "";
+    return `Always allow @${blockedAction.metadata.agentName} to ${asDisplayName(blockedAction.metadata.toolName)} ${
+      argValues.length > 0 ? ` using ${argValues.join(", ")}` : ""
+    }`;
   }, [
     blockedAction.stake,
     blockedAction.argumentsRequiringApproval,
@@ -155,7 +155,9 @@ export function MCPToolValidationRequired({
                     setNeverAskAgain(!!check);
                   }}
                 />
-                <span>{alwaysAllowLabel}</span>
+                <span className="text-normal font-normal">
+                  {alwaysAllowLabel}
+                </span>
               </Label>
             )}
             <div className="flex-grow" />

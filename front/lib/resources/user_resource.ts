@@ -514,7 +514,7 @@ export class UserResource extends BaseResource<UserModel> {
   /**
    * Create a tool approval for this user.
    *
-   * For low stake (tool-level): pass agentId="" (or omit) and argsAndValues=null
+   * For low stake (tool-level): omit agentId and argsAndValues (both default to null)
    * For medium stake (per-agent, per-args): pass agentId and argsAndValues
    */
   async createToolApproval(
@@ -522,7 +522,7 @@ export class UserResource extends BaseResource<UserModel> {
     {
       mcpServerId,
       toolName,
-      agentId = "",
+      agentId = null,
       argsAndValues = null,
     }: {
       mcpServerId: string;
@@ -536,15 +536,24 @@ export class UserResource extends BaseResource<UserModel> {
       ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
       : null;
 
+    const argsAndValuesMd5 = md5(JSON.stringify(sortedArgsAndValues));
+
+    const findClause = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      userId: this.id,
+      mcpServerId,
+      toolName,
+      agentId: agentId ?? { [Op.is]: null },
+      argsAndValuesMd5: argsAndValues ? argsAndValuesMd5 : { [Op.is]: null },
+    };
+
     await UserToolApprovalModel.findOrCreate({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        userId: this.id,
-        mcpServerId,
-        toolName,
+      where: findClause,
+      defaults: {
+        ...findClause,
         agentId,
         argsAndValues: sortedArgsAndValues,
-        argsAndValuesMd5: md5(JSON.stringify(sortedArgsAndValues)),
+        argsAndValuesMd5: argsAndValues ? argsAndValuesMd5 : null,
       },
     });
   }
@@ -577,8 +586,10 @@ export class UserResource extends BaseResource<UserModel> {
         userId: this.id,
         mcpServerId,
         toolName: isLowStake ? { [Op.in]: [toolName, "*"] } : toolName,
-        agentId,
-        argsAndValuesMd5: md5(JSON.stringify(sortedArgsAndValues)),
+        agentId: agentId ?? { [Op.is]: null },
+        argsAndValuesMd5: argsAndValues
+          ? md5(JSON.stringify(sortedArgsAndValues))
+          : { [Op.is]: null },
       },
     });
 
