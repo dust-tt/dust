@@ -688,19 +688,6 @@ export async function postUserMessage(
       transaction: t,
     });
 
-    // TODO(mentionsv2) here we fetch the conversation again to trigger the notification.
-    // We should refactor to pass the resource as the argument of the postUserMessage function.
-    const conversationRes = await ConversationResource.fetchById(
-      auth,
-      conversation.sId
-    );
-    if (conversationRes) {
-      await triggerConversationUnreadNotifications(auth, {
-        conversation: conversationRes,
-        messageId: userMessageWithoutMentions.sId,
-      });
-    }
-
     const { agentMessages, richMentions: agentRichMentions } =
       await createAgentMessages(auth, {
         conversation,
@@ -729,6 +716,20 @@ export async function postUserMessage(
       userMessage,
       agentMessages,
     };
+  });
+
+  const conversationRes = await ConversationResource.fetchById(
+    auth,
+    conversation.sId
+  );
+  if (!conversationRes) {
+    throw new Error(
+      "Unexpected: Conversation not found after posting message."
+    );
+  }
+  await triggerConversationUnreadNotifications(auth, {
+    conversation: conversationRes,
+    messageId: userMessage.sId,
   });
 
   void ServerSideTracking.trackUserMessage({
