@@ -128,6 +128,7 @@ import {
   OUTLOOK_TOOL_STAKES,
   OUTLOOK_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/outlook/metadata";
+import { PRIMITIVE_TYPES_DEBUGGER_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger/metadata";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
@@ -1030,16 +1031,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "primitive_types_debugger",
-      version: "1.0.0",
-      description:
-        "Demo server showing a basic interaction with various configurable blocks.",
-      icon: "ActionEmotionLaughIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: PRIMITIVE_TYPES_DEBUGGER_SERVER_INFO,
   },
   [SEARCH_SERVER_NAME]: {
     id: 1006,
