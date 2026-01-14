@@ -216,7 +216,7 @@ export const AdminActionsList = ({
         id: "name",
         accessorKey: "name",
         header: "Name",
-        cell: (info: CellContext<RowData, string>) => (
+        cell: (info: CellContext<RowData, unknown>) => (
           <NameCell row={info.row.original} />
         ),
         filterFn: (row, id, filterValue) =>
