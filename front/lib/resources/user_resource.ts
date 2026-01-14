@@ -3,7 +3,6 @@ import fromPairs from "lodash/fromPairs";
 import sortBy from "lodash/sortBy";
 import type {
   Attributes,
-  CreationAttributes,
   ModelStatic,
   Transaction,
   WhereOptions,
@@ -515,22 +514,22 @@ export class UserResource extends BaseResource<UserModel> {
   /**
    * Create a tool approval for this user.
    *
-   * For low stake (tool-level): pass agentId=null and argsAndValues=null
+   * For low stake (tool-level): pass agentId="" (or omit) and argsAndValues=null
    * For medium stake (per-agent, per-args): pass agentId and argsAndValues
-   *
-   * Uses upsert to avoid duplicates.
    */
   async createToolApproval(
     auth: Authenticator,
     {
       mcpServerId,
       toolName,
-      agentId = null,
+      agentId = "",
       argsAndValues = null,
-    }: Pick<
-      CreationAttributes<UserToolApprovalModel>,
-      "mcpServerId" | "toolName" | "agentId" | "argsAndValues"
-    >
+    }: {
+      mcpServerId: string;
+      toolName: string;
+      agentId?: string | null;
+      argsAndValues?: Record<string, string> | null;
+    }
   ): Promise<void> {
     // Sort keys to ensure consistent JSONB storage for unique constraint.
     const sortedArgsAndValues = argsAndValues
@@ -542,9 +541,11 @@ export class UserResource extends BaseResource<UserModel> {
       userId: this.id,
       mcpServerId,
       toolName,
-      agentId,
+      agentId: agentId ?? "",
       argsAndValues: sortedArgsAndValues,
-      argsAndValuesMd5: md5(JSON.stringify(sortedArgsAndValues)),
+      argsAndValuesMd5: sortedArgsAndValues
+        ? md5(JSON.stringify(sortedArgsAndValues))
+        : "",
     });
   }
 
@@ -553,27 +554,37 @@ export class UserResource extends BaseResource<UserModel> {
     {
       mcpServerId,
       toolName,
-      agentId = null,
+      agentId = "",
       argsAndValues = null,
-    }: Pick<
-      CreationAttributes<UserToolApprovalModel>,
-      "mcpServerId" | "toolName" | "agentId" | "argsAndValues"
-    >
+    }: {
+      mcpServerId: string;
+      toolName: string;
+      agentId?: string | null;
+      argsAndValues?: Record<string, string> | null;
+    }
   ): Promise<boolean> {
     const sortedArgsAndValues = argsAndValues
       ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
       : null;
 
-    const whereClause: WhereOptions<UserToolApprovalModel> = {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      userId: this.id,
-      mcpServerId,
-      toolName,
-      agentId,
-      argsAndValuesMd5: md5(JSON.stringify(sortedArgsAndValues)),
-    };
+    const normalizedAgentId = agentId ?? "";
+    const argsAndValuesMd5Hash = sortedArgsAndValues
+      ? md5(JSON.stringify(sortedArgsAndValues))
+      : "";
+
+    // For low-stake tools (agentId="", argsAndValues=null), also check for
+    // wildcard "*" approval which approves all tools for the server.
+    const isLowStake = normalizedAgentId === "" && argsAndValues === null;
+
     const approval = await UserToolApprovalModel.findOne({
-      where: whereClause,
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: this.id,
+        mcpServerId,
+        toolName: isLowStake ? { [Op.in]: [toolName, "*"] } : toolName,
+        agentId: normalizedAgentId,
+        argsAndValuesMd5: argsAndValuesMd5Hash,
+      },
     });
 
     return approval !== null;

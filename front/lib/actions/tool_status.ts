@@ -42,7 +42,7 @@ export async function getExecutionStatusFromConfig(
       const user = auth.user();
 
       if (user) {
-        const userHasAlwaysApproved = await hasUserAlwaysApprovedTool({
+        const userHasAlwaysApproved = await hasUserAlwaysApprovedTool(auth, {
           user,
           mcpServerId: actionConfiguration.toolServerId,
           functionCallName: actionConfiguration.name,
@@ -91,22 +91,20 @@ export async function getExecutionStatusFromConfig(
   }
 }
 
-const TOOLS_VALIDATION_WILDCARD = "*";
-
-const getToolsValidationKey = (mcpServerId: string) =>
-  `toolsValidations:${mcpServerId}`;
-
 // The function call name is scoped by MCP servers so that the same tool name on different servers
 // does not conflict, which is why we use it here instead of the tool name.
-export async function setUserAlwaysApprovedTool({
-  user,
-  mcpServerId,
-  functionCallName,
-}: {
-  user: UserResource;
-  mcpServerId: string;
-  functionCallName: string;
-}) {
+export async function setUserAlwaysApprovedTool(
+  auth: Authenticator,
+  {
+    user,
+    mcpServerId,
+    functionCallName,
+  }: {
+    user: UserResource;
+    mcpServerId: string;
+    functionCallName: string;
+  }
+) {
   if (!functionCallName) {
     throw new Error("functionCallName is required");
   }
@@ -114,32 +112,26 @@ export async function setUserAlwaysApprovedTool({
     throw new Error("mcpServerId is required");
   }
 
-  await user.upsertMetadataArray(
-    getToolsValidationKey(mcpServerId),
-    functionCallName
-  );
-
-  // TODO(adrien): move from metadata to tool approvals table
-  /**
-    await user.createToolApproval(auth, {
-      mcpServerId,
-      toolName: functionCallName,
-      agentId: null,
-      argsAndValues: null,
-    });
-  }
-  */
+  await user.createToolApproval(auth, {
+    mcpServerId,
+    toolName: functionCallName,
+    agentId: null,
+    argsAndValues: null,
+  });
 }
 
-export async function hasUserAlwaysApprovedTool({
-  user,
-  mcpServerId,
-  functionCallName,
-}: {
-  user: UserResource;
-  mcpServerId: string;
-  functionCallName: string;
-}) {
+export async function hasUserAlwaysApprovedTool(
+  auth: Authenticator,
+  {
+    user,
+    mcpServerId,
+    functionCallName,
+  }: {
+    user: UserResource;
+    mcpServerId: string;
+    functionCallName: string;
+  }
+) {
   if (!mcpServerId) {
     throw new Error("mcpServerId is required");
   }
@@ -148,13 +140,13 @@ export async function hasUserAlwaysApprovedTool({
     throw new Error("functionCallName is required");
   }
 
-  const metadata = await user.getMetadataAsArray(
-    getToolsValidationKey(mcpServerId)
-  );
-  return (
-    metadata.includes(functionCallName) ||
-    metadata.includes(TOOLS_VALIDATION_WILDCARD)
-  );
+  // Wildcard check is handled inside hasApprovedTool for low-stake tools.
+  return user.hasApprovedTool(auth, {
+    mcpServerId,
+    toolName: functionCallName,
+    agentId: null,
+    argsAndValues: null,
+  });
 }
 
 // Extracts the values of the approval-requiring arguments from the tool inputs,
