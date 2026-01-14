@@ -265,7 +265,10 @@ In dust-hive environments, `node_modules` for `front` and `connectors` uses a **
 - A real `node_modules` directory with symlinks to packages from the main repo
 - `@dust-tt/client` is overridden to point to the worktree's SDK (ensuring correct type resolution)
 
-**Running `npm install` works automatically**: dust-hive injects a `preinstall` script into package.json and creates a `.dust-hive-shallow-copy` marker file. When npm runs, the preinstall detects the marker and cleans up the shallow copy before proceeding. After install, you'll have a standard npm-managed node_modules.
+**Running `npm install` requires manual cleanup**: The shallow copy structure is incompatible with npm's expectations. Before running `npm install`, you must delete `node_modules` first:
+```bash
+rm -rf node_modules && npm install
+```
 
 ### SDK watcher doesn't detect changes after git rebase
 

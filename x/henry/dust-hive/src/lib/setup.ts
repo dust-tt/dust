@@ -1,14 +1,10 @@
 // Environment setup operations
-// NOTE: node_modules are symlinked from main repo for speed.
-// Running `npm install` in a worktree will modify the main repo's node_modules.
+// NOTE: node_modules uses shallow copy from main repo for speed (with SDK override).
+// To run `npm install` in a worktree, first delete node_modules manually.
 // NOTE: cargo target is symlinked to share Rust compilation cache (including linked artifacts).
 
-import { mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-
-// Preinstall script that detects and cleans up dust-hive shallow copy
-const PREINSTALL_SCRIPT =
-  "[ -f node_modules/.dust-hive-shallow-copy ] && echo 'Cleaning dust-hive shallow copy...' && rm -rf node_modules || true";
 
 import { ALL_BINARIES, buildBinaries } from "./cache";
 import { directoryExists } from "./fs";
@@ -77,31 +73,6 @@ function setupShallowNodeModules(
 
   // Link @dust-tt/client to worktree's SDK
   symlinkSync(worktreeSdk, join(target, "@dust-tt/client"));
-
-  // Create marker file so preinstall scripts can detect this structure
-  writeFileSync(join(target, ".dust-hive-shallow-copy"), "");
-
-  // Inject preinstall script into package.json to auto-cleanup on npm install
-  injectPreinstallScript(targetDir);
-}
-
-// Inject preinstall script into package.json
-// This allows `npm install` to work automatically in dust-hive environments
-// by cleaning up the shallow copy before npm proceeds.
-function injectPreinstallScript(targetDir: string): void {
-  const packageJsonPath = join(targetDir, "package.json");
-  const content = readFileSync(packageJsonPath, "utf-8");
-  const pkg = JSON.parse(content) as { scripts?: Record<string, string> };
-
-  if (!pkg.scripts) {
-    pkg.scripts = {};
-  }
-
-  // Only add if not already present
-  if (pkg.scripts["preinstall"] !== PREINSTALL_SCRIPT) {
-    pkg.scripts["preinstall"] = PREINSTALL_SCRIPT;
-    writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
-  }
 }
 
 // Symlink cargo target directory to share compilation cache
