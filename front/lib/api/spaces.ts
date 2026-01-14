@@ -20,6 +20,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
@@ -439,6 +440,22 @@ export async function createSpaceAndGroup(
           { transaction: t }
         );
       }
+    }
+
+    // Create empty project metadata for project spaces
+    if (spaceKind === "project") {
+      await ProjectMetadataResource.makeNew(
+        auth,
+        space,
+        {
+          description: null,
+          urls: [],
+          tags: [],
+          emoji: null,
+          color: null,
+        },
+        t
+      );
     }
 
     return new Ok(space);

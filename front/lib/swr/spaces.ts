@@ -39,10 +39,16 @@ import type {
   DataSourceViewCategoryWithoutApps,
   DataSourceViewType,
   LightWorkspaceType,
+  PatchProjectMetadataBodyType,
+  ProjectMetadataType,
   SearchWarningCode,
   SpaceType,
 } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import type {
+  GetProjectMetadataResponseBody,
+  PatchProjectMetadataResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
 
 export function useSpaces({
   workspaceId,
@@ -849,4 +855,79 @@ export function useSpacesSearchWithInfiniteScroll({
       await setSize((size) => size + 1);
     }, [setSize]),
   };
+}
+
+export function useProjectMetadata({
+  workspaceId,
+  spaceId,
+  disabled = false,
+}: {
+  workspaceId: string;
+  spaceId: string | null;
+  disabled?: boolean;
+}) {
+  const projectMetadataFetcher: Fetcher<GetProjectMetadataResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${spaceId}/project_metadata`,
+    projectMetadataFetcher,
+    { disabled: disabled || spaceId === null }
+  );
+
+  return {
+    projectMetadata: data?.projectMetadata ?? null,
+    isProjectMetadataLoading: !error && !data && !disabled,
+    isProjectMetadataError: error,
+    mutateProjectMetadata: mutate,
+  };
+}
+
+export function useUpdateProjectMetadata({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateProjectMetadata } = useProjectMetadata({
+    workspaceId: owner.sId,
+    spaceId,
+    disabled: true, // Needed just to mutate
+  });
+
+  const doUpdate = async (
+    updates: PatchProjectMetadataBodyType
+  ): Promise<ProjectMetadataType | null> => {
+    const url = `/api/w/${owner.sId}/spaces/${spaceId}/project_metadata`;
+
+    const res = await clientFetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error updating project metadata",
+        description: `Error: ${errorData.message}`,
+      });
+      return null;
+    }
+
+    void mutateProjectMetadata();
+    sendNotification({
+      type: "success",
+      title: "Project metadata updated",
+      description: "Project metadata was successfully updated.",
+    });
+
+    const response: PatchProjectMetadataResponseBody = await res.json();
+    return response.projectMetadata;
+  };
+
+  return doUpdate;
 }
