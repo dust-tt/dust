@@ -257,14 +257,23 @@ export class SnowflakeClient {
 		warehouse?: string,
 		maxRows: number = 1000,
 	): Promise<Result<SnowflakeQueryResult, Error>> {
-		// Validate that the query is read-only (SELECT only)
-		const trimmedSql = sql.trim().toUpperCase();
+		// Defense-in-depth SQL validation. Primary security is via Snowflake role permissions.
+		// This validation catches obvious mistakes and provides a secondary safety layer.
+
+		// Remove comments to prevent bypass attempts
+		const sqlWithoutComments = sql
+			.replace(/--.*$/gm, "") // Single-line comments
+			.replace(/\/\*[\s\S]*?\*\//g, ""); // Multi-line comments
+
+		const upperSql = sqlWithoutComments.trim().toUpperCase();
+
+		// Check query starts with allowed read-only prefix
 		const allowedPrefixes = ["SELECT", "SHOW", "DESCRIBE", "DESC", "WITH"];
-		const isReadOnly = allowedPrefixes.some((prefix) =>
-			trimmedSql.startsWith(prefix),
+		const hasAllowedPrefix = allowedPrefixes.some((prefix) =>
+			upperSql.startsWith(prefix),
 		);
 
-		if (!isReadOnly) {
+		if (!hasAllowedPrefix) {
 			return new Err(
 				new Error(
 					"Only read-only queries are allowed (SELECT, SHOW, DESCRIBE, WITH)",
@@ -272,9 +281,35 @@ export class SnowflakeClient {
 			);
 		}
 
+		// Check for DML/DDL keywords anywhere in query (catches WITH ... INSERT, etc.)
+		const forbiddenKeywords = [
+			"INSERT",
+			"UPDATE",
+			"DELETE",
+			"MERGE",
+			"TRUNCATE",
+			"DROP",
+			"ALTER",
+			"CREATE",
+			"GRANT",
+			"REVOKE",
+			"CALL",
+			"EXECUTE",
+			"PUT",
+			"COPY",
+		];
+		for (const keyword of forbiddenKeywords) {
+			// Match whole word only
+			if (new RegExp(`\\b${keyword}\\b`).test(upperSql)) {
+				return new Err(
+					new Error(`Write operations are not allowed: ${keyword} detected`),
+				);
+			}
+		}
+
 		// Add LIMIT if not already present for SELECT queries
 		let finalSql = sql;
-		if (trimmedSql.startsWith("SELECT") && !trimmedSql.includes("LIMIT")) {
+		if (upperSql.startsWith("SELECT") && !upperSql.includes("LIMIT")) {
 			finalSql = `${sql.trim()} LIMIT ${maxRows}`;
 		}
 
