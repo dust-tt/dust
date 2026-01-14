@@ -1,21 +1,12 @@
 // Shared test Redis management (global container, not per-environment)
 // All environments share the same Redis instance for testing.
 
+import { isContainerRunning } from "./docker";
 import { TEST_REDIS_CONTAINER_NAME, TEST_REDIS_PORT } from "./paths";
 
 // Check if the test Redis container is running
 export async function isTestRedisRunning(): Promise<boolean> {
-  const proc = Bun.spawn(
-    ["docker", "inspect", "-f", "{{.State.Running}}", TEST_REDIS_CONTAINER_NAME],
-    {
-      stdout: "pipe",
-      stderr: "pipe",
-    }
-  );
-  const output = await new Response(proc.stdout).text();
-  await proc.exited;
-
-  return proc.exitCode === 0 && output.trim() === "true";
+  return isContainerRunning(TEST_REDIS_CONTAINER_NAME);
 }
 
 // Check if the test Redis container exists (running or stopped)

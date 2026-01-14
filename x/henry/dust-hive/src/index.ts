@@ -57,6 +57,7 @@ cli
   )
   .option("-c, --command <cmd>", "Run command in shell tab after opening (drops to shell on exit)")
   .option("-C, --compact", "Use compact zellij layout (no tab bar)")
+  .option("-d, --db-from <env>", "Clone Postgres database from existing environment")
   .action(
     async (
       name: string | undefined,
@@ -69,6 +70,7 @@ cli
         wait?: boolean;
         command?: string;
         compact?: boolean;
+        dbFrom?: string;
       }
     ) => {
       // Validate --wait cannot be used with --no-open
@@ -87,6 +89,7 @@ cli
         wait?: boolean;
         command?: string;
         compact?: boolean;
+        dbFrom?: string;
       } = {};
       if (resolvedName !== undefined) {
         spawnOptions.name = resolvedName;
@@ -111,6 +114,9 @@ cli
       }
       if (options.compact) {
         spawnOptions.compact = true;
+      }
+      if (options.dbFrom) {
+        spawnOptions.dbFrom = options.dbFrom;
       }
       await prepareAndRun(spawnCommand(spawnOptions));
     }
