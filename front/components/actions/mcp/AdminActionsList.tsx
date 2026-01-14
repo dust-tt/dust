@@ -209,14 +209,14 @@ export const AdminActionsList = ({
     ]
   );
   const columns = useMemo((): ColumnDef<RowData>[] => {
-    const columns: ColumnDef<RowData, unknown>[] = [];
+    const columns: ColumnDef<RowData, any>[] = [];
 
     columns.push(
       {
         id: "name",
         accessorKey: "name",
         header: "Name",
-        cell: (info: CellContext<RowData, unknown>) => (
+        cell: (info: CellContext<RowData, string>) => (
           <NameCell row={info.row.original} />
         ),
         filterFn: (row, id, filterValue) =>
