@@ -7,7 +7,7 @@ import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import type { PlanType, SpaceType, WorkspaceType } from "@app/types";
 import { getSupportedNonImageFileExtensions } from "@app/types";
 
-interface SpaceKnowledgeTabProps {
+interface SpaceContextTabProps {
   owner: WorkspaceType;
   space: SpaceType;
   systemSpace: SpaceType;
@@ -17,7 +17,7 @@ interface SpaceKnowledgeTabProps {
   canWriteInSpace: boolean;
 }
 
-export function SpaceKnowledgeTab({
+export function SpaceContextTab({
   owner,
   space,
   systemSpace,
@@ -25,7 +25,7 @@ export function SpaceKnowledgeTab({
   isAdmin,
   canReadInSpace,
   canWriteInSpace,
-}: SpaceKnowledgeTabProps) {
+}: SpaceContextTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { spaceDataSourceViews, isSpaceDataSourceViewsLoading } =
     useSpaceDataSourceViews({
@@ -64,7 +64,7 @@ export function SpaceKnowledgeTab({
     return (
       <div className="flex w-full items-center justify-center p-8">
         <div className="text-center text-muted-foreground dark:text-muted-foreground-night">
-          Loading project knowledge...
+          Loading project context...
         </div>
       </div>
     );
@@ -114,7 +114,7 @@ export function SpaceKnowledgeTab({
       ) : (
         <div className="flex w-full items-center justify-center p-8">
           <EmptyCTA
-            message="No project knowledge, add files to get started!"
+            message="No project context, add files to get started!"
             action={
               <Button
                 variant="primary"

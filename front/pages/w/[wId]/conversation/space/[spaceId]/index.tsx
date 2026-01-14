@@ -19,8 +19,8 @@ import { ConversationContainerVirtuoso } from "@app/components/assistant/convers
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import { ConversationLayout } from "@app/components/assistant/conversation/ConversationLayout";
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
+import { SpaceContextTab } from "@app/components/assistant/conversation/space/SpaceContextTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/SpaceConversationsTab";
-import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
@@ -117,7 +117,7 @@ export const getServerSideProps =
     };
   });
 
-type SpaceTab = "conversations" | "knowledge" | "tools" | "about";
+type SpaceTab = "conversations" | "context" | "tools" | "about";
 
 export default function SpaceConversations({
   owner,
@@ -162,7 +162,7 @@ export default function SpaceConversations({
   const getCurrentTabFromHash = useCallback((): SpaceTab => {
     const hash = window.location.hash.slice(1); // Remove the # prefix
     if (
-      hash === "knowledge" ||
+      hash === "context" ||
       hash === "tools" ||
       hash === "about" ||
       hash === "conversations"
@@ -336,11 +336,7 @@ export default function SpaceConversations({
               label="Conversations"
               icon={ChatBubbleBottomCenterTextIcon}
             />
-            <TabsTrigger
-              value="knowledge"
-              label="Knowledge"
-              icon={BookOpenIcon}
-            />
+            <TabsTrigger value="context" label="Context" icon={BookOpenIcon} />
             <TabsTrigger
               value="about"
               label="About this project"
@@ -359,9 +355,9 @@ export default function SpaceConversations({
             />
           </TabsContent>
 
-          <TabsContent value="knowledge">
+          <TabsContent value="context">
             {spaceInfo && (
-              <SpaceKnowledgeTab
+              <SpaceContextTab
                 owner={owner}
                 space={spaceInfo}
                 systemSpace={systemSpace}
