@@ -2,6 +2,7 @@ import {
   ActionGlobeAltIcon,
   Button,
   Chip,
+  Cog6ToothIcon,
   DataTable,
   EmptyCTA,
   IconButton,
@@ -16,7 +17,7 @@ import type { Organization } from "@workos-inc/node";
 import React, { useState } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
-import { AddDomainModal } from "@app/components/workspace/AddDomainModal";
+import { ConfigureDomainUseCasesModal } from "@app/components/workspace/ConfigureDomainUseCasesModal";
 import UserProvisioning from "@app/components/workspace/DirectorySync";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
 import SSOConnection from "@app/components/workspace/SSOConnection";
@@ -83,14 +84,12 @@ function DomainVerification({
   isDomainsLoading,
   owner,
 }: DomainVerificationProps) {
-  const [isAddDomainModalOpen, setIsAddDomainModalOpen] = useState(false);
-
   return (
     <WorkspaceSection icon={ActionGlobeAltIcon} title="Domain Verification">
       <Page.P variant="secondary">
-        Verify one or multiple company domains to enable Single Sign-On (SSO)
-        and allow team members to automatically join your workspace when they
-        sign up with their work email address.
+        Verify one or multiple company domains to enable Single Sign-On (SSO),
+        allow team members to auto-join your workspace, and whitelist MCP
+        servers for static IP firewall access.
       </Page.P>
       {isDomainsLoading ? (
         <LoadingBlock className="h-32 w-full rounded-xl" />
@@ -101,33 +100,27 @@ function DomainVerification({
               label="Add Domain"
               variant="primary"
               icon={PlusIcon}
-              onClick={() => setIsAddDomainModalOpen(true)}
+              href={addDomainLink}
             />
           }
         />
       ) : (
         <DomainVerificationTable
+          addDomainLink={addDomainLink}
           domains={domains}
           workspaceVerifiedDomains={workspaceVerifiedDomains}
           owner={owner}
-          onAddDomain={() => setIsAddDomainModalOpen(true)}
         />
       )}
-      <AddDomainModal
-        isOpen={isAddDomainModalOpen}
-        onClose={() => setIsAddDomainModalOpen(false)}
-        owner={owner}
-        addDomainLink={addDomainLink}
-      />
     </WorkspaceSection>
   );
 }
 
 interface DomainVerificationTableProps {
+  addDomainLink?: string;
   domains: Organization["domains"];
   workspaceVerifiedDomains: WorkspaceDomain[];
   owner: LightWorkspaceType;
-  onAddDomain: () => void;
 }
 
 // Define the row data type that extends TBaseData
@@ -139,13 +132,14 @@ interface DomainRowData {
 }
 
 function DomainVerificationTable({
+  addDomainLink,
   domains,
   workspaceVerifiedDomains,
   owner,
-  onAddDomain,
 }: DomainVerificationTableProps) {
   const confirm = React.useContext(ConfirmContext);
   const { doRemoveWorkspaceDomain } = useRemoveWorkspaceDomain({ owner });
+  const [configuredDomain, setConfiguredDomain] = useState<string | null>(null);
 
   const handleDeleteDomain = React.useCallback(
     async (domain: string) => {
@@ -202,16 +196,30 @@ function DomainVerificationTable({
       {
         header: "",
         accessorKey: "actions",
-        meta: { className: "w-14" },
+        meta: { className: "w-24" },
         cell: ({ row }: CellContext<DomainRowData, string>) => {
+          const isVerified =
+            row.original.workspaceVerifiedDomain &&
+            row.original.status === "verified";
           return (
-            <IconButton
-              icon={XMarkIcon}
-              size="xs"
-              variant="ghost"
-              onClick={() => handleDeleteDomain(row.original.domain)}
-              tooltip="Delete domain"
-            />
+            <div className="flex gap-1">
+              {isVerified && (
+                <IconButton
+                  icon={Cog6ToothIcon}
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => setConfiguredDomain(row.original.domain)}
+                  tooltip="Configure use cases"
+                />
+              )}
+              <IconButton
+                icon={XMarkIcon}
+                size="xs"
+                variant="ghost"
+                onClick={() => handleDeleteDomain(row.original.domain)}
+                tooltip="Delete domain"
+              />
+            </div>
           );
         },
       },
@@ -232,14 +240,22 @@ function DomainVerificationTable({
   return (
     <div className="flex w-auto flex-col gap-6">
       <DataTable className="pt-6" columns={columns} data={data} />
-      <div>
-        <Button
-          label="Add Domain"
-          variant="primary"
-          onClick={onAddDomain}
-          icon={PlusIcon}
-        />
-      </div>
+      {addDomainLink && (
+        <div>
+          <Button
+            label="Add Domain"
+            variant="primary"
+            href={addDomainLink}
+            icon={PlusIcon}
+          />
+        </div>
+      )}
+      <ConfigureDomainUseCasesModal
+        isOpen={configuredDomain !== null}
+        onClose={() => setConfiguredDomain(null)}
+        owner={owner}
+        domain={configuredDomain ?? ""}
+      />
     </div>
   );
 }
