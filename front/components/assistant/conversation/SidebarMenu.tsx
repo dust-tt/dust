@@ -1,4 +1,5 @@
 import {
+  Avatar,
   BracesIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
@@ -10,6 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
+  DropdownMenuSearchbar,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -23,6 +25,7 @@ import {
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
+  PencilSquareIcon,
   PlusIcon,
   RobotIcon,
   SearchInput,
@@ -67,6 +70,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { SKILL_ICON } from "@app/lib/skill";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useConversations,
   useSpaceConversationsSummary,
@@ -104,6 +108,25 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
+
+  const agentsSearchInputRef = useRef<HTMLInputElement>(null);
+  const [searchText, setSearchText] = useState("");
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId: owner.sId,
+  });
+  const editableAgents = useMemo(
+    () => agentConfigurations.filter((agent) => agent.canEdit),
+    [agentConfigurations]
+  );
+  const filteredAgents = useMemo(
+    () =>
+      editableAgents
+        .filter((agent) =>
+          agent.name.toLowerCase().includes(searchText.toLowerCase().trim())
+        )
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [editableAgents, searchText]
+  );
 
   const { setSidebarOpen } = useContext(SidebarContext);
 
@@ -449,6 +472,44 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                             </DropdownMenuSubContent>
                           </DropdownMenuPortal>
                         </DropdownMenuSub>
+                        {editableAgents.length > 0 && (
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger
+                              icon={PencilSquareIcon}
+                              label="Edit agent"
+                            />
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent className="pointer-events-auto">
+                                <DropdownMenuSearchbar
+                                  ref={agentsSearchInputRef}
+                                  name="search"
+                                  value={searchText}
+                                  onChange={setSearchText}
+                                  placeholder="Search"
+                                />
+                                <div className="max-h-150 overflow-y-auto">
+                                  {filteredAgents.map((agent) => (
+                                    <DropdownMenuItem
+                                      key={agent.sId}
+                                      href={getAgentBuilderRoute(
+                                        owner.sId,
+                                        agent.sId
+                                      )}
+                                      truncateText
+                                      label={agent.name}
+                                      icon={() => (
+                                        <Avatar
+                                          size="xs"
+                                          visual={agent.pictureUrl}
+                                        />
+                                      )}
+                                    />
+                                  ))}
+                                </div>
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
+                        )}
                         <DropdownMenuItem
                           href={getAgentBuilderRoute(owner.sId, "manage")}
                           icon={RobotIcon}
