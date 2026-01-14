@@ -1,6 +1,6 @@
 import type { ModelId } from "@app/types";
 
-const PROJECT_CONTEXT_DATASOURCE_NAME = "__project_context__";
+export const PROJECT_CONTEXT_DATASOURCE_NAME = "managed-project_context";
 
 export const getProjectContextDatasourceName = (spaceId: ModelId) => {
   return `${PROJECT_CONTEXT_DATASOURCE_NAME}_${spaceId}`;

@@ -3,6 +3,7 @@ import React, { useRef } from "react";
 
 import { SpaceDataSourceViewContentList } from "@app/components/spaces/SpaceDataSourceViewContentList";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { PROJECT_CONTEXT_DATASOURCE_NAME } from "@app/lib/api/projects";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import type { PlanType, SpaceType, WorkspaceType } from "@app/types";
 import { getSupportedNonImageFileExtensions } from "@app/types";
@@ -35,9 +36,10 @@ export function SpaceKnowledgeTab({
     });
 
   // Find the project context data source view
+  // TODO(rcs): remove this for something cleaner
   const projectDataSourceView =
     spaceDataSourceViews.find((dsv) =>
-      dsv.dataSource.name.includes("__project_context__")
+      dsv.dataSource.name.includes(PROJECT_CONTEXT_DATASOURCE_NAME)
     ) ?? null;
 
   const projectFileUpload = useFileUploaderService({
