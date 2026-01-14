@@ -31,6 +31,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/metadata";
+import { DATA_WAREHOUSES_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/metadata";
 import {
   GOOGLE_CALENDAR_SERVER_INFO,
   GOOGLE_CALENDAR_TOOL_STAKES,
@@ -1518,15 +1519,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: DATA_WAREHOUSE_SERVER_NAME,
-      version: "1.0.0",
-      description: "Browse tables organized by warehouse and schema.",
-      authorization: null,
-      icon: "ActionTableIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: DATA_WAREHOUSES_SERVER_INFO,
   },
   toolsets: {
     id: 1013,
