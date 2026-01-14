@@ -51,6 +51,70 @@ impl SnowflakeConnectionProvider {
             snowflake_account.trim()
         )
     }
+
+    /// Builds the Basic auth header for Snowflake OAuth
+    fn build_auth_header(client_id: &str, client_secret: &str) -> String {
+        format!(
+            "Basic {}",
+            base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                format!("{}:{}", client_id, client_secret)
+            )
+        )
+    }
+
+    /// Makes a token request to Snowflake and parses the response
+    async fn make_token_request(
+        &self,
+        connection: &Connection,
+        related_credentials: Option<Credential>,
+        params: &[(&str, &str)],
+    ) -> Result<serde_json::Value, ProviderError> {
+        // Extract account identifier from connection metadata
+        let snowflake_account = connection
+            .metadata()
+            .get("snowflake_account")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| {
+                anyhow!("Missing `snowflake_account` in connection metadata for Snowflake")
+            })?;
+
+        // Get Snowflake client_id and client_secret
+        let (client_id, client_secret) = Self::get_credentials(related_credentials).await?;
+
+        let token_endpoint = Self::get_token_endpoint(snowflake_account);
+        let auth_header = Self::build_auth_header(&client_id, &client_secret);
+
+        let req = self
+            .reqwest_client()
+            .post(&token_endpoint)
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .header("Authorization", &auth_header)
+            .form(params);
+
+        execute_request(ConnectionProvider::Snowflake, req)
+            .await
+            .map_err(|e| self.handle_provider_request_error(e))
+    }
+
+    /// Parses access token response from Snowflake
+    fn parse_token_response(
+        raw_json: &serde_json::Value,
+    ) -> Result<(String, u64, Option<String>)> {
+        let access_token = raw_json["access_token"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing `access_token` in response from Snowflake"))?
+            .to_string();
+
+        let expires_in = raw_json
+            .get("expires_in")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| anyhow!("Missing or invalid `expires_in` in response from Snowflake"))?;
+
+        let refresh_token = raw_json["refresh_token"].as_str().map(|t| t.to_string());
+
+        Ok((access_token, expires_in, refresh_token))
+    }
 }
 
 /// Snowflake OAuth documentation: https://docs.snowflake.com/en/user-guide/oauth-custom
@@ -79,68 +143,23 @@ impl Provider for SnowflakeConnectionProvider {
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
-        // Extract account identifier from connection metadata
-        let snowflake_account = connection
-            .metadata()
-            .get("snowflake_account")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                anyhow!("Missing `snowflake_account` in connection metadata for Snowflake")
-            })?;
-
-        // Get Snowflake client_id and client_secret using the helper
-        let (client_id, client_secret) = Self::get_credentials(related_credentials).await?;
-
-        let token_endpoint = Self::get_token_endpoint(snowflake_account);
-
         let params = [
             ("grant_type", "authorization_code"),
             ("code", code),
             ("redirect_uri", redirect_uri),
         ];
 
-        // Snowflake uses Basic auth with client_id:client_secret
-        let auth_header = format!(
-            "Basic {}",
-            base64::Engine::encode(
-                &base64::engine::general_purpose::STANDARD,
-                format!("{}:{}", client_id, client_secret)
-            )
-        );
+        let raw_json = self
+            .make_token_request(connection, related_credentials, &params)
+            .await?;
 
-        let req = self
-            .reqwest_client()
-            .post(&token_endpoint)
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .header("Authorization", &auth_header)
-            .form(&params);
-
-        let raw_json = execute_request(ConnectionProvider::Snowflake, req)
-            .await
-            .map_err(|e| self.handle_provider_request_error(e))?;
-
-        let access_token = match raw_json["access_token"].as_str() {
-            Some(token) => token,
-            None => Err(anyhow!("Missing `access_token` in response from Snowflake"))?,
-        };
-
-        // expires_in is the number of seconds until the token expires (typically 600 = 10 minutes).
-        let expires_in = match raw_json.get("expires_in") {
-            Some(serde_json::Value::Number(n)) => match n.as_u64() {
-                Some(n) => n,
-                None => Err(anyhow!("Invalid `expires_in` in response from Snowflake"))?,
-            },
-            _ => Err(anyhow!("Missing `expires_in` in response from Snowflake"))?,
-        };
-
-        // Snowflake returns refresh_token if OAUTH_ISSUE_REFRESH_TOKENS is set to TRUE
-        let refresh_token = raw_json["refresh_token"].as_str().map(|t| t.to_string());
+        let (access_token, expires_in, refresh_token) = Self::parse_token_response(&raw_json)?;
 
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             extra_metadata: None,
             code: code.to_string(),
-            access_token: access_token.to_string(),
+            access_token,
             access_token_expiry: Some(
                 utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
             ),
@@ -160,64 +179,20 @@ impl Provider for SnowflakeConnectionProvider {
             Err(e) => Err(e)?,
         };
 
-        // Extract account identifier from connection metadata
-        let snowflake_account = connection
-            .metadata()
-            .get("snowflake_account")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                anyhow!("Missing `snowflake_account` in connection metadata for Snowflake")
-            })?;
-
-        // Get Snowflake client_id and client_secret using the helper
-        let (client_id, client_secret) = Self::get_credentials(related_credentials).await?;
-
-        let token_endpoint = Self::get_token_endpoint(snowflake_account);
-
         let params = [
             ("grant_type", "refresh_token"),
-            ("refresh_token", &refresh_token),
+            ("refresh_token", refresh_token.as_str()),
         ];
 
-        // Snowflake uses Basic auth with client_id:client_secret
-        let auth_header = format!(
-            "Basic {}",
-            base64::Engine::encode(
-                &base64::engine::general_purpose::STANDARD,
-                format!("{}:{}", client_id, client_secret)
-            )
-        );
+        let raw_json = self
+            .make_token_request(connection, related_credentials, &params)
+            .await?;
 
-        let req = self
-            .reqwest_client()
-            .post(&token_endpoint)
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .header("Authorization", &auth_header)
-            .form(&params);
-
-        let raw_json = execute_request(ConnectionProvider::Snowflake, req)
-            .await
-            .map_err(|e| self.handle_provider_request_error(e))?;
-
-        let access_token = match raw_json["access_token"].as_str() {
-            Some(token) => token,
-            None => Err(anyhow!("Missing `access_token` in response from Snowflake"))?,
-        };
-
-        // expires_in is the number of seconds until the token expires.
-        let expires_in = match raw_json.get("expires_in") {
-            Some(serde_json::Value::Number(n)) => match n.as_u64() {
-                Some(n) => n,
-                None => Err(anyhow!("Invalid `expires_in` in response from Snowflake"))?,
-            },
-            _ => Err(anyhow!("Missing `expires_in` in response from Snowflake"))?,
-        };
-
-        // Snowflake may return a new refresh_token
-        let new_refresh_token = raw_json["refresh_token"].as_str().map(|t| t.to_string());
+        let (access_token, expires_in, new_refresh_token) =
+            Self::parse_token_response(&raw_json)?;
 
         Ok(RefreshResult {
-            access_token: access_token.to_string(),
+            access_token,
             access_token_expiry: Some(
                 utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
             ),
@@ -231,8 +206,6 @@ impl Provider for SnowflakeConnectionProvider {
             serde_json::Value::Object(mut map) => {
                 map.remove("access_token");
                 map.remove("refresh_token");
-                // Misleading for end-user (relative to refresh time).
-                map.remove("expires_in");
                 serde_json::Value::Object(map)
             }
             _ => Err(anyhow!("Invalid raw_json, not an object"))?,

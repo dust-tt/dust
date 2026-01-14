@@ -9,18 +9,10 @@ import snowflake from "snowflake-sdk";
 import type { Result } from "@app/types";
 import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
 
-// Snowflake returns rows as Record<string, any>
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SnowflakeRow = Record<string, any>;
-type SnowflakeRows = Array<SnowflakeRow>;
-
 export interface SnowflakeColumn {
   name: string;
   type: string;
   nullable: boolean;
-  database?: string;
-  schema?: string;
-  table?: string;
 }
 
 export interface SnowflakeQueryResult {
@@ -174,6 +166,9 @@ export class SnowflakeClient {
     sql: string
   ): Promise<Result<SnowflakeQueryResult, Error>> {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      type SnowflakeRows = Record<string, any>[];
+
       const result = await new Promise<{
         rows: SnowflakeRows | undefined;
         columns: SnowflakeColumn[];
