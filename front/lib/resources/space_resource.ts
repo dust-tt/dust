@@ -449,26 +449,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await this.update({ name: newName });
     // For regular spaces that only have a single group, update
     // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
-    const spaceMemberGroups = this.groups.filter(
-      (g) => g.group_vaults?.kind === "member"
-    );
-    if (
-      spaceMemberGroups.length === 1 &&
-      (this.isRegular() || this.isPublic())
-    ) {
-      await spaceMemberGroups[0].updateName(
+    const spaceMemberGroup = this.getDefaultSpaceGroup();
+    if (this.isRegular() || this.isPublic()) {
+      await spaceMemberGroup.updateName(
         auth,
         `Group for ${this.isProject() ? "project" : "space"} ${newName}`
       );
     }
-    const spaceEditorGroups = this.groups.filter(
-      (g) => g.group_vaults?.kind === "editor"
-    );
-    if (
-      spaceEditorGroups.length === 1 &&
-      (this.isRegular() || this.isPublic())
-    ) {
-      await spaceEditorGroups[0].updateName(
+    let spaceEditorGroup = this.getDefaultSpaceEditorGroup();
+    if (spaceEditorGroup && (this.isRegular() || this.isPublic())) {
+      await spaceEditorGroup.updateName(
         auth,
         `Editors for ${this.isProject() ? "project" : "space"} ${newName}`
       );
@@ -527,27 +517,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const { isRestricted } = params;
 
-    const spaceMembersGroups = this.groups.filter(
-      (group) => group.group_vaults?.kind === "member"
-    );
-    const spaceEditorsGroups = this.groups.filter(
-      (group) => group.group_vaults?.kind === "editor"
-    );
-
-    // Ensure exactly one space_members group is associated with the space.
-    // IMPORTANT: This constraint is critical for the requestedPermissions() method logic.
-    // Modifying this requires careful review and updates to requestedPermissions().
-    assert(
-      spaceMembersGroups.length === 1,
-      `Expected one space_members group for the space, but found ${spaceMembersGroups.length}.`
-    );
-    assert(
-      spaceEditorsGroups.length <= 1,
-      `Expected at most one space_editors group for the space, but found ${spaceEditorsGroups.length}.`
-    );
-    // Find member and editor groups
-    const memberGroup = spaceMembersGroups[0];
-    let editorGroup = spaceEditorsGroups[0];
+    const memberGroup = this.getDefaultSpaceGroup();
+    let editorGroup = this.getDefaultSpaceEditorGroup();
 
     const wasRestricted = this.groups.every((g) => !g.isGlobal());
 
@@ -877,9 +848,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return spaceMembersGroups[0];
   }
 
-  private getDefaultSpaceEditorGroup(): GroupResource {
+  private getDefaultSpaceEditorGroup(): GroupResource | undefined {
     const spaceEditorsGroups = this.groups.filter(
-      (group) => group.group_vaults?.kind === "editor"
+      (group) => group.kind === "space_editors"
     );
     assert(
       spaceEditorsGroups.length <= 1,
