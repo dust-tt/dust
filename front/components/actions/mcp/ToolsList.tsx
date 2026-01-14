@@ -83,9 +83,7 @@ const ToolItem = memo(
     };
 
     return (
-      <div
-        className={`flex flex-col gap-1 pb-2 ${!toolEnabled ? "opacity-50" : ""}`}
-      >
+      <div className="flex flex-col gap-1 pb-2">
         <div className="flex items-center gap-2">
           {mayUpdate && (
             <Checkbox checked={toolEnabled} onClick={handleToggle} />
@@ -164,7 +162,7 @@ export const ToolsList = memo(
             <CollapsibleContent>
               <>
                 <ContentMessage
-                  className="mb-4 w-full"
+                  className="mb-4 mt-2 w-full"
                   variant="blue"
                   size="lg"
                   icon={InformationCircleIcon}
