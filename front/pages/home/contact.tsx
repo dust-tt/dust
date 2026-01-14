@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { ContactForm } from "@app/components/home/ContactForm";
+import { ContactFormThankYou } from "@app/components/home/ContactFormThankYou";
 import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -41,6 +42,9 @@ export default function Contact() {
       ? router.query.headquarters_region
       : undefined;
 
+  // Test mode: show thank you page directly with ?testThankYou=true
+  const testThankYou = router.query.testThankYou === "true";
+
   const subtitle = companyName ? (
     <>
       We're excited to show you how Dust can help <strong>{companyName}</strong>
@@ -69,11 +73,25 @@ export default function Contact() {
         />
         <Grid>
           <div className="col-span-12 sm:col-span-12 md:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">
-            <ContactForm
-              prefillEmail={prefillEmail}
-              prefillHeadcount={prefillHeadcount}
-              prefillRegion={prefillRegion}
-            />
+            {testThankYou ? (
+              <ContactFormThankYou
+                firstName="Alban"
+                lastName="Music"
+                email="alban@dust.tt"
+                phone="+33612345678"
+                language="I would like my meeting to be in English 🇬🇧🇺🇸"
+                headquartersRegion="Europe"
+                companyHeadcount="101-500"
+                howToUseDust="Testing the Default.com integration"
+                isQualified={true}
+              />
+            ) : (
+              <ContactForm
+                prefillEmail={prefillEmail}
+                prefillHeadcount={prefillHeadcount}
+                prefillRegion={prefillRegion}
+              />
+            )}
           </div>
         </Grid>
         <TrustedBy />

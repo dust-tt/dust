@@ -11,13 +11,11 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
-// Default.com configuration
+// Default.com form ID (used in form data-attribute for tracking)
 const DEFAULT_FORM_ID = 503792;
-const DEFAULT_TEAM_ID = 579;
-const HUBSPOT_FORM_ID = "95a83867-b22c-440a-8ba0-2733d35e4a7b";
 
 import type {
   ContactFormData,
@@ -51,35 +49,6 @@ export function ContactForm({
   const [submitResult, setSubmitResult] =
     useState<ContactSubmitResponse | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const defaultScriptLoadedRef = useRef(false);
-
-  // Load Default.com script on mount
-  useEffect(() => {
-    if (defaultScriptLoadedRef.current) {
-      return;
-    }
-    defaultScriptLoadedRef.current = true;
-
-    // Initialize Default.com configuration
-    window.__default__ = window.__default__ ?? {};
-    window.__default__.form_id = DEFAULT_FORM_ID;
-    window.__default__.team_id = DEFAULT_TEAM_ID;
-    window.__default__.listenToIds = [HUBSPOT_FORM_ID];
-
-    console.log("[Default.com] Initializing with config:", window.__default__);
-
-    // Load the Default.com script
-    const script = document.createElement("script");
-    script.async = true;
-    script.src = "https://import-cdn.default.com";
-    script.onload = () => {
-      console.log("[Default.com] Script loaded successfully");
-    };
-    script.onerror = () => {
-      console.error("[Default.com] Script failed to load");
-    };
-    document.head.appendChild(script);
-  }, []);
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(ContactFormSchema),
@@ -202,6 +171,13 @@ export function ContactForm({
     return (
       <ContactFormThankYou
         firstName={form.getValues("firstname") ?? ""}
+        lastName={form.getValues("lastname") ?? ""}
+        email={form.getValues("email")}
+        phone={form.getValues("phone") ?? ""}
+        language={form.getValues("language")}
+        headquartersRegion={form.getValues("headquarters_region") ?? ""}
+        companyHeadcount={form.getValues("company_headcount_form")}
+        howToUseDust={form.getValues("how_to_use_dust") ?? ""}
         isQualified={submitResult.isQualified}
       />
     );
