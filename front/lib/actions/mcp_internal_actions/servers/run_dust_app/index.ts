@@ -16,8 +16,8 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { runDustAppSchema } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type {
@@ -512,10 +512,7 @@ export default async function createServer(
     server.tool(
       "run_dust_app",
       "Run a Dust App with specified parameters.",
-      {
-        dustApp:
-          ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP],
-      },
+      runDustAppSchema,
       withToolLogging(
         auth,
         { toolNameForMonitoring: "run_dust_app", agentLoopContext },

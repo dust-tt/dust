@@ -190,7 +190,10 @@ import {
   RUN_AGENT_SERVER_INFO,
   RUN_AGENT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/metadata";
-import { RUN_DUST_APP_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app/metadata";
+import {
+  RUN_DUST_APP_SERVER_INFO,
+  RUN_DUST_APP_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app/metadata";
 import {
   SALESFORCE_SERVER_INFO,
   SALESFORCE_TOOL_STAKES,
@@ -516,6 +519,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: RUN_DUST_APP_TOOLS,
     serverInfo: RUN_DUST_APP_SERVER_INFO,
   },
   notion: {
