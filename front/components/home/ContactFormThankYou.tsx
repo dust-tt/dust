@@ -3,37 +3,34 @@ import { useEffect, useRef } from "react";
 
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 
+// Default.com configuration (must match ContactForm)
+const DEFAULT_FORM_ID = 503792;
+
 interface ContactFormThankYouProps {
   firstName: string;
   isQualified: boolean;
-  email: string;
-  lastName: string;
 }
 
 export function ContactFormThankYou({
   firstName,
   isQualified,
-  email,
-  lastName,
 }: ContactFormThankYouProps) {
   const hasTrackedRef = useRef(false);
   const defaultTriggeredRef = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Fire qualified lead tracking event
   useEffect(() => {
     if (isQualified && !hasTrackedRef.current) {
       hasTrackedRef.current = true;
 
-      // Delay the qualified lead event to ensure it fires after the page is visible
       const timeoutId = setTimeout(() => {
-        // Track in PostHog
         trackEvent({
           area: TRACKING_AREAS.CONTACT,
           object: "contact_form",
           action: "qualified_lead",
         });
 
-        // Push qualified lead event to GTM
         if (typeof window !== "undefined") {
           window.dataLayer = window.dataLayer ?? [];
           window.dataLayer.push({
@@ -46,45 +43,31 @@ export function ContactFormThankYou({
     }
   }, [isQualified]);
 
-  // Trigger Default.com scheduler for qualified leads
-  // The Default.com script is already loaded in ContactForm
+  // Trigger Default.com popup for qualified leads
   useEffect(() => {
     if (!isQualified || defaultTriggeredRef.current) {
       return;
     }
     defaultTriggeredRef.current = true;
 
-    console.log("[Default.com] Thank you page - checking for Default.com SDK");
-    console.log("[Default.com] window.__default__:", window.__default__);
-    console.log("[Default.com] window.Default:", window.Default);
-
-    // Default.com should have been loaded by ContactForm
-    // Try to trigger the scheduler by simulating a form submission
-    // Default.com listens for form submissions and will show the scheduler
-
-    // Wait a bit for Default.com to fully initialize
+    // Wait a moment for the thank you page to render, then trigger Default.com
     const timeoutId = setTimeout(() => {
-      console.log("[Default.com] Attempting to trigger scheduler");
-      console.log(
-        "[Default.com] Available methods on Default:",
-        window.Default ? Object.keys(window.Default) : "Default not found"
-      );
+      console.log("[Default.com] Triggering popup from thank you page");
+      console.log("[Default.com] window.__default__:", window.__default__);
 
-      // Try various methods that Default.com might expose
-      if (window.Default) {
-        // Log all available methods for debugging
-        for (const key of Object.keys(window.Default)) {
-          console.log(`[Default.com] Method: ${key}`, typeof (window.Default as Record<string, unknown>)[key]);
-        }
+      // Dispatch a submit event on our hidden form to trigger Default.com
+      if (formRef.current) {
+        const submitEvent = new Event("submit", {
+          bubbles: true,
+          cancelable: true,
+        });
+        formRef.current.dispatchEvent(submitEvent);
+        console.log("[Default.com] Submit event dispatched");
       }
-
-      // Default.com typically auto-shows after detecting a form submission
-      // Since we submitted via API, we need to check if there's a way to trigger it
-      // The scheduler should appear automatically if Default.com detected our form
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [isQualified, email, firstName, lastName]);
+  }, [isQualified]);
 
   return (
     <div className="flex flex-col gap-6 py-8">
@@ -103,9 +86,14 @@ export function ContactFormThankYou({
           : "We've received your request. Our team will be in touch soon."}
       </p>
 
-      {/* Default.com scheduler will appear as a popup/modal after form submission */}
+      {/* Hidden form for Default.com to attach to */}
       {isQualified && (
-        <div id="default-scheduler-container" className="w-full min-h-[400px]" />
+        <form
+          ref={formRef}
+          data-default-form-id={DEFAULT_FORM_ID}
+          className="hidden"
+          onSubmit={(e) => e.preventDefault()}
+        />
       )}
     </div>
   );

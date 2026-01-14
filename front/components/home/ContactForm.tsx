@@ -171,28 +171,14 @@ export function ContactForm({
         action: "submit_success",
       });
 
-      // Notify Default.com about the successful form submission
-      // Default.com expects to intercept form submissions, but since we use API,
-      // we need to manually trigger it
-      console.log("[Default.com] Form submitted successfully, notifying Default.com");
-      console.log("[Default.com] window.Default:", window.Default);
-
-      // Try to dispatch a custom event that Default.com might listen to
-      const formElement = document.querySelector(
-        `form[data-default-form-id="${DEFAULT_FORM_ID}"]`
-      );
-      if (formElement) {
-        // Dispatch a submit event that Default.com can intercept
-        const submitEvent = new Event("submit", {
-          bubbles: true,
-          cancelable: true,
-        });
-        console.log("[Default.com] Dispatching submit event on form");
-        formElement.dispatchEvent(submitEvent);
-      }
-
       // Scroll to top so the thank you message is visible
       window.scrollTo({ top: 0, behavior: "smooth" });
+
+      // Store form data for Default.com (will be used in ContactFormThankYou)
+      window.__default__ = window.__default__ ?? {};
+      window.__default__.email = data.email;
+      window.__default__.first_name = data.firstname;
+      window.__default__.last_name = data.lastname;
 
       setSubmitResult(result);
     } catch {
@@ -200,18 +186,6 @@ export function ContactForm({
       setIsSubmitting(false);
     }
   };
-
-  // Show thank you page after successful submission
-  if (submitResult) {
-    return (
-      <ContactFormThankYou
-        firstName={form.getValues("firstname") ?? ""}
-        lastName={form.getValues("lastname") ?? ""}
-        email={form.getValues("email")}
-        isQualified={submitResult.isQualified}
-      />
-    );
-  }
 
   const selectedLanguage = LANGUAGE_OPTIONS.find(
     (opt) => opt.value === form.watch("language")
@@ -222,6 +196,16 @@ export function ContactForm({
   const selectedHeadcount = COMPANY_HEADCOUNT_OPTIONS.find(
     (opt) => opt.value === form.watch("company_headcount_form")
   );
+
+  // Show thank you page after successful submission
+  if (submitResult) {
+    return (
+      <ContactFormThankYou
+        firstName={form.getValues("firstname") ?? ""}
+        isQualified={submitResult.isQualified}
+      />
+    );
+  }
 
   return (
     <form
