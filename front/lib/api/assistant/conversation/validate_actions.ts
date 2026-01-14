@@ -1,6 +1,3 @@
-import assert from "assert";
-import { Op } from "sequelize";
-
 import type { ActionApprovalStateType } from "@app/lib/actions/mcp";
 import {
   getMCPApprovalStateFromUserApprovalState,
@@ -11,15 +8,12 @@ import {
   setUserAlwaysApprovedTool,
 } from "@app/lib/actions/tool_status";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/mentions";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import {
-  AgentMessageModel,
-  MessageModel,
-  UserMessageModel,
-} from "@app/lib/models/agent/conversation";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -27,64 +21,6 @@ import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { APIErrorWithStatusCode, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-
-async function getUserMessageIdFromMessageId(
-  auth: Authenticator,
-  { messageId }: { messageId: string }
-): Promise<{
-  agentMessageId: string;
-  agentMessageVersion: number;
-  userMessageId: string;
-  userMessageVersion: number;
-  userMessageUserId: number | null;
-}> {
-  // Query 1: Get the message and its parentId.
-  const agentMessage = await MessageModel.findOne({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      sId: messageId,
-      agentMessageId: { [Op.ne]: null },
-    },
-    attributes: ["parentId", "version", "sId"],
-  });
-
-  assert(
-    agentMessage?.parentId,
-    "Agent message is expected to have a parentId"
-  );
-
-  // Query 2: Get the parent message's sId (which is the user message).
-  const parentMessage = await MessageModel.findOne({
-    where: {
-      id: agentMessage.parentId,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-    attributes: ["sId", "version"],
-    include: [
-      {
-        model: UserMessageModel,
-        as: "userMessage",
-        required: true,
-        attributes: ["userId"],
-      },
-    ],
-  });
-
-  assert(
-    parentMessage &&
-      parentMessage.userMessage &&
-      parentMessage.userMessage.userId,
-    "A user message with a linked user is expected for the agent message"
-  );
-
-  return {
-    agentMessageId: agentMessage.sId,
-    agentMessageVersion: agentMessage.version,
-    userMessageId: parentMessage.sId,
-    userMessageVersion: parentMessage.version,
-    userMessageUserId: parentMessage.userMessage.userId,
-  };
-}
 
 export async function validateAction(
   auth: Authenticator,

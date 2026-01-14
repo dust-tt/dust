@@ -1,3 +1,5 @@
+import assert from "assert";
+
 import uniq from "lodash/uniq";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -805,10 +807,14 @@ export const createAgentMessages = async (
   return { agentMessages, richMentions };
 };
 
-async function getUserMessageIdFromMessageId(
+export async function getUserMessageIdFromMessageId(
   auth: Authenticator,
   { messageId }: { messageId: string }
 ): Promise<{
+  agentMessageId: string;
+  agentMessageVersion: number;
+  userMessageId: string;
+  userMessageVersion: number;
   userMessageUserId: number | null;
 }> {
   // Query 1: Get the message and its parentId.
@@ -818,19 +824,21 @@ async function getUserMessageIdFromMessageId(
       sId: messageId,
       agentMessageId: { [Op.ne]: null },
     },
-    attributes: ["parentId"],
+    attributes: ["parentId", "version", "sId"],
   });
 
-  if (!agentMessage?.parentId) {
-    return { userMessageUserId: null };
-  }
+  assert(
+    agentMessage?.parentId,
+    "Agent message is expected to have a parentId"
+  );
 
-  // Query 2: Get the parent message's userId (which is the user message).
+  // Query 2: Get the parent message's sId (which is the user message).
   const parentMessage = await MessageModel.findOne({
     where: {
       id: agentMessage.parentId,
       workspaceId: auth.getNonNullableWorkspace().id,
     },
+    attributes: ["sId", "version"],
     include: [
       {
         model: UserMessageModel,
@@ -841,8 +849,19 @@ async function getUserMessageIdFromMessageId(
     ],
   });
 
+  assert(
+    parentMessage &&
+      parentMessage.userMessage &&
+      parentMessage.userMessage.userId,
+    "A user message with a linked user is expected for the agent message"
+  );
+
   return {
-    userMessageUserId: parentMessage?.userMessage?.userId ?? null,
+    agentMessageId: agentMessage.sId,
+    agentMessageVersion: agentMessage.version,
+    userMessageId: parentMessage.sId,
+    userMessageVersion: parentMessage.version,
+    userMessageUserId: parentMessage.userMessage.userId,
   };
 }
 
