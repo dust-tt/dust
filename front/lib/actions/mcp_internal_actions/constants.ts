@@ -18,6 +18,7 @@ import {
   AGENT_MANAGEMENT_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/agent_management/metadata";
 import { AGENT_ROUTER_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/agent_router/metadata";
+import { AGENT_MEMORY_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory/metadata";
 import {
   GOOGLE_CALENDAR_SERVER_INFO,
   GOOGLE_CALENDAR_TOOL_STAKES,
@@ -722,15 +723,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: AGENT_MEMORY_SERVER_NAME,
-      version: "1.0.0",
-      description: "User-scoped long-term memory tools for agents.",
-      authorization: null,
-      icon: "ActionLightbulbIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    serverInfo: AGENT_MEMORY_SERVER_INFO,
   },
   jira: {
     id: 22,
