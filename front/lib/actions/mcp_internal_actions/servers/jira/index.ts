@@ -1,7 +1,15 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
+import { Err, normalizeError, Ok } from "@app/types";
+
 import {
   createComment,
   createIssue,
@@ -28,27 +36,34 @@ import {
   updateIssue,
   uploadAttachmentsToJira,
   withAuth,
-} from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
-import { renderIssueWithEmbeddedComments } from "@app/lib/actions/mcp_internal_actions/servers/jira/rendering";
+} from "./jira_api_helper";
 import {
-  ADFDocumentSchema,
-  JiraCreateIssueLinkRequestSchema,
-  JiraCreateIssueRequestSchema,
-  JiraSearchFilterSchema,
-  JiraSortSchema,
+  createCommentSchema,
+  createIssueLinkSchema,
+  createIssueSchema,
+  deleteIssueLinkSchema,
+  getAttachmentsSchema,
+  getConnectionInfoSchema,
+  getIssueCreateFieldsSchema,
+  getIssueLinkTypesSchema,
+  getIssueReadFieldsSchema,
+  getIssueSchema,
+  getIssuesSchema,
+  getIssuesUsingJqlSchema,
+  getIssueTypesSchema,
+  getProjectSchema,
+  getProjectsSchema,
+  getProjectVersionsSchema,
+  getTransitionsSchema,
+  getUsersSchema,
+  JIRA_TOOL_NAME,
+  readAttachmentSchema,
   SEARCH_USERS_MAX_RESULTS,
-} from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
-import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
-import { Err, normalizeError, Ok } from "@app/types";
-
-// We use a single tool name for monitoring given the high granularity (can be revisited).
-const JIRA_TOOL_NAME = "jira";
+  transitionIssueSchema,
+  updateIssueSchema,
+  uploadAttachmentSchema,
+} from "./metadata";
+import { renderIssueWithEmbeddedComments } from "./rendering";
 
 function createServer(
   auth: Authenticator,
@@ -59,7 +74,7 @@ function createServer(
   server.tool(
     "get_issue_read_fields",
     "Lists available Jira field keys/ids and names for use in the get_issue.fields parameter (read-time).",
-    {},
+    getIssueReadFieldsSchema,
     withToolLogging(
       auth,
       {
@@ -92,15 +107,7 @@ function createServer(
   server.tool(
     "get_issue",
     "Retrieves a single JIRA issue by its key (e.g., 'PROJ-123').",
-    {
-      issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
-      fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          "Optional list of fields to include. Defaults to a minimal set for performance."
-        ),
-    },
+    getIssueSchema,
     withToolLogging(
       auth,
       {
@@ -155,7 +162,7 @@ function createServer(
   server.tool(
     "get_projects",
     "Retrieves a list of JIRA projects.",
-    {},
+    getProjectsSchema,
     withToolLogging(
       auth,
       {
@@ -188,9 +195,7 @@ function createServer(
   server.tool(
     "get_project",
     "Retrieves a single JIRA project by its key (e.g., 'PROJ').",
-    {
-      projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
-    },
+    getProjectSchema,
     withToolLogging(
       auth,
       {
@@ -230,9 +235,7 @@ function createServer(
   server.tool(
     "get_project_versions",
     "Retrieves all versions (releases) for a JIRA project. Useful for getting release reports and understanding which versions are available for filtering issues.",
-    {
-      projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
-    },
+    getProjectVersionsSchema,
     withToolLogging(
       auth,
       {
@@ -274,9 +277,7 @@ function createServer(
   server.tool(
     "get_transitions",
     "Gets available transitions for a JIRA issue based on its current status and workflow.",
-    {
-      issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
-    },
+    getTransitionsSchema,
     withToolLogging(
       auth,
       {
@@ -309,23 +310,7 @@ function createServer(
   server.tool(
     "create_comment",
     "Adds a comment to an existing JIRA issue. Accepts either plain text string or rich Atlassian Document Format (ADF).",
-    {
-      issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
-      comment: z
-        .union([z.string(), ADFDocumentSchema])
-        .describe(
-          "The comment content - either plain text string or ADF document object for rich formatting"
-        ),
-      visibilityType: z
-        .enum(["group", "role"])
-        .optional()
-        .describe("Visibility restriction type"),
-      visibilityValue: z
-        .string()
-        .optional()
-        .describe("Group or role name for visibility restriction"),
-    },
-
+    createCommentSchema,
     withToolLogging(
       auth,
       {
@@ -395,19 +380,7 @@ function createServer(
   server.tool(
     "get_issues",
     "Search issues using one or more filters (e.g., status, priority, labels, assignee, fixVersion, customField, dueDate, created, resolved). Use exact matching by default, or fuzzy matching for approximate/partial matches on summary field. For custom fields, use field 'customField' with customFieldName parameter. For date fields (dueDate, created, resolved), use operator parameter with '<', '>', '=', etc. and date format '2023-07-03' or relative '-25d', '7d', '2w', '1M', etc. Results can be sorted using the sortBy parameter with field and direction (ASC/DESC). When referring to the user, use the get_connection_info tool. When referring to unknown create/update fields, use get_issue_create_fields or get_issue_types to discover the field names.",
-    {
-      filters: z
-        .array(JiraSearchFilterSchema)
-        .min(1)
-        .describe("Array of search filters to apply (all must match)"),
-      sortBy: JiraSortSchema.optional().describe(
-        "Optional sorting configuration for results"
-      ),
-      nextPageToken: z
-        .string()
-        .optional()
-        .describe("Token for next page of results (for pagination)"),
-    },
+    getIssuesSchema,
     withToolLogging(
       auth,
       {
@@ -462,27 +435,7 @@ function createServer(
   server.tool(
     "get_issues_using_jql",
     "Search JIRA issues using a custom JQL (Jira Query Language) query. This tool allows for advanced search capabilities beyond the filtered search. Examples: 'project = PROJ AND status = Open', 'assignee = currentUser() AND priority = High', 'created >= -30d AND labels = bug'.",
-    {
-      jql: z.string().describe("The JQL (Jira Query Language) query string"),
-      maxResults: z
-        .number()
-        .min(1)
-        .max(100)
-        .optional()
-        .describe(
-          "Maximum number of results to return (default: 50, max: 100)"
-        ),
-      fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          "Optional list of fields to include in the response. Defaults to ['summary']"
-        ),
-      nextPageToken: z
-        .string()
-        .optional()
-        .describe("Token for next page of results (for pagination)"),
-    },
+    getIssuesUsingJqlSchema,
     withToolLogging(
       auth,
       {
@@ -544,10 +497,7 @@ function createServer(
   server.tool(
     "get_issue_types",
     "Retrieves available issue types for a JIRA project.",
-    {
-      projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
-    },
-
+    getIssueTypesSchema,
     withToolLogging(
       auth,
       {
@@ -593,12 +543,7 @@ function createServer(
   server.tool(
     "get_issue_create_fields",
     "Create/update-time field metadata for a specific project and issue type. Returns only fields available on the Create/Update screens (subset). Use get_issue_types to get the issue type ID.",
-    {
-      projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
-      issueTypeId: z
-        .string()
-        .describe("The issue type ID to get fields for (required)"),
-    },
+    getIssueCreateFieldsSchema,
     withToolLogging(
       auth,
       {
@@ -645,7 +590,7 @@ function createServer(
   server.tool(
     "get_connection_info",
     "Gets comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance. This tool is used when the user is referring about themselves",
-    {},
+    getConnectionInfoSchema,
     withToolLogging(
       auth,
       {
@@ -684,11 +629,7 @@ function createServer(
   server.tool(
     "transition_issue",
     "Transitions a JIRA issue to a different status/workflow state.",
-    {
-      issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
-      transitionId: z.string().describe("The ID of the transition to perform"),
-    },
-
+    transitionIssueSchema,
     withToolLogging(
       auth,
       {
@@ -757,11 +698,7 @@ function createServer(
   server.tool(
     "create_issue",
     "Creates a new JIRA issue with the specified details. For textarea fields (like description), you can use either plain text or rich ADF format. Note: Available fields vary by project and issue type. Use get_issue_create_fields to check which fields are required and available.",
-    {
-      issueData: JiraCreateIssueRequestSchema.describe(
-        "The description of the issue"
-      ),
-    },
+    createIssueSchema,
     withToolLogging(
       auth,
       {
@@ -799,13 +736,7 @@ function createServer(
   server.tool(
     "update_issue",
     "Updates an existing JIRA issue with new field values (e.g., summary, description, priority, assignee). For textarea fields (like description), you can use either plain text or rich ADF format. Use get_issue_create_fields to identify textarea fields. Note: Issue links, attachments, and some system fields require separate APIs and are not supported.",
-    {
-      issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
-      updateData: JiraCreateIssueRequestSchema.partial().describe(
-        "The partial data to update the issue with - description field supports both plain text and ADF format"
-      ),
-    },
-
+    updateIssueSchema,
     withToolLogging(
       auth,
       {
@@ -862,11 +793,7 @@ function createServer(
   server.tool(
     "create_issue_link",
     "Creates a link between two JIRA issues with a specified relationship type (e.g., 'Blocks', 'Relates', 'Duplicates').",
-    {
-      linkData: JiraCreateIssueLinkRequestSchema.describe(
-        "Link configuration including type and issues to link"
-      ),
-    },
+    createIssueLinkSchema,
     withToolLogging(
       auth,
       {
@@ -912,9 +839,7 @@ function createServer(
   server.tool(
     "delete_issue_link",
     "Deletes an existing link between JIRA issues.",
-    {
-      linkId: z.string().describe("The ID of the issue link to delete"),
-    },
+    deleteIssueLinkSchema,
     withToolLogging(
       auth,
       {
@@ -949,7 +874,7 @@ function createServer(
   server.tool(
     "get_issue_link_types",
     "Retrieves all available issue link types that can be used when creating issue links.",
-    {},
+    getIssueLinkTypesSchema,
     withToolLogging(
       auth,
       {
@@ -987,37 +912,7 @@ function createServer(
   server.tool(
     "get_users",
     "Search for JIRA users. Provide emailAddress for exact email match, or name for display name contains. If neither is provided, returns the first maxResults users. Use startAt for pagination (pass the previous result's nextStartAt).",
-    {
-      emailAddress: z
-        .string()
-        .optional()
-        .describe(
-          "Exact email address (e.g., 'john.doe@company.com'). If provided, only exact matches are returned."
-        ),
-      name: z
-        .string()
-        .optional()
-        .describe(
-          "Display name filter (e.g., 'John Doe'). Case-insensitive contains match."
-        ),
-      maxResults: z
-        .number()
-        .min(1)
-        .max(SEARCH_USERS_MAX_RESULTS)
-        .optional()
-        .default(SEARCH_USERS_MAX_RESULTS)
-        .describe(
-          `Maximum number of users to return when searching by name (default: ${SEARCH_USERS_MAX_RESULTS}, max: ${SEARCH_USERS_MAX_RESULTS})`
-        ),
-      startAt: z
-        .number()
-        .int()
-        .min(0)
-        .optional()
-        .describe(
-          "Pagination offset. Pass the previous response's nextStartAt to fetch the next page."
-        ),
-    },
+    getUsersSchema,
     withToolLogging(
       auth,
       {
@@ -1106,37 +1001,7 @@ function createServer(
   server.tool(
     "upload_attachment",
     "Upload a file attachment to a Jira issue. Supports two types of file sources: conversation files (from current Dust conversation) and external files (base64 encoded). The attachment must specify its type and corresponding fields. IMPORTANT: The 'type' field must be exactly 'conversation_file' or 'external_file', not a MIME type like 'image/png'.",
-    {
-      issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
-      attachment: z.union([
-        z.object({
-          type: z
-            .literal("conversation_file")
-            .describe("Use this for files already in the Dust conversation"),
-          fileId: z
-            .string()
-            .describe(
-              "The fileId from conversation attachments (use conversation_list_files to get available files)"
-            ),
-        }),
-        z.object({
-          type: z
-            .literal("external_file")
-            .describe("Use this for new files provided as base64 data"),
-          filename: z
-            .string()
-            .describe(
-              "The filename for the attachment (e.g., 'document.pdf', 'image.png')"
-            ),
-          contentType: z
-            .string()
-            .describe(
-              "MIME type of the file (e.g., 'image/png', 'application/pdf', 'text/plain')"
-            ),
-          base64Data: z.string().describe("Base64 encoded file data"),
-        }),
-      ]),
-    },
+    uploadAttachmentSchema,
     withToolLogging(
       auth,
       {
@@ -1260,9 +1125,7 @@ function createServer(
   server.tool(
     "get_attachments",
     "Retrieve all attachments for a Jira issue, including metadata like filename, size, MIME type, and download URLs.",
-    {
-      issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
-    },
+    getAttachmentsSchema,
     withToolLogging(
       auth,
       {
@@ -1326,10 +1189,7 @@ function createServer(
   server.tool(
     "read_attachment",
     "Read content from any attachment on a Jira issue. For text-based files (PDF, Word, Excel, CSV, plain text), extracts and returns the text content. For other files (images, documents), returns the file for upload. Supports text extraction with OCR for scanned documents.",
-    {
-      issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
-      attachmentId: z.string().describe("The ID of the attachment to read"),
-    },
+    readAttachmentSchema,
     withToolLogging(
       auth,
       {

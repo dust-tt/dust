@@ -6,10 +6,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import {
-  JIRA_SERVER_INSTRUCTIONS,
-  SALESFORCE_SERVER_INSTRUCTIONS,
-} from "@app/lib/actions/mcp_internal_actions/instructions";
+import { SALESFORCE_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import {
   AGENT_MANAGEMENT_SERVER_INFO,
   AGENT_MANAGEMENT_TOOL_STAKES,
@@ -86,6 +83,11 @@ import {
 import { IMAGE_GENERATION_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/include_data/metadata";
 import { INTERACTIVE_CONTENT_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/metadata";
+import {
+  JIRA_SERVER_INFO,
+  JIRA_TOOL_STAKES,
+  JIRA_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/metadata";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
@@ -642,48 +644,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      // Read operations - never ask (no side effects)
-      get_issue: "never_ask",
-      get_projects: "never_ask",
-      get_project: "never_ask",
-      get_project_versions: "never_ask",
-      get_transitions: "never_ask",
-      get_issues: "never_ask",
-      get_issues_using_jql: "never_ask",
-      get_issue_types: "never_ask",
-      get_issue_create_fields: "never_ask",
-      get_issue_read_fields: "never_ask",
-      get_connection_info: "never_ask",
-      get_issue_link_types: "never_ask",
-      get_users: "never_ask",
-      get_attachments: "never_ask",
-      read_attachment: "never_ask",
-
-      // Update operations - low stakes
-      create_comment: "low",
-      transition_issue: "low",
-      create_issue: "low",
-      update_issue: "low",
-      create_issue_link: "low",
-      delete_issue_link: "low",
-      upload_attachment: "low",
-    },
+    tools_stakes: JIRA_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "jira",
-      version: "1.0.0",
-      description: "Create, update and track project issues.",
-      authorization: {
-        provider: "jira" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "JiraLogo",
-      documentationUrl: "https://docs.dust.tt/docs/jira",
-      instructions: JIRA_SERVER_INSTRUCTIONS,
-    },
+    tools: JIRA_TOOLS,
+    serverInfo: JIRA_SERVER_INFO,
   },
   interactive_content: {
     id: 23,

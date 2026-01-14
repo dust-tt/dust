@@ -1,11 +1,7 @@
 import { markdownToAdf } from "marklassian";
 
-import type {
-  SearchFilter,
-  SearchFilterField,
-  SortDirection,
-} from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
-import { FIELD_MAPPINGS } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
+import type { SearchFilter, SearchFilterField, SortDirection } from "./types";
+import { FIELD_MAPPINGS } from "./types";
 
 // Helper function to escape JQL values that contain spaces or special characters
 export const escapeJQLValue = (value: string): string => {
