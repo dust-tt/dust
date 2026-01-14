@@ -479,7 +479,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                               label="Edit agent"
                             />
                             <DropdownMenuPortal>
-                              <DropdownMenuSubContent className="pointer-events-auto max-h-150">
+                              <DropdownMenuSubContent className="pointer-events-auto">
                                 <DropdownMenuSearchbar
                                   ref={agentsSearchInputRef}
                                   name="search"
@@ -487,23 +487,25 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                                   onChange={setSearchText}
                                   placeholder="Search"
                                 />
-                                {filteredAgents.map((agent) => (
-                                  <DropdownMenuItem
-                                    key={agent.sId}
-                                    href={getAgentBuilderRoute(
-                                      owner.sId,
-                                      agent.sId
-                                    )}
-                                    truncateText
-                                    label={agent.name}
-                                    icon={() => (
-                                      <Avatar
-                                        size="xs"
-                                        visual={agent.pictureUrl}
-                                      />
-                                    )}
-                                  />
-                                ))}
+                                <div className="max-h-150 overflow-y-auto">
+                                  {filteredAgents.map((agent) => (
+                                    <DropdownMenuItem
+                                      key={agent.sId}
+                                      href={getAgentBuilderRoute(
+                                        owner.sId,
+                                        agent.sId
+                                      )}
+                                      truncateText
+                                      label={agent.name}
+                                      icon={() => (
+                                        <Avatar
+                                          size="xs"
+                                          visual={agent.pictureUrl}
+                                        />
+                                      )}
+                                    />
+                                  ))}
+                                </div>
                               </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                           </DropdownMenuSub>
