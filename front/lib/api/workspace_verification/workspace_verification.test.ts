@@ -7,18 +7,14 @@ import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspa
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { WorkspaceVerificationAttemptFactory } from "@app/tests/utils/WorkspaceVerificationAttemptFactory";
 
-const { mockLookupPhoneNumber, mockSendOtp, mockCheckOtp } = vi.hoisted(() => {
+const { mockLookupPhoneNumber } = vi.hoisted(() => {
   return {
     mockLookupPhoneNumber: vi.fn(),
-    mockSendOtp: vi.fn(),
-    mockCheckOtp: vi.fn(),
   };
 });
 
-vi.mock("@app/lib/api/workspace_verification/twilio", () => ({
+vi.mock("@app/lib/api/workspace_verification/persona", () => ({
   lookupPhoneNumber: mockLookupPhoneNumber,
-  sendOtp: mockSendOtp,
-  checkOtp: mockCheckOtp,
   PhoneLookupError: class PhoneLookupError extends Error {
     constructor(
       public readonly code: string,
@@ -28,6 +24,18 @@ vi.mock("@app/lib/api/workspace_verification/twilio", () => ({
       this.name = "PhoneLookupError";
     }
   },
+}));
+
+const { mockSendOtp, mockCheckOtp } = vi.hoisted(() => {
+  return {
+    mockSendOtp: vi.fn(),
+    mockCheckOtp: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/api/workspace_verification/twilio", () => ({
+  sendOtp: mockSendOtp,
+  checkOtp: mockCheckOtp,
   VerifyOtpError: class VerifyOtpError extends Error {
     constructor(
       public readonly code: string,
@@ -49,10 +57,8 @@ vi.mock("@app/lib/utils/rate_limiter", () => ({
   rateLimiter: mockRateLimiter,
 }));
 
-import {
-  PhoneLookupError,
-  VerifyOtpError,
-} from "@app/lib/api/workspace_verification/twilio";
+import { PhoneLookupError } from "@app/lib/api/workspace_verification/persona";
+import { VerifyOtpError } from "@app/lib/api/workspace_verification/twilio";
 import { Err, Ok } from "@app/types";
 
 describe("workspace_verification", () => {
@@ -190,10 +196,26 @@ describe("workspace_verification", () => {
       }
     });
 
-    it("should return error if phone has high SMS pumping risk", async () => {
+    it("should return error if phone is flagged as high risk", async () => {
+      mockLookupPhoneNumber.mockResolvedValue(
+        new Err(new PhoneLookupError("high_risk_blocked", "High risk blocked"))
+      );
+
+      const result = await startVerification(authW1, validPhoneNumber);
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe("invalid_request_error");
+        expect(result.error.message).toBe(
+          "This phone number cannot be used for verification."
+        );
+      }
+    });
+
+    it("should return error if phone is flagged for review", async () => {
       mockLookupPhoneNumber.mockResolvedValue(
         new Err(
-          new PhoneLookupError("high_sms_pumping_risk", "High SMS pumping risk")
+          new PhoneLookupError("flagged_for_review", "Flagged for review")
         )
       );
 
