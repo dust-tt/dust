@@ -369,13 +369,13 @@ export async function grantFreeCreditFromSubscriptionStateChangeYearly({
   } else {
     // Calculate monthly amount and multiply by 12 for yearly
     const userCount = await countEligibleUsersForFreeCredits(workspace);
-    const monthlyAmount = calculateFreeCreditAmountMicroUsd(userCount);
-    creditAmountMicroUsd = monthlyAmount * YEARLY_MULTIPLIER;
+    const monthlyAmountMicroUsd = calculateFreeCreditAmountMicroUsd(userCount);
+    creditAmountMicroUsd = monthlyAmountMicroUsd * YEARLY_MULTIPLIER;
     logger.info(
       {
         workspaceId: workspaceSId,
         userCount,
-        monthlyAmount,
+        monthlyAmountMicroUsd,
         creditAmountMicroUsd,
       },
       "[Free Credits Yearly] Calculated credit amount using brackets system x 12"
