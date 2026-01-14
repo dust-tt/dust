@@ -23,7 +23,10 @@ import {
   ASHBY_TOOL_STAKES,
   ASHBY_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/metadata";
-import { COMMON_UTILITIES_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/common_utilities/metadata";
+import {
+  COMMON_UTILITIES_SERVER_INFO,
+  COMMON_UTILITIES_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/common_utilities/metadata";
 import {
   CONFLUENCE_SERVER_INFO,
   CONFLUENCE_TOOL_STAKES,
@@ -1094,6 +1097,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: COMMON_UTILITIES_TOOLS,
     serverInfo: COMMON_UTILITIES_SERVER_INFO,
   },
   front: {

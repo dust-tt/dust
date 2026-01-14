@@ -1,13 +1,26 @@
 import { DustAPI } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { compile } from "mathjs";
-import { z } from "zod";
 
-import {
-  GET_MENTION_MARKDOWN_TOOL_NAME,
-  SEARCH_AVAILABLE_USERS_TOOL_NAME,
-} from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  GENERATE_RANDOM_FLOAT_TOOL_NAME,
+  GENERATE_RANDOM_NUMBER_TOOL_NAME,
+  generateRandomFloatSchema,
+  generateRandomNumberSchema,
+  GET_CURRENT_TIME_TOOL_NAME,
+  GET_MENTION_MARKDOWN_TOOL_NAME,
+  getCurrentTimeSchema,
+  getMentionMarkdownSchema,
+  MATH_OPERATION_TOOL_NAME,
+  mathOperationSchema,
+  MAX_WAIT_DURATION_MS,
+  RANDOM_INTEGER_DEFAULT_MAX,
+  SEARCH_AVAILABLE_USERS_TOOL_NAME,
+  searchAvailableUsersSchema,
+  WAIT_TOOL_NAME,
+  waitSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/common_utilities/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -18,9 +31,6 @@ import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
 import { Err, getHeaderFromUserEmail, normalizeError, Ok } from "@app/types";
 
-const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
-const MAX_WAIT_DURATION_MS = 3 * 60 * 1_000;
-
 async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -28,22 +38,13 @@ async function createServer(
   const server = makeInternalMCPServer("common_utilities");
 
   server.tool(
-    "generate_random_number",
+    GENERATE_RANDOM_NUMBER_TOOL_NAME,
     "Generate a random positive number between 1 and the provided maximum (inclusive).",
-    {
-      max: z
-        .number()
-        .int()
-        .positive()
-        .describe(
-          `Upper bound for the generated integer. Defaults to ${RANDOM_INTEGER_DEFAULT_MAX}.`
-        )
-        .optional(),
-    },
+    generateRandomNumberSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "generate_random_number",
+        toolNameForMonitoring: GENERATE_RANDOM_NUMBER_TOOL_NAME,
         agentLoopContext,
       },
       async ({ max }) => {
@@ -61,13 +62,13 @@ async function createServer(
   );
 
   server.tool(
-    "generate_random_float",
+    GENERATE_RANDOM_FLOAT_TOOL_NAME,
     "Generate a random floating point number between 0 (inclusive) and 1 (exclusive).",
-    {},
+    generateRandomFloatSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "generate_random_float",
+        toolNameForMonitoring: GENERATE_RANDOM_FLOAT_TOOL_NAME,
         agentLoopContext,
       },
       async () => {
@@ -84,23 +85,13 @@ async function createServer(
   );
 
   server.tool(
-    "wait",
+    WAIT_TOOL_NAME,
     `Pause execution for the provided number of milliseconds (maximum ${MAX_WAIT_DURATION_MS}).`,
-    {
-      duration_ms: z
-        .number()
-        .int()
-        .positive()
-        .max(
-          MAX_WAIT_DURATION_MS,
-          `Duration must be less than or equal to ${MAX_WAIT_DURATION_MS} milliseconds (3 minutes).`
-        )
-        .describe("The time to wait in milliseconds, up to 3 minutes."),
-    },
+    waitSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "wait",
+        toolNameForMonitoring: WAIT_TOOL_NAME,
         agentLoopContext,
       },
       async ({ duration_ms }) => {
@@ -117,22 +108,13 @@ async function createServer(
   );
 
   server.tool(
-    "get_current_time",
+    GET_CURRENT_TIME_TOOL_NAME,
     "Return the current date and time in multiple convenient formats.",
-    {
-      include_formats: z
-        .array(
-          z
-            .enum(["iso", "utc", "timestamp", "locale"])
-            .describe("Specify which formats to return. Defaults to all.")
-        )
-        .max(4)
-        .optional(),
-    },
+    getCurrentTimeSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "get_current_time",
+        toolNameForMonitoring: GET_CURRENT_TIME_TOOL_NAME,
         agentLoopContext,
       },
       async ({ include_formats }) => {
@@ -166,15 +148,13 @@ async function createServer(
   );
 
   server.tool(
-    "math_operation",
+    MATH_OPERATION_TOOL_NAME,
     "Perform mathematical operations.",
-    {
-      expression: z.string().describe("The expression to evaluate. "),
-    },
+    mathOperationSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "math_operation",
+        toolNameForMonitoring: MATH_OPERATION_TOOL_NAME,
         agentLoopContext,
       },
       async ({ expression }) => {
@@ -203,13 +183,7 @@ async function createServer(
   server.tool(
     SEARCH_AVAILABLE_USERS_TOOL_NAME,
     "Search for users that are available to the conversation.",
-    {
-      searchTerm: z
-        .string()
-        .describe(
-          "A single search term to find users. Returns all the users that contain the search term in their name or description. Use an empty string to return all items."
-        ),
-    },
+    searchAvailableUsersSchema,
     withToolLogging(
       auth,
       {
@@ -268,14 +242,7 @@ async function createServer(
   server.tool(
     GET_MENTION_MARKDOWN_TOOL_NAME,
     "Get the markdown directive to use to mention a user in a message.",
-    {
-      mention: z
-        .object({
-          id: z.string(),
-          label: z.string(),
-        })
-        .describe("A mention to get the markdown directive for."),
-    },
+    getMentionMarkdownSchema,
     withToolLogging(
       auth,
       {
