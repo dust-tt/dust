@@ -1914,7 +1914,7 @@ export const INTERNAL_MCP_SERVERS = {
         "Execute read-only SQL queries and browse schema in Snowflake.",
       authorization: {
         provider: "snowflake" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+        supported_use_cases: ["personal_actions"] as const,
       },
       icon: "SnowflakeLogo",
       documentationUrl: null,
