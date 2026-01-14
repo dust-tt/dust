@@ -2,7 +2,7 @@ import { Avatar, Chip, cn, Markdown, Page } from "@dust-tt/sparkle";
 
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection";
-import { AssistantToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantToolsSection";
+import { AssistantSkillsToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { AgentConfigurationType, WorkspaceType } from "@app/types";
@@ -57,16 +57,6 @@ export function AgentInfoTab({
         </div>
       )}
 
-      {displayKnowledge && (
-        <>
-          <Page.Separator />
-          <AssistantKnowledgeSection
-            agentConfiguration={agentConfiguration}
-            owner={owner}
-          />
-        </>
-      )}
-
       {displayInstructions && isString(agentConfiguration.instructions) && (
         <div className="dd-privacy-mask flex flex-col gap-4">
           <div className="heading-lg text-foreground dark:text-foreground-night">
@@ -88,6 +78,22 @@ export function AgentInfoTab({
         </div>
       )}
 
+      <AssistantSkillsToolsSection
+        agentConfiguration={agentConfiguration}
+        owner={owner}
+        isDustAgent={isDustAgent}
+      />
+
+      {displayKnowledge && (
+        <>
+          <Page.Separator />
+          <AssistantKnowledgeSection
+            agentConfiguration={agentConfiguration}
+            owner={owner}
+          />
+        </>
+      )}
+
       {model && (
         <div className="flex flex-col gap-5">
           <div className="heading-lg text-foreground dark:text-foreground-night">
@@ -102,12 +108,6 @@ export function AgentInfoTab({
           </div>
         </div>
       )}
-
-      <AssistantToolsSection
-        agentConfiguration={agentConfiguration}
-        owner={owner}
-        isDustAgent={isDustAgent}
-      />
     </div>
   );
 }

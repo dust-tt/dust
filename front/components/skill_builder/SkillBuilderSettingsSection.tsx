@@ -19,7 +19,7 @@ export function SkillBuilderSettingsSection() {
       </div>
       <SkillBuilderUserFacingDescriptionSection />
       <div className="flex flex-col space-y-3">
-        <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
+        <Label className="text-base font-semibold text-foreground dark:text-foreground-night">
           Editors
         </Label>
         <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">

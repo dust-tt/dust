@@ -76,6 +76,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
   return (
     <BaseFormFieldSection
       title="What will this skill be used for?"
+      titleClassName="heading-lg"
       fieldName={AGENT_FACING_DESCRIPTION_FIELD_NAME}
       triggerValidationOnChange={false}
     >

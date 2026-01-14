@@ -54,7 +54,7 @@ const isHiddenDustAction = (action: MCPServerConfigurationType) => {
   return false;
 };
 
-export function AssistantToolsSection({
+export function AssistantSkillsToolsSection({
   agentConfiguration,
   owner,
   isDustAgent,
@@ -65,7 +65,7 @@ export function AssistantToolsSection({
   });
   const { skills, isSkillsLoading } = useAgentConfigurationSkills({
     owner,
-    agentConfigurationSId: agentConfiguration.sId,
+    agentConfigurationId: agentConfiguration.sId,
     disabled: !featureFlags.includes("skills"),
   });
 
@@ -91,6 +91,34 @@ export function AssistantToolsSection({
 
   return (
     <div className="flex flex-col gap-5">
+      {hasSkills && (
+        <div className="flex flex-col gap-5">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            Skills
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {isSkillsLoading ? (
+              <div className="flex flex-row items-center gap-2">
+                <Spinner size="xs" />
+              </div>
+            ) : (
+              sortedSkills.map((skill) => {
+                const SkillAvatar = getSkillAvatarIcon(skill.icon);
+                return (
+                  <div
+                    className="flex flex-row items-center gap-2"
+                    key={skill.sId}
+                  >
+                    <SkillAvatar size="xs" />
+                    <div>{skill.name}</div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
       {hasTools && (
         <div className="flex flex-col gap-5">
           <div className="heading-lg text-foreground dark:text-foreground-night">
@@ -134,34 +162,6 @@ export function AssistantToolsSection({
                 />
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {hasSkills && (
-        <div className="flex flex-col gap-5">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Skills
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {isSkillsLoading ? (
-              <div className="flex flex-row items-center gap-2">
-                <Spinner size="xs" />
-              </div>
-            ) : (
-              sortedSkills.map((skill) => {
-                const SkillAvatar = getSkillAvatarIcon(skill.icon);
-                return (
-                  <div
-                    className="flex flex-row items-center gap-2"
-                    key={skill.sId}
-                  >
-                    <SkillAvatar size="xs" />
-                    <div>{skill.name}</div>
-                  </div>
-                );
-              })
-            )}
           </div>
         </div>
       )}

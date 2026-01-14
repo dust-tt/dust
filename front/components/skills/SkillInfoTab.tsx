@@ -83,7 +83,7 @@ export function SkillInfoTab({
       {showSeparator ? <Separator /> : null}
 
       {skill.instructions && (
-        <div className="dd-privacy-mask flex flex-col gap-5">
+        <div className="dd-privacy-mask flex flex-col gap-4">
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Instructions
           </div>
@@ -112,7 +112,7 @@ export function SkillInfoTab({
         </div>
       )}
       {sortedMCPServerViews.length > 0 && (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Tools
           </div>
@@ -135,7 +135,7 @@ export function SkillInfoTab({
       )}
 
       {shouldLoadSpaces ? (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Spaces
           </div>
