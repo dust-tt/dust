@@ -1,8 +1,11 @@
 import { Op } from "sequelize";
 
-import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { makeScript } from "@app/scripts/helpers";
+import { removeNulls } from "@app/types";
 
 makeScript(
   {
@@ -33,10 +36,8 @@ makeScript(
     { workspaceId, userIds, afterDate, beforeDate, execute },
     scriptLogger
   ) => {
-    const workspace = await getWorkspaceInfos(workspaceId);
-    if (!workspace) {
-      throw new Error(`Workspace ${workspaceId} not found`);
-    }
+    const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+    const workspace = auth.getNonNullableWorkspace();
 
     const parsedUserIds = userIds.map((id) => parseInt(id, 10));
     const parsedAfterDate = new Date(afterDate);
@@ -60,6 +61,7 @@ makeScript(
       "Unrevoking group memberships"
     );
 
+    // Find revoked memberships
     const memberships = await GroupMembershipModel.findAll({
       where: {
         workspaceId: workspace.id,
@@ -73,24 +75,50 @@ makeScript(
       "Found memberships to unrevoke"
     );
 
-    for (const membership of memberships) {
+    // Group by groupId for efficient fetching
+    const groupIdToUserIds = new Map<number, number[]>();
+    for (const m of memberships) {
+      const existing = groupIdToUserIds.get(m.groupId) ?? [];
+      existing.push(m.userId);
+      groupIdToUserIds.set(m.groupId, existing);
+    }
+
+    // Fetch all groups and users
+    const groups = await GroupResource.fetchByModelIds(auth, [
+      ...groupIdToUserIds.keys(),
+    ]);
+    const allUserIds = [...new Set(memberships.map((m) => m.userId))];
+    const users = await UserResource.fetchByModelIds(allUserIds);
+    const userById = new Map(users.map((u) => [u.id, u]));
+
+    for (const group of groups) {
+      const userIdsForGroup = groupIdToUserIds.get(group.id) ?? [];
+      const usersForGroup = removeNulls(
+        userIdsForGroup.map((id) => userById.get(id))
+      ).map((u) => u.toJSON());
+
       scriptLogger.info(
         {
-          membershipId: membership.id,
-          userId: membership.userId,
-          groupId: membership.groupId,
-          currentEndAt: membership.endAt,
+          userIds: usersForGroup.map((u) => u.id),
+          groupId: group.id,
+          groupName: group.name,
         },
-        execute ? "Unrevoking membership" : "Dry run: would unrevoke membership"
+        execute ? "Adding members to group" : "Dry run: would add members"
       );
 
       if (execute) {
-        await membership.update({ endAt: null });
+        const result = await group.addMembers(auth, usersForGroup);
+        if (result.isErr()) {
+          scriptLogger.error(
+            { groupId: group.id, error: result.error },
+            "Failed to add members"
+          );
+        }
       }
     }
 
     scriptLogger.info(
-      { updatedCount: memberships.length },
+      { membershipCount: memberships.length },
       execute ? "Done" : "Dry run complete"
     );
   }
