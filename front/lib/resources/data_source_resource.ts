@@ -8,6 +8,7 @@ import type {
 import { Op } from "sequelize";
 
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
+import { default as config } from "@app/lib/api/config";
 import { getProjectContextDatasourceName } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
@@ -33,7 +34,13 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
+import {
+  ConnectorsAPI,
+  Err,
+  formatUserFullName,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 import { DataSourceViewModel } from "./storage/models/data_source_view";
 
@@ -462,6 +469,40 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // If this is a project datasource, delete the auto-created dust_project connector first
+    if (this.connectorProvider === "dust_project" && this.connectorId) {
+      // Delete the connector
+      const connectorsAPI = new ConnectorsAPI(
+        config.getConnectorsAPIConfig(),
+        logger
+      );
+
+      const connDeleteRes = await connectorsAPI.deleteConnector(
+        this.connectorId.toString(),
+        true // force delete
+      );
+
+      if (connDeleteRes.isErr()) {
+        // If connector not found, that's okay - it might have been deleted already
+        if (connDeleteRes.error.type !== "connector_not_found") {
+          return new Err(
+            new Error(
+              `Failed to delete connector: ${connDeleteRes.error.message}`
+            )
+          );
+        }
+        logger.info("Connector not found, may have been deleted already");
+      }
+
+      logger.info(
+        {
+          connectorId: this.connectorId,
+          dataSourceId: this.sId,
+        },
+        "Successfully deleted dust_project connector for datasource"
+      );
+    }
 
     await AgentDataSourceConfigurationModel.destroy({
       where: {

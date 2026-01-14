@@ -7,10 +7,7 @@ import {
   updateAgentRequirements,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
-import {
-  createDustProjectConnectorForSpace,
-  deleteDustProjectConnectorForSpace,
-} from "@app/lib/api/project_connectors";
+import { createDustProjectConnectorForSpace } from "@app/lib/api/project_connectors";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -218,21 +215,6 @@ export async function hardDeleteSpace(
   assert(auth.isAdmin(), "Only admins can delete spaces.");
 
   assert(space.isDeletable(), "Space cannot be deleted.");
-
-  // If this is a project space, delete the dust_project connector first
-  if (space.isProject()) {
-    const connectorRes = await deleteDustProjectConnectorForSpace(auth, space);
-    if (connectorRes.isErr()) {
-      logger.error(
-        {
-          error: connectorRes.error,
-          spaceId: space.sId,
-        },
-        "Failed to delete dust_project connector for project, continuing with space deletion"
-      );
-      // Continue with deletion even if connector deletion fails
-    }
-  }
 
   const dataSourceViews = await DataSourceViewResource.listBySpace(
     auth,

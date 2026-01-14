@@ -179,14 +179,13 @@ export class DustProjectConnectorManager extends BaseConnectorManager<null> {
   }
 
   async retrieveContentNodeParents({
-    internalId: _internalId,
-    memoizationKey: _memoizationKey,
+    internalId,
   }: {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    // TODO: Implement parent retrieval
-    return new Err(new Error("Not implemented yet"));
+    // TODO: Implement this.
+    return new Ok([internalId]);
   }
 
   async setPermissions({
