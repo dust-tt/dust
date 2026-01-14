@@ -428,7 +428,7 @@ This ensures TypeScript and runtime resolve `@dust-tt/client` from the worktree'
 
 For `sdks/js`, a simple symlink is used (it IS the SDK).
 
-> **Note**: Running `npm install` in a worktree works automatically. The shallow copy includes a `.dust-hive-shallow-copy` marker file that triggers a `preinstall` script in front/connectors to clean up the directory before npm proceeds. After install, you'll have a standard npm-managed node_modules.
+> **Note**: Running `npm install` in a worktree works automatically. dust-hive injects a `preinstall` script into package.json and creates a `.dust-hive-shallow-copy` marker file. When npm runs, the preinstall detects the marker and cleans up the shallow copy before proceeding. After install, you'll have a standard npm-managed node_modules.
 
 > **sccache** (optional but recommended): When worktree code differs from main, cargo recompiles. sccache caches these compilations by content hash, so rebuilding after switching branches is faster.
 

@@ -197,8 +197,9 @@ For `front` and `connectors`, dust-hive creates a **shallow copy** of node_modul
 
 This ensures correct SDK type resolution when your branch has newer types than main.
 
-**Note**: Running `npm install` works automatically. The shallow copy includes a `.dust-hive-shallow-copy`
-marker file that triggers a `preinstall` script in front/connectors to clean up before npm proceeds.
+**Note**: Running `npm install` works automatically. dust-hive injects a `preinstall` script into
+package.json and creates a `.dust-hive-shallow-copy` marker file. The preinstall detects the marker
+and cleans up the shallow copy before npm proceeds.
 
 **sccache** (optional): When worktree code differs from main, cargo recompiles. sccache
 caches compilations by content hash, making rebuilds after branch switches faster.
