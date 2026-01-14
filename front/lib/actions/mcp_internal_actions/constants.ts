@@ -94,6 +94,11 @@ import {
   MICROSOFT_DRIVE_TOOL_STAKES,
   MICROSOFT_DRIVE_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_drive_metadata";
+import {
+  MICROSOFT_EXCEL_SERVER_INFO,
+  MICROSOFT_EXCEL_TOOL_STAKES,
+  MICROSOFT_EXCEL_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/microsoft_excel/metadata";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
@@ -978,31 +983,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      list_excel_files: "never_ask",
-      get_worksheets: "never_ask",
-      read_worksheet: "never_ask",
-      write_worksheet: "high",
-      create_worksheet: "low",
-      clear_range: "high",
-    },
+    tools_stakes: MICROSOFT_EXCEL_TOOL_STAKES,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "microsoft_excel",
-      version: "1.0.0",
-      description: "Work with Excel files in SharePoint.",
-      authorization: {
-        provider: "microsoft_tools" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope:
-          "User.Read Files.ReadWrite.All Sites.Read.All offline_access" as const,
-      },
-      icon: "MicrosoftExcelLogo",
-      documentationUrl: null,
-      instructions: null,
-    },
+    tools: MICROSOFT_EXCEL_TOOLS,
+    serverInfo: MICROSOFT_EXCEL_SERVER_INFO,
   },
   http_client: {
     id: 39,

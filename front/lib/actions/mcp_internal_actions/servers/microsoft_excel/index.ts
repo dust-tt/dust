@@ -1,6 +1,5 @@
 import type { Client } from "@microsoft/microsoft-graph-client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
@@ -8,15 +7,21 @@ import {
   getGraphClient,
   parseCellRef,
 } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
+import {
+  clearRangeSchema,
+  createWorksheetSchema,
+  getWorksheetsSchema,
+  listExcelFilesSchema,
+  MICROSOFT_EXCEL_TOOL_NAME,
+  readWorksheetSchema,
+  writeWorksheetSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/microsoft_excel/metadata";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-
-// We use a single tool name for monitoring given the high granularity (can be revisited).
-const MICROSOFT_EXCEL_TOOL_NAME = "microsoft_excel";
 
 // Session management for persistent Excel sessions
 interface ExcelSession {
@@ -31,7 +36,7 @@ function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer("microsoft_excel");
+  const server = makeInternalMCPServer(MICROSOFT_EXCEL_TOOL_NAME);
 
   /**
    * Create or get a persistent session for Excel operations
@@ -114,13 +119,7 @@ function createServer(
   server.tool(
     "list_excel_files",
     "List Excel files (.xlsx, .xlsm) from SharePoint or OneDrive.",
-    {
-      query: z
-        .string()
-        .describe(
-          "Search query to find relevant files and content in OneDrive and SharePoint."
-        ),
-    },
+    listExcelFilesSchema,
     withToolLogging(
       auth,
       {
@@ -169,23 +168,7 @@ function createServer(
   server.tool(
     "get_worksheets",
     "Get a list of all worksheets (sheets/tabs) in an Excel workbook stored in SharePoint.",
-    {
-      itemId: z
-        .string()
-        .describe("The ID of the Excel file to get worksheets from."),
-      driveId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the drive containing the file. Takes priority over siteId if provided."
-        ),
-      siteId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the SharePoint site containing the file. Used if driveId is not provided."
-        ),
-    },
+    getWorksheetsSchema,
     withToolLogging(
       auth,
       {
@@ -228,30 +211,7 @@ function createServer(
   server.tool(
     "read_worksheet",
     "Read data from a specific range or entire worksheet in an Excel file stored in SharePoint.",
-    {
-      itemId: z.string().describe("The ID of the Excel file to read from."),
-      driveId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the drive containing the file. Takes priority over siteId if provided."
-        ),
-      siteId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the SharePoint site containing the file. Used if driveId is not provided."
-        ),
-      worksheetName: z
-        .string()
-        .describe("Name of the worksheet to read from (e.g., 'Sheet1')"),
-      range: z
-        .string()
-        .optional()
-        .describe(
-          "Optional cell range in A1 notation (e.g., 'A1:D10'). If not provided, reads the used range."
-        ),
-    },
+    readWorksheetSchema,
     withToolLogging(
       auth,
       {
@@ -306,36 +266,7 @@ function createServer(
   server.tool(
     "write_worksheet",
     "Write data to a specific range in an Excel worksheet stored in SharePoint.",
-    {
-      itemId: z.string().describe("The ID of the Excel file to write to."),
-      driveId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the drive containing the file. Takes priority over siteId if provided."
-        ),
-      siteId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the SharePoint site containing the file. Used if driveId is not provided."
-        ),
-      worksheetName: z
-        .string()
-        .describe("Name of the worksheet to write to (e.g., 'Sheet1')"),
-      range: z
-        .string()
-        .describe(
-          "Target range in A1 notation. Can be either a single cell (e.g., 'A1', 'B5') or a full range (e.g., 'A1:C10'). Data dimensions must match the range size."
-        ),
-      data: z
-        .array(
-          z.array(z.union([z.string(), z.number(), z.boolean(), z.null()]))
-        )
-        .describe(
-          "2D array of data to write. Each inner array represents a row, and all rows must have the same length. Example: [['Name', 'Age'], ['John', 30], ['Jane', 25]]"
-        ),
-    },
+    writeWorksheetSchema,
     withToolLogging(
       auth,
       {
@@ -452,26 +383,7 @@ function createServer(
   server.tool(
     "create_worksheet",
     "Create a new worksheet (sheet/tab) in an Excel workbook stored in SharePoint.",
-    {
-      itemId: z
-        .string()
-        .describe("The ID of the Excel file to create a worksheet in."),
-      driveId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the drive containing the file. Takes priority over siteId if provided."
-        ),
-      siteId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the SharePoint site containing the file. Used if driveId is not provided."
-        ),
-      worksheetName: z
-        .string()
-        .describe("Name for the new worksheet (e.g., 'Q4 Results')"),
-    },
+    createWorksheetSchema,
     withToolLogging(
       auth,
       {
@@ -517,35 +429,7 @@ function createServer(
   server.tool(
     "clear_range",
     "Clear data from a specific range in an Excel worksheet stored in SharePoint.",
-    {
-      itemId: z
-        .string()
-        .describe("The ID of the Excel file to clear the range in."),
-      driveId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the drive containing the file. Takes priority over siteId if provided."
-        ),
-      siteId: z
-        .string()
-        .optional()
-        .describe(
-          "The ID of the SharePoint site containing the file. Used if driveId is not provided."
-        ),
-      worksheetName: z
-        .string()
-        .describe("Name of the worksheet (e.g., 'Sheet1')"),
-      range: z
-        .string()
-        .describe("Cell range to clear in A1 notation (e.g., 'A1:D10')"),
-      applyTo: z
-        .enum(["All", "Contents", "Formats"])
-        .default("Contents")
-        .describe(
-          "What to clear: 'All' (values and formatting), 'Contents' (values only), 'Formats' (formatting only)"
-        ),
-    },
+    clearRangeSchema,
     withToolLogging(
       auth,
       {
