@@ -3030,7 +3030,7 @@ describe("createUserMessage", () => {
         metadata: {
           type: "create",
           user: userJson,
-          rank: 1,
+          rank: 0,
           context: {
             username: userJson.username,
             timezone: "UTC",
@@ -3473,7 +3473,7 @@ describe("createUserMessage", () => {
         metadata: {
           type: "create",
           user: userJson,
-          rank: 1,
+          rank: 0,
           context,
         },
         transaction,
@@ -3540,7 +3540,7 @@ describe("validateUserMention", () => {
 
     conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: agentConfig.sId,
-      messagesCreatedAt: [new Date()],
+      messagesCreatedAt: [],
       visibility: "unlisted",
     });
   });
@@ -3561,7 +3561,7 @@ describe("validateUserMention", () => {
         metadata: {
           type: "create",
           user: userJson,
-          rank: 1,
+          rank: 0,
           context: {
             username: userJson.username,
             timezone: "UTC",
@@ -3631,7 +3631,7 @@ describe("validateUserMention", () => {
         metadata: {
           type: "create",
           user: userJson,
-          rank: 1,
+          rank: 0,
           context: {
             username: userJson.username,
             timezone: "UTC",
