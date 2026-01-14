@@ -75,6 +75,7 @@ export async function intercomFullSyncWorkflow({
   const uniqueTeamIds = new Set<string>();
   const signaledHelpCenters: IntercomUpdateSignal[] = [];
   let hasUpdatedSelectAllConvos = false;
+  let allConversationsCursor: string | null = null;
 
   // If we get a signal, update the workflow state by adding help center ids.
   // We send a signal when permissions are updated by the admin.
@@ -89,6 +90,7 @@ export async function intercomFullSyncWorkflow({
           uniqueTeamIds.add(signal.intercomId);
         } else if (signal.type === "all_conversations") {
           hasUpdatedSelectAllConvos = true;
+          allConversationsCursor = signal.cursor ?? null;
         }
       });
     }
@@ -171,6 +173,7 @@ export async function intercomFullSyncWorkflow({
         {
           connectorId,
           currentSyncMs,
+          initialCursor: allConversationsCursor,
         },
       ],
       memo,
