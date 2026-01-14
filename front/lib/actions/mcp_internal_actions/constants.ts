@@ -49,7 +49,10 @@ import {
   DATABRICKS_TOOL_STAKES,
   DATABRICKS_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/databricks/metadata";
-import { DEEP_DIVE_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive/metadata";
+import {
+  DEEP_DIVE_SERVER_INFO,
+  DEEP_DIVE_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/deep_dive/metadata";
 import {
   FILE_GENERATION_SERVER_INFO,
   FILE_GENERATION_TOOLS,
@@ -743,6 +746,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: DEEP_DIVE_TOOLS,
     serverInfo: DEEP_DIVE_SERVER_INFO,
   },
   slack_bot: {

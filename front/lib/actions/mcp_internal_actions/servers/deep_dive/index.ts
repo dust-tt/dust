@@ -2,6 +2,11 @@ import { DustAPI } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  HANDOFF_MONITORING_NAME,
+  HANDOFF_TOOL_NAME,
+  handoffSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/deep_dive/metadata";
 import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
 import {
   makeInternalMCPServer,
@@ -32,13 +37,13 @@ function createServer(
   const owner = auth.getNonNullableWorkspace();
 
   server.tool(
-    "handoff",
+    HANDOFF_TOOL_NAME,
     `Hand off the task to @${DEEP_DIVE_NAME} agent for comprehensive analysis across company data, databases, and web sources.`,
-    {},
+    handoffSchema,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "handoff",
+        toolNameForMonitoring: HANDOFF_MONITORING_NAME,
         agentLoopContext,
         enableAlerting: true,
       },
