@@ -102,7 +102,9 @@ export async function syncConversation({
     return;
   }
 
-  const lastMessageAt = new Date(conversation.updated ?? conversation.created);
+  const sourceUpdatedAt = new Date(
+    conversation.updated ?? conversation.created
+  );
 
   try {
     // Format conversation for upsert (converts raw content to plain text)
@@ -165,14 +167,14 @@ export async function syncConversation({
     if (existingConversation) {
       await existingConversation.update({
         lastSyncedAt: new Date(),
-        lastMessageAt,
+        sourceUpdatedAt,
       });
     } else {
       await DustProjectConversationResource.makeNew({
         connectorId,
         conversationId: conversation.sId,
         projectId,
-        lastMessageAt,
+        sourceUpdatedAt,
       });
     }
 
