@@ -86,6 +86,37 @@ function escapeIdentifier(identifier: string): string {
   return identifier.replace(/"/g, '""');
 }
 
+/**
+ * Type guard for extracting string values from Snowflake row data.
+ */
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+/**
+ * Safely extract a string value from a row, with fallback.
+ */
+function getRowString(row: Record<string, unknown>, key: string): string {
+  const value = row[key];
+  return isString(value) ? value : "";
+}
+
+/**
+ * Safely extract a string value from a row, checking multiple keys (for case sensitivity).
+ */
+function getRowStringMultiKey(
+  row: Record<string, unknown>,
+  ...keys: string[]
+): string | undefined {
+  for (const key of keys) {
+    const value = row[key];
+    if (isString(value)) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
 export class SnowflakeClient {
   private account: string;
   private accessToken: string;
@@ -190,7 +221,7 @@ export class SnowflakeClient {
       return result;
     }
 
-    const databases = result.value.rows.map((row) => row.name as string);
+    const databases = result.value.rows.map((row) => getRowString(row, "name"));
     return new Ok(databases);
   }
 
@@ -202,7 +233,7 @@ export class SnowflakeClient {
       return result;
     }
 
-    const schemas = result.value.rows.map((row) => row.name as string);
+    const schemas = result.value.rows.map((row) => getRowString(row, "name"));
     return new Ok(schemas);
   }
 
@@ -218,8 +249,8 @@ export class SnowflakeClient {
     }
 
     const tables = result.value.rows.map((row) => ({
-      name: row.name as string,
-      kind: (row.kind as string) || "TABLE",
+      name: getRowString(row, "name"),
+      kind: getRowString(row, "kind") || "TABLE",
     }));
 
     // Also get views (failure is non-fatal - some schemas may not have view permissions)
@@ -228,7 +259,7 @@ export class SnowflakeClient {
     );
     if (viewsResult.isOk()) {
       const views = viewsResult.value.rows.map((row) => ({
-        name: row.name as string,
+        name: getRowString(row, "name"),
         kind: "VIEW",
       }));
       tables.push(...views);
@@ -250,9 +281,9 @@ export class SnowflakeClient {
     }
 
     const columns: SnowflakeColumn[] = result.value.rows.map((row) => ({
-      name: row.name as string,
-      type: row.type as string,
-      nullable: (row.null as string) === "Y",
+      name: getRowString(row, "name"),
+      type: getRowString(row, "type"),
+      nullable: getRowString(row, "null") === "Y",
     }));
 
     return new Ok(columns);
@@ -294,7 +325,7 @@ export class SnowflakeClient {
 
     for (const row of result.value.rows) {
       // Try both uppercase (Snowflake default) and lowercase column names
-      const operation = (row.operation ?? row.OPERATION) as string | undefined;
+      const operation = getRowStringMultiKey(row, "operation", "OPERATION");
       if (operation && writeOperations.includes(operation.toUpperCase())) {
         return new Err(
           new Error(
@@ -342,13 +373,13 @@ export class SnowflakeClient {
         return new Err(validationResult.error);
       }
 
-      // Add LIMIT if not already present for SELECT queries
-      let finalSql = sql;
-      if (trimmedSql.startsWith("SELECT") && !trimmedSql.includes("LIMIT")) {
-        finalSql = `${sql.trim()} LIMIT ${maxRows}`;
-      }
+      // Wrap query to enforce row limit. This handles all cases:
+      // - SELECT without LIMIT
+      // - SELECT with LIMIT > maxRows
+      // - WITH queries (which may or may not have LIMIT)
+      const wrappedSql = `SELECT * FROM (${sql.trim()}) AS _limited_query LIMIT ${maxRows}`;
 
-      return this.executeStatement(finalSql, database, schema, warehouse);
+      return this.executeStatement(wrappedSql, database, schema, warehouse);
     }
 
     // Reject anything else

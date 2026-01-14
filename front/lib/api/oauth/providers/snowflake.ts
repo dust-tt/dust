@@ -29,6 +29,41 @@ import { isString } from "@app/types/shared/utils/general";
  * - Authorization: https://<account>.snowflakecomputing.com/oauth/authorize
  * - Token: https://<account>.snowflakecomputing.com/oauth/token-request
  */
+/**
+ * Helper to fetch the workspace OAuth connection for an MCP server.
+ * Used to get credentials from an existing admin-configured connection.
+ */
+async function getWorkspaceConnectionForMCPServer(
+  auth: Authenticator,
+  mcpServerId: string
+): Promise<OAuthConnectionType> {
+  const mcpServerConnectionRes =
+    await MCPServerConnectionResource.findByMCPServer(auth, {
+      mcpServerId,
+      connectionType: "workspace",
+    });
+
+  if (mcpServerConnectionRes.isErr()) {
+    throw new Error(
+      "Failed to find MCP server connection: " +
+        mcpServerConnectionRes.error.message
+    );
+  }
+
+  const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+  const connectionRes = await oauthApi.getAccessToken({
+    connectionId: mcpServerConnectionRes.value.connectionId,
+  });
+
+  if (connectionRes.isErr()) {
+    throw new Error(
+      "Failed to get connection metadata: " + connectionRes.error.message
+    );
+  }
+
+  return connectionRes.value.connection;
+}
+
 export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
     connection,
@@ -117,35 +152,15 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       // we have client_secret (initial admin setup).
       const { mcp_server_id } = extraConfig;
 
-      if (mcp_server_id) {
-        const mcpServerConnectionRes =
-          await MCPServerConnectionResource.findByMCPServer(auth, {
-            mcpServerId: mcp_server_id,
-            connectionType: "workspace",
-          });
-
-        if (mcpServerConnectionRes.isErr()) {
-          throw new Error(
-            "Failed to find MCP server connection: " +
-              mcpServerConnectionRes.error.message
-          );
-        }
-
-        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-        const connectionRes = await oauthApi.getAccessToken({
-          connectionId: mcpServerConnectionRes.value.connectionId,
-        });
-        if (connectionRes.isErr()) {
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
-          );
-        }
-        const connection = connectionRes.value.connection;
-        const connectionId = connection.connection_id;
+      if (mcp_server_id && isString(mcp_server_id)) {
+        const connection = await getWorkspaceConnectionForMCPServer(
+          auth,
+          mcp_server_id
+        );
 
         return {
           content: {
-            from_connection_id: connectionId,
+            from_connection_id: connection.connection_id,
           },
           metadata: { workspace_id: workspaceId, user_id: userId },
         };
@@ -191,30 +206,11 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       // we have client_secret (initial admin setup).
       const { mcp_server_id, ...restConfig } = extraConfig;
 
-      if (mcp_server_id) {
-        const mcpServerConnectionRes =
-          await MCPServerConnectionResource.findByMCPServer(auth, {
-            mcpServerId: mcp_server_id,
-            connectionType: "workspace",
-          });
-
-        if (mcpServerConnectionRes.isErr()) {
-          throw new Error(
-            "Failed to find MCP server connection: " +
-              mcpServerConnectionRes.error.message
-          );
-        }
-
-        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-        const connectionRes = await oauthApi.getAccessToken({
-          connectionId: mcpServerConnectionRes.value.connectionId,
-        });
-        if (connectionRes.isErr()) {
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
-          );
-        }
-        const connection = connectionRes.value.connection;
+      if (mcp_server_id && isString(mcp_server_id)) {
+        const connection = await getWorkspaceConnectionForMCPServer(
+          auth,
+          mcp_server_id
+        );
 
         return {
           client_id: connection.metadata.client_id,
