@@ -113,7 +113,10 @@ import {
   JIRA_TOOL_STAKES,
   JIRA_TOOLS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/metadata";
-import { JIT_TESTING_SERVER_INFO } from "@app/lib/actions/mcp_internal_actions/servers/jit_testing/metadata";
+import {
+  JIT_TESTING_SERVER_INFO,
+  JIT_TESTING_TOOLS,
+} from "@app/lib/actions/mcp_internal_actions/servers/jit_testing/metadata";
 import {
   MICROSOFT_DRIVE_SERVER_INFO,
   MICROSOFT_DRIVE_TOOL_STAKES,
@@ -1089,6 +1092,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    tools: JIT_TESTING_TOOLS,
     serverInfo: JIT_TESTING_SERVER_INFO,
   },
   common_utilities: {
