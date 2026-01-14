@@ -154,7 +154,18 @@ const getConversationDetails = async ({
   if (providedAuth) {
     auth = providedAuth;
   } else {
-    assert(subscriberId, "subscriberId required when auth not provided");
+    // subscriberId may be empty when previewing the workflow step.
+    if (!subscriberId) {
+      return new Ok({
+        subject: "Deleted conversation",
+        author: "Deleted conversation",
+        authorIsAgent: false,
+        isFromTrigger: false,
+        workspaceName: "Deleted conversation",
+        mentionedUserIds: [],
+        avatarUrl: undefined,
+      });
+    }
     auth = await Authenticator.fromUserIdAndWorkspaceId(
       subscriberId,
       payload.workspaceId
