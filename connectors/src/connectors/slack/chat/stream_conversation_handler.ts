@@ -25,6 +25,7 @@ import {
   makeToolValidationBlock,
   MAX_SLACK_MESSAGE_LENGTH,
 } from "@connectors/connectors/slack/chat/blocks";
+import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
@@ -626,17 +627,28 @@ async function postSlackMessageUpdate({
     RATE_LIMITS["chat.update"],
     `${connector.id}-chat-update`,
     { canBeIgnored },
-    async () =>
-      slackClient.chat.update({
-        ...makeMessageUpdateBlocksAndText(
-          conversationUrl,
-          connector.workspaceId,
-          messageUpdate
-        ),
-        channel: slackChannelId,
-        ts: mainMessage.ts as string,
-        // Note: file_ids is not supported by chat.update API, so we need to delete and repost the message
-      }),
+    async () => {
+      try {
+        return await slackClient.chat.update({
+          ...makeMessageUpdateBlocksAndText(
+            conversationUrl,
+            connector.workspaceId,
+            messageUpdate
+          ),
+          channel: slackChannelId,
+          ts: mainMessage.ts as string,
+          // Note: file_ids is not supported by chat.update API, so we need to delete and repost the message
+        });
+      } catch (e) {
+        if (
+          isSlackWebAPIPlatformError(e) &&
+          e.data.error === "message_not_found"
+        ) {
+          return undefined;
+        }
+        throw e;
+      }
+    },
     extraLogs
   );
 
