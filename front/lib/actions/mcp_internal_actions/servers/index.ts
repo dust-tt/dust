@@ -27,13 +27,13 @@ import { default as sheetsServer } from "@app/lib/actions/mcp_internal_actions/s
 import { default as httpClientServer } from "@app/lib/actions/mcp_internal_actions/servers/http_client";
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot";
 import { default as imageGenerationServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
-import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
+import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include_data";
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
 import { default as jitTestingServer } from "@app/lib/actions/mcp_internal_actions/servers/jit_testing";
 import { default as microsoftDriveServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_drive";
-import { default as microsoftExcelServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_excel";
-import { default as microsoftTeamsServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_teams";
+import { default as microsoftExcelServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft_excel";
+import { default as microsoftTeamsServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft_teams";
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
 import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday";
 import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
@@ -52,8 +52,8 @@ import { default as schedulesManagementServer } from "@app/lib/actions/mcp_inter
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as skillManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/skill_management";
 import { default as slabServer } from "@app/lib/actions/mcp_internal_actions/servers/slab";
-import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_bot";
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_personal";
+import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack_bot";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as soundStudio } from "@app/lib/actions/mcp_internal_actions/servers/sound_studio";
 import { default as speechGenerator } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator";
