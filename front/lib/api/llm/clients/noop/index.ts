@@ -43,20 +43,10 @@ const textEvent: TextGeneratedEvent = {
 export class NoopLLM extends LLM {
   constructor(
     auth: Authenticator,
-    {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
-    }: LLMParameters & { modelId: "noop" }
+    llmParameters: LLMParameters & { modelId: "noop" }
   ) {
     super(auth, {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
+      ...llmParameters,
       clientId: "noop",
     });
   }

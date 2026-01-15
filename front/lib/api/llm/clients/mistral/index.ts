@@ -24,20 +24,10 @@ export class MistralLLM extends LLM {
 
   constructor(
     auth: Authenticator,
-    {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
-    }: LLMParameters & { modelId: MistralWhitelistedModelId }
+    llmParameters: LLMParameters & { modelId: MistralWhitelistedModelId }
   ) {
     super(auth, {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
+      ...llmParameters,
       clientId: "mistral",
     });
     const { MISTRAL_API_KEY } = dustManagedCredentials();

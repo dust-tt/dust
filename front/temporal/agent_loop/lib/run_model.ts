@@ -433,9 +433,9 @@ export async function runModelActivity(
     context: traceContext,
     // Custom trace input: show only the last user message instead of full conversation.
     getTraceInput: (conv) => {
-      const lastUserMessage = [...conv.messages]
-        .reverse()
-        .find((msg) => msg.role === "user");
+      const lastUserMessage = conv.messages.findLast(
+        (msg) => msg.role === "user"
+      );
       return lastUserMessage?.content
         .filter(isTextContent)
         .map((item) => item.text)
