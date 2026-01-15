@@ -61,6 +61,19 @@ export QDRANT_CLUSTER_0_URL=http://127.0.0.1:${ports.qdrantGrpc}
 export QDRANT_USE_SHARDING=false
 export ELASTICSEARCH_URL=http://localhost:${ports.elasticsearch}
 export TEXT_EXTRACTION_URL=http://localhost:${ports.apacheTika}
+
+# === Docker compose placeholders (required for compose file validation) ===
+# These services (elasticsearch/kibana) aren't started by dust-hive but compose validates the full file
+export ES_LOCAL_VERSION=8.11.1
+export ES_LOCAL_CONTAINER_NAME=dust-hive-${name}-elasticsearch
+export ES_LOCAL_PORT=${ports.elasticsearch}
+export ES_LOCAL_HEAP_INIT=512m
+export ES_LOCAL_HEAP_MAX=512m
+export ELASTICSEARCH_PASSWORD=dev-password
+export KIBANA_LOCAL_CONTAINER_NAME=dust-hive-${name}-kibana
+export KIBANA_LOCAL_PORT=5601
+export KIBANA_LOCAL_PASSWORD=dev-password
+export KIBANA_ENCRYPTION_KEY=00000000000000000000000000000000
 `;
 }
 

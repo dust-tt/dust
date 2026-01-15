@@ -11,6 +11,7 @@ import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
 import { openCommand } from "./commands/open";
 import { reloadCommand } from "./commands/reload";
+import { remoteCommand } from "./commands/remote";
 import { restartCommand } from "./commands/restart";
 import { seedConfigCommand } from "./commands/seed-config";
 import { spawnCommand } from "./commands/spawn";
@@ -289,6 +290,26 @@ cli
   )
   .action(async (postgresUri: string) => {
     await prepareAndRun(seedConfigCommand(postgresUri));
+  });
+
+// Remote environment management (single command with subcommands)
+cli
+  .command("remote [...args]", "Manage remote environments (run 'dust-hive remote' for help)")
+  .alias("r")
+  .allowUnknownOptions()
+  .action(async (args: string[], options: Record<string, unknown>) => {
+    // Reconstruct args with options for the subcommand handler
+    const fullArgs = [...args];
+    for (const [key, value] of Object.entries(options)) {
+      if (key !== "--" && value !== undefined && value !== false) {
+        if (value === true) {
+          fullArgs.push(`--${key}`);
+        } else {
+          fullArgs.push(`--${key}`, String(value));
+        }
+      }
+    }
+    await prepareAndRun(remoteCommand(fullArgs));
   });
 
 cli.help();
