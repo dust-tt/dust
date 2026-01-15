@@ -1,5 +1,4 @@
 import { LangfuseClient } from "@langfuse/client";
-import { NotFoundError } from "@langfuse/core";
 
 import logger from "@app/logger/logger";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
@@ -38,7 +37,11 @@ async function ensureLangfuseDatasetExists(
   try {
     await client.api.datasets.get(datasetName);
   } catch (error) {
-    if (!(error instanceof NotFoundError)) {
+    const isNotFound =
+      error instanceof Error &&
+      "statusCode" in error &&
+      error.statusCode === 404;
+    if (!isNotFound) {
       throw error;
     }
     // Dataset doesn't exist, create it
