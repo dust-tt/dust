@@ -5,6 +5,7 @@ interface RestrictedAccessHeaderProps {
   onToggle: () => void;
   restrictedDescription: string;
   unrestrictedDescription: string;
+  disabled?: boolean;
 }
 
 export function RestrictedAccessHeader({
@@ -12,12 +13,17 @@ export function RestrictedAccessHeader({
   onToggle,
   restrictedDescription,
   unrestrictedDescription,
+  disabled,
 }: RestrictedAccessHeaderProps) {
   return (
     <>
       <div className="flex w-full items-center justify-between overflow-visible">
         <Page.SectionHeader title="Restricted Access" />
-        <SliderToggle selected={isRestricted} onClick={onToggle} />
+        <SliderToggle
+          selected={isRestricted}
+          onClick={onToggle}
+          disabled={disabled}
+        />
       </div>
       {isRestricted ? (
         <span>{restrictedDescription}</span>

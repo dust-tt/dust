@@ -13,14 +13,29 @@ makeScript({}, async ({ execute }) => {
       `Found ${regularSpaces.length} regular spaces for workspace ${w.name}`
     );
     for (const space of regularSpaces) {
-      const regularGroups = space.groups.filter((g) => g.isRegular());
-      if (regularGroups.length === 1) {
-        const group = regularGroups[0];
+      const spaceMembersGroups = space.groups.filter(
+        (g) => g.kind === "space_members"
+      );
+      if (spaceMembersGroups.length === 1) {
+        const group = spaceMembersGroups[0];
         if (execute) {
           await group.updateName(auth, `Group for space ${space.name}`);
         }
         console.log(
           `[Execute: ${execute}] Updating group ${group.id} to "Group for space ${space.name}"`
+        );
+      }
+
+      const spaceEditorsGroups = space.groups.filter(
+        (g) => g.kind === "space_editors"
+      );
+      if (spaceEditorsGroups.length === 1) {
+        const group = spaceEditorsGroups[0];
+        if (execute) {
+          await group.updateName(auth, `Editors for space ${space.name}`);
+        }
+        console.log(
+          `[Execute: ${execute}] Updating group ${group.id} to "Editors for space ${space.name}"`
         );
       }
     }

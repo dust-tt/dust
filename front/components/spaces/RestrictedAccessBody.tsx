@@ -1,5 +1,6 @@
 import {
   Button,
+  Checkbox,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +24,12 @@ import { GroupsList } from "@app/components/groups/GroupsList";
 import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
 import { SearchMembersDropdown } from "@app/components/spaces/SearchMembersDropdown";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { GroupType, LightWorkspaceType, UserType } from "@app/types";
+import type {
+  LightWorkspaceType,
+  SpaceGroupType,
+  SpaceUserType,
+  UserType,
+} from "@app/types";
 
 type MembersManagementType = "manual" | "group";
 
@@ -39,10 +45,12 @@ interface RestrictedAccessBodyProps {
   managementType: MembersManagementType;
   owner: LightWorkspaceType;
   selectedMembers: UserType[];
-  selectedGroups: GroupType[];
+  selectedGroups: SpaceGroupType[];
+  canSetEditors?: boolean;
   onManagementTypeChange: (managementType: MembersManagementType) => void;
   onMembersUpdated: (members: UserType[]) => void;
-  onGroupsUpdated: (groups: GroupType[]) => void;
+  onGroupsUpdated: (groups: SpaceGroupType[]) => void;
+  disabled?: boolean;
 }
 
 export function RestrictedAccessBody({
@@ -52,9 +60,11 @@ export function RestrictedAccessBody({
   owner,
   selectedMembers,
   selectedGroups,
+  canSetEditors,
   onManagementTypeChange,
   onMembersUpdated,
   onGroupsUpdated,
+  disabled = false,
 }: RestrictedAccessBodyProps) {
   const confirm = useContext(ConfirmContext);
   const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
@@ -153,6 +163,7 @@ export function RestrictedAccessBody({
               owner={owner}
               selectedMembers={selectedMembers}
               onMembersUpdated={onMembersUpdated}
+              disabled={disabled}
             />
           )}
           {!isManual && selectedGroups.length > 0 && (
@@ -160,6 +171,7 @@ export function RestrictedAccessBody({
               owner={owner}
               selectedGroups={selectedGroups}
               onGroupsUpdated={onGroupsUpdated}
+              disabled={disabled}
             />
           )}
         </div>
@@ -171,6 +183,7 @@ export function RestrictedAccessBody({
               owner={owner}
               selectedMembers={selectedMembers}
               onMembersUpdated={onMembersUpdated}
+              disabled={disabled}
             />
           </div>
         )
@@ -183,6 +196,7 @@ export function RestrictedAccessBody({
               owner={owner}
               selectedMembers={selectedMembers}
               onMembersUpdated={onMembersUpdated}
+              disabled={disabled}
             />
           }
           message="Add members to the space"
@@ -195,6 +209,7 @@ export function RestrictedAccessBody({
               owner={owner}
               selectedGroups={selectedGroups}
               onGroupsUpdated={onGroupsUpdated}
+              disabled={disabled}
             />
           }
           message="Add groups to the space"
@@ -214,6 +229,8 @@ export function RestrictedAccessBody({
               onMembersUpdated={onMembersUpdated}
               selectedMembers={selectedMembers}
               searchSelectedMembers={searchSelectedMembers}
+              canSetEditors={canSetEditors}
+              disabled={disabled}
             />
           </ScrollArea>
         </>
@@ -231,6 +248,8 @@ export function RestrictedAccessBody({
               onGroupsUpdated={onGroupsUpdated}
               selectedGroups={selectedGroups}
               searchSelectedGroups={searchSelectedMembers}
+              canSetEditors={canSetEditors}
+              disabled={disabled}
             />
           </ScrollArea>
         </>
@@ -244,31 +263,41 @@ type MemberRowData = {
   name: string;
   userId: string;
   email: string;
+  isEditor?: boolean;
   onClick?: () => void;
 };
 
 type MemberInfo = CellContext<MemberRowData, unknown>;
 
-function getMemberTableRows(allUsers: UserType[]): MemberRowData[] {
+function getMemberTableRows(allUsers: SpaceUserType[]): MemberRowData[] {
   return allUsers.map((user) => ({
     icon: user.image ?? "",
     name: user.fullName,
     userId: user.sId,
     email: user.email ?? "",
+    isEditor: user.isEditor ?? false,
   }));
 }
 
 interface MembersTableProps {
-  onMembersUpdated: (members: UserType[]) => void;
-  selectedMembers: UserType[];
+  onMembersUpdated: (members: SpaceUserType[]) => void;
+  selectedMembers: SpaceUserType[];
   searchSelectedMembers: string;
+  canSetEditors?: boolean;
+  disabled?: boolean;
 }
 
 function MembersTable({
   onMembersUpdated,
   selectedMembers,
   searchSelectedMembers,
+  canSetEditors,
+  disabled = false,
 }: MembersTableProps) {
+  const editorIds = useMemo(
+    () => selectedMembers.filter((m) => m.isEditor).map((m) => m.sId),
+    [selectedMembers]
+  );
   const sendNotifications = useSendNotification();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -290,6 +319,22 @@ function MembersTable({
       }
       onMembersUpdated(selectedMembers.filter((m) => m.sId !== userId));
     };
+
+    const toggleEditor = (userId: string) => {
+      if (!canSetEditors) {
+        return;
+      }
+      const toggledMember = selectedMembers.find((m) => m.sId === userId);
+      onMembersUpdated([
+        ...selectedMembers.slice(0, selectedMembers.indexOf(toggledMember!)),
+        {
+          ...toggledMember!,
+          isEditor: !toggledMember?.isEditor,
+        },
+        ...selectedMembers.slice(selectedMembers.indexOf(toggledMember!) + 1),
+      ]);
+    };
+
     return [
       {
         id: "name",
@@ -321,6 +366,31 @@ function MembersTable({
         ),
         enableSorting: true,
       },
+      ...(canSetEditors
+        ? [
+            {
+              id: "editor",
+              header: "Editor",
+              meta: {
+                className: "w-20",
+              },
+              cell: (info: MemberInfo) => {
+                const isEditor = editorIds.includes(info.row.original.userId);
+                return (
+                  <DataTable.CellContent>
+                    <Checkbox
+                      checked={isEditor}
+                      onCheckedChange={() =>
+                        toggleEditor(info.row.original.userId)
+                      }
+                      disabled={disabled}
+                    />
+                  </DataTable.CellContent>
+                );
+              },
+            },
+          ]
+        : []),
       {
         id: "action",
         meta: {
@@ -334,13 +404,21 @@ function MembersTable({
                 size="xs"
                 variant="ghost-secondary"
                 onClick={() => removeMember(info.row.original.userId)}
+                disabled={disabled}
               />
             </DataTable.CellContent>
           );
         },
       },
     ];
-  }, [onMembersUpdated, selectedMembers, sendNotifications]);
+  }, [
+    onMembersUpdated,
+    selectedMembers,
+    sendNotifications,
+    disabled,
+    canSetEditors,
+    editorIds,
+  ]);
 
   const rows = useMemo(
     () => getMemberTableRows(selectedMembers),
@@ -367,15 +445,19 @@ function MembersTable({
 }
 
 interface GroupsTableProps {
-  onGroupsUpdated: (groups: GroupType[]) => void;
-  selectedGroups: GroupType[];
+  onGroupsUpdated: (groups: SpaceGroupType[]) => void;
+  selectedGroups: SpaceGroupType[];
   searchSelectedGroups: string;
+  canSetEditors?: boolean;
+  disabled?: boolean;
 }
 
 function GroupsTable({
   onGroupsUpdated,
   selectedGroups,
   searchSelectedGroups,
+  canSetEditors = false,
+  disabled = false,
 }: GroupsTableProps) {
   const sendNotifications = useSendNotification();
   const [pagination, setPagination] = useState<PaginationState>({
@@ -383,8 +465,26 @@ function GroupsTable({
     pageSize: 50,
   });
 
+  const toggleEditor = useCallback(
+    (group: string) => {
+      if (!canSetEditors) {
+        return;
+      }
+      const toggledMember = selectedGroups.find((m) => m.sId === group);
+      onGroupsUpdated([
+        ...selectedGroups.slice(0, selectedGroups.indexOf(toggledMember!)),
+        {
+          ...toggledMember!,
+          isEditor: !toggledMember?.isEditor,
+        },
+        ...selectedGroups.slice(selectedGroups.indexOf(toggledMember!) + 1),
+      ]);
+    },
+    [canSetEditors, onGroupsUpdated, selectedGroups]
+  );
+
   const removeGroup = useCallback(
-    (group: GroupType) => {
+    (group: SpaceGroupType) => {
       if (selectedGroups.length === 1) {
         sendNotifications({
           title: "Cannot remove last group.",
@@ -402,7 +502,13 @@ function GroupsTable({
     <GroupsList
       groups={selectedGroups}
       searchTerm={searchSelectedGroups}
-      showColumns={["name", "memberCount", "action"]}
+      showColumns={
+        canSetEditors
+          ? ["name", "memberCount", "isEditor", "action"]
+          : ["name", "memberCount", "action"]
+      }
+      disabled={disabled}
+      onToggleEditor={toggleEditor}
       onRemoveGroupClick={removeGroup}
       pagination={pagination}
       setPagination={setPagination}

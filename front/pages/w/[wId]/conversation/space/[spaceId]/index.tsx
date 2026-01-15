@@ -12,7 +12,7 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { useCallback, useState } from "react";
 
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
@@ -140,6 +140,7 @@ export default function SpaceConversations({
   const { spaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: spaceId,
+    includeAllMembers: true,
   });
 
   const { conversations, isConversationsLoading, mutateConversations } =
@@ -174,8 +175,30 @@ export default function SpaceConversations({
 
   const [currentTab, setCurrentTab] = useState<SpaceTab>(getCurrentTabFromHash);
 
+  const initialGroups = useMemo(() => {
+    if (!planAllowsSCIM || !spaceInfo || !groups) {
+      return [];
+    }
+    if (
+      (spaceInfo.groupIds && spaceInfo.groupIds.length > 0) ||
+      (spaceInfo.editorGroupIds && spaceInfo.editorGroupIds.length > 0)
+    ) {
+      return groups
+        .filter(
+          (group) =>
+            spaceInfo?.groupIds.includes(group.sId) ||
+            spaceInfo?.editorGroupIds?.includes(group.sId)
+        )
+        .map((group) => ({
+          ...group,
+          isEditor: !!spaceInfo.editorGroupIds?.includes(group.sId),
+        }));
+    }
+    return [];
+  }, [planAllowsSCIM, spaceInfo, groups]);
+
   // Sync current tab with URL hash
-  React.useEffect(() => {
+  useEffect(() => {
     const updateTabFromHash = () => {
       const newTab = getCurrentTabFromHash();
       setCurrentTab(newTab);
@@ -376,18 +399,10 @@ export default function SpaceConversations({
                 space={spaceInfo}
                 initialMembers={spaceInfo.members}
                 planAllowsSCIM={planAllowsSCIM}
-                initialGroups={
-                  planAllowsSCIM &&
-                  spaceInfo.groupIds &&
-                  spaceInfo.groupIds.length > 0 &&
-                  groups
-                    ? groups.filter((group) =>
-                        spaceInfo.groupIds.includes(group.sId)
-                      )
-                    : []
-                }
+                initialGroups={initialGroups}
                 initialManagementMode={spaceInfo.managementMode}
                 initialIsRestricted={spaceInfo.isRestricted}
+                isSpaceEditor={spaceInfo.isEditor}
               />
             )}
           </TabsContent>

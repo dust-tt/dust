@@ -18,6 +18,7 @@ interface SearchMembersDropdownProps {
   owner: LightWorkspaceType;
   selectedMembers: UserType[];
   onMembersUpdated: (members: UserType[]) => void;
+  disabled?: boolean;
 }
 
 const DefaultPagination = { pageIndex: 0, pageSize: 25 };
@@ -26,6 +27,7 @@ export function SearchMembersDropdown({
   owner,
   selectedMembers,
   onMembersUpdated,
+  disabled = false,
 }: SearchMembersDropdownProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState(DefaultPagination);
@@ -83,9 +85,11 @@ export function SearchMembersDropdown({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button label="Add members" icon={PlusIcon} size="sm" />
-      </DropdownMenuTrigger>
+      {!disabled && (
+        <DropdownMenuTrigger asChild>
+          <Button label="Add members" icon={PlusIcon} size="sm" />
+        </DropdownMenuTrigger>
+      )}
       <DropdownMenuContent
         className="w-80"
         dropdownHeaders={

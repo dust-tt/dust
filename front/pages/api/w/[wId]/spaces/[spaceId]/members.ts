@@ -22,14 +22,24 @@ const PatchSpaceMembersRequestBodySchema = t.intersection([
     name: t.string,
   }),
   t.union([
-    t.type({
-      memberIds: t.array(t.string),
-      managementMode: t.literal("manual"),
-    }),
-    t.type({
-      groupIds: t.array(t.string),
-      managementMode: t.literal("group"),
-    }),
+    t.intersection([
+      t.type({
+        memberIds: t.array(t.string),
+        managementMode: t.literal("manual"),
+      }),
+      t.partial({
+        editorIds: t.array(t.string),
+      }),
+    ]),
+    t.intersection([
+      t.type({
+        groupIds: t.array(t.string),
+        managementMode: t.literal("group"),
+      }),
+      t.partial({
+        editorGroupIds: t.array(t.string),
+      }),
+    ]),
   ]),
 ]);
 

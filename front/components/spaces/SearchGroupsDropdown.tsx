@@ -17,12 +17,14 @@ interface SearchGroupsDropdownProps {
   owner: LightWorkspaceType;
   selectedGroups: GroupType[];
   onGroupsUpdated: (groups: GroupType[]) => void;
+  disabled?: boolean;
 }
 
 export function SearchGroupsDropdown({
   owner,
   selectedGroups,
   onGroupsUpdated,
+  disabled = false,
 }: SearchGroupsDropdownProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -52,9 +54,11 @@ export function SearchGroupsDropdown({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button label="Add groups" icon={PlusIcon} size="sm" />
-      </DropdownMenuTrigger>
+      {!disabled && (
+        <DropdownMenuTrigger asChild>
+          <Button label="Add groups" icon={PlusIcon} size="sm" />
+        </DropdownMenuTrigger>
+      )}
       <DropdownMenuContent
         className="w-80"
         dropdownHeaders={

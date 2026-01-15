@@ -17,6 +17,7 @@ export type UniqueSpaceKind = (typeof UNIQUE_SPACE_KINDS)[number];
 export type SpaceType = {
   createdAt: number;
   groupIds: string[];
+  editorGroupIds?: string[];
   isRestricted: boolean;
   kind: SpaceKind;
   managementMode: "manual" | "group";
@@ -28,3 +29,10 @@ export type SpaceType = {
 export function isUniqueSpaceKind(kind: SpaceKind): kind is UniqueSpaceKind {
   return UNIQUE_SPACE_KINDS.includes(kind as UniqueSpaceKind);
 }
+
+// It's used only by projects
+export const GROUP_SPACE_KINDS = [
+  "member", // can access the space
+  "editor", // can manage the space
+] as const;
+export type GroupSpaceKind = (typeof GROUP_SPACE_KINDS)[number];

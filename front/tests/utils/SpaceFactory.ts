@@ -54,7 +54,7 @@ export class SpaceFactory {
     const group = await GroupResource.makeNew({
       name: `Group for space ${name}`,
       workspaceId: workspace.id,
-      kind: "regular",
+      kind: "space_members",
     });
 
     return SpaceResource.makeNew(
@@ -83,7 +83,7 @@ export class SpaceFactory {
     const group = await GroupResource.makeNew({
       name: `Group for space ${name}`,
       workspaceId: workspace.id,
-      kind: "regular",
+      kind: "space_members",
     });
 
     return SpaceResource.makeNew(

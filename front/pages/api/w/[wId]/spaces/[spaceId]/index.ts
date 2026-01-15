@@ -36,7 +36,8 @@ export type GetSpaceResponseBody = {
   space: SpaceType & {
     categories: { [key: string]: SpaceCategoryInfo };
     isMember: boolean;
-    members: UserType[];
+    isEditor: boolean;
+    members: (UserType & { isEditor?: boolean })[];
   };
 };
 
@@ -108,17 +109,24 @@ async function handler(
       categories["actions"].count = actionsCount;
 
       const includeAllMembers = req.query.includeAllMembers === "true";
-      const currentMembers = uniqBy(
+      const currentMembers: (UserType & {
+        isEditor?: boolean;
+      })[] = uniqBy(
         (
           await concurrentExecutor(
-            // Get members from the regular group only.
+            // Get members and editors from manual groups only.
             space.groups.filter((g) => {
-              return g.kind === "regular";
+              return g.kind === "space_members" || g.kind === "space_editors";
             }),
-            (group) =>
-              includeAllMembers
-                ? group.getAllMembers(auth)
-                : group.getActiveMembers(auth),
+            async (group) => {
+              const members = includeAllMembers
+                ? await group.getAllMembers(auth)
+                : await group.getActiveMembers(auth);
+              return members.map((member) => ({
+                ...member.toJSON(),
+                isEditor: group.group_vaults?.kind === "editor", // we rely on the information stored in group_vaults to know if the group is an editor group
+              }));
+            },
             { concurrency: 10 }
           )
         ).flat(),
@@ -130,7 +138,8 @@ async function handler(
           ...space.toJSON(),
           categories,
           isMember: space.canRead(auth),
-          members: currentMembers.map((member) => member.toJSON()),
+          isEditor: space.canAdministrate(auth),
+          members: currentMembers,
         },
       });
     }

@@ -1,24 +1,25 @@
 import { Button, ContentMessage } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type {
-  GroupType,
   LightWorkspaceType,
+  SpaceGroupType,
   SpaceType,
-  UserType,
+  SpaceUserType,
 } from "@app/types";
 
 interface SpaceAboutTabProps {
   owner: LightWorkspaceType;
   space: SpaceType;
-  initialMembers: UserType[];
-  initialGroups: GroupType[];
+  initialMembers: SpaceUserType[];
+  initialGroups: SpaceGroupType[];
   initialManagementMode: "manual" | "group";
   initialIsRestricted: boolean;
+  isSpaceEditor: boolean;
   planAllowsSCIM: boolean;
 }
 
@@ -29,66 +30,127 @@ export function SpaceAboutTab({
   initialGroups,
   initialManagementMode,
   initialIsRestricted,
+  isSpaceEditor,
   planAllowsSCIM,
 }: SpaceAboutTabProps) {
+  const [savedManagementType, setSavedManagementType] = useState<
+    "manual" | "group"
+  >(initialManagementMode);
   const [managementType, setManagementType] = useState<"manual" | "group">(
     initialManagementMode
   );
-  const [selectedMembers, setSelectedMembers] =
-    useState<UserType[]>(initialMembers);
-  const [selectedGroups, setSelectedGroups] =
-    useState<GroupType[]>(initialGroups);
-  const [isSaving, setIsSaving] = useState(false);
-
+  const [savedIsRestricted, setSavedIsRestricted] =
+    useState(initialIsRestricted);
   const [isRestricted, setIsRestricted] = useState(initialIsRestricted);
+  const [savedMembers, setSavedMembers] =
+    useState<SpaceUserType[]>(initialMembers);
+  const [selectedMembers, setSelectedMembers] =
+    useState<SpaceUserType[]>(initialMembers);
+  const [savedGroups, setSavedGroups] =
+    useState<SpaceGroupType[]>(initialGroups);
+  const [selectedGroups, setSelectedGroups] =
+    useState<SpaceGroupType[]>(initialGroups);
+  const [isSaving, setIsSaving] = useState(false);
 
   const isManual = !planAllowsSCIM || managementType === "manual";
   const doUpdate = useUpdateSpace({ owner });
 
+  useEffect(() => {
+    setSavedMembers(initialMembers);
+    setSelectedMembers(initialMembers);
+  }, [initialMembers]);
+
+  useEffect(() => {
+    setSavedGroups(initialGroups);
+    setSelectedGroups(initialGroups);
+  }, [initialGroups]);
+
   const hasChanges = useMemo(() => {
-    if (managementType !== initialManagementMode) {
+    if (managementType !== savedManagementType) {
       return true;
     }
-    if (isRestricted !== initialIsRestricted) {
+    if (isRestricted !== savedIsRestricted) {
       return true;
     }
 
     if (managementType === "manual") {
       const currentMemberIds = selectedMembers.map((m) => m.sId).sort();
-      const initialMemberIds = initialMembers.map((m) => m.sId).sort();
-      return (
-        JSON.stringify(currentMemberIds) !== JSON.stringify(initialMemberIds)
-      );
+      const savedMemberIds = savedMembers.map((m) => m.sId).sort();
+      const memberIdsChanged =
+        JSON.stringify(currentMemberIds) !== JSON.stringify(savedMemberIds);
+
+      // Check if editor IDs have changed
+      const selectedEditorIds = selectedMembers
+        .filter((m) => m.isEditor)
+        .map((m) => m.sId)
+        .sort();
+      const savedEditorIds = savedMembers
+        .filter((m: SpaceUserType) => m.isEditor)
+        .map((m) => m.sId)
+        .sort();
+      const editorsChanged =
+        JSON.stringify(savedEditorIds) !== JSON.stringify(selectedEditorIds);
+
+      return memberIdsChanged || editorsChanged;
     } else {
       const currentGroupIds = selectedGroups.map((g) => g.sId).sort();
-      const initialGroupIds = initialGroups.map((g) => g.sId).sort();
-      return (
-        JSON.stringify(currentGroupIds) !== JSON.stringify(initialGroupIds)
-      );
+      const savedGroupIds = savedGroups.map((g) => g.sId).sort();
+      const groupIdsChanged =
+        JSON.stringify(currentGroupIds) !== JSON.stringify(savedGroupIds);
+
+      // Check if editor group IDs have changed
+      const selectedEditorGroupIds = selectedGroups
+        .filter((g) => g.isEditor)
+        .map((g) => g.sId)
+        .sort();
+      const savedEditorGroupIds = savedGroups
+        .filter((g) => g.isEditor)
+        .map((g) => g.sId)
+        .sort();
+      const editorGroupsChanged =
+        JSON.stringify(savedEditorGroupIds) !==
+        JSON.stringify(selectedEditorGroupIds);
+
+      return groupIdsChanged || editorGroupsChanged;
     }
   }, [
     managementType,
-    initialManagementMode,
+    savedManagementType,
     selectedMembers,
-    initialMembers,
+    savedMembers,
     selectedGroups,
-    initialGroups,
+    savedGroups,
     isRestricted,
-    initialIsRestricted,
+    savedIsRestricted,
   ]);
 
   const canSave = useMemo(() => {
+    if (!isSpaceEditor) {
+      return false;
+    }
     if (!hasChanges) {
       return false;
     }
-    if (managementType === "manual" && selectedMembers.length === 0) {
+    if (
+      managementType === "manual" &&
+      selectedMembers.filter((m) => m.isEditor).length === 0 // a project must have at least one editor
+    ) {
       return false;
     }
-    if (managementType === "group" && selectedGroups.length === 0) {
+    if (
+      managementType === "group" &&
+      selectedGroups.filter((g) => g.isEditor).length === 0 // a project must have at least one editor group
+    ) {
       return false;
     }
     return true;
-  }, [hasChanges, managementType, selectedMembers, selectedGroups]);
+  }, [
+    hasChanges,
+    managementType,
+    selectedMembers,
+    selectedGroups,
+    isSpaceEditor,
+  ]);
 
   const onSave = useCallback(async () => {
     if (!canSave) {
@@ -98,21 +160,40 @@ export function SpaceAboutTab({
     setIsSaving(true);
 
     if (planAllowsSCIM && managementType === "group") {
-      await doUpdate(space, {
+      const updatedSpace = await doUpdate(space, {
         isRestricted,
-        groupIds: selectedGroups.map((group) => group.sId),
+        groupIds: selectedGroups
+          .filter((group) => !group.isEditor)
+          .map((group) => group.sId),
+        editorGroupIds: selectedGroups
+          .filter((group) => group.isEditor)
+          .map((group) => group.sId),
         managementMode: "group",
         name: space.name,
       });
+      if (updatedSpace) {
+        // reset only if the update was successful
+        setSavedGroups(selectedGroups);
+        setSavedManagementType("group");
+        setSavedIsRestricted(isRestricted);
+      }
     } else {
-      await doUpdate(space, {
+      const updatedSpace = await doUpdate(space, {
         isRestricted,
-        memberIds: selectedMembers.map((member) => member.sId),
+        memberIds: selectedMembers
+          .filter((m) => !m.isEditor)
+          .map((member) => member.sId),
+        editorIds: selectedMembers.filter((m) => m.isEditor).map((m) => m.sId),
         managementMode: "manual",
         name: space.name,
       });
+      if (updatedSpace) {
+        // reset only if the update was successful
+        setSavedMembers(selectedMembers);
+        setSavedManagementType("manual");
+        setSavedIsRestricted(isRestricted);
+      }
     }
-
     setIsSaving(false);
   }, [
     canSave,
@@ -132,6 +213,7 @@ export function SpaceAboutTab({
         onToggle={() => setIsRestricted(!isRestricted)}
         restrictedDescription="The project is only accessible to selected members."
         unrestrictedDescription="The project is accessible to everyone in the workspace."
+        disabled={!isSpaceEditor}
       />
       <RestrictedAccessBody
         isManual={isManual}
@@ -143,34 +225,40 @@ export function SpaceAboutTab({
         onManagementTypeChange={setManagementType}
         onMembersUpdated={setSelectedMembers}
         onGroupsUpdated={setSelectedGroups}
+        canSetEditors
+        disabled={!isSpaceEditor}
       />
 
-      <div className="flex justify-end gap-2 pt-4">
-        <Button
-          variant="primary"
-          label={isSaving ? "Saving..." : "Save"}
-          onClick={onSave}
-          disabled={!canSave || isSaving}
-        />
-      </div>
+      {isSpaceEditor && (
+        <div className="flex justify-end gap-2 pt-4">
+          <Button
+            variant="primary"
+            label={isSaving ? "Saving..." : "Save"}
+            onClick={onSave}
+            disabled={!canSave || isSaving}
+          />
+        </div>
+      )}
 
-      <div className="flex w-full flex-col items-center gap-y-4 border-t pt-8">
-        <ContentMessage
-          variant="warning"
-          title="Danger Zone"
-          className="flex w-full"
-        >
-          <div className="flex flex-col gap-y-4">
-            <p className="text-sm text-muted-foreground">
-              Deleting this project will permanently remove all its content,
-              including conversations, folders, websites, and data sources. This
-              action cannot be undone. All assistants using tools that depend on
-              this project will be impacted.
-            </p>
-            <DeleteSpaceDialog owner={owner} space={space} />
-          </div>
-        </ContentMessage>
-      </div>
+      {isSpaceEditor && (
+        <div className="flex w-full flex-col items-center gap-y-4 border-t pt-8">
+          <ContentMessage
+            variant="warning"
+            title="Danger Zone"
+            className="flex w-full"
+          >
+            <div className="flex flex-col gap-y-4">
+              <p className="text-sm text-muted-foreground">
+                Deleting this project will permanently remove all its content,
+                including conversations, folders, websites, and data sources.
+                This action cannot be undone. All assistants using tools that
+                depend on this project will be impacted.
+              </p>
+              <DeleteSpaceDialog owner={owner} space={space} />
+            </div>
+          </ContentMessage>
+        </div>
+      )}
     </div>
   );
 }

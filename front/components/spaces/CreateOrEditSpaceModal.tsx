@@ -31,7 +31,7 @@ import type {
   LightWorkspaceType,
   PlanType,
   SpaceType,
-  UserType,
+  SpaceUserType,
 } from "@app/types";
 
 type MembersManagementType = "manual" | "group";
@@ -59,7 +59,7 @@ export function CreateOrEditSpaceModal({
 }: CreateOrEditSpaceModalProps) {
   const confirm = React.useContext(ConfirmContext);
   const [spaceName, setSpaceName] = useState<string>(space?.name ?? "");
-  const [selectedMembers, setSelectedMembers] = useState<UserType[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<SpaceUserType[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<GroupType[]>([]);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -129,7 +129,7 @@ export function CreateOrEditSpaceModal({
         : (defaultRestricted ?? false);
       setIsRestricted(isRestricted);
 
-      let initialMembers: UserType[] = [];
+      let initialMembers: SpaceUserType[] = [];
       if (spaceMembers && space) {
         initialMembers = spaceMembers;
       } else if (!space) {
