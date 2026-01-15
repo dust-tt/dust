@@ -116,7 +116,6 @@ function MobileLink({
       onClick={() => {
         onOpenChange?.(false);
       }}
-      shallow={!isExternal}
       target={isExternal ? "_blank" : undefined}
       className={classNames(
         "flex select-none items-center gap-1 rounded-md py-3 font-semibold leading-none text-slate-700 no-underline outline-none transition-colors",
