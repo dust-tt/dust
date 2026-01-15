@@ -252,7 +252,10 @@ export const GOOGLE_CALENDAR_SERVER_INFO = {
   description: "Access calendar schedules and appointments.",
   authorization: {
     provider: "google_drive" as const,
-    supported_use_cases: ["personal_actions"] as MCPOAuthUseCase[],
+    supported_use_cases: [
+      "personal_actions",
+      "platform_actions",
+    ] as MCPOAuthUseCase[],
     scope:
       "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events" as const,
   },
