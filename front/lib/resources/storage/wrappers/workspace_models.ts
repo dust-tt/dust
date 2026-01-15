@@ -24,7 +24,7 @@ import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import logger from "@app/logger/logger";
 
 // Log only 1 time out of 100 on average.
-const WORKSPACE_ISOLATION_SAMPLING_RATE = 0.99;
+const WORKSPACE_ISOLATION_SAMPLING_RATE = 0.01;
 
 // Helper type and type guard for workspaceId check.
 type WhereClauseWithNumericWorkspaceId<TAttributes> =
@@ -100,10 +100,6 @@ function checkWorkspaceIsolation<MS extends ModelStatic<Model>>(
     return;
   }
 
-  if (Math.random() < WORKSPACE_ISOLATION_SAMPLING_RATE) {
-    return;
-  }
-
   const whereClause = options.where;
 
   if (
@@ -112,20 +108,6 @@ function checkWorkspaceIsolation<MS extends ModelStatic<Model>>(
     )
   ) {
     const stack = new Error().stack;
-
-    logger.warn(
-      {
-        model: modelName,
-        query_type: queryType,
-        stack_trace: stack,
-        error: {
-          message: "workspace_isolation_violation",
-          stack,
-        },
-        where: whereClause,
-      },
-      "workspace_isolation_violation"
-    );
 
     if (
       // Do not rely on `isDevelopment` since we want to run this check everywhere except
@@ -139,6 +121,22 @@ function checkWorkspaceIsolation<MS extends ModelStatic<Model>>(
         `Query attempted without workspaceId on ${modelName}. All workspace-aware model ` +
           "queries must be scoped to a specific workspaceId for query isolation. " +
           "See Runbook https://www.notion.so/dust-tt/Runbook-WorkspaceAwareModel-Workspace-Isolation-Enforcement-2d128599d94180dbbbace7cffcd958f6"
+      );
+    }
+
+    if (Math.random() > WORKSPACE_ISOLATION_SAMPLING_RATE) {
+      logger.warn(
+        {
+          model: modelName,
+          query_type: queryType,
+          stack_trace: stack,
+          error: {
+            message: "workspace_isolation_violation",
+            stack,
+          },
+          where: whereClause,
+        },
+        "workspace_isolation_violation"
       );
     }
   }
