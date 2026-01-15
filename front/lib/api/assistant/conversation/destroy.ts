@@ -142,6 +142,8 @@ export async function destroyConversation(
     conversationId: string;
   }
 ): Promise<Result<void, ConversationError>> {
+  const owner = auth.getNonNullableWorkspace();
+
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
       auth,
@@ -166,7 +168,7 @@ export async function destroyConversation(
     ],
     where: {
       conversationId: conversation.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
+      workspaceId: owner.id,
     },
   });
 
@@ -189,16 +191,26 @@ export async function destroyConversation(
     await destroyActionsRelatedResources(auth, agentMessageIds);
 
     await UserMessageModel.destroy({
-      where: { id: userMessageIds },
+      where: {
+        id: userMessageIds,
+        workspaceId: owner.id,
+      },
     });
     await AgentStepContentModel.destroy({
-      where: { agentMessageId: agentMessageIds },
+      where: {
+        agentMessageId: agentMessageIds,
+        workspaceId: owner.id,
+      },
     });
     await AgentMessageFeedbackModel.destroy({
-      where: { agentMessageId: agentMessageIds },
+      where: {
+        agentMessageId: agentMessageIds,
+        workspaceId: owner.id,
+      },
     });
 
     const whereAgentMessageSkill: WhereOptions<AgentMessageSkillModel> = {
+      workspaceId: auth.getNonNullableWorkspace().id,
       agentMessageId: agentMessageIds,
     };
     await AgentMessageSkillModel.destroy({
@@ -206,7 +218,10 @@ export async function destroyConversation(
     });
 
     await AgentMessageModel.destroy({
-      where: { id: agentMessageIds },
+      where: {
+        id: agentMessageIds,
+        workspaceId: owner.id,
+      },
     });
 
     await destroyContentFragments(auth, messageAndContentFragmentIds, {
