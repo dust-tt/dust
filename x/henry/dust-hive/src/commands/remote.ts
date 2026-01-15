@@ -301,6 +301,23 @@ for rc in ~/.bashrc ~/.zshrc; do
 done 2>/dev/null || true
 echo "  Shell configs updated"
 
+# Create config.env template if it doesn't exist
+mkdir -p ~/.dust-hive
+if [ ! -f ~/.dust-hive/config.env ]; then
+  cat > ~/.dust-hive/config.env << 'CONFIG_TEMPLATE'
+# dust-hive configuration
+# This file is sourced by env.sh - use 'export VAR=value' syntax
+# Copy your environment variables from your existing .env file here
+#
+# Required variables - copy from local ~/.dust-hive/config.env or .env:
+# export OPENAI_API_KEY=sk-...
+# export DUST_API_KEY=...
+# export GITHUB_APP_ID=...
+# etc.
+CONFIG_TEMPLATE
+  echo "  Created ~/.dust-hive/config.env (add your secrets)"
+fi
+
 # ============================================
 # 10. Verification
 # ============================================
@@ -318,8 +335,8 @@ echo "  Bootstrap Complete!"
 echo "=============================================="
 echo ""
 echo "Next steps:"
-echo "  1. Create config.env:   cp ~/.dust-hive/config.env.template ~/.dust-hive/config.env"
-echo "                          (edit with your secrets)"
+echo "  1. Edit config.env:     nano ~/.dust-hive/config.env"
+echo "                          (add your secrets from local ~/.dust-hive/config.env)"
 echo "  2. Start services:      cd ~/dust && dust-hive up --skip-sync"
 echo "  3. Create environment:  dust-hive spawn <name>"
 echo ""

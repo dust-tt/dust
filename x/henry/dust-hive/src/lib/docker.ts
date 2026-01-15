@@ -87,8 +87,7 @@ export function getDockerProjectName(name: string): string {
   return `dust-hive-${name}`;
 }
 
-// Services that dust-hive manages (subset of docker-compose.yml services)
-// Excludes dev-elasticsearch, kibana, kibana_settings which need additional env vars
+// All services in the dust-hive docker-compose.yml
 const DUST_HIVE_SERVICES = ["db", "redis", "qdrant", "elasticsearch", "apache-tika"] as const;
 
 // Start docker-compose containers (starts in background, services have retry logic)
