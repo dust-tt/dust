@@ -29,7 +29,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
-  CombinedResourcePermissions,
   GroupKind,
   GroupType,
   LightAgentConfigurationType,
