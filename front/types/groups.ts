@@ -63,6 +63,10 @@ export type GroupType = {
   memberCount: number;
 };
 
+export type SpaceGroupType = GroupType & {
+  isEditor?: boolean;
+};
+
 export const GroupKindCodec = t.keyof({
   global: null,
   regular: null,
