@@ -178,15 +178,19 @@ cli
   .option("-a, --attach", "Attach to main zellij session")
   .option("-f, --force", "Force rebuild even if no changes detected")
   .option("-C, --compact", "Use compact zellij layout (bar at bottom)")
-  .action(async (options: { attach?: boolean; force?: boolean; compact?: boolean }) => {
-    await prepareAndRun(
-      upCommand({
-        attach: Boolean(options.attach),
-        force: Boolean(options.force),
-        compact: Boolean(options.compact),
-      })
-    );
-  });
+  .option("--no-sync", "Skip sync and branch checks (for fresh installs)")
+  .action(
+    async (options: { attach?: boolean; force?: boolean; compact?: boolean; noSync?: boolean }) => {
+      await prepareAndRun(
+        upCommand({
+          attach: Boolean(options.attach),
+          force: Boolean(options.force),
+          compact: Boolean(options.compact),
+          noSync: Boolean(options.noSync),
+        })
+      );
+    }
+  );
 
 cli
   .command("down", "Stop all envs, temporal, test postgres, test redis, and sessions")

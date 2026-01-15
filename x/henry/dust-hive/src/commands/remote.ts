@@ -235,13 +235,13 @@ echo "  temporal: \$(temporal --version 2>/dev/null | head -1 || echo 'installed
 # ============================================
 echo "==> [7/10] Checking dust repo..."
 if [ ! -d ~/dust ]; then
-  echo "  Cloning dust repo..."
-  git clone https://github.com/dust-tt/dust.git ~/dust
+  echo "  Cloning dust repo (linux branch)..."
+  git clone -b linux https://github.com/dust-tt/dust.git ~/dust
 else
-  echo "  Dust repo exists, pulling latest..."
-  cd ~/dust && git fetch origin main && git checkout main && git pull origin main 2>/dev/null || true
+  echo "  Dust repo exists, pulling latest from linux branch..."
+  cd ~/dust && git fetch origin linux && git checkout linux && git pull origin linux 2>/dev/null || true
 fi
-echo "  Dust repo: ~/dust"
+echo "  Dust repo: ~/dust (branch: linux)"
 
 # ============================================
 # 8. dust-hive setup
@@ -300,7 +300,7 @@ echo ""
 echo "Next steps:"
 echo "  1. Create config.env:   cp ~/.dust-hive/config.env.template ~/.dust-hive/config.env"
 echo "                          (edit with your secrets)"
-echo "  2. Start services:      dust-hive up"
+echo "  2. Start services:      cd ~/dust && dust-hive up --no-sync"
 echo "  3. Create environment:  dust-hive spawn <name>"
 echo ""
 `;
@@ -314,7 +314,9 @@ echo ""
   logger.success(`dust-hive installed on ${remoteName}`);
   console.log("\nNext steps:");
   console.log("  1. SSH to remote and create config.env with your secrets");
-  console.log(`  2. Run: dust-hive remote exec ${remoteName} "dust-hive up"`);
+  console.log(
+    `  2. Run: dust-hive remote exec ${remoteName} "cd ~/dust && dust-hive up --no-sync"`
+  );
   console.log(`  3. Run: dust-hive remote spawn ${remoteName} --name <env-name>`);
 
   return Ok(undefined);
