@@ -49,8 +49,8 @@ export function defineTool<TName extends string, TSchema extends ZodRawShape>(
 }
 
 export function registerTool(
-  server: McpServer,
   auth: Authenticator,
+  server: McpServer,
   agentLoopContext: AgentLoopContextType | undefined,
   monitoringName: string,
   tool: ToolDefinition

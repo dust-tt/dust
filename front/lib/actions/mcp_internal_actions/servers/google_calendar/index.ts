@@ -17,8 +17,8 @@ function createServer(
 
   for (const tool of TOOLS) {
     registerTool(
-      server,
       auth,
+      server,
       agentLoopContext,
       GOOGLE_CALENDAR_TOOL_NAME,
       tool
