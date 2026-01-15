@@ -9,7 +9,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AGENT_MEMORY_SERVER_NAME,
-  INTERNAL_MCP_SERVERS,
+  getInternalMCPServerInfo,
   isInternalMCPServerOfName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
@@ -34,7 +34,7 @@ export function makeInternalMCPServer(
     augmentedInstructions?: string;
   }
 ): McpServer {
-  const { serverInfo } = INTERNAL_MCP_SERVERS[serverName];
+  const serverInfo = getInternalMCPServerInfo(serverName);
   const instructions =
     options?.augmentedInstructions ?? serverInfo.instructions ?? undefined;
 
