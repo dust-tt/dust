@@ -828,25 +828,40 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(updated[0]);
   }
 
+  /**
+   * Marks conversation as unread for other participants (excluding the sender).
+   */
   static async markAsUnreadForOtherParticipants(
     auth: Authenticator,
     {
       conversation,
       excludedUser,
+      transaction,
     }: {
       conversation: ConversationWithoutContentType;
       excludedUser?: UserType;
+      transaction?: Transaction;
     }
   ) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const whereClause: WhereOptions<
+      InferAttributes<ConversationParticipantModel>
+    > = {
+      conversationId: conversation.id,
+      workspaceId,
+      unread: false,
+    };
+
+    if (excludedUser) {
+      whereClause.userId = { [Op.ne]: excludedUser.id };
+    }
+
     const updated = await ConversationParticipantModel.update(
       { unread: true },
       {
-        where: {
-          conversationId: conversation.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          ...(excludedUser ? { userId: { [Op.ne]: excludedUser.id } } : {}),
-          unread: false,
-        },
+        where: whereClause,
+        transaction,
       }
     );
     return new Ok(updated);
