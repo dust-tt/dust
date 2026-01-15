@@ -43,7 +43,10 @@ async function destroyActionsRelatedResources(
 
   // Destroy MCP action output items.
   await AgentMCPActionOutputItemModel.destroy({
-    where: { agentMCPActionId: mcpActions.map((a) => a.id) },
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      agentMCPActionId: mcpActions.map((a) => a.id),
+    },
   });
 
   // Destroy the actions.
@@ -52,16 +55,30 @@ async function destroyActionsRelatedResources(
   });
 }
 
-async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {
+async function destroyMessageRelatedResources(
+  auth: Authenticator,
+  messageIds: ModelId[]
+) {
+  const owner = auth.getNonNullableWorkspace();
+
   await MessageReactionModel.destroy({
-    where: { messageId: messageIds },
+    where: {
+      workspaceId: owner.id,
+      messageId: messageIds,
+    },
   });
   await MentionModel.destroy({
-    where: { messageId: messageIds },
+    where: {
+      workspaceId: owner.id,
+      messageId: messageIds,
+    },
   });
   // TODO: We should also destroy the parent message
   await MessageModel.destroy({
-    where: { id: messageIds },
+    where: {
+      workspaceId: owner.id,
+      id: messageIds,
+    },
   });
 }
 
@@ -228,13 +245,16 @@ export async function destroyConversation(
       conversationId: conversation.sId,
     });
 
-    await destroyMessageRelatedResources(messageIds);
+    await destroyMessageRelatedResources(auth, messageIds);
   }
 
   await destroyConversationDataSource(auth, { conversation });
 
   await ConversationSkillModel.destroy({
-    where: { conversationId: conversation.id },
+    where: {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+    },
   });
 
   const c = await ConversationResource.fetchById(auth, conversation.sId, {

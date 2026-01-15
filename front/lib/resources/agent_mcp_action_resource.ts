@@ -753,6 +753,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     try {
       await AgentMCPActionModel.destroy({
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           id: this.id,
         },
         transaction,
