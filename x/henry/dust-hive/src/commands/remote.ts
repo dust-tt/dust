@@ -244,11 +244,28 @@ fi
 echo "  Dust repo: ~/dust (branch: linux)"
 
 # ============================================
-# 8. dust-hive setup
+# 8. dust-hive setup + node dependencies
 # ============================================
 echo "==> [8/10] Setting up dust-hive..."
 cd ~/dust/x/henry/dust-hive
 bun install
+
+# Install node dependencies for the main repo (needed for spawn)
+echo "  Installing node dependencies (this may take a few minutes)..."
+cd ~/dust/sdks/js && npm install --silent
+cd ~/dust/front && npm install --silent
+cd ~/dust/connectors && npm install --silent
+echo "  Node dependencies installed"
+
+# Build Rust binaries (needed for warm)
+echo "  Building Rust binaries (this may take several minutes)..."
+cd ~/dust/core
+cargo build --release --bin qdrant_create_collection --bin elasticsearch_create_index --bin init_db --bin core-api 2>&1 | tail -5
+cd ~/dust/oauth
+cargo build --release --bin oauth 2>&1 | tail -5
+cd ~/dust/sqlite-worker
+cargo build --release --bin sqlite-worker 2>&1 | tail -5
+echo "  Rust binaries built"
 
 # Create global symlink with all necessary PATH entries
 mkdir -p ~/.local/bin
