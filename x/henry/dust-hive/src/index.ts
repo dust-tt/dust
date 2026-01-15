@@ -4,6 +4,7 @@ import { cac } from "cac";
 import { cacheCommand } from "./commands/cache";
 import { coolCommand } from "./commands/cool";
 import { destroyCommand } from "./commands/destroy";
+import { diagnoseCommand } from "./commands/diagnose";
 import { doctorCommand, setupCommand } from "./commands/doctor";
 import { downCommand } from "./commands/down";
 import { forwardCommand } from "./commands/forward";
@@ -245,6 +246,12 @@ cli
 cli.command("doctor", "Check prerequisites (alias for setup)").action(async () => {
   await prepareAndRun(doctorCommand());
 });
+
+cli
+  .command("diagnose [name]", "Show resource usage diagnostics (for debugging lag issues)")
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(diagnoseCommand(name));
+  });
 
 cli.command("cache", "Show binary cache status").action(async () => {
   await prepareAndRun(cacheCommand());
