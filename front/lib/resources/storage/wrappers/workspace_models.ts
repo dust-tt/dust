@@ -23,6 +23,9 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import logger from "@app/logger/logger";
 
+// Log only 1 time out of 100 on average.
+const WORKSPACE_ISOLATION_SAMPLING_RATE = 0.99;
+
 // Helper type and type guard for workspaceId check.
 type WhereClauseWithNumericWorkspaceId<TAttributes> =
   WhereOptions<TAttributes> & {
@@ -95,8 +98,7 @@ function checkWorkspaceIsolation<MS extends ModelStatic<Model>>(
     return;
   }
 
-  // log only 1 time on 100 approximately
-  if (Math.random() < 0.99) {
+  if (Math.random() < WORKSPACE_ISOLATION_SAMPLING_RATE) {
     return;
   }
 
