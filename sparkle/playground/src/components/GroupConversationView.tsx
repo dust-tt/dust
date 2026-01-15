@@ -616,9 +616,9 @@ export function GroupConversationView({
         >
           <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-8 s-py-8">
             {/* Room Name Section */}
-            <h3 className="s-heading-2xl">Main Settings</h3>
+            <h3 className="s-heading-2xl">Settings</h3>
             <div className="s-flex s-w-full s-flex-col s-gap-2">
-              <h3 className="s-heading-base">Name</h3>
+              <h3 className="s-heading-lg">Name</h3>
               <div className="s-flex s-w-full s-min-w-0 s-gap-2">
                 <Input
                   value={roomName}
@@ -651,7 +651,7 @@ export function GroupConversationView({
             {/* Open to Everyone Section */}
 
             <div className="s-flex s-w-full s-flex-col s-gap-2">
-              <h3 className="s-heading-base">Room Visibility</h3>
+              <h3 className="s-heading-lg">Visibility</h3>
               <div className="s-flex s-items-start s-justify-between s-gap-4">
                 <div className="s-flex s-flex-col">
                   <div className="s-heading-sm s-text-foreground">
@@ -673,12 +673,10 @@ export function GroupConversationView({
                 />
               </div>
             </div>
-
-            <Separator />
             {/* Members Section */}
             <div className="s-flex s-flex-col s-gap-3">
               <div className="s-flex s-items-center s-gap-2">
-                <h3 className="s-heading-2xl s-flex-1">Members</h3>
+                <h3 className="s-heading-lg s-flex-1">Members</h3>
                 <Button
                   label="Invite more"
                   variant="outline"
