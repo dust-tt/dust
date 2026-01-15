@@ -24,7 +24,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-import type { Content, TextContent } from "@app/types/assistant/generation";
+import { isTextContent } from "@app/types/assistant/generation";
+import type { Content } from "@app/types/assistant/generation";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -33,15 +34,24 @@ import type {
 } from "@app/types";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types";
 
-function isTextContentBlock(content: Content): content is TextContent {
-  return content.type === "text";
+function contentToText(contents: Content[]): string {
+  return contents.filter(isTextContent).map((c) => c.text).join("\n");
 }
 
-function contentToText(content: Content[]): string {
-  return content
-    .filter(isTextContentBlock)
-    .map((c) => c.text)
-    .join("\n");
+function buildDefaultTraceInput(
+  prompt: string,
+  conversation: LLMStreamParameters["conversation"]
+): unknown[] {
+  return [
+    { role: "system", content: prompt },
+    ...conversation.messages.map((message): unknown => {
+      if (message.role !== "user") {
+        return message;
+      }
+
+      return { ...message, content: contentToText(message.content) };
+    }),
+  ];
 }
 
 export abstract class LLM {
@@ -131,21 +141,10 @@ export abstract class LLM {
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
     const buffer = new LLMTraceBuffer(this.traceId, workspaceId, this.context);
 
-    const langfuseConversationMessages: unknown[] = conversation.messages.map(
-      (message): unknown => {
-        if (message.role !== "user") {
-          return message;
-        }
-
-        return { ...message, content: contentToText(message.content) };
-      }
-    );
-
     // Use custom trace input if provided, otherwise use the full conversation.
-    const traceInput = this.getTraceInput?.(conversation) ?? [
-      { role: "system", content: prompt },
-      ...langfuseConversationMessages,
-    ];
+    const traceInput =
+      this.getTraceInput?.(conversation) ??
+      buildDefaultTraceInput(prompt, conversation);
 
     const generation = startObservation(
       "llm-completion",
