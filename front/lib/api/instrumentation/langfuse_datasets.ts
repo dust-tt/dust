@@ -19,13 +19,11 @@ function getLangfuseClient(): LangfuseClient | null {
     return null;
   }
 
-  if (!langfuseClient) {
-    langfuseClient = new LangfuseClient({
-      publicKey: EnvironmentConfig.getEnvVariable("LANGFUSE_PUBLIC_KEY"),
-      secretKey: EnvironmentConfig.getEnvVariable("LANGFUSE_SECRET_KEY"),
-      baseUrl: EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_BASE_URL"),
-    });
-  }
+  langfuseClient ??= new LangfuseClient({
+    publicKey: EnvironmentConfig.getEnvVariable("LANGFUSE_PUBLIC_KEY"),
+    secretKey: EnvironmentConfig.getEnvVariable("LANGFUSE_SECRET_KEY"),
+    baseUrl: EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_BASE_URL"),
+  });
 
   return langfuseClient;
 }
