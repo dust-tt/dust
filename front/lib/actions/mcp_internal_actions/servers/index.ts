@@ -21,7 +21,6 @@ import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_act
 import { default as frontServer } from "@app/lib/actions/mcp_internal_actions/servers/front";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
-import { default as calendarServer } from "@app/lib/actions/mcp_internal_actions/servers/google_calendar";
 import { default as driveServer } from "@app/lib/actions/mcp_internal_actions/servers/google_drive";
 import { default as sheetsServer } from "@app/lib/actions/mcp_internal_actions/servers/google_sheets";
 import { default as httpClientServer } from "@app/lib/actions/mcp_internal_actions/servers/http_client";
@@ -68,6 +67,7 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
+import { default as calendarServer } from "@app/lib/api/actions/servers/google_calendar";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 

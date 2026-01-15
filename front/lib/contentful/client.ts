@@ -23,8 +23,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { slugify } from "@app/types/shared/utils/string_utils";
 
-// ISR revalidation time for all Contentful content (30 minutes)
-export const CONTENTFUL_REVALIDATE_SECONDS = 30 * 60;
+// ISR revalidation time for all Contentful content (15 minutes)
+export const CONTENTFUL_REVALIDATE_SECONDS = 15 * 60;
 
 let client: ContentfulClientApi<undefined> | null = null;
 let previewClient: ContentfulClientApi<undefined> | null = null;

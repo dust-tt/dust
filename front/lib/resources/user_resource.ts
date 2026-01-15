@@ -3,7 +3,6 @@ import fromPairs from "lodash/fromPairs";
 import sortBy from "lodash/sortBy";
 import type {
   Attributes,
-  CreationAttributes,
   ModelStatic,
   Transaction,
   WhereOptions,
@@ -35,6 +34,7 @@ export interface SearchMembersPaginationParams {
 
 const USER_METADATA_COMMA_SEPARATOR = ",";
 const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
+const TOOLS_VALIDATION_WILDCARD = "*";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -515,10 +515,8 @@ export class UserResource extends BaseResource<UserModel> {
   /**
    * Create a tool approval for this user.
    *
-   * For low stake (tool-level): pass agentId=null and argsAndValues=null
+   * For low stake (tool-level): omit agentId and argsAndValues (both default to null)
    * For medium stake (per-agent, per-args): pass agentId and argsAndValues
-   *
-   * Uses upsert to avoid duplicates.
    */
   async createToolApproval(
     auth: Authenticator,
@@ -527,24 +525,37 @@ export class UserResource extends BaseResource<UserModel> {
       toolName,
       agentId = null,
       argsAndValues = null,
-    }: Pick<
-      CreationAttributes<UserToolApprovalModel>,
-      "mcpServerId" | "toolName" | "agentId" | "argsAndValues"
-    >
+    }: {
+      mcpServerId: string;
+      toolName: string;
+      agentId?: string | null;
+      argsAndValues?: Record<string, string> | null;
+    }
   ): Promise<void> {
     // Sort keys to ensure consistent JSONB storage for unique constraint.
     const sortedArgsAndValues = argsAndValues
       ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
       : null;
 
-    await UserToolApprovalModel.upsert({
+    const argsAndValuesMd5 = md5(JSON.stringify(sortedArgsAndValues));
+
+    const findClause = {
       workspaceId: auth.getNonNullableWorkspace().id,
       userId: this.id,
       mcpServerId,
       toolName,
-      agentId,
-      argsAndValues: sortedArgsAndValues,
-      argsAndValuesMd5: md5(JSON.stringify(sortedArgsAndValues)),
+      agentId: agentId ?? { [Op.is]: null },
+      argsAndValuesMd5: argsAndValues ? argsAndValuesMd5 : { [Op.is]: null },
+    };
+
+    await UserToolApprovalModel.findOrCreate({
+      where: findClause,
+      defaults: {
+        ...findClause,
+        agentId,
+        argsAndValues: sortedArgsAndValues,
+        argsAndValuesMd5: argsAndValues ? argsAndValuesMd5 : null,
+      },
     });
   }
 
@@ -555,25 +566,34 @@ export class UserResource extends BaseResource<UserModel> {
       toolName,
       agentId = null,
       argsAndValues = null,
-    }: Pick<
-      CreationAttributes<UserToolApprovalModel>,
-      "mcpServerId" | "toolName" | "agentId" | "argsAndValues"
-    >
+    }: {
+      mcpServerId: string;
+      toolName: string;
+      agentId?: string | null;
+      argsAndValues?: Record<string, string> | null;
+    }
   ): Promise<boolean> {
     const sortedArgsAndValues = argsAndValues
       ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
       : null;
 
-    const whereClause: WhereOptions<UserToolApprovalModel> = {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      userId: this.id,
-      mcpServerId,
-      toolName,
-      agentId,
-      argsAndValuesMd5: md5(JSON.stringify(sortedArgsAndValues)),
-    };
+    // For low-stake tools (agentId=null, argsAndValues=null), also check for
+    // wildcard "*" approval which approves all tools for the server.
+    const isLowStake = agentId === null && argsAndValues === null;
+
     const approval = await UserToolApprovalModel.findOne({
-      where: whereClause,
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: this.id,
+        mcpServerId,
+        toolName: isLowStake
+          ? { [Op.in]: [toolName, TOOLS_VALIDATION_WILDCARD] }
+          : toolName,
+        agentId: agentId ?? { [Op.is]: null },
+        argsAndValuesMd5: argsAndValues
+          ? md5(JSON.stringify(sortedArgsAndValues))
+          : { [Op.is]: null },
+      },
     });
 
     return approval !== null;

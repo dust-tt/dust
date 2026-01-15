@@ -1,13 +1,19 @@
+import assert from "assert";
 import uniq from "lodash/uniq";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
+import { getRelatedContentFragments } from "@app/lib/api/assistant/conversation";
 import {
   getCompletionDuration,
   getRichMentionsWithStatusForMessage,
 } from "@app/lib/api/assistant/messages";
 import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
+import {
+  publishAgentMessagesEvents,
+  publishMessageEventsOnMessagePostOrEdit,
+} from "@app/lib/api/assistant/streaming/events";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import { extractFromString } from "@app/lib/mentions/format";
@@ -29,11 +35,12 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isEmailValid } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
+import logger, { auditLog } from "@app/logger/logger";
 import type {
   AgenticMessageData,
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
+  APIErrorWithStatusCode,
   ContentFragmentInputWithContentNode,
   ConversationType,
   ConversationWithoutContentType,
@@ -41,6 +48,7 @@ import type {
   MentionType,
   MessageVisibility,
   ModelId,
+  Result,
   RichMentionWithStatus,
   UserMessageContext,
   UserMessageType,
@@ -50,12 +58,20 @@ import type {
 } from "@app/types";
 import {
   assertNever,
+  Err,
   isAgentMention,
+  isAgentMessageType,
+  isContentFragmentType,
+  isRichUserMention,
   isUserMention,
+  isUserMessageType,
+  Ok,
   removeNulls,
+  toMentionType,
 } from "@app/types";
 
 import { runAgentLoopWorkflow } from "./agent_loop";
+import { getConversation } from "./fetch";
 
 /**
  * Check if a user can access a conversation based on space permissions.
@@ -83,6 +99,32 @@ async function canUserAccessConversation(
   );
 
   return canAccess === "allowed";
+}
+
+/**
+ * Check if a user is a member of a space (project).
+ */
+async function isUserMemberOfSpace(
+  auth: Authenticator,
+  {
+    userId,
+    spaceId,
+  }: {
+    userId: string;
+    spaceId: string;
+  }
+): Promise<boolean> {
+  const space = await SpaceResource.fetchById(auth, spaceId);
+  if (!space) {
+    return false;
+  }
+
+  const user = await UserResource.fetchById(userId);
+  if (!user) {
+    return false;
+  }
+
+  return space.isMember(user);
 }
 
 export const createUserMentions = async (
@@ -142,9 +184,18 @@ export const createUserMentions = async (
             }
           }
 
+          // Auto approve mentions for users who are members of the conversation's project space.
+          let userInProject = false;
+          if (!autoApprove && conversation.spaceId) {
+            userInProject = await isUserMemberOfSpace(auth, {
+              userId: user.sId,
+              spaceId: conversation.spaceId,
+            });
+          }
+
           const status: MentionStatusType = !canAccess
             ? "user_restricted_by_conversation_access"
-            : autoApprove
+            : autoApprove || userInProject
               ? "approved"
               : "pending";
 
@@ -789,3 +840,441 @@ export const createAgentMessages = async (
 
   return { agentMessages, richMentions };
 };
+
+export async function getUserMessageIdFromMessageId(
+  auth: Authenticator,
+  { messageId }: { messageId: string }
+): Promise<{
+  agentMessageId: string;
+  agentMessageVersion: number;
+  userMessageId: string;
+  userMessageVersion: number;
+  userMessageUserId: number | null;
+}> {
+  // Query 1: Get the message and its parentId.
+  const agentMessage = await MessageModel.findOne({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      sId: messageId,
+      agentMessageId: { [Op.ne]: null },
+    },
+    attributes: ["parentId", "version", "sId"],
+  });
+
+  assert(
+    agentMessage?.parentId,
+    "Agent message is expected to have a parentId"
+  );
+
+  // Query 2: Get the parent message's sId (which is the user message).
+  const parentMessage = await MessageModel.findOne({
+    where: {
+      id: agentMessage.parentId,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    attributes: ["sId", "version"],
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: true,
+        attributes: ["userId"],
+      },
+    ],
+  });
+
+  assert(
+    parentMessage &&
+      parentMessage.userMessage &&
+      parentMessage.userMessage.userId,
+    "A user message with a linked user is expected for the agent message"
+  );
+
+  return {
+    agentMessageId: agentMessage.sId,
+    agentMessageVersion: agentMessage.version,
+    userMessageId: parentMessage.sId,
+    userMessageVersion: parentMessage.version,
+    userMessageUserId: parentMessage.userMessage.userId,
+  };
+}
+
+export async function validateUserMention(
+  auth: Authenticator,
+  {
+    conversationId,
+    userId,
+    messageId,
+    approvalState,
+  }: {
+    conversationId: string;
+    userId: string;
+    messageId: string;
+    approvalState: "approved" | "rejected";
+  }
+): Promise<Result<void, APIErrorWithStatusCode>> {
+  const conversationRes = await getConversation(auth, conversationId);
+  if (conversationRes.isErr()) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found",
+      },
+    });
+  }
+
+  const conversation = conversationRes.value;
+
+  // Verify the message exists
+  const message = conversation.content.flat().find((m) => m.sId === messageId);
+
+  if (!message) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "message_not_found",
+        message: "Message not found",
+      },
+    });
+  }
+  if (approvalState === "approved") {
+    auditLog(
+      {
+        author: auth.getNonNullableUser().toJSON(),
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        messageId: message.sId,
+        userId,
+        approvalState,
+      },
+      "User approved a mention"
+    );
+  }
+
+  if (isUserMessageType(message)) {
+    // Verify user is authorized to edit the message by checking the message user.
+    if (message.user && message.user.id !== auth.getNonNullableUser().id) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "User is not authorized to edit this mention",
+        },
+      });
+    }
+  } else if (isAgentMessageType(message)) {
+    // Verify user is authorized to edit the message by going back to the user message.
+    const { userMessageUserId } = await getUserMessageIdFromMessageId(auth, {
+      messageId,
+    });
+    if (
+      userMessageUserId !== null &&
+      userMessageUserId !== auth.getNonNullableUser().id
+    ) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "User is not authorized to edit this mention",
+        },
+      });
+    }
+  } else if (isContentFragmentType(message)) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid message type",
+      },
+    });
+  } else {
+    assertNever(message);
+  }
+  const user = await getUserForWorkspace(auth, {
+    userId,
+  });
+  if (!user) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "user_not_found",
+        message: "User not found",
+      },
+    });
+  }
+
+  const updatedMessages: {
+    userMessages: UserMessageType[];
+    agentMessages: AgentMessageType[];
+  } = {
+    userMessages: [],
+    agentMessages: [],
+  };
+  // Find all pending mentions for the same user on conversation messages latest versions.
+  for (const messageVersions of conversation.content) {
+    const latestMessage = messageVersions[messageVersions.length - 1];
+
+    if (
+      latestMessage.visibility !== "deleted" &&
+      !isContentFragmentType(latestMessage) &&
+      latestMessage.richMentions.some(
+        (m) => m.status === "pending" && m.id === userId
+      )
+    ) {
+      const mentionModel = await MentionModel.findOne({
+        where: {
+          workspaceId: conversation.owner.id,
+          messageId: latestMessage.id,
+          userId: user.id,
+        },
+      });
+      if (!mentionModel) {
+        continue;
+      }
+      await mentionModel.update({ status: approvalState });
+      const newRichMentions = latestMessage.richMentions.map((m) =>
+        isRichUserMention(m) && m.id === userId
+          ? {
+              ...m,
+              status: approvalState,
+            }
+          : m
+      );
+      if (isUserMessageType(latestMessage)) {
+        updatedMessages.userMessages.push({
+          ...latestMessage,
+          richMentions: newRichMentions,
+          mentions: newRichMentions.map(toMentionType),
+        });
+      } else if (isAgentMessageType(latestMessage)) {
+        updatedMessages.agentMessages.push({
+          ...latestMessage,
+          richMentions: newRichMentions,
+        });
+      }
+    }
+  }
+
+  for (const userMessage of updatedMessages.userMessages) {
+    await publishMessageEventsOnMessagePostOrEdit(
+      conversation,
+      {
+        ...userMessage,
+        contentFragments: getRelatedContentFragments(conversation, userMessage),
+      },
+      []
+    );
+  }
+
+  if (updatedMessages.agentMessages.length > 0) {
+    await publishAgentMessagesEvents(
+      conversation,
+      updatedMessages.agentMessages
+    );
+  }
+
+  const isParticipant = await ConversationResource.isConversationParticipant(
+    auth,
+    {
+      conversation,
+      user: user.toJSON(),
+    }
+  );
+
+  if (!isParticipant && approvalState === "approved") {
+    const status = await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "subscribed",
+      user: user.toJSON(),
+      unread: true,
+    });
+
+    if (status === "added") {
+      await triggerConversationAddedAsParticipantNotification(auth, {
+        conversation,
+        addedUserId: user.sId,
+      });
+    }
+  }
+
+  return new Ok(undefined);
+}
+
+export async function dismissMention(
+  auth: Authenticator,
+  {
+    messageId,
+    conversationId,
+    type,
+    id,
+  }: {
+    messageId: string;
+    conversationId: string;
+    type: "user" | "agent";
+    id: string;
+  }
+): Promise<Result<void, APIErrorWithStatusCode>> {
+  const conversationRes = await getConversation(auth, conversationId);
+  if (conversationRes.isErr()) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found",
+      },
+    });
+  }
+
+  const conversation = conversationRes.value;
+
+  // Verify the message exists
+  const message = conversation.content.flat().find((m) => m.sId === messageId);
+
+  if (!message) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "message_not_found",
+        message: "Message not found",
+      },
+    });
+  }
+
+  if (isUserMessageType(message)) {
+    // Verify user is authorized to edit the message by checking the message user.
+    if (message.user && message.user.id !== auth.getNonNullableUser().id) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "User is not authorized to dismiss this mention",
+        },
+      });
+    }
+  } else if (isAgentMessageType(message)) {
+    // Verify user is authorized to edit the message by going back to the user message.
+    const { userMessageUserId } = await getUserMessageIdFromMessageId(auth, {
+      messageId,
+    });
+    if (
+      userMessageUserId !== null &&
+      userMessageUserId !== auth.getNonNullableUser().id
+    ) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "User is not authorized to dismiss this mention",
+        },
+      });
+    }
+  } else if (isContentFragmentType(message)) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid message type",
+      },
+    });
+  } else {
+    assertNever(message);
+  }
+
+  const updatedMessages: {
+    userMessages: UserMessageType[];
+    agentMessages: AgentMessageType[];
+  } = {
+    userMessages: [],
+    agentMessages: [],
+  };
+
+  // For user mentions, convert sId to database ID
+  let userIdForQuery: number | undefined;
+  if (type === "user") {
+    const user = await getUserForWorkspace(auth, {
+      userId: id,
+    });
+    if (!user) {
+      return new Err({
+        status_code: 404,
+        api_error: {
+          type: "user_not_found",
+          message: "User not found",
+        },
+      });
+    }
+    userIdForQuery = user.id;
+  }
+
+  const predicate = (m: RichMentionWithStatus) =>
+    (m.status === "agent_restricted_by_space_usage" ||
+      m.status === "user_restricted_by_conversation_access") &&
+    m.type === type &&
+    m.id === id;
+
+  // Find all restricted mentions for the same user/agent on conversation messages latest versions.
+  for (const messageVersions of conversation.content) {
+    const latestMessage = messageVersions[messageVersions.length - 1];
+
+    if (
+      latestMessage.visibility !== "deleted" &&
+      !isContentFragmentType(latestMessage) &&
+      latestMessage.richMentions.some(predicate)
+    ) {
+      const mentionModel = await MentionModel.findOne({
+        where: {
+          workspaceId: conversation.owner.id,
+          messageId: latestMessage.id,
+          ...(type === "user"
+            ? { userId: userIdForQuery }
+            : { agentConfigurationId: id }),
+        },
+      });
+      if (!mentionModel) {
+        continue;
+      }
+      await mentionModel.update({ dismissed: true });
+      const newRichMentions = latestMessage.richMentions.map((m) =>
+        predicate(m)
+          ? {
+              ...m,
+              dismissed: true,
+            }
+          : m
+      );
+      if (isUserMessageType(latestMessage)) {
+        updatedMessages.userMessages.push({
+          ...latestMessage,
+          richMentions: newRichMentions,
+          mentions: newRichMentions.map(toMentionType),
+        });
+      } else if (isAgentMessageType(latestMessage)) {
+        updatedMessages.agentMessages.push({
+          ...latestMessage,
+          richMentions: newRichMentions,
+        });
+      }
+    }
+  }
+
+  for (const userMessage of updatedMessages.userMessages) {
+    await publishMessageEventsOnMessagePostOrEdit(
+      conversation,
+      {
+        ...userMessage,
+        contentFragments: getRelatedContentFragments(conversation, userMessage),
+      },
+      []
+    );
+  }
+
+  if (updatedMessages.agentMessages.length > 0) {
+    await publishAgentMessagesEvents(
+      conversation,
+      updatedMessages.agentMessages
+    );
+  }
+
+  return new Ok(undefined);
+}

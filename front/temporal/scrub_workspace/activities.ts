@@ -154,7 +154,10 @@ export async function pauseAllTriggers({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const disableResult = await TriggerResource.disableAllForWorkspace(auth);
+  const disableResult = await TriggerResource.disableAllForWorkspace(
+    auth,
+    "downgraded"
+  );
   if (disableResult.isErr()) {
     // Don't fail the whole scrub workflow if we can't disable triggers, just log it.
     logger.error(

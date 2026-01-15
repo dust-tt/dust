@@ -67,8 +67,8 @@ export function ViewTriggerTable({
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
-                <PokeTableHead>Enabled</PokeTableHead>
-                <PokeTableCell>{trigger.enabled ? "Yes" : "No"}</PokeTableCell>
+                <PokeTableHead>Status</PokeTableHead>
+                <PokeTableCell>{trigger.status}</PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Editor</PokeTableHead>

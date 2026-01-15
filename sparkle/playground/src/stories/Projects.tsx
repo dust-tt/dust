@@ -1,5 +1,4 @@
 import {
-  AtomIcon,
   Avatar,
   BoltOffIcon,
   BookOpenIcon,
@@ -7,22 +6,20 @@ import {
   Card,
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
+  CheckDoubleIcon,
   Cog6ToothIcon,
-  ContactsRobotIcon,
   ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
-  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   HeartIcon,
-  InboxIcon,
   LightbulbIcon,
   ListSelectIcon,
   LogoutIcon,
@@ -45,7 +42,6 @@ import {
   SlackLogo,
   SpaceClosedIcon,
   SpaceOpenIcon,
-  StarStrokeIcon,
   Tabs,
   TabsContent,
   TabsList,
@@ -56,12 +52,15 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ConversationView } from "../components/ConversationView";
+import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InputBar } from "../components/InputBar";
+import { InviteUsersScreen } from "../components/InviteUsersScreen";
 import {
   type Agent,
   type Conversation,
   createConversationsWithMessages,
+  createSpace,
   getAgentById,
   getConversationsBySpaceId,
   getRandomAgents,
@@ -130,6 +129,15 @@ function DustMain() {
   const [conversationsWithMessages, setConversationsWithMessages] = useState<
     Conversation[]
   >([]);
+  const [isCreateRoomDialogOpen, setIsCreateRoomDialogOpen] = useState(false);
+  const [isInviteUsersScreenOpen, setIsInviteUsersScreenOpen] = useState(false);
+  const [lastCreatedSpaceId, setLastCreatedSpaceId] = useState<string | null>(
+    null
+  );
+  const [inviteSpaceId, setInviteSpaceId] = useState<string | null>(null);
+  const [spaceMembers, setSpaceMembers] = useState<Map<string, string[]>>(
+    new Map()
+  );
 
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -169,6 +177,15 @@ function DustMain() {
     const convsWithMessages = createConversationsWithMessages(randomUser.id);
     setConversationsWithMessages(convsWithMessages);
   }, []);
+
+  // Auto-select newly created space when it's added to the spaces array
+  useEffect(() => {
+    if (lastCreatedSpaceId && spaces.find((s) => s.id === lastCreatedSpaceId)) {
+      setSelectedSpaceId(lastCreatedSpaceId);
+      setSelectedConversationId(null);
+      setLastCreatedSpaceId(null);
+    }
+  }, [spaces, lastCreatedSpaceId]);
 
   // Combine mock conversations with conversations that have messages
   const allConversations = useMemo(() => {
@@ -321,6 +338,26 @@ function DustMain() {
     return getConversationsBySpaceId(selectedSpaceId);
   }, [selectedSpaceId]);
 
+  // Select 2-5 random conversations for inbox with status assignment
+  const inboxConversations = useMemo(() => {
+    if (filteredConversations.length === 0) return [];
+
+    // Randomly select 2-5 conversations
+    const count = Math.floor(Math.random() * 4) + 2; // 2-5
+    const shuffled = [...filteredConversations].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(
+      0,
+      Math.min(count, filteredConversations.length)
+    );
+
+    // Assign statuses: ~25% probability of "blocked", rest "idle"
+    return selected.map((conversation) => {
+      const status: "idle" | "unread" | "blocked" | "error" =
+        Math.random() < 0.25 ? "blocked" : "idle";
+      return { conversation, status };
+    });
+  }, [filteredConversations]);
+
   const getConversationMoreMenu = (conversation: Conversation) => {
     const participants = getRandomParticipants(conversation);
     return (
@@ -430,7 +467,7 @@ function DustMain() {
         }
         className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
-        <TabsList className="s-mt-2 s-px-2">
+        <TabsList className="s-mt-3 s-px-2">
           <TabsTrigger
             value="chat"
             label="Chat"
@@ -462,6 +499,43 @@ function DustMain() {
                 label="New"
               />
             </div>
+            {inboxConversations.length > 0 && (
+              <NavigationListCollapsibleSection
+                label="Inbox"
+                className="s-border-b s-border-t s-border-border s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
+                actionOnHover={false}
+                action={
+                  <Button
+                    size="xmini"
+                    icon={CheckDoubleIcon}
+                    variant="ghost"
+                    aria-label="Mark all as read"
+                    tooltip="Mark all as read"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // Add action logic here
+                    }}
+                  />
+                }
+              >
+                {inboxConversations.map(({ conversation, status }) => (
+                  <NavigationListItem
+                    key={conversation.id}
+                    label={conversation.title}
+                    selected={conversation.id === selectedConversationId}
+                    status={status}
+                    moreMenu={getConversationMoreMenu(conversation)}
+                    onClick={() => {
+                      // Clear previousSpaceId when navigating from sidebar
+                      setPreviousSpaceId(null);
+                      setSelectedConversationId(conversation.id);
+                      setSelectedSpaceId(null);
+                    }}
+                  />
+                ))}
+              </NavigationListCollapsibleSection>
+            )}
             {/* Collapsible Sections */}
             <NavigationList className="s-px-2">
               {(filteredSpaces.length > 0 || !searchText.trim()) && (
@@ -479,6 +553,7 @@ function DustMain() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          setIsCreateRoomDialogOpen(true);
                         }}
                       />
                       <DropdownMenu>
@@ -510,7 +585,7 @@ function DustMain() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Create Space");
+                              setIsCreateRoomDialogOpen(true);
                             }}
                           />
                         </DropdownMenuContent>
@@ -884,6 +959,44 @@ function DustMain() {
     }
   };
 
+  // Handle room creation flow
+  const handleRoomNameNext = (name: string, _isPublic: boolean) => {
+    // Create the new space directly
+    const newSpace = createSpace(name);
+
+    // Update spaces state
+    setSpaces((prev) => [...prev, newSpace]);
+
+    // Track the newly created space ID for auto-selection
+    setLastCreatedSpaceId(newSpace.id);
+
+    // Close dialog
+    setIsCreateRoomDialogOpen(false);
+
+    // Note: isPublic could be used later to set space visibility
+    // Note: Space selection is handled by useEffect that watches for lastCreatedSpaceId
+  };
+
+  // Handle invite members for a space
+  const handleInviteMembers = (spaceId: string) => {
+    setInviteSpaceId(spaceId);
+    setIsInviteUsersScreenOpen(true);
+  };
+
+  const handleInviteUsersComplete = (selectedUserIds: string[]) => {
+    // Store invited members for the space
+    if (inviteSpaceId) {
+      setSpaceMembers((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(inviteSpaceId, selectedUserIds);
+        return newMap;
+      });
+    }
+    // Close the invite dialog
+    setIsInviteUsersScreenOpen(false);
+    setInviteSpaceId(null);
+  };
+
   // Main content
   const mainContent =
     // Priority 1: Show conversation view if a conversation is selected (not "new-conversation")
@@ -907,17 +1020,19 @@ function DustMain() {
         conversations={spaceConversations}
         users={mockUsers}
         agents={mockAgents}
+        spaceMemberIds={spaceMembers.get(selectedSpaceId) || []}
         onConversationClick={(conversation) => {
           // Store the current space ID before navigating to conversation
           setPreviousSpaceId(selectedSpaceId);
           setSelectedConversationId(conversation.id);
           // Keep selectedSpaceId set so the space NavigationItem stays selected
         }}
+        onInviteMembers={() => handleInviteMembers(selectedSpaceId)}
       />
     ) : (
       // Priority 3: Show welcome/new conversation view
       <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
-        <div className="s-flex s-w-full s-max-w-3xl s-flex-col s-gap-6 s-px-4 s-py-8">
+        <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
           <div className="s-heading-2xl s-text-foreground">
             Welcome, Edouard!{" "}
           </div>
@@ -950,6 +1065,22 @@ function DustMain() {
         maxSidebarWidth={400}
         collapsible={true}
         onSidebarToggle={setIsSidebarCollapsed}
+      />
+      <CreateRoomDialog
+        isOpen={isCreateRoomDialogOpen}
+        onClose={() => {
+          setIsCreateRoomDialogOpen(false);
+        }}
+        onNext={handleRoomNameNext}
+      />
+      <InviteUsersScreen
+        isOpen={isInviteUsersScreenOpen}
+        spaceId={inviteSpaceId}
+        onClose={() => {
+          setIsInviteUsersScreenOpen(false);
+          setInviteSpaceId(null);
+        }}
+        onInvite={handleInviteUsersComplete}
       />
     </div>
   );

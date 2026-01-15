@@ -1,5 +1,6 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
+  getInternalMCPServerInfo,
   getInternalMCPServerNameFromSId,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -28,39 +29,43 @@ function getOnboardingAvailableTools(): Array<{
   name: string;
   description: string;
 }> {
-  return Object.entries(INTERNAL_MCP_SERVERS)
-    .filter(([, server]) => {
-      const { availability, isRestricted, isPreview, serverInfo } = server;
+  return (
+    Object.keys(INTERNAL_MCP_SERVERS) as InternalMCPServerNameType[]
+  ).flatMap((serverName) => {
+    const { availability, isRestricted, isPreview } =
+      INTERNAL_MCP_SERVERS[serverName];
+    const serverInfo = getInternalMCPServerInfo(serverName);
 
-      // Only include manually connected tools.
-      if (availability !== "manual") {
-        return false;
-      }
+    // Only include manually connected tools.
+    if (availability !== "manual") {
+      return [];
+    }
 
-      // Exclude tools gated behind feature flags.
-      if (isRestricted !== undefined) {
-        return false;
-      }
+    // Exclude tools gated behind feature flags.
+    if (isRestricted !== undefined) {
+      return [];
+    }
 
-      // Exclude preview tools.
-      if (isPreview) {
-        return false;
-      }
+    // Exclude preview tools.
+    if (isPreview) {
+      return [];
+    }
 
-      // Only include tools that support personal_actions.
-      const supportedUseCases: readonly string[] =
-        serverInfo.authorization?.supported_use_cases ?? [];
-      if (!supportedUseCases.includes("personal_actions")) {
-        return false;
-      }
+    // Only include tools that support personal_actions.
+    const supportedUseCases: readonly string[] =
+      serverInfo.authorization?.supported_use_cases ?? [];
+    if (!supportedUseCases.includes("personal_actions")) {
+      return [];
+    }
 
-      return true;
-    })
-    .map(([sId, server]) => ({
-      sId,
-      name: server.serverInfo.name,
-      description: server.serverInfo.description,
-    }));
+    return [
+      {
+        sId: serverName,
+        name: serverInfo.name,
+        description: serverInfo.description,
+      },
+    ];
+  });
 }
 
 const ONBOARDING_AVAILABLE_TOOLS = getOnboardingAvailableTools();
@@ -167,9 +172,8 @@ function buildOnboardingPrompt(options: {
 
   const topToolsWithDescriptions = topTools
     .map((sId) => {
-      const server = INTERNAL_MCP_SERVERS[sId];
-      const description = server?.serverInfo?.description ?? "";
-      return `- ${asDisplayName(sId)}: ${description}`;
+      const serverInfo = getInternalMCPServerInfo(sId);
+      return `- ${asDisplayName(sId)}: ${serverInfo.description}`;
     })
     .join("\n");
 

@@ -31,6 +31,31 @@ import type {
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types";
+import type { Content } from "@app/types/assistant/generation";
+import { isTextContent } from "@app/types/assistant/generation";
+
+function contentToText(contents: Content[]): string {
+  return contents
+    .filter(isTextContent)
+    .map((c) => c.text)
+    .join("\n");
+}
+
+function buildDefaultTraceInput(
+  prompt: string,
+  conversation: LLMStreamParameters["conversation"]
+): unknown[] {
+  return [
+    { role: "system", content: prompt },
+    ...conversation.messages.map((message): unknown => {
+      if (message.role !== "user") {
+        return message;
+      }
+
+      return { ...message, content: contentToText(message.content) };
+    }),
+  ];
+}
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -119,10 +144,15 @@ export abstract class LLM {
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
     const buffer = new LLMTraceBuffer(this.traceId, workspaceId, this.context);
 
+    // Use custom trace input if provided, otherwise use the full conversation.
+    const traceInput =
+      this.getTraceInput?.(conversation) ??
+      buildDefaultTraceInput(prompt, conversation);
+
     const generation = startObservation(
       "llm-completion",
       {
-        input: [{ role: "system", content: prompt }, ...conversation.messages],
+        input: traceInput,
         model: this.modelId,
         modelParameters: {
           reasoningEffort: this.reasoningEffort ?? "",
@@ -135,12 +165,6 @@ export abstract class LLM {
       },
       { asType: "generation" }
     );
-
-    // Use custom trace input if provided, otherwise use the full conversation.
-    const traceInput = this.getTraceInput?.(conversation) ?? [
-      { role: "system", content: prompt },
-      ...conversation.messages,
-    ];
 
     generation.updateTrace({
       name: startCase(this.context.operationType),

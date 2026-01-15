@@ -1,0 +1,29 @@
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+import { registerTool } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { GOOGLE_CALENDAR_TOOL_NAME } from "@app/lib/api/actions/servers/google_calendar/metadata";
+import { TOOLS } from "@app/lib/api/actions/servers/google_calendar/tools";
+import type { Authenticator } from "@app/lib/auth";
+
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
+  const server = makeInternalMCPServer("google_calendar");
+
+  for (const tool of TOOLS) {
+    registerTool(
+      auth,
+      server,
+      agentLoopContext,
+      GOOGLE_CALENDAR_TOOL_NAME,
+      tool
+    );
+  }
+
+  return server;
+}
+
+export default createServer;

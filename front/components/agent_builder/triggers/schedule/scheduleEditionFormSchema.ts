@@ -4,6 +4,7 @@ import type {
   AgentBuilderScheduleTriggerType,
   AgentBuilderTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { triggerStatusSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { UserTypeWithWorkspaces } from "@app/types";
 
 export const ScheduleFormSchema = z.object({
@@ -11,7 +12,7 @@ export const ScheduleFormSchema = z.object({
     .string()
     .min(1, "Name is required")
     .max(255, "Name should be less than 255 characters"),
-  enabled: z.boolean().default(true),
+  status: triggerStatusSchema.default("enabled"),
   naturalLanguageDescription: z.string().optional(),
   customPrompt: z.string(),
   cron: z.string().min(1, "Cron expression is required"),
@@ -32,7 +33,7 @@ export function getScheduleFormDefaultValues(
 
   return {
     name: trigger?.name ?? "Schedule",
-    enabled: trigger?.enabled ?? true,
+    status: trigger?.status ?? "enabled",
     cron: scheduleConfig?.cron ?? "",
     timezone:
       scheduleConfig?.timezone ??
@@ -53,7 +54,7 @@ export function formValuesToScheduleTriggerData({
 }): AgentBuilderScheduleTriggerType {
   return {
     sId: editTrigger?.kind === "schedule" ? editTrigger.sId : undefined,
-    enabled: schedule.enabled,
+    status: schedule.status,
     name: schedule.name.trim(),
     kind: "schedule",
     configuration: {

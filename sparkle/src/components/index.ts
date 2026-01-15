@@ -44,6 +44,8 @@ export {
   ContentMessageInline,
 } from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
+export type { ConversationListItemProps, ReplySectionProps } from "./ConversationListItem";
+export { ConversationListItem, ReplySection } from "./ConversationListItem";
 export {
   ConversationContainer,
   ConversationMessage,

@@ -61,6 +61,9 @@ export const RESOURCES_PREFIX = {
 
   // Workspace verification.
   workspace_verification_attempt: "wva",
+
+  // Project metadata.
+  project_metadata: "pmd",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

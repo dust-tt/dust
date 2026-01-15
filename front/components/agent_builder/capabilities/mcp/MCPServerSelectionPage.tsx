@@ -33,7 +33,7 @@ export function MCPServerCard({
 
   const icon = isCustomResourceIconType(view.server.icon)
     ? ActionIcons[view.server.icon]
-    : InternalActionIcons[view.server.icon] || BookOpenIcon;
+    : (InternalActionIcons[view.server.icon] ?? BookOpenIcon);
 
   // Create a ref to use as portal container for tooltips to prevent click blocking
   const containerRef = React.useRef<HTMLDivElement>(null);

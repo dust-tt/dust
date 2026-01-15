@@ -44,7 +44,7 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: editorUser.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1", // Every Monday at 9 AM
           timezone: "UTC",
@@ -99,7 +99,7 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: user.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
@@ -150,7 +150,7 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: user1.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
@@ -209,7 +209,7 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: editorUser.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
@@ -274,7 +274,7 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: editorUser.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
@@ -345,7 +345,7 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: user1.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
@@ -404,7 +404,7 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: editorUser.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
@@ -468,7 +468,7 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: editorUser.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
@@ -538,7 +538,7 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: editorUser.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
@@ -635,7 +635,7 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: authenticator.getNonNullableUser().id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
@@ -651,7 +651,7 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: authenticator.getNonNullableUser().id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 10 * * 1",
           timezone: "UTC",
@@ -667,7 +667,7 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: authenticator.getNonNullableUser().id,
         customPrompt: null,
-        enabled: false,
+        status: "disabled",
         configuration: {
           cron: "0 11 * * 1",
           timezone: "UTC",
@@ -692,13 +692,15 @@ describe("TriggerResource", () => {
       const trigger3 = trigger3Result.value;
 
       // Verify initial state
-      expect(trigger1.enabled).toBe(true);
-      expect(trigger2.enabled).toBe(true);
-      expect(trigger3.enabled).toBe(false);
+      expect(trigger1.status).toBe("enabled");
+      expect(trigger2.status).toBe("enabled");
+      expect(trigger3.status).toBe("disabled");
 
-      // Disable all triggers for the workspace
-      const result =
-        await TriggerResource.disableAllForWorkspace(authenticator);
+      // Disable all triggers for the workspace with "relocating" status
+      const result = await TriggerResource.disableAllForWorkspace(
+        authenticator,
+        "relocating"
+      );
 
       expect(result.isOk()).toBe(true);
 
@@ -720,11 +722,11 @@ describe("TriggerResource", () => {
       expect(updatedTrigger2).toBeTruthy();
       expect(updatedTrigger3).toBeTruthy();
 
-      // Previously enabled triggers should now be disabled
-      expect(updatedTrigger1!.enabled).toBe(false);
-      expect(updatedTrigger2!.enabled).toBe(false);
+      // Previously enabled triggers should now be set to "relocating"
+      expect(updatedTrigger1!.status).toBe("relocating");
+      expect(updatedTrigger2!.status).toBe("relocating");
       // Previously disabled trigger should remain disabled
-      expect(updatedTrigger3!.enabled).toBe(false);
+      expect(updatedTrigger3!.status).toBe("disabled");
 
       // Clean up mocks
       mockCreateOrUpdateWorkflow.mockRestore();
@@ -784,7 +786,7 @@ describe("TriggerResource", () => {
           agentConfigurationId: activeAgentConfig.sId,
           editor: authenticator.getNonNullableUser().id,
           customPrompt: null,
-          enabled: false,
+          status: "disabled",
           configuration: {
             cron: "0 9 * * 1",
             timezone: "UTC",
@@ -803,7 +805,7 @@ describe("TriggerResource", () => {
           agentConfigurationId: archivedAgentConfig.sId,
           editor: authenticator.getNonNullableUser().id,
           customPrompt: null,
-          enabled: false,
+          status: "disabled",
           configuration: {
             cron: "0 10 * * 1",
             timezone: "UTC",
@@ -822,7 +824,7 @@ describe("TriggerResource", () => {
           agentConfigurationId: activeAgentConfig.sId,
           editor: authenticator.getNonNullableUser().id,
           customPrompt: null,
-          enabled: true,
+          status: "enabled",
           configuration: {
             cron: "0 11 * * 1",
             timezone: "UTC",
@@ -848,12 +850,15 @@ describe("TriggerResource", () => {
       const trigger3 = enabledActiveTrigger.value;
 
       // Verify initial state
-      expect(trigger1.enabled).toBe(false);
-      expect(trigger2.enabled).toBe(false);
-      expect(trigger3.enabled).toBe(true);
+      expect(trigger1.status).toBe("disabled");
+      expect(trigger2.status).toBe("disabled");
+      expect(trigger3.status).toBe("enabled");
 
-      // Enable all triggers for the workspace
-      const result = await TriggerResource.enableAllForWorkspace(authenticator);
+      // Enable all triggers that were manually disabled for the workspace
+      const result = await TriggerResource.enableAllForWorkspace(
+        authenticator,
+        "disabled"
+      );
 
       expect(result.isOk()).toBe(true);
 
@@ -876,11 +881,11 @@ describe("TriggerResource", () => {
       expect(updatedTrigger3).toBeTruthy();
 
       // Disabled trigger pointing to active agent should now be enabled
-      expect(updatedTrigger1!.enabled).toBe(true);
+      expect(updatedTrigger1!.status).toBe("enabled");
       // Disabled trigger pointing to archived agent should remain disabled
-      expect(updatedTrigger2!.enabled).toBe(false);
+      expect(updatedTrigger2!.status).toBe("disabled");
       // Already enabled trigger should remain enabled
-      expect(updatedTrigger3!.enabled).toBe(true);
+      expect(updatedTrigger3!.status).toBe("enabled");
 
       // Clean up mocks
       mockAgentConfigFindAll.mockRestore();

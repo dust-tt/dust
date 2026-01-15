@@ -7,10 +7,7 @@ import {
   updateAgentRequirements,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
-import {
-  createDustProjectConnectorForSpace,
-  deleteDustProjectConnectorForSpace,
-} from "@app/lib/api/project_connectors";
+import { createDustProjectConnectorForSpace } from "@app/lib/api/project_connectors";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -20,6 +17,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
@@ -90,7 +88,9 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
 
   const groupHasKeys = await KeyResource.countActiveForGroups(
     auth,
-    space.groups.filter((g) => !space.isRegular() || !g.isGlobal())
+    space.groups.filter(
+      (g) => (!space.isRegular() && !space.isProject()) || !g.isGlobal()
+    )
   );
   if (groupHasKeys > 0) {
     return new Err(
@@ -219,21 +219,6 @@ export async function hardDeleteSpace(
 
   assert(space.isDeletable(), "Space cannot be deleted.");
 
-  // If this is a project space, delete the dust_project connector first
-  if (space.isProject()) {
-    const connectorRes = await deleteDustProjectConnectorForSpace(auth, space);
-    if (connectorRes.isErr()) {
-      logger.error(
-        {
-          error: connectorRes.error,
-          spaceId: space.sId,
-        },
-        "Failed to delete dust_project connector for project, continuing with space deletion"
-      );
-      // Continue with deletion even if connector deletion fails
-    }
-  }
-
   const dataSourceViews = await DataSourceViewResource.listBySpace(
     auth,
     space,
@@ -286,6 +271,17 @@ export async function hardDeleteSpace(
   }
 
   await withTransaction(async (t) => {
+    // Delete project metadata if this is a project space
+    if (space.isProject()) {
+      const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+      if (metadata) {
+        const metadataRes = await metadata.delete(auth, { transaction: t });
+        if (metadataRes.isErr()) {
+          throw metadataRes.error;
+        }
+      }
+    }
+
     // Delete all spaces groups.
     for (const group of space.groups) {
       // Skip deleting global groups for regular spaces.
@@ -439,6 +435,20 @@ export async function createSpaceAndGroup(
           { transaction: t }
         );
       }
+    }
+
+    // Create empty project metadata for project spaces
+    if (spaceKind === "project") {
+      await ProjectMetadataResource.makeNew(
+        auth,
+        space,
+        {
+          description: null,
+          urls: [],
+          tags: [],
+        },
+        t
+      );
     }
 
     return new Ok(space);

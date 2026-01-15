@@ -36,6 +36,7 @@ import {
 } from "@app/types";
 import type {
   ScheduleConfig,
+  TriggerStatus,
   TriggerType,
   WebhookConfig,
 } from "@app/types/assistant/triggers";
@@ -66,7 +67,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
     const resource = new this(TriggerModel, trigger.get());
 
-    if (resource.enabled) {
+    if (resource.status === "enabled") {
       const r = await resource.upsertTemporalWorkflow(auth);
       if (r.isErr()) {
         return r;
@@ -239,7 +240,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     await trigger.update(blob, transaction);
 
     let r = null;
-    if (trigger.enabled) {
+    if (trigger.status === "enabled") {
       r = await trigger.upsertTemporalWorkflow(auth);
     } else {
       r = await trigger.removeTemporalWorkflow(auth);
@@ -375,7 +376,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   static async disableAllForWorkspace(
-    auth: Authenticator
+    auth: Authenticator,
+    targetStatus: Exclude<TriggerStatus, "enabled">
   ): Promise<Result<undefined, Error>> {
     const triggers = await this.listByWorkspace(auth);
     if (triggers.length === 0) {
@@ -383,14 +385,14 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     // Only disable enabled triggers
-    const enabledTriggers = triggers.filter((t) => t.enabled);
+    const enabledTriggers = triggers.filter((t) => t.status === "enabled");
     if (enabledTriggers.length === 0) {
       return new Ok(undefined);
     }
 
     const disabledTriggersResult = await concurrentExecutor(
       enabledTriggers,
-      async (trigger) => trigger.disable(auth),
+      async (trigger) => trigger.disable(auth, targetStatus),
       {
         concurrency: 10,
       }
@@ -454,22 +456,23 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   static async enableAllForWorkspace(
-    auth: Authenticator
+    auth: Authenticator,
+    fromStatus: Exclude<TriggerStatus, "enabled">
   ): Promise<Result<undefined, Error>> {
     const triggers = await this.listByWorkspace(auth);
     if (triggers.length === 0) {
       return new Ok(undefined);
     }
 
-    // Only enable disabled triggers that point to non-archived agents
-    const disabledTriggers = triggers.filter((t) => !t.enabled);
-    if (disabledTriggers.length === 0) {
+    // Only enable triggers with the specified status that point to non-archived agents
+    const matchingTriggers = triggers.filter((t) => t.status === fromStatus);
+    if (matchingTriggers.length === 0) {
       return new Ok(undefined);
     }
 
     const rActiveAgentIds = await this.getActiveAgentFromTriggers(
       auth,
-      disabledTriggers
+      matchingTriggers
     );
     if (rActiveAgentIds.isErr()) {
       return rActiveAgentIds;
@@ -481,7 +484,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     // Filter triggers to only include those pointing to active agents
-    const enableableTriggers = disabledTriggers.filter((trigger) =>
+    const enableableTriggers = matchingTriggers.filter((trigger) =>
       activeAgentIds.has(trigger.agentConfigurationId)
     );
 
@@ -538,12 +541,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   async enable(auth: Authenticator): Promise<Result<undefined, Error>> {
-    if (this.enabled) {
+    if (this.status === "enabled") {
       return new Ok(undefined);
     }
 
     try {
-      await this.update({ enabled: true });
+      await this.update({ status: "enabled" });
     } catch (error) {
       return new Err(normalizeError(error));
     }
@@ -566,13 +569,16 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
-  async disable(auth: Authenticator): Promise<Result<undefined, Error>> {
-    if (!this.enabled) {
+  async disable(
+    auth: Authenticator,
+    targetStatus: Exclude<TriggerStatus, "enabled"> = "disabled"
+  ): Promise<Result<undefined, Error>> {
+    if (this.status === targetStatus) {
       return new Ok(undefined);
     }
 
     try {
-      await this.update({ enabled: false });
+      await this.update({ status: targetStatus });
     } catch (error) {
       return new Err(normalizeError(error));
     }
@@ -726,7 +732,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       agentConfigurationId: this.agentConfigurationId,
       editor: this.editor,
       customPrompt: this.customPrompt,
-      enabled: this.enabled,
+      status: this.status,
       naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
       origin: this.origin,

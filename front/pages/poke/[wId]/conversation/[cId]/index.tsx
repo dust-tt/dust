@@ -95,6 +95,9 @@ interface UserMessageViewProps {
 }
 
 const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
+  const hasDustSystemTag = message.content.includes("<dust_system>");
+  const [isExpanded, setIsExpanded] = useState(!hasDustSystemTag);
+
   return (
     <div className="flex flex-grow flex-col">
       <div className="max-w-full self-end">
@@ -103,10 +106,31 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
           name={message.user?.fullName ?? message.user?.username}
           type="user"
         >
-          {useMarkdown ? (
-            <Markdown content={message.content} />
+          {hasDustSystemTag && !isExpanded ? (
+            <button
+              onClick={() => setIsExpanded(true)}
+              className="flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
+            >
+              <ChevronDownIcon className="h-4 w-4" />
+              <span>Hidden System Message (click to expand)</span>
+            </button>
           ) : (
-            <div className="whitespace-pre-wrap">{message.content}</div>
+            <>
+              {hasDustSystemTag && (
+                <button
+                  onClick={() => setIsExpanded(false)}
+                  className="mb-2 flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                  <span>Hide System Message</span>
+                </button>
+              )}
+              {useMarkdown ? (
+                <Markdown content={message.content} />
+              ) : (
+                <div className="whitespace-pre-wrap">{message.content}</div>
+              )}
+            </>
           )}
           <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
             date: {new Date(message.created).toLocaleString()}

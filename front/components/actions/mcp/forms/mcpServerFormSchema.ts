@@ -12,6 +12,7 @@ import {
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import {
+  getInternalMCPServerToolStakes,
   INTERNAL_MCP_SERVERS,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -70,8 +71,7 @@ export function getDefaultInternalToolStakeLevel(
     return FALLBACK_MCP_TOOL_STAKE_LEVEL;
   }
 
-  const serverConfig = INTERNAL_MCP_SERVERS[server.name];
-  const serverToolStakes = serverConfig.tools_stakes;
+  const serverToolStakes = getInternalMCPServerToolStakes(server.name);
 
   if (isToolStakesRecord(serverToolStakes)) {
     const configuredStake = getToolStake(serverToolStakes, toolName);
@@ -80,6 +80,7 @@ export function getDefaultInternalToolStakeLevel(
     }
   }
 
+  const serverConfig = INTERNAL_MCP_SERVERS[server.name];
   return serverConfig.availability === "manual"
     ? FALLBACK_MCP_TOOL_STAKE_LEVEL
     : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL;

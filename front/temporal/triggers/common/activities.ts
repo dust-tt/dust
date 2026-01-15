@@ -218,7 +218,7 @@ export async function runTriggeredAgentsActivity({
     agentConfiguration
   );
 
-  if (!triggerResource.enabled) {
+  if (triggerResource.status !== "enabled") {
     logger.info({ triggerId: trigger.sId }, "Trigger is disabled.");
     return;
   }

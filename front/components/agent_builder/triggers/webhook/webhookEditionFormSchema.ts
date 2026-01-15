@@ -4,6 +4,7 @@ import type {
   AgentBuilderTriggerType,
   AgentBuilderWebhookTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { triggerStatusSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { UserTypeWithWorkspaces } from "@app/types";
 import { asDisplayName } from "@app/types";
 import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/types/assistant/triggers";
@@ -14,7 +15,7 @@ export const WebhookFormSchema = z.object({
     .string()
     .min(1, "Name is required")
     .max(255, "Name should be less than 255 characters"),
-  enabled: z.boolean().default(true),
+  status: triggerStatusSchema.default("enabled"),
   customPrompt: z.string(),
   webhookSourceViewSId: z.string().min(1, "Select a webhook source"),
   event: z.string().optional(),
@@ -43,7 +44,7 @@ export function getWebhookFormDefaultValues({
             ? ` - ${asDisplayName(webhookSourceView?.provider)}`
             : "")
         : "Webhook Trigger"),
-    enabled: trigger?.enabled ?? true,
+    status: trigger?.status ?? "enabled",
     customPrompt: trigger?.customPrompt ?? "",
     webhookSourceViewSId: webhookSourceView?.sId ?? "",
     event: trigger?.configuration.event,
@@ -70,7 +71,7 @@ export function formValuesToWebhookTriggerData({
 }): AgentBuilderWebhookTriggerType {
   return {
     sId: editTrigger?.kind === "webhook" ? editTrigger.sId : undefined,
-    enabled: webhook.enabled,
+    status: webhook.status,
     name: webhook.name.trim(),
     customPrompt: webhook.customPrompt?.trim() ?? null,
     naturalLanguageDescription: webhookSourceView?.provider

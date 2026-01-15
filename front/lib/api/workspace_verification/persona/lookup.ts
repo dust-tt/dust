@@ -20,6 +20,13 @@ import { getPersonaClient } from "./client";
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLL_ATTEMPTS = 5;
 
+const PersonaCreateReportResponseSchema = z.object({
+  data: z.object({
+    type: z.string(),
+    id: z.string(),
+  }),
+});
+
 const PersonaReportResponseSchema = z.object({
   data: z.object({
     type: z.string(),
@@ -157,7 +164,7 @@ async function createReport(
   }
 
   const data = await response.json();
-  const parsed = PersonaReportResponseSchema.safeParse(data);
+  const parsed = PersonaCreateReportResponseSchema.safeParse(data);
 
   if (!parsed.success) {
     logger.error({ error: parsed.error }, "[Persona] Invalid response format");

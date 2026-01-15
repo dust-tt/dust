@@ -60,7 +60,7 @@ makeScript(
     const triggers = await TriggerModel.findAll({
       where: wid ? { workspaceId: wid } : {},
     });
-    const activeTriggers = triggers.filter((t) => t.enabled);
+    const activeTriggers = triggers.filter((t) => t.status === "enabled");
 
     if (activeTriggers.length === 0) {
       logger.info("No active triggers found.");

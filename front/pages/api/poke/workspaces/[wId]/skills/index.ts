@@ -43,7 +43,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const skills = await SkillResource.listSkills(auth, {
+      const skills = await SkillResource.listByWorkspace(auth, {
         status: ["active", "archived", "suggested"],
       });
 
