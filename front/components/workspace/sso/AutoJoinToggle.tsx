@@ -134,10 +134,7 @@ function DomainAutoJoinModal({
                     onClick={() => handleDomainToggle(d.domain)}
                     disabled={isSubmitting}
                   />
-                  <Label
-                    htmlFor={`domain-${d.domain}`}
-                    className="font-normal"
-                  >
+                  <Label htmlFor={`domain-${d.domain}`} className="font-normal">
                     @{d.domain}
                   </Label>
                 </div>
