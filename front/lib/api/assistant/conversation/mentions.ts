@@ -86,10 +86,9 @@ async function canUserAccessConversation(
 }
 
 /**
- * Check if a user can access a space (project).
- * Returns true if the user has read access to the space.
+ * Check if a user is a member of a space (project).
  */
-async function canUserAccessSpace(
+async function isUserMemberOfSpace(
   auth: Authenticator,
   {
     userId,
@@ -99,14 +98,17 @@ async function canUserAccessSpace(
     spaceId: string;
   }
 ): Promise<boolean> {
-  const workspace = auth.getNonNullableWorkspace();
-  const fakeAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    userId,
-    workspace.sId
-  );
+  const space = await SpaceResource.fetchById(auth, spaceId);
+  if (!space) {
+    return false;
+  }
 
-  const space = await SpaceResource.fetchById(fakeAuth, spaceId);
-  return space !== null && space.canRead(fakeAuth);
+  const user = await UserResource.fetchById(userId);
+  if (!user) {
+    return false;
+  }
+
+  return space.isMember(user);
 }
 
 export const createUserMentions = async (
@@ -169,7 +171,7 @@ export const createUserMentions = async (
           // Auto approve mentions for users who are members of the conversation's project space.
           let userInProject = false;
           if (!autoApprove && conversation.spaceId) {
-            userInProject = await canUserAccessSpace(auth, {
+            userInProject = await isUserMemberOfSpace(auth, {
               userId: user.sId,
               spaceId: conversation.spaceId,
             });
