@@ -40,7 +40,6 @@ export type TriggerType = {
   editor: UserType["id"];
   customPrompt: string | null;
   status: TriggerStatus;
-  enabled: boolean; // deprecated, for backward compatibility (BACK12)
   createdAt: number;
   naturalLanguageDescription: string | null;
   origin: TriggerOrigin;
@@ -118,9 +117,6 @@ const TriggerStatusSchema = t.union([
   t.literal("downgraded"),
 ]);
 
-// Note: Both enabled and status are optional for backward compatibility (BACK12).
-// Old clients send enabled: boolean, new clients send status: TriggerStatus.
-// The API handler should convert enabled to status using: status ?? (enabled ? "enabled" : "disabled") ?? "enabled"
 export const TriggerSchema = t.union([
   t.intersection([
     t.type({
@@ -133,7 +129,6 @@ export const TriggerSchema = t.union([
     }),
     t.partial({
       status: TriggerStatusSchema,
-      enabled: t.boolean, // deprecated, for backward compatibility
     }),
   ]),
   t.intersection([
@@ -149,7 +144,6 @@ export const TriggerSchema = t.union([
     }),
     t.partial({
       status: TriggerStatusSchema,
-      enabled: t.boolean, // deprecated, for backward compatibility
     }),
   ]),
 ]);

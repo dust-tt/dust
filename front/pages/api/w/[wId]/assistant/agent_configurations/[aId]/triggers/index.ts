@@ -12,22 +12,8 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import type { TriggerStatus, TriggerType } from "@app/types/assistant/triggers";
+import type { TriggerType } from "@app/types/assistant/triggers";
 import { TriggerSchema } from "@app/types/assistant/triggers";
-
-// Resolve status from either new `status` field or deprecated `enabled` field (BACK12 backward compatibility)
-function resolveStatus(trigger: {
-  status?: TriggerStatus;
-  enabled?: boolean;
-}): TriggerStatus {
-  if (trigger.status) {
-    return trigger.status;
-  }
-  if (trigger.enabled !== undefined) {
-    return trigger.enabled ? "enabled" : "disabled";
-  }
-  return "enabled";
-}
 
 export interface GetTriggersResponseBody {
   triggers: (TriggerType & {
@@ -252,7 +238,7 @@ async function handler(
           triggerData.sId,
           {
             ...validatedTrigger,
-            status: resolveStatus(validatedTrigger),
+            status: validatedTrigger.status ?? "enabled",
             webhookSourceViewId,
           }
         );
@@ -342,7 +328,7 @@ async function handler(
           agentConfigurationId,
           name: validatedTrigger.name,
           kind: validatedTrigger.kind,
-          status: resolveStatus(validatedTrigger),
+          status: validatedTrigger.status ?? "enabled",
           configuration: validatedTrigger.configuration,
           naturalLanguageDescription:
             validatedTrigger.naturalLanguageDescription,
