@@ -94,7 +94,6 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
         workspaceId: workspace.id,
       },
       limit: options.limit,
-      order: options.order,
     });
 
     return res.map((c) => new this(this.model, c.get()));
@@ -145,9 +144,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
   }
 
   static async listByWorkspace(auth: Authenticator) {
-    return this.baseFetch(auth, {
-      order: [["createdAt", "DESC"]],
-    });
+    return this.baseFetch(auth);
   }
 
   async updateRemoteMetadata(
