@@ -696,9 +696,11 @@ describe("TriggerResource", () => {
       expect(trigger2.status).toBe("enabled");
       expect(trigger3.status).toBe("disabled");
 
-      // Disable all triggers for the workspace
-      const result =
-        await TriggerResource.disableAllForWorkspace(authenticator);
+      // Disable all triggers for the workspace with "relocating" status
+      const result = await TriggerResource.disableAllForWorkspace(
+        authenticator,
+        "relocating"
+      );
 
       expect(result.isOk()).toBe(true);
 
@@ -720,9 +722,9 @@ describe("TriggerResource", () => {
       expect(updatedTrigger2).toBeTruthy();
       expect(updatedTrigger3).toBeTruthy();
 
-      // Previously enabled triggers should now be disabled
-      expect(updatedTrigger1!.status).toBe("disabled");
-      expect(updatedTrigger2!.status).toBe("disabled");
+      // Previously enabled triggers should now be set to "relocating"
+      expect(updatedTrigger1!.status).toBe("relocating");
+      expect(updatedTrigger2!.status).toBe("relocating");
       // Previously disabled trigger should remain disabled
       expect(updatedTrigger3!.status).toBe("disabled");
 
@@ -852,8 +854,11 @@ describe("TriggerResource", () => {
       expect(trigger2.status).toBe("disabled");
       expect(trigger3.status).toBe("enabled");
 
-      // Enable all triggers for the workspace
-      const result = await TriggerResource.enableAllForWorkspace(authenticator);
+      // Enable all triggers that were manually disabled for the workspace
+      const result = await TriggerResource.enableAllForWorkspace(
+        authenticator,
+        "disabled"
+      );
 
       expect(result.isOk()).toBe(true);
 

@@ -118,7 +118,10 @@ makeScript(
           }
 
           // 3) Pause all triggers.
-          const triggerRes = await TriggerResource.disableAllForWorkspace(auth);
+          const triggerRes = await TriggerResource.disableAllForWorkspace(
+            auth,
+            "relocating"
+          );
           if (triggerRes.isErr()) {
             logger.error(
               {
@@ -204,7 +207,7 @@ makeScript(
 
           // 3) Unpause all triggers.
           const unpauseDestTriggerRes =
-            await TriggerResource.enableAllForWorkspace(auth);
+            await TriggerResource.enableAllForWorkspace(auth, "relocating");
           if (unpauseDestTriggerRes.isErr()) {
             logger.error(
               {
@@ -245,8 +248,10 @@ makeScript(
           }
 
           // 3) Unpause all triggers.
-          const unpauseTriggerRes =
-            await TriggerResource.enableAllForWorkspace(auth);
+          const unpauseTriggerRes = await TriggerResource.enableAllForWorkspace(
+            auth,
+            "relocating"
+          );
           if (unpauseTriggerRes.isErr()) {
             logger.error(
               {

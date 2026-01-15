@@ -36,6 +36,7 @@ import {
 } from "@app/types";
 import type {
   ScheduleConfig,
+  TriggerStatus,
   TriggerType,
   WebhookConfig,
 } from "@app/types/assistant/triggers";
@@ -375,7 +376,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   static async disableAllForWorkspace(
-    auth: Authenticator
+    auth: Authenticator,
+    targetStatus: Exclude<TriggerStatus, "enabled">
   ): Promise<Result<undefined, Error>> {
     const triggers = await this.listByWorkspace(auth);
     if (triggers.length === 0) {
@@ -390,7 +392,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
     const disabledTriggersResult = await concurrentExecutor(
       enabledTriggers,
-      async (trigger) => trigger.disable(auth),
+      async (trigger) => trigger.disable(auth, targetStatus),
       {
         concurrency: 10,
       }
@@ -454,22 +456,23 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   static async enableAllForWorkspace(
-    auth: Authenticator
+    auth: Authenticator,
+    fromStatus: Exclude<TriggerStatus, "enabled">
   ): Promise<Result<undefined, Error>> {
     const triggers = await this.listByWorkspace(auth);
     if (triggers.length === 0) {
       return new Ok(undefined);
     }
 
-    // Only enable disabled triggers that point to non-archived agents
-    const disabledTriggers = triggers.filter((t) => t.status !== "enabled");
-    if (disabledTriggers.length === 0) {
+    // Only enable triggers with the specified status that point to non-archived agents
+    const matchingTriggers = triggers.filter((t) => t.status === fromStatus);
+    if (matchingTriggers.length === 0) {
       return new Ok(undefined);
     }
 
     const rActiveAgentIds = await this.getActiveAgentFromTriggers(
       auth,
-      disabledTriggers
+      matchingTriggers
     );
     if (rActiveAgentIds.isErr()) {
       return rActiveAgentIds;
@@ -481,7 +484,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     // Filter triggers to only include those pointing to active agents
-    const enableableTriggers = disabledTriggers.filter((trigger) =>
+    const enableableTriggers = matchingTriggers.filter((trigger) =>
       activeAgentIds.has(trigger.agentConfigurationId)
     );
 
@@ -566,13 +569,16 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
-  async disable(auth: Authenticator): Promise<Result<undefined, Error>> {
-    if (this.status === "disabled") {
+  async disable(
+    auth: Authenticator,
+    targetStatus: Exclude<TriggerStatus, "enabled"> = "disabled"
+  ): Promise<Result<undefined, Error>> {
+    if (this.status === targetStatus) {
       return new Ok(undefined);
     }
 
     try {
-      await this.update({ status: "disabled" });
+      await this.update({ status: targetStatus });
     } catch (error) {
       return new Err(normalizeError(error));
     }

@@ -54,8 +54,11 @@ export async function restoreWorkspaceAfterSubscription(auth: Authenticator) {
     }
   }
 
-  // Re-enable all triggers that point to non-archived agents.
-  const enableTriggersRes = await TriggerResource.enableAllForWorkspace(auth);
+  // Re-enable all triggers that were disabled due to downgrade and point to non-archived agents.
+  const enableTriggersRes = await TriggerResource.enableAllForWorkspace(
+    auth,
+    "downgraded"
+  );
   if (enableTriggersRes.isErr()) {
     logger.error(
       {
