@@ -48,14 +48,6 @@ async function ensureLangfuseDatasetExists(
   }
 }
 
-/**
- * Creates a unique key for deduplication of dataset items.
- * This is used as the item ID for upsert behavior.
- */
-function createUniqueItemId(feedbackId: number, runId: string): string {
-  return `feedback_${feedbackId}_${runId}`;
-}
-
 interface AddTraceToDatasetParams {
   datasetName: string;
   dustTraceId: string;
@@ -118,7 +110,7 @@ export async function addTraceToLangfuseDataset(
     return false;
   }
 
-  const itemId = createUniqueItemId(feedbackId, dustTraceId);
+  const itemId = `feedback_${feedbackId}_${dustTraceId}`;
 
   try {
     // Ensure dataset exists
@@ -184,4 +176,3 @@ export async function addTraceToLangfuseDataset(
     return false;
   }
 }
-
