@@ -257,14 +257,17 @@ cd ~/dust/front && npm install --silent
 cd ~/dust/connectors && npm install --silent
 echo "  Node dependencies installed"
 
-# Build Rust binaries (needed for warm)
+# Build Rust binaries (needed for warm) - all binaries are in core workspace
 echo "  Building Rust binaries (this may take several minutes)..."
 cd ~/dust/core
-cargo build --release --bin qdrant_create_collection --bin elasticsearch_create_index --bin init_db --bin core-api 2>&1 | tail -5
-cd ~/dust/oauth
-cargo build --release --bin oauth 2>&1 | tail -5
-cd ~/dust/sqlite-worker
-cargo build --release --bin sqlite-worker 2>&1 | tail -5
+cargo build --release \
+  --bin qdrant_create_collection \
+  --bin elasticsearch_create_index \
+  --bin init_db \
+  --bin core-api \
+  --bin oauth \
+  --bin sqlite-worker \
+  2>&1 | tail -10
 echo "  Rust binaries built"
 
 # Create global symlink with all necessary PATH entries
