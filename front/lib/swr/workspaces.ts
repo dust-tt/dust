@@ -5,7 +5,6 @@ import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
-import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
@@ -17,59 +16,6 @@ import type { GetSubscriptionTrialInfoResponseBody } from "@app/pages/api/w/[wId
 import type { GetWorkspaceVerifiedDomainsResponseBody } from "@app/pages/api/w/[wId]/verified-domains";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type { LightWorkspaceType, WhitelistableFeature } from "@app/types";
-
-export function useUpdateWorkspaceDomainAutoJoinEnabled({
-  workspaceId,
-}: {
-  workspaceId: string;
-}) {
-  const { mutateVerifiedDomains } = useWorkspaceVerifiedDomains({
-    workspaceId,
-    disabled: true,
-  });
-
-  const doUpdateWorkspaceDomainAutoJoinEnabled = useCallback(
-    async (
-      updates: { domain: string; enabled: boolean }[]
-    ): Promise<{ failedDomains: string[] }> => {
-      const results = await Promise.allSettled(
-        updates.map((u) =>
-          clientFetch(`/api/w/${workspaceId}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              domain: u.domain,
-              domainAutoJoinEnabled: u.enabled,
-            }),
-          })
-        )
-      );
-
-      const failedDomains: string[] = [];
-      results.forEach((result, index) => {
-        if (result.status === "rejected") {
-          failedDomains.push(updates[index].domain);
-          return;
-        }
-
-        if (!result.value.ok) {
-          failedDomains.push(updates[index].domain);
-        }
-      });
-
-      void mutateVerifiedDomains();
-
-      return { failedDomains };
-    },
-    [mutateVerifiedDomains, workspaceId]
-  );
-
-  return {
-    doUpdateWorkspaceDomainAutoJoinEnabled,
-  };
-}
 
 export function useWorkspace({
   owner,

@@ -9,86 +9,201 @@ import {
   DialogTitle,
   Label,
   Page,
-  Spinner,
 } from "@dust-tt/sparkle";
 import type { Organization } from "@workos-inc/node";
 import { useEffect, useState } from "react";
+import { mutate } from "swr";
 
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { useUpdateWorkspaceDomainAutoJoinEnabled } from "@app/lib/swr/workspaces";
 import type { PlanType, WorkspaceDomain, WorkspaceType } from "@app/types";
+import { pluralize } from "@app/types";
+
+type DomainAutoJoinModalProps = {
+  domains: Organization["domains"];
+  domainAutoJoinEnabled: boolean;
+  isOpen: boolean;
+  onClose: () => void;
+  owner: WorkspaceType;
+};
+
+function DomainAutoJoinModal({
+  domains,
+  domainAutoJoinEnabled,
+  isOpen,
+  onClose,
+  owner,
+}: DomainAutoJoinModalProps) {
+  const sendNotification = useSendNotification();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const title = domainAutoJoinEnabled
+    ? "De-activate Auto-join"
+    : "Activate Auto-join";
+  const validateLabel = domainAutoJoinEnabled ? "De-activate" : "Activate";
+  const validateVariant = domainAutoJoinEnabled ? "warning" : "primary";
+  const description = domainAutoJoinEnabled ? (
+    "New members will need to be invited in order to gain access to your Dust Workspace."
+  ) : (
+    <span>
+      Anyone with Google{" "}
+      <span className="font-bold">
+        {domains.map((d) => `"@${d.domain}"`).join(", ")}
+      </span>{" "}
+      account will have access to your Dust Workspace.
+    </span>
+  );
+
+  async function handleUpdateWorkspace(): Promise<boolean> {
+    const res = await clientFetch(`/api/w/${owner.sId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        domainAutoJoinEnabled: !domainAutoJoinEnabled,
+      }),
+    });
+
+    return res.ok;
+  }
+
+  return (
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !isSubmitting) {
+          onClose();
+        }
+      }}
+    >
+      <DialogContent size="md" isAlertDialog>
+        <DialogHeader hideButton>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>{description}</DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            disabled: isSubmitting,
+          }}
+          rightButtonProps={{
+            label: isSubmitting ? "Updating..." : validateLabel,
+            variant: validateVariant,
+            disabled: isSubmitting,
+            onClick: async () => {
+              setIsSubmitting(true);
+              try {
+                const ok = await handleUpdateWorkspace();
+                if (!ok) {
+                  sendNotification({
+                    type: "error",
+                    title: "Update failed",
+                    description:
+                      "Failed to update auto-join for the whitelisted domain.",
+                  });
+                } else {
+                  void mutate(`/api/w/${owner.sId}/verified-domains`);
+                }
+              } finally {
+                setIsSubmitting(false);
+              }
+              onClose();
+            },
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 interface MultiDomainAutoJoinModalProps {
   workspaceVerifiedDomains: WorkspaceDomain[];
-  doUpdateWorkspaceDomainAutoJoinEnabled: (
-    updates: { domain: string; enabled: boolean }[]
-  ) => Promise<{ failedDomains: string[] }>;
   isOpen: boolean;
   onClose: () => void;
+  owner: WorkspaceType;
 }
 
 function MultiDomainAutoJoinModal({
   workspaceVerifiedDomains,
-  doUpdateWorkspaceDomainAutoJoinEnabled,
   isOpen,
   onClose,
+  owner,
 }: MultiDomainAutoJoinModalProps) {
   const sendNotification = useSendNotification();
-  const [domainOverrides, setDomainOverrides] = useState<Record<string, boolean>>(
-    {}
-  );
+  const [domainOverrides, setDomainOverrides] = useState<
+    Record<string, boolean>
+  >({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Reset pending changes when modal opens.
   useEffect(() => {
     if (isOpen) {
       setDomainOverrides({});
     }
   }, [isOpen]);
 
+  const hasChanges = workspaceVerifiedDomains.some((d) => {
+    const desiredValue = domainOverrides[d.domain];
+    return (
+      desiredValue !== undefined && desiredValue !== d.domainAutoJoinEnabled
+    );
+  });
+
+  const isDomainEnabled = (domain: WorkspaceDomain): boolean =>
+    domainOverrides[domain.domain] ?? domain.domainAutoJoinEnabled;
+
   const handleDomainToggle = (domain: WorkspaceDomain) => {
     setDomainOverrides((prev) => {
       const currentValue = prev[domain.domain] ?? domain.domainAutoJoinEnabled;
-      const nextValue = !currentValue;
-
-      // Keep `domainOverrides` minimal by removing overrides that match the
-      // initial state. This makes `hasChanges` accurate even if the user toggles
-      // a checkbox twice.
-      if (nextValue === domain.domainAutoJoinEnabled) {
-        const nextOverrides = { ...prev };
-        delete nextOverrides[domain.domain];
-        return nextOverrides;
-      }
-
-      return { ...prev, [domain.domain]: nextValue };
+      return {
+        ...prev,
+        [domain.domain]: !currentValue,
+      };
     });
   };
 
   async function handleSave(): Promise<void> {
-    const domainsToUpdate = workspaceVerifiedDomains.filter((d) => {
-      const desiredValue = domainOverrides[d.domain];
-      return (
-        desiredValue !== undefined && desiredValue !== d.domainAutoJoinEnabled
-      );
-    });
+    const updates = workspaceVerifiedDomains
+      .map((d) => ({
+        domain: d.domain,
+        enabled: domainOverrides[d.domain] ?? d.domainAutoJoinEnabled,
+        previous: d.domainAutoJoinEnabled,
+      }))
+      .filter((u) => u.enabled !== u.previous)
+      .map(({ domain, enabled }) => ({ domain, enabled }));
 
-    if (domainsToUpdate.length === 0) {
+    if (updates.length === 0) {
       onClose();
       return;
     }
 
-    const updates = domainsToUpdate.map((d) => ({
-      domain: d.domain,
-      enabled: domainOverrides[d.domain] ?? d.domainAutoJoinEnabled,
-    }));
-
     setIsSubmitting(true);
-
     try {
-      const { failedDomains } =
-        await doUpdateWorkspaceDomainAutoJoinEnabled(updates);
+      const results = await Promise.allSettled(
+        updates.map((u) =>
+          clientFetch(`/api/w/${owner.sId}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              domain: u.domain,
+              domainAutoJoinEnabled: u.enabled,
+            }),
+          })
+        )
+      );
+
+      const failedDomains: string[] = [];
+      results.forEach((result, index) => {
+        if (result.status === "rejected" || !result.value.ok) {
+          failedDomains.push(updates[index].domain);
+        }
+      });
+
+      void mutate(`/api/w/${owner.sId}/verified-domains`);
 
       if (failedDomains.length > 0) {
         sendNotification({
@@ -96,28 +211,12 @@ function MultiDomainAutoJoinModal({
           title: "Update failed",
           description: `Failed to update auto-join for: ${failedDomains.map((d) => `@${d}`).join(", ")}`,
         });
-      } else {
-        sendNotification({
-          type: "success",
-          title: "Auto-join updated",
-          description: "Domain auto-join settings have been updated.",
-        });
       }
-
-      onClose();
     } finally {
       setIsSubmitting(false);
+      onClose();
     }
   }
-
-  const isDomainEnabled = (domain: WorkspaceDomain): boolean =>
-    domainOverrides[domain.domain] ?? domain.domainAutoJoinEnabled;
-
-  const enabledDomainNames = workspaceVerifiedDomains
-    .filter(isDomainEnabled)
-    .map((d) => d.domain);
-  const enabledDomainCount = enabledDomainNames.length;
-  const hasChanges = Object.keys(domainOverrides).length > 0;
 
   return (
     <Dialog
@@ -153,22 +252,12 @@ function MultiDomainAutoJoinModal({
                 </div>
               ))}
             </div>
-            {enabledDomainCount > 0 && (
-              <p className="text-sm text-muted-foreground">
-                Anyone with a{" "}
-                {enabledDomainNames
-                  .map((domain) => `@${domain}`)
-                  .join(" or ")}{" "}
-                email will be able to join your workspace automatically.
-              </p>
-            )}
           </div>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
-            onClick: onClose,
             disabled: isSubmitting,
           }}
           rightButtonProps={{
@@ -176,7 +265,6 @@ function MultiDomainAutoJoinModal({
             variant: "primary",
             onClick: handleSave,
             disabled: !hasChanges || isSubmitting,
-            icon: isSubmitting ? Spinner : undefined,
           }}
         />
       </DialogContent>
@@ -184,12 +272,12 @@ function MultiDomainAutoJoinModal({
   );
 }
 
-interface AutoJoinToggleProps {
+type AutoJoinToggleProps = {
   domains: Organization["domains"];
   workspaceVerifiedDomains: WorkspaceDomain[];
   owner: WorkspaceType;
   plan: PlanType;
-}
+};
 
 export function AutoJoinToggle({
   domains,
@@ -197,132 +285,37 @@ export function AutoJoinToggle({
   owner,
   plan,
 }: AutoJoinToggleProps) {
-  const sendNotification = useSendNotification();
   const [showUpgradePlanDialog, setShowUpgradePlanDialog] = useState(false);
-  const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false);
-  const [isUpdatingSingleDomain, setIsUpdatingSingleDomain] = useState(false);
-
-  const hasVerifiedDomains = workspaceVerifiedDomains.length > 0;
+  const [isActivateAutoJoinOpened, setIsActivateAutoJoinOpened] =
+    useState(false);
+  const domainAutoJoinEnabled =
+    workspaceVerifiedDomains.length > 0 &&
+    workspaceVerifiedDomains.every((d) => d.domainAutoJoinEnabled);
   const isMultiDomain = workspaceVerifiedDomains.length > 1;
-  const singleDomain = !isMultiDomain ? workspaceVerifiedDomains[0] : undefined;
-
-  const { doUpdateWorkspaceDomainAutoJoinEnabled } =
-    useUpdateWorkspaceDomainAutoJoinEnabled({ workspaceId: owner.sId });
-
-  const autoJoinEnabledDomains = workspaceVerifiedDomains.filter(
+  const isAnyDomainAutoJoinEnabled = workspaceVerifiedDomains.some(
     (d) => d.domainAutoJoinEnabled
   );
-  const isAutoJoinEnabled = autoJoinEnabledDomains.length > 0;
-
-  const statusDescription = (() => {
-    if (!hasVerifiedDomains) {
-      return "Add a verified domain to enable auto-join for your team members.";
-    }
-
-    if (isAutoJoinEnabled) {
-      const domainList = autoJoinEnabledDomains
-        .map((d) => `@${d.domain}`)
-        .join(", ");
-      return `Auto-join is enabled for ${domainList}. Team members with these email domains can automatically join your workspace.`;
-    }
-
-    return "Allow your team members to automatically access your Dust workspace when they sign up with a verified email domain.";
-  })();
-
-  async function handleSingleDomainToggle(
-    domain: WorkspaceDomain
-  ): Promise<void> {
-    setIsUpdatingSingleDomain(true);
-    try {
-      const nextValue = !domain.domainAutoJoinEnabled;
-      const { failedDomains } = await doUpdateWorkspaceDomainAutoJoinEnabled([
-        {
-          domain: domain.domain,
-          enabled: nextValue,
-        },
-      ]);
-
-      if (failedDomains.length > 0) {
-        sendNotification({
-          type: "error",
-          title: "Update failed",
-          description: `Failed to update auto-join for @${domain.domain}.`,
-        });
-        return;
-      }
-
-      sendNotification({
-        type: "success",
-        title: "Auto-join updated",
-        description: `Auto-join ${nextValue ? "enabled" : "disabled"} for @${domain.domain}.`,
-      });
-    } finally {
-      setIsUpdatingSingleDomain(false);
-    }
-  }
-
-  const handleButtonClick = () => {
-    if (!isUpgraded(plan)) {
-      setShowUpgradePlanDialog(true);
-      return;
-    }
-
-    if (isMultiDomain) {
-      setIsConfigureModalOpen(true);
-      return;
-    }
-
-    if (singleDomain) {
-      void handleSingleDomainToggle(singleDomain);
-    }
-  };
-
-  let buttonLabel: string;
-  let buttonVariant: "primary" | "outline";
-  if (isMultiDomain) {
-    buttonLabel = isAutoJoinEnabled ? "Configure" : "Enable Auto-join";
-    buttonVariant = isAutoJoinEnabled ? "outline" : "primary";
-  } else if (singleDomain) {
-    if (isUpdatingSingleDomain) {
-      buttonLabel = "Updating...";
-    } else if (singleDomain.domainAutoJoinEnabled) {
-      buttonLabel = "De-activate Auto-join";
-    } else {
-      buttonLabel = "Activate Auto-join";
-    }
-    buttonVariant = singleDomain.domainAutoJoinEnabled ? "outline" : "primary";
-  } else {
-    buttonLabel = "Enable Auto-join";
-    buttonVariant = "primary";
-  }
-
-  const isButtonDisabled =
-    domains.length === 0 ||
-    !hasVerifiedDomains ||
-    !!owner.ssoEnforced ||
-    (!isMultiDomain && isUpdatingSingleDomain);
-
-  let tooltip: string | undefined;
-  if (owner.ssoEnforced) {
-    tooltip = "Auto-join is not available when SSO is enforced";
-  } else if (domains.length === 0) {
-    tooltip = "Add a domain to enable Auto-join";
-  } else if (!hasVerifiedDomains) {
-    tooltip = "Verify a domain to enable Auto-join";
-  }
+  const hasVerifiedDomains = workspaceVerifiedDomains.length > 0;
 
   return (
     <>
+      <DomainAutoJoinModal
+        domainAutoJoinEnabled={domainAutoJoinEnabled}
+        isOpen={isActivateAutoJoinOpened && !isMultiDomain}
+        onClose={() => {
+          setIsActivateAutoJoinOpened(false);
+        }}
+        domains={domains}
+        owner={owner}
+      />
       {isMultiDomain && (
         <MultiDomainAutoJoinModal
           workspaceVerifiedDomains={workspaceVerifiedDomains}
-          doUpdateWorkspaceDomainAutoJoinEnabled={
-            doUpdateWorkspaceDomainAutoJoinEnabled
-          }
-          isOpen={isConfigureModalOpen}
+          isOpen={isActivateAutoJoinOpened}
           onClose={() => {
-            setIsConfigureModalOpen(false);
+            setIsActivateAutoJoinOpened(false);
           }}
+          owner={owner}
         />
       )}
       <UpgradePlanDialog
@@ -338,17 +331,89 @@ export function AutoJoinToggle({
             <div className="flex flex-row items-center gap-2">
               <Page.H variant="h5">Auto-join Workspace</Page.H>
             </div>
-            <Page.P variant="secondary">{statusDescription}</Page.P>
+            <Page.P variant="secondary">
+              Allow your team members to access your Dust workspace when they
+              authenticate with
+              {domains.length > 0
+                ? domains.map((d) => `" @${d.domain}"`).join(", ")
+                : " verified"}{" "}
+              account
+              {pluralize(domains.length)}.
+            </Page.P>
           </div>
           <div className="flex justify-end">
-            <Button
-              label={buttonLabel}
-              size="sm"
-              variant={buttonVariant}
-              tooltip={tooltip}
-              disabled={isButtonDisabled}
-              onClick={handleButtonClick}
-            />
+            {isMultiDomain ? (
+              <Button
+                label={
+                  isAnyDomainAutoJoinEnabled ? "Configure" : "Enable Auto-join"
+                }
+                size="sm"
+                variant={isAnyDomainAutoJoinEnabled ? "outline" : "primary"}
+                tooltip={
+                  owner.ssoEnforced
+                    ? "Auto-join is not available when SSO is enforced"
+                    : domains.length === 0
+                      ? "Add a domain to enable Auto-join"
+                      : !hasVerifiedDomains
+                        ? "Verify a domain to enable Auto-join"
+                        : undefined
+                }
+                disabled={
+                  !domains.length || owner.ssoEnforced || !hasVerifiedDomains
+                }
+                onClick={() => {
+                  if (isUpgraded(plan)) {
+                    setIsActivateAutoJoinOpened(true);
+                  } else {
+                    setShowUpgradePlanDialog(true);
+                  }
+                }}
+              />
+            ) : domainAutoJoinEnabled ? (
+              <Button
+                label="De-activate Auto-join"
+                size="sm"
+                variant="outline"
+                disabled={owner.ssoEnforced}
+                tooltip={
+                  owner.ssoEnforced
+                    ? "Auto-join is not available when SSO is enforced"
+                    : undefined
+                }
+                onClick={() => {
+                  if (isUpgraded(plan)) {
+                    setIsActivateAutoJoinOpened(true);
+                  } else {
+                    setShowUpgradePlanDialog(true);
+                  }
+                }}
+              />
+            ) : (
+              <Button
+                label="Activate Auto-join"
+                size="sm"
+                variant="primary"
+                tooltip={
+                  owner.ssoEnforced
+                    ? "Auto-join is not available when SSO is enforced"
+                    : domains.length === 0
+                      ? "Add a domain to enable Auto-join"
+                      : !hasVerifiedDomains
+                        ? "Verify a domain to enable Auto-join"
+                        : undefined
+                }
+                disabled={
+                  !domains.length || owner.ssoEnforced || !hasVerifiedDomains
+                }
+                onClick={() => {
+                  if (isUpgraded(plan)) {
+                    setIsActivateAutoJoinOpened(true);
+                  } else {
+                    setShowUpgradePlanDialog(true);
+                  }
+                }}
+              />
+            )}
           </div>
         </div>
       </Page.Vertical>
