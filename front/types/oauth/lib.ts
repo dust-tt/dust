@@ -99,6 +99,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "databricks_workspace_url",
   "snowflake_account",
   "snowflake_role",
+  "snowflake_warehouse",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -344,6 +345,12 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
               "The default role for users (e.g., ANALYST). Users can override this during their personal authentication.",
             validator: isValidSnowflakeRole,
           },
+          snowflake_warehouse: {
+            label: "Snowflake Warehouse",
+            value: undefined,
+            helpMessage: "The warehouse to use for queries (e.g., COMPUTE_WH).",
+            validator: isValidSnowflakeWarehouse,
+          },
         };
         return result;
       }
@@ -429,6 +436,16 @@ export function isValidSnowflakeAccount(s: unknown): s is string {
 
 export function isValidSnowflakeRole(s: unknown): s is string {
   // Snowflake role names are uppercase identifiers
+  // Allow alphanumeric and underscores
+  return (
+    typeof s === "string" &&
+    s.trim().length > 0 &&
+    /^[A-Za-z_][A-Za-z0-9_]*$/.test(s.trim())
+  );
+}
+
+export function isValidSnowflakeWarehouse(s: unknown): s is string {
+  // Snowflake warehouse names follow same rules as roles
   // Allow alphanumeric and underscores
   return (
     typeof s === "string" &&
