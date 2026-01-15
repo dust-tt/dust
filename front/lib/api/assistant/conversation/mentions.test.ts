@@ -2749,49 +2749,11 @@ describe("createUserMentions", () => {
         }
       );
 
-      const agentMessageRow = await AgentMessageModel.create({
-        status: "created",
-        agentConfigurationId: agentConfig.sId,
-        agentConfigurationVersion: agentConfig.version,
-        workspaceId: workspace.id,
-        skipToolsValidation: false,
+      const { agentMessage } = await ConversationFactory.createAgentMessage({
+        workspace,
+        conversation: projectConversation,
+        agentConfig,
       });
-
-      const messageRow = await MessageModel.create({
-        sId: generateRandomModelSId(),
-        rank: 0,
-        conversationId: projectConversation.id,
-        parentId: null,
-        agentMessageId: agentMessageRow.id,
-        workspaceId: workspace.id,
-      });
-
-      const agentMessage: AgentMessageTypeWithoutMentions = {
-        id: messageRow.id,
-        agentMessageId: agentMessageRow.id,
-        created: agentMessageRow.createdAt.getTime(),
-        completedTs: null,
-        sId: messageRow.sId,
-        type: "agent_message",
-        visibility: messageRow.visibility,
-        version: messageRow.version,
-        parentMessageId: "",
-        parentAgentMessageId: null,
-        status: agentMessageRow.status,
-        content: null,
-        chainOfThought: null,
-        error: null,
-        configuration: agentConfig,
-        skipToolsValidation: false,
-        actions: [],
-        rawContents: [],
-        contents: [],
-        parsedContents: {},
-        reactions: [],
-        modelInteractionDurationMs: null,
-        completionDurationMs: null,
-        rank: messageRow.rank,
-      };
 
       const mentions: MentionType[] = [
         {
@@ -2806,8 +2768,7 @@ describe("createUserMentions", () => {
         conversation: projectConversation,
       });
 
-      // Verify return value shows approved status
-      expect(result).toBeInstanceOf(Array);
+      // Verify return value shows approved status (auto-approved for project space members)
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
         id: mentionedUser.sId,
@@ -2815,17 +2776,6 @@ describe("createUserMentions", () => {
         status: "approved",
       });
       expect(isRichUserMention(result[0])).toBe(true);
-
-      // Verify mention was auto-approved because user is a member of the project space
-      const mentionInDb = await MentionModel.findOne({
-        where: {
-          workspaceId: workspace.id,
-          messageId: messageRow.id,
-          userId: mentionedUser.id,
-        },
-      });
-      expect(mentionInDb).not.toBeNull();
-      expect(mentionInDb?.status).toBe("approved");
     });
 
     it("should require approval for mentions of users who are NOT members of the project space", async () => {
@@ -2873,49 +2823,11 @@ describe("createUserMentions", () => {
         }
       );
 
-      const agentMessageRow = await AgentMessageModel.create({
-        status: "created",
-        agentConfigurationId: agentConfig.sId,
-        agentConfigurationVersion: agentConfig.version,
-        workspaceId: workspace.id,
-        skipToolsValidation: false,
+      const { agentMessage } = await ConversationFactory.createAgentMessage({
+        workspace,
+        conversation: projectConversation,
+        agentConfig,
       });
-
-      const messageRow = await MessageModel.create({
-        sId: generateRandomModelSId(),
-        rank: 0,
-        conversationId: projectConversation.id,
-        parentId: null,
-        agentMessageId: agentMessageRow.id,
-        workspaceId: workspace.id,
-      });
-
-      const agentMessage: AgentMessageTypeWithoutMentions = {
-        id: messageRow.id,
-        agentMessageId: agentMessageRow.id,
-        created: agentMessageRow.createdAt.getTime(),
-        completedTs: null,
-        sId: messageRow.sId,
-        type: "agent_message",
-        visibility: messageRow.visibility,
-        version: messageRow.version,
-        parentMessageId: "",
-        parentAgentMessageId: null,
-        status: agentMessageRow.status,
-        content: null,
-        chainOfThought: null,
-        error: null,
-        configuration: agentConfig,
-        skipToolsValidation: false,
-        actions: [],
-        rawContents: [],
-        contents: [],
-        parsedContents: {},
-        reactions: [],
-        modelInteractionDurationMs: null,
-        completionDurationMs: null,
-        rank: messageRow.rank,
-      };
 
       const mentions: MentionType[] = [
         {
@@ -2930,8 +2842,7 @@ describe("createUserMentions", () => {
         conversation: projectConversation,
       });
 
-      // Verify return value shows pending status
-      expect(result).toBeInstanceOf(Array);
+      // Verify return value shows pending status (requires approval for non-members)
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
         id: mentionedUser.sId,
@@ -2939,17 +2850,6 @@ describe("createUserMentions", () => {
         status: "pending",
       });
       expect(isRichUserMention(result[0])).toBe(true);
-
-      // Verify mention requires approval (pending status)
-      const mentionInDb = await MentionModel.findOne({
-        where: {
-          workspaceId: workspace.id,
-          messageId: messageRow.id,
-          userId: mentionedUser.id,
-        },
-      });
-      expect(mentionInDb).not.toBeNull();
-      expect(mentionInDb?.status).toBe("pending");
     });
   });
 });

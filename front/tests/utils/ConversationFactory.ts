@@ -13,9 +13,11 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import type {
+  AgentMessageTypeWithoutMentions,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
+  LightAgentConfigurationType,
   ModelId,
   SupportedContentFragmentType,
   UserMessageOrigin,
@@ -238,6 +240,68 @@ export class ConversationFactory {
       agentMessageId: agentMessageRow.id,
       workspaceId: workspace.id,
     });
+  }
+
+  /**
+   * Creates a test agent message with full type information
+   */
+  static async createAgentMessage({
+    workspace,
+    conversation,
+    agentConfig,
+  }: {
+    workspace: WorkspaceType;
+    conversation: ConversationType | ConversationWithoutContentType;
+    agentConfig: LightAgentConfigurationType;
+  }): Promise<{
+    messageRow: MessageModel;
+    agentMessage: AgentMessageTypeWithoutMentions;
+  }> {
+    const agentMessageRow = await AgentMessageModel.create({
+      status: "created",
+      agentConfigurationId: agentConfig.sId,
+      agentConfigurationVersion: agentConfig.version,
+      workspaceId: workspace.id,
+      skipToolsValidation: false,
+    });
+
+    const messageRow = await MessageModel.create({
+      sId: generateRandomModelSId(),
+      rank: 0,
+      conversationId: conversation.id,
+      parentId: null,
+      agentMessageId: agentMessageRow.id,
+      workspaceId: workspace.id,
+    });
+
+    const agentMessage: AgentMessageTypeWithoutMentions = {
+      id: messageRow.id,
+      agentMessageId: agentMessageRow.id,
+      created: agentMessageRow.createdAt.getTime(),
+      completedTs: null,
+      sId: messageRow.sId,
+      type: "agent_message",
+      visibility: messageRow.visibility,
+      version: messageRow.version,
+      parentMessageId: "",
+      parentAgentMessageId: null,
+      status: agentMessageRow.status,
+      content: null,
+      chainOfThought: null,
+      error: null,
+      configuration: agentConfig,
+      skipToolsValidation: false,
+      actions: [],
+      rawContents: [],
+      contents: [],
+      parsedContents: {},
+      reactions: [],
+      modelInteractionDurationMs: null,
+      completionDurationMs: null,
+      rank: messageRow.rank,
+    };
+
+    return { messageRow, agentMessage };
   }
 
   /**
