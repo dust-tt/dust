@@ -884,10 +884,8 @@ export async function getUserMessageIdFromMessageId(
   });
 
   assert(
-    parentMessage &&
-      parentMessage.userMessage &&
-      parentMessage.userMessage.userId,
-    "A user message with a linked user is expected for the agent message"
+    parentMessage && parentMessage.userMessage,
+    "A user message is expected for the agent message's parent"
   );
 
   return {
