@@ -78,18 +78,6 @@ AgentStepContentModel.init(
         name: "agent_step_contents_agent_message_id_step_index_versioned",
       },
       {
-        fields: ["agentMessageId"],
-        name: "agent_step_contents_agent_message_id_idx",
-      },
-      {
-        fields: ["workspaceId"],
-        name: "agent_step_contents_workspace_id_idx",
-      },
-      {
-        fields: ["type"],
-        name: "agent_step_contents_type_idx",
-      },
-      {
         fields: ["workspaceId", "agentMessageId"],
         name: "agent_step_contents_workspace_id_idx",
       },
