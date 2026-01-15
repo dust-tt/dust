@@ -30,6 +30,7 @@ import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getUntrustedEgressAgent } from "@app/lib/egress/server";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
+import { WorkspaceDomainUseCaseResource } from "@app/lib/resources/workspace_domain_use_case_resource";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
@@ -83,8 +84,23 @@ export type MCPConnectionParams =
   | ServerSideMCPConnectionParams
   | ClientSideMCPConnectionParams;
 
-function createMCPDispatcher(auth: Authenticator): ProxyAgent | undefined {
-  if (isWorkspaceUsingStaticIP(auth.getNonNullableWorkspace())) {
+async function createMCPDispatcher(
+  auth: Authenticator,
+  host: string
+): Promise<ProxyAgent | undefined> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  // Check if workspace should use static IP:
+  // 1. Legacy hardcoded check
+  // 2. New domain-based check (mcp_static_ip_egress enabled for this host)
+  const useStaticIP =
+    isWorkspaceUsingStaticIP(workspace) ||
+    (await WorkspaceDomainUseCaseResource.shouldUseStaticIPEgress(
+      workspace,
+      host
+    ));
+
+  if (useStaticIP) {
     const proxyHost = `${EnvironmentConfig.getEnvVariable(
       "PROXY_USER_NAME"
     )}:${EnvironmentConfig.getEnvVariable(
@@ -94,6 +110,10 @@ function createMCPDispatcher(auth: Authenticator): ProxyAgent | undefined {
 
     if (proxyHost && proxyPort) {
       const proxyUrl = `http://${proxyHost}:${proxyPort}`;
+      logger.info(
+        { workspaceId: workspace.sId, host, useStaticIP },
+        "Using static IP proxy for MCP request"
+      );
       return new ProxyAgent(proxyUrl);
     }
   }
@@ -341,7 +361,7 @@ export const connectToMCPServer = async (
               requestInit: {
                 // Include stored custom headers
                 headers: remoteMCPServer.customHeaders ?? {},
-                dispatcher: createMCPDispatcher(auth),
+                dispatcher: await createMCPDispatcher(auth, url.hostname),
               },
               authProvider: new MCPOAuthProvider(auth, token),
             };
@@ -372,7 +392,7 @@ export const connectToMCPServer = async (
       const url = new URL(params.remoteMCPServerUrl);
       const req = {
         requestInit: {
-          dispatcher: createMCPDispatcher(auth),
+          dispatcher: await createMCPDispatcher(auth, url.hostname),
           headers: { ...(params.headers ?? {}) },
         },
         authProvider: new MCPOAuthProvider(auth, undefined),
