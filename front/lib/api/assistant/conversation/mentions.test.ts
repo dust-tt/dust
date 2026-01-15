@@ -49,7 +49,6 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
   AgenticMessageData,
   AgentMention,
-  AgentMessageTypeWithoutMentions,
   ConversationType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
