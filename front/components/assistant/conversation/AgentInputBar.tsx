@@ -247,14 +247,14 @@ export const AgentInputBar = ({
         "relative z-20 mx-auto flex max-h-dvh w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4"
       }
     >
-      <div
-        className="flex w-full justify-center gap-2"
-        style={{
-          position: "absolute",
-          top: "-2em",
-        }}
-      >
-        <div className="flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night">
+      <div className="flex w-full justify-center gap-2">
+        <div
+          className="flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night"
+          style={{
+            position: "absolute",
+            top: "-2em",
+          }}
+        >
           {showStopButton && (
             <>
               <Button
@@ -290,6 +290,10 @@ export const AgentInputBar = ({
             icon={ArrowPathIcon}
             onClick={context.agentBuilderContext?.resetConversation}
             label="Clear"
+            style={{
+              position: "absolute",
+              top: "-2em",
+            }}
           />
         )}
       </div>
