@@ -22,7 +22,7 @@ import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import * as p from "@clack/prompts";
 import { logger } from "../lib/logger";
-import { DUST_HIVE_HOME } from "../lib/paths";
+import { CONFIG_ENV_PATH, DUST_HIVE_HOME } from "../lib/paths";
 import { restoreTerminal } from "../lib/prompt";
 import {
   type RemoteHost,
@@ -43,6 +43,7 @@ import { generateRemoteSkillContent, getRemoteSkillDir } from "../lib/remote-ski
 import {
   checkSshConnection,
   getRemoteHomeDir,
+  scpToRemote,
   sshExec,
   sshExecStreaming,
   sshInteractive,
@@ -348,13 +349,27 @@ echo ""
     return Err(new CommandError("Setup failed"));
   }
 
+  // Copy local config.env to remote if it exists
+  const localConfigExists = await Bun.file(CONFIG_ENV_PATH).exists();
+  if (localConfigExists) {
+    logger.step("Copying config.env to remote...");
+    const scpResult = await scpToRemote(host, CONFIG_ENV_PATH, "~/.dust-hive/config.env");
+    if (scpResult.success) {
+      logger.success("config.env copied to remote");
+    } else {
+      logger.warn(`Failed to copy config.env: ${scpResult.error}`);
+      logger.info("You'll need to manually copy your secrets to the remote");
+    }
+  } else {
+    logger.warn("No local config.env found - you'll need to create one on the remote");
+  }
+
   logger.success(`dust-hive installed on ${remoteName}`);
   console.log("\nNext steps:");
-  console.log("  1. SSH to remote and create config.env with your secrets");
   console.log(
-    `  2. Run: dust-hive remote exec ${remoteName} "cd ~/dust && dust-hive up --skip-sync"`
+    `  1. Run: dust-hive remote exec ${remoteName} "cd ~/dust && dust-hive up --skip-sync"`
   );
-  console.log(`  3. Run: dust-hive remote spawn ${remoteName} --name <env-name>`);
+  console.log(`  2. Run: dust-hive remote spawn ${remoteName} --name <env-name>`);
 
   return Ok(undefined);
 }

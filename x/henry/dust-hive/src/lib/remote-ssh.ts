@@ -183,3 +183,36 @@ export async function getRemoteHomeDir(host: RemoteHost): Promise<string | null>
   }
   return null;
 }
+
+/**
+ * Copy a file to a remote host via gcloud compute scp
+ */
+export async function scpToRemote(
+  host: RemoteHost,
+  localPath: string,
+  remotePath: string
+): Promise<{ success: boolean; error?: string }> {
+  const args = [
+    "gcloud",
+    "compute",
+    "scp",
+    localPath,
+    `${host.instance}:${remotePath}`,
+    `--project=${host.project}`,
+    `--zone=${host.zone}`,
+    "--tunnel-through-iap",
+  ];
+
+  const proc = Bun.spawn(args, {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  const stderr = await new Response(proc.stderr).text();
+  const exitCode = await proc.exited;
+
+  if (exitCode === 0) {
+    return { success: true };
+  }
+  return { success: false, error: stderr };
+}
