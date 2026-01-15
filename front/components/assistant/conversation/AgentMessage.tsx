@@ -10,6 +10,7 @@ import {
   ConversationMessageContent,
   ConversationMessageTitle,
   InteractiveImageGrid,
+  LinkIcon,
   MoreIcon,
   StopIcon,
   TrashIcon,
@@ -64,11 +65,13 @@ import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import config from "@app/lib/api/config";
 import type { DustError } from "@app/lib/error";
 import {
   useCancelMessage,
   usePostOnboardingFollowUp,
 } from "@app/lib/swr/conversations";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   ContentFragmentsType,
@@ -99,6 +102,7 @@ interface AgentMessageProps {
     mentions: RichMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
+  enableExtendedActions: boolean;
 }
 
 export function AgentMessage({
@@ -110,6 +114,7 @@ export function AgentMessage({
   user,
   triggeringUser,
   handleSubmit,
+  enableExtendedActions,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
 
@@ -333,6 +338,20 @@ export function AgentMessage({
     );
   }
 
+  function handleCopyMessageLink() {
+    const messageUrl = `${getConversationRoute(
+      owner.sId,
+      conversationId,
+      undefined,
+      config.getClientFacingUrl()
+    )}#${agentMessage.sId}`;
+    void navigator.clipboard.writeText(messageUrl);
+    sendNotification({
+      type: "success",
+      title: "Message link copied to clipboard",
+    });
+  }
+
   const { deleteAgentMessage, isDeleting } = useDeleteAgentMessage({
     owner,
     conversationId,
@@ -481,6 +500,14 @@ export function AgentMessage({
   if (shouldShowCopy && (shouldShowRetry || canDeleteAgentMessage)) {
     const dropdownItems = [];
 
+    if (enableExtendedActions) {
+      dropdownItems.push({
+        label: "Copy message link",
+        icon: LinkIcon,
+        onSelect: handleCopyMessageLink,
+      });
+    }
+
     if (shouldShowRetry) {
       dropdownItems.push({
         label: "Retry",
@@ -547,6 +574,20 @@ export function AgentMessage({
           size="xs"
           onClick={handleCopyToClipboard}
           icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+          className="text-muted-foreground"
+        />
+      );
+    }
+
+    if (enableExtendedActions) {
+      messageButtons.push(
+        <Button
+          key="copy-msg-link-button"
+          tooltip="Copy message link"
+          variant="ghost-secondary"
+          size="xs"
+          onClick={handleCopyMessageLink}
+          icon={LinkIcon}
           className="text-muted-foreground"
         />
       );

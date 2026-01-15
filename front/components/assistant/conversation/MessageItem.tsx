@@ -151,7 +151,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             <UserMessage
               citations={citations}
               conversationId={context.conversation.sId}
-              enableReactions={context.enableReactions}
+              enableExtendedActions={context.enableExtendedActions}
               currentUserId={context.user.sId}
               isLastMessage={!nextData}
               message={data}
@@ -169,6 +169,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
               handleSubmit={context.handleSubmit}
+              enableExtendedActions={context.enableExtendedActions}
             />
           )}
           {data.visibility !== "deleted" &&
