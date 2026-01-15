@@ -3423,3 +3423,79 @@ export const ParseMentionsResponseBodySchema = z.object({
 export type ParseMentionsResponseBodyType = z.infer<
   typeof ParseMentionsResponseBodySchema
 >;
+
+// Triggers Public API Types
+
+const TriggerStatusSchema = FlexibleEnumSchema<
+  "enabled" | "disabled" | "relocating" | "downgraded"
+>();
+export type TriggerStatus = z.infer<typeof TriggerStatusSchema>;
+
+const TriggerKindSchema = FlexibleEnumSchema<"schedule" | "webhook">();
+export type TriggerKind = z.infer<typeof TriggerKindSchema>;
+
+const TriggerOriginSchema = FlexibleEnumSchema<"user" | "agent">();
+export type TriggerOrigin = z.infer<typeof TriggerOriginSchema>;
+
+const TriggerExecutionModeSchema = FlexibleEnumSchema<
+  "fair_use" | "programmatic"
+>();
+export type TriggerExecutionMode = z.infer<typeof TriggerExecutionModeSchema>;
+
+const ScheduleConfigurationSchema = z.object({
+  cron: z.string(),
+  timezone: z.string(),
+});
+
+const WebhookConfigurationSchema = z.object({
+  includePayload: z.boolean(),
+  event: z.string().optional(),
+  filter: z.string().optional(),
+});
+
+const TriggerEditorSchema = z.object({
+  fullName: z.string(),
+});
+
+const TriggerWebhookSourceSchema = z.object({
+  sId: z.string(),
+  name: z.string(),
+  provider: z.string().nullable(),
+});
+
+const BaseTriggerSchema = z.object({
+  sId: z.string(),
+  name: z.string(),
+  agentConfigurationSId: z.string(),
+  status: TriggerStatusSchema,
+  createdAt: z.number(),
+  naturalLanguageDescription: z.string().nullable(),
+  customPrompt: z.string().nullable(),
+  origin: TriggerOriginSchema,
+  editor: TriggerEditorSchema.nullable(),
+});
+
+const ScheduleTriggerSchema = BaseTriggerSchema.extend({
+  kind: z.literal("schedule"),
+  configuration: ScheduleConfigurationSchema,
+});
+
+const WebhookTriggerSchema = BaseTriggerSchema.extend({
+  kind: z.literal("webhook"),
+  configuration: WebhookConfigurationSchema,
+  executionMode: TriggerExecutionModeSchema.nullable(),
+  webhookSource: TriggerWebhookSourceSchema.nullable(),
+});
+
+export const PublicTriggerSchema = z.discriminatedUnion("kind", [
+  ScheduleTriggerSchema,
+  WebhookTriggerSchema,
+]);
+
+export type PublicTriggerType = z.infer<typeof PublicTriggerSchema>;
+
+export const GetTriggersResponseSchema = z.object({
+  triggers: z.array(PublicTriggerSchema),
+});
+
+export type GetTriggersResponseType = z.infer<typeof GetTriggersResponseSchema>;
