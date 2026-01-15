@@ -847,7 +847,15 @@ async function handleGit(args: string[]): Promise<Result<void>> {
   }
 
   const translatedArgs = translateArgsToRemote(gitArgs, host, parsed.envName);
-  const gitCommand = ["git", ...translatedArgs].join(" ");
+  // Shell-quote each argument to preserve boundaries (e.g., commit messages with spaces)
+  const quotedArgs = translatedArgs.map((arg) => {
+    // If arg contains special chars, wrap in single quotes (escaping any internal single quotes)
+    if (/[^a-zA-Z0-9_\-./=@:]/.test(arg)) {
+      return `'${arg.replace(/'/g, "'\\''")}'`;
+    }
+    return arg;
+  });
+  const gitCommand = ["git", ...quotedArgs].join(" ");
   const cwd = getRemoteWorktreePath(host, parsed.envName);
 
   const exitCode = await sshExecStreaming(host, gitCommand, { cwd, tty: true });

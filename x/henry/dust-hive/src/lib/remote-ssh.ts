@@ -22,7 +22,11 @@ export interface SshExecResult {
 /**
  * Build the gcloud compute ssh command array for a remote host
  */
-export function buildSshCommand(host: RemoteHost, remoteCommand?: string): string[] {
+export function buildSshCommand(
+  host: RemoteHost,
+  remoteCommand?: string,
+  options: { tty?: boolean } = {}
+): string[] {
   const args = [
     "gcloud",
     "compute",
@@ -35,6 +39,10 @@ export function buildSshCommand(host: RemoteHost, remoteCommand?: string): strin
 
   if (remoteCommand) {
     args.push("--");
+    // Add -t for TTY allocation if requested (needed for interactive commands)
+    if (options.tty) {
+      args.push("-t");
+    }
     args.push(remoteCommand);
   }
 
@@ -79,7 +87,7 @@ export async function sshExec(
   options: SshExecOptions = {}
 ): Promise<SshExecResult> {
   const remoteCommand = buildRemoteCommand(command, options);
-  const args = buildSshCommand(host, remoteCommand);
+  const args = buildSshCommand(host, remoteCommand, options.tty ? { tty: true } : {});
 
   const proc = Bun.spawn(args, {
     stdout: "pipe",
@@ -121,7 +129,7 @@ export async function sshExecStreaming(
   options: SshExecOptions = {}
 ): Promise<number> {
   const remoteCommand = buildRemoteCommand(command, options);
-  const args = buildSshCommand(host, remoteCommand);
+  const args = buildSshCommand(host, remoteCommand, options.tty ? { tty: true } : {});
 
   const proc = Bun.spawn(args, {
     stdout: "inherit",
