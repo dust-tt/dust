@@ -21,7 +21,6 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
@@ -38,11 +37,18 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
   space: SpaceResource,
   force?: boolean
 ) {
-  assert(auth.isAdmin(), "Only admins can delete spaces.");
   assert(
     space.isRegular() || space.isProject(),
     "Cannot delete spaces that are not regular or project."
   );
+  if (space.isProject()) {
+    assert(
+      space.canAdministrate(auth),
+      "Only project admins can delete project spaces."
+    );
+  } else {
+    assert(auth.isAdmin(), "Only super admins can delete regular spaces.");
+  }
 
   const usages: AgentsUsageType[] = [];
 

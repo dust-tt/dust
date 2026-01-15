@@ -126,10 +126,9 @@ async function backfillAgentEditorsGroup(
   );
 
   if (execute && editorGroup) {
-    const result = await editorGroup.setMembers(
-      auth,
-      { users: usersToAdd.map((user) => user.toJSON()) }
-    );
+    const result = await editorGroup.setMembers(auth, {
+      users: usersToAdd.map((user) => user.toJSON()),
+    });
 
     if (result.isErr()) {
       throw result.error;

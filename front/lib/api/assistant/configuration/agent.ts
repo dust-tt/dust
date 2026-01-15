@@ -563,9 +563,13 @@ export async function createAgentConfiguration(
             );
             throw result.error;
           }
-          const setMembersRes = await group.setMembers(auth, { users: editors }, {
-            transaction: t,
-          });
+          const setMembersRes = await group.setMembers(
+            auth,
+            { users: editors },
+            {
+              transaction: t,
+            }
+          );
           if (setMembersRes.isErr()) {
             logger.error(
               {
@@ -1233,9 +1237,13 @@ export async function updateAgentPermissions(
   try {
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
-        const addRes = await editorGroupRes.value.addMembers(auth, { users: usersToAdd }, {
-          transaction: t,
-        });
+        const addRes = await editorGroupRes.value.addMembers(
+          auth,
+          { users: usersToAdd },
+          {
+            transaction: t,
+          }
+        );
         if (addRes.isErr()) {
           return addRes;
         }
