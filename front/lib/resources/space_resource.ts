@@ -736,6 +736,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   /**
    * Check if a user is a member of this space.
    * Returns true if the user belongs to any group linked to this space.
+   * If there's a global group, will always return true. If there's a system
+   * group along with other groups, the system group will have no impact
+   * on membership (since isMember will return false for the system group).
    */
   async isMember(user: UserResource): Promise<boolean> {
     for (const group of this.groups) {
