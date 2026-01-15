@@ -1,5 +1,11 @@
 import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
+import type {
+  Connection,
+  ConnectionOptions,
+  SnowflakeError,
+} from "snowflake-sdk";
+import snowflake from "snowflake-sdk";
 
 import config from "@app/lib/api/config";
 import type {
@@ -14,7 +20,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import { OAuthAPI } from "@app/types";
+import type { Result } from "@app/types";
+import { Err, OAuthAPI, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 import { isString } from "@app/types/shared/utils/general";
 
@@ -243,5 +250,113 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
     const { client_secret, ...restConfig } = extraConfig;
 
     return restConfig;
+  }
+
+  async checkConnectionValidPostFinalize(
+    connection: OAuthConnectionType
+  ): Promise<Result<void, { message: string }>> {
+    const { snowflake_account, snowflake_warehouse } = connection.metadata;
+
+    if (!isString(snowflake_account) || !isString(snowflake_warehouse)) {
+      return new Err({
+        message:
+          "Missing Snowflake account or warehouse configuration. Please try again.",
+      });
+    }
+
+    // Get the access token
+    const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+    const accessTokenRes = await oauthApi.getAccessToken({
+      connectionId: connection.connection_id,
+    });
+
+    if (accessTokenRes.isErr()) {
+      return new Err({
+        message:
+          "Unable to retrieve Snowflake access token. Please try connecting again.",
+      });
+    }
+
+    const accessToken = accessTokenRes.value.access_token;
+
+    // Test the connection and warehouse access
+    const testResult = await this.testWarehouseAccess(
+      snowflake_account,
+      accessToken,
+      snowflake_warehouse
+    );
+
+    if (testResult.isErr()) {
+      return new Err({
+        message: testResult.error.message,
+      });
+    }
+
+    return new Ok(undefined);
+  }
+
+  /**
+   * Test that the OAuth token can connect and use the specified warehouse.
+   */
+  private async testWarehouseAccess(
+    account: string,
+    accessToken: string,
+    warehouse: string
+  ): Promise<Result<void, Error>> {
+    // Configure SDK to suppress verbose logging
+    snowflake.configure({ logLevel: "OFF" });
+
+    try {
+      const connectionOptions: ConnectionOptions = {
+        account: account.replace(/_/g, "-"),
+        authenticator: "OAUTH",
+        token: accessToken,
+      };
+
+      // Connect to Snowflake
+      const connection = await new Promise<Connection>((resolve, reject) => {
+        const conn = snowflake.createConnection(connectionOptions);
+        conn.connect((err: SnowflakeError | undefined, c: Connection) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(c);
+          }
+        });
+      });
+
+      // Try to use the warehouse
+      try {
+        await new Promise<void>((resolve, reject) => {
+          connection.execute({
+            sqlText: `USE WAREHOUSE "${warehouse}"`,
+            complete: (err: SnowflakeError | undefined) => {
+              if (err) {
+                reject(err);
+              } else {
+                resolve();
+              }
+            },
+          });
+        });
+      } catch {
+        // Clean up connection
+        connection.destroy(() => {});
+        return new Err(
+          new Error(
+            `The role does not have access to warehouse "${warehouse}". ` +
+              `Please ensure the role has USAGE privilege on the warehouse, or choose a different warehouse.`
+          )
+        );
+      }
+
+      // Clean up connection
+      connection.destroy(() => {});
+      return new Ok(undefined);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown connection error";
+      return new Err(new Error(`Failed to connect to Snowflake: ${message}`));
+    }
   }
 }
