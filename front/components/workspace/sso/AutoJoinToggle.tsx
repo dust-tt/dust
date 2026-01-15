@@ -316,7 +316,9 @@ export function AutoJoinToggle({
                     ? "Add a domain to enable Auto-join"
                     : undefined
               }
-              disabled={domains.length === 0 || owner.ssoEnforced || isUpdating}
+              disabled={
+                domains.length === 0 || !!owner.ssoEnforced || isUpdating
+              }
               onClick={handleButtonClick}
             />
           </div>
