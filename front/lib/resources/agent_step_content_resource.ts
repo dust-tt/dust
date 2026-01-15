@@ -271,15 +271,18 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       AgentStepContentModel.findAll({
         include: includeClause,
         where: whereClause,
-        order: [["createdAt", "DESC"]],
         limit: limit + 1,
       }),
     ]);
 
-    const hasMore = stepContents.length > limit;
+    const sortedStepContents = stepContents.toSorted(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+    );
+
+    const hasMore = sortedStepContents.length > limit;
     const actualStepContents = hasMore
-      ? stepContents.slice(0, limit)
-      : stepContents;
+      ? sortedStepContents.slice(0, limit)
+      : sortedStepContents;
 
     const nextCursor = hasMore
       ? actualStepContents[
