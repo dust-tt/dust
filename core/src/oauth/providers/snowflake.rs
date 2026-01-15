@@ -98,9 +98,7 @@ impl SnowflakeConnectionProvider {
     }
 
     /// Parses access token response from Snowflake
-    fn parse_token_response(
-        raw_json: &serde_json::Value,
-    ) -> Result<(String, u64, Option<String>)> {
+    fn parse_token_response(raw_json: &serde_json::Value) -> Result<(String, u64, Option<String>)> {
         let access_token = raw_json["access_token"]
             .as_str()
             .ok_or_else(|| anyhow!("Missing `access_token` in response from Snowflake"))?
@@ -188,8 +186,7 @@ impl Provider for SnowflakeConnectionProvider {
             .make_token_request(connection, related_credentials, &params)
             .await?;
 
-        let (access_token, expires_in, new_refresh_token) =
-            Self::parse_token_response(&raw_json)?;
+        let (access_token, expires_in, new_refresh_token) = Self::parse_token_response(&raw_json)?;
 
         Ok(RefreshResult {
             access_token,
