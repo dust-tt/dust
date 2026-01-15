@@ -40,7 +40,9 @@ function createServer(
 
         const owner = auth.getNonNullableWorkspace();
         const requestedGroupIds = auth.groups().map((g) => g.sId);
-        const prodCredentials = await prodAPICredentialsForOwner(owner);
+        const prodCredentials = await prodAPICredentialsForOwner(owner, {
+          useLocalInDev: true,
+        });
         const config = apiConfig.getDustAPIConfig();
         const api = new DustAPI(
           config,
@@ -115,7 +117,9 @@ function createServer(
         }
 
         const requestedGroupIds = auth.groups().map((g) => g.sId);
-        const prodCredentials = await prodAPICredentialsForOwner(owner);
+        const prodCredentials = await prodAPICredentialsForOwner(owner, {
+          useLocalInDev: true,
+        });
         const config = apiConfig.getDustAPIConfig();
 
         const api = new DustAPI(
