@@ -72,7 +72,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             groupId: group.id,
             vaultId: space.id,
             workspaceId: space.workspaceId,
-            kind: "member",
+            kind: "member", // Attached groups on space creation are member groups by default
           },
           { transaction: t }
         );
@@ -450,9 +450,19 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await this.update({ name: newName });
     // For regular spaces that only have a single group, update
     // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
-    const regularGroups = this.groups.filter((g) => g.isRegular());
-    if (regularGroups.length === 1 && (this.isRegular() || this.isPublic())) {
-      await regularGroups[0].updateName(auth, `Group for space ${newName}`);
+    const spaceMemberGroup = this.getDefaultSpaceGroup();
+    if (this.isRegular() || this.isPublic()) {
+      await spaceMemberGroup.updateName(
+        auth,
+        `Group for ${this.isProject() ? "project" : "space"} ${newName}`
+      );
+    }
+    const spaceEditorGroup = this.getDefaultSpaceEditorGroup();
+    if (spaceEditorGroup && (this.isRegular() || this.isPublic())) {
+      await spaceEditorGroup.updateName(
+        auth,
+        `Editors for ${this.isProject() ? "project" : "space"} ${newName}`
+      );
     }
 
     return new Ok(undefined);
