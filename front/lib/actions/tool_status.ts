@@ -89,9 +89,6 @@ export async function getExecutionStatusFromConfig(
   }
 }
 
-const getToolsValidationKey = (mcpServerId: string) =>
-  `toolsValidations:${mcpServerId}`;
-
 // The function call name is scoped by MCP servers so that the same tool name on different servers
 // does not conflict, which is why we use it here instead of the tool name.
 export async function setUserAlwaysApprovedTool(
@@ -112,11 +109,6 @@ export async function setUserAlwaysApprovedTool(
   }
 
   const user = auth.getNonNullableUser();
-
-  await user.upsertMetadataArray(
-    getToolsValidationKey(mcpServerId),
-    functionCallName
-  );
 
   await user.createToolApproval(auth, {
     mcpServerId,
@@ -146,19 +138,12 @@ export async function hasUserAlwaysApprovedTool(
 
   const user = auth.getNonNullableUser();
 
-  const metadata = await user.getMetadataAsArray(
-    getToolsValidationKey(mcpServerId)
-  );
-
-  return metadata.includes(functionCallName) || metadata.includes("*");
-  /**
   return user.hasApprovedTool(auth, {
     mcpServerId,
     toolName: functionCallName,
     agentId: null,
     argsAndValues: null,
   });
-  */
 }
 
 // Extracts the values of the approval-requiring arguments from the tool inputs,
