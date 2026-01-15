@@ -1286,10 +1286,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async removeMember(
     auth: Authenticator,
-    {
-      user,
-      permissionsToWrite,
-    }: { user: UserType; permissionsToWrite?: CombinedResourcePermissions },
+    user: UserType,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
