@@ -4,6 +4,7 @@
 // NOTE: cargo target is symlinked to share Rust compilation cache (including linked artifacts).
 
 import { mkdirSync, readdirSync, symlinkSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import { ALL_BINARIES, buildBinaries } from "./cache";
@@ -152,13 +153,16 @@ async function copyUserConfigFiles(srcDir: string, destDir: string): Promise<voi
     logger.success(`Copied ${relativePath}`);
   }
 
-  // Copy directories recursively
+  // Copy directories recursively, merging with existing content
+  // Note: We use "cp -r srcPath/. destPath/" to copy CONTENTS rather than the directory itself.
+  // This is critical when destPath already exists (e.g., when git creates .claude/ with tracked skills).
+  // Without the "/." pattern, cp -r creates a nested srcPath inside destPath.
   for (const dir of USER_CONFIG_DIRS) {
     const srcPath = `${srcDir}/${dir}`;
     const destPath = `${destDir}/${dir}`;
     if (await directoryExists(srcPath)) {
-      // Use cp -r to copy directory recursively
-      await Bun.spawn(["cp", "-r", srcPath, destPath]).exited;
+      await mkdir(destPath, { recursive: true });
+      await Bun.spawn(["cp", "-r", `${srcPath}/.`, destPath]).exited;
       logger.success(`Copied ${dir}/`);
     }
   }
