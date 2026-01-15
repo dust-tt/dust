@@ -5,6 +5,7 @@ import {
   ADVANCED_SEARCH_SWITCH,
   AGENT_MEMORY_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { default as agentCopilotServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot";
 import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
@@ -226,6 +227,8 @@ export async function getInternalMCPServer(
       return productboardServer(auth, agentLoopContext);
     case "project_context_management":
       return projectContextManagementServer(auth, agentLoopContext);
+    case "agent_copilot":
+      return agentCopilotServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }
