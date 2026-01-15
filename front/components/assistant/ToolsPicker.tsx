@@ -316,7 +316,7 @@ export function ToolsPicker({
             icon={ToolsIcon}
             variant="ghost-secondary"
             size={buttonSize}
-            tooltip="Tools"
+            tooltip={hasSkillsFeature ? "Capabilities" : "Tools"}
             disabled={disabled || isLoading}
           />
         </DropdownMenuTrigger>
