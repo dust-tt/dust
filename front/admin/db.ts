@@ -84,6 +84,7 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
+import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import {
   RunModel,
   RunUsageModel,
@@ -117,6 +118,7 @@ async function main() {
   await TagModel.sync({ alter: true });
 
   await SpaceModel.sync({ alter: true });
+  await ProjectMetadataModel.sync({ alter: true });
   await AppModel.sync({ alter: true });
   await DatasetModel.sync({ alter: true });
   await ProviderModel.sync({ alter: true });
