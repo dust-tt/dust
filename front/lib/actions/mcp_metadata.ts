@@ -7,7 +7,7 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { ProxyAgent } from "undici";
+import type { ProxyAgent } from "undici";
 
 import {
   getConnectionForMCPServer,
@@ -28,20 +28,17 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { getUntrustedEgressAgent } from "@app/lib/egress/server";
+import {
+  getStaticIPProxyAgent,
+  getUntrustedEgressAgent,
+} from "@app/lib/egress/server";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase, Result } from "@app/types";
-import {
-  assertNever,
-  EnvironmentConfig,
-  Err,
-  normalizeError,
-  Ok,
-} from "@app/types";
+import { assertNever, Err, normalizeError, Ok } from "@app/types";
 
 interface ConnectViaMCPServerId {
   type: "mcpServerId";
@@ -98,20 +95,13 @@ async function createMCPDispatcher(
     (await WorkspaceResource.isHostUnderVerifiedDomain(workspace.id, host));
 
   if (useStaticIP) {
-    const proxyHost = `${EnvironmentConfig.getEnvVariable(
-      "PROXY_USER_NAME"
-    )}:${EnvironmentConfig.getEnvVariable(
-      "PROXY_USER_PASSWORD"
-    )}@${EnvironmentConfig.getEnvVariable("PROXY_HOST")}`;
-    const proxyPort = EnvironmentConfig.getEnvVariable("PROXY_PORT");
-
-    if (proxyHost && proxyPort) {
-      const proxyUrl = `http://${proxyHost}:${proxyPort}`;
+    const staticIPProxy = getStaticIPProxyAgent();
+    if (staticIPProxy) {
       logger.info(
         { workspaceId: workspace.sId, host, useStaticIP },
         "Using static IP proxy for MCP request"
       );
-      return new ProxyAgent(proxyUrl);
+      return staticIPProxy;
     }
   }
 

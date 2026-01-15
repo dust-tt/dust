@@ -22,7 +22,13 @@ import type {
   WorkspaceDomain,
   WorkspaceSegmentationType,
 } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import {
+  Err,
+  isHostUnderDomain,
+  isIpAddress,
+  normalizeError,
+  Ok,
+} from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -137,7 +143,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     host: string
   ): Promise<boolean> {
     // Reject IP addresses - only domain names should be matched
-    if (this.isIpAddress(host)) {
+    if (isIpAddress(host)) {
       return false;
     }
 
@@ -150,55 +156,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     });
 
     // Check if host matches any verified domain (exact or subdomain)
-    return verifiedDomains.some((d) => this.isHostUnderDomain(host, d.domain));
-  }
-
-  /**
-   * Check if a host is under a domain.
-   * - Exact match: host === domain
-   * - Subdomain match: host ends with '.' + domain
-   * Both are normalized to lowercase.
-   */
-  private static isHostUnderDomain(host: string, domain: string): boolean {
-    const normalizedHost = host.toLowerCase().replace(/\.$/, "");
-    const normalizedDomain = domain.toLowerCase().replace(/\.$/, "");
-
-    return (
-      normalizedHost === normalizedDomain ||
-      normalizedHost.endsWith("." + normalizedDomain)
-    );
-  }
-
-  /**
-   * Check if a string is an IP address (IPv4 or IPv6).
-   * We reject IP addresses for static IP routing to prevent
-   * direct IP connections bypassing domain verification.
-   */
-  private static isIpAddress(host: string): boolean {
-    // IPv4: four groups of 1-3 digits separated by dots, each 0-255
-    const ipv4Match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
-    if (ipv4Match) {
-      const octets = [ipv4Match[1], ipv4Match[2], ipv4Match[3], ipv4Match[4]];
-      const allValid = octets.every((octet) => {
-        const num = parseInt(octet, 10);
-        return num >= 0 && num <= 255;
-      });
-      if (allValid) {
-        return true;
-      }
-    }
-
-    // IPv6: contains colons and only hex digits, colons, dots (for IPv4-mapped)
-    if (host.includes(":")) {
-      if (/^[0-9a-f:.]+$/i.test(host)) {
-        const parts = host.split(":");
-        if (parts.length <= 9) {
-          return true;
-        }
-      }
-    }
-
-    return false;
+    return verifiedDomains.some((d) => isHostUnderDomain(host, d.domain));
   }
 
   async updateSegmentation(segmentation: WorkspaceSegmentationType) {
