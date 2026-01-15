@@ -303,6 +303,8 @@ export async function runModelActivity(
     prompt,
     tools,
     allowedTokenCount: model.contextSize - model.generationTokensCount,
+    agentConfiguration,
+    featureFlags,
   });
 
   if (modelConversationRes.isErr()) {

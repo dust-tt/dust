@@ -4,12 +4,14 @@ import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 import type {
+  AgentConfigurationType,
   ConversationType,
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
   Result,
+  WhitelistableFeature,
 } from "@app/types";
 import {
   assertNever,
@@ -44,6 +46,8 @@ export async function renderConversationForModel(
     excludeActions,
     excludeImages,
     onMissingAction = "inject-placeholder",
+    agentConfiguration,
+    featureFlags,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -54,6 +58,8 @@ export async function renderConversationForModel(
     excludeImages?: boolean;
     onMissingAction?: "inject-placeholder" | "skip";
     enablePreviousInteractionsPruning?: boolean;
+    agentConfiguration?: AgentConfigurationType;
+    featureFlags?: WhitelistableFeature[];
   }
 ): Promise<
   Result<
@@ -72,6 +78,8 @@ export async function renderConversationForModel(
     excludeActions,
     excludeImages,
     onMissingAction,
+    agentConfiguration,
+    featureFlags,
   });
 
   const messagesWithTokensRes = await countTokensForMessages(messages, model);

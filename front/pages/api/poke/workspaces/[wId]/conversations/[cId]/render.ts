@@ -297,6 +297,8 @@ async function handler(
         excludeActions,
         excludeImages,
         onMissingAction,
+        agentConfiguration,
+        featureFlags,
       });
 
       if (convoRes.isErr()) {
