@@ -749,6 +749,20 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return regularGroups[0];
   }
 
+  private getDefaultSpaceEditorGroup(): GroupResource | null {
+    const editorGroups = this.groups.filter(
+      (group) => group.kind === "space_editors"
+    );
+    if (editorGroups.length === 0) {
+      return null;
+    }
+    assert(
+      editorGroups.length === 1,
+      `Expected at most one space editors group for the space, but found ${editorGroups.length}.`
+    );
+    return editorGroups[0];
+  }
+
   /**
    * Check if a user is a member of this space.
    * Returns true if the user belongs to any group linked to this space.
