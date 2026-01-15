@@ -450,9 +450,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await this.update({ name: newName });
     // For regular spaces that only have a single group, update
     // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
-    const spaceMemberGroup = this.getDefaultSpaceGroup();
+    const regularGroup = this.getDefaultSpaceGroup();
     if (this.isRegular() || this.isPublic()) {
-      await spaceMemberGroup.updateName(
+      await regularGroup.updateName(
         auth,
         `Group for ${this.isProject() ? "project" : "space"} ${newName}`
       );
