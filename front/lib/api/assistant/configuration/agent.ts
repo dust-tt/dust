@@ -537,7 +537,7 @@ export async function createAgentConfiguration(
             { transaction: t }
           );
           await auth.refresh({ transaction: t });
-          await group.setMembers(auth, editors, { transaction: t });
+          await group.setMembers(auth, { users: editors }, { transaction: t });
         } else {
           const group = await GroupResource.fetchByAgentConfiguration({
             auth,
@@ -563,7 +563,7 @@ export async function createAgentConfiguration(
             );
             throw result.error;
           }
-          const setMembersRes = await group.setMembers(auth, editors, {
+          const setMembersRes = await group.setMembers(auth, { users: editors }, {
             transaction: t,
           });
           if (setMembersRes.isErr()) {
@@ -1233,7 +1233,7 @@ export async function updateAgentPermissions(
   try {
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
-        const addRes = await editorGroupRes.value.addMembers(auth, usersToAdd, {
+        const addRes = await editorGroupRes.value.addMembers(auth, { users: usersToAdd }, {
           transaction: t,
         });
         if (addRes.isErr()) {
@@ -1244,7 +1244,7 @@ export async function updateAgentPermissions(
       if (usersToRemove.length > 0) {
         const removeRes = await editorGroupRes.value.removeMembers(
           auth,
-          usersToRemove,
+          { users: usersToRemove },
           {
             transaction: t,
           }

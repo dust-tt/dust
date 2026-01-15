@@ -186,7 +186,7 @@ describe("MCPServerViewResource", () => {
       // Add user to the group that accesses accessibleSpace
       const addMemberResult = await accessibleSpace.groups[0].addMember(
         adminAuth,
-        user.toJSON()
+        { user: user.toJSON() }
       );
       expect(addMemberResult.isOk()).toBe(true);
 
@@ -339,8 +339,8 @@ describe("MCPServerViewResource", () => {
       await MembershipFactory.associate(workspace, user, { role: "user" });
 
       // Add user to both groups
-      await space1.groups[0].addMember(adminAuth, user.toJSON());
-      await space2.groups[0].addMember(adminAuth, user.toJSON());
+      await space1.groups[0].addMember(adminAuth, { user: user.toJSON() });
+      await space2.groups[0].addMember(adminAuth, { user: user.toJSON() });
 
       // Create auth for the regular user
       const userAuth = await Authenticator.fromUserIdAndWorkspaceId(

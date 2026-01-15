@@ -80,7 +80,7 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       workspace.sId
     );
     const [spaceGroup] = projectSpace.groups.filter((g) => !g.isGlobal());
-    await spaceGroup.addMembers(adminAuth, [user.toJSON()]);
+    await spaceGroup.addMembers(adminAuth, { users: [user.toJSON()] });
 
     req.body = { description: "Should fail" };
 

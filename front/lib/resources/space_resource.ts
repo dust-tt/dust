@@ -476,8 +476,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       name: string;
       isRestricted: boolean;
     } & (
-      | { memberIds: string[]; managementMode: "manual" }
-      | { groupIds: string[]; managementMode: "group" }
+      | { memberIds: string[]; managementMode: "manual"; editorIds?: string[] }
+      | {
+          groupIds: string[];
+          managementMode: "group";
+          editorGroupIds?: string[];
+        }
     )
   ): Promise<
     Result<
@@ -514,18 +518,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const { isRestricted } = params;
 
-    const regularGroups = this.groups.filter(
-      (group) => group.kind === "regular"
-    );
-
-    // Ensure exactly one regular group is associated with the space.
-    // IMPORTANT: This constraint is critical for the requestedPermissions() method logic.
-    // Modifying this requires careful review and updates to requestedPermissions().
-    assert(
-      regularGroups.length === 1,
-      `Expected exactly one regular group for the space, but found ${regularGroups.length}.`
-    );
-    const [defaultSpaceGroup] = regularGroups;
+    const memberGroup = this.getSpaceManualMemberGroup();
+    let editorGroup = this.getSpaceManualEditorGroup();
 
     const wasRestricted = this.groups.every((g) => !g.isGlobal());
 
@@ -569,12 +563,83 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
       if (managementMode === "manual") {
         const memberIds = params.memberIds;
+        const editorIds = params.editorIds ?? [];
+
+        // Handle editor group - create if needed and update members
+        if (editorIds.length > 0) {
+          const editorUsers = await UserResource.fetchByIds(editorIds);
+
+          if (!editorGroup) {
+            // Create a new editor group
+            editorGroup = await GroupResource.makeNew(
+              {
+                name: `Editors for ${this.kind === "project" ? "project" : "space"} ${this.name}`,
+                kind: "space_editors",
+                workspaceId: this.workspaceId,
+              },
+              { transaction: t }
+            );
+
+            // Link the editor group to the space with kind="editor"
+            await GroupSpaceModel.create(
+              {
+                groupId: editorGroup.id,
+                vaultId: this.id,
+                workspaceId: this.workspaceId,
+                kind: "project_editor",
+              },
+              { transaction: t }
+            );
+          }
+
+          // Set members of the editor group
+          const setEditorsRes = await editorGroup.setMembers(
+            auth,
+            { users: editorUsers.map((u) => u.toJSON()) },
+            { transaction: t }
+          );
+          if (setEditorsRes.isErr()) {
+            return setEditorsRes;
+          }
+        } else if (editorGroup) {
+          // No editors specified, clear the editor group
+          const setEditorsRes = await editorGroup.setMembers(
+            auth,
+            { users: [] },
+            {
+              transaction: t,
+            }
+          );
+          if (setEditorsRes.isErr()) {
+            return setEditorsRes;
+          }
+        }
         // Handle member-based management
         const users = await UserResource.fetchByIds(memberIds);
 
-        const setMembersRes = await defaultSpaceGroup.setMembers(
+        const setMembersRes = await memberGroup.setMembers(
           auth,
-          users.map((u) => u.toJSON()),
+          {
+            users: users.map((u) => u.toJSON()),
+            // Editors and admins can add members to the space
+            permissionsToWrite: editorGroup
+              ? {
+                  groups: [
+                    {
+                      id: editorGroup.id,
+                      permissions: ["admin", "write", "read"],
+                    },
+                  ],
+                  roles: [
+                    {
+                      role: "admin",
+                      permissions: ["read", "write", "admin"],
+                    },
+                  ],
+                  workspaceId: this.workspaceId,
+                }
+              : undefined,
+          },
           { transaction: t }
         );
         if (setMembersRes.isErr()) {
@@ -583,6 +648,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       } else if (managementMode === "group") {
         // Handle group-based management
         const groupIds = params.groupIds;
+        const editorGroupIds = params.editorGroupIds ?? [];
 
         // Remove existing external groups
         const existingExternalGroups = this.groups.filter(
@@ -607,8 +673,30 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         if (selectedGroupsResult.isErr()) {
           return selectedGroupsResult;
         }
-
         const selectedGroups = selectedGroupsResult.value;
+
+        if (editorGroupIds.length > 0) {
+          const editorGroupsResult = await GroupResource.fetchByIds(
+            auth,
+            editorGroupIds
+          );
+          if (editorGroupsResult.isErr()) {
+            return editorGroupsResult;
+          }
+          const selectedEditorGroups = editorGroupsResult.value;
+          for (const selectedEditorGroup of selectedEditorGroups) {
+            await GroupSpaceModel.create(
+              {
+                groupId: selectedEditorGroup.id,
+                vaultId: this.id,
+                workspaceId: this.workspaceId,
+                kind: "project_editor",
+              },
+              { transaction: t }
+            );
+          }
+        }
+
         for (const selectedGroup of selectedGroups) {
           await GroupSpaceModel.create(
             {
@@ -904,6 +992,37 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ];
     }
 
+    if (this.isProject()) {
+      return [
+        {
+          workspaceId: this.workspaceId,
+          roles: [
+            { role: "admin", permissions: ["admin", "read", "write"] },
+            { role: "user", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
+          ],
+          groups: this.groups.reduce((acc, group) => {
+            if (groupFilter(group)) {
+              const groupKind = group.group_vaults?.kind;
+              if (groupKind === "project_editor") {
+                // Editor groups get admin permissions in restricted projects
+                acc.push({
+                  id: group.id,
+                  permissions: ["admin", "read", "write"],
+                });
+              } else {
+                // Member groups get read permissions in restricted projects
+                acc.push({
+                  id: group.id,
+                  permissions: ["read"],
+                });
+              }
+            }
+            return acc;
+          }, [] as GroupPermission[]),
+        },
+      ];
+    }
+
     // Restricted space.
     return [
       {
@@ -1077,6 +1196,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return {
       createdAt: this.createdAt.getTime(),
       groupIds: this.groups.map((group) => group.sId),
+      editorGroupIds: this.groups
+        .filter((group) => group.group_vaults?.kind === "project_editor")
+        .map((group) => group.sId),
       isRestricted:
         this.isRegularAndRestricted() || this.isProjectAndRestricted(),
 
