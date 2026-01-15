@@ -9,7 +9,7 @@ export async function seedSkill(
 ): Promise<void> {
   const { auth, execute, logger } = ctx;
 
-  const existingSkills = await SkillResource.listSkills(auth, {
+  const existingSkills = await SkillResource.listByWorkspace(auth, {
     status: "active",
   });
   const existingSkill = existingSkills.find((s) => s.name === skillAsset.name);
