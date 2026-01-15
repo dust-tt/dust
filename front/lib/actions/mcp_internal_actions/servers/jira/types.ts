@@ -549,3 +549,7 @@ export type JiraAttachmentsResult = z.infer<typeof JiraAttachmentsResultSchema>;
 export type JiraIssueWithAttachments = z.infer<
   typeof JiraIssueWithAttachmentsSchema
 >;
+
+export function isADFDocument(value: unknown): value is ADFDocument {
+  return ADFDocumentSchema.safeParse(value).success;
+}
