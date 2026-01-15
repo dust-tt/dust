@@ -92,24 +92,24 @@ async function processProjectSpace(
           logger
         );
 
-        // Try to resume the connector (will start full sync if needed, or incremental sync if already synced)
-        const resumeResult = await connectorsAPI.resumeConnector(
+        // Try to unpause the connector (will clear errors and start sync workflow)
+        const unpauseResult = await connectorsAPI.unpauseConnector(
           existingDataSource.connectorId.toString()
         );
-        if (resumeResult.isErr()) {
+        if (unpauseResult.isErr()) {
           localLogger.warn(
             {
-              error: resumeResult.error,
+              error: unpauseResult.error,
             },
-            "Failed to resume connector sync"
+            "Failed to unpause connector sync"
           );
         } else {
-          localLogger.info("Successfully resumed connector sync");
+          localLogger.info("Successfully unpaused connector sync");
           stats.syncStarted++;
         }
       } else {
         localLogger.info(
-          "Would resume connector sync and ensure garbage collection is running"
+          "Would unpause connector sync and ensure garbage collection is running"
         );
       }
       return;

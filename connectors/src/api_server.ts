@@ -14,13 +14,11 @@ import {
 import { getConnectorPermissionsAPIHandler } from "@connectors/api/get_connector_permissions";
 import { getNotionUrlStatusHandler } from "@connectors/api/notion_url_status";
 import { pauseConnectorAPIHandler } from "@connectors/api/pause_connector";
-import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
 import { setConnectorPermissionsAPIHandler } from "@connectors/api/set_connector_permissions";
 import {
   getSlackChannelsLinkedWithAgentHandler,
   patchSlackChannelsLinkedWithAgentHandler,
 } from "@connectors/api/slack_channels_linked_with_agent";
-import { stopConnectorAPIHandler } from "@connectors/api/stop_connector";
 import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
 import { unpauseConnectorAPIHandler } from "@connectors/api/unpause_connector";
 import { postConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
@@ -105,10 +103,8 @@ export function startServer(port: number) {
 
   app.post("/connectors/create/:connector_provider", createConnectorAPIHandler);
   app.post("/connectors/update/:connector_id/", postConnectorUpdateAPIHandler);
-  app.post("/connectors/stop/:connector_id", stopConnectorAPIHandler);
   app.post("/connectors/pause/:connector_id", pauseConnectorAPIHandler);
   app.post("/connectors/unpause/:connector_id", unpauseConnectorAPIHandler);
-  app.post("/connectors/resume/:connector_id", resumeConnectorAPIHandler);
   app.delete("/connectors/delete/:connector_id", deleteConnectorAPIHandler);
   app.get("/connectors/:connector_id", getConnectorAPIHandler);
   app.get("/connectors", getConnectorsAPIHandler);
