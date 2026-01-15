@@ -4,20 +4,27 @@ import {
   Button,
   ChatBubbleLeftRightIcon,
   ConversationListItem,
+  DataTable,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  EmptyCTA,
+  EmptyCTAButton,
+  Icon,
   InformationCircleIcon,
   Input,
   ListGroup,
-  ListItem,
   ListItemSection,
-  PlusIcon,
   ReplySection,
   SearchInput,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   SliderToggle,
   Tabs,
   TabsContent,
@@ -25,13 +32,22 @@ import {
   TabsTrigger,
   ToolsIcon,
   Cog6ToothIcon,
+  ArrowUpOnSquareIcon,
   UserGroupIcon,
-  Separator,
+  TrashIcon,
 } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo, useState } from "react";
 
 import { getAgentById } from "../data/agents";
-import type { Agent, Conversation, Space, User } from "../data/types";
+import { getDataSourcesBySpaceId } from "../data/dataSources";
+import type {
+  Agent,
+  Conversation,
+  DataSource,
+  Space,
+  User,
+} from "../data/types";
 import { getUserById } from "../data/users";
 import { ConversationSuggestion } from "./ConversationSuggestion";
 import { InputBar } from "./InputBar";
@@ -48,6 +64,12 @@ interface GroupConversationViewProps {
   onUpdateSpaceName?: (spaceId: string, newName: string) => void;
   onUpdateSpacePublic?: (spaceId: string, isPublic: boolean) => void;
   spacePublicSettings?: Map<string, boolean>;
+}
+
+interface Member {
+  userId: string;
+  joinedAt: Date;
+  onClick?: () => void; // For DataTable compatibility
 }
 
 // Helper function to get random participants for a conversation
@@ -197,6 +219,27 @@ function seededRandom(seed: string, index: number): number {
   return x - Math.floor(x);
 }
 
+// Generate joinedAt date for a member (deterministic based on space and member ID)
+function generateJoinedAt(spaceId: string, memberId: string): Date {
+  const now = new Date();
+  // Combine spaceId and memberId for seed
+  const seed = `${spaceId}-${memberId}`;
+  const random = seededRandom(seed, 0);
+
+  // Joined between 365 days ago and now
+  const daysAgo = Math.floor(random * 365);
+  const joinedAt = new Date(now);
+  joinedAt.setDate(joinedAt.getDate() - daysAgo);
+  joinedAt.setHours(
+    Math.floor(random * 24),
+    Math.floor(seededRandom(seed, 1) * 60),
+    0,
+    0
+  );
+
+  return joinedAt;
+}
+
 export function GroupConversationView({
   space,
   conversations,
@@ -223,6 +266,28 @@ export function GroupConversationView({
   const [pendingPublicValue, setPendingPublicValue] = useState<boolean | null>(
     null
   );
+
+  // Knowledge tab state
+  const [dataSources, setDataSources] = useState<DataSource[]>(() =>
+    getDataSourcesBySpaceId(space.id)
+  );
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedDataSourceId, setSelectedDataSourceId] = useState<
+    string | null
+  >(null);
+  const [knowledgeSearchText, setKnowledgeSearchText] = useState("");
+  const [selectedDataSource, setSelectedDataSource] =
+    useState<DataSource | null>(null);
+  const [isDocumentSheetOpen, setIsDocumentSheetOpen] = useState(false);
+
+  // Members tab state
+  const [membersSearchText, setMembersSearchText] = useState("");
+  const [selectedMember, setSelectedMember] = useState<User | null>(null);
+  const [isMemberSheetOpen, setIsMemberSheetOpen] = useState(false);
+  const [removeMemberDialogOpen, setRemoveMemberDialogOpen] = useState(false);
+  const [selectedMemberIdToRemove, setSelectedMemberIdToRemove] = useState<
+    string | null
+  >(null);
 
   // Generate more conversations with varied dates
   const expandedConversations = useMemo(() => {
@@ -364,6 +429,260 @@ export function GroupConversationView({
     setIsPublic(spacePublicSettings?.get(space.id) ?? space.isPublic ?? true);
   }, [space.id, space.name, spacePublicSettings, space.isPublic]);
 
+  // Reset data sources when space changes
+  useEffect(() => {
+    setDataSources(getDataSourcesBySpaceId(space.id));
+  }, [space.id]);
+
+  // Transform data sources to include onClick handlers
+  const dataSourcesWithClick = useMemo(() => {
+    return dataSources.map((ds) => ({
+      ...ds,
+      onClick: () => {
+        setSelectedDataSource(ds);
+        setIsDocumentSheetOpen(true);
+      },
+    }));
+  }, [dataSources]);
+
+  // Transform spaceMemberIds into Member objects with joinedAt dates
+  const members: Member[] = useMemo(() => {
+    if (!spaceMemberIds || spaceMemberIds.length === 0) {
+      return [];
+    }
+    const memberList: Member[] = [];
+    spaceMemberIds.forEach((memberId) => {
+      const user = getUserById(memberId);
+      if (user) {
+        memberList.push({
+          userId: memberId,
+          joinedAt: generateJoinedAt(space.id, memberId),
+          onClick: () => {
+            setSelectedMember(user);
+            setIsMemberSheetOpen(true);
+          },
+        });
+      }
+    });
+    return memberList;
+  }, [spaceMemberIds, space.id]);
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = () => {
+    if (selectedDataSourceId) {
+      setDataSources((prev) =>
+        prev.filter((ds) => ds.id !== selectedDataSourceId)
+      );
+      setSelectedDataSourceId(null);
+    }
+    setDeleteDialogOpen(false);
+  };
+
+  // Handle remove member confirmation
+  const handleRemoveMemberConfirm = () => {
+    if (selectedMemberIdToRemove) {
+      // For prototyping, we'll just filter from the members list
+      // In a real app, this would call a callback prop
+      setSelectedMemberIdToRemove(null);
+    }
+    setRemoveMemberDialogOpen(false);
+  };
+
+  // Format date for display
+  const formatDate = (date: Date): string => {
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  // Create table columns
+  const columns: ColumnDef<DataSource>[] = useMemo(
+    () => [
+      {
+        accessorKey: "fileName",
+        header: "File name",
+        id: "fileName",
+        sortingFn: "text",
+        meta: {
+          className: "s-w-full",
+        },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <div className="s-flex s-items-center s-gap-2">
+              {info.row.original.icon && (
+                <Icon visual={info.row.original.icon} size="sm" />
+              )}
+              <span>{info.getValue() as string}</span>
+            </div>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "createdBy",
+        header: "Created by",
+        id: "createdBy",
+        meta: {
+          className: "s-w-[180px]",
+        },
+        cell: (info) => {
+          const userId = info.getValue() as string;
+          const user = getUserById(userId);
+          if (!user) return <DataTable.BasicCellContent label="Unknown" />;
+          return (
+            <DataTable.CellContent>
+              <div className="s-flex s-items-center s-gap-2">
+                <Avatar
+                  name={user.fullName}
+                  visual={user.portrait}
+                  size="xs"
+                  isRounded={true}
+                />
+                <span className="s-text-sm">{user.fullName}</span>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "updatedAt",
+        header: "Last Updated",
+        id: "lastUpdated",
+        meta: {
+          className: "s-w-[140px]",
+        },
+        cell: (info) => {
+          const date = info.getValue() as Date;
+          return <DataTable.BasicCellContent label={formatDate(date)} />;
+        },
+      },
+      {
+        id: "actions",
+        header: "",
+        meta: {
+          className: "s-w-12",
+        },
+        cell: (info) => (
+          <DataTable.MoreButton
+            menuItems={[
+              {
+                kind: "item",
+                label: "Delete",
+                icon: TrashIcon,
+                variant: "warning",
+                onClick: () => {
+                  setSelectedDataSourceId(info.row.original.id);
+                  setDeleteDialogOpen(true);
+                },
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    []
+  );
+
+  // Create member table columns
+  const memberColumns: ColumnDef<Member>[] = useMemo(
+    () => [
+      {
+        accessorKey: "userId",
+        header: "Name",
+        id: "name",
+        sortingFn: "text",
+        meta: {
+          className: "s-w-full",
+        },
+        cell: (info) => {
+          const userId = info.getValue() as string;
+          const user = getUserById(userId);
+          if (!user) return <DataTable.BasicCellContent label="Unknown" />;
+          return (
+            <DataTable.CellContent>
+              <div className="s-flex s-items-center s-gap-2">
+                <Avatar
+                  name={user.fullName}
+                  visual={user.portrait}
+                  size="xs"
+                  isRounded={true}
+                />
+                <span className="s-text-sm">{user.fullName}</span>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "userId",
+        header: "Email",
+        id: "email",
+        meta: {
+          className: "s-w-[200px]",
+        },
+        cell: (info) => {
+          const userId = info.getValue() as string;
+          const user = getUserById(userId);
+          if (!user) return <DataTable.BasicCellContent label="Unknown" />;
+          return <DataTable.BasicCellContent label={user.email} />;
+        },
+      },
+      {
+        accessorKey: "joinedAt",
+        header: "Joined at",
+        id: "joinedAt",
+        meta: {
+          className: "s-w-[140px]",
+        },
+        cell: (info) => {
+          const date = info.getValue() as Date;
+          return <DataTable.BasicCellContent label={formatDate(date)} />;
+        },
+      },
+      {
+        id: "actions",
+        header: "",
+        meta: {
+          className: "s-w-12",
+        },
+        cell: (info) => (
+          <DataTable.MoreButton
+            menuItems={[
+              {
+                kind: "item",
+                label: "Remove from Room",
+                icon: TrashIcon,
+                variant: "warning",
+                onClick: () => {
+                  setSelectedMemberIdToRemove(info.row.original.userId);
+                  setRemoveMemberDialogOpen(true);
+                },
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    []
+  );
+
+  // Filter members based on search text
+  const filteredMembers = useMemo(() => {
+    if (!membersSearchText.trim()) {
+      return members;
+    }
+    const searchLower = membersSearchText.toLowerCase();
+    return members.filter((member) => {
+      const user = getUserById(member.userId);
+      if (!user) return false;
+      return (
+        user.fullName.toLowerCase().includes(searchLower) ||
+        user.email.toLowerCase().includes(searchLower)
+      );
+    });
+  }, [members, membersSearchText]);
+
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background">
       {/* Tabs */}
@@ -461,13 +780,15 @@ export function GroupConversationView({
               <div className="s-flex s-flex-col s-gap-3">
                 {expandedConversations.length > 0 && (
                   <>
-                    <SearchInput
-                      name="conversation-search"
-                      value={searchText}
-                      onChange={setSearchText}
-                      placeholder={`Search in ${space.name}`}
-                      className="s-w-full"
-                    />
+                    <div className="s-flex s-w-full s-px-3">
+                      <SearchInput
+                        name="conversation-search"
+                        value={searchText}
+                        onChange={setSearchText}
+                        placeholder={`Search in ${space.name}`}
+                        className="s-w-full"
+                      />
+                    </div>
                     <div className="s-flex s-flex-col">
                       {(
                         [
@@ -583,131 +904,168 @@ export function GroupConversationView({
         </TabsContent>
 
         {/* Knowledge Tools Tab */}
-        <TabsContent
-          value="knowledge"
-          className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
-        >
-          <div className="s-text-foreground dark:s-text-foreground-night">
-            Knowledge Tools content coming soon...
+        <TabsContent value="knowledge">
+          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
+            <div className="s-mx-auto s-flex s-w-full s-flex-col s-gap-4 s-py-8">
+              <div className="s-flex s-gap-2">
+                <h3 className="s-heading-2xl s-flex-1 s-items-center">
+                  Knowledge
+                </h3>
+                <Button
+                  variant="outline"
+                  icon={ArrowUpOnSquareIcon}
+                  label="Add knowledge"
+                />
+              </div>
+              {dataSources.length === 0 ? (
+                <EmptyCTA
+                  message="No knowledge files in this room yet."
+                  action={
+                    <EmptyCTAButton
+                      icon={ArrowUpOnSquareIcon}
+                      label="Add knowledge"
+                    />
+                  }
+                />
+              ) : (
+                <>
+                  <SearchInput
+                    name="knowledge-search"
+                    value={knowledgeSearchText}
+                    onChange={setKnowledgeSearchText}
+                    placeholder="Search files..."
+                    className="s-w-full"
+                  />
+                  <DataTable
+                    columns={columns}
+                    data={dataSourcesWithClick}
+                    filter={knowledgeSearchText}
+                    filterColumn="fileName"
+                    sorting={[{ id: "fileName", desc: false }]}
+                  />
+                </>
+              )}
+            </div>
           </div>
         </TabsContent>
 
         {/* About Tab */}
         {showToolsAndAboutTabs && (
-          <TabsContent
-            value="about"
-            className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
-          >
-            <div className="s-flex s-flex-col s-gap-4">
-              <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-                About {space.name}
-              </h2>
-              <p className="s-text-foreground dark:s-text-foreground-night">
-                {space.description}
-              </p>
+          <TabsContent value="about">
+            <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
+              <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4 s-py-8">
+                <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+                  About {space.name}
+                </h2>
+                <p className="s-text-foreground dark:s-text-foreground-night">
+                  {space.description}
+                </p>
+              </div>
             </div>
           </TabsContent>
         )}
 
         {/* Settings Tab */}
-        <TabsContent
-          value="settings"
-          className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
-        >
-          <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-8 s-py-8">
-            {/* Room Name Section */}
-            <h3 className="s-heading-2xl">Settings</h3>
-            <div className="s-flex s-w-full s-flex-col s-gap-2">
-              <h3 className="s-heading-lg">Name</h3>
-              <div className="s-flex s-w-full s-min-w-0 s-gap-2">
-                <Input
-                  value={roomName}
-                  onChange={(e) => {
-                    setRoomName(e.target.value);
-                    setIsEditingName(e.target.value !== space.name);
-                  }}
-                  placeholder="Enter room name"
-                  containerClassName="s-flex-1"
-                />
-                {isEditingName && (
+        <TabsContent value="settings">
+          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
+            <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-8 s-px-6 s-py-8">
+              {/* Room Name Section */}
+              <h3 className="s-heading-2xl">Settings</h3>
+              <div className="s-flex s-w-full s-flex-col s-gap-2">
+                <h3 className="s-heading-lg">Name</h3>
+                <div className="s-flex s-w-full s-min-w-0 s-gap-2">
+                  <Input
+                    value={roomName}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setRoomName(e.target.value);
+                      setIsEditingName(e.target.value !== space.name);
+                    }}
+                    placeholder="Enter room name"
+                    containerClassName="s-flex-1"
+                  />
+                  {isEditingName && (
+                    <>
+                      <Button
+                        label="Save"
+                        variant="highlight"
+                        onClick={() => setShowNameSaveDialog(true)}
+                      />
+                      <Button
+                        label="Cancel"
+                        variant="outline"
+                        onClick={() => {
+                          setRoomName(space.name);
+                          setIsEditingName(false);
+                        }}
+                      />
+                    </>
+                  )}
+                </div>
+              </div>
+              {/* Open to Everyone Section */}
+
+              <div className="s-flex s-w-full s-flex-col s-gap-2">
+                <h3 className="s-heading-lg">Visibility</h3>
+                <div className="s-flex s-items-start s-items-center s-justify-between s-gap-4 s-border-y s-border-border s-py-4">
+                  <div className="s-flex s-flex-col">
+                    <div className="s-heading-sm s-text-foreground">
+                      Opened to everyone
+                    </div>
+                    <div className="s-text-sm s-text-muted-foreground">
+                      Anyone in the workspace can find and join the room.
+                    </div>
+                  </div>
+                  <SliderToggle
+                    size="xs"
+                    selected={isPublic}
+                    onClick={() => {
+                      const nextValue = !isPublic;
+                      setShowPublicToggleDialog(true);
+                      // Store the intended new value temporarily
+                      setPendingPublicValue(nextValue);
+                    }}
+                  />
+                </div>
+              </div>
+              {/* Members Section */}
+              <div className="s-flex s-flex-col s-gap-3">
+                <div className="s-flex s-items-center s-gap-2">
+                  <h3 className="s-heading-lg s-flex-1">Members</h3>
+                  <Button
+                    label="Invite"
+                    variant="outline"
+                    icon={UserGroupIcon}
+                    onClick={() => onInviteMembers?.()}
+                  />
+                </div>
+                {members.length === 0 ? (
+                  <EmptyCTA
+                    message="Feeling lonely? Invite participants!."
+                    action={
+                      <EmptyCTAButton
+                        icon={UserGroupIcon}
+                        label="Invite"
+                        onClick={() => onInviteMembers?.()}
+                      />
+                    }
+                  />
+                ) : (
                   <>
-                    <Button
-                      label="Save"
-                      variant="highlight"
-                      onClick={() => setShowNameSaveDialog(true)}
+                    <SearchInput
+                      name="members-search"
+                      value={membersSearchText}
+                      onChange={setMembersSearchText}
+                      placeholder="Search members..."
+                      className="s-w-full"
                     />
-                    <Button
-                      label="Cancel"
-                      variant="outline"
-                      onClick={() => {
-                        setRoomName(space.name);
-                        setIsEditingName(false);
-                      }}
+                    <DataTable
+                      columns={memberColumns}
+                      data={filteredMembers}
+                      sorting={[{ id: "name", desc: false }]}
                     />
                   </>
                 )}
               </div>
-            </div>
-            {/* Open to Everyone Section */}
-
-            <div className="s-flex s-w-full s-flex-col s-gap-2">
-              <h3 className="s-heading-lg">Visibility</h3>
-              <div className="s-flex s-items-start s-justify-between s-gap-4">
-                <div className="s-flex s-flex-col">
-                  <div className="s-heading-sm s-text-foreground">
-                    Opened to everyone
-                  </div>
-                  <div className="s-text-sm s-text-muted-foreground">
-                    Anyone in the workspace can find and join the room.
-                  </div>
-                </div>
-                <SliderToggle
-                  size="xs"
-                  selected={isPublic}
-                  onClick={() => {
-                    const nextValue = !isPublic;
-                    setShowPublicToggleDialog(true);
-                    // Store the intended new value temporarily
-                    setPendingPublicValue(nextValue);
-                  }}
-                />
-              </div>
-            </div>
-            {/* Members Section */}
-            <div className="s-flex s-flex-col s-gap-3">
-              <div className="s-flex s-items-center s-gap-2">
-                <h3 className="s-heading-lg s-flex-1">Members</h3>
-                <Button
-                  label="Invite more"
-                  variant="outline"
-                  icon={UserGroupIcon}
-                  onClick={() => onInviteMembers?.()}
-                />
-              </div>
-              <ListGroup>
-                {spaceMemberIds.map((memberId) => {
-                  const user = users.find((u) => u.id === memberId);
-                  if (!user) return null;
-                  return (
-                    <ListItem key={memberId} itemsAlignment="center">
-                      <Avatar
-                        name={user.fullName}
-                        visual={user.portrait}
-                        size="sm"
-                        isRounded={true}
-                      />
-                      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                        <span className="s-text-sm s-font-medium s-text-foreground">
-                          {user.fullName}
-                        </span>
-                        <span className="s-text-xs s-text-muted-foreground">
-                          {user.email}
-                        </span>
-                      </div>
-                    </ListItem>
-                  );
-                })}
-              </ListGroup>
             </div>
           </div>
         </TabsContent>
@@ -717,7 +1075,7 @@ export function GroupConversationView({
       {/* Name Save Dialog */}
       <Dialog
         open={showNameSaveDialog}
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           if (!open) {
             setShowNameSaveDialog(false);
           }
@@ -749,7 +1107,7 @@ export function GroupConversationView({
       {/* Public Toggle Dialog */}
       <Dialog
         open={showPublicToggleDialog}
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           if (!open) {
             setShowPublicToggleDialog(false);
             setPendingPublicValue(null);
@@ -786,6 +1144,142 @@ export function GroupConversationView({
           />
         </DialogContent>
       </Dialog>
+
+      {/* Delete DataSource Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            setDeleteDialogOpen(false);
+            setSelectedDataSourceId(null);
+          }
+        }}
+      >
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Delete file?</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            {selectedDataSourceId && (
+              <div>
+                Are you sure you want to delete "
+                {dataSources.find((ds) => ds.id === selectedDataSourceId)
+                  ?.fileName || "this file"}
+                "? This action cannot be undone.
+              </div>
+            )}
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => {
+                setDeleteDialogOpen(false);
+                setSelectedDataSourceId(null);
+              },
+            }}
+            rightButtonProps={{
+              label: "Delete",
+              variant: "warning",
+              onClick: handleDeleteConfirm,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Member Dialog */}
+      <Dialog
+        open={removeMemberDialogOpen}
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            setRemoveMemberDialogOpen(false);
+            setSelectedMemberIdToRemove(null);
+          }
+        }}
+      >
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Remove member from room?</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            {selectedMemberIdToRemove && (
+              <div>
+                Are you sure you want to remove "
+                {getUserById(selectedMemberIdToRemove)?.fullName ||
+                  "this member"}
+                " from this room?
+              </div>
+            )}
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => {
+                setRemoveMemberDialogOpen(false);
+                setSelectedMemberIdToRemove(null);
+              },
+            }}
+            rightButtonProps={{
+              label: "Remove",
+              variant: "warning",
+              onClick: handleRemoveMemberConfirm,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Document View Sheet */}
+      <Sheet
+        open={isDocumentSheetOpen}
+        onOpenChange={(open: boolean) => {
+          setIsDocumentSheetOpen(open);
+          if (!open) {
+            setSelectedDataSource(null);
+          }
+        }}
+      >
+        <SheetContent size="lg" side="right">
+          <SheetHeader>
+            <SheetTitle>
+              {selectedDataSource?.fileName || "Document View"}
+            </SheetTitle>
+          </SheetHeader>
+          <SheetContainer>
+            <div className="s-flex s-flex-col s-items-center s-justify-center s-py-16">
+              <p className="s-text-foreground dark:s-text-foreground-night">
+                Document View
+              </p>
+            </div>
+          </SheetContainer>
+        </SheetContent>
+      </Sheet>
+
+      {/* Member Detail Sheet */}
+      <Sheet
+        open={isMemberSheetOpen}
+        onOpenChange={(open: boolean) => {
+          setIsMemberSheetOpen(open);
+          if (!open) {
+            setSelectedMember(null);
+          }
+        }}
+      >
+        <SheetContent size="lg" side="right">
+          <SheetHeader>
+            <SheetTitle>
+              {selectedMember?.fullName || "Member detailview"}
+            </SheetTitle>
+          </SheetHeader>
+          <SheetContainer>
+            <div className="s-flex s-flex-col s-items-center s-justify-center s-py-16">
+              <p className="s-text-foreground dark:s-text-foreground-night">
+                Member detailview
+              </p>
+            </div>
+          </SheetContainer>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

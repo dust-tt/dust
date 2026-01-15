@@ -259,13 +259,15 @@ export function PersonAgentView({
           <div className="s-flex s-flex-col s-gap-3">
             {hasHistory && (
               <>
-                <SearchInput
-                  name="conversation-search"
-                  value={searchText}
-                  onChange={setSearchText}
-                  placeholder={`Search in conversations with ${collaboratorName}`}
-                  className="s-w-full"
-                />
+                <div className="s-flex s-w-full s-px-3">
+                  <SearchInput
+                    name="conversation-search"
+                    value={searchText}
+                    onChange={setSearchText}
+                    placeholder={`Search in conversations with ${collaboratorName}`}
+                    className="s-w-full"
+                  />
+                </div>
                 <div className="s-flex s-flex-col">
                   {(
                     ["Today", "Yesterday", "Last Week", "Last Month"] as const

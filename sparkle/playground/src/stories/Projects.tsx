@@ -63,6 +63,7 @@ import {
   createSpace,
   getAgentById,
   getConversationsBySpaceId,
+  getMembersBySpaceId,
   getRandomAgents,
   getRandomSpaces,
   getRandomUsers,
@@ -145,6 +146,18 @@ function DustMain() {
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const sidebarLayoutRef = useRef<SidebarLayoutRef>(null);
+
+  // Initialize space members with generated members when a space is first selected
+  useEffect(() => {
+    if (selectedSpaceId && !spaceMembers.has(selectedSpaceId)) {
+      const generatedMembers = getMembersBySpaceId(selectedSpaceId);
+      setSpaceMembers((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(selectedSpaceId, generatedMembers);
+        return newMap;
+      });
+    }
+  }, [selectedSpaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const randomUser = getRandomUsers(1)[0];
@@ -1057,7 +1070,11 @@ function DustMain() {
         conversations={spaceConversations}
         users={mockUsers}
         agents={mockAgents}
-        spaceMemberIds={spaceMembers.get(selectedSpaceId) || []}
+        spaceMemberIds={
+          spaceMembers.has(selectedSpaceId)
+            ? spaceMembers.get(selectedSpaceId)!
+            : getMembersBySpaceId(selectedSpaceId)
+        }
         onConversationClick={(conversation) => {
           // Store the current space ID before navigating to conversation
           setPreviousSpaceId(selectedSpaceId);

@@ -5,4 +5,5 @@ export * from "./types";
 export * from "./agents";
 export * from "./conversations";
 export * from "./spaces";
+export * from "./spaceMembers";
 export * from "./users";
