@@ -45,7 +45,8 @@ export function makeInternalMCPServer(
 
 export function makePersonalAuthenticationError(
   provider: OAuthProvider,
-  scope?: string
+  scope?: string,
+  mcpServerId?: string
 ) {
   return {
     content: [
@@ -58,6 +59,7 @@ export function makePersonalAuthenticationError(
           provider,
           text: "Personal authentication required",
           uri: "",
+          ...(mcpServerId && { mcpServerId }),
         },
       },
     ],

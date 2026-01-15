@@ -8,13 +8,18 @@ import {
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeInternalMCPServer,
+  makePersonalAuthenticationError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { Err, getHeaderFromGroupIds, Ok } from "@app/types";
@@ -114,6 +119,61 @@ function createServer(
         const user = auth.user();
         if (!user) {
           return new Err(new MCPError("User not found", { tracked: false }));
+        }
+
+        // Fetch the MCPServerView to check if it requires personal authentication.
+        // Note: fetchById internally calls init() which loads the underlying server.
+        const mcpServerView = await MCPServerViewResource.fetchById(
+          auth,
+          toolsetId
+        );
+        if (!mcpServerView) {
+          return new Err(new MCPError("Toolset not found", { tracked: false }));
+        }
+
+        const serverJson = mcpServerView.toJSON();
+        const authorization = serverJson.server.authorization;
+
+        // If the server requires personal OAuth, validate the user has a personal connection.
+        if (
+          serverJson.oAuthUseCase === "personal_actions" &&
+          authorization?.provider
+        ) {
+          // Check if workspace connection exists (admin setup).
+          const workspaceConnectionRes =
+            await MCPServerConnectionResource.findByMCPServer(auth, {
+              mcpServerId: serverJson.server.sId,
+              connectionType: "workspace",
+            });
+
+          if (workspaceConnectionRes.isErr()) {
+            // Admin hasn't set up the connection yet - return error message.
+            return new Err(
+              new MCPError(
+                `The ${getMcpServerViewDisplayName(serverJson)} tool requires your workspace admin to set up the connection first.`,
+                { tracked: false }
+              )
+            );
+          }
+
+          // Check if user has a personal connection.
+          const personalConnectionRes =
+            await MCPServerConnectionResource.findByMCPServer(auth, {
+              mcpServerId: serverJson.server.sId,
+              connectionType: "personal",
+            });
+
+          if (personalConnectionRes.isErr()) {
+            // User needs to authenticate personally - return auth prompt.
+            // Pass the server ID so the UI shows the correct server name (not "Toolsets").
+            return new Ok(
+              makePersonalAuthenticationError(
+                authorization.provider,
+                authorization.scope,
+                serverJson.server.sId
+              ).content
+            );
+          }
         }
 
         const requestedGroupIds = auth.groups().map((g) => g.sId);

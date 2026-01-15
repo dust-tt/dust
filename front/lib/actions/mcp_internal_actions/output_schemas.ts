@@ -1020,6 +1020,8 @@ export const AuthRequiredOutputResourceSchema = z.object({
   scope: z.string().optional(),
   text: z.string(),
   uri: z.string(),
+  // Optional: the MCP server that requires auth (used when a tool triggers auth for another server).
+  mcpServerId: z.string().optional(),
 });
 
 export const BlockedAwaitingInputOutputResourceSchema = z.object({
