@@ -65,7 +65,7 @@ describe("basics seed script integration test", () => {
     await seedConversations(ctx, assets.conversations, customAgentSId);
 
     // Verify skill was created
-    const skills = await SkillResource.listSkills(authenticator, {
+    const skills = await SkillResource.listByWorkspace(authenticator, {
       status: "active",
     });
     const createdSkill = skills.find((s) => s.name === assets.skill.name);
