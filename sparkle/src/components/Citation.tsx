@@ -1,12 +1,9 @@
 import { cva } from "class-variance-authority";
-import React, { ReactNode, useCallback, useState } from "react";
+import React, { ReactNode } from "react";
 
 import { Button, Card, CardProps, Spinner, Tooltip } from "@sparkle/components/";
-import {
-  downloadFile,
-  ImageZoomDialog,
-} from "@sparkle/components/ImageZoomDialog";
-import { ArrowDownOnSquareIcon, XMarkIcon } from "@sparkle/icons/app";
+import { ImagePreview } from "@sparkle/components/ImagePreview";
+import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 type CitationProps = CardProps & {
@@ -177,133 +174,20 @@ interface CitationImageProps {
 }
 
 const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
-  (
-    { imgSrc, alt = "", title = "", downloadUrl, isLoading, onClose, className },
-    ref
-  ) => {
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-    const handleDownload = useCallback(
-      (e: React.MouseEvent) => {
-        e.stopPropagation();
-        e.preventDefault();
-        if (downloadUrl && title) {
-          downloadFile(downloadUrl, title);
-        }
-      },
-      [downloadUrl, title]
-    );
-
-    const handleClose = useCallback(
-      (e: React.MouseEvent) => {
-        e.stopPropagation();
-        e.preventDefault();
-        onClose?.();
-      },
-      [onClose]
-    );
-
-    const handleImageClick = useCallback(
-      (e: React.MouseEvent) => {
-        e.stopPropagation();
-        e.preventDefault();
-        if (!isLoading) {
-          setIsDialogOpen(true);
-        }
-      },
-      [isLoading]
-    );
-
+  ({ imgSrc, alt, title, downloadUrl, isLoading, onClose, className }, ref) => {
     return (
-      <>
-        <div
-          ref={ref}
-          onClick={handleImageClick}
-          className={cn(
-            "s-group/citation-image",
-            "s-absolute s-inset-0",
-            "s-cursor-pointer s-overflow-hidden s-rounded-xl",
-            className
-          )}
-        >
-          {isLoading ? (
-            <div
-              className={cn(
-                "s-flex s-h-full s-w-full s-items-center s-justify-center",
-                "s-bg-muted-background dark:s-bg-muted-background-night"
-              )}
-            >
-              <Spinner variant="dark" size="md" />
-            </div>
-          ) : (
-            <>
-              <img
-                src={imgSrc}
-                alt={alt}
-                className="s-h-full s-w-full s-object-cover s-transition s-duration-200 group-hover/citation-image:s-blur-sm"
-              />
-              {/* Overlay with title - shown on hover */}
-              <div
-                className={cn(
-                  "s-absolute s-inset-0 s-z-10",
-                  "s-flex s-flex-col s-items-start s-justify-end",
-                  "s-bg-primary-100/60 dark:s-bg-primary-100-night/60",
-                  "s-opacity-0 s-transition s-duration-200",
-                  "group-hover/citation-image:s-opacity-100",
-                  "s-px-3 s-pb-7"
-                )}
-              >
-                <span
-                  className={cn(
-                    "s-max-w-full s-truncate",
-                    "s-heading-sm",
-                    "s-text-foreground dark:s-text-foreground-night"
-                  )}
-                >
-                  {title}
-                </span>
-              </div>
-              {/* Action button - top right on hover, matching CardActions positioning */}
-              <div
-                className={cn(
-                  "s-absolute s-right-2 s-top-2 s-z-20",
-                  "s-opacity-0 s-transition-opacity s-duration-200",
-                  "group-hover/citation-image:s-opacity-100"
-                )}
-              >
-                {onClose && (
-                  <Button
-                    variant="ghost"
-                    size="mini"
-                    icon={XMarkIcon}
-                    onClick={handleClose}
-                  />
-                )}
-                {!onClose && downloadUrl && (
-                  <Button
-                    variant="ghost"
-                    size="mini"
-                    icon={ArrowDownOnSquareIcon}
-                    tooltip="Download"
-                    onClick={handleDownload}
-                  />
-                )}
-              </div>
-            </>
-          )}
-        </div>
-        <ImageZoomDialog
-          open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
-          image={{
-            src: imgSrc,
-            alt,
-            title,
-            downloadUrl,
-            isLoading,
-          }}
-        />
-      </>
+      <ImagePreview
+        ref={ref}
+        imgSrc={imgSrc}
+        alt={alt}
+        title={title}
+        downloadUrl={downloadUrl}
+        isLoading={isLoading}
+        onClose={onClose ? () => onClose() : undefined}
+        className={className}
+        variant="absolute"
+        titlePosition="bottom"
+      />
     );
   }
 );

@@ -117,6 +117,8 @@ export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
 export type { ImageZoomDialogProps } from "./ImageZoomDialog";
 export { downloadFile, ImageZoomDialog } from "./ImageZoomDialog";
+export type { ImagePreviewProps } from "./ImagePreview";
+export { ImagePreview } from "./ImagePreview";
 export { Input } from "./Input";
 export { InteractiveImageGrid } from "./InteractiveImageGrid";
 export { Label } from "./Label";

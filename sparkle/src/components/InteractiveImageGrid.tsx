@@ -1,106 +1,8 @@
 import React from "react";
 
-import { Button, Spinner } from "@sparkle/components/";
-import {
-  downloadFile,
-  ImageZoomDialog,
-} from "@sparkle/components/ImageZoomDialog";
-import { ArrowDownOnSquareIcon, XMarkIcon } from "@sparkle/icons/app";
+import { ImageZoomDialog } from "@sparkle/components/ImageZoomDialog";
+import { ImagePreview } from "@sparkle/components/ImagePreview";
 import { cn } from "@sparkle/lib/utils";
-
-interface ImagePreviewProps {
-  image: {
-    alt: string;
-    downloadUrl?: string;
-    imageUrl?: string;
-    isLoading?: boolean;
-    title: string;
-  };
-  onClick: () => void;
-  onDownload: (e: React.MouseEvent) => void;
-  onClose?: (e: React.MouseEvent) => void;
-}
-
-const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
-  ({ image, onClick, onDownload, onClose }, ref) => {
-    return (
-      <div
-        ref={ref}
-        onClick={onClick}
-        className={cn(
-          "s-group/preview s-relative s-aspect-square",
-          "s-cursor-pointer s-overflow-hidden s-rounded-2xl",
-          "s-bg-muted-background dark:s-bg-muted-background-night"
-        )}
-      >
-        {image.isLoading ? (
-          <div className="s-flex s-h-full s-w-full s-items-center s-justify-center">
-            <Spinner variant="dark" size="md" />
-          </div>
-        ) : (
-          <>
-            <img
-              src={image.imageUrl}
-              alt={image.alt}
-              className="s-h-full s-w-full s-rounded-2xl s-object-cover"
-            />
-            {/* Blur overlay with filename - hidden by default, shown on hover */}
-            <div
-              className={cn(
-                "s-absolute s-inset-0 s-z-10",
-                "s-flex s-items-center s-justify-center",
-                "s-bg-primary-100/80 dark:s-bg-primary-100-night/80",
-                "s-backdrop-blur-sm",
-                "s-opacity-0 s-transition s-duration-200",
-                "group-hover/preview:s-opacity-100"
-              )}
-            >
-              <span
-                className={cn(
-                  "s-max-w-[90%] s-truncate s-px-2 s-text-center",
-                  "s-text-sm s-font-medium",
-                  "s-text-foreground dark:s-text-foreground-night"
-                )}
-              >
-                {image.title}
-              </span>
-            </div>
-            <div
-              className={cn(
-                "s-absolute s-right-1 s-top-1 s-z-10 s-flex",
-                "s-opacity-0 s-transition-opacity s-duration-200",
-                "group-hover/preview:s-opacity-100"
-              )}
-            >
-              {onClose && (
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  icon={XMarkIcon}
-                  className="s-text-white dark:s-text-white"
-                  tooltip="Remove"
-                  onClick={onClose}
-                />
-              )}
-              {!onClose && (
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  icon={ArrowDownOnSquareIcon}
-                  className="s-text-white dark:s-text-white"
-                  tooltip="Download"
-                  onClick={onDownload}
-                />
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    );
-  }
-);
-
-ImagePreview.displayName = "ImagePreview";
 
 const SIZE_CLASSES = {
   sm: "s-h-24 s-w-24",
@@ -149,16 +51,6 @@ function InteractiveImageGrid({
     );
   }, [currentImageIndex, images.length]);
 
-  const handleDownload = React.useCallback(
-    (e: React.MouseEvent, downloadUrl?: string, title?: string) => {
-      e.stopPropagation();
-      if (downloadUrl && title) {
-        downloadFile(downloadUrl, title);
-      }
-    },
-    []
-  );
-
   // Keyboard navigation for the zoomed image
   React.useEffect(() => {
     if (currentImageIndex === null) {
@@ -177,7 +69,8 @@ function InteractiveImageGrid({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [currentImageIndex, handleNext, handlePrevious]);
 
-  const currentImage = currentImageIndex !== null ? images[currentImageIndex] : null;
+  const currentImage =
+    currentImageIndex !== null ? images[currentImageIndex] : null;
 
   return (
     <>
@@ -185,21 +78,16 @@ function InteractiveImageGrid({
         {images.length === 1 ? (
           <div className={SIZE_CLASSES[size]}>
             <ImagePreview
-              image={images[0]}
-              onClick={() => {
-                if (!images[0].isLoading) {
-                  setCurrentImageIndex(0);
-                }
-              }}
-              onDownload={(e) => handleDownload(e, images[0].downloadUrl, images[0].title)}
-              onClose={
-                onClose
-                  ? (e) => {
-                      e.stopPropagation();
-                      onClose();
-                    }
-                  : undefined
-              }
+              imgSrc={images[0].imageUrl ?? ""}
+              alt={images[0].alt}
+              title={images[0].title}
+              downloadUrl={images[0].downloadUrl}
+              isLoading={images[0].isLoading}
+              onClick={() => setCurrentImageIndex(0)}
+              onClose={onClose ? () => onClose() : undefined}
+              variant="square"
+              titlePosition="center"
+              manageZoomDialog={false}
             />
           </div>
         ) : (
@@ -207,13 +95,15 @@ function InteractiveImageGrid({
             {images.map((image, idx) => (
               <ImagePreview
                 key={idx}
-                image={image}
-                onClick={() => {
-                  if (!image.isLoading) {
-                    setCurrentImageIndex(idx);
-                  }
-                }}
-                onDownload={(e) => handleDownload(e, image.downloadUrl, image.title)}
+                imgSrc={image.imageUrl ?? ""}
+                alt={image.alt}
+                title={image.title}
+                downloadUrl={image.downloadUrl}
+                isLoading={image.isLoading}
+                onClick={() => setCurrentImageIndex(idx)}
+                variant="square"
+                titlePosition="center"
+                manageZoomDialog={false}
               />
             ))}
           </div>
