@@ -42,7 +42,12 @@ export async function restoreWorkspaceAfterSubscription(auth: Authenticator) {
     const r = await connectorsApi.unpauseConnector(connectorId);
     if (r.isErr()) {
       logger.error(
-        { connectorId, stripeError: true, error: r.error },
+        {
+          workspaceId: owner.sId,
+          connectorId,
+          stripeError: true,
+          error: r.error,
+        },
         "Error unpausing connector after subscription reactivation."
       );
     }
