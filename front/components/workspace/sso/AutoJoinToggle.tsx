@@ -61,6 +61,38 @@ async function updateDomainAutoJoin({
   });
 }
 
+async function applyDomainAutoJoinUpdates({
+  ownerId,
+  updates,
+}: {
+  ownerId: string;
+  updates: { domain: string; enabled: boolean }[];
+}): Promise<{ failedDomains: string[] }> {
+  const results = await Promise.allSettled(
+    updates.map((u) =>
+      updateDomainAutoJoin({
+        ownerId,
+        domain: u.domain,
+        enabled: u.enabled,
+      })
+    )
+  );
+
+  const failedDomains: string[] = [];
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      failedDomains.push(updates[index].domain);
+      return;
+    }
+
+    if (!result.value.ok) {
+      failedDomains.push(updates[index].domain);
+    }
+  });
+
+  return { failedDomains };
+}
+
 interface MultiDomainAutoJoinModalProps {
   workspaceVerifiedDomains: WorkspaceDomain[];
   isOpen: boolean;
@@ -118,31 +150,17 @@ function MultiDomainAutoJoinModal({
       return;
     }
 
+    const updates = domainsToUpdate.map((d) => ({
+      domain: d.domain,
+      enabled: domainOverrides[d.domain] ?? d.domainAutoJoinEnabled,
+    }));
+
     setIsSubmitting(true);
 
     try {
-      // Update all domains in parallel
-      const results = await Promise.allSettled(
-        domainsToUpdate.map((d) =>
-          updateDomainAutoJoin({
-            ownerId: owner.sId,
-            domain: d.domain,
-            enabled: domainOverrides[d.domain] ?? d.domainAutoJoinEnabled,
-          })
-        )
-      );
-
-      // Collect failed domains
-      const failedDomains: string[] = [];
-      results.forEach((result, index) => {
-        if (result.status === "rejected") {
-          failedDomains.push(domainsToUpdate[index].domain);
-          return;
-        }
-
-        if (!result.value.ok) {
-          failedDomains.push(domainsToUpdate[index].domain);
-        }
+      const { failedDomains } = await applyDomainAutoJoinUpdates({
+        ownerId: owner.sId,
+        updates,
       });
 
       if (failedDomains.length > 0) {
@@ -287,13 +305,17 @@ export function AutoJoinToggle({
     setIsUpdatingSingleDomain(true);
     try {
       const nextValue = !domain.domainAutoJoinEnabled;
-      const res = await updateDomainAutoJoin({
+      const { failedDomains } = await applyDomainAutoJoinUpdates({
         ownerId: owner.sId,
-        domain: domain.domain,
-        enabled: nextValue,
+        updates: [
+          {
+            domain: domain.domain,
+            enabled: nextValue,
+          },
+        ],
       });
 
-      if (!res.ok) {
+      if (failedDomains.length > 0) {
         sendNotification({
           type: "error",
           title: "Update failed",
