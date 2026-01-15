@@ -163,7 +163,7 @@ export const conversationAddedAsParticipantWorkflow = workflow(
           },
         });
         return {
-          subject: `[Dust] ${details.subject}`,
+          subject: `[Dust] You were mentioned in '${details.subject}'`,
           body,
         };
       },
