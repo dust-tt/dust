@@ -313,7 +313,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
       }
       return null;
     case "snowflake":
-      if (useCase === "personal_actions") {
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
         const result: OAuthCredentialInputs = {
           snowflake_account: {
             label: "Snowflake Account",
