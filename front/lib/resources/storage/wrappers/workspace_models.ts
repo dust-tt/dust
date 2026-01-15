@@ -3,6 +3,7 @@ import type {
   CountWithOptions,
   CreationOptional,
   DestroyOptions,
+  Filterable,
   FindOptions,
   ForeignKey,
   GroupedCountResultItem,
@@ -16,6 +17,7 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { DataTypes, Op } from "sequelize";
+import type { ModelHooks } from "sequelize/lib/hooks";
 
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
