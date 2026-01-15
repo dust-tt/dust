@@ -1870,37 +1870,56 @@ export const INTERNAL_MCP_SERVERS = {
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
-  [K in InternalMCPServerNameType]: {
-    id: number;
-    availability: MCPServerAvailability;
-    allowMultipleInstances: boolean;
-    isRestricted:
-      | ((params: {
-          plan: PlanType;
-          featureFlags: WhitelistableFeature[];
-          isDeepDiveDisabled: boolean;
-        }) => boolean)
-      | undefined;
-    isPreview: boolean;
-    // Defines which arguments require per-agent approval for "medium" stake tools.
-    // When a tool has "medium" stake, the user must approve the specific combination
-    // of (agent, tool, argument values) before the tool can execute.
-    tools_arguments_requiring_approval: Record<string, string[]> | undefined;
-    tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
-    timeoutMs: number | undefined;
-    requiresBearerToken?: boolean;
-  } & (
-    | {
-        metadata: ServerMetadata;
-        serverInfo?: InternalMCPServerDefinitionType & { name: K };
-        tools_stakes?: Record<string, MCPToolStakeLevelType>;
-      }
-    | {
-        metadata?: undefined;
-        serverInfo: InternalMCPServerDefinitionType & { name: K };
-        tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
-      }
-  );
+  [K in InternalMCPServerNameType]: InternalMCPServerEntryBase<K>;
+};
+
+type InternalMCPServerEntryCommon = {
+  id: number;
+  availability: MCPServerAvailability;
+  allowMultipleInstances: boolean;
+  isRestricted:
+    | ((params: {
+        plan: PlanType;
+        featureFlags: WhitelistableFeature[];
+        isDeepDiveDisabled: boolean;
+      }) => boolean)
+    | undefined;
+  isPreview: boolean;
+  // Defines which arguments require per-agent approval for "medium" stake tools.
+  // When a tool has "medium" stake, the user must approve the specific combination
+  // of (agent, tool, argument values) before the tool can execute.
+  tools_arguments_requiring_approval: Record<string, string[]> | undefined;
+  tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
+  timeoutMs: number | undefined;
+  requiresBearerToken?: boolean;
+};
+
+type InternalMCPServerEntryWithMetadata<K extends InternalMCPServerNameType> =
+  InternalMCPServerEntryCommon & {
+    metadata: ServerMetadata;
+    serverInfo?: InternalMCPServerDefinitionType & { name: K };
+    tools_stakes?: Record<string, MCPToolStakeLevelType>;
+  };
+
+type InternalMCPServerEntryWithoutMetadata<
+  K extends InternalMCPServerNameType,
+> = InternalMCPServerEntryCommon & {
+  metadata?: undefined;
+  serverInfo: InternalMCPServerDefinitionType & { name: K };
+  tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
+};
+
+type InternalMCPServerEntryBase<K extends InternalMCPServerNameType> =
+  | InternalMCPServerEntryWithMetadata<K>
+  | InternalMCPServerEntryWithoutMetadata<K>;
+
+type InternalMCPServerEntry =
+  InternalMCPServerEntryBase<InternalMCPServerNameType>;
+
+const isServerWithMetadata = (
+  server: InternalMCPServerEntry
+): server is InternalMCPServerEntryWithMetadata<InternalMCPServerNameType> => {
+  return server.metadata !== undefined;
 };
 
 export type InternalMCPServerNameType =
@@ -2025,8 +2044,8 @@ export const getInternalMCPServerNameFromSId = (
 export const getInternalMCPServerIconByName = (
   name: InternalMCPServerNameType
 ): InternalAllowedIconType => {
-  const server = INTERNAL_MCP_SERVERS[name];
-  if ("metadata" in server) {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+  if (isServerWithMetadata(server)) {
     return server.metadata.serverInfo.icon;
   }
   return server.serverInfo.icon;
@@ -2035,8 +2054,8 @@ export const getInternalMCPServerIconByName = (
 export const getInternalMCPServerToolStakes = (
   name: InternalMCPServerNameType
 ): Record<string, MCPToolStakeLevelType> | undefined => {
-  const server = INTERNAL_MCP_SERVERS[name];
-  if ("metadata" in server) {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+  if (isServerWithMetadata(server)) {
     return server.metadata.tools_stakes;
   }
   return server.tools_stakes;
@@ -2045,8 +2064,8 @@ export const getInternalMCPServerToolStakes = (
 export const getInternalMCPServerInfo = (
   name: InternalMCPServerNameType
 ): InternalMCPServerDefinitionType => {
-  const server = INTERNAL_MCP_SERVERS[name];
-  if ("metadata" in server) {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+  if (isServerWithMetadata(server)) {
     return server.metadata.serverInfo;
   }
   return server.serverInfo;
@@ -2090,8 +2109,8 @@ export const isInternalMCPServerOfName = (
 export const getInternalMCPServerMetadata = (
   name: InternalMCPServerNameType
 ): ServerMetadata | undefined => {
-  const server = INTERNAL_MCP_SERVERS[name];
-  if ("metadata" in server) {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+  if (isServerWithMetadata(server)) {
     return server.metadata;
   }
   return undefined;
