@@ -837,10 +837,11 @@ impl Connection {
 
         self.access_token_expiry = refresh.access_token_expiry;
         self.encrypted_access_token = Some(seal_str(&refresh.access_token)?);
-        self.encrypted_refresh_token = match &refresh.refresh_token {
-            Some(t) => Some(seal_str(t)?),
-            None => None,
-        };
+        // Only update refresh_token if the provider returned a new one.
+        // Some providers (like Snowflake) don't return a new refresh_token on every refresh.
+        if let Some(t) = &refresh.refresh_token {
+            self.encrypted_refresh_token = Some(seal_str(t)?);
+        }
         self.encrypted_raw_json = Some(seal_str(&serde_json::to_string(&refresh.raw_json)?)?);
         store.update_connection_secrets(self).await?;
 
