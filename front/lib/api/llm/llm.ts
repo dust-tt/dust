@@ -35,7 +35,10 @@ import type { Content } from "@app/types/assistant/generation";
 import { isTextContent } from "@app/types/assistant/generation";
 
 function contentToText(contents: Content[]): string {
-  return contents.filter(isTextContent).map((c) => c.text).join("\n");
+  return contents
+    .filter(isTextContent)
+    .map((c) => c.text)
+    .join("\n");
 }
 
 function buildDefaultTraceInput(
