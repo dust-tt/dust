@@ -4,6 +4,8 @@ import { google } from "googleapis";
 import { DateTime, Interval } from "luxon";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { defineTool } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   buildUnavailableIntervals,
   computeAvailability,
@@ -15,7 +17,7 @@ import {
   getUserTimezone,
   isGoogleCalendarEvent,
   mergeIntervals,
-} from "@app/lib/actions/mcp_internal_actions/servers/google_calendar/helpers";
+} from "@app/lib/api/actions/servers/google_calendar/helpers";
 import {
   checkAvailabilityMeta,
   createEventMeta,
@@ -25,9 +27,7 @@ import {
   listCalendarsMeta,
   listEventsMeta,
   updateEventMeta,
-} from "@app/lib/actions/mcp_internal_actions/servers/google_calendar/metadata";
-import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { defineTool } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+} from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
