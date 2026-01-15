@@ -138,6 +138,9 @@ function DustMain() {
   const [spaceMembers, setSpaceMembers] = useState<Map<string, string[]>>(
     new Map()
   );
+  const [spacePublicSettings, setSpacePublicSettings] = useState<
+    Map<string, boolean>
+  >(new Map());
 
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -960,21 +963,25 @@ function DustMain() {
   };
 
   // Handle room creation flow
-  const handleRoomNameNext = (name: string, _isPublic: boolean) => {
+  const handleRoomNameNext = (name: string, isPublic: boolean) => {
     // Create the new space directly
-    const newSpace = createSpace(name);
+    const newSpace = createSpace(name, undefined, isPublic);
 
     // Update spaces state
     setSpaces((prev) => [...prev, newSpace]);
+
+    // Store the public setting
+    setSpacePublicSettings((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(newSpace.id, isPublic);
+      return newMap;
+    });
 
     // Track the newly created space ID for auto-selection
     setLastCreatedSpaceId(newSpace.id);
 
     // Close dialog
     setIsCreateRoomDialogOpen(false);
-
-    // Note: isPublic could be used later to set space visibility
-    // Note: Space selection is handled by useEffect that watches for lastCreatedSpaceId
   };
 
   // Handle invite members for a space
@@ -995,6 +1002,36 @@ function DustMain() {
     // Close the invite dialog
     setIsInviteUsersScreenOpen(false);
     setInviteSpaceId(null);
+  };
+
+  // Handle space name update
+  const handleUpdateSpaceName = (spaceId: string, newName: string) => {
+    // For prototype, just log the update
+    console.log("Update space name:", spaceId, newName);
+    // In a real implementation, this would update the space in the backend
+    setSpaces((prev) =>
+      prev.map((space) =>
+        space.id === spaceId ? { ...space, name: newName } : space
+      )
+    );
+  };
+
+  // Handle space public setting update
+  const handleUpdateSpacePublic = (spaceId: string, isPublic: boolean) => {
+    // Update the public setting state
+    setSpacePublicSettings((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(spaceId, isPublic);
+      return newMap;
+    });
+    // Also update the space object
+    setSpaces((prev) =>
+      prev.map((space) =>
+        space.id === spaceId ? { ...space, isPublic } : space
+      )
+    );
+    // For prototype, just log the update
+    console.log("Update space public setting:", spaceId, isPublic);
   };
 
   // Main content
@@ -1028,6 +1065,9 @@ function DustMain() {
           // Keep selectedSpaceId set so the space NavigationItem stays selected
         }}
         onInviteMembers={() => handleInviteMembers(selectedSpaceId)}
+        onUpdateSpaceName={handleUpdateSpaceName}
+        onUpdateSpacePublic={handleUpdateSpacePublic}
+        spacePublicSettings={spacePublicSettings}
       />
     ) : (
       // Priority 3: Show welcome/new conversation view

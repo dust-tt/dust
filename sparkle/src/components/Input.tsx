@@ -20,6 +20,7 @@ export interface InputProps extends Omit<
   value?: string | null;
   isError?: boolean;
   className?: string;
+  containerClassName?: string;
   label?: string;
 }
 
@@ -87,6 +88,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
     {
       className,
+      containerClassName,
       message,
       messageStatus,
       value,
@@ -104,7 +106,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ? "disabled"
           : "default";
     return (
-      <div className="s-flex s-flex-col s-gap-1">
+      <div className={cn("s-flex s-flex-col s-gap-1", containerClassName)}>
         {label && (
           <Label htmlFor={props.name} className="s-mb-1">
             {label}

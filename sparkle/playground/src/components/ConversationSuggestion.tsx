@@ -28,7 +28,7 @@ export function ConversationSuggestion({
         {suggestions.map((suggestion) => (
           <Card
             key={suggestion.id}
-            variant="primary"
+            variant="secondary"
             size="md"
             onClick={suggestion.onClick}
             className="s-cursor-pointer"

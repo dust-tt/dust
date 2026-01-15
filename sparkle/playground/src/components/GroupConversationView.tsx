@@ -1,12 +1,22 @@
 import {
   Avatar,
   BookOpenIcon,
+  Button,
   ChatBubbleLeftRightIcon,
+  CheckBoxWithTextAndDescription,
   ConversationListItem,
-  ContactsUserIcon,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   InformationCircleIcon,
+  Input,
   ListGroup,
+  ListItem,
   ListItemSection,
+  PlusIcon,
   ReplySection,
   SearchInput,
   Tabs,
@@ -16,8 +26,9 @@ import {
   ToolsIcon,
   Cog6ToothIcon,
   UserGroupIcon,
+  Separator,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { getAgentById } from "../data/agents";
 import type { Agent, Conversation, Space, User } from "../data/types";
@@ -34,6 +45,9 @@ interface GroupConversationViewProps {
   onConversationClick?: (conversation: Conversation) => void;
   onInviteMembers?: () => void;
   showToolsAndAboutTabs?: boolean;
+  onUpdateSpaceName?: (spaceId: string, newName: string) => void;
+  onUpdateSpacePublic?: (spaceId: string, isPublic: boolean) => void;
+  spacePublicSettings?: Map<string, boolean>;
 }
 
 // Helper function to get random participants for a conversation
@@ -192,8 +206,23 @@ export function GroupConversationView({
   onConversationClick,
   onInviteMembers,
   showToolsAndAboutTabs = false,
+  onUpdateSpaceName,
+  onUpdateSpacePublic,
+  spacePublicSettings,
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
+
+  // Settings state
+  const [roomName, setRoomName] = useState(space.name);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isPublic, setIsPublic] = useState(
+    spacePublicSettings?.get(space.id) ?? space.isPublic ?? true
+  );
+  const [showNameSaveDialog, setShowNameSaveDialog] = useState(false);
+  const [showPublicToggleDialog, setShowPublicToggleDialog] = useState(false);
+  const [pendingPublicValue, setPendingPublicValue] = useState<boolean | null>(
+    null
+  );
 
   // Generate more conversations with varied dates
   const expandedConversations = useMemo(() => {
@@ -310,6 +339,30 @@ export function GroupConversationView({
   }, [space.id, isNew, spaceMemberIds, users, avatarCount]);
 
   const hasHistory = expandedConversations.length > 0;
+
+  // Handle room name save confirmation
+  const handleNameSaveConfirm = () => {
+    onUpdateSpaceName?.(space.id, roomName);
+    setIsEditingName(false);
+    setShowNameSaveDialog(false);
+  };
+
+  // Handle public toggle confirmation
+  const handlePublicToggleConfirm = () => {
+    if (pendingPublicValue !== null) {
+      setIsPublic(pendingPublicValue);
+      onUpdateSpacePublic?.(space.id, pendingPublicValue);
+      setPendingPublicValue(null);
+    }
+    setShowPublicToggleDialog(false);
+  };
+
+  // Reset room name when space changes
+  useEffect(() => {
+    setRoomName(space.name);
+    setIsEditingName(false);
+    setIsPublic(spacePublicSettings?.get(space.id) ?? space.isPublic ?? true);
+  }, [space.id, space.name, spacePublicSettings, space.isPublic]);
 
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background">
@@ -555,7 +608,178 @@ export function GroupConversationView({
             </div>
           </TabsContent>
         )}
+
+        {/* Settings Tab */}
+        <TabsContent
+          value="settings"
+          className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
+        >
+          <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-py-8">
+            {/* Room Name Section */}
+            <div className="s-flex s-w-full s-flex-col s-gap-3">
+              <h3 className="s-heading-xl">Main Settings</h3>
+              <h3 className="s-heading-sm">Name</h3>
+              <div className="s-flex s-w-full s-min-w-0 s-gap-2">
+                <Input
+                  value={roomName}
+                  onChange={(e) => {
+                    setRoomName(e.target.value);
+                    setIsEditingName(e.target.value !== space.name);
+                  }}
+                  placeholder="Enter room name"
+                  containerClassName="s-flex-1"
+                />
+                {isEditingName && (
+                  <>
+                    <Button
+                      label="Save"
+                      variant="highlight"
+                      onClick={() => setShowNameSaveDialog(true)}
+                    />
+                    <Button
+                      label="Cancel"
+                      variant="outline"
+                      onClick={() => {
+                        setRoomName(space.name);
+                        setIsEditingName(false);
+                      }}
+                    />
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Open to Everyone Section */}
+            <div className="s-flex s-flex-col s-gap-3">
+              <h3 className="s-heading-sm">Room Visibility</h3>
+              <CheckBoxWithTextAndDescription
+                id="is-public-toggle"
+                text="Opened to everyone"
+                description="Anyone in the workspace can find and join the room."
+                checked={isPublic}
+                onCheckedChange={(checked) => {
+                  if (checked !== isPublic) {
+                    setShowPublicToggleDialog(true);
+                    // Store the intended new value temporarily
+                    setPendingPublicValue(checked === true);
+                  }
+                }}
+              />
+            </div>
+            <Separator />
+            {/* Members Section */}
+            <div className="s-flex s-flex-col s-gap-3">
+              <div className="s-flex s-items-center s-gap-2">
+                <h3 className="s-heading-xl s-flex-1">Members</h3>
+                <Button
+                  label="Invite more"
+                  variant="outline"
+                  icon={UserGroupIcon}
+                  onClick={() => onInviteMembers?.()}
+                />
+              </div>
+              <ListGroup>
+                {spaceMemberIds.map((memberId) => {
+                  const user = users.find((u) => u.id === memberId);
+                  if (!user) return null;
+                  return (
+                    <ListItem key={memberId} itemsAlignment="center">
+                      <Avatar
+                        name={user.fullName}
+                        visual={user.portrait}
+                        size="sm"
+                        isRounded={true}
+                      />
+                      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
+                        <span className="s-text-sm s-font-medium s-text-foreground">
+                          {user.fullName}
+                        </span>
+                        <span className="s-text-xs s-text-muted-foreground">
+                          {user.email}
+                        </span>
+                      </div>
+                    </ListItem>
+                  );
+                })}
+              </ListGroup>
+            </div>
+          </div>
+        </TabsContent>
       </Tabs>
+
+      {/* Confirmation Dialogs */}
+      {/* Name Save Dialog */}
+      <Dialog
+        open={showNameSaveDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowNameSaveDialog(false);
+          }
+        }}
+      >
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Change name to "{roomName}"?</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            This updates the name for everyone and may impact Agents set to post
+            here.
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => setShowNameSaveDialog(false),
+            }}
+            rightButtonProps={{
+              label: "Rename",
+              variant: "warning",
+              onClick: handleNameSaveConfirm,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Public Toggle Dialog */}
+      <Dialog
+        open={showPublicToggleDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowPublicToggleDialog(false);
+            setPendingPublicValue(null);
+          }
+        }}
+      >
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>
+              {pendingPublicValue === true
+                ? "Switch to public?"
+                : "Switch to restricted?"}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            {pendingPublicValue === true
+              ? "Everyone in the workspace will be able to see and join this room."
+              : "Access will be limited to invited members only."}
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => {
+                setShowPublicToggleDialog(false);
+                setPendingPublicValue(null);
+              },
+            }}
+            rightButtonProps={{
+              label: "Confirm",
+              variant: "warning",
+              onClick: handlePublicToggleConfirm,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
