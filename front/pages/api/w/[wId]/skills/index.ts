@@ -107,7 +107,7 @@ async function handler(
       }
       const skillStatus = statusValidation.right;
 
-      const skills = await SkillResource.listSkills(auth, {
+      const skills = await SkillResource.listByWorkspace(auth, {
         status: skillStatus,
         globalSpaceOnly: globalSpaceOnly === "true",
       });

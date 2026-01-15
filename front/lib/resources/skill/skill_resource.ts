@@ -666,21 +666,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  static async listSkills(
+  static async listByWorkspace(
     auth: Authenticator,
     {
       status = "active",
       limit,
       globalSpaceOnly,
+      onlyCustom,
     }: {
       status?: SkillStatus | SkillStatus[];
       limit?: number;
       globalSpaceOnly?: boolean;
+      onlyCustom?: boolean;
     } = {}
   ): Promise<SkillResource[]> {
     const skills = await this.baseFetch(auth, {
       where: { status },
       ...(limit ? { limit } : {}),
+      onlyCustom,
     });
 
     if (globalSpaceOnly) {
