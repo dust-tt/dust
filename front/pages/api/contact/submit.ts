@@ -88,12 +88,15 @@ export default async function handler(
   }
 
   // Determine if lead is qualified based on self-reported headcount (>100 employees)
-  const isQualified = formData.company_headcount_form !== SMALL_COMPANY_HEADCOUNT;
+  const isQualified =
+    formData.company_headcount_form !== SMALL_COMPANY_HEADCOUNT;
 
   // Extract IP address from request headers
   const forwardedFor = req.headers["x-forwarded-for"];
   const ipAddress =
-    (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor)?.split(",")[0]?.trim() ??
+    (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor)
+      ?.split(",")[0]
+      ?.trim() ??
     req.socket.remoteAddress ??
     undefined;
 
@@ -109,10 +112,7 @@ export default async function handler(
   });
 
   if (hubspotResult.isErr()) {
-    logger.error(
-      { error: hubspotResult.error },
-      "Failed to submit to HubSpot"
-    );
+    logger.error({ error: hubspotResult.error }, "Failed to submit to HubSpot");
     return res.status(500).json({
       success: false,
       isQualified: false,

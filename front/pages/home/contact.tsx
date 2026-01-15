@@ -60,42 +60,42 @@ export default function Contact() {
 
   return (
     <UTMPageWrapper>
-        <PageMetadata
-          title="Contact Dust: Schedule a Demo for AI Agents"
-          description="Get in touch with the Dust team. Schedule a demo call to learn how AI agents can help address your team's challenges and improve productivity."
-          pathname={router.asPath}
+      <PageMetadata
+        title="Contact Dust: Schedule a Demo for AI Agents"
+        description="Get in touch with the Dust team. Schedule a demo call to learn how AI agents can help address your team's challenges and improve productivity."
+        pathname={router.asPath}
+      />
+      <div className="flex w-full flex-col justify-center gap-12">
+        <HeaderContentBlock
+          title="Contact Dust"
+          hasCTA={false}
+          subtitle={subtitle}
         />
-        <div className="flex w-full flex-col justify-center gap-12">
-          <HeaderContentBlock
-            title="Contact Dust"
-            hasCTA={false}
-            subtitle={subtitle}
-          />
-          <Grid>
-            <div className="col-span-12 sm:col-span-12 md:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">
-              {testThankYou ? (
-                <ContactFormThankYou
-                  firstName="Alban"
-                  lastName="Music"
-                  email="alban@dust.tt"
-                  phone="+33612345678"
-                  language="I would like my meeting to be in English 🇬🇧🇺🇸"
-                  headquartersRegion="Europe"
-                  companyHeadcount="101-500"
-                  howToUseDust="Testing the Default.com integration"
-                  isQualified={true}
-                />
-              ) : (
-                <ContactForm
-                  prefillEmail={prefillEmail}
-                  prefillHeadcount={prefillHeadcount}
-                  prefillRegion={prefillRegion}
-                />
-              )}
-            </div>
-          </Grid>
-          <TrustedBy />
-        </div>
+        <Grid>
+          <div className="col-span-12 sm:col-span-12 md:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">
+            {testThankYou ? (
+              <ContactFormThankYou
+                firstName="Alban"
+                lastName="Music"
+                email="alban@dust.tt"
+                phone="+33612345678"
+                language="I would like my meeting to be in English 🇬🇧🇺🇸"
+                headquartersRegion="Europe"
+                companyHeadcount="101-500"
+                howToUseDust="Testing the Default.com integration"
+                isQualified={true}
+              />
+            ) : (
+              <ContactForm
+                prefillEmail={prefillEmail}
+                prefillHeadcount={prefillHeadcount}
+                prefillRegion={prefillRegion}
+              />
+            )}
+          </div>
+        </Grid>
+        <TrustedBy />
+      </div>
     </UTMPageWrapper>
   );
 }
