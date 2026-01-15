@@ -359,7 +359,7 @@ export function AutoJoinToggle({
                         : undefined
                 }
                 disabled={
-                  !domains.length || owner.ssoEnforced || !hasVerifiedDomains
+                  !domains.length || !!owner.ssoEnforced || !hasVerifiedDomains
                 }
                 onClick={() => {
                   if (isUpgraded(plan)) {
@@ -403,7 +403,7 @@ export function AutoJoinToggle({
                         : undefined
                 }
                 disabled={
-                  !domains.length || owner.ssoEnforced || !hasVerifiedDomains
+                  !domains.length || !!owner.ssoEnforced || !hasVerifiedDomains
                 }
                 onClick={() => {
                   if (isUpgraded(plan)) {
