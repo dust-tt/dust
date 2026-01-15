@@ -300,7 +300,7 @@ echo ""
 echo "Next steps:"
 echo "  1. Create config.env:   cp ~/.dust-hive/config.env.template ~/.dust-hive/config.env"
 echo "                          (edit with your secrets)"
-echo "  2. Start services:      cd ~/dust && dust-hive up --no-sync"
+echo "  2. Start services:      cd ~/dust && dust-hive up --skip-sync"
 echo "  3. Create environment:  dust-hive spawn <name>"
 echo ""
 `;
@@ -315,7 +315,7 @@ echo ""
   console.log("\nNext steps:");
   console.log("  1. SSH to remote and create config.env with your secrets");
   console.log(
-    `  2. Run: dust-hive remote exec ${remoteName} "cd ~/dust && dust-hive up --no-sync"`
+    `  2. Run: dust-hive remote exec ${remoteName} "cd ~/dust && dust-hive up --skip-sync"`
   );
   console.log(`  3. Run: dust-hive remote spawn ${remoteName} --name <env-name>`);
 
