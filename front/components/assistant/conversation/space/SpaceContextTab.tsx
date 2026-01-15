@@ -1,10 +1,9 @@
 import { Button, CloudArrowUpIcon, EmptyCTA } from "@dust-tt/sparkle";
 import React, { useRef } from "react";
 
-import { SpaceDataSourceViewContentList } from "@app/components/spaces/SpaceDataSourceViewContentList";
+import { SpaceContextFileList } from "@app/components/assistant/conversation/space/SpaceContextFileList";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import { PROJECT_CONTEXT_FOLDER_ID } from "@app/lib/api/projects/constants";
-import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
+import { useProjectFiles } from "@app/lib/swr/projects";
 import type { PlanType, SpaceType, WorkspaceType } from "@app/types";
 import { getSupportedNonImageFileExtensions } from "@app/types";
 
@@ -18,28 +17,13 @@ interface SpaceContextTabProps {
   canWriteInSpace: boolean;
 }
 
-export function SpaceContextTab({
-  owner,
-  space,
-  systemSpace,
-  plan,
-  isAdmin,
-  canReadInSpace,
-  canWriteInSpace,
-}: SpaceContextTabProps) {
+export function SpaceContextTab({ owner, space }: SpaceContextTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { spaceDataSourceViews, isSpaceDataSourceViewsLoading } =
-    useSpaceDataSourceViews({
-      workspaceId: owner.sId,
-      spaceId: space.sId,
-      category: "managed",
-    });
 
-  // Find the project context data source view
-  const projectDataSourceView =
-    spaceDataSourceViews.find(
-      (dsv) => dsv.dataSource.connectorProvider === "dust_project"
-    ) ?? null;
+  const { projectFiles, mutateProjectFiles } = useProjectFiles({
+    owner,
+    projectId: space.sId,
+  });
 
   const projectFileUpload = useFileUploaderService({
     owner,
@@ -59,17 +43,11 @@ export function SpaceContextTab({
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+    // Refresh the file list after upload
+    void mutateProjectFiles();
   };
 
-  if (isSpaceDataSourceViewsLoading) {
-    return (
-      <div className="flex w-full items-center justify-center p-8">
-        <div className="text-center text-muted-foreground dark:text-muted-foreground-night">
-          Loading project context...
-        </div>
-      </div>
-    );
-  }
+  const hasFiles = projectFiles.length > 0;
 
   return (
     <>
@@ -83,7 +61,7 @@ export function SpaceContextTab({
           onChange={handleFileChange}
         />
       </div>
-      {projectDataSourceView ? (
+      {hasFiles ? (
         <>
           <div className="my-2 flex justify-end">
             <Button
@@ -98,20 +76,8 @@ export function SpaceContextTab({
               disabled={projectFileUpload.isProcessingFiles}
             />
           </div>
-          <SpaceDataSourceViewContentList
-            canReadInSpace={canReadInSpace}
-            canWriteInSpace={canWriteInSpace}
-            connector={null}
-            dataSourceView={projectDataSourceView}
-            isAdmin={isAdmin}
-            onSelect={() => {}}
-            owner={owner}
-            plan={plan}
-            space={space}
-            parentId={PROJECT_CONTEXT_FOLDER_ID}
-            systemSpace={systemSpace}
-            useCaseForDocument={"project_context"}
-          />
+
+          <SpaceContextFileList owner={owner} spaceId={space.sId} />
         </>
       ) : (
         <div className="flex w-full items-center justify-center p-8">
