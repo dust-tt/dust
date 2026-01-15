@@ -1,7 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { submitToHubSpotForm } from "@app/lib/api/hubspot";
-import type { ContactSubmitResponse } from "@app/lib/api/hubspot/contactFormSchema";
+import type {
+  ContactFormData,
+  ContactSubmitResponse,
+  TrackingParams,
+} from "@app/lib/api/hubspot/contactFormSchema";
 import {
   ContactFormSchema,
   TrackingParamsSchema,
@@ -9,12 +13,36 @@ import {
 import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
-import { sendUserOperationMessage } from "@app/types";
+import { isString, sendUserOperationMessage } from "@app/types";
 
 const GTM_LEADS_SLACK_CHANNEL_ID = "C0A1XKES0JY";
 
 // Headcount value for small companies (<=100 employees) - not qualified for enterprise demo
 const SMALL_COMPANY_HEADCOUNT = "1-100";
+
+function sendQualifiedLeadSlackNotification(
+  formData: ContactFormData,
+  tracking: TrackingParams
+): void {
+  const enrichmentDetails = [
+    `:tada: *Qualified Lead from Contact Form*`,
+    `*Email:* ${formData.email}`,
+    `*Name:* ${formData.firstname ?? ""} ${formData.lastname ?? ""}`.trim(),
+    `*Phone:* ${formData.mobilephone ?? "Not provided"}`,
+    `*Language:* ${formData.language}`,
+    `*Headquarters Region:* ${formData.headquarters_region ?? "Not provided"}`,
+    `*Company Headcount:* ${formData.company_headcount_form}`,
+    `*How they want to use Dust:* ${formData.landing_use_cases ?? "Not provided"}`,
+    `*UTM Source:* ${tracking.utm_source ?? "Not tracked"}`,
+    `*GCLID:* ${tracking.gclid ?? "Not tracked"}`,
+  ].join("\n");
+
+  void sendUserOperationMessage({
+    message: enrichmentDetails,
+    logger,
+    channel: GTM_LEADS_SLACK_CHANNEL_ID,
+  });
+}
 
 export default async function handler(
   req: NextApiRequest,
@@ -40,9 +68,9 @@ export default async function handler(
 
   const formData = parseResult.data;
   const tracking = TrackingParamsSchema.parse(req.body.tracking ?? {});
-  const pageUri = typeof req.body.pageUri === "string" ? req.body.pageUri : "";
-  const pageName =
-    typeof req.body.pageName === "string" ? req.body.pageName : "Contact Dust";
+  const { pageUri: rawPageUri, pageName: rawPageName } = req.body;
+  const pageUri = isString(rawPageUri) ? rawPageUri : "";
+  const pageName = isString(rawPageName) ? rawPageName : "Contact Dust";
 
   // Extract and validate domain
   const domain = extractDomain(formData.email);
@@ -104,24 +132,7 @@ export default async function handler(
 
   // Send Slack notification for qualified leads
   if (isQualified) {
-    const enrichmentDetails = [
-      `:tada: *Qualified Lead from Contact Form*`,
-      `*Email:* ${formData.email}`,
-      `*Name:* ${formData.firstname ?? ""} ${formData.lastname ?? ""}`.trim(),
-      `*Phone:* ${formData.mobilephone ?? "Not provided"}`,
-      `*Language:* ${formData.language}`,
-      `*Headquarters Region:* ${formData.headquarters_region ?? "Not provided"}`,
-      `*Company Headcount:* ${formData.company_headcount_form}`,
-      `*How they want to use Dust:* ${formData.landing_use_cases ?? "Not provided"}`,
-      `*UTM Source:* ${tracking.utm_source ?? "Not tracked"}`,
-      `*GCLID:* ${tracking.gclid ?? "Not tracked"}`,
-    ].join("\n");
-
-    void sendUserOperationMessage({
-      message: enrichmentDetails,
-      logger,
-      channel: GTM_LEADS_SLACK_CHANNEL_ID,
-    });
+    sendQualifiedLeadSlackNotification(formData, tracking);
   }
 
   return res.status(200).json({

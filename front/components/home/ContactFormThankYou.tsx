@@ -1,6 +1,8 @@
 import { CheckCircleIcon } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
+import { useFormContext } from "react-hook-form";
 
+import type { ContactFormData } from "@app/lib/api/hubspot/contactFormSchema";
 import { FIELD_DEFINITIONS } from "@app/lib/api/hubspot/contactFormSchema";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 import logger from "@app/logger/logger";
@@ -47,28 +49,22 @@ function toDefaultQuestions(fields: typeof FIELD_DEFINITIONS) {
 }
 
 interface ContactFormThankYouProps {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  language: string;
-  headquartersRegion: string;
-  companyHeadcount: string;
-  howToUseDust: string;
   isQualified: boolean;
 }
 
-export function ContactFormThankYou({
-  firstName,
-  lastName,
-  email,
-  phone,
-  language,
-  headquartersRegion,
-  companyHeadcount,
-  howToUseDust,
-  isQualified,
-}: ContactFormThankYouProps) {
+export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
+  const { getValues } = useFormContext<ContactFormData>();
+  const formValues = getValues();
+
+  const firstName = formValues.firstname ?? "";
+  const lastName = formValues.lastname ?? "";
+  const email = formValues.email ?? "";
+  const phone = formValues.mobilephone ?? "";
+  const language = formValues.language ?? "";
+  const headquartersRegion = formValues.headquarters_region ?? "";
+  const companyHeadcount = formValues.company_headcount_form ?? "";
+  const howToUseDust = formValues.landing_use_cases ?? "";
+
   const hasTrackedRef = useRef(false);
   const defaultTriggeredRef = useRef(false);
 
@@ -77,22 +73,18 @@ export function ContactFormThankYou({
     if (isQualified && !hasTrackedRef.current) {
       hasTrackedRef.current = true;
 
-      const timeoutId = setTimeout(() => {
-        trackEvent({
-          area: TRACKING_AREAS.CONTACT,
-          object: "contact_form",
-          action: "qualified_lead",
+      trackEvent({
+        area: TRACKING_AREAS.CONTACT,
+        object: "contact_form",
+        action: "qualified_lead",
+      });
+
+      if (typeof window !== "undefined") {
+        window.dataLayer = window.dataLayer ?? [];
+        window.dataLayer.push({
+          event: "contact_form_qualified_lead",
         });
-
-        if (typeof window !== "undefined") {
-          window.dataLayer = window.dataLayer ?? [];
-          window.dataLayer.push({
-            event: "contact_form_qualified_lead",
-          });
-        }
-      }, 1500);
-
-      return () => clearTimeout(timeoutId);
+      }
     }
   }, [isQualified]);
 
@@ -109,8 +101,12 @@ export function ContactFormThankYou({
     script.async = true;
 
     script.onload = () => {
-      // Wait a moment for the SDK to initialize
-      setTimeout(() => {
+      // Poll for SDK availability with max retries
+      const maxRetries = 10;
+      const pollIntervalMs = 100;
+      let attempts = 0;
+
+      const trySubmit = () => {
         if (window.DefaultSDK) {
           window.DefaultSDK.submit({
             form_id: DEFAULT_FORM_ID,
@@ -137,10 +133,15 @@ export function ContactFormThankYou({
               });
             },
           });
+        } else if (attempts < maxRetries) {
+          attempts++;
+          setTimeout(trySubmit, pollIntervalMs);
         } else {
-          logger.error("[Default.com] SDK not found on window");
+          logger.error("[Default.com] SDK not found after max retries");
         }
-      }, 500);
+      };
+
+      trySubmit();
     };
 
     script.onerror = (error) => {

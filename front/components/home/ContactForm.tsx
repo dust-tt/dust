@@ -12,7 +12,7 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { useController, useForm, useWatch } from "react-hook-form";
+import { useController, useForm } from "react-hook-form";
 
 import { ContactFormThankYou } from "@app/components/home/ContactFormThankYou";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
@@ -30,6 +30,7 @@ import {
 import { clientFetch } from "@app/lib/egress/client";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
+import { normalizeError } from "@app/types";
 
 interface ContactFormProps {
   prefillEmail?: string;
@@ -112,8 +113,9 @@ function useContactFormSubmit() {
       window.scrollTo({ top: 0, behavior: "smooth" });
 
       setSubmitResult(result);
-    } catch {
-      setSubmitError("An error occurred. Please try again.");
+    } catch (err) {
+      const error = normalizeError(err);
+      setSubmitError(error.message || "An error occurred. Please try again.");
     }
   };
 
@@ -196,151 +198,135 @@ export function ContactForm({
     mode: "onBlur",
   });
 
-  // Watch form values for the thank you page
-  const formValues = useWatch({ control: form.control });
-
-  // Show thank you page after successful submission
-  if (submitResult) {
-    return (
-      <ContactFormThankYou
-        firstName={formValues.firstname ?? ""}
-        lastName={formValues.lastname ?? ""}
-        email={formValues.email ?? ""}
-        phone={formValues.mobilephone ?? ""}
-        language={formValues.language ?? ""}
-        headquartersRegion={formValues.headquarters_region ?? ""}
-        companyHeadcount={formValues.company_headcount_form ?? ""}
-        howToUseDust={formValues.landing_use_cases ?? ""}
-        isQualified={submitResult.isQualified}
-      />
-    );
-  }
-
   const { isSubmitting, errors } = form.formState;
 
   return (
     <FormProvider form={form} onSubmit={handleSubmit}>
-      <div id="dust-contact-form" className="flex flex-col gap-6">
-        {/* First Name / Last Name */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <Input
-            label="First Name"
-            {...form.register("firstname")}
-            placeholder=""
-            isError={!!errors.firstname}
-            message={errors.firstname?.message}
-          />
-          <Input
-            label="Last Name"
-            {...form.register("lastname")}
-            placeholder=""
-            isError={!!errors.lastname}
-            message={errors.lastname?.message}
-          />
-        </div>
-
-        {/* Work Email */}
-        <div className="flex flex-col gap-2">
-          <Label>
-            Work Email<span className="text-red-500">*</span>
-          </Label>
-          <Input
-            {...form.register("email")}
-            placeholder=""
-            type="email"
-            isError={!!errors.email}
-            message={errors.email?.message}
-            messageStatus={errors.email ? "error" : undefined}
-          />
-        </div>
-
-        {/* Phone Number */}
-        <Input
-          label="Phone Number"
-          {...form.register("mobilephone")}
-          placeholder="+1 (555) 000-0000"
-          type="tel"
-          isError={!!errors.mobilephone}
-          message={errors.mobilephone?.message}
-        />
-
-        {/* Language */}
-        <DropdownField
-          name="language"
-          label="Language you'd like to use"
-          options={LANGUAGE_OPTIONS}
-          placeholder="Select language"
-          required
-        />
-
-        {/* Headquarters Region */}
-        <DropdownField
-          name="headquarters_region"
-          label="Headquarters Region"
-          options={HEADQUARTERS_REGION_OPTIONS}
-          placeholder="Select region"
-        />
-
-        {/* Company Headcount */}
-        <DropdownField
-          name="company_headcount_form"
-          label="Company Headcount"
-          options={COMPANY_HEADCOUNT_FORM_OPTIONS}
-          placeholder="Select headcount"
-          required
-        />
-
-        {/* How do you want to use Dust? */}
-        <div className="flex flex-col gap-2">
-          <Label>How do you want to use Dust?</Label>
-          <TextArea
-            {...form.register("landing_use_cases")}
-            rows={4}
-            placeholder=""
-          />
-        </div>
-
-        {/* Disclaimer */}
-        <div className="text-xs text-muted-foreground">
-          <p className="mb-2">
-            Dust uses your contact information to communicate with you about our
-            products and services. You may unsubscribe at any time. Please
-            review our{" "}
-            <a
-              href="https://dust.tt/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-foreground"
-            >
-              Privacy Policy
-            </a>{" "}
-            to learn about our privacy practices, data protection measures, and
-            unsubscribe procedures.
-          </p>
-          <p>
-            Dust serves certain geographic regions and customer segments
-            exclusively through our certified partner network. When you submit
-            an inquiry from these regions, your contact information will be
-            directed to the appropriate authorized partner who will handle your
-            evaluation, purchase, and implementation.
-          </p>
-        </div>
-
-        {submitError && (
-          <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">
-            {submitError}
+      {submitResult ? (
+        <ContactFormThankYou isQualified={submitResult.isQualified} />
+      ) : (
+        <div id="dust-contact-form" className="flex flex-col gap-6">
+          {/* First Name / Last Name */}
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <Input
+              label="First Name"
+              {...form.register("firstname")}
+              placeholder=""
+              isError={!!errors.firstname}
+              message={errors.firstname?.message}
+            />
+            <Input
+              label="Last Name"
+              {...form.register("lastname")}
+              placeholder=""
+              isError={!!errors.lastname}
+              message={errors.lastname?.message}
+            />
           </div>
-        )}
 
-        <Button
-          type="submit"
-          label={isSubmitting ? "Submitting..." : "Submit"}
-          variant="primary"
-          size="md"
-          disabled={isSubmitting}
-          icon={isSubmitting ? Spinner : undefined}
-        />
-      </div>
+          {/* Work Email */}
+          <div className="flex flex-col gap-2">
+            <Label>
+              Work Email<span className="text-red-500">*</span>
+            </Label>
+            <Input
+              {...form.register("email")}
+              placeholder=""
+              type="email"
+              isError={!!errors.email}
+              message={errors.email?.message}
+              messageStatus={errors.email ? "error" : undefined}
+            />
+          </div>
+
+          {/* Phone Number */}
+          <Input
+            label="Phone Number"
+            {...form.register("mobilephone")}
+            placeholder="+1 (555) 000-0000"
+            type="tel"
+            isError={!!errors.mobilephone}
+            message={errors.mobilephone?.message}
+          />
+
+          {/* Language */}
+          <DropdownField
+            name="language"
+            label="Language you'd like to use"
+            options={LANGUAGE_OPTIONS}
+            placeholder="Select language"
+            required
+          />
+
+          {/* Headquarters Region */}
+          <DropdownField
+            name="headquarters_region"
+            label="Headquarters Region"
+            options={HEADQUARTERS_REGION_OPTIONS}
+            placeholder="Select region"
+          />
+
+          {/* Company Headcount */}
+          <DropdownField
+            name="company_headcount_form"
+            label="Company Headcount"
+            options={COMPANY_HEADCOUNT_FORM_OPTIONS}
+            placeholder="Select headcount"
+            required
+          />
+
+          {/* How do you want to use Dust? */}
+          <div className="flex flex-col gap-2">
+            <Label>How do you want to use Dust?</Label>
+            <TextArea
+              {...form.register("landing_use_cases")}
+              rows={4}
+              placeholder=""
+            />
+          </div>
+
+          {/* Disclaimer */}
+          <div className="text-xs text-muted-foreground">
+            <p className="mb-2">
+              Dust uses your contact information to communicate with you about
+              our products and services. You may unsubscribe at any time. Please
+              review our{" "}
+              <a
+                href="https://dust.tt/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground"
+              >
+                Privacy Policy
+              </a>{" "}
+              to learn about our privacy practices, data protection measures,
+              and unsubscribe procedures.
+            </p>
+            <p>
+              Dust serves certain geographic regions and customer segments
+              exclusively through our certified partner network. When you submit
+              an inquiry from these regions, your contact information will be
+              directed to the appropriate authorized partner who will handle
+              your evaluation, purchase, and implementation.
+            </p>
+          </div>
+
+          {submitError && (
+            <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">
+              {submitError}
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            label={isSubmitting ? "Submitting..." : "Submit"}
+            variant="primary"
+            size="md"
+            disabled={isSubmitting}
+            icon={isSubmitting ? Spinner : undefined}
+          />
+        </div>
+      )}
     </FormProvider>
   );
 }
