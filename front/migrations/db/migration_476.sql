@@ -1,6 +1,6 @@
 -- Migration: Create project_metadata table
 CREATE TABLE "project_metadata" (
-    "id" SERIAL PRIMARY KEY,
+    "id" BIGSERIAL PRIMARY KEY,
     "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     "workspaceId" INTEGER NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
