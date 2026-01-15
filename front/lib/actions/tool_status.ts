@@ -2,7 +2,6 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
-import type { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentMessageType } from "@app/types";
 import { assertNever, isNumberOrBoolean, isString } from "@app/types";
 
@@ -43,7 +42,6 @@ export async function getExecutionStatusFromConfig(
 
       if (user) {
         const userHasAlwaysApproved = await hasUserAlwaysApprovedTool(auth, {
-          user,
           mcpServerId: actionConfiguration.toolServerId,
           functionCallName: actionConfiguration.name,
         });
@@ -91,16 +89,17 @@ export async function getExecutionStatusFromConfig(
   }
 }
 
+const getToolsValidationKey = (mcpServerId: string) =>
+  `toolsValidations:${mcpServerId}`;
+
 // The function call name is scoped by MCP servers so that the same tool name on different servers
 // does not conflict, which is why we use it here instead of the tool name.
 export async function setUserAlwaysApprovedTool(
   auth: Authenticator,
   {
-    user,
     mcpServerId,
     functionCallName,
   }: {
-    user: UserResource;
     mcpServerId: string;
     functionCallName: string;
   }
@@ -111,6 +110,13 @@ export async function setUserAlwaysApprovedTool(
   if (!mcpServerId) {
     throw new Error("mcpServerId is required");
   }
+
+  const user = auth.getNonNullableUser();
+
+  await user.upsertMetadataArray(
+    getToolsValidationKey(mcpServerId),
+    functionCallName
+  );
 
   await user.createToolApproval(auth, {
     mcpServerId,
@@ -123,11 +129,9 @@ export async function setUserAlwaysApprovedTool(
 export async function hasUserAlwaysApprovedTool(
   auth: Authenticator,
   {
-    user,
     mcpServerId,
     functionCallName,
   }: {
-    user: UserResource;
     mcpServerId: string;
     functionCallName: string;
   }
@@ -140,12 +144,21 @@ export async function hasUserAlwaysApprovedTool(
     throw new Error("functionCallName is required");
   }
 
+  const user = auth.getNonNullableUser();
+
+  const metadata = await user.getMetadataAsArray(
+    getToolsValidationKey(mcpServerId)
+  );
+
+  return metadata.includes(functionCallName) || metadata.includes("*");
+  /**
   return user.hasApprovedTool(auth, {
     mcpServerId,
     toolName: functionCallName,
     agentId: null,
     argsAndValues: null,
   });
+  */
 }
 
 // Extracts the values of the approval-requiring arguments from the tool inputs,

@@ -196,7 +196,6 @@ export async function validateAction(
     switch (action.toolConfiguration.permission) {
       case "low":
         await setUserAlwaysApprovedTool(auth, {
-          user,
           mcpServerId: action.toolConfiguration.toolServerId,
           functionCallName: action.functionCallName,
         });

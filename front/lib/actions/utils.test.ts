@@ -33,7 +33,6 @@ describe("Tool validation utilities", () => {
       const functionCallName = `test-server${TOOL_NAME_SEPARATOR}test-tool`;
 
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName,
       });
@@ -55,13 +54,11 @@ describe("Tool validation utilities", () => {
       const functionCallName2 = `${mcpServerName}${TOOL_NAME_SEPARATOR}tool-2`;
 
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: functionCallName1,
       });
 
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: functionCallName2,
       });
@@ -87,13 +84,11 @@ describe("Tool validation utilities", () => {
       const functionCallName = `duplicate-server${TOOL_NAME_SEPARATOR}duplicate-tool`;
 
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName,
       });
 
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName,
       });
@@ -113,7 +108,6 @@ describe("Tool validation utilities", () => {
       const functionCallName = `server-with@special#chars${TOOL_NAME_SEPARATOR}tool-with@special#chars`;
 
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName,
       });
@@ -133,7 +127,6 @@ describe("Tool validation utilities", () => {
 
       await expect(
         setUserAlwaysApprovedTool(auth, {
-          user,
           mcpServerId,
           functionCallName,
         })
@@ -146,7 +139,6 @@ describe("Tool validation utilities", () => {
 
       await expect(
         setUserAlwaysApprovedTool(auth, {
-          user,
           mcpServerId,
           functionCallName,
         })
@@ -161,23 +153,19 @@ describe("Tool validation utilities", () => {
 
       // First add some tools
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: "other-tool",
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName,
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: "another-tool",
       });
 
       const result = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName,
       });
@@ -191,13 +179,11 @@ describe("Tool validation utilities", () => {
 
       // Add wildcard approval
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: "*",
       });
 
       const result = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName,
       });
@@ -212,18 +198,15 @@ describe("Tool validation utilities", () => {
 
       // Add some other tools but not the one we're looking for
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: `${mcpServerName}${TOOL_NAME_SEPARATOR}other-tool`,
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: `${mcpServerName}${TOOL_NAME_SEPARATOR}another-tool`,
       });
 
       const result = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName,
       });
@@ -236,7 +219,6 @@ describe("Tool validation utilities", () => {
       const functionCallName = `test-server${TOOL_NAME_SEPARATOR}test-tool`;
 
       const result = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName,
       });
@@ -250,28 +232,23 @@ describe("Tool validation utilities", () => {
 
       // Add similar tool names
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: `server${TOOL_NAME_SEPARATOR}tool-prefix`,
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: `server${TOOL_NAME_SEPARATOR}prefix-tool`,
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName, // Exact match
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: `server${TOOL_NAME_SEPARATOR}tool-suffix`,
       });
 
       const result = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName,
       });
@@ -285,23 +262,19 @@ describe("Tool validation utilities", () => {
 
       // Add similar tool names but no exact match
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: `server${TOOL_NAME_SEPARATOR}tool-prefix`,
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: `server${TOOL_NAME_SEPARATOR}prefix-tool`,
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: `server${TOOL_NAME_SEPARATOR}my-tool-name`,
       });
 
       const result = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName,
       });
@@ -314,23 +287,19 @@ describe("Tool validation utilities", () => {
       const functionCallName = `server${TOOL_NAME_SEPARATOR}tool-with@special#chars`;
 
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: `server${TOOL_NAME_SEPARATOR}regular-tool`,
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName,
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: `server${TOOL_NAME_SEPARATOR}another-tool`,
       });
 
       const result = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName,
       });
@@ -346,19 +315,16 @@ describe("Tool validation utilities", () => {
 
       // Approve function call for the first server only
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId: mcpServerId1,
         functionCallName,
       });
 
       const result1 = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId: mcpServerId1,
         functionCallName,
       });
 
       const result2 = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId: mcpServerId2,
         functionCallName,
       });
@@ -375,23 +341,19 @@ describe("Tool validation utilities", () => {
 
       // Add both wildcard and specific function call
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: otherFunctionCallName,
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: "*",
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: specificFunctionCallName,
       });
 
       const result = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: specificFunctionCallName,
       });
@@ -405,23 +367,19 @@ describe("Tool validation utilities", () => {
       const expectedFunctionCallName = `${serverName}${TOOL_NAME_SEPARATOR}MyTool`;
 
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: `${serverName}${TOOL_NAME_SEPARATOR}mytool`,
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: `${serverName}${TOOL_NAME_SEPARATOR}MYTOOL`,
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: expectedFunctionCallName, // Exact case match
       });
 
       const result = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: expectedFunctionCallName,
       });
@@ -435,23 +393,19 @@ describe("Tool validation utilities", () => {
       const expectedFunctionCallName = `${serverName}${TOOL_NAME_SEPARATOR}MyTool`;
 
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: `${serverName}${TOOL_NAME_SEPARATOR}mytool`,
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: `${serverName}${TOOL_NAME_SEPARATOR}MYTOOL`,
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: `${serverName}${TOOL_NAME_SEPARATOR}myTool`,
       });
 
       const result = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: expectedFunctionCallName,
       });
@@ -468,14 +422,12 @@ describe("Tool validation utilities", () => {
 
       // First, set the function call as approved
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName,
       });
 
       // Then check if it's approved
       const result = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName,
       });
@@ -492,29 +444,24 @@ describe("Tool validation utilities", () => {
 
       // Set multiple function calls as approved
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: functionCallName1,
       });
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: functionCallName2,
       });
 
       // Check each function call
       const result1 = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: functionCallName1,
       });
       const result2 = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: functionCallName2,
       });
       const result3 = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId,
         functionCallName: functionCallName3,
       });
@@ -540,7 +487,6 @@ describe("Tool validation utilities", () => {
       // Approve all function calls for the first server
       for (const functionCallName of server1FunctionCallNames) {
         await setUserAlwaysApprovedTool(auth, {
-          user,
           mcpServerId: mcpServerId1,
           functionCallName,
         });
@@ -548,14 +494,12 @@ describe("Tool validation utilities", () => {
 
       // Approve only first function call for the second server
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId: mcpServerId2,
         functionCallName: server2FunctionCallNames[0],
       });
 
       // Add wildcard for the second server
       await setUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId: mcpServerId2,
         functionCallName: "*",
       });
@@ -563,7 +507,6 @@ describe("Tool validation utilities", () => {
       // Test first server - all function calls should be approved individually
       for (const functionCallName of server1FunctionCallNames) {
         const result = await hasUserAlwaysApprovedTool(auth, {
-          user,
           mcpServerId: mcpServerId1,
           functionCallName,
         });
@@ -573,7 +516,6 @@ describe("Tool validation utilities", () => {
       // Test second server - all function calls should be approved due to wildcard
       for (const functionCallName of server2FunctionCallNames) {
         const result = await hasUserAlwaysApprovedTool(auth, {
-          user,
           mcpServerId: mcpServerId2,
           functionCallName,
         });
@@ -583,7 +525,6 @@ describe("Tool validation utilities", () => {
       // Test unknown function call on the second server - should be approved due to wildcard
       const unknownFunctionCallName = `${serverName2}${TOOL_NAME_SEPARATOR}unknown-tool`;
       const unknownResult = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId: mcpServerId2,
         functionCallName: unknownFunctionCallName,
       });
@@ -591,7 +532,6 @@ describe("Tool validation utilities", () => {
 
       // Test unknown server - should be false
       const unknownServerResult = await hasUserAlwaysApprovedTool(auth, {
-        user,
         mcpServerId: "ims_unknown_server",
         functionCallName: server1FunctionCallNames[0],
       });
@@ -610,7 +550,6 @@ describe("Tool validation utilities", () => {
       // Add tools one by one and verify each addition
       for (let i = 0; i < functionCallNames.length; i++) {
         await setUserAlwaysApprovedTool(auth, {
-          user,
           mcpServerId,
           functionCallName: functionCallNames[i],
         });
@@ -618,7 +557,6 @@ describe("Tool validation utilities", () => {
         // Verify all previously added tools are still there
         for (let j = 0; j <= i; j++) {
           const result = await hasUserAlwaysApprovedTool(auth, {
-            user,
             mcpServerId,
             functionCallName: functionCallNames[j],
           });
@@ -628,7 +566,6 @@ describe("Tool validation utilities", () => {
         // Verify tools not yet added are not there
         for (let k = i + 1; k < functionCallNames.length; k++) {
           const result = await hasUserAlwaysApprovedTool(auth, {
-            user,
             mcpServerId,
             functionCallName: functionCallNames[k],
           });
@@ -639,7 +576,6 @@ describe("Tool validation utilities", () => {
       // Try to add duplicates and verify no changes (upsert behavior)
       for (const functionCallName of functionCallNames) {
         await setUserAlwaysApprovedTool(auth, {
-          user,
           mcpServerId,
           functionCallName,
         });
@@ -648,7 +584,6 @@ describe("Tool validation utilities", () => {
       // All function calls should still be approved
       for (const functionCallName of functionCallNames) {
         const result = await hasUserAlwaysApprovedTool(auth, {
-          user,
           mcpServerId,
           functionCallName,
         });

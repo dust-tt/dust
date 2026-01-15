@@ -112,20 +112,5 @@ makeScript({}, async ({ execute }, logger) => {
   }
 
   logger.info({ migratedCount, skippedCount, errorCount }, "Migration results");
-
-  // Delete the old metadata entries.
-  if (execute) {
-    const deletedCount = await UserMetadataModel.destroy({
-      where: {
-        key: {
-          [Op.like]: "toolsValidations:%",
-        },
-      },
-    });
-    logger.info({ deletedCount }, "Deleted old metadata entries");
-  } else {
-    logger.info("Dry run - skipping deletion of old metadata entries");
-  }
-
   logger.info("Low-stake tool approvals migration completed");
 });
