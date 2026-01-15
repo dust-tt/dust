@@ -23,7 +23,7 @@ import type {
   TrackingParams,
 } from "@app/components/home/contactFormSchema";
 import {
-  COMPANY_HEADCOUNT_OPTIONS,
+  COMPANY_HEADCOUNT_FORM_OPTIONS,
   ContactFormSchema,
   HEADQUARTERS_REGION_OPTIONS,
   LANGUAGE_OPTIONS,
@@ -153,7 +153,7 @@ export function ContactForm({
   const selectedRegion = HEADQUARTERS_REGION_OPTIONS.find(
     (opt) => opt.value === form.watch("headquarters_region")
   );
-  const selectedHeadcount = COMPANY_HEADCOUNT_OPTIONS.find(
+  const selectedHeadcount = COMPANY_HEADCOUNT_FORM_OPTIONS.find(
     (opt) => opt.value === form.watch("company_headcount_form")
   );
 
@@ -325,7 +325,7 @@ export function ContactForm({
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  {COMPANY_HEADCOUNT_OPTIONS.map((option) => (
+                  {COMPANY_HEADCOUNT_FORM_OPTIONS.map((option) => (
                     <DropdownMenuItem
                       key={option.value}
                       onClick={() => field.onChange(option.value)}

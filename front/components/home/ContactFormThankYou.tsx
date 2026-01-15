@@ -1,13 +1,50 @@
 import { CheckCircleIcon } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 
+import { FIELD_DEFINITIONS } from "@app/components/home/contactFormSchema";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 
 // Default.com configuration
 const DEFAULT_FORM_ID = 130084;
 const DEFAULT_TEAM_ID = 579;
-// This is the HTML form ID that must be registered in Default.com's "Connected HTML Form IDs"
-const DUST_CONTACT_FORM_ID = "dust-contact-thankyou-form";
+
+// Type for Default.com SDK
+interface DefaultSDK {
+  submit: (options: {
+    form_id: number;
+    team_id: number;
+    responses: Record<string, string | number | boolean>;
+    questions: Array<{
+      id: string;
+      name: string;
+      type: string;
+      options?: string[];
+    }>;
+    onSuccess?: (data: { schedulerUrl?: string }) => void;
+    onError?: (error: unknown) => void;
+    onSchedulerDisplayed?: () => void;
+    onSchedulerClosed?: () => void;
+    onMeetingBooked?: () => void;
+  }) => void;
+}
+
+declare global {
+  interface Window {
+    default?: {
+      sdk: DefaultSDK;
+    };
+  }
+}
+
+// Convert our field definitions to Default.com's questions format
+function toDefaultQuestions(fields: typeof FIELD_DEFINITIONS) {
+  return fields.map((field) => ({
+    id: field.name,
+    name: field.label,
+    type: field.type === "dropdown" ? "select" : field.type,
+    options: "options" in field ? field.options?.map((opt) => opt.value) : undefined,
+  }));
+}
 
 interface ContactFormThankYouProps {
   firstName: string;
@@ -34,7 +71,6 @@ export function ContactFormThankYou({
 }: ContactFormThankYouProps) {
   const hasTrackedRef = useRef(false);
   const defaultTriggeredRef = useRef(false);
-  const formRef = useRef<HTMLFormElement>(null);
 
   // Fire qualified lead tracking event
   useEffect(() => {
@@ -60,34 +96,70 @@ export function ContactFormThankYou({
     }
   }, [isQualified]);
 
-  // Load Default.com script and trigger popup for qualified leads
+  // Load Default.com SDK and submit form data for qualified leads
   useEffect(() => {
     if (!isQualified || defaultTriggeredRef.current) {
       return;
     }
     defaultTriggeredRef.current = true;
 
-    // Update Default.com configuration with user data
-    window.__default__ = window.__default__ ?? {};
-    window.__default__.form_id = DEFAULT_FORM_ID;
-    window.__default__.team_id = DEFAULT_TEAM_ID;
-    window.__default__.email = email;
-    window.__default__.first_name = firstName;
-    window.__default__.last_name = lastName;
+    // Load the Default.com SDK script
+    const script = document.createElement("script");
+    script.src = "https://import-cdn.default.com/sdk.js";
+    script.async = true;
 
-    // Give Default.com time to set up its form listeners, then trigger form submit
-    const timeoutId = setTimeout(() => {
-      if (formRef.current) {
-        const submitEvent = new Event("submit", {
-          bubbles: true,
-          cancelable: true,
-        });
-        formRef.current.dispatchEvent(submitEvent);
+    script.onload = () => {
+      // Wait a moment for the SDK to initialize
+      setTimeout(() => {
+        if (window.default?.sdk) {
+          window.default.sdk.submit({
+            form_id: DEFAULT_FORM_ID,
+            team_id: DEFAULT_TEAM_ID,
+            responses: {
+              email,
+              firstname: firstName,
+              lastname: lastName,
+              mobilephone: phone,
+              language,
+              headquarters_region: headquartersRegion,
+              company_headcount_form: companyHeadcount,
+              landing_use_cases: howToUseDust,
+            },
+            questions: toDefaultQuestions(FIELD_DEFINITIONS),
+            onSchedulerDisplayed: () => {
+              // Scheduler is now visible
+            },
+            onMeetingBooked: () => {
+              trackEvent({
+                area: TRACKING_AREAS.CONTACT,
+                object: "contact_form",
+                action: "meeting_booked",
+              });
+            },
+          });
+        }
+      }, 500);
+    };
+
+    document.head.appendChild(script);
+
+    return () => {
+      // Cleanup script if component unmounts
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
       }
-    }, 1000);
-
-    return () => clearTimeout(timeoutId);
-  }, [isQualified, email, firstName, lastName]);
+    };
+  }, [
+    isQualified,
+    email,
+    firstName,
+    lastName,
+    phone,
+    language,
+    headquartersRegion,
+    companyHeadcount,
+    howToUseDust,
+  ]);
 
   return (
     <div className="flex flex-col gap-6 py-8">
@@ -106,25 +178,6 @@ export function ContactFormThankYou({
           : "We've received your request. Our team will be in touch soon."}
       </p>
 
-      {/* Hidden form for Default.com - the ID must be registered in Default.com's dashboard */}
-      {isQualified && (
-        <form
-          ref={formRef}
-          id={DUST_CONTACT_FORM_ID}
-          data-default-form-id={DEFAULT_FORM_ID}
-          style={{ position: "absolute", left: "-9999px", opacity: 0 }}
-          onSubmit={(e) => e.preventDefault()}
-        >
-          <input type="hidden" name="email" value={email} />
-          <input type="hidden" name="firstname" value={firstName} />
-          <input type="hidden" name="lastname" value={lastName} />
-          <input type="hidden" name="phone" value={phone} />
-          <input type="hidden" name="language" value={language} />
-          <input type="hidden" name="headquarters_region" value={headquartersRegion} />
-          <input type="hidden" name="company_headcount_form" value={companyHeadcount} />
-          <input type="hidden" name="how_to_use_dust" value={howToUseDust} />
-        </form>
-      )}
     </div>
   );
 }

@@ -30,7 +30,8 @@
     "sitemap": "next-sitemap",
     "sparkle:dev": "./admin/sparkle_dev.sh",
     "analyze": "NODE_OPTIONS=--max-old-space-size=16384 ANALYZE=true npm run build",
-    "knip": "knip"
+    "knip": "knip",
+    "generate:contact-form": "tsx scripts/generate-contact-form-schema.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
