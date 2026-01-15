@@ -1,28 +1,16 @@
 import { LangfuseClient } from "@langfuse/client";
 
+import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
-import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 let langfuseClient: LangfuseClient | null = null;
 
-function isLangfuseEnabled(): boolean {
-  return (
-    EnvironmentConfig.getOptionalEnvVariable(
-      "LANGFUSE_ENABLED"
-    )?.toLowerCase() === "true"
-  );
-}
-
 function getLangfuseClient(): LangfuseClient | null {
-  if (!isLangfuseEnabled()) {
+  if (!config.isLangfuseEnabled()) {
     return null;
   }
 
-  langfuseClient ??= new LangfuseClient({
-    publicKey: EnvironmentConfig.getEnvVariable("LANGFUSE_PUBLIC_KEY"),
-    secretKey: EnvironmentConfig.getEnvVariable("LANGFUSE_SECRET_KEY"),
-    baseUrl: EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_BASE_URL"),
-  });
+  langfuseClient ??= new LangfuseClient(config.getLangfuseClientConfig());
 
   return langfuseClient;
 }
