@@ -30,13 +30,6 @@ interface HubSpotSubmissionRequest {
   context: HubSpotSubmissionContext;
 }
 
-/**
- * Submit form data to HubSpot Forms API v3.
- * Docs: https://developers.hubspot.com/docs/api/marketing/forms
- *
- * The HubSpot Forms API is a public API that doesn't require authentication.
- * It uses the portal ID and form ID to identify where to submit the data.
- */
 export async function submitToHubSpotForm(params: {
   formData: ContactFormData;
   tracking: TrackingParams;
@@ -44,7 +37,6 @@ export async function submitToHubSpotForm(params: {
 }): Promise<Result<void, Error>> {
   const { formData, tracking, context } = params;
 
-  // Build form fields array
   const fields: HubSpotFormField[] = [];
 
   // Add form data fields
@@ -86,19 +78,6 @@ export async function submitToHubSpotForm(params: {
     context,
   };
 
-  // Log tracking data for debugging
-  logger.info(
-    {
-      email: formData.email,
-      gclid: tracking.gclid ?? "not set",
-      utm_source: tracking.utm_source ?? "not set",
-      fieldsCount: fields.length,
-      fieldNames: fields.map((f) => f.name),
-    },
-    "Submitting to HubSpot with tracking data"
-  );
-
-  // Use the correct regional endpoint
   const endpoint = `https://api.hsforms.com/submissions/v3/integration/submit/${HUBSPOT_PORTAL_ID}/${HUBSPOT_FORM_ID}`;
 
   try {

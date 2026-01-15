@@ -12,9 +12,10 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useController, useForm, useWatch } from "react-hook-form";
 
 import { ContactFormThankYou } from "@app/components/home/ContactFormThankYou";
+import { FormProvider } from "@app/components/sparkle/FormProvider";
 import type {
   ContactFormData,
   ContactSubmitResponse,
@@ -36,32 +37,12 @@ interface ContactFormProps {
   prefillRegion?: string;
 }
 
-export function ContactForm({
-  prefillEmail,
-  prefillHeadcount,
-  prefillRegion,
-}: ContactFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+function useContactFormSubmit() {
   const [submitResult, setSubmitResult] =
     useState<ContactSubmitResponse | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const form = useForm<ContactFormData>({
-    resolver: zodResolver(ContactFormSchema),
-    defaultValues: {
-      firstname: "",
-      lastname: "",
-      email: prefillEmail ?? "",
-      mobilephone: "",
-      language: "",
-      headquarters_region: prefillRegion ?? "",
-      company_headcount_form: prefillHeadcount ?? "",
-      landing_use_cases: "",
-    },
-  });
-
-  const onSubmit = async (data: ContactFormData) => {
-    setIsSubmitting(true);
+  const handleSubmit = async (data: ContactFormData): Promise<void> => {
     setSubmitError(null);
 
     // Get tracking params from sessionStorage
@@ -117,7 +98,6 @@ export function ContactForm({
         setSubmitError(
           result.error ?? "Failed to submit form. Please try again."
         );
-        setIsSubmitting(false);
         return;
       }
 
@@ -134,257 +114,233 @@ export function ContactForm({
       setSubmitResult(result);
     } catch {
       setSubmitError("An error occurred. Please try again.");
-      setIsSubmitting(false);
     }
   };
 
-  const selectedLanguage = LANGUAGE_OPTIONS.find(
-    (opt) => opt.value === form.watch("language")
+  return { submitResult, submitError, handleSubmit };
+}
+
+interface DropdownFieldProps {
+  name: keyof ContactFormData;
+  label: string;
+  options: readonly { value: string; label: string }[];
+  placeholder: string;
+  required?: boolean;
+}
+
+function DropdownField({
+  name,
+  label,
+  options,
+  placeholder,
+  required = false,
+}: DropdownFieldProps) {
+  const { field, fieldState } = useController<ContactFormData>({ name });
+  const selectedOption = options.find((opt) => opt.value === field.value);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Label>
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </Label>
+      <div className="w-fit">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              label={selectedOption?.label ?? placeholder}
+              variant="outline"
+              size="md"
+              icon={ChevronDownIcon}
+              isSelect
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {options.map((option) => (
+              <DropdownMenuItem
+                key={option.value}
+                onClick={() => field.onChange(option.value)}
+              >
+                {option.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {fieldState.error && (
+        <p className="text-sm text-red-500">{fieldState.error.message}</p>
+      )}
+    </div>
   );
-  const selectedRegion = HEADQUARTERS_REGION_OPTIONS.find(
-    (opt) => opt.value === form.watch("headquarters_region")
-  );
-  const selectedHeadcount = COMPANY_HEADCOUNT_FORM_OPTIONS.find(
-    (opt) => opt.value === form.watch("company_headcount_form")
-  );
+}
+
+export function ContactForm({
+  prefillEmail,
+  prefillHeadcount,
+  prefillRegion,
+}: ContactFormProps) {
+  const { submitResult, submitError, handleSubmit } = useContactFormSubmit();
+
+  const form = useForm<ContactFormData>({
+    resolver: zodResolver(ContactFormSchema),
+    defaultValues: {
+      firstname: "",
+      lastname: "",
+      email: prefillEmail ?? "",
+      mobilephone: "",
+      language: "",
+      headquarters_region: prefillRegion ?? "",
+      company_headcount_form: prefillHeadcount ?? "",
+      landing_use_cases: "",
+    },
+    mode: "onBlur",
+  });
+
+  // Watch form values for the thank you page
+  const formValues = useWatch({ control: form.control });
 
   // Show thank you page after successful submission
   if (submitResult) {
     return (
       <ContactFormThankYou
-        firstName={form.getValues("firstname") ?? ""}
-        lastName={form.getValues("lastname") ?? ""}
-        email={form.getValues("email")}
-        phone={form.getValues("mobilephone") ?? ""}
-        language={form.getValues("language")}
-        headquartersRegion={form.getValues("headquarters_region") ?? ""}
-        companyHeadcount={form.getValues("company_headcount_form")}
-        howToUseDust={form.getValues("landing_use_cases") ?? ""}
+        firstName={formValues.firstname ?? ""}
+        lastName={formValues.lastname ?? ""}
+        email={formValues.email ?? ""}
+        phone={formValues.mobilephone ?? ""}
+        language={formValues.language ?? ""}
+        headquartersRegion={formValues.headquarters_region ?? ""}
+        companyHeadcount={formValues.company_headcount_form ?? ""}
+        howToUseDust={formValues.landing_use_cases ?? ""}
         isQualified={submitResult.isQualified}
       />
     );
   }
 
+  const { isSubmitting, errors } = form.formState;
+
   return (
-    <form
-      id="dust-contact-form"
-      onSubmit={form.handleSubmit(onSubmit)}
-      className="flex flex-col gap-6"
-    >
-      {/* First Name / Last Name */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <Controller
-          control={form.control}
-          name="firstname"
-          render={({ field }) => (
-            <Input {...field} label="First Name" placeholder="" />
-          )}
-        />
-        <Controller
-          control={form.control}
-          name="lastname"
-          render={({ field }) => (
-            <Input {...field} label="Last Name" placeholder="" />
-          )}
-        />
-      </div>
-
-      {/* Work Email */}
-      <Controller
-        control={form.control}
-        name="email"
-        render={({ field, fieldState }) => (
-          <div className="flex flex-col gap-2">
-            <Label>
-              Work Email<span className="text-red-500">*</span>
-            </Label>
-            <Input
-              {...field}
-              placeholder=""
-              type="email"
-              isError={fieldState.error !== undefined}
-              message={fieldState.error?.message}
-              messageStatus="error"
-            />
-          </div>
-        )}
-      />
-
-      {/* Phone Number */}
-      <Controller
-        control={form.control}
-        name="mobilephone"
-        render={({ field }) => (
+    <FormProvider form={form} onSubmit={handleSubmit}>
+      <div id="dust-contact-form" className="flex flex-col gap-6">
+        {/* First Name / Last Name */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <Input
-            {...field}
-            label="Phone Number"
-            placeholder="+1 (555) 000-0000"
-            type="tel"
+            label="First Name"
+            {...form.register("firstname")}
+            placeholder=""
+            isError={!!errors.firstname}
+            message={errors.firstname?.message}
           />
-        )}
-      />
-
-      {/* Language */}
-      <Controller
-        control={form.control}
-        name="language"
-        render={({ field, fieldState }) => (
-          <div className="flex flex-col gap-2">
-            <Label>
-              Language you'd like to use<span className="text-red-500">*</span>
-            </Label>
-            <div className="w-fit">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    label={selectedLanguage?.label ?? "Select language"}
-                    variant="outline"
-                    size="md"
-                    icon={ChevronDownIcon}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {LANGUAGE_OPTIONS.map((option) => (
-                    <DropdownMenuItem
-                      key={option.value}
-                      onClick={() => field.onChange(option.value)}
-                    >
-                      {option.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            {fieldState.error && (
-              <p className="text-sm text-red-500">{fieldState.error.message}</p>
-            )}
-          </div>
-        )}
-      />
-
-      {/* Headquarters Region */}
-      <Controller
-        control={form.control}
-        name="headquarters_region"
-        render={({ field }) => (
-          <div className="flex flex-col gap-2">
-            <Label>Headquarters Region</Label>
-            <div className="w-fit">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    label={selectedRegion?.label ?? "Select region"}
-                    variant="outline"
-                    size="md"
-                    icon={ChevronDownIcon}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {HEADQUARTERS_REGION_OPTIONS.map((option) => (
-                    <DropdownMenuItem
-                      key={option.value}
-                      onClick={() => field.onChange(option.value)}
-                    >
-                      {option.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        )}
-      />
-
-      {/* Company Headcount */}
-      <Controller
-        control={form.control}
-        name="company_headcount_form"
-        render={({ field, fieldState }) => (
-          <div className="flex flex-col gap-2">
-            <Label>
-              Company Headcount<span className="text-red-500">*</span>
-            </Label>
-            <div className="w-fit">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    label={selectedHeadcount?.label ?? "Select headcount"}
-                    variant="outline"
-                    size="md"
-                    icon={ChevronDownIcon}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {COMPANY_HEADCOUNT_FORM_OPTIONS.map((option) => (
-                    <DropdownMenuItem
-                      key={option.value}
-                      onClick={() => field.onChange(option.value)}
-                    >
-                      {option.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            {fieldState.error && (
-              <p className="text-sm text-red-500">{fieldState.error.message}</p>
-            )}
-          </div>
-        )}
-      />
-
-      {/* How do you want to use Dust? */}
-      <Controller
-        control={form.control}
-        name="landing_use_cases"
-        render={({ field }) => (
-          <div className="flex flex-col gap-2">
-            <Label>How do you want to use Dust?</Label>
-            <TextArea {...field} rows={4} placeholder="" />
-          </div>
-        )}
-      />
-
-      {/* Disclaimer */}
-      <div className="text-xs text-muted-foreground">
-        <p className="mb-2">
-          Dust uses your contact information to communicate with you about our
-          products and services. You may unsubscribe at any time. Please review
-          our{" "}
-          <a
-            href="https://dust.tt/privacy"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-foreground"
-          >
-            Privacy Policy
-          </a>{" "}
-          to learn about our privacy practices, data protection measures, and
-          unsubscribe procedures.
-        </p>
-        <p>
-          Dust serves certain geographic regions and customer segments
-          exclusively through our certified partner network. When you submit an
-          inquiry from these regions, your contact information will be directed
-          to the appropriate authorized partner who will handle your evaluation,
-          purchase, and implementation.
-        </p>
-      </div>
-
-      {submitError && (
-        <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">
-          {submitError}
+          <Input
+            label="Last Name"
+            {...form.register("lastname")}
+            placeholder=""
+            isError={!!errors.lastname}
+            message={errors.lastname?.message}
+          />
         </div>
-      )}
 
-      <Button
-        type="submit"
-        label={isSubmitting ? "Submitting..." : "Submit"}
-        variant="primary"
-        size="md"
-        disabled={isSubmitting}
-        icon={isSubmitting ? Spinner : undefined}
-      />
-    </form>
+        {/* Work Email */}
+        <div className="flex flex-col gap-2">
+          <Label>
+            Work Email<span className="text-red-500">*</span>
+          </Label>
+          <Input
+            {...form.register("email")}
+            placeholder=""
+            type="email"
+            isError={!!errors.email}
+            message={errors.email?.message}
+            messageStatus={errors.email ? "error" : undefined}
+          />
+        </div>
+
+        {/* Phone Number */}
+        <Input
+          label="Phone Number"
+          {...form.register("mobilephone")}
+          placeholder="+1 (555) 000-0000"
+          type="tel"
+          isError={!!errors.mobilephone}
+          message={errors.mobilephone?.message}
+        />
+
+        {/* Language */}
+        <DropdownField
+          name="language"
+          label="Language you'd like to use"
+          options={LANGUAGE_OPTIONS}
+          placeholder="Select language"
+          required
+        />
+
+        {/* Headquarters Region */}
+        <DropdownField
+          name="headquarters_region"
+          label="Headquarters Region"
+          options={HEADQUARTERS_REGION_OPTIONS}
+          placeholder="Select region"
+        />
+
+        {/* Company Headcount */}
+        <DropdownField
+          name="company_headcount_form"
+          label="Company Headcount"
+          options={COMPANY_HEADCOUNT_FORM_OPTIONS}
+          placeholder="Select headcount"
+          required
+        />
+
+        {/* How do you want to use Dust? */}
+        <div className="flex flex-col gap-2">
+          <Label>How do you want to use Dust?</Label>
+          <TextArea
+            {...form.register("landing_use_cases")}
+            rows={4}
+            placeholder=""
+          />
+        </div>
+
+        {/* Disclaimer */}
+        <div className="text-xs text-muted-foreground">
+          <p className="mb-2">
+            Dust uses your contact information to communicate with you about our
+            products and services. You may unsubscribe at any time. Please
+            review our{" "}
+            <a
+              href="https://dust.tt/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground"
+            >
+              Privacy Policy
+            </a>{" "}
+            to learn about our privacy practices, data protection measures, and
+            unsubscribe procedures.
+          </p>
+          <p>
+            Dust serves certain geographic regions and customer segments
+            exclusively through our certified partner network. When you submit
+            an inquiry from these regions, your contact information will be
+            directed to the appropriate authorized partner who will handle your
+            evaluation, purchase, and implementation.
+          </p>
+        </div>
+
+        {submitError && (
+          <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">
+            {submitError}
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          label={isSubmitting ? "Submitting..." : "Submit"}
+          variant="primary"
+          size="md"
+          disabled={isSubmitting}
+          icon={isSubmitting ? Spinner : undefined}
+        />
+      </div>
+    </FormProvider>
   );
 }
