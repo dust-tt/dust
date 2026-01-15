@@ -1,6 +1,5 @@
 import type { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
-import Script from "next/script";
 import type { ReactElement } from "react";
 
 import { ContactForm } from "@app/components/home/ContactForm";
@@ -60,64 +59,44 @@ export default function Contact() {
   );
 
   return (
-    <>
-      {/* Default.com script - must be loaded early for form detection */}
-      <Script
-        id="default-com-init"
-        strategy="beforeInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
-            window.__default__ = window.__default__ || {};
-            window.__default__.form_id = 130084;
-            window.__default__.team_id = 579;
-            window.__default__.listenToIds = ["dust-contact-form", "dust-contact-thankyou-form"];
-          `,
-        }}
-      />
-      <Script
-        id="default-com-sdk"
-        src="https://import-cdn.default.com"
-        strategy="beforeInteractive"
-      />
-      <UTMPageWrapper>
+    <UTMPageWrapper>
         <PageMetadata
-        title="Contact Dust: Schedule a Demo for AI Agents"
-        description="Get in touch with the Dust team. Schedule a demo call to learn how AI agents can help address your team's challenges and improve productivity."
-        pathname={router.asPath}
-      />
-      <div className="flex w-full flex-col justify-center gap-12">
-        <HeaderContentBlock
-          title="Contact Dust"
-          hasCTA={false}
-          subtitle={subtitle}
+          title="Contact Dust: Schedule a Demo for AI Agents"
+          description="Get in touch with the Dust team. Schedule a demo call to learn how AI agents can help address your team's challenges and improve productivity."
+          pathname={router.asPath}
         />
-        <Grid>
-          <div className="col-span-12 sm:col-span-12 md:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">
-            {testThankYou ? (
-              <ContactFormThankYou
-                firstName="Alban"
-                lastName="Music"
-                email="alban@dust.tt"
-                phone="+33612345678"
-                language="I would like my meeting to be in English 🇬🇧🇺🇸"
-                headquartersRegion="Europe"
-                companyHeadcount="101-500"
-                howToUseDust="Testing the Default.com integration"
-                isQualified={true}
-              />
-            ) : (
-              <ContactForm
-                prefillEmail={prefillEmail}
-                prefillHeadcount={prefillHeadcount}
-                prefillRegion={prefillRegion}
-              />
-            )}
-          </div>
-        </Grid>
-        <TrustedBy />
-      </div>
+        <div className="flex w-full flex-col justify-center gap-12">
+          <HeaderContentBlock
+            title="Contact Dust"
+            hasCTA={false}
+            subtitle={subtitle}
+          />
+          <Grid>
+            <div className="col-span-12 sm:col-span-12 md:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">
+              {testThankYou ? (
+                <ContactFormThankYou
+                  firstName="Alban"
+                  lastName="Music"
+                  email="alban@dust.tt"
+                  phone="+33612345678"
+                  language="I would like my meeting to be in English 🇬🇧🇺🇸"
+                  headquartersRegion="Europe"
+                  companyHeadcount="101-500"
+                  howToUseDust="Testing the Default.com integration"
+                  isQualified={true}
+                />
+              ) : (
+                <ContactForm
+                  prefillEmail={prefillEmail}
+                  prefillHeadcount={prefillHeadcount}
+                  prefillRegion={prefillRegion}
+                />
+              )}
+            </div>
+          </Grid>
+          <TrustedBy />
+        </div>
     </UTMPageWrapper>
-    </>
   );
 }
 

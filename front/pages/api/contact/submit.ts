@@ -126,11 +126,11 @@ export default async function handler(
       `:tada: *Qualified Lead from Contact Form*`,
       `*Email:* ${formData.email}`,
       `*Name:* ${formData.firstname ?? ""} ${formData.lastname ?? ""}`.trim(),
-      `*Phone:* ${formData.phone ?? "Not provided"}`,
+      `*Phone:* ${formData.mobilephone ?? "Not provided"}`,
       `*Language:* ${formData.language}`,
       `*Headquarters Region:* ${formData.headquarters_region ?? "Not provided"}`,
       `*Company Headcount:* ${formData.company_headcount_form}`,
-      `*How they want to use Dust:* ${formData.how_to_use_dust ?? "Not provided"}`,
+      `*How they want to use Dust:* ${formData.landing_use_cases ?? "Not provided"}`,
       `*UTM Source:* ${tracking.utm_source ?? "Not tracked"}`,
       `*GCLID:* ${tracking.gclid ?? "Not tracked"}`,
     ].join("\n");

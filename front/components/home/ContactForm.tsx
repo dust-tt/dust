@@ -14,9 +14,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
-// Default.com form ID (used in form data-attribute for tracking)
-const DEFAULT_FORM_ID = 130084;
-
 import type {
   ContactFormData,
   ContactSubmitResponse,
@@ -55,11 +52,11 @@ export function ContactForm({
       firstname: "",
       lastname: "",
       email: prefillEmail ?? "",
-      phone: "",
+      mobilephone: "",
       language: "",
       headquarters_region: prefillRegion ?? "",
       company_headcount_form: prefillHeadcount ?? "",
-      how_to_use_dust: "",
+      landing_use_cases: "",
     },
   });
 
@@ -134,12 +131,6 @@ export function ContactForm({
       // Scroll to top so the thank you message is visible
       window.scrollTo({ top: 0, behavior: "smooth" });
 
-      // Store form data for Default.com (will be used in ContactFormThankYou)
-      window.__default__ = window.__default__ ?? {};
-      window.__default__.email = data.email;
-      window.__default__.first_name = data.firstname;
-      window.__default__.last_name = data.lastname;
-
       setSubmitResult(result);
     } catch {
       setSubmitError("An error occurred. Please try again.");
@@ -164,11 +155,11 @@ export function ContactForm({
         firstName={form.getValues("firstname") ?? ""}
         lastName={form.getValues("lastname") ?? ""}
         email={form.getValues("email")}
-        phone={form.getValues("phone") ?? ""}
+        phone={form.getValues("mobilephone") ?? ""}
         language={form.getValues("language")}
         headquartersRegion={form.getValues("headquarters_region") ?? ""}
         companyHeadcount={form.getValues("company_headcount_form")}
-        howToUseDust={form.getValues("how_to_use_dust") ?? ""}
+        howToUseDust={form.getValues("landing_use_cases") ?? ""}
         isQualified={submitResult.isQualified}
       />
     );
@@ -179,7 +170,6 @@ export function ContactForm({
       id="dust-contact-form"
       onSubmit={form.handleSubmit(onSubmit)}
       className="flex flex-col gap-6"
-      data-default-form-id={DEFAULT_FORM_ID}
     >
       {/* First Name / Last Name */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -223,7 +213,7 @@ export function ContactForm({
       {/* Phone Number */}
       <Controller
         control={form.control}
-        name="phone"
+        name="mobilephone"
         render={({ field }) => (
           <Input
             {...field}
@@ -346,7 +336,7 @@ export function ContactForm({
       {/* How do you want to use Dust? */}
       <Controller
         control={form.control}
-        name="how_to_use_dust"
+        name="landing_use_cases"
         render={({ field }) => (
           <div className="flex flex-col gap-2">
             <Label>How do you want to use Dust?</Label>

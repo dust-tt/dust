@@ -21,16 +21,6 @@ interface Signals {
   identify: (data: { email: string; name: string }) => void;
 }
 
-// Default.com SDK configuration
-interface DefaultConfig {
-  form_id?: number;
-  team_id?: number;
-  listenToIds?: string[];
-  email?: string;
-  first_name?: string;
-  last_name?: string;
-}
-
 declare global {
   interface Window {
     gtag: (command: string, action: string, params: object) => void;
@@ -42,8 +32,6 @@ declare global {
       setUser: (user: { id: string; name?: string; email?: string }) => void;
       setGlobalContext: (context: { [key: string]: string }) => void;
     };
-    // Default.com SDK
-    __default__?: DefaultConfig;
   }
 }
 

@@ -62,12 +62,11 @@ export async function submitToHubSpotForm(params: {
   addField("email", formData.email);
   addField("firstname", formData.firstname);
   addField("lastname", formData.lastname);
-  addField("phone", formData.phone);
+  addField("mobilephone", formData.mobilephone);
   addField("language", formData.language);
   addField("headquarters_region", formData.headquarters_region);
   addField("company_headcount_form", formData.company_headcount_form);
-  // "How do you want to use Dust?" maps to "Landing Use Cases" property
-  addField("landing_use_cases", formData.how_to_use_dust);
+  addField("landing_use_cases", formData.landing_use_cases);
 
   // UTM tracking fields - internal names have capital U
   addField("Utm_source", tracking.utm_source);

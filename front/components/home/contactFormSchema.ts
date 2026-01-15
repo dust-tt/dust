@@ -13,12 +13,12 @@
 
 // Re-export everything from generated file
 export {
-  ContactFormSchema,
-  type ContactFormData,
-  FIELD_DEFINITIONS,
-  LANGUAGE_OPTIONS,
-  HEADQUARTERS_REGION_OPTIONS,
   COMPANY_HEADCOUNT_FORM_OPTIONS,
+  type ContactFormData,
+  ContactFormSchema,
+  FIELD_DEFINITIONS,
+  HEADQUARTERS_REGION_OPTIONS,
+  LANGUAGE_OPTIONS,
 } from "./contactFormSchema.generated";
 
 // Tracking parameters captured from URL/sessionStorage
