@@ -15,26 +15,14 @@ import {
 import { BlogPagination } from "@app/components/blog/BlogPagination";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  CONTENTFUL_REVALIDATE_SECONDS,
-  getAllBlogPosts,
-} from "@app/lib/contentful/client";
+import { getAllBlogPosts } from "@app/lib/contentful/client";
 import type { BlogListingPageProps } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types";
 
 export const getServerSideProps: GetServerSideProps<
   BlogListingPageProps
-> = async ({ res }) => {
-  // Avoid Contentful calls during `next build` (SSR runs at request time).
-  // Keep CDN caching semantics close to our previous ISR window.
-  res.setHeader(
-    "Cache-Control",
-    `public, s-maxage=${CONTENTFUL_REVALIDATE_SECONDS}, stale-while-revalidate=${
-      CONTENTFUL_REVALIDATE_SECONDS * 2
-    }`
-  );
-
+> = async () => {
   const postsResult = await getAllBlogPosts();
 
   if (postsResult.isErr()) {

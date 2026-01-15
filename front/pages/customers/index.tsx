@@ -16,10 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  CONTENTFUL_REVALIDATE_SECONDS,
-  getAllCustomerStories,
-} from "@app/lib/contentful/client";
+import { getAllCustomerStories } from "@app/lib/contentful/client";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type {
   CustomerStoryFilterOptions,
@@ -74,16 +71,7 @@ function extractFilterOptions(
 
 export const getServerSideProps: GetServerSideProps<
   CustomerStoryListingPageProps
-> = async ({ res }) => {
-  // Avoid Contentful calls during `next build` (SSR runs at request time).
-  // Keep CDN caching semantics close to our previous ISR window.
-  res.setHeader(
-    "Cache-Control",
-    `public, s-maxage=${CONTENTFUL_REVALIDATE_SECONDS}, stale-while-revalidate=${
-      CONTENTFUL_REVALIDATE_SECONDS * 2
-    }`
-  );
-
+> = async () => {
   const storiesResult = await getAllCustomerStories();
 
   if (storiesResult.isErr()) {

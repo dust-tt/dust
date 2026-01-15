@@ -124,7 +124,9 @@ export default function IndustryDynamicPage({
   return <IndustryTemplate config={config} trackingPrefix={trackingPrefix} />;
 }
 
-IndustryDynamicPage.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
+IndustryDynamicPage.getLayout = (
+  page: ReactElement,
+  pageProps: LandingLayoutProps
+) => {
   return IndustryTemplate.getLayout!(page, pageProps);
 };
-
