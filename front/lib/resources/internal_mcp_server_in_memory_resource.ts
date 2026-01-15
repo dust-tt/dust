@@ -14,6 +14,7 @@ import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerById,
+  getInternalMCPServerMetadata,
   getInternalMCPServerNameAndWorkspaceId,
   isAutoInternalMCPServerName,
   isInternalMCPServerOfName,
@@ -78,16 +79,24 @@ export class InternalMCPServerInMemoryResource {
 
     const server = new this(id, availability);
 
-    // TODO(SKILLS 2025-12-16 flav): Temporary dynamic import to avoid circular dependency.
-    // Bigger refactoring to extract this logic from the resource will come later.
-    const { getCachedMetadata } =
-      await import("@app/lib/actions/mcp_cached_metadata");
-    const cachedMetadata = await getCachedMetadata(auth, id);
-    if (!cachedMetadata) {
-      return null;
-    }
+    const serverMetadata = getInternalMCPServerMetadata(name);
+    if (serverMetadata) {
+      server.metadata = {
+        ...serverMetadata.serverInfo,
+        tools: serverMetadata.tools,
+      };
+    } else {
+      // TODO(SKILLS 2025-12-16 flav): Temporary dynamic import to avoid circular dependency.
+      // Bigger refactoring to extract this logic from the resource will come later.
+      const { getCachedMetadata } =
+        await import("@app/lib/actions/mcp_cached_metadata");
+      const cachedMetadata = await getCachedMetadata(auth, id);
+      if (!cachedMetadata) {
+        return null;
+      }
 
-    server.metadata = cachedMetadata;
+      server.metadata = cachedMetadata;
+    }
     server.internalServerCredential =
       await server.fetchInternalServerCredential(auth);
 

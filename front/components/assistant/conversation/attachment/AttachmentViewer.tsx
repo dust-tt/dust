@@ -20,7 +20,7 @@ import { isAudioContentType } from "@app/components/assistant/conversation/attac
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import {
-  INTERNAL_MCP_SERVERS,
+  getInternalMCPServerIconByName,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
@@ -187,8 +187,7 @@ export const AttachmentViewer = ({
 
   const getSourceUrlButtonIcon = () => {
     if (provider && isInternalMCPServerName(provider)) {
-      const serverIcon = INTERNAL_MCP_SERVERS[provider].serverInfo.icon;
-      return getIcon(serverIcon);
+      return getIcon(getInternalMCPServerIconByName(provider));
     }
     return ExternalLinkIcon;
   };
