@@ -10,7 +10,6 @@ import { getSupportedNonImageFileExtensions } from "@app/types";
 interface SpaceContextTabProps {
   owner: WorkspaceType;
   space: SpaceType;
-  systemSpace: SpaceType;
   plan: PlanType;
   isAdmin: boolean;
   canReadInSpace: boolean;

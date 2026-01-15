@@ -67,7 +67,7 @@ export function useSpaces({
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/spaces`,
     spacesFetcher,
-    { disabled }
+    { disabled },
   );
 
   const spaces = useMemo(() => {
@@ -101,7 +101,7 @@ export function useSpacesAsAdmin({
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/spaces?role=admin`,
     spacesFetcher,
-    { disabled }
+    { disabled },
   );
 
   return {
@@ -132,7 +132,7 @@ export function useSpaceInfo({
     {
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       disabled: disabled || spaceId === null,
-    }
+    },
   );
 
   return {
@@ -163,7 +163,7 @@ export function useSpaceDataSourceView({
     useSWRWithDefaults(
       `/api/w/${owner.sId}/spaces/${spaceId}/data_source_views/${dataSourceViewId}`,
       dataSourceViewsFetcher,
-      { disabled }
+      { disabled },
     );
 
   return {
@@ -200,7 +200,7 @@ export function useSpaceDataSourceViews({
     useSWRWithDefaults(
       `/api/w/${workspaceId}/spaces/${spaceId}/data_source_views?${queryParams.toString()}`,
       spacesDataSourceViewsFetcher,
-      { disabled }
+      { disabled },
     );
 
   return {
@@ -237,7 +237,7 @@ export function useSpaceDataSourceViewsWithDetails({
     useSWRWithDefaults(
       `/api/w/${workspaceId}/spaces/${spaceId}/data_source_views?${queryParams.toString()}`,
       spacesDataSourceViewsFetcher,
-      { disabled }
+      { disabled },
     );
 
   return {
@@ -282,7 +282,7 @@ export function useCreateFolder({
           name,
           description,
         }),
-      }
+      },
     );
     if (res.ok) {
       void mutateSpaceDataSourceViews();
@@ -319,7 +319,7 @@ export function useUpdateFolder({
   const sendNotification = useSendNotification();
   const doUpdate = async (
     dataSourceView: DataSourceViewType | null,
-    description: string | null
+    description: string | null,
   ) => {
     if (!dataSourceView || !description) {
       return false;
@@ -334,7 +334,7 @@ export function useUpdateFolder({
         body: JSON.stringify({
           description,
         }),
-      }
+      },
     );
     if (res.ok) {
       sendNotification({
@@ -381,7 +381,7 @@ export function useDeleteFolderOrWebsite({
     }
     const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
 
     if (res.ok) {
@@ -526,7 +526,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
   const doUpdate = async (
     space: SpaceType,
-    params: PatchSpaceMembersRequestBodyType
+    params: PatchSpaceMembersRequestBodyType,
   ) => {
     const { name: newName, managementMode, isRestricted } = params;
 
@@ -544,7 +544,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
           body: JSON.stringify({
             name: newName,
           }),
-        })
+        }),
       );
     }
 
@@ -564,7 +564,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
             memberIds: params.memberIds,
             editorIds: params.editorIds,
           } satisfies PatchSpaceMembersRequestBodyType),
-        })
+        }),
       );
     } else if (managementMode === "group") {
       updatePromises.push(
@@ -580,7 +580,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
             groupIds: params.groupIds,
             editorGroupIds: params.editorGroupIds,
           } satisfies PatchSpaceMembersRequestBodyType),
-        })
+        }),
       );
     }
 
@@ -680,7 +680,7 @@ export function useSystemSpace({
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/spaces?role=admin&kind=system`,
     systemSpaceFetcher,
-    { disabled }
+    { disabled },
   );
 
   return {
@@ -792,7 +792,7 @@ export function useSpacesSearch({
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       disabled,
-    }
+    },
   );
 
   return {
@@ -874,13 +874,13 @@ export function useSpacesSearchWithInfiniteScroll({
         revalidateOnFocus: false,
         revalidateOnReconnect: false,
         revalidateFirstPage: false,
-      }
+      },
     );
 
   return {
     searchResultNodes: useMemo(
       () => (data ? data.flatMap((d) => (d ? d.nodes : [])) : []),
-      [data]
+      [data],
     ),
     isSearchLoading: isLoading,
     isSearchError: error,
@@ -907,7 +907,7 @@ export function useProjectMetadata({
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/spaces/${spaceId}/project_metadata`,
     projectMetadataFetcher,
-    { disabled: disabled || spaceId === null }
+    { disabled: disabled || spaceId === null },
   );
 
   return {
@@ -933,7 +933,7 @@ export function useUpdateProjectMetadata({
   });
 
   return async (
-    updates: PatchProjectMetadataBodyType
+    updates: PatchProjectMetadataBodyType,
   ): Promise<ProjectMetadataType | null> => {
     const url = `/api/w/${owner.sId}/spaces/${spaceId}/project_metadata`;
 
@@ -982,7 +982,7 @@ export function useProjectJournalEntries({
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/spaces/${spaceId}/project_journal_entries?limit=${limit}`,
     journalEntriesFetcher,
-    { disabled: disabled || spaceId === null }
+    { disabled: disabled || spaceId === null },
   );
 
   return {
@@ -1011,7 +1011,7 @@ export function useGenerateProjectJournalEntry({
         headers: {
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     if (res.ok) {

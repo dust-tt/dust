@@ -2,6 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import uniqBy from "lodash/uniqBy";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { Op } from "sequelize";
 
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -13,6 +14,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -38,7 +40,8 @@ export type GetSpaceResponseBody = {
     canWrite: boolean;
     canRead: boolean;
     isMember: boolean;
-    members: UserType[];
+    isEditor: boolean;
+    members: (UserType & { isEditor?: boolean; joinedAt?: string })[];
   };
 };
 
@@ -52,18 +55,18 @@ async function handler(
     WithAPIErrorResponse<GetSpaceResponseBody | PatchSpaceResponseBody>
   >,
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  { space }: { space: SpaceResource },
 ): Promise<void> {
   switch (req.method) {
     case "GET": {
       const dataSourceViews = await DataSourceViewResource.listBySpace(
         auth,
-        space
+        space,
       );
       const apps = await AppResource.listBySpace(auth, space);
       const actions = await MCPServerViewResource.listBySpace(auth, space);
       const actionsCount = actions.filter(
-        (a) => a.toJSON().server.availability === "manual"
+        (a) => a.toJSON().server.availability === "manual",
       ).length;
 
       const categories: { [key: string]: SpaceCategoryInfo } = {};
@@ -77,7 +80,7 @@ async function handler(
         };
 
         const dataSourceViewsInCategory = dataSourceViews.filter(
-          (view) => view.toJSON().category === category
+          (view) => view.toJSON().category === category,
         );
 
         // As the usage call is expensive, we only call it if there are views in the category
@@ -97,7 +100,7 @@ async function handler(
               ].usage.agents.concat(usage.agents);
               categories[category].usage.agents = uniqBy(
                 categories[category].usage.agents,
-                "sId"
+                "sId",
               );
             }
           }
@@ -110,21 +113,65 @@ async function handler(
       categories["actions"].count = actionsCount;
 
       const includeAllMembers = req.query.includeAllMembers === "true";
-      const currentMembers = uniqBy(
+
+      // Get groups to process
+      const groupsToProcess = space.groups.filter((g) => {
+        return g.kind === "regular" || g.kind === "space_editors";
+      });
+
+      // Fetch all group memberships to get startAt (joinedAt)
+      const allGroupMemberships = await GroupMembershipModel.findAll({
+        where: {
+          groupId: {
+            [Op.in]: groupsToProcess.map((g) => g.id),
+          },
+          workspaceId: auth.getNonNullableWorkspace().id,
+          ...(includeAllMembers
+            ? {
+                startAt: { [Op.lte]: new Date() },
+                [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+              }
+            : {
+                status: "active",
+                startAt: { [Op.lte]: new Date() },
+                [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+              }),
+        },
+      });
+
+      // Create a map of groupId -> userId -> startAt
+      const membershipMap = new Map<number, Map<number, string>>();
+      for (const membership of allGroupMemberships) {
+        if (!membershipMap.has(membership.groupId)) {
+          membershipMap.set(membership.groupId, new Map());
+        }
+        membershipMap
+          .get(membership.groupId)
+          ?.set(membership.userId, membership.startAt.toDateString());
+      }
+
+      const currentMembers: (UserType & {
+        isEditor?: boolean;
+        joinedAt?: string;
+      })[] = uniqBy(
         (
           await concurrentExecutor(
-            // Get members from the regular group only.
-            space.groups.filter((g) => {
-              return g.kind === "regular";
-            }),
-            (group) =>
-              includeAllMembers
-                ? group.getAllMembers(auth)
-                : group.getActiveMembers(auth),
-            { concurrency: 10 }
+            groupsToProcess,
+            async (group) => {
+              const members = includeAllMembers
+                ? await group.getAllMembers(auth)
+                : await group.getActiveMembers(auth);
+              const groupMemberships = membershipMap.get(group.id);
+              return members.map((member) => ({
+                ...member.toJSON(),
+                isEditor: group.group_vaults?.kind === "project_editor", // we rely on the information stored in group_vaults to know if the group is an editor group
+                joinedAt: groupMemberships?.get(member.id),
+              }));
+            },
+            { concurrency: 10 },
           )
         ).flat(),
-        "sId"
+        "sId",
       );
 
       return res.status(200).json({
@@ -134,7 +181,8 @@ async function handler(
           canWrite: space.canWrite(auth),
           canRead: space.canRead(auth),
           isMember: space.isMember(auth),
-          members: currentMembers.map((member) => member.toJSON()),
+          isEditor: space.canAdministrate(auth),
+          members: currentMembers,
         },
       });
     }
@@ -169,7 +217,7 @@ async function handler(
       if (content) {
         const currentViews = await DataSourceViewResource.listBySpace(
           auth,
-          space
+          space,
         );
 
         const viewByDataSourceId = currentViews.reduce<
@@ -189,7 +237,7 @@ async function handler(
             // Create a new view.
             const dataSource = await DataSourceResource.fetchById(
               auth,
-              dataSourceConfig.dataSourceId
+              dataSourceConfig.dataSourceId,
             );
             if (dataSource) {
               const dataSourceViewRes =
@@ -197,7 +245,7 @@ async function handler(
                   auth,
                   space,
                   dataSource,
-                  dataSourceConfig.parentsIn
+                  dataSourceConfig.parentsIn,
                 );
 
               if (dataSourceViewRes.isErr()) {
@@ -248,7 +296,7 @@ async function handler(
         const deleteRes = await softDeleteSpaceAndLaunchScrubWorkflow(
           auth,
           space,
-          shouldForce
+          shouldForce,
         );
         if (deleteRes.isErr()) {
           return apiError(req, res, {
@@ -286,5 +334,5 @@ async function handler(
 export default withSessionAuthenticationForWorkspace(
   withResourceFetchingFromRoute(handler, {
     space: { requireCanReadOrAdministrate: true },
-  })
+  }),
 );
