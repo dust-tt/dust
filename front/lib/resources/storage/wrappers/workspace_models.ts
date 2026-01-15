@@ -89,8 +89,10 @@ function checkWorkspaceIsolation<MS extends ModelStatic<Model>>(
   options: Filterable<InferAttributes<InstanceType<MS>>>,
   {
     modelName,
+    queryType,
   }: {
     modelName: string;
+    queryType: "find" | "bulkDestroy";
   }
 ) {
   // Skip validation if specifically requested for this query.
@@ -114,7 +116,7 @@ function checkWorkspaceIsolation<MS extends ModelStatic<Model>>(
     logger.warn(
       {
         model: modelName,
-        query_type: "find",
+        query_type: queryType,
         stack_trace: stack,
         error: {
           message: "workspace_isolation_violation",
@@ -184,6 +186,7 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
       beforeFind: (options: FindOptions<InferAttributes<InstanceType<MS>>>) => {
         checkWorkspaceIsolation(options, {
           modelName: this.name,
+          queryType: "find",
         });
       },
       beforeBulkDestroy: (
@@ -191,6 +194,7 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
       ) => {
         checkWorkspaceIsolation(options, {
           modelName: this.name,
+          queryType: "bulkDestroy",
         });
       },
       ...(restOptions.hooks ?? {}),
