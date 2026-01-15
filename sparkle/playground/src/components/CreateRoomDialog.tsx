@@ -1,5 +1,4 @@
 import {
-  Button,
   CheckBoxWithTextAndDescription,
   Dialog,
   DialogContainer,
@@ -49,34 +48,32 @@ export function CreateRoomDialog({
         <DialogHeader>
           <DialogTitle>Create a new room</DialogTitle>
         </DialogHeader>
-        <DialogContainer>
-          <div className="s-flex s-flex-col s-gap-3">
-            <Input
-              label="Room name"
-              placeholder="Enter room name"
-              value={roomName}
-              onChange={(e) => {
-                setRoomName(e.target.value);
-                setError(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleNext();
-                }
-              }}
-              isError={!!error}
-              message={error}
-              messageStatus={error ? "error" : "default"}
-              autoFocus
-            />
-            <CheckBoxWithTextAndDescription
-              id="is-public-checkbox"
-              text="is public"
-              description="Anyone in the workspace can find and join the room."
-              checked={isPublic}
-              onCheckedChange={setIsPublic}
-            />
-          </div>
+        <DialogContainer className="s-space-y-6">
+          <Input
+            label="Room name"
+            placeholder="Enter room name"
+            value={roomName}
+            onChange={(e) => {
+              setRoomName(e.target.value);
+              setError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleNext();
+              }
+            }}
+            isError={!!error}
+            message={error}
+            messageStatus={error ? "error" : "default"}
+            autoFocus
+          />
+          <CheckBoxWithTextAndDescription
+            id="is-public-checkbox"
+            text="Opened to everyone"
+            description="Anyone in the workspace can find and join the room."
+            checked={isPublic}
+            onCheckedChange={setIsPublic}
+          />
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{

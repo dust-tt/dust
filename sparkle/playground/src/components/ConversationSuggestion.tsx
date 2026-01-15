@@ -1,9 +1,4 @@
-import {
-  Card,
-  CardGrid,
-  Icon,
-  type IconComponent,
-} from "@dust-tt/sparkle";
+import { Card, CardGrid, Icon, type IconComponent } from "@dust-tt/sparkle";
 
 export interface Suggestion {
   id: string;
@@ -26,7 +21,7 @@ export function ConversationSuggestion({
   return (
     <div className="s-flex s-flex-col s-gap-3">
       <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-        Suggested actions
+        New room? Let us help you setup.
       </h3>
       <CardGrid>
         {suggestions.map((suggestion) => (

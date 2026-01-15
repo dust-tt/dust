@@ -40,7 +40,7 @@ function MentionTrigger({
   return (
     <span
       className={cn(
-        "inline-block cursor-pointer font-light text-highlight-500 dark:text-highlight-500-night",
+        "inline-block cursor-pointer text-highlight-600 dark:text-highlight-600-night",
         isCurrentUserMentioned && "bg-golden-100 dark:bg-golden-100-night"
       )}
     >
