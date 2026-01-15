@@ -88,7 +88,9 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
 
   const groupHasKeys = await KeyResource.countActiveForGroups(
     auth,
-    space.groups.filter((g) => !space.isRegular() || !g.isGlobal())
+    space.groups.filter(
+      (g) => (!space.isRegular() && !space.isProject()) || !g.isGlobal()
+    )
   );
   if (groupHasKeys > 0) {
     return new Err(
