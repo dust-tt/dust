@@ -655,8 +655,11 @@ class RedisHybridManager {
    * Used by startup probe to verify Redis is accessible before accepting traffic.
    */
   public async ping(): Promise<void> {
-    const client = await this.getStreamAndPublishClient();
-    await client.ping();
+    const streamClient = await this.getStreamAndPublishClient();
+    const subscriptionClient = await this.getSubscriptionClient();
+
+    await streamClient.ping();
+    await subscriptionClient.ping();
   }
 }
 
