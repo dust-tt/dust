@@ -34,14 +34,14 @@ export async function restoreWorkspaceAfterSubscription(auth: Authenticator) {
   const dataSources = await getDataSources(auth);
   const connectorIds = removeNulls(dataSources.map((ds) => ds.connectorId));
 
-  const connectorsApi = new ConnectorsAPI(
+  const connectorsAPI = new ConnectorsAPI(
     apiConfig.getConnectorsAPIConfig(),
     logger
   );
 
   for (const connectorId of connectorIds) {
-    const r = await connectorsApi.unpauseConnector(connectorId);
-    if (r.isErr()) {
+    const r = await connectorsAPI.unpauseConnector(connectorId);
+    if (r.isErr() && r.error.message !== "Connector is not stopped") {
       logger.error(
         {
           connectorId,
