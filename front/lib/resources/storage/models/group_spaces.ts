@@ -5,11 +5,13 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { GroupSpaceKind } from "@app/types";
 
 export class GroupSpaceModel extends WorkspaceAwareModel<GroupSpaceModel> {
   declare createdAt: CreationOptional<Date>;
   declare groupId: ForeignKey<GroupModel["id"]>;
   declare vaultId: ForeignKey<SpaceModel["id"]>;
+  declare kind: GroupSpaceKind;
 }
 GroupSpaceModel.init(
   {
@@ -17,6 +19,14 @@ GroupSpaceModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    kind: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "member",
+      validate: {
+        isIn: [["member", "editor"]],
+      },
     },
   },
   {

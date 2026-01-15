@@ -472,6 +472,7 @@ describe("SpaceResource", () => {
           groupId: globalGroup.id,
           vaultId: regularSpace.id,
           workspaceId: workspace.id,
+          kind: "member",
         });
 
         // Reload space to get updated groups

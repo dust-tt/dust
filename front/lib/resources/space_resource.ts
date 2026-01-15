@@ -72,6 +72,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             groupId: group.id,
             vaultId: space.id,
             workspaceId: space.workspaceId,
+            kind: "member",
           },
           { transaction: t }
         );
@@ -604,6 +605,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               groupId: selectedGroup.id,
               vaultId: this.id,
               workspaceId: this.workspaceId,
+              kind: "member",
             },
             { transaction: t }
           );
@@ -619,6 +621,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       groupId: group.id,
       vaultId: this.id,
       workspaceId: auth.getNonNullableWorkspace().id,
+      kind: "member",
     });
   }
 

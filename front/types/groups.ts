@@ -26,6 +26,8 @@ import { isRoleType } from "./user";
  */
 export const GROUP_KINDS = [
   "regular",
+  // space_editors is used to know if a member of a manual group can edit the group
+  "space_editors",
   "global",
   "system",
   "agent_editors",
@@ -61,9 +63,14 @@ export type GroupType = {
   memberCount: number;
 };
 
+export type SpaceGroupType = GroupType & {
+  isEditor?: boolean;
+};
+
 export const GroupKindCodec = t.keyof({
   global: null,
   regular: null,
+  space_editors: null,
   agent_editors: null,
   skill_editors: null,
   system: null,
