@@ -189,7 +189,7 @@ async function handler(
     return apiError(req, res, {
       status_code: 400,
       api_error: {
-        type: "webhook_processing_error",
+        type: "invalid_request_error",
         message: result.error.message,
       },
     });
