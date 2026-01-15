@@ -666,7 +666,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  static async listSkills(
+  static async listByWorkspace(
     auth: Authenticator,
     {
       status = "active",
