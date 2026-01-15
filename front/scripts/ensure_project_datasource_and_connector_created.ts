@@ -1,17 +1,21 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+
 import { default as config } from "@app/lib/api/config";
 import {
-  createDustProjectConnectorForSpace,
-  getProjectConversationsDatasourceName,
-} from "@app/lib/api/project_connectors";
+  createDataSourceAndConnectorForProject,
+  fetchProjectDataSource,
+} from "@app/lib/api/projects";
+import { PROJECT_CONTEXT_FOLDER_ID } from "@app/lib/api/projects/constants";
 import { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { getSpaceConversationsRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { ConnectorsAPI } from "@app/types";
+import { assertNever, ConnectorsAPI, CoreAPI } from "@app/types";
 
 // Function to process a single project space
 async function processProjectSpace(
@@ -71,18 +75,16 @@ async function processProjectSpace(
 
   try {
     const owner = auth.getNonNullableWorkspace();
-    const plan = auth.getNonNullablePlan();
 
-    // Check if connector already exists
-    const existingDataSource = await DataSourceResource.fetchByNameOrId(
-      auth,
-      getProjectConversationsDatasourceName(space.id)
-    );
+    // Check if data source already exists
+    const r = await fetchProjectDataSource(auth, space);
 
-    if (
-      existingDataSource?.connectorProvider === "dust_project" &&
-      existingDataSource.connectorId
-    ) {
+    // Make sure we handle all possible future error codes
+    if (r.isErr() && r.error.code !== "data_source_not_found") {
+      assertNever(r.error.code);
+    }
+
+    if (r.isOk() && r.value.connectorId) {
       stats.alreadyHasConnector++;
 
       // Check if sync needs to be started and ensure garbage collection is running
@@ -92,9 +94,26 @@ async function processProjectSpace(
           logger
         );
 
-        // Try to unpause the connector (will clear errors and start sync workflow)
+        // Upsert the context folder
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+        await coreAPI.upsertDataSourceFolder({
+          projectId: r.value.dustAPIProjectId,
+          dataSourceId: r.value.dustAPIDataSourceId,
+          folderId: PROJECT_CONTEXT_FOLDER_ID,
+          parentId: null,
+          parents: [PROJECT_CONTEXT_FOLDER_ID],
+          mimeType: INTERNAL_MIME_TYPES.DUST_PROJECT.CONTEXT_FOLDER,
+          sourceUrl:
+            config.getClientFacingUrl() +
+            getSpaceConversationsRoute(owner.sId, space.sId),
+          timestamp: null,
+          providerVisibility: null,
+          title: "Context",
+        });
+
+        // Try to resume the connector (will start full sync if needed, or incremental sync if already synced)
         const unpauseResult = await connectorsAPI.unpauseConnector(
-          existingDataSource.connectorId.toString()
+          r.value.connectorId.toString()
         );
         if (unpauseResult.isErr()) {
           localLogger.warn(
@@ -119,11 +138,9 @@ async function processProjectSpace(
       localLogger.info("Creating dust_project connector for project");
 
       // Create the connector
-      const createResult = await createDustProjectConnectorForSpace(
+      const createResult = await createDataSourceAndConnectorForProject(
         auth,
-        space,
-        owner,
-        plan
+        space
       );
 
       if (createResult.isErr()) {
@@ -134,19 +151,16 @@ async function processProjectSpace(
       localLogger.info("Successfully created dust_project connector");
 
       // Trigger initial sync
-      const dataSource = await DataSourceResource.fetchByNameOrId(
-        auth,
-        getProjectConversationsDatasourceName(space.id)
-      );
+      const r = await fetchProjectDataSource(auth, space);
 
-      if (dataSource?.connectorId) {
+      if (r.isOk() && r.value.connectorId) {
         const connectorsAPI = new ConnectorsAPI(
           config.getConnectorsAPIConfig(),
           logger
         );
 
         const syncResult = await connectorsAPI.syncConnector(
-          dataSource.connectorId.toString()
+          r.value.connectorId.toString()
         );
         if (syncResult.isErr()) {
           localLogger.warn(

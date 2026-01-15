@@ -4,7 +4,7 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
-import { getRelatedContentFragments } from "@app/lib/api/assistant/conversation";
+import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import {
   getCompletionDuration,
   getRichMentionsWithStatusForMessage,

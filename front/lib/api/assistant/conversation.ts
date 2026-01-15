@@ -7,6 +7,7 @@ import {
   getAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
+import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   createAgentMessages,
@@ -430,36 +431,6 @@ async function getConversationRankVersionLock(
     },
     "[ASSISTANT_TRACE] Advisory lock acquired"
   );
-}
-
-export function getRelatedContentFragments(
-  conversation: ConversationType,
-  message: UserMessageType
-): ContentFragmentType[] {
-  const potentialContentFragments = conversation.content
-    // Only the latest version of each message.
-    .map((versions) => versions[versions.length - 1])
-    // Only the content fragments.
-    .filter(isContentFragmentType)
-    // That are preceding the message by rank in the conversation.
-    .filter((m) => m.rank < message.rank)
-    // Sort by rank descending.
-    .toSorted((a, b) => b.rank - a.rank);
-
-  const relatedContentFragments: ContentFragmentType[] = [];
-  let lastRank = message.rank;
-
-  // Add until we reach a gap in ranks.
-  for (const contentFragment of potentialContentFragments) {
-    if (contentFragment.rank === lastRank - 1) {
-      relatedContentFragments.push(contentFragment);
-      lastRank = contentFragment.rank;
-    } else {
-      break;
-    }
-  }
-
-  return relatedContentFragments;
 }
 
 export function isUserMessageContextValid(

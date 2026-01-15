@@ -7,7 +7,7 @@ import {
   updateAgentRequirements,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
-import { createDustProjectConnectorForSpace } from "@app/lib/api/project_connectors";
+import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -460,11 +460,9 @@ export async function createSpaceAndGroup(
       // If this is a project space, create the dust_project connector
       // Create connector outside transaction to avoid long-running transaction
       // The connector creation involves external API calls
-      const connectorRes = await createDustProjectConnectorForSpace(
+      const connectorRes = await createDataSourceAndConnectorForProject(
         auth,
-        space,
-        owner,
-        plan
+        space
       );
       if (connectorRes.isErr()) {
         logger.error(

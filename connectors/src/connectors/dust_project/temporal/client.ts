@@ -72,10 +72,10 @@ export async function launchDustProjectIncrementalSyncWorkflow(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const workflowId = dustProjectIncrementalSyncWorkflowId(connectorId);
 
-  // minuteOffset ensures jobs are distributed across the 30-minute intervals based on connector ID
-  // Run incremental sync every 30 minutes
-  const minuteOffset = connector.id % 30;
-  const cronSchedule = `${minuteOffset},${minuteOffset + 30} * * * *`;
+  // minuteOffset ensures jobs are distributed across the 10-minute intervals based on connector ID
+  // Run incremental sync every 10 minutes
+  const minuteOffset = connector.id % 10;
+  const cronSchedule = `${minuteOffset},${minuteOffset + 10},${minuteOffset + 20},${minuteOffset + 30},${minuteOffset + 40},${minuteOffset + 50} * * * *`;
 
   try {
     // Check if workflow already exists
