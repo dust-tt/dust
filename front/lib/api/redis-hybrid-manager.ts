@@ -1,3 +1,4 @@
+import tracer from "dd-trace";
 import { EventEmitter } from "events";
 import type { RedisClientType } from "redis";
 import { commandOptions, createClient } from "redis";
@@ -270,121 +271,156 @@ class RedisHybridManager {
     history: EventPayload[];
     unsubscribe: () => void;
   }> {
-    const subscribeStartMs = Date.now();
+    return tracer.trace(
+      "redis.hybrid.subscribe",
+      { resource: origin },
+      async () => {
+        const subscribeStartMs = Date.now();
 
-    const subscriptionClient = await this.getSubscriptionClient();
-    const streamClient = await this.getStreamAndPublishClient();
-    const streamName = this.getStreamName(channelName);
-    const pubSubChannelName = this.getPubSubChannelName(channelName);
+        const clientsStartMs = Date.now();
+        const subscriptionClient = await this.getSubscriptionClient();
+        const streamClient = await this.getStreamAndPublishClient();
+        const clientsDurationMs = Date.now() - clientsStartMs;
+        statsDClient.distribution(
+          "sse.subscribe.get_clients_duration_ms",
+          clientsDurationMs
+        );
 
-    // Make sure the subscribers map is initialized
-    if (!this.subscribers.has(pubSubChannelName)) {
-      this.subscribers.set(pubSubChannelName, new Set());
-      // Subscribe to the channel if this is the first subscriber
-      await subscriptionClient.subscribe(pubSubChannelName, this.onMessage);
-    }
+        const streamName = this.getStreamName(channelName);
+        const pubSubChannelName = this.getPubSubChannelName(channelName);
 
-    const eventsDuringHistoryFetch: EventPayload[] = [];
-    const eventsDuringHistoryFetchCallback: EventCallback = (
-      event: EventPayload | "close"
-    ) => {
-      if (event !== "close") {
-        eventsDuringHistoryFetch.push(event);
-      }
-    };
+        // Make sure the subscribers map is initialized
+        const channelSetupStartMs = Date.now();
+        if (!this.subscribers.has(pubSubChannelName)) {
+          this.subscribers.set(pubSubChannelName, new Set());
+          // Subscribe to the channel if this is the first subscriber
+          await subscriptionClient.subscribe(pubSubChannelName, this.onMessage);
+        }
+        const channelSetupDurationMs = Date.now() - channelSetupStartMs;
+        statsDClient.distribution(
+          "sse.subscribe.channel_setup_duration_ms",
+          channelSetupDurationMs
+        );
 
-    // Add to subscribers map during history fetch to avoid race condition
-    this.subscribers
-      .get(pubSubChannelName)!
-      .add(eventsDuringHistoryFetchCallback);
+        const eventsDuringHistoryFetch: EventPayload[] = [];
+        const eventsDuringHistoryFetchCallback: EventCallback = (
+          event: EventPayload | "close"
+        ) => {
+          if (event !== "close") {
+            eventsDuringHistoryFetch.push(event);
+          }
+        };
 
-    const { events: history, hasMore: historyHasMore } = await this.getHistory(
-      streamClient,
-      streamName,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      lastEventId || "0-0"
-    );
+        // Add to subscribers map during history fetch to avoid race condition
+        this.subscribers
+          .get(pubSubChannelName)!
+          .add(eventsDuringHistoryFetchCallback);
 
-    // Remove the temporary callback from the subscribers map
-    this.subscribers
-      .get(pubSubChannelName)!
-      .delete(eventsDuringHistoryFetchCallback);
+        const historyFetchStartMs = Date.now();
+        const { events: history, hasMore: historyHasMore } =
+          await this.getHistory(
+            streamClient,
+            streamName,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            lastEventId || "0-0"
+          );
+        const historyFetchDurationMs = Date.now() - historyFetchStartMs;
+        statsDClient.distribution(
+          "sse.subscribe.history_fetch_duration_ms",
+          historyFetchDurationMs
+        );
 
-    // Immediately add the real callback to the subscribers map
-    this.subscribers.get(pubSubChannelName)!.add(callback);
+        // Remove the temporary callback from the subscribers map
+        this.subscribers
+          .get(pubSubChannelName)!
+          .delete(eventsDuringHistoryFetchCallback);
 
-    // Track active subscription count for monitoring.
-    this.activeSubscriptionCount++;
-    statsDClient.gauge(
-      "sse.active_subscriptions",
-      this.activeSubscriptionCount
-    );
-    // Track subscription rate (increment counter to get rate per second).
-    statsDClient.increment("sse.subscription_established", 1);
+        // Immediately add the real callback to the subscribers map
+        this.subscribers.get(pubSubChannelName)!.add(callback);
 
-    // Append the events during history fetch to the history, if any
-    if (eventsDuringHistoryFetch.length > 0) {
-      for (const event of eventsDuringHistoryFetch) {
-        // deduplicate events
-        if (history.find((h) => h.id === event.id)) {
-          continue;
+        // Track active subscription count for monitoring.
+        this.activeSubscriptionCount++;
+        statsDClient.gauge(
+          "sse.active_subscriptions",
+          this.activeSubscriptionCount
+        );
+        // Track subscription rate (increment counter to get rate per second).
+        statsDClient.increment("sse.subscription_established", 1);
+
+        // Append the events during history fetch to the history, if any
+        const dedupeStartMs = Date.now();
+        if (eventsDuringHistoryFetch.length > 0) {
+          // Use Set for O(1) deduplication instead of O(n) find
+          const historyIds = new Set(history.map((h) => h.id));
+
+          for (const event of eventsDuringHistoryFetch) {
+            // deduplicate events
+            if (!historyIds.has(event.id)) {
+              history.push(event);
+            }
+          }
+          // Sort the history just in case
+          history.sort((a, b) => a.id.localeCompare(b.id));
+        }
+        const dedupeDurationMs = Date.now() - dedupeStartMs;
+        statsDClient.distribution(
+          "sse.subscribe.dedupe_duration_ms",
+          dedupeDurationMs
+        );
+
+        if (historyHasMore) {
+          // Force the client to re-subscribe with the latest event id it had in order to get more events from history.
+          callback("close");
         }
 
-        history.push(event);
-      }
-      // Sort the history just in case
-      history.sort((a, b) => a.id.localeCompare(b.id));
-    }
+        // Track total subscription establishment time.
+        const subscribeDurationMs = Date.now() - subscribeStartMs;
+        statsDClient.timing(
+          "sse.subscription.total_duration_ms",
+          subscribeDurationMs
+        );
 
-    if (historyHasMore) {
-      // Force the client to re-subscribe with the latest event id it had in order to get more events from history.
-      callback("close");
-    }
+        return {
+          history,
+          unsubscribe: async () => {
+            const subscribers = this.subscribers.get(pubSubChannelName);
+            if (subscribers) {
+              callback("close");
+              subscribers.delete(callback);
 
-    // Track total subscription establishment time.
-    const subscribeDurationMs = Date.now() - subscribeStartMs;
-    statsDClient.timing(
-      "sse.subscription.total_duration_ms",
-      subscribeDurationMs
-    );
+              // Track active subscription count for monitoring.
+              this.activeSubscriptionCount--;
+              statsDClient.gauge(
+                "sse.active_subscriptions",
+                this.activeSubscriptionCount
+              );
 
-    return {
-      history,
-      unsubscribe: async () => {
-        const subscribers = this.subscribers.get(pubSubChannelName);
-        if (subscribers) {
-          callback("close");
-          subscribers.delete(callback);
-
-          // Track active subscription count for monitoring.
-          this.activeSubscriptionCount--;
-          statsDClient.gauge(
-            "sse.active_subscriptions",
-            this.activeSubscriptionCount
-          );
-
-          if (subscribers.size === 0) {
-            // No more subscribers for this channel
-            this.subscribers.delete(pubSubChannelName);
-            // Unsubscribe from the channel
-            if (this.subscriptionClient) {
-              try {
-                await this.subscriptionClient.unsubscribe(pubSubChannelName);
-              } catch (error) {
-                logger.error(
-                  { error, channel: pubSubChannelName },
-                  "Error unsubscribing from channel"
+              if (subscribers.size === 0) {
+                // No more subscribers for this channel
+                this.subscribers.delete(pubSubChannelName);
+                // Unsubscribe from the channel
+                if (this.subscriptionClient) {
+                  try {
+                    await this.subscriptionClient.unsubscribe(
+                      pubSubChannelName
+                    );
+                  } catch (error) {
+                    logger.error(
+                      { error, channel: pubSubChannelName },
+                      "Error unsubscribing from channel"
+                    );
+                  }
+                }
+                logger.debug(
+                  { pubSubChannelName: pubSubChannelName, origin },
+                  "Unsubscribed from Redis channel"
                 );
               }
             }
-            logger.debug(
-              { pubSubChannelName: pubSubChannelName, origin },
-              "Unsubscribed from Redis channel"
-            );
-          }
-        }
-      },
-    };
+          },
+        };
+      }
+    ); // End tracer.trace("redis.hybrid.subscribe")
   }
 
   public async removeEvent(
@@ -418,61 +454,94 @@ class RedisHybridManager {
     streamName: string,
     lastEventId: string = "0-0"
   ): Promise<{ events: EventPayload[]; hasMore: boolean }> {
-    this.concurrentHistoryFetches++;
-    statsDClient.gauge(
-      "sse.history.concurrent_fetches",
-      this.concurrentHistoryFetches
-    );
+    return tracer.trace(
+      "redis.xread.history",
+      { resource: streamName },
+      async () => {
+        const historyStartMs = Date.now();
 
-    try {
-      // Use an isolated connection to avoid blocking the main connection.
-      const result = await streamClient
-        .xRead(
-          commandOptions({ isolated: true }),
-          { key: streamName, id: lastEventId },
-          { COUNT: HISTORY_FETCH_COUNT }
-        )
-        .then((events) => {
-          if (events) {
-            const finalEvents = events.flatMap((event) =>
-              event.messages.map((message) => ({
-                id: message.id,
-                message: { payload: message.message["payload"] },
-              }))
-            );
+        this.concurrentHistoryFetches++;
+        statsDClient.gauge(
+          "sse.history.concurrent_fetches",
+          this.concurrentHistoryFetches
+        );
+        statsDClient.increment("sse.history.fetch_started");
 
-            const eventCount = finalEvents.length;
-            const hasMore = eventCount >= HISTORY_FETCH_COUNT;
+        try {
+          const xReadStartMs = Date.now();
+          const result = await tracer
+            .trace("redis.xread.command", async () => {
+              return streamClient.xRead(
+                commandOptions({ isolated: true }),
+                { key: streamName, id: lastEventId },
+                { COUNT: HISTORY_FETCH_COUNT }
+              );
+            })
+            .then((events) => {
+              const xReadDurationMs = Date.now() - xReadStartMs;
+              statsDClient.distribution(
+                "sse.history.xread_duration_ms",
+                xReadDurationMs
+              );
 
-            // Track all event replays, including from-beginning fetches during deployment.
-            statsDClient.histogram("sse.history.events_replayed", eventCount);
+              const parseStartMs = Date.now();
+              if (events) {
+                const finalEvents = events.flatMap((event) =>
+                  event.messages.map((message) => ({
+                    id: message.id,
+                    message: { payload: message.message["payload"] },
+                  }))
+                );
 
-            return {
-              events: finalEvents,
-              hasMore,
-            };
-          }
-          return { events: [], hasMore: false };
-        });
+                const eventCount = finalEvents.length;
+                const hasMore = eventCount >= HISTORY_FETCH_COUNT;
 
-      return result;
-    } catch (error) {
-      logger.error(
-        {
-          error,
-          streamName,
-          lastEventId,
-        },
-        "Error fetching history from stream"
-      );
-      return await Promise.resolve({ events: [], hasMore: false });
-    } finally {
-      this.concurrentHistoryFetches--;
-      statsDClient.gauge(
-        "sse.history.concurrent_fetches",
-        this.concurrentHistoryFetches
-      );
-    }
+                const parseDurationMs = Date.now() - parseStartMs;
+                statsDClient.distribution(
+                  "sse.history.parse_duration_ms",
+                  parseDurationMs
+                );
+
+                // Track all event replays, including from-beginning fetches during deployment.
+                statsDClient.histogram(
+                  "sse.history.events_replayed",
+                  eventCount
+                );
+
+                return {
+                  events: finalEvents,
+                  hasMore,
+                };
+              }
+              return { events: [], hasMore: false };
+            });
+
+          const totalHistoryDurationMs = Date.now() - historyStartMs;
+          statsDClient.distribution(
+            "sse.history.total_duration_ms",
+            totalHistoryDurationMs
+          );
+
+          return result;
+        } catch (error) {
+          logger.error(
+            {
+              error,
+              streamName,
+              lastEventId,
+            },
+            "Error fetching history from stream"
+          );
+          return await Promise.resolve({ events: [], hasMore: false });
+        } finally {
+          this.concurrentHistoryFetches--;
+          statsDClient.gauge(
+            "sse.history.concurrent_fetches",
+            this.concurrentHistoryFetches
+          );
+        }
+      }
+    ); // End tracer.trace("redis.xread.history")
   }
 
   private onMessage = (message: string, channel: string) => {
