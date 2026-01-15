@@ -1,13 +1,13 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
+import type { LightWorkspaceType } from "@app/types";
 
 // Seed context shared across all seed functions
 export interface SeedContext {
   auth: Authenticator;
-  workspace: WorkspaceResource;
+  workspace: LightWorkspaceType;
   user: UserResource;
   execute: boolean;
   logger: Logger;

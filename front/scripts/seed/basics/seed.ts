@@ -94,7 +94,7 @@ makeScript({}, async ({ execute }, logger) => {
   // Create seed context
   const ctx: SeedContext = {
     auth,
-    workspace,
+    workspace: renderLightWorkspaceType({ workspace }),
     user,
     execute,
     logger,
