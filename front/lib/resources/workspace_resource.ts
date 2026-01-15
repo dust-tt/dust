@@ -22,7 +22,13 @@ import type {
   WorkspaceDomain,
   WorkspaceSegmentationType,
 } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import {
+  Err,
+  isHostUnderDomain,
+  isIpAddress,
+  normalizeError,
+  Ok,
+} from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -123,6 +129,34 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   static async listAll(): Promise<WorkspaceResource[]> {
     const workspaces = await this.model.findAll();
     return workspaces.map((workspace) => new this(this.model, workspace.get()));
+  }
+
+  /**
+   * Check if a host is under any verified domain for this workspace.
+   * Used for MCP static IP egress - requests to hosts under verified domains
+   * are routed through the static IP proxy.
+   *
+   * Rejects IP address literals for security (only domain names are matched).
+   */
+  static async isHostUnderVerifiedDomain(
+    workspaceId: ModelId,
+    host: string
+  ): Promise<boolean> {
+    // Reject IP addresses - only domain names should be matched
+    if (isIpAddress(host)) {
+      return false;
+    }
+
+    // Fetch all verified domains for the workspace
+    const verifiedDomains = await this.workspaceDomainModel.findAll({
+      attributes: ["domain"],
+      where: { workspaceId },
+      // WORKSPACE_ISOLATION_BYPASS: Need to bypass for workspace-level domain lookup.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    // Check if host matches any verified domain (exact or subdomain)
+    return verifiedDomains.some((d) => isHostUnderDomain(host, d.domain));
   }
 
   async updateSegmentation(segmentation: WorkspaceSegmentationType) {
