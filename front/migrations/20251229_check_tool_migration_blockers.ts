@@ -29,6 +29,12 @@ interface BlockedWorkspace {
   affectedMcpConfigCount: number;
 }
 
+interface FailedWorkspace {
+  sId: string;
+  name: string;
+  error: string;
+}
+
 async function checkWorkspace(
   workspace: LightWorkspaceType,
   logger: Logger,
@@ -140,11 +146,28 @@ makeScript(
     }
 
     const blockedWorkspaces: BlockedWorkspace[] = [];
+    const failedWorkspaces: FailedWorkspace[] = [];
 
     const processWorkspace = async (workspace: LightWorkspaceType) => {
-      const result = await checkWorkspace(workspace, logger, { mcpServerName });
-      if (result) {
-        blockedWorkspaces.push(result);
+      try {
+        const result = await checkWorkspace(workspace, logger, {
+          mcpServerName,
+        });
+        if (result) {
+          blockedWorkspaces.push(result);
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Unknown error";
+        logger.error(
+          { workspaceSId: workspace.sId, error: errorMessage },
+          "Failed to check workspace"
+        );
+        failedWorkspaces.push({
+          sId: workspace.sId,
+          name: workspace.name,
+          error: errorMessage,
+        });
       }
     };
 
@@ -183,6 +206,15 @@ makeScript(
       }
     }
 
-    console.log(`\nSummary: ${blockedWorkspaces.length} workspaces blocked\n`);
+    if (failedWorkspaces.length > 0) {
+      console.log("\nFailed workspaces:");
+      for (const ws of failedWorkspaces) {
+        console.log(`- ${ws.sId} (${ws.name}): ${ws.error}`);
+      }
+    }
+
+    console.log(
+      `\nSummary: ${blockedWorkspaces.length} blocked, ${failedWorkspaces.length} failed\n`
+    );
   }
 );
