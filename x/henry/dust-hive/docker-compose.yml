@@ -23,33 +23,18 @@ services:
       timeout: 5s
       retries: 5
 
-  qdrant_primary:
+  qdrant:
     image: "qdrant/qdrant:v1.13.0"
-    environment:
-      QDRANT__CLUSTER__ENABLED: "true"
     ulimits:
       nofile:
         soft: 64000
         hard: 64000
-    command: ["./qdrant", "--uri", "http://qdrant_primary:6335"]
     healthcheck:
-      test: [ "CMD-SHELL", "sleep 5" ]
-      interval: 1s
+      test: [ "CMD-SHELL", "sleep 1" ]
+      interval: 5s
       timeout: 10s
-      retries: 1
-
-  qdrant_secondary:
-    image: "qdrant/qdrant:v1.13.0"
-    environment:
-      QDRANT__CLUSTER__ENABLED: "true"
-    ulimits:
-      nofile:
-        soft: 64000
-        hard: 64000
-    command: ["./qdrant", "--bootstrap", "http://qdrant_primary:6335"]
-    depends_on:
-      qdrant_primary:
-        condition: service_healthy
+      retries: 3
+      start_period: 10s
 
   elasticsearch:
     build:
