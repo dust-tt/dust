@@ -555,33 +555,34 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 
       assert(message.parentId !== null, "Agent message must have a parentId.");
 
-      let parentMessage = message.parentId
-        ? (messagesById.get(message.parentId) ?? null)
-        : null;
+      let parentMessage = messagesById.get(message.parentId) ?? null;
 
+      // Fallback to fetch the parent message from the database if it's not in the messages map, it can happen if you are only rendering a subset of the messages.
+      parentMessage ??= await MessageModel.findOne({
+        where: {
+          id: message.parentId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: message.conversationId,
+        },
+        include: [
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: true,
+          },
+        ],
+      });
+
+      // Log an error if the parent message is not found, this should not happen (hence the assert below).
       if (!parentMessage) {
-        logger.info(
+        logger.error(
           {
             workspaceId: auth.getNonNullableWorkspace().sId,
             conversationSId: message.sId,
             agentMessageId: agentMessage.id,
           },
-          "Couldn't find parent message for agent message in the messages map, can happen if you are only rendering a subset of the messages. Falling back to fetch the message from the database."
+          "Couldn't find parent message for agent message."
         );
-        parentMessage = await MessageModel.findOne({
-          where: {
-            id: message.parentId,
-            workspaceId: auth.getNonNullableWorkspace().id,
-            conversationId: message.conversationId,
-          },
-          include: [
-            {
-              model: UserMessageModel,
-              as: "userMessage",
-              required: true,
-            },
-          ],
-        });
       }
 
       assert(!!parentMessage, "Parent message must be found.");
