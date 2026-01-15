@@ -24,8 +24,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-import { isTextContent } from "@app/types/assistant/generation";
-import type { Content } from "@app/types/assistant/generation";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -33,6 +31,8 @@ import type {
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types";
+import type { Content } from "@app/types/assistant/generation";
+import { isTextContent } from "@app/types/assistant/generation";
 
 function contentToText(contents: Content[]): string {
   return contents.filter(isTextContent).map((c) => c.text).join("\n");
