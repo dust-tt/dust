@@ -173,8 +173,8 @@ impl Credential {
             CredentialProvider::Snowflake => {
                 // Check if it's OAuth (client_id + client_secret) or data warehouse auth
                 if content.contains_key("client_id") && content.contains_key("client_secret") {
-                    // OAuth credentials for MCP server integration
-                    vec!["client_id", "client_secret", "snowflake_account"]
+                    // OAuth credentials for MCP server integration (snowflake_account is in metadata)
+                    vec!["client_id", "client_secret"]
                 } else if content.get("auth_type").and_then(|v| v.as_str()) == Some("keypair") {
                     // Key-pair auth for data warehouse
                     vec![
