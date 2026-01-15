@@ -69,15 +69,6 @@ function useContactFormSubmit() {
       action: "submit_attempt",
     });
 
-    // Push initial GTM event (before we know qualification status)
-    if (typeof window !== "undefined") {
-      window.dataLayer = window.dataLayer ?? [];
-      window.dataLayer.push({
-        event: "contact_form_submitted",
-        is_qualified: false,
-      });
-    }
-
     try {
       const response = await clientFetch("/api/contact/submit", {
         method: "POST",
@@ -107,6 +98,15 @@ function useContactFormSubmit() {
         object: "contact_form",
         action: "submit_success",
       });
+
+      // Push GTM event with actual qualification status
+      if (typeof window !== "undefined") {
+        window.dataLayer = window.dataLayer ?? [];
+        window.dataLayer.push({
+          event: "contact_form_submitted",
+          is_qualified: result.isQualified,
+        });
+      }
 
       // Scroll to top so the thank you message is visible
       window.scrollTo({ top: 0, behavior: "smooth" });
