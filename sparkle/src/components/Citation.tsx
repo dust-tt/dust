@@ -63,7 +63,8 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
           "s-relative s-flex s-min-w-24 s-flex-none s-flex-col s-overflow-hidden",
           // Use min() to maintain aspect ratio in grid mode (8% of width) while capping
           // padding at 3 (0.75rem) for list mode to prevent excessive top padding on wide items.
-          "s-pt-[min(8%,theme(spacing.3))]",
+          !hasImage && "s-pt-[min(8%,theme(spacing.3))]",
+          hasImage && "s-border-0 s-p-0",
           className
         )}
         {...props}
@@ -239,16 +240,14 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
               <img
                 src={imgSrc}
                 alt={alt}
-                className="s-h-full s-w-full s-object-cover"
+                className="s-h-full s-w-full s-object-cover s-transition s-duration-200 group-hover/citation-image:s-blur-sm"
               />
-              {/* Blur overlay with title - shown on hover */}
-              {/* Bottom padding accounts for Card padding (12px) + description line height (~16px) */}
+              {/* Overlay with title - shown on hover */}
               <div
                 className={cn(
                   "s-absolute s-inset-0 s-z-10",
                   "s-flex s-flex-col s-items-start s-justify-end",
-                  "s-bg-primary-100/80 dark:s-bg-primary-100-night/80",
-                  "s-backdrop-blur-sm",
+                  "s-bg-primary-100/60 dark:s-bg-primary-100-night/60",
                   "s-opacity-0 s-transition s-duration-200",
                   "group-hover/citation-image:s-opacity-100",
                   "s-px-3 s-pb-7"
