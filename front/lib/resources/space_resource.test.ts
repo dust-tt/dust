@@ -64,7 +64,7 @@ describe("SpaceResource", () => {
       regularGroup = await GroupResource.makeNew({
         name: "Test Regular Group",
         workspaceId: workspace.id,
-        kind: "space_members",
+        kind: "regular",
       });
 
       regularSpace = await SpaceResource.makeNew(
@@ -635,7 +635,7 @@ describe("SpaceResource", () => {
         projectMemberGroup = await GroupResource.makeNew({
           name: "Project Members Group",
           workspaceId: workspace.id,
-          kind: "space_members",
+          kind: "regular",
         });
       });
 
