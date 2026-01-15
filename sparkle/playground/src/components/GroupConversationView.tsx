@@ -2,22 +2,26 @@ import {
   Avatar,
   BookOpenIcon,
   ChatBubbleLeftRightIcon,
-  Counter,
+  ConversationListItem,
+  ContactsUserIcon,
   InformationCircleIcon,
   ListGroup,
-  ListItem,
   ListItemSection,
+  ReplySection,
+  SearchInput,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   ToolsIcon,
+  Cog6ToothIcon,
 } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { getAgentById } from "../data/agents";
 import type { Agent, Conversation, Space, User } from "../data/types";
 import { getUserById } from "../data/users";
+import { ConversationSuggestion } from "./ConversationSuggestion";
 import { InputBar } from "./InputBar";
 
 interface GroupConversationViewProps {
@@ -25,7 +29,10 @@ interface GroupConversationViewProps {
   conversations: Conversation[];
   users: User[];
   agents: Agent[];
+  spaceMemberIds?: string[];
   onConversationClick?: (conversation: Conversation) => void;
+  onInviteMembers?: () => void;
+  showToolsAndAboutTabs?: boolean;
 }
 
 // Helper function to get random participants for a conversation
@@ -166,20 +173,56 @@ function generateConversationsWithDates(
   return generated;
 }
 
+// Seeded random function for deterministic randomness
+function seededRandom(seed: string, index: number): number {
+  const hash = seed
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const x = Math.sin((hash + index) * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+}
+
 export function GroupConversationView({
   space,
   conversations,
   users,
   agents,
+  spaceMemberIds = [],
   onConversationClick,
+  onInviteMembers,
+  showToolsAndAboutTabs = false,
 }: GroupConversationViewProps) {
+  const [searchText, setSearchText] = useState("");
+
   // Generate more conversations with varied dates
   const expandedConversations = useMemo(() => {
     if (conversations.length === 0) return [];
+
+    // Determine if this space should have no history (25% probability)
+    const hash = space.id
+      .split("")
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const shouldHaveNoHistory = hash % 4 === 0;
+
+    if (shouldHaveNoHistory) return [];
+
     // Generate at least 20 conversations, more if we have fewer originals
     const targetCount = Math.max(20, conversations.length * 4);
     return generateConversationsWithDates(conversations, targetCount);
-  }, [conversations]);
+  }, [conversations, space.id]);
+
+  // Filter conversations by search text
+  const filteredConversations = useMemo(() => {
+    if (!searchText.trim()) {
+      return expandedConversations;
+    }
+    const searchLower = searchText.toLowerCase();
+    return expandedConversations.filter(
+      (conv) =>
+        conv.title.toLowerCase().includes(searchLower) ||
+        conv.description?.toLowerCase().includes(searchLower)
+    );
+  }, [expandedConversations, searchText]);
 
   // Group conversations by date bucket
   const conversationsByBucket = useMemo(() => {
@@ -195,7 +238,7 @@ export function GroupConversationView({
       "Last Month": [],
     };
 
-    expandedConversations.forEach((conversation) => {
+    filteredConversations.forEach((conversation) => {
       const bucket = getDateBucket(conversation.updatedAt);
       buckets[bucket].push(conversation);
     });
@@ -209,30 +252,72 @@ export function GroupConversationView({
     });
 
     return buckets;
-  }, [expandedConversations]);
+  }, [filteredConversations]);
 
-  // Get random users for avatar stack (up to 16)
-  const randomUsers = useMemo(() => {
-    const shuffled = [...users].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, Math.min(16, users.length));
-  }, [users]);
+  // Determine if space is new (no conversations and no members)
+  const isNew = useMemo(() => {
+    return (
+      conversations.length === 0 &&
+      (!spaceMemberIds || spaceMemberIds.length === 0)
+    );
+  }, [conversations.length, spaceMemberIds]);
 
-  const randomUserAvatars = useMemo(() => {
-    return randomUsers.map((user) => ({
+  // Get avatar count (3-15) based on space ID for deterministic randomness
+  const avatarCount = useMemo(() => {
+    const hash = space.id
+      .split("")
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return 3 + (hash % 13); // 3 to 15
+  }, [space.id]);
+
+  // Get avatars for this space - deterministic per space, or from invited members
+  const spaceAvatars = useMemo(() => {
+    // New spaces show no avatars
+    if (isNew) return [];
+
+    // If space has invited members, use those
+    if (spaceMemberIds.length > 0) {
+      const memberAvatars: Array<{
+        name: string;
+        visual?: string;
+        isRounded: boolean;
+      }> = [];
+      spaceMemberIds.forEach((id) => {
+        const user = users.find((u) => u.id === id);
+        if (user) {
+          memberAvatars.push({
+            name: user.fullName,
+            visual: user.portrait,
+            isRounded: true,
+          });
+        }
+      });
+      return memberAvatars;
+    }
+
+    // Generate deterministic random avatars based on space.id
+    const shuffled = [...users].sort((a, b) => {
+      const aHash = space.id + a.id;
+      const bHash = space.id + b.id;
+      return seededRandom(aHash, 0) - seededRandom(bHash, 0);
+    });
+    return shuffled.slice(0, avatarCount).map((user) => ({
       name: user.fullName,
       visual: user.portrait,
       isRounded: true,
     }));
-  }, [randomUsers]);
+  }, [space.id, isNew, spaceMemberIds, users, avatarCount]);
+
+  const hasHistory = expandedConversations.length > 0;
 
   return (
-    <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background s-px-6">
+    <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background">
       {/* Tabs */}
       <Tabs
         defaultValue="conversations"
         className="s-flex s-min-h-0 s-flex-1 s-flex-col s-pt-3"
       >
-        <TabsList>
+        <TabsList className="s-px-6">
           <TabsTrigger
             value="conversations"
             label="Conversations"
@@ -243,45 +328,88 @@ export function GroupConversationView({
             label="Knowledge"
             icon={BookOpenIcon}
           />
-          <TabsTrigger value="Tools" label="Tools" icon={ToolsIcon} />
+          {showToolsAndAboutTabs && (
+            <>
+              <TabsTrigger value="Tools" label="Tools" icon={ToolsIcon} />
+              <TabsTrigger
+                value="about"
+                label="About"
+                icon={InformationCircleIcon}
+              />
+            </>
+          )}
           <TabsTrigger
-            value="about"
-            label="About"
-            icon={InformationCircleIcon}
+            value="settings"
+            icon={Cog6ToothIcon}
+            tooltip={"Room settings"}
           />
           <div className="s-flex-1" />
-          <div className="s-flex s-h-8 s-items-center">
-            <Avatar.Stack
-              avatars={randomUserAvatars}
-              nbVisibleItems={16}
-              orientation="horizontal"
-              hasMagnifier={false}
-              size="xs"
-            />
-          </div>
+          {spaceAvatars.length > 0 && (
+            <div className="s-flex s-h-8 s-items-center">
+              <Avatar.Stack
+                avatars={spaceAvatars}
+                nbVisibleItems={spaceAvatars.length}
+                orientation="horizontal"
+                hasMagnifier={false}
+                size="xs"
+              />
+            </div>
+          )}
         </TabsList>
 
         {/* Conversations Tab */}
         <TabsContent value="conversations">
-          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto">
-            <div className="s-mx-auto s-flex s-w-full s-max-w-3xl s-flex-col s-gap-6 s-py-8">
+          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
+            <div
+              className={`s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 ${
+                !hasHistory ? "s-h-full s-justify-center s-py-8" : "s-py-8"
+              }`}
+            >
               {/* New conversation section */}
               <div className="s-flex s-flex-col s-gap-3">
-                <h2 className="s-heading-base s-text-foreground dark:s-text-foreground-night">
-                  Start a conversation in{" "}
-                  <span className="s-italic">"{space.name}"</span>
+                <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+                  {space.name}
                 </h2>
-                <InputBar placeholder="Start a conversation..." />
+                <InputBar
+                  placeholder={`Start a conversation in ${space.name}`}
+                />
               </div>
+
+              {/* Suggestions for empty rooms */}
+              {!hasHistory && (
+                <ConversationSuggestion
+                  suggestions={[
+                    {
+                      id: "add-knowledge",
+                      label: "Add knowledge",
+                      icon: BookOpenIcon,
+                      onClick: () => {
+                        console.log("Add knowledge clicked");
+                      },
+                    },
+                    {
+                      id: "invite-members",
+                      label: "Invite members",
+                      icon: ContactsUserIcon,
+                      onClick: () => {
+                        onInviteMembers?.();
+                      },
+                    },
+                  ]}
+                />
+              )}
 
               {/* Conversations list */}
               <div className="s-flex s-flex-col s-gap-3">
                 {expandedConversations.length > 0 && (
                   <>
-                    <h2 className="s-heading-base s-text-foreground dark:s-text-foreground-night">
-                      Activity in{" "}
-                      <span className="s-italic">"{space.name}"</span>
-                    </h2>
+                    <SearchInput
+                      name="conversation-search"
+                      value={searchText}
+                      onChange={setSearchText}
+                      placeholder={`Search in ${space.name}`}
+                      className="s-w-full"
+                    />
                     <div className="s-flex s-flex-col">
                       {(
                         [
@@ -321,19 +449,34 @@ export function GroupConversationView({
                                   })
                                   .replace("24:", "00:");
 
-                                // Generate random message count (1-12)
+                                // Generate random message count (1-3)
                                 const messageCount = Math.floor(
                                   Math.random() * 3 + 1
+                                );
+
+                                // Generate random reply count (1-8)
+                                const replyCount = Math.floor(
+                                  Math.random() * 8 + 1
                                 );
 
                                 // Extract base conversation ID if this is an expanded conversation
                                 // Expanded IDs have pattern: {baseId}-{number} (e.g., "conv-1-5")
                                 // Check if ID matches expanded pattern (ends with -{digits})
+                                // Use a more specific pattern to avoid false matches with IDs like "conv-10"
                                 const expandedIdMatch =
                                   conversation.id.match(/^(.+)-(\d+)$/);
-                                const baseConversationId = expandedIdMatch
-                                  ? expandedIdMatch[1] // Use the base ID before the last -{number}
-                                  : conversation.id; // Use original ID if not expanded
+                                // Only extract if the match makes sense (base ID exists in original conversations)
+                                let baseConversationId = conversation.id;
+                                if (expandedIdMatch) {
+                                  const potentialBase = expandedIdMatch[1];
+                                  // Check if the base ID exists in the original conversations
+                                  const baseExists = conversations.some(
+                                    (c) => c.id === potentialBase
+                                  );
+                                  if (baseExists) {
+                                    baseConversationId = potentialBase;
+                                  }
+                                }
 
                                 // Create a conversation object with the base ID for lookup
                                 const conversationForLookup = {
@@ -342,61 +485,31 @@ export function GroupConversationView({
                                 };
 
                                 return (
-                                  <ListItem
+                                  <ConversationListItem
                                     key={conversation.id}
+                                    conversation={conversation}
+                                    creator={creator || undefined}
+                                    time={time}
+                                    replySection={
+                                      <ReplySection
+                                        totalMessages={replyCount}
+                                        newMessages={
+                                          bucketKey === "Today"
+                                            ? messageCount
+                                            : 0
+                                        }
+                                        avatars={avatarProps}
+                                        lastMessageBy={
+                                          avatarProps[0]?.name || "Unknown"
+                                        }
+                                      />
+                                    }
                                     onClick={() => {
                                       onConversationClick?.(
                                         conversationForLookup
                                       );
                                     }}
-                                    groupName="conversation-item"
-                                  >
-                                    {creator ? (
-                                      <Avatar
-                                        name={creator.fullName}
-                                        visual={creator.portrait}
-                                        size="sm"
-                                        isRounded={true}
-                                      />
-                                    ) : null}
-                                    <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-1">
-                                      <div className="s-heading-sm s-flex s-w-full s-items-center s-justify-between s-gap-2 s-text-foreground dark:s-text-foreground-night">
-                                        <div className="s-flex s-gap-2">
-                                          {creator && creator.fullName}
-                                          <span className="s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                            {conversation.title}
-                                          </span>
-                                        </div>
-                                        <div className="s-flex s-items-center s-gap-2 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                          <span className="s-font-normal">
-                                            {time}
-                                          </span>
-                                          {bucketKey === "Today" && (
-                                            <Counter
-                                              value={messageCount}
-                                              size="xs"
-                                              variant="highlight"
-                                            />
-                                          )}
-                                        </div>
-                                      </div>
-                                      {conversation.description && (
-                                        <div className="s-line-clamp-2 s-text-sm s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                          {conversation.description}
-                                        </div>
-                                      )}
-                                      <div className="s-heading-xs s-flex s-items-center s-gap-2 s-pt-2 s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                        {Math.floor(Math.random() * 8) + 1}{" "}
-                                        replies
-                                        <Avatar.Stack
-                                          avatars={avatarProps}
-                                          nbVisibleItems={3}
-                                          onTop="first"
-                                          size="xs"
-                                        />
-                                      </div>
-                                    </div>
-                                  </ListItem>
+                                  />
                                 );
                               })}
                             </ListGroup>
@@ -422,19 +535,21 @@ export function GroupConversationView({
         </TabsContent>
 
         {/* About Tab */}
-        <TabsContent
-          value="about"
-          className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
-        >
-          <div className="s-flex s-flex-col s-gap-4">
-            <h2 className="s-heading-xl s-text-foreground dark:s-text-foreground-night">
-              About {space.name}
-            </h2>
-            <p className="s-text-foreground dark:s-text-foreground-night">
-              {space.description}
-            </p>
-          </div>
-        </TabsContent>
+        {showToolsAndAboutTabs && (
+          <TabsContent
+            value="about"
+            className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
+          >
+            <div className="s-flex s-flex-col s-gap-4">
+              <h2 className="s-heading-xl s-text-foreground dark:s-text-foreground-night">
+                About {space.name}
+              </h2>
+              <p className="s-text-foreground dark:s-text-foreground-night">
+                {space.description}
+              </p>
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

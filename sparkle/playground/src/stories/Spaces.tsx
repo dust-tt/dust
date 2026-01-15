@@ -50,9 +50,14 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+// Store conversations by ID for lookup (for dynamically generated conversations)
+const conversationCache = new Map<string, Conversation>();
+
 import { ConversationView } from "../components/ConversationView";
 import { GroupConversationView } from "../components/GroupConversationView";
+import { InboxView } from "../components/InboxView";
 import { InputBar } from "../components/InputBar";
+import { PersonAgentView } from "../components/PersonAgentView";
 import {
   type Agent,
   type Conversation,
@@ -119,12 +124,24 @@ function DustMain() {
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<
     string | null
-  >("new-conversation");
+  >(null);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [previousSpaceId, setPreviousSpaceId] = useState<string | null>(null);
+  const [selectedView, setSelectedView] = useState<
+    "inbox" | "space" | "conversation" | "agent" | "person" | null
+  >("inbox");
+  const [cameFromInbox, setCameFromInbox] = useState<boolean>(false);
+  const [cameFromPersonAgent, setCameFromPersonAgent] =
+    useState<boolean>(false);
   const [conversationsWithMessages, setConversationsWithMessages] = useState<
     Conversation[]
   >([]);
+  const [selectedCollaboratorId, setSelectedCollaboratorId] = useState<
+    string | null
+  >(null);
+  const [selectedCollaboratorType, setSelectedCollaboratorType] = useState<
+    "agent" | "person" | null
+  >(null);
 
   // Track sidebar collapsed state for toggle button icon
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -169,6 +186,19 @@ function DustMain() {
   const allConversations = useMemo(() => {
     return [...conversationsWithMessages, ...mockConversations];
   }, [conversationsWithMessages]);
+
+  // Calculate unread count for Inbox (same logic as InboxView)
+  const unreadCount = useMemo(() => {
+    const now = new Date();
+    const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+
+    return allConversations.filter((conv) => {
+      // Must have a spaceId
+      if (!conv.spaceId) return false;
+      // For demo: consider conversations updated in the last 2 days as "unread"
+      return conv.updatedAt >= twoDaysAgo;
+    }).length;
+  }, [allConversations]);
 
   const filteredConversations = useMemo(() => {
     if (!searchText.trim()) {
@@ -296,14 +326,6 @@ function DustMain() {
     );
   }, [searchText, sortedSpaces]);
 
-  // Find selected conversation from all conversations
-  const selectedConversation = useMemo(() => {
-    if (!selectedConversationId) return null;
-    return (
-      allConversations.find((c) => c.id === selectedConversationId) || null
-    );
-  }, [selectedConversationId, allConversations]);
-
   // Find selected space
   const selectedSpace = useMemo(() => {
     if (!selectedSpaceId) return null;
@@ -315,6 +337,189 @@ function DustMain() {
     if (!selectedSpaceId) return [];
     return getConversationsBySpaceId(selectedSpaceId);
   }, [selectedSpaceId]);
+
+  // Get conversations between user and selected collaborator (needed for lookup)
+  const collaboratorConversationsForLookup = useMemo(() => {
+    if (!selectedCollaboratorId || !selectedCollaboratorType || !user) {
+      return [];
+    }
+    const filtered = allConversations.filter((conv) => {
+      if (!conv.userParticipants.includes(user.id)) {
+        return false;
+      }
+      if (selectedCollaboratorType === "agent") {
+        return conv.agentParticipants.includes(selectedCollaboratorId);
+      }
+      if (selectedCollaboratorType === "person") {
+        return conv.userParticipants.includes(selectedCollaboratorId);
+      }
+      return false;
+    });
+
+    // If no conversations found, generate some to ensure the collaborator has history
+    if (filtered.length === 0) {
+      const now = new Date();
+      const generated: Conversation[] = [];
+      const conversationTitles = [
+        "Quick question",
+        "Follow-up discussion",
+        "Project update",
+        "Weekly sync",
+        "Planning session",
+      ];
+
+      const count = Math.floor(Math.random() * 6) + 3;
+      for (let i = 0; i < count; i++) {
+        const daysAgo = Math.floor(Math.random() * 35);
+        const hoursAgo = Math.floor(Math.random() * 24);
+        const minutesAgo = Math.floor(Math.random() * 60);
+
+        const updatedAt = new Date(now);
+        updatedAt.setDate(updatedAt.getDate() - daysAgo);
+        updatedAt.setHours(updatedAt.getHours() - hoursAgo);
+        updatedAt.setMinutes(updatedAt.getMinutes() - minutesAgo);
+
+        const createdAt = new Date(updatedAt);
+        createdAt.setDate(createdAt.getDate() - Math.floor(Math.random() * 5));
+
+        const title =
+          conversationTitles[
+            Math.floor(Math.random() * conversationTitles.length)
+          ];
+
+        const userParticipants =
+          selectedCollaboratorType === "person"
+            ? [user.id, selectedCollaboratorId]
+            : [user.id];
+        const agentParticipants =
+          selectedCollaboratorType === "agent" ? [selectedCollaboratorId] : [];
+
+        generated.push({
+          id: `generated-conv-${selectedCollaboratorId}-${i}`,
+          title,
+          createdAt,
+          updatedAt,
+          userParticipants,
+          agentParticipants,
+          description: `Conversation about ${title.toLowerCase()}`,
+        });
+      }
+
+      return generated;
+    }
+
+    return filtered;
+  }, [
+    selectedCollaboratorId,
+    selectedCollaboratorType,
+    user,
+    allConversations,
+  ]);
+
+  // Generate expanded conversations for collaborator (same logic as PersonAgentView)
+  // Use a simple seeded random function to ensure consistency
+  const collaboratorExpandedConversations = useMemo(() => {
+    if (
+      !selectedCollaboratorId ||
+      collaboratorConversationsForLookup.length === 0
+    ) {
+      return [];
+    }
+    const conversations = collaboratorConversationsForLookup;
+    const now = new Date();
+    const generated: Conversation[] = [];
+    const targetCount = Math.max(20, conversations.length * 4);
+
+    // Use a seed based on collaborator ID for consistent generation
+    let seed = selectedCollaboratorId
+      .split("")
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const seededRandom = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+
+    // Shuffle conversations array using seeded random
+    const shuffled = [...conversations].sort(() => seededRandom() - 0.5);
+
+    // Generate conversations using seeded random
+    for (let i = 0; i < targetCount; i++) {
+      const randomIndex = Math.floor(seededRandom() * shuffled.length);
+      const baseConversation = shuffled[randomIndex];
+
+      const daysAgo = Math.floor(seededRandom() * 35);
+      const hoursAgo = Math.floor(seededRandom() * 24);
+      const minutesAgo = Math.floor(seededRandom() * 60);
+
+      const updatedAt = new Date(now);
+      updatedAt.setDate(updatedAt.getDate() - daysAgo);
+      updatedAt.setHours(updatedAt.getHours() - hoursAgo);
+      updatedAt.setMinutes(updatedAt.getMinutes() - minutesAgo);
+
+      const createdAt = new Date(updatedAt);
+      createdAt.setDate(createdAt.getDate() - Math.floor(seededRandom() * 5));
+
+      generated.push({
+        ...baseConversation,
+        id: `${baseConversation.id}-${i}`,
+        updatedAt,
+        createdAt,
+        title: baseConversation.title,
+      });
+    }
+
+    return generated;
+  }, [selectedCollaboratorId, collaboratorConversationsForLookup]);
+
+  const selectedConversation = useMemo(() => {
+    if (!selectedConversationId) return null;
+    // First check allConversations
+    const found = allConversations.find((c) => c.id === selectedConversationId);
+    if (found) return found;
+    // If not found, check collaboratorConversations (includes generated ones)
+    const foundInCollaborator = collaboratorConversationsForLookup.find(
+      (c) => c.id === selectedConversationId
+    );
+    if (foundInCollaborator) return foundInCollaborator;
+    // If not found, check expanded collaborator conversations (from PersonAgentView)
+    const foundInExpanded = collaboratorExpandedConversations.find(
+      (c) => c.id === selectedConversationId
+    );
+    if (foundInExpanded) return foundInExpanded;
+    // If not found, check spaceConversations (for conversations from spaces)
+    const foundInSpace = spaceConversations.find(
+      (c) => c.id === selectedConversationId
+    );
+    if (foundInSpace) return foundInSpace;
+    // Finally, check the conversation cache (for dynamically generated conversations)
+    const foundInCache = conversationCache.get(selectedConversationId);
+    if (foundInCache) return foundInCache;
+    return null;
+  }, [
+    selectedConversationId,
+    allConversations,
+    collaboratorConversationsForLookup,
+    collaboratorExpandedConversations,
+    spaceConversations,
+  ]);
+
+  // Get conversations between user and selected collaborator
+  // Use the shared lookup to avoid duplication
+  const collaboratorConversations = collaboratorConversationsForLookup;
+
+  // Get selected collaborator data
+  const selectedCollaborator = useMemo(() => {
+    if (!selectedCollaboratorId || !selectedCollaboratorType) return null;
+    return (
+      collaborators.find(
+        (c) =>
+          c.type === selectedCollaboratorType &&
+          (c.type === "agent"
+            ? (c.data as Agent).id === selectedCollaboratorId
+            : (c.data as User).id === selectedCollaboratorId)
+      ) || null
+    );
+  }, [selectedCollaboratorId, selectedCollaboratorType, collaborators]);
 
   const getConversationMoreMenu = (conversation: Conversation) => {
     const participants = getRandomParticipants(conversation);
@@ -582,8 +787,14 @@ function DustMain() {
               <NavigationListItem
                 label="Inbox"
                 icon={InboxIcon}
+                selected={selectedView === "inbox"}
+                count={unreadCount > 0 ? unreadCount : undefined}
                 onClick={() => {
-                  console.log("Selected Inbox");
+                  setSelectedView("inbox");
+                  setSelectedSpaceId(null);
+                  setSelectedConversationId(null);
+                  setPreviousSpaceId(null);
+                  setCameFromInbox(false);
                 }}
               />
               <NavigationListItem
@@ -591,29 +802,34 @@ function DustMain() {
                 icon={ChatBubbleLeftRightIcon}
                 selected={selectedConversationId === "new-conversation"}
                 onClick={() => {
-                  // Clear previousSpaceId when starting new conversation
+                  // Clear all selections when starting new conversation
                   setPreviousSpaceId(null);
                   setSelectedConversationId("new-conversation");
                   setSelectedSpaceId(null);
+                  setSelectedView(null);
+                  setSelectedCollaboratorId(null);
+                  setSelectedCollaboratorType(null);
+                  setCameFromInbox(false);
+                  setCameFromPersonAgent(false);
                 }}
               />
             </>
           ) : (
             <>
-              <NavigationListItem
-                label="Search Documents"
-                icon={MagnifyingGlassIcon}
-                onClick={() => {
-                  console.log("Start a Search Doc");
-                }}
-              />
-              <NavigationListItem
-                label="Start a Deep Dive"
-                icon={AtomIcon}
-                onClick={() => {
-                  console.log("Start a Deep Dive");
-                }}
-              />
+              <div className="s-flex s-w-full s-justify-end s-gap-1.5">
+                <Button
+                  size="xs"
+                  icon={MagnifyingGlassIcon}
+                  variant="highlight"
+                  label="Documents"
+                />
+                <Button
+                  size="xs"
+                  icon={AtomIcon}
+                  label="Deep Dive"
+                  variant="highlight"
+                />
+              </div>
             </>
           )}
           {(filteredSpaces.length > 0 || !searchText.trim()) && (
@@ -676,7 +892,8 @@ function DustMain() {
                   space.id.charCodeAt(space.id.length - 1) % 2 === 0;
                 // Deterministically assign count to some spaces based on space ID
                 const spaceIndex = space.id.charCodeAt(space.id.length - 1);
-                const count = spaceIndex % 3 === 0 ? (spaceIndex % 9) + 1 : undefined;
+                const count =
+                  spaceIndex % 3 === 0 ? (spaceIndex % 9) + 1 : undefined;
                 return (
                   <NavigationListItem
                     key={space.id}
@@ -714,6 +931,11 @@ function DustMain() {
                     onClick={() => {
                       setSelectedSpaceId(space.id);
                       setSelectedConversationId(null);
+                      setSelectedView("space");
+                      setCameFromInbox(false);
+                      setCameFromPersonAgent(false);
+                      setSelectedCollaboratorId(null);
+                      setSelectedCollaboratorType(null);
                     }}
                   />
                 );
@@ -871,6 +1093,10 @@ function DustMain() {
                     <NavigationListItem
                       key={`agent-${agent.id}`}
                       label={agent.name}
+                      selected={
+                        selectedCollaboratorId === agent.id &&
+                        selectedCollaboratorType === "agent"
+                      }
                       avatar={
                         <Avatar
                           size="xxs"
@@ -918,7 +1144,12 @@ function DustMain() {
                         </DropdownMenu>
                       }
                       onClick={() => {
-                        console.log("Selected agent:", agent.id);
+                        setSelectedCollaboratorId(agent.id);
+                        setSelectedCollaboratorType("agent");
+                        setSelectedView("agent");
+                        setSelectedConversationId(null);
+                        setSelectedSpaceId(null);
+                        setPreviousSpaceId(null);
                       }}
                     />
                   );
@@ -928,6 +1159,10 @@ function DustMain() {
                     <NavigationListItem
                       key={`person-${person.id}`}
                       label={person.fullName}
+                      selected={
+                        selectedCollaboratorId === person.id &&
+                        selectedCollaboratorType === "person"
+                      }
                       avatar={
                         <Avatar
                           size="xxs"
@@ -968,7 +1203,12 @@ function DustMain() {
                         </DropdownMenu>
                       }
                       onClick={() => {
-                        console.log("Selected person:", person.id);
+                        setSelectedCollaboratorId(person.id);
+                        setSelectedCollaboratorType("person");
+                        setSelectedView("person");
+                        setSelectedConversationId(null);
+                        setSelectedSpaceId(null);
+                        setPreviousSpaceId(null);
                       }}
                     />
                   );
@@ -1056,6 +1296,7 @@ function DustMain() {
                         setPreviousSpaceId(null);
                         setSelectedConversationId(conversation.id);
                         setSelectedSpaceId(null);
+                        setSelectedView("conversation");
                       }}
                     />
                   ))}
@@ -1075,6 +1316,7 @@ function DustMain() {
                         setPreviousSpaceId(null);
                         setSelectedConversationId(conversation.id);
                         setSelectedSpaceId(null);
+                        setSelectedView("conversation");
                       }}
                     />
                   ))}
@@ -1094,6 +1336,7 @@ function DustMain() {
                         setPreviousSpaceId(null);
                         setSelectedConversationId(conversation.id);
                         setSelectedSpaceId(null);
+                        setSelectedView("conversation");
                       }}
                     />
                   ))}
@@ -1113,6 +1356,7 @@ function DustMain() {
                         setPreviousSpaceId(null);
                         setSelectedConversationId(conversation.id);
                         setSelectedSpaceId(null);
+                        setSelectedView("conversation");
                       }}
                     />
                   ))}
@@ -1130,8 +1374,23 @@ function DustMain() {
     if (previousSpaceId) {
       setSelectedSpaceId(previousSpaceId);
       setSelectedConversationId(null);
+      setSelectedView("space");
+      setCameFromInbox(false);
+      setCameFromPersonAgent(false);
       // Optionally clear previousSpaceId, or keep it for future navigation
       // setPreviousSpaceId(null);
+    } else if (cameFromPersonAgent) {
+      // Return to PersonAgentView if we came from there
+      setSelectedView(
+        selectedCollaboratorType === "agent" ? "agent" : "person"
+      );
+      setSelectedConversationId(null);
+      setCameFromPersonAgent(false);
+    } else if (cameFromInbox) {
+      // Return to inbox if we came from there
+      setSelectedView("inbox");
+      setSelectedConversationId(null);
+      setCameFromInbox(false);
     }
   };
 
@@ -1148,27 +1407,76 @@ function DustMain() {
         users={mockUsers}
         agents={mockAgents}
         conversationsWithMessages={conversationsWithMessages}
-        showBackButton={!!previousSpaceId}
+        showBackButton={
+          !!previousSpaceId || cameFromInbox || cameFromPersonAgent
+        }
         onBack={handleConversationBack}
       />
-    ) : // Priority 2: Show space view if a space is selected
+    ) : // Priority 2: Show inbox view if inbox is selected
+    selectedView === "inbox" ? (
+      <InboxView
+        spaces={spaces}
+        conversations={allConversations}
+        users={mockUsers}
+        agents={mockAgents}
+        onConversationClick={(conversation) => {
+          // Store that we came from inbox before navigating to conversation
+          setPreviousSpaceId(null);
+          setSelectedView("conversation");
+          setSelectedConversationId(conversation.id);
+          setCameFromInbox(true);
+        }}
+        onSpaceClick={(space) => {
+          setSelectedSpaceId(space.id);
+          setSelectedView("space");
+          setSelectedConversationId(null);
+          setCameFromInbox(false);
+        }}
+      />
+    ) : // Priority 3: Show person/agent view if a collaborator is selected
+    selectedCollaborator &&
+      selectedCollaboratorId &&
+      selectedCollaboratorType &&
+      user ? (
+      <PersonAgentView
+        collaborator={selectedCollaborator}
+        user={user}
+        conversations={collaboratorConversations}
+        users={mockUsers}
+        agents={mockAgents}
+        onConversationClick={(conversation) => {
+          // Store the conversation in cache for lookup
+          conversationCache.set(conversation.id, conversation);
+          // Store the current collaborator info before navigating to conversation
+          setPreviousSpaceId(null);
+          setSelectedView("conversation");
+          setSelectedConversationId(conversation.id);
+          setCameFromInbox(false);
+          setCameFromPersonAgent(true);
+          // Keep selectedCollaboratorId and selectedCollaboratorType set
+          // so the navigation item stays selected
+        }}
+      />
+    ) : // Priority 4: Show space view if a space is selected
     selectedSpace && selectedSpaceId ? (
       <GroupConversationView
         space={selectedSpace}
         conversations={spaceConversations}
         users={mockUsers}
         agents={mockAgents}
+        showToolsAndAboutTabs={true}
         onConversationClick={(conversation) => {
           // Store the current space ID before navigating to conversation
           setPreviousSpaceId(selectedSpaceId);
+          setSelectedView("conversation");
           setSelectedConversationId(conversation.id);
           // Keep selectedSpaceId set so the space NavigationItem stays selected
         }}
       />
     ) : (
-      // Priority 3: Show welcome/new conversation view
+      // Priority 4: Show welcome/new conversation view
       <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
-        <div className="s-flex s-w-full s-max-w-3xl s-flex-col s-gap-6 s-px-4 s-py-8">
+        <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
           <div className="s-heading-2xl s-text-foreground">
             Welcome, Edouard!{" "}
           </div>
