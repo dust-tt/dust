@@ -17,7 +17,6 @@ export type UniqueSpaceKind = (typeof UNIQUE_SPACE_KINDS)[number];
 export type SpaceType = {
   createdAt: number;
   groupIds: string[];
-  editorGroupIds?: string[];
   isRestricted: boolean;
   kind: SpaceKind;
   managementMode: "manual" | "group";
