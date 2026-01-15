@@ -4,6 +4,7 @@ import type {
   Attributes,
   CreationAttributes,
   Includeable,
+  InferAttributes,
   ModelStatic,
   Transaction,
   WhereOptions,
@@ -28,6 +29,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
+  CombinedResourcePermissions,
   GroupKind,
   GroupType,
   LightAgentConfigurationType,
@@ -52,7 +54,10 @@ export const BUILDER_GROUP_NAME = "dust-builders";
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
+export interface GroupResource extends ReadonlyAttributesType<GroupModel> {
+  // Optional property added by Sequelize when loading through belongsToMany with GroupSpaceModel
+  group_vaults?: InferAttributes<GroupSpaceModel>;
+}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GroupResource extends BaseResource<GroupModel> {
   static model: ModelStatic<GroupModel> = GroupModel;
@@ -342,7 +347,13 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Use with care as this gives access to all groups in the workspace.
   static async internalFetchAllWorkspaceGroups({
     workspaceId,
-    groupKinds = ["global", "regular", "system", "provisioned"],
+    groupKinds = [
+      "global",
+      "regular",
+      "space_editors",
+      "system",
+      "provisioned",
+    ],
     transaction,
   }: {
     workspaceId: ModelId;
@@ -364,7 +375,13 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async listWorkspaceGroupsFromKey(
     key: KeyResource,
-    groupKinds: GroupKind[] = ["global", "regular", "system", "provisioned"]
+    groupKinds: GroupKind[] = [
+      "global",
+      "regular",
+      "space_editors",
+      "system",
+      "provisioned",
+    ]
   ): Promise<GroupResource[]> {
     let groups: GroupModel[] = [];
 
@@ -728,7 +745,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     options: { groupKinds?: GroupKind[] } = {}
   ): Promise<GroupResource[]> {
-    const { groupKinds = ["global", "regular", "provisioned"] } = options;
+    const {
+      groupKinds = ["global", "regular", "space_editors", "provisioned"],
+    } = options;
     const groups = await this.baseFetch(auth, {
       where: {
         kind: {
@@ -794,6 +813,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     groupKinds = [
       "global",
       "regular",
+      "space_editors",
       "provisioned",
       "agent_editors",
       "skill_editors",
@@ -1015,7 +1035,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMembers(
     auth: Authenticator,
-    users: UserType[],
+    {
+      users,
+      permissionsToWrite,
+    }: { users: UserType[]; permissionsToWrite?: CombinedResourcePermissions },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1029,7 +1052,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth)) {
+    if (!this.canWrite(auth, permissionsToWrite)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1074,16 +1097,20 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be added to regular, agent_editors, skill_editors or provisioned groups.
+    // Users can only be added to regular, space_editors, agent_editors, skill_editors or provisioned groups.
     if (
-      !["regular", "agent_editors", "skill_editors", "provisioned"].includes(
-        this.kind
-      )
+      ![
+        "regular",
+        "space_editors",
+        "agent_editors",
+        "skill_editors",
+        "provisioned",
+      ].includes(this.kind)
     ) {
       return new Err(
         new DustError(
           "system_or_global_group",
-          "Users can only be added to regular, agent_editors, skill_editors or provisioned groups."
+          "Users can only be added to regular, space_editors, agent_editors, skill_editors or provisioned groups."
         )
       );
     }
@@ -1136,7 +1163,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMember(
     auth: Authenticator,
-    user: UserType,
+    {
+      user,
+      permissionsToWrite,
+    }: { user: UserType; permissionsToWrite?: CombinedResourcePermissions },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1150,12 +1180,19 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.addMembers(auth, [user], { transaction });
+    return this.addMembers(
+      auth,
+      { users: [user], permissionsToWrite },
+      { transaction }
+    );
   }
 
   async removeMembers(
     auth: Authenticator,
-    users: UserType[],
+    {
+      users,
+      permissionsToWrite,
+    }: { users: UserType[]; permissionsToWrite?: CombinedResourcePermissions },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1168,7 +1205,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth)) {
+    if (!this.canWrite(auth, permissionsToWrite)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1207,16 +1244,20 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be removed from regular, agent_editors, skill_editors or provisioned groups.
+    // Users can only be removed from regular, space_editors, agent_editors, skill_editors or provisioned groups.
     if (
-      !["regular", "agent_editors", "skill_editors", "provisioned"].includes(
-        this.kind
-      )
+      ![
+        "regular",
+        "space_editors",
+        "agent_editors",
+        "skill_editors",
+        "provisioned",
+      ].includes(this.kind)
     ) {
       return new Err(
         new DustError(
           "system_or_global_group",
-          "Users can only be removed from regular, agent_editors, skill_editors or provisioned groups."
+          "Users can only be removed from regular, space_editors, agent_editors, skill_editors or provisioned groups."
         )
       );
     }
@@ -1258,7 +1299,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async removeMember(
     auth: Authenticator,
-    users: UserType,
+    {
+      user,
+      permissionsToWrite,
+    }: { user: UserType; permissionsToWrite?: CombinedResourcePermissions },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1271,12 +1315,19 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.removeMembers(auth, [users], { transaction });
+    return this.removeMembers(
+      auth,
+      { users: [user], permissionsToWrite },
+      { transaction }
+    );
   }
 
   async setMembers(
     auth: Authenticator,
-    users: UserType[],
+    {
+      users,
+      permissionsToWrite,
+    }: { users: UserType[]; permissionsToWrite?: CombinedResourcePermissions },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1291,7 +1342,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth)) {
+    if (!this.canWrite(auth, permissionsToWrite)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1309,9 +1360,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       (user) => !currentMemberIds.includes(user.sId)
     );
     if (usersToAdd.length > 0) {
-      const addResult = await this.addMembers(auth, usersToAdd, {
-        transaction,
-      });
+      const addResult = await this.addMembers(
+        auth,
+        { users: usersToAdd, permissionsToWrite },
+        {
+          transaction,
+        }
+      );
       if (addResult.isErr()) {
         return addResult;
       }
@@ -1322,9 +1377,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       .filter((currentMember) => !userIds.includes(currentMember.sId))
       .map((m) => m.toJSON());
     if (usersToRemove.length > 0) {
-      const removeResult = await this.removeMembers(auth, usersToRemove, {
-        transaction,
-      });
+      const removeResult = await this.removeMembers(
+        auth,
+        { users: usersToRemove, permissionsToWrite },
+        {
+          transaction,
+        }
+      );
       if (removeResult.isErr()) {
         return removeResult;
       }
@@ -1458,8 +1517,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     return auth.canRead(this.requestedPermissions());
   }
 
-  canWrite(auth: Authenticator): boolean {
-    return auth.canWrite(this.requestedPermissions());
+  canWrite(
+    auth: Authenticator,
+    permissionsToWrite?: CombinedResourcePermissions
+  ): boolean {
+    return auth.canWrite(
+      permissionsToWrite ? [permissionsToWrite] : this.requestedPermissions()
+    );
   }
 
   isSystem(): boolean {
