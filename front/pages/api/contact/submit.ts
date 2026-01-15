@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { submitToHubSpotForm } from "@app/lib/api/hubspot";
-import type {
-  ContactSubmitResponse,
-  TrackingParams,
+import type { ContactSubmitResponse } from "@app/lib/api/hubspot/contactFormSchema";
+import {
+  ContactFormSchema,
+  TrackingParamsSchema,
 } from "@app/lib/api/hubspot/contactFormSchema";
-import { ContactFormSchema } from "@app/lib/api/hubspot/contactFormSchema";
 import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
@@ -39,9 +39,10 @@ export default async function handler(
   }
 
   const formData = parseResult.data;
-  const tracking = (req.body.tracking ?? {}) as TrackingParams;
-  const pageUri = (req.body.pageUri as string) ?? "";
-  const pageName = (req.body.pageName as string) ?? "Contact Dust";
+  const tracking = TrackingParamsSchema.parse(req.body.tracking ?? {});
+  const pageUri = typeof req.body.pageUri === "string" ? req.body.pageUri : "";
+  const pageName =
+    typeof req.body.pageName === "string" ? req.body.pageName : "Contact Dust";
 
   // Extract and validate domain
   const domain = extractDomain(formData.email);

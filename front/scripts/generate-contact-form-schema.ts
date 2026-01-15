@@ -230,17 +230,19 @@ ${zodFields},
 export type ContactFormData = z.infer<typeof ContactFormSchema>;
 
 // Tracking parameters captured from URL/sessionStorage
-export interface TrackingParams {
-  utm_source?: string;
-  utm_medium?: string;
-  utm_campaign?: string;
-  utm_content?: string;
-  utm_term?: string;
-  gclid?: string;
-  fbclid?: string;
-  msclkid?: string;
-  li_fat_id?: string;
-}
+export const TrackingParamsSchema = z.object({
+  utm_source: z.string().optional(),
+  utm_medium: z.string().optional(),
+  utm_campaign: z.string().optional(),
+  utm_content: z.string().optional(),
+  utm_term: z.string().optional(),
+  gclid: z.string().optional(),
+  fbclid: z.string().optional(),
+  msclkid: z.string().optional(),
+  li_fat_id: z.string().optional(),
+});
+
+export type TrackingParams = z.infer<typeof TrackingParamsSchema>;
 
 // Response from the contact submit API
 export interface ContactSubmitResponse {

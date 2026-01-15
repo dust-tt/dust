@@ -10,6 +10,7 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import UTMPageWrapper from "@app/components/UTMPageWrapper";
+import { isString } from "@app/types";
 
 export const getStaticProps: GetStaticProps = async () => {
   return {
@@ -22,18 +23,17 @@ export const getStaticProps: GetStaticProps = async () => {
 
 export default function Contact() {
   const router = useRouter();
-  const companyName =
-    typeof router.query.company === "string" ? router.query.company : null;
-  const prefillEmail =
-    typeof router.query.email === "string" ? router.query.email : undefined;
-  const prefillHeadcount =
-    typeof router.query.company_headcount_form === "string"
-      ? router.query.company_headcount_form
-      : undefined;
-  const prefillRegion =
-    typeof router.query.headquarters_region === "string"
-      ? router.query.headquarters_region
-      : undefined;
+  const { company, email, company_headcount_form, headquarters_region } =
+    router.query;
+
+  const companyName = isString(company) ? company : null;
+  const prefillEmail = isString(email) ? email : undefined;
+  const prefillHeadcount = isString(company_headcount_form)
+    ? company_headcount_form
+    : undefined;
+  const prefillRegion = isString(headquarters_region)
+    ? headquarters_region
+    : undefined;
 
   const subtitle = companyName ? (
     <>
