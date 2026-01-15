@@ -680,10 +680,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return new Err(new DustError("user_not_found", "User not found."));
     }
 
-    const addMemberRes = await defaultSpaceGroup.addMembers(
-      auth,
-      users.map((user) => user.toJSON())
-    );
+    const addMemberRes = await defaultSpaceGroup.addMembers(auth, {
+      users: users.map((user) => user.toJSON()),
+    });
 
     if (addMemberRes.isErr()) {
       return addMemberRes;
@@ -726,10 +725,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return new Err(new DustError("user_not_found", "User not found."));
     }
 
-    const removeMemberRes = await defaultSpaceGroup.removeMembers(
-      auth,
-      users.map((user) => user.toJSON())
-    );
+    const removeMemberRes = await defaultSpaceGroup.removeMembers(auth, {
+      users: users.map((user) => user.toJSON()),
+    });
 
     if (removeMemberRes.isErr()) {
       return removeMemberRes;
@@ -761,6 +759,22 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       `Expected at most one space editors group for the space, but found ${editorGroups.length}.`
     );
     return editorGroups[0];
+  }
+
+  async linkGroup(
+    group: GroupResource,
+    kind: "member" | "project_editor" | "project_viewer" = "member",
+    t: Transaction
+  ) {
+    await GroupSpaceModel.create(
+      {
+        groupId: group.id,
+        vaultId: this.id,
+        workspaceId: this.workspaceId,
+        kind,
+      },
+      { transaction: t }
+    );
   }
 
   /**
