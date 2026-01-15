@@ -187,8 +187,11 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
 
           // If we're in inline code, just paste as plain text with the code mark
           if (isInInlineCode) {
-            const transaction = state.tr.insertText(text, from, to);
-            view.dispatch(transaction);
+            // Safety check for Safari: ensure editor is not destroyed before dispatch
+            if (!editor.isDestroyed) {
+              const transaction = state.tr.insertText(text, from, to);
+              view.dispatch(transaction);
+            }
             return true;
           }
 
@@ -214,8 +217,11 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
             .catch((error: unknown) => {
               logger.error("Failed to parse mentions:", error);
               // Fallback to the default paste behavior.
-              const transaction = state.tr.replaceRange(from, to, slice);
-              view.dispatch(transaction);
+              // Safety check for Safari: ensure editor is not destroyed before dispatch
+              if (!editor.isDestroyed) {
+                const transaction = state.tr.replaceRange(from, to, slice);
+                view.dispatch(transaction);
+              }
             });
 
           return true;
