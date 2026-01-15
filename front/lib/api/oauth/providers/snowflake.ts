@@ -83,17 +83,21 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       throw new Error("Missing client ID for Snowflake");
     }
 
-    const account = extraConfig.snowflake_account;
+    if (!extraConfig.snowflake_role) {
+      throw new Error("Missing Snowflake role");
+    }
 
-    // Use session:role-any to use the user's default role in Snowflake.
-    // This respects each user's own permissions - admins should configure
-    // appropriate default roles for users in Snowflake.
+    const account = extraConfig.snowflake_account;
+    const role = extraConfig.snowflake_role;
+
+    // For Custom OAuth, use session:role:<ROLE> to specify the role.
+    // The role is set by admin as default, users can override during personal auth.
     const qs = querystring.stringify({
       response_type: "code",
       client_id: clientId,
       state: connection.connection_id,
       redirect_uri: finalizeUriForProvider("snowflake"),
-      scope: "session:role-any",
+      scope: `session:role:${role.toUpperCase()}`,
     });
 
     // Build account-specific authorization URL
@@ -110,17 +114,18 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
-    if (useCase === "personal_actions") {
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
       // If we have an mcp_server_id it means the admin already setup the connection and we have
-      // everything we need, otherwise we'll need the client_id, client_secret, and snowflake_account.
+      // everything we need (role can be overridden via snowflake_role in extraConfig).
       if (extraConfig.mcp_server_id) {
         return true;
       }
-      // Initial admin setup - requires full credentials
+      // Initial admin setup - requires full credentials including default role
       return !!(
         extraConfig.client_id &&
         extraConfig.client_secret &&
-        extraConfig.snowflake_account
+        extraConfig.snowflake_account &&
+        extraConfig.snowflake_role
       );
     }
     return Object.keys(extraConfig).length === 0;
@@ -140,10 +145,10 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<RelatedCredential> {
-    if (useCase === "personal_actions") {
-      // For personal actions we reuse the existing connection credential id from the existing
-      // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
-      // we have client_secret (initial admin setup).
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
+      // For personal/platform actions we reuse the existing connection credential id from the
+      // existing workspace connection (setup by admin) if we have it, otherwise we fallback to
+      // assuming we have client_secret (initial admin setup).
       const { mcp_server_id } = extraConfig;
 
       if (mcp_server_id && isString(mcp_server_id)) {
@@ -161,16 +166,18 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       }
     }
 
-    const { client_secret, client_id, snowflake_account } = extraConfig;
+    const { client_secret, client_id, snowflake_account, snowflake_role } =
+      extraConfig;
 
     // Validate that all are strings before using them
     if (
       !isString(client_secret) ||
       !isString(client_id) ||
-      !isString(snowflake_account)
+      !isString(snowflake_account) ||
+      !isString(snowflake_role)
     ) {
       throw new Error(
-        "Missing or invalid client_id, client_secret, or snowflake_account in extraConfig"
+        "Missing or invalid client_id, client_secret, snowflake_account, or snowflake_role in extraConfig"
       );
     }
 
@@ -179,6 +186,7 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
         client_secret,
         client_id,
         snowflake_account,
+        snowflake_role,
       },
       metadata: { workspace_id: workspaceId, user_id: userId },
     };
@@ -198,7 +206,7 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
       // we have client_secret (initial admin setup).
-      const { mcp_server_id, ...restConfig } = extraConfig;
+      const { mcp_server_id, snowflake_role: userRole, ...restConfig } = extraConfig;
 
       if (mcp_server_id && isString(mcp_server_id)) {
         const connection = await getWorkspaceConnectionForMCPServer(
@@ -206,9 +214,13 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
           mcp_server_id
         );
 
+        // Use user-provided role if specified, otherwise use the default role from workspace connection
+        const role = userRole || connection.metadata.snowflake_role;
+
         return {
           client_id: connection.metadata.client_id,
           snowflake_account: connection.metadata.snowflake_account,
+          snowflake_role: role,
           ...restConfig,
         };
       }

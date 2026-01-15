@@ -98,6 +98,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "zendesk_subdomain",
   "databricks_workspace_url",
   "snowflake_account",
+  "snowflake_role",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -336,6 +337,13 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
               "The client secret from your Snowflake security integration.",
             validator: isValidClientIdOrSecret,
           },
+          snowflake_role: {
+            label: "Default Snowflake Role",
+            value: undefined,
+            helpMessage:
+              "The default role for users (e.g., ANALYST). Users can override this during their personal authentication.",
+            validator: isValidSnowflakeRole,
+          },
         };
         return result;
       }
@@ -416,6 +424,16 @@ export function isValidSnowflakeAccount(s: unknown): s is string {
     typeof s === "string" &&
     s.trim().length > 0 &&
     /^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$/.test(s.trim())
+  );
+}
+
+export function isValidSnowflakeRole(s: unknown): s is string {
+  // Snowflake role names are uppercase identifiers
+  // Allow alphanumeric and underscores
+  return (
+    typeof s === "string" &&
+    s.trim().length > 0 &&
+    /^[A-Za-z_][A-Za-z0-9_]*$/.test(s.trim())
   );
 }
 
