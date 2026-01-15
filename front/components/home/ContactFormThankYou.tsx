@@ -40,7 +40,8 @@ function toDefaultQuestions(fields: typeof FIELD_DEFINITIONS) {
     id: field.name,
     name: field.label,
     type: field.type === "dropdown" ? "select" : field.type,
-    options: "options" in field ? field.options?.map((opt) => opt.value) : undefined,
+    options:
+      "options" in field ? field.options?.map((opt) => opt.value) : undefined,
   }));
 }
 
@@ -67,7 +68,10 @@ export function ContactFormThankYou({
   howToUseDust,
   isQualified,
 }: ContactFormThankYouProps) {
-  console.log("[Default.com] ContactFormThankYou rendered, isQualified:", isQualified);
+  console.log(
+    "[Default.com] ContactFormThankYou rendered, isQualified:",
+    isQualified
+  );
 
   const hasTrackedRef = useRef(false);
   const defaultTriggeredRef = useRef(false);
@@ -98,10 +102,17 @@ export function ContactFormThankYou({
 
   // Load Default.com SDK and submit form data for qualified leads
   useEffect(() => {
-    console.log("[Default.com] useEffect triggered, isQualified:", isQualified, "alreadyTriggered:", defaultTriggeredRef.current);
+    console.log(
+      "[Default.com] useEffect triggered, isQualified:",
+      isQualified,
+      "alreadyTriggered:",
+      defaultTriggeredRef.current
+    );
 
     if (!isQualified || defaultTriggeredRef.current) {
-      console.log("[Default.com] Skipping - not qualified or already triggered");
+      console.log(
+        "[Default.com] Skipping - not qualified or already triggered"
+      );
       return;
     }
     defaultTriggeredRef.current = true;
@@ -117,7 +128,10 @@ export function ContactFormThankYou({
       // Wait a moment for the SDK to initialize
       setTimeout(() => {
         // Debug: log what's available on window.DefaultSDK
-        console.log("[Default.com] SDK loaded, window.DefaultSDK:", window.DefaultSDK);
+        console.log(
+          "[Default.com] SDK loaded, window.DefaultSDK:",
+          window.DefaultSDK
+        );
 
         if (window.DefaultSDK) {
           console.log("[Default.com] Calling DefaultSDK.submit with:", {
@@ -204,7 +218,6 @@ export function ContactFormThankYou({
           ? "We're excited to show you Dust. Book a time with our team below."
           : "We've received your request. Our team will be in touch soon."}
       </p>
-
     </div>
   );
 }
