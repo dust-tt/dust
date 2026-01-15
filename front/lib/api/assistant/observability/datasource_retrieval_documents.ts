@@ -236,37 +236,32 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
 
   const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
 
+  if (!dataSource) {
+    return new Ok({ documents, groups: [], total });
+  }
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const dustDataSourceId = dataSource.dustAPIDataSourceId;
   const documentIds = documents.map((document) => document.documentId);
-  let coreAPI: CoreAPI | null = null;
-  let dustDataSourceId: string | null = null;
-  if (dataSource) {
-    coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    dustDataSourceId = dataSource.dustAPIDataSourceId;
-  }
 
-  let documentNodesById = new Map<string, CoreAPIContentNode>();
-  let enrichedDocuments: DatasourceRetrievalDocumentData[] = documents;
+  const documentNodesById = await fetchNodesById(coreAPI, {
+    dustDataSourceId,
+    nodeIds: documentIds,
+  });
 
-  if (coreAPI && dustDataSourceId) {
-    documentNodesById = await fetchNodesById(coreAPI, {
-      dustDataSourceId,
-      nodeIds: documentIds,
-    });
+  const enrichedDocuments = documents.map((documentData) => {
+    const node = documentNodesById.get(documentData.documentId);
+    if (!node) {
+      return documentData;
+    }
 
-    enrichedDocuments = documents.map((documentData) => {
-      const node = documentNodesById.get(documentData.documentId);
-      if (!node) {
-        return documentData;
-      }
-
-      return {
-        ...documentData,
-        displayName: getNodeTitle(node),
-        parentId: node.parent_id,
-        parents: node.parents,
-      };
-    });
-  }
+    return {
+      ...documentData,
+      displayName: getNodeTitle(node),
+      parentId: node.parent_id,
+      parents: node.parents,
+    };
+  });
 
   const countsByParentId = new Map<string | null, number>();
   for (const document of enrichedDocuments) {
@@ -281,34 +276,25 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
   );
 
   const parentDisplayNamesById = new Map<string, string>();
-  if (coreAPI && dustDataSourceId) {
-    for (const node of documentNodesById.values()) {
-      const parentId = node.parent_id;
-      if (!parentId) {
-        continue;
-      }
-
-      if (isMeaningfulTitle(node.parent_title, parentId)) {
-        parentDisplayNamesById.set(parentId, node.parent_title);
-      }
+  for (const node of documentNodesById.values()) {
+    const parentId = node.parent_id;
+    if (parentId && isMeaningfulTitle(node.parent_title, parentId)) {
+      parentDisplayNamesById.set(parentId, node.parent_title);
     }
+  }
 
-    const unresolvedParentIds = parentIds.filter(
-      (parentId) => !parentDisplayNamesById.has(parentId)
-    );
+  const unresolvedParentIds = parentIds.filter(
+    (parentId) => !parentDisplayNamesById.has(parentId)
+  );
 
-    if (unresolvedParentIds.length > 0) {
-      const parentNodesById = await fetchNodesById(coreAPI, {
-        dustDataSourceId,
-        nodeIds: unresolvedParentIds,
-      });
+  if (unresolvedParentIds.length > 0) {
+    const parentNodesById = await fetchNodesById(coreAPI, {
+      dustDataSourceId,
+      nodeIds: unresolvedParentIds,
+    });
 
-      for (const parentNode of parentNodesById.values()) {
-        parentDisplayNamesById.set(
-          parentNode.node_id,
-          getNodeTitle(parentNode)
-        );
-      }
+    for (const parentNode of parentNodesById.values()) {
+      parentDisplayNamesById.set(parentNode.node_id, getNodeTitle(parentNode));
     }
   }
 

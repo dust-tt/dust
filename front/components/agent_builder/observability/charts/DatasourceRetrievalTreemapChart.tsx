@@ -245,7 +245,8 @@ export function DatasourceRetrievalTreemapChart({
   const [zoomSelection, setZoomSelection] = useState<ZoomSelection | null>(
     null
   );
-  const version = mode === "version" ? selectedVersion?.version : undefined;
+  const version =
+    isCustomAgent && mode === "version" ? selectedVersion?.version : undefined;
 
   const {
     datasourceRetrieval,
@@ -256,10 +257,7 @@ export function DatasourceRetrievalTreemapChart({
     workspaceId,
     agentConfigurationId,
     days: period,
-    version:
-      isCustomAgent && mode === "version"
-        ? selectedVersion?.version
-        : undefined,
+    version,
   });
   const { treemapData, legendItems } = useMemo(() => {
     if (!datasourceRetrieval.length) {
@@ -378,68 +376,34 @@ export function DatasourceRetrievalTreemapChart({
     });
   }, []);
 
-  const renderDatasourceTooltip = useCallback(
-    (props: { payload?: { payload?: TreemapNode }[] }) => {
-      const { payload } = props;
-      if (!payload || !payload[0]) {
-        return null;
-      }
-
-      const data = payload[0].payload;
+  const makeTooltipRenderer = useCallback(
+    (total: number) => (props: { payload?: { payload?: TreemapNode }[] }) => {
+      const data = props.payload?.[0]?.payload;
       if (!data) {
         return null;
       }
 
       const size = data.size ?? 0;
-      const percent =
-        totalRetrievals > 0 ? Math.round((size / totalRetrievals) * 100) : 0;
+      const percent = total > 0 ? Math.round((size / total) * 100) : 0;
 
       return (
         <ChartTooltipCard
           title={data.name}
-          rows={[
-            {
-              label: "Retrievals",
-              value: size,
-              percent,
-            },
-          ]}
+          rows={[{ label: "Retrievals", value: size, percent }]}
         />
       );
     },
-    [totalRetrievals]
+    []
   );
 
-  const renderDocumentsTooltip = useCallback(
-    (props: { payload?: { payload?: TreemapNode }[] }) => {
-      const { payload } = props;
-      if (!payload || !payload[0]) {
-        return null;
-      }
+  const renderDatasourceTooltip = useMemo(
+    () => makeTooltipRenderer(totalRetrievals),
+    [makeTooltipRenderer, totalRetrievals]
+  );
 
-      const data = payload[0].payload;
-      if (!data) {
-        return null;
-      }
-
-      const size = data.size ?? 0;
-      const percent =
-        totalDocuments > 0 ? Math.round((size / totalDocuments) * 100) : 0;
-
-      return (
-        <ChartTooltipCard
-          title={data.name}
-          rows={[
-            {
-              label: "Retrievals",
-              value: size,
-              percent,
-            },
-          ]}
-        />
-      );
-    },
-    [totalDocuments]
+  const renderDocumentsTooltip = useMemo(
+    () => makeTooltipRenderer(totalDocuments),
+    [makeTooltipRenderer, totalDocuments]
   );
 
   const isDialogOpen = zoomSelection !== null;
