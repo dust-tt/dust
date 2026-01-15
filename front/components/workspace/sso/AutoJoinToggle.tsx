@@ -13,6 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { Organization } from "@workos-inc/node";
 import { useEffect, useState } from "react";
+import { mutate } from "swr";
 
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -64,28 +65,35 @@ function DomainAutoJoinModal({
     setIsSubmitting(true);
 
     try {
-      // Attempt all domain updates and collect failures
-      const failedDomains: string[] = [];
-
-      for (const d of workspaceVerifiedDomains) {
+      // Find domains that need to be updated
+      const domainsToUpdate = workspaceVerifiedDomains.filter((d) => {
         const newValue = selectedDomains[d.domain] ?? false;
-        if (newValue !== d.domainAutoJoinEnabled) {
-          const res = await clientFetch(`/api/w/${owner.sId}`, {
+        return newValue !== d.domainAutoJoinEnabled;
+      });
+
+      // Update all domains in parallel
+      const results = await Promise.allSettled(
+        domainsToUpdate.map((d) =>
+          clientFetch(`/api/w/${owner.sId}`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
               domain: d.domain,
-              domainAutoJoinEnabled: newValue,
+              domainAutoJoinEnabled: selectedDomains[d.domain] ?? false,
             }),
-          });
+          })
+        )
+      );
 
-          if (!res.ok) {
-            failedDomains.push(d.domain);
-          }
+      // Collect failed domains
+      const failedDomains: string[] = [];
+      results.forEach((result, index) => {
+        if (result.status === "rejected" || !result.value.ok) {
+          failedDomains.push(domainsToUpdate[index].domain);
         }
-      }
+      });
 
       if (failedDomains.length > 0) {
         sendNotification({
@@ -93,12 +101,17 @@ function DomainAutoJoinModal({
           title: "Update failed",
           description: `Failed to update auto-join for: ${failedDomains.map((d) => `@${d}`).join(", ")}`,
         });
-        // Reload to show actual state from server
+      } else {
+        sendNotification({
+          type: "success",
+          title: "Auto-join updated",
+          description: "Domain auto-join settings have been updated.",
+        });
       }
 
-      // We perform a full refresh so that the Workspace name updates and we get a fresh owner
-      // object so that the formValidation logic keeps working.
-      window.location.reload();
+      // Refresh the verified domains data
+      void mutate(`/api/w/${owner.sId}/verified-domains`);
+      onClose();
     } finally {
       setIsSubmitting(false);
     }
@@ -131,7 +144,7 @@ function DomainAutoJoinModal({
                   <Checkbox
                     id={`domain-${d.domain}`}
                     checked={selectedDomains[d.domain] ?? false}
-                    onClick={() => handleDomainToggle(d.domain)}
+                    onCheckedChange={() => handleDomainToggle(d.domain)}
                     disabled={isSubmitting}
                   />
                   <Label htmlFor={`domain-${d.domain}`} className="font-normal">
@@ -239,7 +252,12 @@ export function AutoJoinToggle({
           description: `Failed to update auto-join for @${singleDomain.domain}.`,
         });
       } else {
-        window.location.reload();
+        sendNotification({
+          type: "success",
+          title: "Auto-join updated",
+          description: `Auto-join ${singleDomainEnabled ? "disabled" : "enabled"} for @${singleDomain.domain}.`,
+        });
+        void mutate(`/api/w/${owner.sId}/verified-domains`);
       }
     } finally {
       setIsUpdating(false);
@@ -314,7 +332,10 @@ export function AutoJoinToggle({
                     : undefined
               }
               disabled={
-                domains.length === 0 || !!owner.ssoEnforced || isUpdating
+                domains.length === 0 ||
+                workspaceVerifiedDomains.length === 0 ||
+                !!owner.ssoEnforced ||
+                isUpdating
               }
               onClick={handleButtonClick}
             />
