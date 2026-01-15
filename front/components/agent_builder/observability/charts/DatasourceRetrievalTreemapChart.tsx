@@ -69,8 +69,8 @@ interface TreemapContentProps {
   onNodeClick?: (node: TreemapNode) => void;
 }
 
-const MIN_TILE_SIDE_FOR_VALUE = 14;
-const MIN_TILE_SIDE_FOR_NAME = 28;
+const MIN_TILE_HEIGHT_FOR_VALUE = 24;
+const MIN_TILE_HEIGHT_FOR_NAME_AND_VALUE = 42;
 const GROUP_OUTLINE_INSET = 2;
 const GROUP_OUTLINE_STROKE_WIDTH = 2;
 const LEAF_STROKE_WIDTH = 1;
@@ -107,10 +107,8 @@ function TreemapContent({
     return null;
   }
 
-  const minSide = Math.min(width, height);
-  const shouldShowValue = minSide >= MIN_TILE_SIDE_FOR_VALUE;
-  const shouldShowName = minSide >= MIN_TILE_SIDE_FOR_NAME;
-  const shouldShowText = shouldShowValue;
+  const shouldShowValue = height >= MIN_TILE_HEIGHT_FOR_VALUE;
+  const shouldShowName = height >= MIN_TILE_HEIGHT_FOR_NAME_AND_VALUE;
   const isClickable = !!onNodeClick;
   const leafClassName = isClickable ? `${color} cursor-pointer` : color;
 
@@ -167,7 +165,7 @@ function TreemapContent({
             : undefined
         }
       />
-      {shouldShowText && (
+      {shouldShowValue && (
         <foreignObject
           x={x}
           y={y}
