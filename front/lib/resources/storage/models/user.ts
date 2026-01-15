@@ -179,11 +179,11 @@ export class UserToolApprovalModel extends WorkspaceAwareModel<UserToolApprovalM
   declare toolName: string;
 
   // For medium-stake tools, we tie the approval to an agent, and eventually to arg-values couples.
-  // For low-stake tools, these can be null.
+  // For low-stake tools, these are null.
   declare agentId: string | null;
   declare argsAndValues: Record<string, string> | null;
 
-  // Md5 hash of argsAndValues for quick lookup and uniqueness constraint
+  // Md5 hash of argsAndValues for quick lookup and uniqueness constraint.
   declare argsAndValuesMd5: string | null;
 }
 
