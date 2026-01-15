@@ -65,19 +65,11 @@ const TAB_TEMPLATE_COMPACT = `    default_tab_template {
 // Unified watch script content - handles both env services and temporal
 // Usage: watch-logs.sh --temporal
 //        watch-logs.sh <env-name> <service>
-//
-// NOTE: High log output rates can cause Zellij input lag. This script includes
-// rate limiting to prevent overwhelming the terminal. See:
-// - https://github.com/tmux/tmux/issues/3194
-// - https://github.com/anthropics/claude-code/issues/9935
 function getWatchScriptContent(): string {
   return `#!/usr/bin/env bash
 # Log watcher with Ctrl+C menu for restart/clear/quit
 # Usage: watch-logs.sh --temporal
 #        watch-logs.sh <env-name> <service>
-#
-# Includes output rate limiting to prevent Zellij input lag.
-# High log output (>1000 lines/sec) can overwhelm terminal multiplexers.
 
 if [[ "\$1" == "--temporal" ]]; then
   # Temporal mode
@@ -128,32 +120,16 @@ show_menu() {
   esac
 }
 
-# Rate-limited log following to prevent terminal lag
-# Uses pv if available, otherwise falls back to plain tail
-# High log output (>50KB/s sustained) can cause Zellij input lag
-rate_limited_tail() {
-  local file="\$1"
-
-  # Show last 100 lines immediately (reduced from 500 to prevent initial burst)
-  tail -n 100 "\$file" 2>/dev/null
-
-  # Follow new lines - use pv for rate limiting if available
-  if command -v pv &>/dev/null; then
-    # Rate limit to 50KB/s to prevent overwhelming terminal
-    # This is ~500 lines/sec assuming 100 bytes/line average
-    tail -n 0 -F "\$file" 2>/dev/null | pv -qL 50k
-  else
-    # Fallback: plain tail (may cause lag with high output)
-    tail -n 0 -F "\$file" 2>/dev/null
-  fi
-}
-
 while true; do
   echo -e "\\033[100m [\$LABEL] Ctrl+C for menu \\033[0m"
   echo ""
   # Run tail in a subshell that doesn't ignore SIGINT
-  # Use rate limiting to prevent Zellij input lag from high output
-  (trap - SIGINT; rate_limited_tail "\$LOG_FILE") || true
+  # Rate limit with pv if available to prevent Zellij input lag from high output
+  if command -v pv &>/dev/null; then
+    (trap - SIGINT; exec tail -n 500 -F "\$LOG_FILE" | pv -qL 50k) || true
+  else
+    (trap - SIGINT; exec tail -n 500 -F "\$LOG_FILE") || true
+  fi
   show_menu
 done
 `;

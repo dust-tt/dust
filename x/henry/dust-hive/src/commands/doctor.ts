@@ -245,17 +245,6 @@ async function checkSccache(): Promise<CheckResult> {
   };
 }
 
-async function checkPv(): Promise<CheckResult> {
-  const exists = await checkCommand("pv", ["--version"]);
-  return {
-    name: "pv (optional)",
-    ok: exists,
-    optional: true,
-    message: exists ? "Available" : "Not found (prevents Zellij input lag)",
-    fix: getInstallInstructions("pv"),
-  };
-}
-
 async function checkRepo(): Promise<CheckResult> {
   const root = await findRepoRoot();
   return {
@@ -315,7 +304,6 @@ async function runAllChecks(): Promise<CheckResult[]> {
     await checkProtobuf(),
     await checkDirenv(),
     await checkSccache(),
-    await checkPv(),
     await checkRepo(),
     await checkConfig(),
   ];

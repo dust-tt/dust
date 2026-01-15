@@ -128,8 +128,7 @@ type InstallableTool =
   | "cargo"
   | "cmake"
   | "protobuf"
-  | "direnv"
-  | "pv";
+  | "direnv";
 
 const INSTALL_INSTRUCTIONS: Record<PlatformName, Record<InstallableTool, string>> = {
   macos: {
@@ -143,7 +142,6 @@ const INSTALL_INSTRUCTIONS: Record<PlatformName, Record<InstallableTool, string>
     cmake: "brew install cmake",
     protobuf: "brew install protobuf",
     direnv: "brew install direnv && add shell hook (see README for setup)",
-    pv: "brew install pv",
   },
   linux: {
     zellij: "cargo install zellij (or download from https://github.com/zellij-org/zellij/releases)",
@@ -158,7 +156,6 @@ const INSTALL_INSTRUCTIONS: Record<PlatformName, Record<InstallableTool, string>
       "sudo apt install protobuf-compiler (Debian/Ubuntu) or sudo dnf install protobuf-compiler (Fedora)",
     direnv:
       "sudo apt install direnv (Debian/Ubuntu) or sudo dnf install direnv (Fedora) && add shell hook (see README)",
-    pv: "sudo apt install pv (Debian/Ubuntu) or sudo dnf install pv (Fedora)",
   },
 };
 

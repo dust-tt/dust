@@ -383,32 +383,7 @@ dust-hive reload myenv
 
 ### Zellij input lag / slow keyboard
 
-Long-running Zellij sessions can develop input lag due to:
-- **Scrollback buffer accumulation**: Each pane stores all output history
-- **Large log files**: Continuous `tail -F` on growing logs
-- **Memory pressure**: Accumulated state over hours/days
-
-**Diagnose the issue:**
-```bash
-dust-hive diagnose
-```
-
-**Quick fixes:**
-```bash
-# Reload the session (clears accumulated state)
-dust-hive reload myenv
-
-# Truncate large log files
-echo "" > ~/.dust-hive/envs/myenv/front.log
-
-# Cool down when not actively developing (stops services, reduces output)
-dust-hive cool myenv
-```
-
-**Prevention:**
-- Periodically reload long-running sessions
-- Use `dust-hive cool` when taking breaks
-- Consider adding `scroll_buffer_size 5000` to your Zellij config
+High log output can cause input lag. Install `pv` for rate limiting (`brew install pv`), or reload the session: `dust-hive reload myenv`
 
 ### Check service health
 
