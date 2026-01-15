@@ -19,6 +19,7 @@ import {
   createAgentMessages,
   createUserMentions,
   createUserMessage,
+  validateUserMention,
 } from "@app/lib/api/assistant/conversation/mentions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -3675,5 +3676,158 @@ describe("createUserMessage", () => {
     const { userMessage: userMessageInDb } =
       await ConversationFactory.getMessage(auth, userMessage.id);
     expect(userMessageInDb?.userId).toBeNull();
+  });
+});
+
+describe("validateUserMention", () => {
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
+  let conversation: ConversationType;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    workspace = setup.workspace;
+    auth = setup.authenticator;
+
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test agent",
+    });
+
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+  });
+
+  it("should add a participant with unread=true when approving a user mention", async () => {
+    // Create a second user who will be mentioned
+    const mentionedUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, mentionedUser, {
+      role: "user",
+    });
+
+    // Create a user message that mentions the second user
+    const userJson = auth.getNonNullableUser().toJSON();
+    const userMessage = await withTransaction(async (transaction) => {
+      return createUserMessage(auth, {
+        conversation,
+        content: `Hello @${mentionedUser.sId}`,
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank: 0,
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+        },
+        transaction,
+      });
+    });
+
+    // Create the mention with status "pending"
+    await MentionModel.create({
+      messageId: userMessage.id,
+      userId: mentionedUser.id,
+      workspaceId: workspace.id,
+      status: "pending",
+    });
+
+    // Verify the mentioned user is not a participant yet
+    const isParticipantBefore =
+      await ConversationResource.isConversationParticipant(auth, {
+        conversation,
+        user: mentionedUser.toJSON(),
+      });
+    expect(isParticipantBefore).toBe(false);
+
+    // Approve the mention
+    const result = await validateUserMention(auth, {
+      conversationId: conversation.sId,
+      userId: mentionedUser.sId,
+      messageId: userMessage.sId,
+      approvalState: "approved",
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    // Verify the mentioned user is now a participant with unread=true
+    const participant = await ConversationParticipantModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        userId: mentionedUser.id,
+      },
+    });
+
+    expect(participant).not.toBeNull();
+    expect(participant?.unread).toBe(true);
+    expect(participant?.action).toBe("subscribed");
+  });
+
+  it("should not add a participant when rejecting a user mention", async () => {
+    // Create a second user who will be mentioned
+    const mentionedUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, mentionedUser, {
+      role: "user",
+    });
+
+    // Create a user message that mentions the second user
+    const userJson = auth.getNonNullableUser().toJSON();
+    const userMessage = await withTransaction(async (transaction) => {
+      return createUserMessage(auth, {
+        conversation,
+        content: `Hello @${mentionedUser.sId}`,
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank: 0,
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+        },
+        transaction,
+      });
+    });
+
+    // Create the mention with status "pending"
+    await MentionModel.create({
+      messageId: userMessage.id,
+      userId: mentionedUser.id,
+      workspaceId: workspace.id,
+      status: "pending",
+    });
+
+    // Reject the mention
+    const result = await validateUserMention(auth, {
+      conversationId: conversation.sId,
+      userId: mentionedUser.sId,
+      messageId: userMessage.sId,
+      approvalState: "rejected",
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    // Verify the mentioned user is NOT a participant
+    const participant = await ConversationParticipantModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        userId: mentionedUser.id,
+      },
+    });
+
+    expect(participant).toBeNull();
   });
 });
