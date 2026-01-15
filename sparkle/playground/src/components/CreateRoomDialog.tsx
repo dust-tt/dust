@@ -1,5 +1,4 @@
 import {
-  CheckBoxWithTextAndDescription,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -7,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  SliderToggle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -67,13 +67,21 @@ export function CreateRoomDialog({
             messageStatus={error ? "error" : "default"}
             autoFocus
           />
-          <CheckBoxWithTextAndDescription
-            id="is-public-checkbox"
-            text="Opened to everyone"
-            description="Anyone in the workspace can find and join the room."
-            checked={isPublic}
-            onCheckedChange={setIsPublic}
-          />
+          <div className="s-flex s-items-start s-justify-between s-gap-4">
+            <div className="s-flex s-flex-col">
+              <div className="s-text-sm s-font-semibold s-text-foreground">
+                Opened to everyone
+              </div>
+              <div className="s-text-sm s-text-muted-foreground">
+                Anyone in the workspace can find and join the room.
+              </div>
+            </div>
+            <SliderToggle
+              size="xs"
+              selected={isPublic}
+              onClick={() => setIsPublic((prev) => !prev)}
+            />
+          </div>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{

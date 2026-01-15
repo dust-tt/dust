@@ -3,7 +3,6 @@ import {
   BookOpenIcon,
   Button,
   ChatBubbleLeftRightIcon,
-  CheckBoxWithTextAndDescription,
   ConversationListItem,
   Dialog,
   DialogContainer,
@@ -19,6 +18,7 @@ import {
   PlusIcon,
   ReplySection,
   SearchInput,
+  SliderToggle,
   Tabs,
   TabsContent,
   TabsList,
@@ -599,7 +599,7 @@ export function GroupConversationView({
             className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
           >
             <div className="s-flex s-flex-col s-gap-4">
-              <h2 className="s-heading-xl s-text-foreground dark:s-text-foreground-night">
+              <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
                 About {space.name}
               </h2>
               <p className="s-text-foreground dark:s-text-foreground-night">
@@ -614,11 +614,11 @@ export function GroupConversationView({
           value="settings"
           className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
         >
-          <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-py-8">
+          <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-8 s-py-8">
             {/* Room Name Section */}
-            <div className="s-flex s-w-full s-flex-col s-gap-3">
-              <h3 className="s-heading-xl">Main Settings</h3>
-              <h3 className="s-heading-sm">Name</h3>
+            <h3 className="s-heading-2xl">Main Settings</h3>
+            <div className="s-flex s-w-full s-flex-col s-gap-2">
+              <h3 className="s-heading-base">Name</h3>
               <div className="s-flex s-w-full s-min-w-0 s-gap-2">
                 <Input
                   value={roomName}
@@ -648,29 +648,37 @@ export function GroupConversationView({
                 )}
               </div>
             </div>
-
             {/* Open to Everyone Section */}
-            <div className="s-flex s-flex-col s-gap-3">
-              <h3 className="s-heading-sm">Room Visibility</h3>
-              <CheckBoxWithTextAndDescription
-                id="is-public-toggle"
-                text="Opened to everyone"
-                description="Anyone in the workspace can find and join the room."
-                checked={isPublic}
-                onCheckedChange={(checked) => {
-                  if (checked !== isPublic) {
+
+            <div className="s-flex s-w-full s-flex-col s-gap-2">
+              <h3 className="s-heading-base">Room Visibility</h3>
+              <div className="s-flex s-items-start s-justify-between s-gap-4">
+                <div className="s-flex s-flex-col">
+                  <div className="s-heading-sm s-text-foreground">
+                    Opened to everyone
+                  </div>
+                  <div className="s-text-sm s-text-muted-foreground">
+                    Anyone in the workspace can find and join the room.
+                  </div>
+                </div>
+                <SliderToggle
+                  size="xs"
+                  selected={isPublic}
+                  onClick={() => {
+                    const nextValue = !isPublic;
                     setShowPublicToggleDialog(true);
                     // Store the intended new value temporarily
-                    setPendingPublicValue(checked === true);
-                  }
-                }}
-              />
+                    setPendingPublicValue(nextValue);
+                  }}
+                />
+              </div>
             </div>
+
             <Separator />
             {/* Members Section */}
             <div className="s-flex s-flex-col s-gap-3">
               <div className="s-flex s-items-center s-gap-2">
-                <h3 className="s-heading-xl s-flex-1">Members</h3>
+                <h3 className="s-heading-2xl s-flex-1">Members</h3>
                 <Button
                   label="Invite more"
                   variant="outline"
