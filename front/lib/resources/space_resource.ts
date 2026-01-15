@@ -733,9 +733,18 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return regularGroups[0];
   }
 
+  /**
+   * Check if a user is a member of this space.
+   * Returns true if the user belongs to any group linked to this space.
+   */
   async isMember(user: UserResource): Promise<boolean> {
-    const defaultGroup = this.getDefaultSpaceGroup();
-    return defaultGroup.isMember(user);
+    for (const group of this.groups) {
+      if (await group.isMember(user)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
