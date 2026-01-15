@@ -4,6 +4,7 @@ export interface Suggestion {
   id: string;
   label: string;
   icon: IconComponent;
+  description: string;
   onClick: () => void;
 }
 
@@ -37,10 +38,11 @@ export function ConversationSuggestion({
                 <Icon visual={suggestion.icon} size="sm" />
                 <div className="s-w-full">{suggestion.label}</div>
               </div>
-              <div className="s-text-sm s-text-muted-foreground">
-                Centralize the information used in this project for Agents and
-                Participants.
-              </div>
+              {suggestion.description && (
+                <div className="s-text-sm s-text-muted-foreground">
+                  {suggestion.description}
+                </div>
+              )}
             </div>
           </Card>
         ))}

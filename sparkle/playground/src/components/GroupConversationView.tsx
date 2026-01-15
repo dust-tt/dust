@@ -15,6 +15,7 @@ import {
   TabsTrigger,
   ToolsIcon,
   Cog6ToothIcon,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -383,6 +384,8 @@ export function GroupConversationView({
                       id: "add-knowledge",
                       label: "Add knowledge",
                       icon: BookOpenIcon,
+                      description:
+                        "Centralize the information used in this project for Agents and Participants.",
                       onClick: () => {
                         console.log("Add knowledge clicked");
                       },
@@ -390,7 +393,9 @@ export function GroupConversationView({
                     {
                       id: "invite-members",
                       label: "Invite members",
-                      icon: ContactsUserIcon,
+                      icon: UserGroupIcon,
+                      description:
+                        "Invite team members to collaborate and participate in this room.",
                       onClick: () => {
                         onInviteMembers?.();
                       },
