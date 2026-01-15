@@ -6,7 +6,7 @@ import { coolCommand } from "./commands/cool";
 import { destroyCommand } from "./commands/destroy";
 import { doctorCommand, setupCommand } from "./commands/doctor";
 import { downCommand } from "./commands/down";
-import { forwardCommand } from "./commands/forward";
+import { forwardCommand, forwardStatusCommand, forwardStopCommand } from "./commands/forward";
 import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
 import { openCommand } from "./commands/open";
@@ -250,10 +250,22 @@ cli.command("cache", "Show binary cache status").action(async () => {
   await prepareAndRun(cacheCommand());
 });
 
+cli.command("forward status", "Show current forwarding status").action(async () => {
+  await prepareAndRun(forwardStatusCommand());
+});
+
+cli.command("forward stop", "Stop the port forwarder").action(async () => {
+  await prepareAndRun(forwardStopCommand());
+});
+
 cli
-  .command("forward [target]", "Manage OAuth port forwarding")
-  .action(async (target: string | undefined) => {
-    await prepareAndRun(forwardCommand(target));
+  .command("forward [name]", "Forward OAuth ports to environment")
+  .example("dust-hive forward          # Forward to last warmed env")
+  .example("dust-hive forward my-env   # Forward to specific env")
+  .example("dust-hive forward status   # Show forwarding status")
+  .example("dust-hive forward stop     # Stop port forwarding")
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(forwardCommand(name));
   });
 
 cli

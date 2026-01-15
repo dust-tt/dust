@@ -5,31 +5,12 @@ import {
   startForwarder,
   stopForwarder,
 } from "../lib/forward";
-import { FORWARDER_MAPPINGS, FORWARDER_PORTS } from "../lib/forwarderConfig";
+import { FORWARDER_PORTS } from "../lib/forwarderConfig";
 import { logger } from "../lib/logger";
 import { FORWARDER_LOG_PATH } from "../lib/paths";
 import { isServiceRunning } from "../lib/process";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { getStateInfo } from "../lib/state";
-
-function printUsage(): void {
-  console.log("Usage: dust-hive forward [NAME|status|stop]");
-  console.log();
-  console.log("Forward standard local dev ports to an environment's ports.");
-  console.log("This enables OAuth redirects to work with dust-hive environments.");
-  console.log();
-  console.log(`Ports forwarded: ${FORWARDER_PORTS.join(", ")}`);
-  console.log(
-    `  ${FORWARDER_MAPPINGS.map((mapping) => `${mapping.listenPort} → ${mapping.name}`).join(", ")}`
-  );
-  console.log();
-  console.log("Commands:");
-  console.log("  dust-hive forward          Forward to the last warmed environment");
-  console.log("  dust-hive forward NAME     Forward to a specific environment");
-  console.log("  dust-hive forward status   Show current forwarding status");
-  console.log("  dust-hive forward stop     Stop the forwarder");
-  console.log();
-}
 
 async function findLastWarmedEnv(): Promise<string | null> {
   const state = await readForwarderState();
@@ -59,7 +40,7 @@ async function findLastWarmedEnv(): Promise<string | null> {
   return null;
 }
 
-async function showStatus(): Promise<Result<void>> {
+export async function forwardStatusCommand(): Promise<Result<void>> {
   const status = await getForwarderStatus();
 
   console.log();
@@ -107,7 +88,7 @@ async function showStatus(): Promise<Result<void>> {
   return Ok(undefined);
 }
 
-async function handleStop(): Promise<Result<void>> {
+export async function forwardStopCommand(): Promise<Result<void>> {
   const wasRunning = await stopForwarder();
 
   if (wasRunning) {
@@ -140,33 +121,24 @@ async function forwardToEnv(name: string): Promise<Result<void>> {
   return Ok(undefined);
 }
 
-export async function forwardCommand(subcommand?: string): Promise<Result<void>> {
-  // No args: forward to last warmed env
-  if (!subcommand) {
+export async function forwardCommand(name?: string): Promise<Result<void>> {
+  // No name: forward to last warmed env
+  if (!name) {
     const lastEnv = await findLastWarmedEnv();
     if (!lastEnv) {
-      printUsage();
       return Err(new CommandError("No warm environment found. Run 'dust-hive warm NAME' first."));
     }
     return forwardToEnv(lastEnv);
   }
 
-  // status: show current status
-  if (subcommand === "status") {
-    return showStatus();
+  // Route subcommands (for cac multi-word command compatibility)
+  if (name === "status") {
+    return forwardStatusCommand();
   }
-
-  // stop: stop the forwarder
-  if (subcommand === "stop") {
-    return handleStop();
-  }
-
-  // help: show usage
-  if (subcommand === "--help" || subcommand === "-h" || subcommand === "help") {
-    printUsage();
-    return Ok(undefined);
+  if (name === "stop") {
+    return forwardStopCommand();
   }
 
   // NAME: forward to specific env
-  return forwardToEnv(subcommand);
+  return forwardToEnv(name);
 }
