@@ -76,7 +76,7 @@ AgentStepContentModel.init(
         unique: true,
         concurrently: true,
         fields: ["workspaceId", "agentMessageId", "step", "index", "version"],
-        name: "agent_step_contents_agent_message_id_step_index_versioned",
+        name: "agent_step_contents_workspace_agent_message_step_index_version",
       },
       {
         concurrently: true,
