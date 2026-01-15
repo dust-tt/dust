@@ -30,7 +30,7 @@ import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getUntrustedEgressAgent } from "@app/lib/egress/server";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
-import { WorkspaceDomainUseCaseResource } from "@app/lib/resources/workspace_domain_use_case_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
@@ -91,14 +91,11 @@ async function createMCPDispatcher(
   const workspace = auth.getNonNullableWorkspace();
 
   // Check if workspace should use static IP:
-  // 1. Legacy hardcoded check
-  // 2. New domain-based check (mcp_static_ip_egress enabled for this host)
+  // 1. Legacy hardcoded check for specific workspaces
+  // 2. Domain-based check: host is under any verified domain for this workspace
   const useStaticIP =
     isWorkspaceUsingStaticIP(workspace) ||
-    (await WorkspaceDomainUseCaseResource.shouldUseStaticIPEgress(
-      workspace,
-      host
-    ));
+    (await WorkspaceResource.isHostUnderVerifiedDomain(workspace.id, host));
 
   if (useStaticIP) {
     const proxyHost = `${EnvironmentConfig.getEnvVariable(

@@ -11,13 +11,8 @@ import {
 } from "@app/lib/swr/swr";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { GetWorkspaceDomainsResponseBody } from "@app/pages/api/w/[wId]/domains";
-import type { GetDomainUseCasesResponseBody } from "@app/pages/api/w/[wId]/domains/use_cases";
 import type { GetProvisioningStatusResponseBody } from "@app/pages/api/w/[wId]/provisioning-status";
-import type {
-  LightWorkspaceType,
-  WorkspaceDomainUseCase,
-  WorkspaceDomainUseCaseStatus,
-} from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
 
 /**
  * Workspace domains
@@ -85,78 +80,6 @@ export function useRemoveWorkspaceDomain({
 
   return {
     doRemoveWorkspaceDomain,
-  };
-}
-
-/**
- * Domain use cases
- */
-
-export function useDomainUseCases({
-  disabled,
-  owner,
-}: {
-  disabled?: boolean;
-  owner: LightWorkspaceType;
-}) {
-  const { data, error, mutate } = useSWRWithDefaults<
-    string,
-    GetDomainUseCasesResponseBody
-  >(`/api/w/${owner.sId}/domains/use_cases`, fetcher, {
-    disabled,
-  });
-
-  return {
-    useCases: data?.useCases ?? emptyArray(),
-    verifiedDomains: data?.verifiedDomains ?? emptyArray(),
-    isUseCasesError: error,
-    isUseCasesLoading: !error && !data && !disabled,
-    mutate,
-  };
-}
-
-export function useCreateDomainUseCase({
-  owner,
-}: {
-  owner: LightWorkspaceType;
-}) {
-  const { mutate } = useDomainUseCases({ owner, disabled: true });
-  const sendNotification = useSendNotification();
-
-  const doCreateDomainUseCase = async ({
-    domain,
-    useCase,
-    status,
-  }: {
-    domain: string;
-    useCase: WorkspaceDomainUseCase;
-    status: WorkspaceDomainUseCaseStatus;
-  }) => {
-    const response = await clientFetch(`/api/w/${owner.sId}/domains/use_cases`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ domain, useCase, status }),
-    });
-
-    if (!response.ok) {
-      const errorData = await getErrorFromResponse(response);
-      sendNotification({
-        type: "error",
-        title: "Failed to create domain use case",
-        description: errorData.message,
-      });
-
-      return false;
-    }
-
-    void mutate();
-    return true;
-  };
-
-  return {
-    doCreateDomainUseCase,
   };
 }
 

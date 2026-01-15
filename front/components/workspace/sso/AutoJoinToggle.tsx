@@ -64,7 +64,9 @@ function DomainAutoJoinModal({
     setIsSubmitting(true);
 
     try {
-      // Update each domain individually
+      // Attempt all domain updates and collect failures
+      const failedDomains: string[] = [];
+
       for (const d of workspaceVerifiedDomains) {
         const newValue = selectedDomains[d.domain] ?? false;
         if (newValue !== d.domainAutoJoinEnabled) {
@@ -80,15 +82,18 @@ function DomainAutoJoinModal({
           });
 
           if (!res.ok) {
-            sendNotification({
-              type: "error",
-              title: "Update failed",
-              description: `Failed to update auto-join for @${d.domain}.`,
-            });
-            setIsSubmitting(false);
-            return;
+            failedDomains.push(d.domain);
           }
         }
+      }
+
+      if (failedDomains.length > 0) {
+        sendNotification({
+          type: "error",
+          title: "Update failed",
+          description: `Failed to update auto-join for: ${failedDomains.map((d) => `@${d}`).join(", ")}`,
+        });
+        // Reload to show actual state from server
       }
 
       // We perform a full refresh so that the Workspace name updates and we get a fresh owner

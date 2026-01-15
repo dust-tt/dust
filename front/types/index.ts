@@ -101,4 +101,3 @@ export * from "./tokenizer";
 export * from "./user";
 export * from "./website";
 export * from "./workspace";
-export * from "./workspace_domain_use_case";

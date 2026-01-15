@@ -2,7 +2,6 @@ import {
   ActionGlobeAltIcon,
   Button,
   Chip,
-  Cog6ToothIcon,
   DataTable,
   EmptyCTA,
   IconButton,
@@ -14,10 +13,9 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import type { Organization } from "@workos-inc/node";
-import React, { useState } from "react";
+import React from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
-import { ConfigureDomainUseCasesModal } from "@app/components/workspace/ConfigureDomainUseCasesModal";
 import UserProvisioning from "@app/components/workspace/DirectorySync";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
 import SSOConnection from "@app/components/workspace/SSOConnection";
@@ -139,7 +137,6 @@ function DomainVerificationTable({
 }: DomainVerificationTableProps) {
   const confirm = React.useContext(ConfirmContext);
   const { doRemoveWorkspaceDomain } = useRemoveWorkspaceDomain({ owner });
-  const [configuredDomain, setConfiguredDomain] = useState<string | null>(null);
 
   const handleDeleteDomain = React.useCallback(
     async (domain: string) => {
@@ -196,30 +193,16 @@ function DomainVerificationTable({
       {
         header: "",
         accessorKey: "actions",
-        meta: { className: "w-24" },
+        meta: { className: "w-12" },
         cell: ({ row }: CellContext<DomainRowData, string>) => {
-          const isVerified =
-            row.original.workspaceVerifiedDomain &&
-            row.original.status === "verified";
           return (
-            <div className="flex gap-1">
-              {isVerified && (
-                <IconButton
-                  icon={Cog6ToothIcon}
-                  size="xs"
-                  variant="ghost"
-                  onClick={() => setConfiguredDomain(row.original.domain)}
-                  tooltip="Configure use cases"
-                />
-              )}
-              <IconButton
-                icon={XMarkIcon}
-                size="xs"
-                variant="ghost"
-                onClick={() => handleDeleteDomain(row.original.domain)}
-                tooltip="Delete domain"
-              />
-            </div>
+            <IconButton
+              icon={XMarkIcon}
+              size="xs"
+              variant="ghost"
+              onClick={() => handleDeleteDomain(row.original.domain)}
+              tooltip="Delete domain"
+            />
           );
         },
       },
@@ -250,12 +233,6 @@ function DomainVerificationTable({
           />
         </div>
       )}
-      <ConfigureDomainUseCasesModal
-        isOpen={configuredDomain !== null}
-        onClose={() => setConfiguredDomain(null)}
-        owner={owner}
-        domain={configuredDomain ?? ""}
-      />
     </div>
   );
 }

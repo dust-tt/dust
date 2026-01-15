@@ -37,7 +37,6 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { WorkspaceDomainUseCaseResource } from "@app/lib/resources/workspace_domain_use_case_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
@@ -330,30 +329,8 @@ async function handleOrganizationDomainEvent(
       // we need to delete the domain from the other workspace.
       dropExistingDomain: true,
     });
-
-    // Handle domain use cases on verification:
-    // 1. Enable any pending use cases for this domain
-    const enabledCount =
-      await WorkspaceDomainUseCaseResource.enablePendingUseCasesForDomain(
-        workspace,
-        domain
-      );
-    logger.info(
-      { domain, enabledCount },
-      "Enabled pending use cases for verified domain"
-    );
   } else {
     domainResult = await workspaceResource.deleteDomain({ domain });
-
-    // Delete all use cases for the failed/removed domain
-    const deletedCount = await WorkspaceDomainUseCaseResource.deleteForDomain(
-      workspace,
-      domain
-    );
-    logger.info(
-      { domain, deletedCount },
-      "Deleted use cases for failed/removed domain"
-    );
   }
 
   if (domainResult.isErr()) {
