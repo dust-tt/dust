@@ -203,7 +203,9 @@ async function handler(
         }
       }
 
-      const removeRes = await editorGroup.removeMembers(auth, { users: usersToRemove });
+      const removeRes = await editorGroup.removeMembers(auth, {
+        users: usersToRemove,
+      });
       if (removeRes.isErr()) {
         switch (removeRes.error.code) {
           case "unauthorized":
