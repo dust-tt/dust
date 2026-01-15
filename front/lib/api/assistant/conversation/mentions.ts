@@ -85,6 +85,32 @@ async function canUserAccessConversation(
   return canAccess === "allowed";
 }
 
+/**
+ * Check if a user is a member of a space (project).
+ */
+async function isUserMemberOfSpace(
+  auth: Authenticator,
+  {
+    userId,
+    spaceId,
+  }: {
+    userId: string;
+    spaceId: string;
+  }
+): Promise<boolean> {
+  const space = await SpaceResource.fetchById(auth, spaceId);
+  if (!space) {
+    return false;
+  }
+
+  const user = await UserResource.fetchById(userId);
+  if (!user) {
+    return false;
+  }
+
+  return space.isMember(user);
+}
+
 export const createUserMentions = async (
   auth: Authenticator,
   {
@@ -142,9 +168,18 @@ export const createUserMentions = async (
             }
           }
 
+          // Auto approve mentions for users who are members of the conversation's project space.
+          let userInProject = false;
+          if (!autoApprove && conversation.spaceId) {
+            userInProject = await isUserMemberOfSpace(auth, {
+              userId: user.sId,
+              spaceId: conversation.spaceId,
+            });
+          }
+
           const status: MentionStatusType = !canAccess
             ? "user_restricted_by_conversation_access"
-            : autoApprove
+            : autoApprove || userInProject
               ? "approved"
               : "pending";
 

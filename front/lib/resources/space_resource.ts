@@ -733,6 +733,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return regularGroups[0];
   }
 
+  async isMember(user: UserResource): Promise<boolean> {
+    const defaultGroup = this.getDefaultSpaceGroup();
+    return defaultGroup.isMember(user);
+  }
+
   /**
    * Computes resource permissions based on space type and group configuration.
    *
