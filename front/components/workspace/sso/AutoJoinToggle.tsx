@@ -21,68 +21,113 @@ import { clientFetch } from "@app/lib/egress/client";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import type { PlanType, WorkspaceDomain, WorkspaceType } from "@app/types";
 
-interface DomainAutoJoinModalProps {
+type AutoJoinMode =
+  | { kind: "none" }
+  | { kind: "single"; domain: WorkspaceDomain }
+  | { kind: "multiple" };
+
+function getAutoJoinMode(
+  workspaceVerifiedDomains: WorkspaceDomain[]
+): AutoJoinMode {
+  if (workspaceVerifiedDomains.length === 0) {
+    return { kind: "none" };
+  }
+
+  if (workspaceVerifiedDomains.length === 1) {
+    return { kind: "single", domain: workspaceVerifiedDomains[0] };
+  }
+
+  return { kind: "multiple" };
+}
+
+async function updateDomainAutoJoin({
+  ownerId,
+  domain,
+  enabled,
+}: {
+  ownerId: string;
+  domain: string;
+  enabled: boolean;
+}): Promise<Response> {
+  return clientFetch(`/api/w/${ownerId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      domain,
+      domainAutoJoinEnabled: enabled,
+    }),
+  });
+}
+
+interface MultiDomainAutoJoinModalProps {
   workspaceVerifiedDomains: WorkspaceDomain[];
   isOpen: boolean;
   onClose: () => void;
   owner: WorkspaceType;
 }
 
-function DomainAutoJoinModal({
+function MultiDomainAutoJoinModal({
   workspaceVerifiedDomains,
   isOpen,
   onClose,
   owner,
-}: DomainAutoJoinModalProps) {
+}: MultiDomainAutoJoinModalProps) {
   const sendNotification = useSendNotification();
-  const [selectedDomains, setSelectedDomains] = useState<
-    Record<string, boolean>
-  >({});
+  const [domainOverrides, setDomainOverrides] = useState<Record<string, boolean>>(
+    {}
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
 
-  // Initialize selected domains when modal opens
+  // Reset pending changes when modal opens.
   useEffect(() => {
     if (isOpen) {
-      const initial: Record<string, boolean> = {};
-      for (const d of workspaceVerifiedDomains) {
-        initial[d.domain] = d.domainAutoJoinEnabled;
-      }
-      setSelectedDomains(initial);
-      setHasChanges(false);
+      setDomainOverrides({});
     }
-  }, [isOpen, workspaceVerifiedDomains]);
+  }, [isOpen]);
 
-  const handleDomainToggle = (domain: string) => {
-    setSelectedDomains((prev) => ({
-      ...prev,
-      [domain]: !prev[domain],
-    }));
-    setHasChanges(true);
+  const handleDomainToggle = (domain: WorkspaceDomain) => {
+    setDomainOverrides((prev) => {
+      const currentValue = prev[domain.domain] ?? domain.domainAutoJoinEnabled;
+      const nextValue = !currentValue;
+
+      // Keep `domainOverrides` minimal by removing overrides that match the
+      // initial state. This makes `hasChanges` accurate even if the user toggles
+      // a checkbox twice.
+      if (nextValue === domain.domainAutoJoinEnabled) {
+        const nextOverrides = { ...prev };
+        delete nextOverrides[domain.domain];
+        return nextOverrides;
+      }
+
+      return { ...prev, [domain.domain]: nextValue };
+    });
   };
 
   async function handleSave(): Promise<void> {
+    const domainsToUpdate = workspaceVerifiedDomains.filter((d) => {
+      const desiredValue = domainOverrides[d.domain];
+      return (
+        desiredValue !== undefined && desiredValue !== d.domainAutoJoinEnabled
+      );
+    });
+
+    if (domainsToUpdate.length === 0) {
+      onClose();
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Find domains that need to be updated
-      const domainsToUpdate = workspaceVerifiedDomains.filter((d) => {
-        const newValue = selectedDomains[d.domain] ?? false;
-        return newValue !== d.domainAutoJoinEnabled;
-      });
-
       // Update all domains in parallel
       const results = await Promise.allSettled(
         domainsToUpdate.map((d) =>
-          clientFetch(`/api/w/${owner.sId}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              domain: d.domain,
-              domainAutoJoinEnabled: selectedDomains[d.domain] ?? false,
-            }),
+          updateDomainAutoJoin({
+            ownerId: owner.sId,
+            domain: d.domain,
+            enabled: domainOverrides[d.domain] ?? d.domainAutoJoinEnabled,
           })
         )
       );
@@ -90,7 +135,12 @@ function DomainAutoJoinModal({
       // Collect failed domains
       const failedDomains: string[] = [];
       results.forEach((result, index) => {
-        if (result.status === "rejected" || !result.value.ok) {
+        if (result.status === "rejected") {
+          failedDomains.push(domainsToUpdate[index].domain);
+          return;
+        }
+
+        if (!result.value.ok) {
           failedDomains.push(domainsToUpdate[index].domain);
         }
       });
@@ -117,7 +167,14 @@ function DomainAutoJoinModal({
     }
   }
 
-  const enabledCount = Object.values(selectedDomains).filter(Boolean).length;
+  const isDomainEnabled = (domain: WorkspaceDomain): boolean =>
+    domainOverrides[domain.domain] ?? domain.domainAutoJoinEnabled;
+
+  const enabledDomainNames = workspaceVerifiedDomains
+    .filter(isDomainEnabled)
+    .map((d) => d.domain);
+  const enabledDomainCount = enabledDomainNames.length;
+  const hasChanges = Object.keys(domainOverrides).length > 0;
 
   return (
     <Dialog
@@ -143,8 +200,8 @@ function DomainAutoJoinModal({
                 <div key={d.domain} className="flex items-center gap-2">
                   <Checkbox
                     id={`domain-${d.domain}`}
-                    checked={selectedDomains[d.domain] ?? false}
-                    onCheckedChange={() => handleDomainToggle(d.domain)}
+                    checked={isDomainEnabled(d)}
+                    onCheckedChange={() => handleDomainToggle(d)}
                     disabled={isSubmitting}
                   />
                   <Label htmlFor={`domain-${d.domain}`} className="font-normal">
@@ -153,12 +210,11 @@ function DomainAutoJoinModal({
                 </div>
               ))}
             </div>
-            {enabledCount > 0 && (
+            {enabledDomainCount > 0 && (
               <p className="text-sm text-muted-foreground">
                 Anyone with a{" "}
-                {Object.entries(selectedDomains)
-                  .filter(([, enabled]) => enabled)
-                  .map(([domain]) => `@${domain}`)
+                {enabledDomainNames
+                  .map((domain) => `@${domain}`)
                   .join(" or ")}{" "}
                 email will be able to join your workspace automatically.
               </p>
@@ -201,66 +257,60 @@ export function AutoJoinToggle({
   const sendNotification = useSendNotification();
   const [showUpgradePlanDialog, setShowUpgradePlanDialog] = useState(false);
   const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [isUpdatingSingleDomain, setIsUpdatingSingleDomain] = useState(false);
 
-  const enabledDomains = workspaceVerifiedDomains.filter(
+  const autoJoinMode = getAutoJoinMode(workspaceVerifiedDomains);
+
+  const autoJoinEnabledDomains = workspaceVerifiedDomains.filter(
     (d) => d.domainAutoJoinEnabled
   );
-  const hasAnyAutoJoinEnabled = enabledDomains.length > 0;
-  const hasMultipleDomains = workspaceVerifiedDomains.length > 1;
+  const isAutoJoinEnabled = autoJoinEnabledDomains.length > 0;
 
-  // For single domain: simple toggle behavior
-  const singleDomain = workspaceVerifiedDomains[0];
-  const singleDomainEnabled = singleDomain?.domainAutoJoinEnabled ?? false;
-
-  const getStatusDescription = () => {
-    if (workspaceVerifiedDomains.length === 0) {
+  const statusDescription = (() => {
+    if (autoJoinMode.kind === "none") {
       return "Add a verified domain to enable auto-join for your team members.";
     }
 
-    if (hasAnyAutoJoinEnabled) {
-      const domainList = enabledDomains.map((d) => `@${d.domain}`).join(", ");
+    if (isAutoJoinEnabled) {
+      const domainList = autoJoinEnabledDomains
+        .map((d) => `@${d.domain}`)
+        .join(", ");
       return `Auto-join is enabled for ${domainList}. Team members with these email domains can automatically join your workspace.`;
     }
 
     return "Allow your team members to automatically access your Dust workspace when they sign up with a verified email domain.";
-  };
+  })();
 
-  // Simple toggle for single domain
-  async function handleSingleDomainToggle(): Promise<void> {
-    if (!singleDomain) {
-      return;
-    }
-
-    setIsUpdating(true);
+  async function handleSingleDomainToggle(
+    domain: WorkspaceDomain
+  ): Promise<void> {
+    setIsUpdatingSingleDomain(true);
     try {
-      const res = await clientFetch(`/api/w/${owner.sId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          domain: singleDomain.domain,
-          domainAutoJoinEnabled: !singleDomainEnabled,
-        }),
+      const nextValue = !domain.domainAutoJoinEnabled;
+      const res = await updateDomainAutoJoin({
+        ownerId: owner.sId,
+        domain: domain.domain,
+        enabled: nextValue,
       });
 
       if (!res.ok) {
         sendNotification({
           type: "error",
           title: "Update failed",
-          description: `Failed to update auto-join for @${singleDomain.domain}.`,
+          description: `Failed to update auto-join for @${domain.domain}.`,
         });
-      } else {
-        sendNotification({
-          type: "success",
-          title: "Auto-join updated",
-          description: `Auto-join ${singleDomainEnabled ? "disabled" : "enabled"} for @${singleDomain.domain}.`,
-        });
-        void mutate(`/api/w/${owner.sId}/verified-domains`);
+        return;
       }
+
+      sendNotification({
+        type: "success",
+        title: "Auto-join updated",
+        description: `Auto-join ${nextValue ? "enabled" : "disabled"} for @${domain.domain}.`,
+      });
+
+      void mutate(`/api/w/${owner.sId}/verified-domains`);
     } finally {
-      setIsUpdating(false);
+      setIsUpdatingSingleDomain(false);
     }
   }
 
@@ -270,40 +320,70 @@ export function AutoJoinToggle({
       return;
     }
 
-    if (hasMultipleDomains) {
-      setIsConfigureModalOpen(true);
-    } else {
-      void handleSingleDomainToggle();
+    switch (autoJoinMode.kind) {
+      case "multiple":
+        setIsConfigureModalOpen(true);
+        return;
+      case "single":
+        void handleSingleDomainToggle(autoJoinMode.domain);
+        return;
+      case "none":
+        return;
     }
   };
 
-  const getButtonLabel = () => {
-    if (isUpdating) {
-      return "Updating...";
-    }
-    if (hasMultipleDomains) {
-      return hasAnyAutoJoinEnabled ? "Configure" : "Enable Auto-join";
-    }
-    return singleDomainEnabled ? "De-activate Auto-join" : "Activate Auto-join";
-  };
+  let buttonLabel: string;
+  let buttonVariant: "primary" | "outline";
+  switch (autoJoinMode.kind) {
+    case "multiple":
+      buttonLabel = isAutoJoinEnabled ? "Configure" : "Enable Auto-join";
+      buttonVariant = isAutoJoinEnabled ? "outline" : "primary";
+      break;
+    case "single":
+      if (isUpdatingSingleDomain) {
+        buttonLabel = "Updating...";
+      } else if (autoJoinMode.domain.domainAutoJoinEnabled) {
+        buttonLabel = "De-activate Auto-join";
+      } else {
+        buttonLabel = "Activate Auto-join";
+      }
+      buttonVariant = autoJoinMode.domain.domainAutoJoinEnabled
+        ? "outline"
+        : "primary";
+      break;
+    case "none":
+      buttonLabel = "Enable Auto-join";
+      buttonVariant = "primary";
+      break;
+  }
 
-  const getButtonVariant = () => {
-    if (hasMultipleDomains) {
-      return hasAnyAutoJoinEnabled ? "outline" : "primary";
-    }
-    return singleDomainEnabled ? "outline" : "primary";
-  };
+  const isButtonDisabled =
+    domains.length === 0 ||
+    autoJoinMode.kind === "none" ||
+    !!owner.ssoEnforced ||
+    (autoJoinMode.kind === "single" && isUpdatingSingleDomain);
+
+  let tooltip: string | undefined;
+  if (owner.ssoEnforced) {
+    tooltip = "Auto-join is not available when SSO is enforced";
+  } else if (domains.length === 0) {
+    tooltip = "Add a domain to enable Auto-join";
+  } else if (autoJoinMode.kind === "none") {
+    tooltip = "Verify a domain to enable Auto-join";
+  }
 
   return (
     <>
-      <DomainAutoJoinModal
-        workspaceVerifiedDomains={workspaceVerifiedDomains}
-        isOpen={isConfigureModalOpen}
-        onClose={() => {
-          setIsConfigureModalOpen(false);
-        }}
-        owner={owner}
-      />
+      {autoJoinMode.kind === "multiple" && (
+        <MultiDomainAutoJoinModal
+          workspaceVerifiedDomains={workspaceVerifiedDomains}
+          isOpen={isConfigureModalOpen}
+          onClose={() => {
+            setIsConfigureModalOpen(false);
+          }}
+          owner={owner}
+        />
+      )}
       <UpgradePlanDialog
         isOpen={showUpgradePlanDialog}
         onClose={() => setShowUpgradePlanDialog(false)}
@@ -317,26 +397,15 @@ export function AutoJoinToggle({
             <div className="flex flex-row items-center gap-2">
               <Page.H variant="h5">Auto-join Workspace</Page.H>
             </div>
-            <Page.P variant="secondary">{getStatusDescription()}</Page.P>
+            <Page.P variant="secondary">{statusDescription}</Page.P>
           </div>
           <div className="flex justify-end">
             <Button
-              label={getButtonLabel()}
+              label={buttonLabel}
               size="sm"
-              variant={getButtonVariant()}
-              tooltip={
-                owner.ssoEnforced
-                  ? "Auto-join is not available when SSO is enforced"
-                  : domains.length === 0
-                    ? "Add a domain to enable Auto-join"
-                    : undefined
-              }
-              disabled={
-                domains.length === 0 ||
-                workspaceVerifiedDomains.length === 0 ||
-                !!owner.ssoEnforced ||
-                isUpdating
-              }
+              variant={buttonVariant}
+              tooltip={tooltip}
+              disabled={isButtonDisabled}
               onClick={handleButtonClick}
             />
           </div>
