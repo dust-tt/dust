@@ -37,6 +37,10 @@ export function ConversationSuggestion({
                 <Icon visual={suggestion.icon} size="sm" />
                 <div className="s-w-full">{suggestion.label}</div>
               </div>
+              <div className="s-text-sm s-text-muted-foreground">
+                Centralize the information used in this project for Agents and
+                Participants.
+              </div>
             </div>
           </Card>
         ))}
