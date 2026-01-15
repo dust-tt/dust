@@ -1,4 +1,5 @@
 import { LangfuseClient } from "@langfuse/client";
+import { NotFoundError } from "@langfuse/core";
 
 import logger from "@app/logger/logger";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
@@ -31,7 +32,6 @@ function getLangfuseClient(): LangfuseClient | null {
 
 /**
  * Ensures a Langfuse dataset exists, creating it if necessary.
- * This is idempotent - calling it multiple times for the same dataset is safe.
  */
 async function ensureLangfuseDatasetExists(
   client: LangfuseClient,
@@ -39,7 +39,10 @@ async function ensureLangfuseDatasetExists(
 ): Promise<void> {
   try {
     await client.api.datasets.get(datasetName);
-  } catch {
+  } catch (error) {
+    if (!(error instanceof NotFoundError)) {
+      throw error;
+    }
     // Dataset doesn't exist, create it
     await client.api.datasets.create({
       name: datasetName,
