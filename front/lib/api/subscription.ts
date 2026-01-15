@@ -18,10 +18,8 @@ import { ConnectorsAPI, removeNulls } from "@app/types";
  * - Re-enables all triggers that point to non-archived agents
  */
 export async function restoreWorkspaceAfterSubscription(auth: Authenticator) {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Missing workspace on auth.");
-  }
+  const owner = auth.getNonNullableWorkspace();
+
   const scrubCancelRes = await terminateScheduleWorkspaceScrubWorkflow({
     workspaceId: owner.sId,
     stopReason: "Workspace subscription activated/reactivated",
@@ -32,29 +30,41 @@ export async function restoreWorkspaceAfterSubscription(auth: Authenticator) {
       "Error terminating scrub workspace workflow."
     );
   }
+
   const dataSources = await getDataSources(auth);
   const connectorIds = removeNulls(dataSources.map((ds) => ds.connectorId));
-  const connectorsApi = new ConnectorsAPI(
+
+  const connectorsAPI = new ConnectorsAPI(
     apiConfig.getConnectorsAPIConfig(),
     logger
   );
+
   for (const connectorId of connectorIds) {
-    const r = await connectorsApi.unpauseConnector(connectorId);
-    if (r.isErr()) {
+    const r = await connectorsAPI.unpauseConnector(connectorId);
+    if (r.isErr() && r.error.message !== "Connector is not stopped") {
       logger.error(
-        { connectorId, stripeError: true, error: r.error },
+        {
+          connectorId,
+          stripeError: true,
+          error: r.error,
+          workspaceId: owner.sId,
+        },
         "Error unpausing connector after subscription reactivation."
       );
     }
   }
 
-  // Re-enable all triggers that point to non-archived agents
+  // Re-enable all triggers that point to non-archived agents.
   const enableTriggersRes = await TriggerResource.enableAllForWorkspace(auth);
   if (enableTriggersRes.isErr()) {
     logger.error(
-      { stripeError: true, error: enableTriggersRes.error },
+      {
+        stripeError: true,
+        error: enableTriggersRes.error,
+        workspaceId: owner.sId,
+      },
       "Error re-enabling workspace triggers on subscription reactivation"
     );
-    // Don't throw error here - we want the function to continue even if trigger re-enabling fails
+    // Don't throw an error here, we want the function to continue even if trigger re-enabling fails.
   }
 }
