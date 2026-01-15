@@ -4,7 +4,7 @@ import type {
   RequestInfo as UndiciRequestInfo,
   RequestInit as UndiciRequestInit,
 } from "undici";
-import { fetch as undiciFetch, ProxyAgent } from "undici";
+import { fetch as undiciFetch } from "undici";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -12,8 +12,9 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import { getStaticIPProxyAgent } from "@app/lib/egress/server";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
-import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
 
@@ -22,23 +23,18 @@ const createOctokit = async (
   { accessToken }: { accessToken?: string }
 ) => {
   if (isWorkspaceUsingStaticIP(auth.getNonNullableWorkspace())) {
-    const myFetch = (url: UndiciRequestInfo, options: UndiciRequestInit) =>
-      undiciFetch(url, {
-        ...options,
-        dispatcher: new ProxyAgent(
-          `http://${EnvironmentConfig.getEnvVariable(
-            "PROXY_USER_NAME"
-          )}:${EnvironmentConfig.getEnvVariable(
-            "PROXY_USER_PASSWORD"
-          )}@${EnvironmentConfig.getEnvVariable(
-            "PROXY_HOST"
-          )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`
-        ),
+    const staticIPProxy = getStaticIPProxyAgent();
+    if (staticIPProxy) {
+      const myFetch = (url: UndiciRequestInfo, options: UndiciRequestInit) =>
+        undiciFetch(url, {
+          ...options,
+          dispatcher: staticIPProxy,
+        });
+      return new Octokit({
+        auth: accessToken,
+        request: { fetch: myFetch },
       });
-    return new Octokit({
-      auth: accessToken,
-      request: { fetch: myFetch },
-    });
+    }
   }
 
   return new Octokit({
