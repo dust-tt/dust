@@ -14,18 +14,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
+import { ContactFormThankYou } from "@app/components/home/ContactFormThankYou";
 import type {
   ContactFormData,
   ContactSubmitResponse,
   TrackingParams,
-} from "@app/components/home/contactFormSchema";
+} from "@app/lib/api/hubspot/contactFormSchema";
 import {
   COMPANY_HEADCOUNT_FORM_OPTIONS,
   ContactFormSchema,
   HEADQUARTERS_REGION_OPTIONS,
   LANGUAGE_OPTIONS,
-} from "@app/components/home/contactFormSchema";
-import { ContactFormThankYou } from "@app/components/home/ContactFormThankYou";
+} from "@app/lib/api/hubspot/contactFormSchema";
 import { clientFetch } from "@app/lib/egress/client";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 import { getStoredUTMParams } from "@app/lib/utils/utm";

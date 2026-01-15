@@ -1,7 +1,7 @@
 import type {
   ContactFormData,
   TrackingParams,
-} from "@app/components/home/contactFormSchema";
+} from "@app/lib/api/hubspot/contactFormSchema";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";

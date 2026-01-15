@@ -1,39 +1,20 @@
-import dns from "dns";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { promisify } from "util";
 
+import { submitToHubSpotForm } from "@app/lib/api/hubspot";
 import type {
   ContactSubmitResponse,
   TrackingParams,
-} from "@app/components/home/contactFormSchema";
-import { ContactFormSchema } from "@app/components/home/contactFormSchema";
-import { submitToHubSpotForm } from "@app/lib/api/hubspot";
+} from "@app/lib/api/hubspot/contactFormSchema";
+import { ContactFormSchema } from "@app/lib/api/hubspot/contactFormSchema";
+import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
 import { sendUserOperationMessage } from "@app/types";
-
-const resolveMx = promisify(dns.resolveMx);
 
 const GTM_LEADS_SLACK_CHANNEL_ID = "C0A1XKES0JY";
 
 // Headcount value for small companies (<=100 employees) - not qualified for enterprise demo
 const SMALL_COMPANY_HEADCOUNT = "1-100";
-
-// Extract domain from email
-function extractDomain(email: string): string | null {
-  const match = email.match(/@([^@]+)$/);
-  return match ? match[1].toLowerCase() : null;
-}
-
-// Check if domain has valid MX records
-async function hasValidMxRecords(domain: string): Promise<boolean> {
-  try {
-    const records = await resolveMx(domain);
-    return records.length > 0;
-  } catch {
-    return false;
-  }
-}
 
 export default async function handler(
   req: NextApiRequest,

@@ -112,3 +112,23 @@ export const ContactFormSchema = z.object({
 });
 
 export type ContactFormData = z.infer<typeof ContactFormSchema>;
+
+// Tracking parameters captured from URL/sessionStorage
+export interface TrackingParams {
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+  gclid?: string;
+  fbclid?: string;
+  msclkid?: string;
+  li_fat_id?: string;
+}
+
+// Response from the contact submit API
+export interface ContactSubmitResponse {
+  success: boolean;
+  isQualified: boolean;
+  error?: string;
+}

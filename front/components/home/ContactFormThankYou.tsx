@@ -1,8 +1,9 @@
 import { CheckCircleIcon } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 
-import { FIELD_DEFINITIONS } from "@app/components/home/contactFormSchema";
+import { FIELD_DEFINITIONS } from "@app/lib/api/hubspot/contactFormSchema";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+import logger from "@app/logger/logger";
 
 // Default.com configuration
 const DEFAULT_FORM_ID = 130084;
@@ -68,11 +69,6 @@ export function ContactFormThankYou({
   howToUseDust,
   isQualified,
 }: ContactFormThankYouProps) {
-  console.log(
-    "[Default.com] ContactFormThankYou rendered, isQualified:",
-    isQualified
-  );
-
   const hasTrackedRef = useRef(false);
   const defaultTriggeredRef = useRef(false);
 
@@ -102,22 +98,10 @@ export function ContactFormThankYou({
 
   // Load Default.com SDK and submit form data for qualified leads
   useEffect(() => {
-    console.log(
-      "[Default.com] useEffect triggered, isQualified:",
-      isQualified,
-      "alreadyTriggered:",
-      defaultTriggeredRef.current
-    );
-
     if (!isQualified || defaultTriggeredRef.current) {
-      console.log(
-        "[Default.com] Skipping - not qualified or already triggered"
-      );
       return;
     }
     defaultTriggeredRef.current = true;
-
-    console.log("[Default.com] Loading SDK script...");
 
     // Load the Default.com SDK script
     const script = document.createElement("script");
@@ -127,19 +111,7 @@ export function ContactFormThankYou({
     script.onload = () => {
       // Wait a moment for the SDK to initialize
       setTimeout(() => {
-        // Debug: log what's available on window.DefaultSDK
-        console.log(
-          "[Default.com] SDK loaded, window.DefaultSDK:",
-          window.DefaultSDK
-        );
-
         if (window.DefaultSDK) {
-          console.log("[Default.com] Calling DefaultSDK.submit with:", {
-            form_id: DEFAULT_FORM_ID,
-            team_id: DEFAULT_TEAM_ID,
-            email,
-          });
-
           window.DefaultSDK.submit({
             form_id: DEFAULT_FORM_ID,
             team_id: DEFAULT_TEAM_ID,
@@ -154,17 +126,10 @@ export function ContactFormThankYou({
               landing_use_cases: howToUseDust,
             },
             questions: toDefaultQuestions(FIELD_DEFINITIONS),
-            onSuccess: (data) => {
-              console.log("[Default.com] onSuccess:", data);
-            },
             onError: (error) => {
-              console.error("[Default.com] onError:", error);
-            },
-            onSchedulerDisplayed: () => {
-              console.log("[Default.com] Scheduler displayed");
+              logger.error({ error }, "[Default.com] SDK submission error");
             },
             onMeetingBooked: () => {
-              console.log("[Default.com] Meeting booked");
               trackEvent({
                 area: TRACKING_AREAS.CONTACT,
                 object: "contact_form",
@@ -173,13 +138,13 @@ export function ContactFormThankYou({
             },
           });
         } else {
-          console.error("[Default.com] SDK not found on window.DefaultSDK");
+          logger.error("[Default.com] SDK not found on window");
         }
       }, 500);
     };
 
     script.onerror = (error) => {
-      console.error("[Default.com] Failed to load SDK script:", error);
+      logger.error({ error }, "[Default.com] Failed to load SDK script");
     };
 
     document.head.appendChild(script);

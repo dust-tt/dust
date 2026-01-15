@@ -5,7 +5,7 @@ import * as path from "path";
 const HUBSPOT_FORM_ID = "95a83867-b22c-440a-8ba0-2733d35e4a7b";
 const OUTPUT_PATH = path.join(
   __dirname,
-  "../components/home/contactFormSchema.generated.ts"
+  "../lib/api/hubspot/contactFormSchema.ts"
 );
 
 // Types for HubSpot Form API response
@@ -228,6 +228,26 @@ ${zodFields},
 });
 
 export type ContactFormData = z.infer<typeof ContactFormSchema>;
+
+// Tracking parameters captured from URL/sessionStorage
+export interface TrackingParams {
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+  gclid?: string;
+  fbclid?: string;
+  msclkid?: string;
+  li_fat_id?: string;
+}
+
+// Response from the contact submit API
+export interface ContactSubmitResponse {
+  success: boolean;
+  isQualified: boolean;
+  error?: string;
+}
 `;
 
   return code;

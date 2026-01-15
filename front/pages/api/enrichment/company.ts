@@ -1,27 +1,13 @@
-import dns from "dns";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { promisify } from "util";
 
 import config from "@app/lib/api/config";
 import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
 import { sendUserOperationMessage } from "@app/types";
-
-const resolveMx = promisify(dns.resolveMx);
-
-// Check if domain has valid MX records
-async function hasValidMxRecords(domain: string): Promise<boolean> {
-  try {
-    const records = await resolveMx(domain);
-    return records.length > 0;
-  } catch {
-    // ENODATA, ENOTFOUND, etc. - domain has no MX records
-    return false;
-  }
-}
 
 // Company size thresholds
 const ENTERPRISE_THRESHOLD = 100;
@@ -33,12 +19,6 @@ interface EnrichmentResponse {
   companyName?: string;
   redirectUrl: string;
   error?: string;
-}
-
-// Extract domain from email
-function extractDomain(email: string): string | null {
-  const match = email.match(/@([^@]+)$/);
-  return match ? match[1].toLowerCase() : null;
 }
 
 async function checkAutoJoinDomain(domain: string): Promise<boolean> {
