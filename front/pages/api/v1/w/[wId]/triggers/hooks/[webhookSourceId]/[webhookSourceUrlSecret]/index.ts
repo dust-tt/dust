@@ -187,7 +187,7 @@ async function handler(
 
   if (result.isErr()) {
     return apiError(req, res, {
-      status_code: 500,
+      status_code: 400,
       api_error: {
         type: "webhook_processing_error",
         message: result.error.message,
