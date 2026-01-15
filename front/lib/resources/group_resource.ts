@@ -1035,10 +1035,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMembers(
     auth: Authenticator,
-    {
-      users,
-      permissionsToWrite,
-    }: { users: UserType[]; permissionsToWrite?: CombinedResourcePermissions },
+    users: UserType[],
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1052,7 +1049,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth, permissionsToWrite)) {
+    if (!this.canWrite(auth)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1163,10 +1160,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMember(
     auth: Authenticator,
-    {
-      user,
-      permissionsToWrite,
-    }: { user: UserType; permissionsToWrite?: CombinedResourcePermissions },
+    user: UserType,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1180,19 +1174,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.addMembers(
-      auth,
-      { users: [user], permissionsToWrite },
-      { transaction }
-    );
+    return this.addMembers(auth, [user], { transaction });
   }
 
   async removeMembers(
     auth: Authenticator,
-    {
-      users,
-      permissionsToWrite,
-    }: { users: UserType[]; permissionsToWrite?: CombinedResourcePermissions },
+    users: UserType[],
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1205,7 +1192,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth, permissionsToWrite)) {
+    if (!this.canWrite(auth)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1315,19 +1302,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.removeMembers(
-      auth,
-      { users: [user], permissionsToWrite },
-      { transaction }
-    );
+    return this.removeMembers(auth, [user], { transaction });
   }
 
   async setMembers(
     auth: Authenticator,
-    {
-      users,
-      permissionsToWrite,
-    }: { users: UserType[]; permissionsToWrite?: CombinedResourcePermissions },
+    users: UserType[],
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1342,7 +1322,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth, permissionsToWrite)) {
+    if (!this.canWrite(auth)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1360,13 +1340,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       (user) => !currentMemberIds.includes(user.sId)
     );
     if (usersToAdd.length > 0) {
-      const addResult = await this.addMembers(
-        auth,
-        { users: usersToAdd, permissionsToWrite },
-        {
-          transaction,
-        }
-      );
+      const addResult = await this.addMembers(auth, usersToAdd, {
+        transaction,
+      });
       if (addResult.isErr()) {
         return addResult;
       }
@@ -1377,13 +1353,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       .filter((currentMember) => !userIds.includes(currentMember.sId))
       .map((m) => m.toJSON());
     if (usersToRemove.length > 0) {
-      const removeResult = await this.removeMembers(
-        auth,
-        { users: usersToRemove, permissionsToWrite },
-        {
-          transaction,
-        }
-      );
+      const removeResult = await this.removeMembers(auth, usersToRemove, {
+        transaction,
+      });
       if (removeResult.isErr()) {
         return removeResult;
       }
@@ -1517,13 +1489,8 @@ export class GroupResource extends BaseResource<GroupModel> {
     return auth.canRead(this.requestedPermissions());
   }
 
-  canWrite(
-    auth: Authenticator,
-    permissionsToWrite?: CombinedResourcePermissions
-  ): boolean {
-    return auth.canWrite(
-      permissionsToWrite ? [permissionsToWrite] : this.requestedPermissions()
-    );
+  canWrite(auth: Authenticator): boolean {
+    return auth.canWrite(this.requestedPermissions());
   }
 
   isSystem(): boolean {
