@@ -8,8 +8,8 @@ import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 const DEFAULT_FORM_ID = 130084;
 const DEFAULT_TEAM_ID = 579;
 
-// Type for Default.com SDK
-interface DefaultSDK {
+// Type for Default.com SDK (exposed as window.DefaultSDK)
+interface DefaultSDKInstance {
   submit: (options: {
     form_id: number;
     team_id: number;
@@ -30,9 +30,7 @@ interface DefaultSDK {
 
 declare global {
   interface Window {
-    default?: {
-      sdk: DefaultSDK;
-    };
+    DefaultSDK?: DefaultSDKInstance;
   }
 }
 
@@ -69,6 +67,8 @@ export function ContactFormThankYou({
   howToUseDust,
   isQualified,
 }: ContactFormThankYouProps) {
+  console.log("[Default.com] ContactFormThankYou rendered, isQualified:", isQualified);
+
   const hasTrackedRef = useRef(false);
   const defaultTriggeredRef = useRef(false);
 
@@ -98,10 +98,15 @@ export function ContactFormThankYou({
 
   // Load Default.com SDK and submit form data for qualified leads
   useEffect(() => {
+    console.log("[Default.com] useEffect triggered, isQualified:", isQualified, "alreadyTriggered:", defaultTriggeredRef.current);
+
     if (!isQualified || defaultTriggeredRef.current) {
+      console.log("[Default.com] Skipping - not qualified or already triggered");
       return;
     }
     defaultTriggeredRef.current = true;
+
+    console.log("[Default.com] Loading SDK script...");
 
     // Load the Default.com SDK script
     const script = document.createElement("script");
@@ -111,8 +116,17 @@ export function ContactFormThankYou({
     script.onload = () => {
       // Wait a moment for the SDK to initialize
       setTimeout(() => {
-        if (window.default?.sdk) {
-          window.default.sdk.submit({
+        // Debug: log what's available on window.DefaultSDK
+        console.log("[Default.com] SDK loaded, window.DefaultSDK:", window.DefaultSDK);
+
+        if (window.DefaultSDK) {
+          console.log("[Default.com] Calling DefaultSDK.submit with:", {
+            form_id: DEFAULT_FORM_ID,
+            team_id: DEFAULT_TEAM_ID,
+            email,
+          });
+
+          window.DefaultSDK.submit({
             form_id: DEFAULT_FORM_ID,
             team_id: DEFAULT_TEAM_ID,
             responses: {
@@ -126,10 +140,17 @@ export function ContactFormThankYou({
               landing_use_cases: howToUseDust,
             },
             questions: toDefaultQuestions(FIELD_DEFINITIONS),
+            onSuccess: (data) => {
+              console.log("[Default.com] onSuccess:", data);
+            },
+            onError: (error) => {
+              console.error("[Default.com] onError:", error);
+            },
             onSchedulerDisplayed: () => {
-              // Scheduler is now visible
+              console.log("[Default.com] Scheduler displayed");
             },
             onMeetingBooked: () => {
+              console.log("[Default.com] Meeting booked");
               trackEvent({
                 area: TRACKING_AREAS.CONTACT,
                 object: "contact_form",
@@ -137,8 +158,14 @@ export function ContactFormThankYou({
               });
             },
           });
+        } else {
+          console.error("[Default.com] SDK not found on window.DefaultSDK");
         }
       }, 500);
+    };
+
+    script.onerror = (error) => {
+      console.error("[Default.com] Failed to load SDK script:", error);
     };
 
     document.head.appendChild(script);

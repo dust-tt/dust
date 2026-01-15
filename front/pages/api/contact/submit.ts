@@ -16,8 +16,8 @@ const resolveMx = promisify(dns.resolveMx);
 
 const GTM_LEADS_SLACK_CHANNEL_ID = "C0A1XKES0JY";
 
-// Headcount values that qualify as enterprise (>100 employees)
-const QUALIFIED_HEADCOUNTS = ["101-500", "501-10000", "10000+"];
+// Headcount value for small companies (<=100 employees) - not qualified for enterprise demo
+const SMALL_COMPANY_HEADCOUNT = "1-100";
 
 // Extract domain from email
 function extractDomain(email: string): string | null {
@@ -87,8 +87,8 @@ export default async function handler(
     }
   }
 
-  // Determine if lead is qualified based on self-reported headcount
-  const isQualified = QUALIFIED_HEADCOUNTS.includes(formData.company_headcount_form);
+  // Determine if lead is qualified based on self-reported headcount (>100 employees)
+  const isQualified = formData.company_headcount_form !== SMALL_COMPANY_HEADCOUNT;
 
   // Extract IP address from request headers
   const forwardedFor = req.headers["x-forwarded-for"];
