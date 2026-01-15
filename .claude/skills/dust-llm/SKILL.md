@@ -1,6 +1,6 @@
 ---
 name: dust-llm
-description: Step-by-step guide for adding support for a new LLM model in Dust. Use when adding a new AI model, supporting a new provider model, or updating model configurations.
+description: Step-by-step guide for adding support for a new LLM in Dust. Use when adding a new model, or updating a previous one.
 ---
 
 # Adding Support for a New LLM Model
