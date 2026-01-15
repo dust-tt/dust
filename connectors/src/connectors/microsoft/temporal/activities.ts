@@ -98,6 +98,8 @@ export async function getRootNodesToSyncFromResources(
   const logger = getActivityLogger(connector);
   const client = await getMicrosoftClient(connector.connectionId);
 
+  const oauthTokenErrors: ExternalOAuthTokenError[] = [];
+
   // get root folders and drives and drill down site-root and sites to their
   // child drives (converted to MicrosoftNode types)
   const rootFolderAndDriveNodes = removeNulls(
@@ -128,7 +130,8 @@ export async function getRootNodesToSyncFromResources(
               return null;
             }
             if (error instanceof ExternalOAuthTokenError) {
-              throw error;
+              // Do not throw immediately, the token may still be valid for other roots
+              oauthTokenErrors.push(error);
             }
             logger.error(
               {
@@ -143,6 +146,11 @@ export async function getRootNodesToSyncFromResources(
         })
     )
   );
+
+  // If no root folders or drives were found, and there were OAuth token errors, put the connector in error state
+  if (rootFolderAndDriveNodes.length === 0 && oauthTokenErrors.length > 0) {
+    throw oauthTokenErrors[0];
+  }
 
   const rootSitePaths: string[] = rootResources
     .filter((resource) => resource.nodeType === "site")
