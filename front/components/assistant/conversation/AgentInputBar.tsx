@@ -5,7 +5,6 @@ import {
   Button,
   ContentMessageAction,
   ContentMessageInline,
-  IconButton,
   InformationCircleIcon,
   StopIcon,
 } from "@dust-tt/sparkle";
@@ -239,22 +238,42 @@ export const AgentInputBar = ({
     }
   }, [isStopping, generationContext.generatingMessages, context.conversation]);
 
+  const showControlBar = Boolean(
+    showStopButton || !canScrollUp || !canScrollDown || showClearButton
+  );
+  const controlBarTransitionMs = 150;
+  const [shouldRenderControlBar, setShouldRenderControlBar] =
+    useState<boolean>(showControlBar);
+
+  useEffect(() => {
+    if (showControlBar) {
+      setShouldRenderControlBar(true);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setShouldRenderControlBar(false);
+    }, controlBarTransitionMs);
+
+    return () => window.clearTimeout(timeout);
+  }, [showControlBar, controlBarTransitionMs]);
+
   return (
     <div
       className={
-        "relative z-20 mx-auto flex max-h-dvh w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4"
+        "max-h-dvh relative z-20 mx-auto flex w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4"
       }
     >
-      <div className="flex w-full justify-center gap-2">
-        <div
-          className="flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night"
-          style={{
-            position: "absolute",
-            top: "-2em",
-          }}
-        >
-          {showStopButton && (
-            <>
+      {shouldRenderControlBar && (
+        <div className="flex w-full justify-center gap-2">
+          <div
+            className={`absolute -top-8 flex items-center gap-1 rounded-xl border border-border bg-background/40 p-1 backdrop-blur-sm transition-all duration-150 ease-out dark:border-border-night dark:bg-background-night/40 ${
+              showControlBar
+                ? "translate-y-0 opacity-100"
+                : "pointer-events-none -translate-y-4 opacity-0"
+            }`}
+          >
+            {showStopButton && (
               <Button
                 variant="ghost"
                 label={getStopButtonLabel()}
@@ -263,45 +282,46 @@ export const AgentInputBar = ({
                 disabled={isStopping}
                 size="xs"
               />
-              <div className="h-4 w-px bg-border dark:bg-border-night" />
-            </>
-          )}
-          <IconButton
-            icon={ArrowUpIcon}
-            onClick={scrollToPreviousUserMessage}
-            disabled={!canScrollUp}
-            size="xs"
-            tooltip="Previous message"
-          />
-          <IconButton
-            icon={ArrowDownIcon}
-            onClick={scrollToNextUserMessage}
-            disabled={!canScrollDown}
-            size="xs"
-            tooltip="Next message"
-          />
+            )}
+            {!canScrollUp && (
+              <Button
+                variant="ghost"
+                icon={ArrowUpIcon}
+                onClick={scrollToPreviousUserMessage}
+                disabled={!canScrollUp}
+                size="xs"
+                tooltip="Previous message"
+              />
+            )}
+            {!canScrollDown && (
+              <Button
+                variant="ghost"
+                icon={ArrowDownIcon}
+                onClick={scrollToNextUserMessage}
+                disabled={!canScrollDown}
+                size="xs"
+                tooltip="Next message"
+              />
+            )}
+            {showClearButton && (
+              <Button
+                variant="ghost"
+                icon={ArrowPathIcon}
+                size="xs"
+                onClick={context.agentBuilderContext?.resetConversation}
+                label="Clear"
+              />
+            )}
+          </div>
         </div>
-
-        {showClearButton && (
-          <Button
-            variant="outline"
-            icon={ArrowPathIcon}
-            onClick={context.agentBuilderContext?.resetConversation}
-            label="Clear"
-            style={{
-              position: "absolute",
-              top: "-2em",
-            }}
-          />
-        )}
-      </div>
+      )}
       {blockedActions.length > 0 && (
         <ContentMessageInline
           icon={InformationCircleIcon}
           variant="primary"
-          className="mb-5 flex max-h-dvh w-full"
+          className="max-h-dvh mb-5 flex w-full"
         >
-          <span className="font-bold">
+          <span className="font-semibold">
             {blockedActions.length} manual action
             {pluralize(blockedActions.length)}
           </span>{" "}
