@@ -39,6 +39,9 @@ export function AgentSuggestion({
 
   const { submit: handleSelectSuggestion } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
+      if (!dustAPI) {
+        return;
+      }
       const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
       const mRes = await dustAPI.request({
         method: "POST",

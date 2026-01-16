@@ -20,6 +20,9 @@ export function useConversationMarkAsRead({
 
   const markAsRead = useCallback(
     async (conversationId: string, mutateList: boolean): Promise<void> => {
+      if (!dustAPI) {
+        return;
+      }
       const response = await dustAPI.markAsRead({
         conversationId,
       });

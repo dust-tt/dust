@@ -18,7 +18,7 @@ import { DEFAULT_DUST_API_DOMAIN } from "@/lib/config";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
-import { normalizeError } from "@/lib/utils/errors";
+import { decodeJWT, normalizeError } from "@app/shared/lib/utils";
 
 // Re-export types for convenience
 export type { StoredTokens, StoredUser, OAuthAuthorizeResponse };
@@ -42,23 +42,6 @@ async function generatePKCE(): Promise<{
     .replace(/=/g, "");
 
   return { codeVerifier, codeChallenge };
-}
-
-// JWT decode helper (simple implementation for claims extraction)
-function decodeJWT(token: string): Record<string, string> {
-  try {
-    const base64Url = token.split(".")[1];
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
-    );
-    return JSON.parse(jsonPayload);
-  } catch {
-    return {};
-  }
 }
 
 const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 5 * 60;

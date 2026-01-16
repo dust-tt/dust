@@ -23,7 +23,7 @@ export function Img({ src, alt }: ImgProps) {
     : false;
 
   useEffect(() => {
-    if (!fileId || !isImageFile) {
+    if (!fileId || !isImageFile || !dustAPI) {
       setIsLoading(false);
       return;
     }

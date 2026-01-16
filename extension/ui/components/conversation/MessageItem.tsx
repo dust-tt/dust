@@ -61,6 +61,9 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           feedbackContent: string | null;
           isConversationShared: boolean;
         }) => {
+          if (!dustAPI) {
+            return;
+          }
           const res = shouldRemoveExistingFeedback
             ? await dustAPI.deleteFeedback(conversationId, message.sId)
             : await dustAPI.postFeedback(conversationId, message.sId, {

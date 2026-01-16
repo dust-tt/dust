@@ -1,4 +1,5 @@
 import { useDustAPI } from "@app/shared/lib/dust_api";
+import { createAgentConfigurationsFetcher } from "@app/shared/lib/fetchers";
 import { useSWRWithDefaults } from "@app/shared/lib/swr";
 import type { AgentConfigurationViewType } from "@dust-tt/client";
 import { useMemo } from "react";
@@ -9,18 +10,15 @@ export function usePublicAgentConfigurations(
 ) {
   const dustAPI = useDustAPI();
 
-  const agentConfigurationsFetcher = async () => {
-    const res = await dustAPI.getAgentConfigurations({ view, includes });
-    if (res.isOk()) {
-      return res.value;
-    }
-    throw res.error;
-  };
+  const fetcher = useMemo(
+    () => createAgentConfigurationsFetcher(dustAPI, view, includes),
+    [dustAPI, view, includes]
+  );
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
-      ["getAgentConfigurations", dustAPI.workspaceId(), view],
-      agentConfigurationsFetcher
+      dustAPI ? ["getAgentConfigurations", dustAPI.workspaceId(), view] : null,
+      fetcher
     );
 
   return {

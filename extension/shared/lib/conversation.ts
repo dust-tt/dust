@@ -1,4 +1,7 @@
-import type { ContentFragmentsType } from "@app/shared/lib/types";
+import {
+  buildMessageContext,
+  type ContentFragmentsType,
+} from "@app/shared/lib/types";
 import type { PlatformService } from "@app/shared/services/platform";
 import type {
   AgentMentionType,
@@ -152,12 +155,7 @@ export async function postConversation(
     message: {
       content: input,
       context: {
-        username: user.username,
-        email: user.email,
-        fullName: user.fullName,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-        profilePictureUrl: user.image,
-        origin: "extension",
+        ...buildMessageContext(user, "extension"),
         clientSideMCPServerIds: mcpServerIds ?? [],
       },
       mentions,
@@ -307,12 +305,7 @@ export async function postMessage(
     message: {
       content: input,
       context: {
-        username: user.username,
-        email: user.email,
-        fullName: user.fullName,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-        profilePictureUrl: user.image,
-        origin: "extension",
+        ...buildMessageContext(user, "extension"),
         clientSideMCPServerIds: mcpServerIds ?? [],
       },
       mentions,

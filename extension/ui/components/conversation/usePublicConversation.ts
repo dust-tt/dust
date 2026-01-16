@@ -1,7 +1,9 @@
 import { useDustAPI } from "@app/shared/lib/dust_api";
+import { createConversationFetcher } from "@app/shared/lib/fetchers";
 import { useSWRWithDefaults } from "@app/shared/lib/swr";
 import type { ConversationPublicType } from "@dust-tt/client";
 import type { KeyedMutator } from "swr";
+import { useMemo } from "react";
 
 type ConversationKey =
   | ["getConversation", string, { conversationId: string }]
@@ -20,25 +22,20 @@ export function usePublicConversation({
     | KeyedMutator<ConversationPublicType>;
 } {
   const dustAPI = useDustAPI();
-  const conversationFetcher = async (key: ConversationKey) => {
-    if (!key) {
-      return null;
-    }
-    const res = await dustAPI.getConversation(key[2]);
-    if (res.isOk()) {
-      return res.value;
-    }
-    throw res.error;
-  };
+
+  const fetcher = useMemo(
+    () => createConversationFetcher(dustAPI),
+    [dustAPI]
+  );
 
   const { data, error, mutate } = useSWRWithDefaults<
     ConversationKey,
     ConversationPublicType | null
   >(
-    conversationId
+    dustAPI && conversationId
       ? ["getConversation", dustAPI.workspaceId(), { conversationId }]
       : null,
-    conversationFetcher
+    fetcher
   );
 
   return {

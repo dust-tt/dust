@@ -1,14 +1,15 @@
-import { useCallback, useState } from "react";
+import type {
+  ConversationPublicType,
+  PublicPostConversationsRequestBody,
+  PublicPostMessagesRequestBody,
+} from "@dust-tt/client";
+import { useCallback, useMemo, useState } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
-import type {
-  AgentMention,
-  CreateConversationRequest,
-  MessageContext,
-  PostMessageRequest,
-} from "@/lib/services/api";
-import { dustApi } from "@/lib/services/api";
-import type { ConversationWithContent } from "@/lib/types/conversations";
+import type { AgentMention } from "@/lib/services/api";
+import { useDustAPI } from "@/lib/useDustAPI";
+
+export type { AgentMention };
 
 type SendMessageState = {
   isSending: boolean;
@@ -16,7 +17,7 @@ type SendMessageState = {
 };
 
 type SendMessageResult = {
-  conversation: ConversationWithContent;
+  conversation: ConversationPublicType;
   userMessageId: string;
 };
 
@@ -26,22 +27,25 @@ type UseSendMessageOptions = {
 };
 
 export function useSendMessage(options: UseSendMessageOptions = {}) {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const dustAPI = useDustAPI({ disabled: !isAuthenticated });
+
   const [state, setState] = useState<SendMessageState>({
     isSending: false,
     error: null,
   });
 
-  const buildMessageContext = useCallback((): MessageContext => {
-    return {
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  // Build message context - origin is sent via X-Request-Origin header, not in context
+  const messageContext = useMemo(
+    () => ({
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
       username: user?.username ?? "",
       email: user?.email ?? null,
       fullName: user?.fullName ?? null,
       profilePictureUrl: user?.image ?? null,
-      origin: "mobile",
-    };
-  }, [user]);
+    }),
+    [user]
+  );
 
   const sendMessageToConversation = useCallback(
     async (
@@ -49,7 +53,7 @@ export function useSendMessage(options: UseSendMessageOptions = {}) {
       content: string,
       mentions: AgentMention[] = []
     ): Promise<SendMessageResult | null> => {
-      if (!user?.dustDomain || !user?.selectedWorkspace) {
+      if (!dustAPI) {
         setState((prev) => ({
           ...prev,
           error: "Not authenticated",
@@ -62,20 +66,15 @@ export function useSendMessage(options: UseSendMessageOptions = {}) {
         error: null,
       });
 
-      const request: PostMessageRequest = {
+      const message: PublicPostMessagesRequestBody = {
         content,
         mentions,
-        context: buildMessageContext(),
+        context: messageContext,
       };
 
-      const result = await dustApi.postMessage(
-        user.dustDomain,
-        user.selectedWorkspace,
-        conversationId,
-        request
-      );
+      const result = await dustAPI.postUserMessage({ conversationId, message });
 
-      if (!result.isOk()) {
+      if (result.isErr()) {
         setState({
           isSending: false,
           error: result.error.message,
@@ -85,18 +84,14 @@ export function useSendMessage(options: UseSendMessageOptions = {}) {
       }
 
       // Get the updated conversation (includes the new agent message)
-      const convResult = await dustApi.getConversation(
-        user.dustDomain,
-        user.selectedWorkspace,
-        conversationId
-      );
+      const convResult = await dustAPI.getConversation({ conversationId });
 
       setState({
         isSending: false,
         error: null,
       });
 
-      if (!convResult.isOk()) {
+      if (convResult.isErr()) {
         setState((prev) => ({
           ...prev,
           error: convResult.error.message,
@@ -106,10 +101,10 @@ export function useSendMessage(options: UseSendMessageOptions = {}) {
 
       return {
         conversation: convResult.value,
-        userMessageId: result.value.message.sId,
+        userMessageId: result.value.sId,
       };
     },
-    [user, buildMessageContext, options]
+    [dustAPI, messageContext, options]
   );
 
   const createConversationAndSend = useCallback(
@@ -117,7 +112,7 @@ export function useSendMessage(options: UseSendMessageOptions = {}) {
       content: string,
       mentions: AgentMention[] = []
     ): Promise<SendMessageResult | null> => {
-      if (!user?.dustDomain || !user?.selectedWorkspace) {
+      if (!dustAPI) {
         setState((prev) => ({
           ...prev,
           error: "Not authenticated",
@@ -130,28 +125,24 @@ export function useSendMessage(options: UseSendMessageOptions = {}) {
         error: null,
       });
 
-      const request: CreateConversationRequest = {
+      const body: PublicPostConversationsRequestBody = {
         title: null,
         visibility: "unlisted",
         message: {
           content,
           mentions,
-          context: buildMessageContext(),
+          context: messageContext,
         },
       };
 
-      const result = await dustApi.createConversation(
-        user.dustDomain,
-        user.selectedWorkspace,
-        request
-      );
+      const result = await dustAPI.createConversation(body);
 
       setState({
         isSending: false,
         error: null,
       });
 
-      if (!result.isOk()) {
+      if (result.isErr()) {
         setState((prev) => ({
           ...prev,
           error: result.error.message,
@@ -169,7 +160,7 @@ export function useSendMessage(options: UseSendMessageOptions = {}) {
         userMessageId: message.sId,
       };
     },
-    [user, buildMessageContext, options]
+    [dustAPI, messageContext, options]
   );
 
   const resetState = useCallback(() => {

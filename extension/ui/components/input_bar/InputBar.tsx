@@ -215,7 +215,7 @@ export function AssistantInputBar({
   const [isStopping, setIsStopping] = useState<boolean>(false);
 
   const handleStopGeneration = async () => {
-    if (!conversation?.id) {
+    if (!conversation?.id || !dustAPI) {
       return;
     }
     setIsStopping(true); // we don't set it back to false immediately cause it takes a bit of time to cancel

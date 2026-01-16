@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { MobileAuthService } from "@/lib/services/auth";
 import { storageService } from "@/lib/services/storage";
+import { parseSSEMessages } from "@/lib/sse-parser";
 
 const authService = new MobileAuthService(storageService);
 
@@ -186,34 +187,4 @@ export function useConversationEvents({
     disconnect,
     reconnect: connect,
   };
-}
-
-type SSEMessage = {
-  event?: string;
-  data: string;
-};
-
-function parseSSEMessages(chunk: string): SSEMessage[] {
-  const messages: SSEMessage[] = [];
-  const lines = chunk.split("\n");
-
-  let currentMessage: Partial<SSEMessage> = {};
-
-  for (const line of lines) {
-    if (line.startsWith("event:")) {
-      currentMessage.event = line.slice(6).trim();
-    } else if (line.startsWith("data:")) {
-      const data = line.slice(5).trim();
-      if (currentMessage.data) {
-        currentMessage.data += "\n" + data;
-      } else {
-        currentMessage.data = data;
-      }
-    } else if (line === "" && currentMessage.data) {
-      messages.push(currentMessage as SSEMessage);
-      currentMessage = {};
-    }
-  }
-
-  return messages;
 }

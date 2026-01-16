@@ -3,21 +3,29 @@ import { useAuth } from "@app/ui/components/auth/AuthProvider";
 import { DustAPI } from "@dust-tt/client";
 import { useMemo } from "react";
 
-export const useDustAPI = () => {
+interface UseDustAPIOptions {
+  disabled?: boolean;
+}
+
+// Overload signatures for type safety
+export function useDustAPI(options?: UseDustAPIOptions): DustAPI | null;
+export function useDustAPI(options: { disabled: false }): DustAPI;
+export function useDustAPI(options?: UseDustAPIOptions): DustAPI | null {
   const platform = usePlatform();
-  const { token, isAuthenticated, isUserSetup, user, workspace } = useAuth();
+  const { isAuthenticated, isUserSetup, user, workspace } = useAuth();
 
   const commitHash = process.env.COMMIT_HASH;
   const extensionVersion = process.env.VERSION;
-  if (!isAuthenticated || !isUserSetup || !user || !workspace || !token) {
-    throw new Error("Not authenticated");
-  }
 
-  if (!process.env.NODE_ENV) {
-    throw new Error("Dust domain or node env not set");
-  }
+  const disabled = options?.disabled ?? false;
+  const canCreateAPI =
+    !disabled && isAuthenticated && isUserSetup && user && workspace;
 
   return useMemo(() => {
+    if (!canCreateAPI || !user || !workspace) {
+      return null;
+    }
+
     return new DustAPI(
       {
         url: user.dustDomain,
@@ -32,5 +40,5 @@ export const useDustAPI = () => {
       },
       console
     );
-  }, [user.dustDomain, workspace.sId, platform]);
-};
+  }, [canCreateAPI, user, workspace, platform, extensionVersion, commitHash]);
+}

@@ -7,24 +7,34 @@ import { storageService } from "@/lib/services/storage";
 
 const authService = new MobileAuthService(storageService);
 
-export const useDustAPI = () => {
-  const { user, isAuthenticated } = useAuth();
+interface UseDustAPIOptions {
+  disabled?: boolean;
+}
 
-  if (!isAuthenticated || !user || !user.selectedWorkspace) {
-    throw new Error("Not authenticated");
-  }
+export function useDustAPI(options?: UseDustAPIOptions): DustAPI | null;
+export function useDustAPI(options: { disabled: false }): DustAPI;
+export function useDustAPI(options?: UseDustAPIOptions): DustAPI | null {
+  const { user, isAuthenticated } = useAuth();
+  const disabled = options?.disabled ?? false;
+
+  const canCreateAPI =
+    !disabled && isAuthenticated && user && user.selectedWorkspace;
 
   return useMemo(() => {
+    if (!canCreateAPI || !user || !user.selectedWorkspace) {
+      return null;
+    }
+
     return new DustAPI(
       { url: user.dustDomain },
       {
         apiKey: () => authService.getAccessToken(),
-        workspaceId: user.selectedWorkspace!,
+        workspaceId: user.selectedWorkspace,
         extraHeaders: {
           "X-Request-Origin": "mobile",
         },
       },
       console
     );
-  }, [user.dustDomain, user.selectedWorkspace]);
-};
+  }, [canCreateAPI, user]);
+}

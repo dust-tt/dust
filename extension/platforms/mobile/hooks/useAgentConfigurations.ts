@@ -1,33 +1,32 @@
 import type { LightAgentConfigurationType } from "@dust-tt/client";
 import { useMemo } from "react";
 
+import { createAgentConfigurationsFetcher } from "@app/shared/lib/fetchers";
+import { transformAgentConfigurations } from "@app/shared/lib/hooks/useAgentConfigurationsCore";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSWRWithDefaults } from "@/lib/swr";
 import { useDustAPI } from "@/lib/useDustAPI";
 
 export function useAgentConfigurations() {
-  const dustAPI = useDustAPI();
+  const { isAuthenticated } = useAuth();
+  const dustAPI = useDustAPI({ disabled: !isAuthenticated });
 
-  const agentConfigurationsFetcher = async () => {
-    const res = await dustAPI.getAgentConfigurations({});
-    if (res.isOk()) {
-      return res.value;
-    }
-    throw res.error;
-  };
+  const fetcher = useMemo(
+    () => createAgentConfigurationsFetcher(dustAPI),
+    [dustAPI]
+  );
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults<
-      ["getAgentConfigurations", string],
+      ["getAgentConfigurations", string] | null,
       LightAgentConfigurationType[]
-    >(["getAgentConfigurations", dustAPI.workspaceId()], agentConfigurationsFetcher);
+    >(
+      dustAPI ? ["getAgentConfigurations", dustAPI.workspaceId()] : null,
+      fetcher
+    );
 
-  // Filter to only active agents and sort by name
-  const agents = useMemo(() => {
-    if (!data) return [];
-    return data
-      .filter((a) => a.status === "active")
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [data]);
+  // Filter to only active agents and sort using shared utility
+  const agents = useMemo(() => transformAgentConfigurations(data), [data]);
 
   return {
     agents,

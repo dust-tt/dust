@@ -4,37 +4,12 @@
  * XMLHttpRequest for streaming support.
  */
 
-import type { StreamEvent } from "./api";
+import {
+  mapToStreamEvent,
+  type StreamEvent,
+} from "@app/shared/lib/streaming-types";
 
-type SSEMessage = {
-  event?: string;
-  data: string;
-};
-
-function parseSSEMessages(chunk: string): SSEMessage[] {
-  const messages: SSEMessage[] = [];
-  const lines = chunk.split("\n");
-
-  let currentMessage: Partial<SSEMessage> = {};
-
-  for (const line of lines) {
-    if (line.startsWith("event:")) {
-      currentMessage.event = line.slice(6).trim();
-    } else if (line.startsWith("data:")) {
-      const data = line.slice(5).trim();
-      if (currentMessage.data) {
-        currentMessage.data += "\n" + data;
-      } else {
-        currentMessage.data = data;
-      }
-    } else if (line === "" && currentMessage.data) {
-      messages.push(currentMessage as SSEMessage);
-      currentMessage = {};
-    }
-  }
-
-  return messages;
-}
+import { parseSSEMessages } from "@/lib/sse-parser";
 
 export async function* streamAgentAnswerRN(
   dustDomain: string,
@@ -155,56 +130,5 @@ export async function* streamAgentAnswerRN(
 
   if (error) {
     throw error;
-  }
-}
-
-function mapToStreamEvent(parsed: Record<string, unknown>): StreamEvent | null {
-  const type = parsed.type as string;
-
-  switch (type) {
-    case "agent_message_new":
-      return {
-        type: "agent_message_new",
-        message: parsed.message as StreamEvent extends {
-          type: "agent_message_new";
-          message: infer M;
-        }
-          ? M
-          : never,
-      };
-    case "generation_tokens":
-      return {
-        type: "generation_tokens",
-        text: parsed.text as string,
-        classification: parsed.classification as "tokens" | "chain_of_thought",
-      };
-    case "agent_message_success":
-      return {
-        type: "agent_message_success",
-        message: parsed.message as StreamEvent extends {
-          type: "agent_message_success";
-          message: infer M;
-        }
-          ? M
-          : never,
-      };
-    case "user_message_error":
-      return {
-        type: "user_message_error",
-        error: parsed.error as { code: string; message: string },
-      };
-    case "agent_error":
-      return {
-        type: "agent_error",
-        error: parsed.error as { code: string; message: string },
-      };
-    case "agent_action_success":
-      return {
-        type: "agent_action_success",
-        action: parsed.action,
-      };
-    default:
-      // Skip unknown event types
-      return null;
   }
 }

@@ -267,6 +267,28 @@ export function getWeekBoundaries(date: Date): {
   return { startDate, endDate };
 }
 
+// JWT utilities.
+
+/**
+ * Decode a JWT token to extract its payload claims.
+ * Returns an empty object if the token cannot be decoded.
+ */
+export function decodeJWT(token: string): Record<string, unknown> {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return {};
+  }
+}
+
 // Error handling utilities.
 
 function errorToString(error: unknown): string {

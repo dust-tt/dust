@@ -13,23 +13,27 @@ export function useConversationFeedbacks({
   conversationId: string | null;
 }) {
   const dustAPI = useDustAPI();
-  const feedbacksFetcher = async (key: FeedbacksKey) => {
-    if (!key) {
-      return null;
-    }
 
-    const res = await dustAPI.getConversationFeedback(key[2]);
-    if (res.isOk()) {
-      return res.value;
-    }
-    throw res.error;
-  };
+  const feedbacksFetcher = useMemo(
+    () => async (key: FeedbacksKey) => {
+      if (!key || !dustAPI) {
+        return null;
+      }
+
+      const res = await dustAPI.getConversationFeedback(key[2]);
+      if (res.isOk()) {
+        return res.value;
+      }
+      throw res.error;
+    },
+    [dustAPI]
+  );
 
   const { data, error, mutate } = useSWRWithDefaults<
     FeedbacksKey,
     AgentMessageFeedbackType[] | null
   >(
-    conversationId
+    dustAPI && conversationId
       ? ["getConversationFeedbacks", dustAPI.workspaceId(), { conversationId }]
       : null,
     feedbacksFetcher

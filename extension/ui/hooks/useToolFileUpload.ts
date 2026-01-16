@@ -41,6 +41,15 @@ export function useToolFileUpload({
 
   const uploadToolFile = useCallback(
     async (toolFile: ToolSearchResult) => {
+      if (!dustAPI) {
+        sendNotification({
+          type: "error",
+          title: "Failed to attach file",
+          description: "Not authenticated",
+        });
+        return;
+      }
+
       const fileKey = getFileKey(toolFile);
 
       setUploadingFileKeys((prev) => new Set(prev).add(fileKey));

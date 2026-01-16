@@ -1,24 +1,26 @@
 import { useDustAPI } from "@app/shared/lib/dust_api";
+import { createConversationsFetcher } from "@app/shared/lib/fetchers";
 import { useSWRWithDefaults } from "@app/shared/lib/swr";
 import type { ConversationWithoutContentPublicType } from "@dust-tt/client";
 import { useMemo } from "react";
 
-type ConversationsKey = ["getConversations", string];
+type ConversationsKey = ["getConversations", string] | null;
 
 export function useConversations() {
   const dustAPI = useDustAPI();
-  const conversationsFetcher = async () => {
-    const res = await dustAPI.getConversations();
-    if (res.isOk()) {
-      return res.value;
-    }
-    throw res.error;
-  };
+
+  const fetcher = useMemo(
+    () => createConversationsFetcher(dustAPI),
+    [dustAPI]
+  );
 
   const { data, error, mutate } = useSWRWithDefaults<
     ConversationsKey,
     ConversationWithoutContentPublicType[]
-  >(["getConversations", dustAPI.workspaceId()], conversationsFetcher);
+  >(
+    dustAPI ? ["getConversations", dustAPI.workspaceId()] : null,
+    fetcher
+  );
 
   return {
     conversations: useMemo(() => data ?? [], [data]),

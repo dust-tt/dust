@@ -183,6 +183,19 @@ export function useFileUploaderService(
   const uploadFiles = async (
     newFileBlobs: FileBlob[]
   ): Promise<Result<FileBlob, FileBlobUploadError>[]> => {
+    if (!dustAPI) {
+      return newFileBlobs.map(
+        (fileBlob) =>
+          new Err(
+            new FileBlobUploadError(
+              "failed_to_upload_file",
+              fileBlob.file,
+              "Not authenticated"
+            )
+          )
+      );
+    }
+
     const uploadPromises = newFileBlobs.map(async (fileBlob) => {
       // Get upload URL from server.
       let useCaseMetadata = undefined;
@@ -279,7 +292,7 @@ export function useFileUploaderService(
         prevFiles.filter((f) => f.fileId !== fileBlob?.fileId)
       );
 
-      if (fileBlob.fileId) {
+      if (fileBlob.fileId && dustAPI) {
         // Intentionally not awaiting the fetch call to allow it to run asynchronously.
         void dustAPI.deleteFile({ fileID: fileBlob.fileId });
       }

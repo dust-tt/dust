@@ -91,7 +91,7 @@ export function ConversationContainer({
           mentions: AgentMentionType[],
           contentFragments: ContentFragmentsType
         ) => {
-          if (!conversationId) {
+          if (!conversationId || !dustAPI) {
             return;
           }
           const messageData = {
@@ -184,6 +184,9 @@ export function ConversationContainer({
         mentions: AgentMentionType[],
         contentFragments: ContentFragmentsType
       ) => {
+        if (!dustAPI) {
+          return;
+        }
         const conversationRes = await postConversation(platform, {
           dustAPI,
           messageData: {

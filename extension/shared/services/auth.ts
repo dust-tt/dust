@@ -150,11 +150,11 @@ const REGION_CLAIM = `${WORKOS_CLAIM_NAMESPACE}region`;
 const CONNECTION_STRATEGY_CLAIM = `${WORKOS_CLAIM_NAMESPACE}connection.strategy`;
 const WORKSPACE_ID_CLAIM = `${WORKOS_CLAIM_NAMESPACE}workspaceId`;
 
-export function getDustDomain(claims: Record<string, string>) {
+export function getDustDomain(claims: Record<string, unknown>) {
   const region = claims[REGION_CLAIM];
 
   return (
-    (isRegionType(region) && DOMAIN_FOR_REGION[region]) ||
+    (typeof region === "string" && isRegionType(region) && DOMAIN_FOR_REGION[region]) ||
     DEFAULT_DUST_API_DOMAIN
   );
 }
@@ -163,16 +163,17 @@ export function makeEnterpriseConnectionName(workspaceId: string) {
   return `workspace-${workspaceId}`;
 }
 
-export function getConnectionDetails(claims: Record<string, string>) {
+export function getConnectionDetails(claims: Record<string, unknown>) {
   const connectionStrategy = claims[CONNECTION_STRATEGY_CLAIM];
   const ws = claims[WORKSPACE_ID_CLAIM];
   return {
-    connectionStrategy: isSupportedEnterpriseConnectionStrategy(
-      connectionStrategy
-    )
-      ? connectionStrategy
-      : undefined,
-    connection: ws ? makeEnterpriseConnectionName(ws) : undefined,
+    connectionStrategy:
+      typeof connectionStrategy === "string" &&
+      isSupportedEnterpriseConnectionStrategy(connectionStrategy)
+        ? connectionStrategy
+        : undefined,
+    connection:
+      typeof ws === "string" ? makeEnterpriseConnectionName(ws) : undefined,
   };
 }
 

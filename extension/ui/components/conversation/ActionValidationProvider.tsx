@@ -174,7 +174,7 @@ export function ActionValidationProvider({
     async (status: MCPValidationOutputPublicType) => {
       setSubmitStatus(status);
 
-      if (pendingValidations.length === 0) {
+      if (pendingValidations.length === 0 || !dustAPI) {
         return;
       }
 

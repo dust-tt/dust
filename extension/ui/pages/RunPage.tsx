@@ -16,6 +16,11 @@ export const RunPage = () => {
 
   useEffect(() => {
     const run = async () => {
+      if (!dustAPI) {
+        navigate("/");
+        return;
+      }
+
       const params = JSON.parse(decodeURI(location.search.substr(1)));
 
       if (params.conversationId) {
@@ -59,7 +64,7 @@ export const RunPage = () => {
     };
 
     void run();
-  }, []);
+  }, [dustAPI]);
   return (
     <div className="flex h-full w-full items-center justify-center">
       <Spinner size="xl" />

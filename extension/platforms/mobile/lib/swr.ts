@@ -4,6 +4,12 @@ import { AppState } from "react-native";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
 import useSWR, { SWRConfig, useSWRConfig } from "swr";
 
+import {
+  DEFAULT_SWR_CONFIG,
+  useDisabledMutateHelpers,
+  useMutateKeysWithSameUrl,
+} from "@app/shared/lib/swr-core";
+
 // React Native SWR configuration
 // See: https://swr.vercel.app/docs/advanced/react-native
 export const swrReactNativeConfig: SWRConfiguration = {
@@ -47,10 +53,11 @@ export const swrReactNativeConfig: SWRConfiguration = {
   },
 };
 
-const DEFAULT_SWR_CONFIG: SWRConfiguration = {
-  errorRetryCount: 16,
-};
-
+/**
+ * SWR hook with defaults for React Native.
+ * Similar to shared/lib/swr.ts but without web-specific auth error handling
+ * (mobile has its own auth error handling via AuthContext).
+ */
 export function useSWRWithDefaults<TKey extends Key, TData>(
   key: TKey,
   fetcher: Fetcher<TData, TKey> | null,
@@ -65,45 +72,13 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
 
   const result = useSWR(disabled ? null : key, fetcher, mergedConfig);
 
-  const tryMakeUrlWithoutParams = useCallback((key: TKey) => {
-    if (typeof key === "string" && key.includes("/")) {
-      try {
-        const urlFromKey = new URL(
-          key,
-          key.indexOf("://") == -1 ? "https://example.org/" : undefined
-        );
-        return urlFromKey.origin + urlFromKey.pathname;
-      } catch {
-        return null;
-      }
-    } else {
-      return null;
-    }
-  }, []);
-
-  const mutateKeysWithSameUrl = useCallback(
-    (key: TKey) => {
-      const keyAsUrl = tryMakeUrlWithoutParams(key);
-      if (keyAsUrl) {
-        for (const k of cache.keys()) {
-          const kAsUrl = tryMakeUrlWithoutParams(k as TKey);
-          if (kAsUrl === keyAsUrl && k !== key) {
-            void globalMutate<TData>(k);
-          }
-        }
-      }
-    },
-    [tryMakeUrlWithoutParams, cache, globalMutate]
+  const mutateKeysWithSameUrl = useMutateKeysWithSameUrl<TKey, TData>(
+    cache,
+    globalMutate
   );
 
-  const myMutateWhenDisabled = useCallback(() => {
-    return globalMutate(key);
-  }, [key, globalMutate]);
-
-  const myMutateWhenDisabledRegardlessOfQueryParams = useCallback(() => {
-    mutateKeysWithSameUrl(key);
-    return globalMutate(key);
-  }, [key, mutateKeysWithSameUrl, globalMutate]);
+  const { myMutateWhenDisabled, myMutateWhenDisabledRegardlessOfQueryParams } =
+    useDisabledMutateHelpers(key, globalMutate, mutateKeysWithSameUrl);
 
   const myMutateRegardlessOfQueryParams: typeof result.mutate = useCallback(
     (...args) => {

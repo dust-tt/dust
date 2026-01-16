@@ -7,7 +7,7 @@ import type {
 } from "@dust-tt/client";
 import { useMemo } from "react";
 
-type SearchKey = ["searchNodes", string, SearchRequestBodyType];
+type SearchKey = ["searchNodes", string, SearchRequestBodyType] | null;
 
 export interface CursorPaginationParams {
   limit: number;
@@ -58,31 +58,37 @@ export function useSpacesSearch({
       limit: 100,
       searchSourceUrls,
     }),
-    [viewType, includeDataSources, nodeIds, search, spaceIds]
+    [viewType, includeDataSources, nodeIds, search, spaceIds, searchSourceUrls]
   );
 
-  const searchFetcher = async () => {
-    if (disabled) {
-      return null;
-    }
-    // Skip the query if no node IDs were extracted.
-    // Example: a user pastes a Google Drive folder link
-    // It matches a valid provider but we extract no node IDs,
-    // and we don't want to support fetching all contents of a folder.
-    if (!searchQuery.query && !searchQuery.nodeIds?.length) {
-      return [];
-    }
-    const res = await dustAPI.searchNodes(searchQuery);
-    if (res.isOk()) {
-      return res.value;
-    }
-    throw res.error;
-  };
+  const searchFetcher = useMemo(
+    () => async () => {
+      if (disabled || !dustAPI) {
+        return null;
+      }
+      // Skip the query if no node IDs were extracted.
+      // Example: a user pastes a Google Drive folder link
+      // It matches a valid provider but we extract no node IDs,
+      // and we don't want to support fetching all contents of a folder.
+      if (!searchQuery.query && !searchQuery.nodeIds?.length) {
+        return [];
+      }
+      const res = await dustAPI.searchNodes(searchQuery);
+      if (res.isOk()) {
+        return res.value;
+      }
+      throw res.error;
+    },
+    [disabled, dustAPI, searchQuery]
+  );
 
   const { data, error, mutate } = useSWRWithDefaults<
     SearchKey,
     DataSourceContentNodeType[] | null
-  >(["searchNodes", dustAPI.workspaceId(), searchQuery], searchFetcher);
+  >(
+    dustAPI ? ["searchNodes", dustAPI.workspaceId(), searchQuery] : null,
+    searchFetcher
+  );
 
   return {
     searchResultNodes: useMemo(() => data ?? [], [data]),
