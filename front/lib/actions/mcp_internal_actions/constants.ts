@@ -18,6 +18,7 @@ import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import {
   DEEP_DIVE_NAME,
@@ -181,32 +182,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      create_issue: "low",
-      comment_on_issue: "low",
-      add_issue_to_project: "low",
-      get_pull_request: "never_ask",
-      list_organization_projects: "never_ask",
-      list_issues: "never_ask",
-      list_pull_requests: "never_ask",
-      search_advanced: "never_ask",
-      get_issue: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "github",
-      version: "1.0.0",
-      description: "Manage issues and pull requests.",
-      authorization: {
-        provider: "github" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "GithubLogo",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: GITHUB_SERVER,
   },
   image_generation: {
     id: 2,

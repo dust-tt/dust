@@ -20,7 +20,6 @@ import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice";
 import { default as frontServer } from "@app/lib/actions/mcp_internal_actions/servers/front";
-import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
 import { default as driveServer } from "@app/lib/actions/mcp_internal_actions/servers/google_drive";
 import { default as sheetsServer } from "@app/lib/actions/mcp_internal_actions/servers/google_sheets";
@@ -69,6 +68,7 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
+import { default as githubServer } from "@app/lib/api/actions/servers/github";
 import { default as calendarServer } from "@app/lib/api/actions/servers/google_calendar";
 import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
 import type { Authenticator } from "@app/lib/auth";
