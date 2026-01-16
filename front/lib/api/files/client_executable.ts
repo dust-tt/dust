@@ -1,3 +1,4 @@
+import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import {
   validateTailwindCode,
   validateTypeScriptSyntax,
@@ -67,23 +68,27 @@ export async function createClientExecutableFile(
     fileName: string;
     createdByAgentConfigurationId?: string;
   }
-): Promise<Result<FileResource, { tracked: boolean; message: string }>> {
-  // Validate Tailwind classes.
-  const tailwindValidation = validateTailwindCode(content);
-  if (tailwindValidation.isErr()) {
-    return new Err({
-      message: tailwindValidation.error.message,
-      tracked: false,
-    });
-  }
-
-  // Validate TypeScript/JSX syntax.
+): Promise<
+  Result<
+    { fileResource: FileResource; warnings: ValidationWarning[] },
+    { tracked: boolean; message: string }
+  >
+> {
+  // TODO(2026-01-16 flav): Implement warning logic.
+  // Validate TypeScript/JSX syntax (blocking). File creation fails if invalid.
   const syntaxValidation = validateTypeScriptSyntax(content);
   if (syntaxValidation.isErr()) {
     return new Err({
       message: syntaxValidation.error.message,
       tracked: false,
     });
+  }
+
+  // Collect Tailwind validation warnings (non-blocking).
+  const warnings: ValidationWarning[] = [];
+  const tailwindValidation = validateTailwindCode(content);
+  if (tailwindValidation.isErr()) {
+    warnings.push(...tailwindValidation.error);
   }
 
   try {
@@ -123,7 +128,7 @@ export async function createClientExecutableFile(
     // Upload content directly.
     await fileResource.uploadContent(auth, content);
 
-    return new Ok(fileResource);
+    return new Ok({ fileResource, warnings });
   } catch (error) {
     const workspace = auth.getNonNullableWorkspace();
     logger.error(
@@ -160,7 +165,11 @@ export async function editClientExecutableFile(
   }
 ): Promise<
   Result<
-    { fileResource: FileResource; replacementCount: number },
+    {
+      fileResource: FileResource;
+      replacementCount: number;
+      warnings: ValidationWarning[];
+    },
     { tracked: boolean; message: string }
   >
 > {
@@ -208,16 +217,8 @@ export async function editClientExecutableFile(
     }
   }
 
-  // Validate the Tailwind classes in the resulting code.
-  const tailwindValidation = validateTailwindCode(updatedContent);
-  if (tailwindValidation.isErr()) {
-    return new Err({
-      message: tailwindValidation.error.message,
-      tracked: false,
-    });
-  }
-
-  // Validate TypeScript/JSX syntax in the resulting code.
+  // TODO(2026-01-16 flav): Implement warning logic.
+  // Validate TypeScript/JSX syntax (blocking). File creation fails if invalid.
   const syntaxValidation = validateTypeScriptSyntax(updatedContent);
   if (syntaxValidation.isErr()) {
     return new Err({
@@ -226,10 +227,17 @@ export async function editClientExecutableFile(
     });
   }
 
+  // Collect Tailwind validation warnings (non-blocking).
+  const warnings: ValidationWarning[] = [];
+  const tailwindValidation = validateTailwindCode(updatedContent);
+  if (tailwindValidation.isErr()) {
+    warnings.push(...tailwindValidation.error);
+  }
+
   // Upload the updated content (version is incremented inside uploadContent).
   await fileResource.uploadContent(auth, updatedContent);
 
-  return new Ok({ fileResource, replacementCount: occurrences });
+  return new Ok({ fileResource, replacementCount: occurrences, warnings });
 }
 
 export async function renameClientExecutableFile(
