@@ -161,7 +161,9 @@ export class DustProjectConversationResource extends BaseResource<DustProjectCon
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
     await this.model.destroy({
-      where: { connectorId: connector.id },
+      where: {
+        connectorId: connector.id,
+      },
       transaction,
     });
     return new Ok(undefined);
