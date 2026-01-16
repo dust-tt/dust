@@ -1,5 +1,6 @@
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
@@ -25,7 +26,7 @@ export async function getConnectionForMCPServer(
       access_token_expiry: number | null;
       scrubbed_raw_json: unknown;
     },
-    Error
+    DustError<"mcp_access_token_error" | "connection_not_found">
   >
 > {
   const connection = await MCPServerConnectionResource.findByMCPServer(auth, {
@@ -50,7 +51,12 @@ export async function getConnectionForMCPServer(
         },
         "Failed to get access token for MCP server"
       );
-      return new Err(new Error("access_token_error"));
+      return new Err(
+        new DustError(
+          "mcp_access_token_error",
+          "Failed to get access token for MCP server"
+        )
+      );
     }
   } else {
     logger.info(
@@ -62,7 +68,12 @@ export async function getConnectionForMCPServer(
       },
       "No connection found for MCP server"
     );
-    return new Err(new Error("connection_not_found"));
+    return new Err(
+      new DustError(
+        "connection_not_found",
+        "No connection found for MCP server"
+      )
+    );
   }
 }
 
