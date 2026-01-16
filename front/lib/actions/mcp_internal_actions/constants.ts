@@ -521,6 +521,7 @@ export const INTERNAL_MCP_SERVERS = {
       create_draft: "medium",
       get_messages: "never_ask",
       create_reply_draft: "medium",
+      get_attachment: "never_ask",
     },
     tools_arguments_requiring_approval: {
       create_draft: ["to"],
