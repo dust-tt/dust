@@ -518,11 +518,13 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: {
       get_drafts: "never_ask",
-      create_draft: "low",
+      create_draft: "medium",
       get_messages: "never_ask",
-      create_reply_draft: "low",
+      create_reply_draft: "medium",
     },
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      create_draft: ["to"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -546,7 +548,11 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      create_event: ["calendarId"],
+      update_event: ["calendarId"],
+      delete_event: ["calendarId"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: GOOGLE_CALENDAR_SERVER,
@@ -588,12 +594,15 @@ export const INTERNAL_MCP_SERVERS = {
       get_user: "never_ask",
 
       // Write operations - low stakes
-      post_message: "low",
-      schedule_message: "low",
+      post_message: "medium",
+      schedule_message: "medium",
       add_reaction: "low",
       remove_reaction: "low",
     },
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      post_message: ["channel"],
+      schedule_message: ["channel"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {

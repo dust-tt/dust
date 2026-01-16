@@ -48,15 +48,15 @@ cli
   .alias("s")
   .option("-n, --name <name>", "Environment name")
   .option("-b, --branch-name <branch>", "Git branch name (default: [prefix]<name>)")
-  .option("-O, --no-open", "Do not open zellij session after spawn")
-  .option("-A, --no-attach", "Create zellij session but don't attach to it")
-  .option("-w, --warm", "Open zellij with a warm tab running dust-hive warm")
+  .option("-O, --no-open", "Do not open terminal session after spawn")
+  .option("-A, --no-attach", "Create terminal session but don't attach to it")
+  .option("-w, --warm", "Open with a warm tab running dust-hive warm")
   .option(
     "-W, --wait",
-    "Wait for SDK to build before opening zellij (cannot be used with --no-open)"
+    "Wait for SDK to build before opening session (cannot be used with --no-open)"
   )
   .option("-c, --command <cmd>", "Run command in shell tab after opening (drops to shell on exit)")
-  .option("-C, --compact", "Use compact zellij layout (no tab bar)")
+  .option("-C, --compact", "Use compact layout (no tab bar)")
   .option("-u, --unified-logs", "Use single unified logs tab instead of per-service tabs")
   .action(
     async (
@@ -123,9 +123,9 @@ cli
   );
 
 cli
-  .command("open [name]", "Open environment's zellij session")
+  .command("open [name]", "Open environment's terminal session")
   .alias("o")
-  .option("-C, --compact", "Use compact zellij layout (no tab bar)")
+  .option("-C, --compact", "Use compact layout (no tab bar)")
   .option("-u, --unified-logs", "Use single unified logs tab instead of per-service tabs")
   .action(
     async (name: string | undefined, options: { compact?: boolean; unifiedLogs?: boolean }) => {
@@ -136,7 +136,7 @@ cli
   );
 
 cli
-  .command("reload [name]", "Kill and reopen zellij session")
+  .command("reload [name]", "Kill and reopen terminal session")
   .option("-u, --unified-logs", "Use single unified logs tab instead of per-service tabs")
   .action(async (name: string | undefined, options: { unifiedLogs?: boolean }) => {
     await prepareAndRun(reloadCommand(name, { unifiedLogs: options.unifiedLogs }));
@@ -186,9 +186,9 @@ cli
 
 cli
   .command("up", "Start managed services (temporal + test postgres + test redis + main session)")
-  .option("-a, --attach", "Attach to main zellij session")
+  .option("-a, --attach", "Attach to main terminal session")
   .option("-f, --force", "Force rebuild even if no changes detected")
-  .option("-C, --compact", "Use compact zellij layout (bar at bottom)")
+  .option("-C, --compact", "Use compact layout (bar at bottom)")
   .action(async (options: { attach?: boolean; force?: boolean; compact?: boolean }) => {
     await prepareAndRun(
       upCommand({
