@@ -36,7 +36,6 @@ function DomainAutoJoinModal({
   owner,
 }: DomainAutoJoinModalProps) {
   const sendNotification = useSendNotification();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const title = domainAutoJoinEnabled
     ? "De-activate Auto-join"
     : "Activate Auto-join";
@@ -54,7 +53,7 @@ function DomainAutoJoinModal({
     </span>
   );
 
-  async function handleUpdateWorkspace(): Promise<boolean> {
+  async function handleUpdateWorkspace(): Promise<void> {
     const res = await clientFetch(`/api/w/${owner.sId}`, {
       method: "POST",
       headers: {
@@ -65,14 +64,24 @@ function DomainAutoJoinModal({
       }),
     });
 
-    return res.ok;
+    if (!res.ok) {
+      sendNotification({
+        type: "error",
+        title: "Update failed",
+        description: `Failed to enable auto-add for whitelisted domain.`,
+      });
+    } else {
+      // We perform a full refresh so that the Workspace name updates and we get a fresh owner
+      // object so that the formValidation logic keeps working.
+      window.location.reload();
+    }
   }
 
   return (
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open && !isSubmitting) {
+        if (!open) {
           onClose();
         }
       }}
@@ -86,30 +95,12 @@ function DomainAutoJoinModal({
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
-            disabled: isSubmitting,
           }}
           rightButtonProps={{
-            label: isSubmitting ? "Updating..." : validateLabel,
+            label: validateLabel,
             variant: validateVariant,
-            disabled: isSubmitting,
             onClick: async () => {
-              setIsSubmitting(true);
-              try {
-                const ok = await handleUpdateWorkspace();
-                if (!ok) {
-                  sendNotification({
-                    type: "error",
-                    title: "Update failed",
-                    description:
-                      "Failed to update auto-join for the whitelisted domain.",
-                  });
-                } else {
-                  // Full refresh to update owner object and keep formValidation logic working.
-                  window.location.reload();
-                }
-              } finally {
-                setIsSubmitting(false);
-              }
+              await handleUpdateWorkspace();
               onClose();
             },
           }}
