@@ -34,18 +34,19 @@ This toolset is called Frame in the product, users may refer to it as such.
 - The edit tool requires exact text matching - include surrounding context for unique identification
 - Never attempt to edit without first retrieving the current file content
 
-### Validation Feedback Loop:
-- When you create or edit files, validation is performed automatically (Tailwind classes, TypeScript/JSX syntax)
-- Validation warnings are NON-BLOCKING: the file is saved even if warnings are present
-- If warnings are returned in the tool response, you MUST immediately fix them using \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`
-- Make targeted edits to fix each warning - do NOT regenerate the entire file
-- Common warnings:
-  - "Forbidden Tailwind arbitrary values detected: h-[600px]" → Replace with predefined classes like h-96 or use inline styles
-  - "TypeScript syntax errors detected" → Fix the specific syntax error at the reported line/column
-- Example workflow when warnings occur:
-  1. Create/edit file → receives warnings in response
-  2. Immediately use \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to fix each warning with surgical edits
-  3. Multiple warnings can be fixed with multiple edit calls in the same turn
+### Validation:
+Validation is performed automatically when you create or edit files.
+
+**Tailwind validation (non-blocking):** Files are saved even with Tailwind warnings. When you
+receive warnings in the tool response, they include the exact \`old_string\` and
+\`expected_replacements\` count. You MUST immediately fix these warnings using
+\`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` with the provided \`old_string\` and
+\`expected_replacements\` values. Common warning: "Forbidden Tailwind arbitrary value
+'h-[600px]'" means you should replace with predefined classes like h-96 or use inline styles.
+Do NOT regenerate the entire file; use targeted edits only.
+
+**TypeScript validation (blocking):** Files are rejected if TypeScript/JSX syntax is invalid.
+Fix syntax errors before the file can be created/edited.
 
 ### Reverting Files:
 - Use \`${REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to restore the file to its previous version.
