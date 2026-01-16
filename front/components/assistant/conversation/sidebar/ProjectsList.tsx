@@ -3,10 +3,7 @@ import { useRouter } from "next/router";
 import { memo, useContext } from "react";
 
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
-import {
-  getRestrictedSpaceIcon,
-  getUnrestrictedSpaceIcon,
-} from "@app/lib/spaces";
+import { getSpaceIcon } from "@app/lib/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getSpaceConversationsRoute } from "@app/lib/utils/router";
 import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
@@ -35,11 +32,7 @@ const ProjectListItem = memo(
 
     return (
       <NavigationListItem
-        icon={
-          space.isRestricted
-            ? getRestrictedSpaceIcon()
-            : getUnrestrictedSpaceIcon()
-        }
+        icon={getSpaceIcon(space)}
         selected={router.asPath.startsWith(spacePath)}
         status={unreadCount > 0 ? "unread" : "idle"}
         label={spaceLabel}

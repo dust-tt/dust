@@ -36,6 +36,10 @@ export type SpaceSectionGroupType = (typeof SPACE_SECTION_GROUP_ORDER)[number];
 export function getSpaceIcon(
   space: SpaceType
 ): (props: React.SVGProps<SVGSVGElement>) => React.ReactElement {
+  if (space.kind === "project") {
+    return space.isRestricted ? SpaceClosedIcon : SpaceOpenIcon;
+  }
+
   if (space.kind === "public") {
     return PlanetIcon;
   }
@@ -49,18 +53,6 @@ export function getSpaceIcon(
   }
 
   return ServerIcon;
-}
-
-export function getRestrictedSpaceIcon(): (
-  props: React.SVGProps<SVGSVGElement>
-) => React.ReactElement {
-  return SpaceClosedIcon;
-}
-
-export function getUnrestrictedSpaceIcon(): (
-  props: React.SVGProps<SVGSVGElement>
-) => React.ReactElement {
-  return SpaceOpenIcon;
 }
 
 export const getSpaceName = (space: SpaceType) => {
