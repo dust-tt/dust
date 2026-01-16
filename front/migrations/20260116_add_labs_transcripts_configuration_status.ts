@@ -11,7 +11,9 @@ import { makeScript } from "@app/scripts/helpers";
  * 1. Adds a `status` column with values: 'active', 'disabled', 'relocating'
  * 2. Migrates existing isActive=true to status='active'
  * 3. Migrates existing isActive=false to status='disabled'
- * 4. Removes the `isActive` column
+ *
+ * Note: The `isActive` column is removed in a separate migration
+ * (20260116_remove_labs_transcripts_configuration_isActive.ts)
  */
 makeScript({}, async ({ execute }, logger) => {
   // Check if status column already exists
@@ -26,27 +28,26 @@ makeScript({}, async ({ execute }, logger) => {
   );
 
   if (statusColumnExists.count > 0) {
-    logger.info(
-      "Status column already exists, checking if migration is needed"
-    );
+    logger.info("Status column already exists, migration already completed");
+    return;
+  }
 
-    // Check if isActive column still exists (needs cleanup)
-    const [isActiveColumnExists] = await frontSequelize.query<{
-      count: number;
-    }>(
-      `
-      SELECT COUNT(*) as count
-      FROM information_schema.columns
-      WHERE table_name = 'labs_transcripts_configuration'
-        AND column_name = 'isActive'
-      `,
-      { type: QueryTypes.SELECT }
-    );
+  // Check if isActive column exists (source for migration)
+  const [isActiveColumnExists] = await frontSequelize.query<{ count: number }>(
+    `
+    SELECT COUNT(*) as count
+    FROM information_schema.columns
+    WHERE table_name = 'labs_transcripts_configuration'
+      AND column_name = 'isActive'
+    `,
+    { type: QueryTypes.SELECT }
+  );
 
-    if (isActiveColumnExists.count === 0) {
-      logger.info("Migration already completed, nothing to do");
-      return;
-    }
+  if (isActiveColumnExists.count === 0) {
+    logger.error(
+      "isActive column does not exist - cannot migrate. This is unexpected."
+    );
+    return;
   }
 
   // Count records to migrate
@@ -75,19 +76,16 @@ makeScript({}, async ({ execute }, logger) => {
     logger.info("[DRY RUN] Would perform the following operations:");
     logger.info("1. Add status column with default 'disabled'");
     logger.info("2. Update status='active' where isActive=true");
-    logger.info("3. Drop isActive column");
     return;
   }
 
-  // Step 1: Add status column (if not exists)
-  if (statusColumnExists.count === 0) {
-    logger.info("Adding status column...");
-    await frontSequelize.query(`
-      ALTER TABLE "labs_transcripts_configuration"
-      ADD COLUMN "status" VARCHAR(255) NOT NULL DEFAULT 'disabled'
-    `);
-    logger.info("Status column added");
-  }
+  // Step 1: Add status column
+  logger.info("Adding status column...");
+  await frontSequelize.query(`
+    ALTER TABLE "labs_transcripts_configuration"
+    ADD COLUMN "status" VARCHAR(255) NOT NULL DEFAULT 'disabled'
+  `);
+  logger.info("Status column added");
 
   // Step 2: Migrate isActive=true to status='active'
   logger.info("Migrating isActive=true to status='active'...");
@@ -99,14 +97,6 @@ makeScript({}, async ({ execute }, logger) => {
   logger.info(
     `Updated ${(activeUpdateResult as { rowCount?: number }).rowCount ?? 0} records to status='active'`
   );
-
-  // Step 3: Drop isActive column
-  logger.info("Dropping isActive column...");
-  await frontSequelize.query(`
-    ALTER TABLE "labs_transcripts_configuration"
-    DROP COLUMN "isActive"
-  `);
-  logger.info("isActive column dropped");
 
   logger.info("Migration completed successfully");
 });
