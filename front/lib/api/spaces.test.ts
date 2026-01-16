@@ -24,11 +24,11 @@ import { Err, Ok, SPACE_KINDS } from "@app/types";
 vi.mock("@app/lib/api/config", () => ({
   default: {
     getCoreAPIConfig: () => ({
-      url: "http://localhost:3001",
+      url: "http://fake-core-api-url",
       apiKey: "test-api-key",
     }),
     getConnectorsAPIConfig: () => ({
-      url: "http://localhost:3002",
+      url: "http://fake-connectors-api-url",
       secret: "test-secret",
       webhookSecret: "test-webhook-secret",
     }),
@@ -145,23 +145,6 @@ describe("createSpaceAndGroup", () => {
         });
         const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
         expect(associatedGroupIds).toContain(provisionedGroup.id);
-      }
-    });
-
-    it("should create a project space", async () => {
-      const result = await createSpaceAndGroup(adminAuth, {
-        name: "Test Project Space",
-        isRestricted: false,
-        spaceKind: "project",
-        managementMode: "manual",
-        memberIds: [],
-      });
-
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const space = result.value;
-        expect(space.name).toBe("Test Project Space");
-        expect(space.kind).toBe("project");
       }
     });
 
@@ -622,6 +605,11 @@ describe("createSpaceAndGroup", () => {
 
   describe("project metadata lifecycle", () => {
     it("creates metadata for project spaces, not for regular spaces", async () => {
+      vi.spyOn(
+        await import("@app/lib/api/projects"),
+        "createDataSourceAndConnectorForProject"
+      ).mockResolvedValue(new Ok(undefined));
+
       const projectResult = await createSpaceAndGroup(adminAuth, {
         name: "Test Project",
         isRestricted: false,
@@ -832,6 +820,11 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
     });
 
     it("should fail to delete a project space with active API keys in non-global groups", async () => {
+      vi.spyOn(
+        await import("@app/lib/api/projects"),
+        "createDataSourceAndConnectorForProject"
+      ).mockResolvedValue(new Ok(undefined));
+
       const result = await createSpaceAndGroup(adminAuth, {
         name: "Test Project Space With Keys",
         isRestricted: true,
@@ -925,6 +918,11 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
     });
 
     it("should allow deleting a project space with active API keys in global group", async () => {
+      vi.spyOn(
+        await import("@app/lib/api/projects"),
+        "createDataSourceAndConnectorForProject"
+      ).mockResolvedValue(new Ok(undefined));
+
       const result = await createSpaceAndGroup(adminAuth, {
         name: "Test Project Space With Global Keys",
         isRestricted: false,
