@@ -5,23 +5,32 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
   createAgentConfiguration,
   getAgentConfiguration,
+  updateAgentRequirements,
 } from "@app/lib/api/assistant/configuration/agent";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { canUseModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+} from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   AgentConfigurationScope,
   AgentModelConfigurationType,
@@ -276,6 +285,321 @@ async function createServer(
                   model: updatedConfig.model,
                   version: updatedConfig.version,
                 },
+              },
+              null,
+              2
+            ),
+          },
+        ]);
+      }
+    )
+  );
+
+  // Tool: update_skills
+  // Updates the skills attached to an agent.
+  server.tool(
+    "update_skills",
+    "Update the skills attached to an agent. Provide the complete list of skill sIds that the agent should have.",
+    {
+      agent_id: z.string().describe("The agent configuration sId"),
+      skill_ids: z
+        .array(z.string())
+        .describe(
+          "Complete list of skill sIds that the agent should have. Skills not in this list will be removed."
+        ),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "agent_copilot_update_skills",
+        agentLoopContext,
+      },
+      async ({ agent_id, skill_ids }) => {
+        // Get the current agent configuration.
+        const agentConfig = await getAgentConfiguration(auth, {
+          agentId: agent_id,
+          variant: "full",
+        });
+
+        if (!agentConfig) {
+          return new Err(new MCPError(`Agent not found: ${agent_id}`));
+        }
+
+        if (!agentConfig.canEdit) {
+          return new Err(
+            new MCPError(`You do not have permission to edit this agent`)
+          );
+        }
+
+        if (agentConfig.scope === "global") {
+          return new Err(new MCPError(`Cannot update global agents`));
+        }
+
+        const workspace = auth.getNonNullableWorkspace();
+
+        // Get current skills attached to the agent.
+        const currentSkills = await SkillResource.listByAgentConfiguration(
+          auth,
+          agentConfig
+        );
+        const currentSkillIds = new Set(currentSkills.map((s) => s.sId));
+        const desiredSkillIds = new Set(skill_ids);
+
+        // Fetch all desired skills to validate they exist.
+        const desiredSkills = await SkillResource.fetchByIds(auth, skill_ids);
+        const foundSkillIds = new Set(desiredSkills.map((s) => s.sId));
+        const missingSkills = skill_ids.filter((id) => !foundSkillIds.has(id));
+        if (missingSkills.length > 0) {
+          return new Err(
+            new MCPError(`Skills not found: ${missingSkills.join(", ")}`)
+          );
+        }
+
+        // Compute skills to add and remove.
+        const skillsToAdd = desiredSkills.filter(
+          (s) => !currentSkillIds.has(s.sId)
+        );
+        const skillsToRemove = currentSkills.filter(
+          (s) => !desiredSkillIds.has(s.sId)
+        );
+
+        await withTransaction(async (transaction) => {
+          // Add new skills.
+          for (const skill of skillsToAdd) {
+            await skill.addToAgent(auth, agentConfig);
+          }
+
+          // Remove skills.
+          for (const skill of skillsToRemove) {
+            // Custom skills have resource sIds (e.g., "skill_xxx"), global skills don't.
+            const isCustomSkill = isResourceSId("skill", skill.sId);
+            await AgentSkillModel.destroy({
+              where: {
+                workspaceId: workspace.id,
+                agentConfigurationId: agentConfig.id,
+                ...(isCustomSkill
+                  ? { customSkillId: skill.id }
+                  : { globalSkillId: skill.sId }),
+              },
+              transaction,
+            });
+          }
+
+          // Update agent requirements based on new skills.
+          const requirements =
+            await getAgentConfigurationRequirementsFromCapabilities(auth, {
+              actions: agentConfig.actions,
+              skills: desiredSkills,
+            });
+
+          await updateAgentRequirements(
+            auth,
+            {
+              agentModelId: agentConfig.id,
+              newSpaceIds: requirements.requestedSpaceIds,
+            },
+            { transaction }
+          );
+        });
+
+        return new Ok([
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                success: true,
+                agentId: agent_id,
+                skillsAdded: skillsToAdd.map((s) => s.sId),
+                skillsRemoved: skillsToRemove.map((s) => s.sId),
+                currentSkills: skill_ids,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
+      }
+    )
+  );
+
+  // Tool: update_tools
+  // Updates the tools (MCP server views) attached to an agent.
+  server.tool(
+    "update_tools",
+    "Update the tools (MCP server views) attached to an agent. Provide the complete list of tool sIds that the agent should have.",
+    {
+      agent_id: z.string().describe("The agent configuration sId"),
+      tool_ids: z
+        .array(z.string())
+        .describe(
+          "Complete list of MCP server view sIds that the agent should have. Tools not in this list will be removed."
+        ),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "agent_copilot_update_tools",
+        agentLoopContext,
+      },
+      async ({ agent_id, tool_ids }) => {
+        // Get the current agent configuration.
+        const agentConfig = await getAgentConfiguration(auth, {
+          agentId: agent_id,
+          variant: "full",
+        });
+
+        if (!agentConfig) {
+          return new Err(new MCPError(`Agent not found: ${agent_id}`));
+        }
+
+        if (!agentConfig.canEdit) {
+          return new Err(
+            new MCPError(`You do not have permission to edit this agent`)
+          );
+        }
+
+        if (agentConfig.scope === "global") {
+          return new Err(new MCPError(`Cannot update global agents`));
+        }
+
+        const workspace = auth.getNonNullableWorkspace();
+
+        // Get user-accessible spaces to fetch MCP server views.
+        const userSpaces =
+          await SpaceResource.listWorkspaceSpacesAsMember(auth);
+        const allMcpServerViews = await MCPServerViewResource.listBySpaces(
+          auth,
+          userSpaces
+        );
+
+        // Build map from sId to MCP server view.
+        const mcpServerViewMap = new Map(
+          allMcpServerViews.map((v) => [v.sId, v])
+        );
+
+        // Validate that all desired tool IDs exist and are accessible.
+        const desiredViews: MCPServerViewResource[] = [];
+        const missingTools: string[] = [];
+        for (const toolId of tool_ids) {
+          const view = mcpServerViewMap.get(toolId);
+          if (view) {
+            desiredViews.push(view);
+          } else {
+            missingTools.push(toolId);
+          }
+        }
+        if (missingTools.length > 0) {
+          return new Err(
+            new MCPError(
+              `Tools not found or not accessible: ${missingTools.join(", ")}`
+            )
+          );
+        }
+
+        // Get current tools from agent actions.
+        const currentMcpServerViewIds = new Set<string>();
+        for (const action of agentConfig.actions) {
+          if ("mcpServerViewId" in action && action.mcpServerViewId) {
+            currentMcpServerViewIds.add(action.mcpServerViewId);
+          }
+        }
+
+        const desiredMcpServerViewIds = new Set(tool_ids);
+
+        // Compute tools to add and remove.
+        const viewsToAdd = desiredViews.filter(
+          (v) => !currentMcpServerViewIds.has(v.sId)
+        );
+        const viewIdsToRemove = [...currentMcpServerViewIds].filter(
+          (id) => !desiredMcpServerViewIds.has(id)
+        );
+
+        await withTransaction(async (transaction) => {
+          // Add new tools.
+          for (const view of viewsToAdd) {
+            const viewJson = view.toJSON();
+            await createAgentActionConfiguration(
+              auth,
+              {
+                type: "mcp_server_configuration",
+                mcpServerViewId: view.sId,
+                name: viewJson.server.name,
+                description: viewJson.server.description ?? null,
+                additionalConfiguration: {},
+                timeFrame: null,
+                dataSources: null,
+                tables: null,
+                childAgentId: null,
+                jsonSchema: null,
+                dustAppConfiguration: null,
+                secretName: null,
+              },
+              agentConfig
+            );
+          }
+
+          // Remove tools.
+          if (viewIdsToRemove.length > 0) {
+            // Find the model IDs of the MCP server views to remove.
+            const viewModelIdsToRemove = removeNulls(
+              viewIdsToRemove.map((sId) => {
+                const view = mcpServerViewMap.get(sId);
+                return view?.id;
+              })
+            );
+
+            if (viewModelIdsToRemove.length > 0) {
+              await AgentMCPServerConfigurationModel.destroy({
+                where: {
+                  workspaceId: workspace.id,
+                  agentConfigurationId: agentConfig.id,
+                  mcpServerViewId: viewModelIdsToRemove,
+                },
+                transaction,
+              });
+            }
+          }
+
+          // Update agent requirements based on new tools.
+          const currentSkills = await SkillResource.listByAgentConfiguration(
+            auth,
+            agentConfig
+          );
+
+          // Build the new actions list for requirements calculation.
+          const newActions = agentConfig.actions.filter((action) => {
+            if ("mcpServerViewId" in action && action.mcpServerViewId) {
+              return desiredMcpServerViewIds.has(action.mcpServerViewId);
+            }
+            return true;
+          });
+
+          const requirements =
+            await getAgentConfigurationRequirementsFromCapabilities(auth, {
+              actions: newActions,
+              skills: currentSkills,
+            });
+
+          await updateAgentRequirements(
+            auth,
+            {
+              agentModelId: agentConfig.id,
+              newSpaceIds: requirements.requestedSpaceIds,
+            },
+            { transaction }
+          );
+        });
+
+        return new Ok([
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                success: true,
+                agentId: agent_id,
+                toolsAdded: viewsToAdd.map((v) => v.sId),
+                toolsRemoved: viewIdsToRemove,
+                currentTools: tool_ids,
               },
               null,
               2
