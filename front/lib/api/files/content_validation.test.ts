@@ -117,10 +117,10 @@ describe("formatValidationWarningsForLLM", () => {
       const formatted = formatValidationWarningsForLLM(result.error);
 
       expect(formatted).toContain("Validation warnings");
-      expect(formatted).toContain("To fix: Use the edit tool with:");
+      expect(formatted).toContain("tailwind:");
       expect(formatted).toContain("old_string:");
       expect(formatted).toContain('className="h-[600px]"');
-      expect(formatted).toContain("predefined Tailwind class");
+      expect(formatted).toContain("Replace");
     }
   });
 

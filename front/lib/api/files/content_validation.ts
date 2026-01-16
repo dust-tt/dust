@@ -194,19 +194,19 @@ export function formatValidationWarningsForLLM(
     return "";
   }
 
-  let message =
-    "\n\nValidation warnings (fix immediately with targeted edits):\n";
+  let message = "\n\nValidation warnings:\n";
 
   for (const warning of warnings) {
-    message += `\n- ${warning.message}\n`;
+    message += `\n${warning.type}: ${warning.message}\n`;
 
     if (warning.oldString) {
-      message += `  To fix: Use the edit tool with:\n`;
       message += `  old_string: """${warning.oldString}"""\n`;
       if (warning.occurrences && warning.occurrences > 1) {
         message += `  expected_replacements: ${warning.occurrences}\n`;
       }
-      message += `  ${warning.suggestion}\n`;
+      if (warning.suggestion) {
+        message += `  ${warning.suggestion}\n`;
+      }
     }
   }
 
