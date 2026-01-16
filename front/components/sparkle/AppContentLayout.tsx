@@ -97,7 +97,7 @@ export default function AppContentLayout({
       />
       <div
         className={cn(
-          "relative h-full w-full flex-1 overflow-hidden",
+          "relative flex h-full w-full flex-1 flex-col overflow-hidden",
           "bg-background text-foreground",
           "dark:bg-background-night dark:text-foreground-night"
         )}
@@ -111,12 +111,14 @@ export default function AppContentLayout({
         {/* Temporary measure to preserve title existence on smaller screens.
          * Page has no title, prepend empty AppLayoutTitle. */}
         {loaded && !hasTitle && (
-          <>
+          <div className="flex min-h-0 flex-1 flex-col">
             <AppLayoutTitle />
             {children}
-          </>
+          </div>
         )}
-        {loaded && hasTitle && children}
+        {loaded && hasTitle && (
+          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+        )}
       </div>
     </div>
   );
