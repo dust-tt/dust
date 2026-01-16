@@ -65,7 +65,7 @@ interface UseRemoveSpaceConfirmParams {
 interface ConfirmRemoveSpaceParams {
   space: SpaceType;
   actions: BuilderAction[];
-  knowledge?: KnowledgeToRemove[];
+  knowledgeInInstructions?: KnowledgeToRemove[];
   skills?: SkillToRemove[];
 }
 
@@ -78,11 +78,11 @@ export function useRemoveSpaceConfirm({
   return async ({
     space,
     actions,
-    knowledge = [],
+    knowledgeInInstructions = [],
     skills = [],
   }: ConfirmRemoveSpaceParams): Promise<boolean> => {
     const allItems: ItemToRemove[] = [
-      ...knowledge.map((k) => ({
+      ...knowledgeInInstructions.map((k) => ({
         id: k.nodeId,
         name: k.title,
         icon: <Icon visual={DocumentIcon} size="xs" />,
@@ -99,7 +99,7 @@ export function useRemoveSpaceConfirm({
       })),
     ];
 
-    const hasKnowledge = knowledge.length > 0;
+    const hasKnowledge = knowledgeInInstructions.length > 0;
 
     return confirm({
       title: `Remove ${getSpaceName(space)} space`,

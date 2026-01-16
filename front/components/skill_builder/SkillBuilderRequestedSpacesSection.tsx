@@ -65,7 +65,7 @@ export function SkillBuilderRequestedSpacesSection() {
     const confirmed = await confirmRemoveSpace({
       space,
       actions: actionsToRemove,
-      knowledge: knowledgeInSpace,
+      knowledgeInInstructions: knowledgeInSpace,
     });
 
     if (!confirmed) {
