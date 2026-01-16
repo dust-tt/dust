@@ -1,11 +1,11 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
+  RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import {
   DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
