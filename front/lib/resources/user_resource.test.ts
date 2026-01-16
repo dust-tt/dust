@@ -9,9 +9,13 @@ import type { WorkspaceType } from "@app/types";
 
 describe("UserResource", () => {
   let user: UserResource;
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
 
   beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
     user = await UserFactory.basic();
+    auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   });
 
   describe("getMetadataAsArray", () => {
