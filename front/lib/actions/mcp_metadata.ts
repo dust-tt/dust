@@ -43,7 +43,7 @@ import {
   Ok,
 } from "@app/types";
 
-const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 15_000;
+const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
 
 interface ConnectViaMCPServerId {
   type: "mcpServerId";
@@ -476,7 +476,9 @@ async function connectToRemoteMCPServer(
         "Error establishing connection to remote MCP server via streamableHttpTransport, falling back to sseTransport."
       );
       const sseTransport = new SSEClientTransport(url, req);
-      return mcpClient.connect(sseTransport);
+      return mcpClient.connect(sseTransport, {
+        timeout: DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS,
+      });
     }
     throw error;
   }
