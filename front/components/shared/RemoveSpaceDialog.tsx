@@ -62,34 +62,32 @@ interface UseRemoveSpaceConfirmParams {
   mcpServerViews: MCPServerViewType[];
 }
 
+interface ConfirmRemoveSpaceParams {
+  space: SpaceType;
+  actions: BuilderAction[];
+  knowledge?: KnowledgeToRemove[];
+  skills?: SkillToRemove[];
+}
+
 export function useRemoveSpaceConfirm({
   entityName,
   mcpServerViews,
 }: UseRemoveSpaceConfirmParams) {
   const confirm = useContext(ConfirmContext);
 
-  return async (
-    space: SpaceType,
-    actions: BuilderAction[],
-    knowledgeOrSkills: KnowledgeToRemove[] | SkillToRemove[] = []
-  ): Promise<boolean> => {
-    // Determine if we're dealing with knowledge items or skills based on the shape.
-    const isKnowledge = (
-      item: KnowledgeToRemove | SkillToRemove
-    ): item is KnowledgeToRemove => "nodeId" in item;
-
-    const knowledgeItems = knowledgeOrSkills.filter(isKnowledge);
-    const skillItems = knowledgeOrSkills.filter(
-      (item): item is SkillToRemove => !isKnowledge(item)
-    );
-
+  return async ({
+    space,
+    actions,
+    knowledge = [],
+    skills = [],
+  }: ConfirmRemoveSpaceParams): Promise<boolean> => {
     const allItems: ItemToRemove[] = [
-      ...knowledgeItems.map((k) => ({
+      ...knowledge.map((k) => ({
         id: k.nodeId,
         name: k.title,
         icon: <Icon visual={DocumentIcon} size="xs" />,
       })),
-      ...skillItems.map((skill) => ({
+      ...skills.map((skill) => ({
         id: skill.sId,
         name: skill.name,
         icon: getSkillIcon(skill),
@@ -101,7 +99,7 @@ export function useRemoveSpaceConfirm({
       })),
     ];
 
-    const hasKnowledge = knowledgeItems.length > 0;
+    const hasKnowledge = knowledge.length > 0;
 
     return confirm({
       title: `Remove ${getSpaceName(space)} space`,

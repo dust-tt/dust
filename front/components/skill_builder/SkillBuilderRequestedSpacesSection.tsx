@@ -62,11 +62,11 @@ export function SkillBuilderRequestedSpacesSection() {
       return;
     }
 
-    const confirmed = await confirmRemoveSpace(
+    const confirmed = await confirmRemoveSpace({
       space,
-      actionsToRemove,
-      knowledgeInSpace
-    );
+      actions: actionsToRemove,
+      knowledge: knowledgeInSpace,
+    });
 
     if (!confirmed) {
       return;
