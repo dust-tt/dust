@@ -221,7 +221,7 @@ async function handler(
         });
       }
 
-      const requestedSpaceIds =
+      const spaceIdsFromMcpServerViews =
         await MCPServerViewResource.listSpaceRequirementsByIds(
           auth,
           mcpServerViewIds
@@ -257,6 +257,15 @@ async function handler(
           nodeId: attachment.nodeId,
         })
       );
+
+      const spaceIdsFromAttachedKnowledge = dataSourceViews.map(
+        (dsv) => dsv.space.id
+      );
+
+      const requestedSpaceIds = uniq([
+        ...spaceIdsFromMcpServerViews,
+        ...spaceIdsFromAttachedKnowledge,
+      ]);
 
       // When saving a suggested skill, automatically activate it.
       const shouldActivate = skillResource.status === "suggested";

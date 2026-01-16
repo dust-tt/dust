@@ -37,7 +37,8 @@ export function SkillBuilderRequestedSpacesSection() {
     return spaces.filter(
       (s) =>
         s.kind !== "global" &&
-        (spaceIdToActions[s.sId]?.length > 0 || spaceIdsFromKnowledge.has(s.sId))
+        (spaceIdToActions[s.sId]?.length > 0 ||
+          spaceIdsFromKnowledge.has(s.sId))
     );
   }, [spaceIdToActions, spaceIdsFromKnowledge, spaces]);
 
