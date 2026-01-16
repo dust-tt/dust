@@ -177,7 +177,7 @@ export async function fetchDatasourceRetrievalMetrics(
               ? getDisplayNameForDataSource(dataSource.toJSON())
               : dsBucket.key,
             count: dsBucket.doc_count,
-            connectorProvider: dataSource?.connectorProvider ?? undefined,
+            connectorProvider: dataSource?.connectorProvider,
           };
         }),
       };
