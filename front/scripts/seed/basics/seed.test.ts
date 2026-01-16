@@ -33,7 +33,10 @@ function loadAssets(): Assets {
   const conversations = JSON.parse(
     fs.readFileSync(path.join(assetsDir, "conversations.json"), "utf-8")
   );
-  return { agent, skill, conversations };
+  const suggestedSkills = JSON.parse(
+    fs.readFileSync(path.join(assetsDir, "suggested-skills.json"), "utf-8")
+  );
+  return { agent, skill, conversations, suggestedSkills };
 }
 
 describe("basics seed script integration test", () => {

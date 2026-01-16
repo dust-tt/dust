@@ -31,6 +31,7 @@ function SuggestedSkillCard({
 }: SuggestedSkillCardProps) {
   const router = useRouter();
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
+  const [isAddingSkill, setIsAddingSkill] = useState(false);
   const SkillAvatar = getSkillAvatarIcon(skill.icon);
   const updateSkillEditors = useUpdateSkillEditors({
     owner,
@@ -38,6 +39,7 @@ function SuggestedSkillCard({
   });
 
   const handleAddSkillClick = async () => {
+    setIsAddingSkill(true);
     await updateSkillEditors({ addEditorIds: [user.sId], removeEditorIds: [] });
     void router.push(getSkillBuilderRoute(owner.sId, skill.sId));
   };
@@ -80,7 +82,8 @@ function SuggestedSkillCard({
               size="xs"
               variant="outline"
               icon={PlusIcon}
-              label="Add skill" // TODO(skills): decide if this is the right label
+              label="Add skill"
+              isLoading={isAddingSkill}
               onClick={(e) => {
                 e.stopPropagation();
                 void handleAddSkillClick();
