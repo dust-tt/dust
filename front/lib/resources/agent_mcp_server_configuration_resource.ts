@@ -46,6 +46,22 @@ export class AgentMCPServerConfigurationResource extends BaseResource<AgentMCPSe
     return configs.map((c) => new this(this.model, c.get()));
   }
 
+  static async fetchById(
+    auth: Authenticator,
+    sId: string
+  ): Promise<AgentMCPServerConfigurationResource | null> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const config = await this.model.findOne({
+      where: {
+        workspaceId,
+        sId,
+      },
+    });
+
+    return config ? new this(this.model, config.get()) : null;
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}

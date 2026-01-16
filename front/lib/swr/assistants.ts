@@ -21,6 +21,7 @@ import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]"
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentMcpConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/mcp_configurations";
 import type { GetDatasourceRetrievalResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/datasource-retrieval";
+import type { GetDatasourceRetrievalDocumentsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/datasource-retrieval-documents";
 import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/error_rate";
 import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
 import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
@@ -1112,6 +1113,55 @@ export function useAgentDatasourceRetrieval({
     isDatasourceRetrievalLoading: !error && !data && !disabled,
     isDatasourceRetrievalError: error,
     isDatasourceRetrievalValidating: isValidating,
+  };
+}
+
+export function useAgentDatasourceRetrievalDocuments({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  version,
+  mcpServerConfigId,
+  dataSourceId,
+  limit = 50,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  mcpServerConfigId: string | null;
+  dataSourceId: string | null;
+  limit?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetDatasourceRetrievalDocumentsResponse> = fetcher;
+  const isDisabled = !!disabled || !mcpServerConfigId || !dataSourceId;
+  const params = new URLSearchParams({ days: days.toString() });
+  if (version) {
+    params.set("version", version);
+  }
+  if (mcpServerConfigId) {
+    params.set("mcpServerConfigId", mcpServerConfigId);
+  }
+  if (dataSourceId) {
+    params.set("dataSourceId", dataSourceId);
+  }
+  params.set("limit", limit.toString());
+
+  const key = isDisabled
+    ? null
+    : `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/datasource-retrieval-documents?${params.toString()}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(key, fetcherFn);
+
+  return {
+    documents: data?.documents ?? emptyArray(),
+    groups: data?.groups ?? emptyArray(),
+    total: data?.total ?? 0,
+    isDatasourceRetrievalDocumentsLoading: !error && !data && !isDisabled,
+    isDatasourceRetrievalDocumentsError: error,
+    isDatasourceRetrievalDocumentsValidating: isValidating,
   };
 }
 

@@ -4,8 +4,8 @@ import { fromError } from "zod-validation-error";
 
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { DatasourceRetrievalData } from "@app/lib/api/assistant/observability/datasource_retrieval";
-import { fetchDatasourceRetrievalMetrics } from "@app/lib/api/assistant/observability/datasource_retrieval";
+import type { DatasourceRetrievalDocuments } from "@app/lib/api/assistant/observability/datasource_retrieval_documents";
+import { fetchDatasourceRetrievalDocumentsMetrics } from "@app/lib/api/assistant/observability/datasource_retrieval_documents";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -13,21 +13,25 @@ import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 
 const QuerySchema = z.object({
-  days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
+  days: z.coerce.number().positive().default(DEFAULT_PERIOD_DAYS),
   version: z.string().optional(),
+  mcpServerConfigId: z.string().min(1),
+  dataSourceId: z.string().min(1),
+  limit: z.coerce.number().positive().max(200).default(50),
 });
 
-export type GetDatasourceRetrievalResponse = {
-  datasources: DatasourceRetrievalData[];
-  total: number;
-};
+export type GetDatasourceRetrievalDocumentsResponse =
+  DatasourceRetrievalDocuments;
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetDatasourceRetrievalResponse>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetDatasourceRetrievalDocumentsResponse>
+  >,
   auth: Authenticator
 ) {
-  if (!isString(req.query.aId)) {
+  const { aId } = req.query;
+  if (!isString(aId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -38,7 +42,7 @@ async function handler(
   }
 
   const assistant = await getAgentConfiguration(auth, {
-    agentId: req.query.aId,
+    agentId: aId,
     variant: "light",
   });
 
@@ -75,35 +79,31 @@ async function handler(
         });
       }
 
-      const days = q.data.days;
-      const version = q.data.version;
+      const { days, version, mcpServerConfigId, dataSourceId, limit } = q.data;
 
-      const datasourceRetrievalResult = await fetchDatasourceRetrievalMetrics(
+      const documentsResult = await fetchDatasourceRetrievalDocumentsMetrics(
         auth,
         {
           agentId: assistant.sId,
           days,
           version,
+          mcpServerConfigId,
+          dataSourceId,
+          limit,
         }
       );
 
-      if (datasourceRetrievalResult.isErr()) {
+      if (documentsResult.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Failed to retrieve datasource retrieval metrics: ${fromError(datasourceRetrievalResult.error).toString()}`,
+            message: `Failed to retrieve datasource retrieval documents metrics: ${fromError(documentsResult.error).toString()}`,
           },
         });
       }
 
-      const datasources = datasourceRetrievalResult.value;
-      const total = datasources.reduce((sum, ds) => sum + ds.count, 0);
-
-      return res.status(200).json({
-        datasources,
-        total,
-      });
+      return res.status(200).json(documentsResult.value);
     }
     default:
       return apiError(req, res, {
