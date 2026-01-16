@@ -29,7 +29,7 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import { assertNever, Err, normalizeError, Ok } from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
@@ -885,50 +885,46 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
-    try {
-      const w = auth.workspace();
-      const u = this.user;
-      if (w && w.workOSOrganizationId && u && u.workOSUserId) {
-        try {
-          const workos = getWorkOS();
+    const w = auth.workspace();
+    const u = this.user;
+    if (w && w.workOSOrganizationId && u && u.workOSUserId) {
+      try {
+        const workos = getWorkOS();
 
-          const workOSMemberships =
-            await workos.userManagement.listOrganizationMemberships({
-              organizationId: w.workOSOrganizationId,
-              userId: u.workOSUserId,
-            });
+        const workOSMemberships =
+          await workos.userManagement.listOrganizationMemberships({
+            organizationId: w.workOSOrganizationId,
+            userId: u.workOSUserId,
+          });
 
-          if (workOSMemberships.data.length > 0) {
-            await workos.userManagement.deleteOrganizationMembership(
-              workOSMemberships.data[0].id
-            );
-          }
-
-          await invalidateWorkOSOrganizationsCacheForUserId(u.workOSUserId);
-        } catch (error) {
-          logger.error(
-            {
-              workspaceId: w.id,
-              userId: u.id,
-              error,
-            },
-            "Failed to delete WorkOS membership"
+        if (workOSMemberships.data.length > 0) {
+          await workos.userManagement.deleteOrganizationMembership(
+            workOSMemberships.data[0].id
           );
         }
+
+        await invalidateWorkOSOrganizationsCacheForUserId(u.workOSUserId);
+      } catch (error) {
+        logger.error(
+          {
+            workspaceId: w.id,
+            userId: u.id,
+            error,
+          },
+          "Failed to delete WorkOS membership"
+        );
       }
-
-      await this.model.destroy({
-        where: {
-          id: this.id,
-          workspaceId: this.workspaceId,
-        },
-        transaction,
-      });
-
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(normalizeError(err));
     }
+
+    await this.model.destroy({
+      where: {
+        id: this.id,
+        workspaceId: this.workspaceId,
+      },
+      transaction,
+    });
+
+    return new Ok(undefined);
   }
 
   isRevoked(referenceDate: Date = new Date()): boolean {
