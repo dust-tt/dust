@@ -14,6 +14,7 @@ import {
 import {
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
+  RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
@@ -30,7 +31,7 @@ import type {
   AgentLoopArgsWithTiming,
 } from "@app/types/assistant/agent_run";
 
-const toolActivityStartToCloseTimeout = `${DEFAULT_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1} minutes`;
+const toolActivityStartToCloseTimeout = `${Math.max(RUN_AGENT_CALL_TOOL_TIMEOUT_MS, DEFAULT_MCP_REQUEST_TIMEOUT_MS) / 1000 / 60 + 1} minutes`;
 
 const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
 const MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;

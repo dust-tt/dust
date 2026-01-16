@@ -3,9 +3,9 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
-  DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
+  RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import {
   DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
@@ -1490,7 +1490,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+    timeoutMs: RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
     serverInfo: {
       name: "run_agent",
       version: "1.0.0",
