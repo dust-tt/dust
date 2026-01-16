@@ -1,5 +1,6 @@
 import { heartbeat } from "@temporalio/activity";
 import assert from "assert";
+import tracer from "dd-trace";
 
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
@@ -297,13 +298,17 @@ export async function runModelActivity(
   );
 
   // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModel(auth, {
-    conversation,
-    model,
-    prompt,
-    tools,
-    allowedTokenCount: model.contextSize - model.generationTokensCount,
-  });
+  const modelConversationRes = await tracer.trace(
+    "renderConversationForModel",
+    async () =>
+      renderConversationForModel(auth, {
+        conversation,
+        model,
+        prompt,
+        tools,
+        allowedTokenCount: model.contextSize - model.generationTokensCount,
+      })
+  );
 
   if (modelConversationRes.isErr()) {
     const categorizedError = categorizeConversationRenderErrorMessage(
