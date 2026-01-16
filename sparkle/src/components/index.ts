@@ -44,7 +44,10 @@ export {
   ContentMessageInline,
 } from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
-export type { ConversationListItemProps, ReplySectionProps } from "./ConversationListItem";
+export type {
+  ConversationListItemProps,
+  ReplySectionProps,
+} from "./ConversationListItem";
 export { ConversationListItem, ReplySection } from "./ConversationListItem";
 export {
   ConversationContainer,
@@ -115,6 +118,18 @@ export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
 export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
+export type {
+  ImagePreviewProps,
+  ImagePreviewTitlePositionType,
+  ImagePreviewVariantType,
+} from "./ImagePreview";
+export {
+  IMAGE_PREVIEW_TITLE_POSITIONS,
+  IMAGE_PREVIEW_VARIANTS,
+  ImagePreview,
+} from "./ImagePreview";
+export type { ImageZoomDialogProps } from "./ImageZoomDialog";
+export { downloadFile, ImageZoomDialog } from "./ImageZoomDialog";
 export { Input } from "./Input";
 export { InteractiveImageGrid } from "./InteractiveImageGrid";
 export { Label } from "./Label";
