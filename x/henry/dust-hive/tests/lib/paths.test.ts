@@ -7,7 +7,6 @@ import {
   DUST_HIVE_ENVS,
   DUST_HIVE_HOME,
   DUST_HIVE_WORKTREES,
-  DUST_HIVE_ZELLIJ,
   findRepoRoot,
   getDockerOverridePath,
   getEnvDir,
@@ -18,7 +17,6 @@ import {
   getPidPath,
   getPortsPath,
   getWorktreeDir,
-  getZellijLayoutPath,
 } from "../../src/lib/paths";
 
 describe("paths", () => {
@@ -31,10 +29,6 @@ describe("paths", () => {
 
     it("sets DUST_HIVE_ENVS to ~/.dust-hive/envs", () => {
       expect(DUST_HIVE_ENVS).toBe(join(home, ".dust-hive", "envs"));
-    });
-
-    it("sets DUST_HIVE_ZELLIJ to ~/.dust-hive/zellij", () => {
-      expect(DUST_HIVE_ZELLIJ).toBe(join(home, ".dust-hive", "zellij"));
     });
 
     it("sets DUST_HIVE_WORKTREES to ~/dust-hive", () => {
@@ -130,12 +124,6 @@ describe("paths", () => {
       expect(getLogPath("test", "front-workers")).toBe(
         join(home, ".dust-hive", "envs", "test", "front-workers.log")
       );
-    });
-  });
-
-  describe("getZellijLayoutPath", () => {
-    it("returns path to zellij layout.kdl", () => {
-      expect(getZellijLayoutPath()).toBe(join(home, ".dust-hive", "zellij", "layout.kdl"));
     });
   });
 

@@ -136,22 +136,6 @@ export async function stopTestPostgres(): Promise<{ success: boolean; wasRunning
   return { success: proc.exitCode === 0, wasRunning: true };
 }
 
-// Remove the shared test postgres container (including volumes)
-export async function removeTestPostgres(): Promise<{ success: boolean }> {
-  // Stop first if running
-  await stopTestPostgres();
-
-  // Remove container
-  const proc = Bun.spawn(["docker", "rm", "-v", TEST_POSTGRES_CONTAINER_NAME], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  await proc.exited;
-
-  // Success even if container didn't exist
-  return { success: true };
-}
-
 // Get the test database name for an environment
 export function getTestDatabaseName(envName: string): string {
   // Sanitize env name for postgres (replace dashes with underscores)
