@@ -50,11 +50,11 @@ interface ConnectViaMCPServerId {
   oAuthUseCase: MCPOAuthUseCase | null;
 }
 
-export const isConnectViaMCPServerId = (
+export function isConnectViaMCPServerId(
   params: MCPConnectionParams
-): params is ConnectViaMCPServerId => {
+): params is ConnectViaMCPServerId {
   return params.type === "mcpServerId";
-};
+}
 
 interface ConnectViaRemoteMCPServerUrl {
   type: "remoteMCPServerUrl";
@@ -69,11 +69,11 @@ interface ConnectViaClientSideMCPServer {
   mcpServerId: string;
 }
 
-export const isConnectViaClientSideMCPServer = (
+export function isConnectViaClientSideMCPServer(
   params: MCPConnectionParams
-): params is ConnectViaClientSideMCPServer => {
+): params is ConnectViaClientSideMCPServer {
   return params.type === "clientSideMCPServerId";
-};
+}
 
 export type ServerSideMCPConnectionParams =
   | ConnectViaMCPServerId
@@ -103,7 +103,7 @@ function createMCPDispatcher(auth: Authenticator): ProxyAgent | undefined {
   return getUntrustedEgressAgent();
 }
 
-export const connectToMCPServer = async (
+export async function connectToMCPServer(
   auth: Authenticator,
   {
     params,
@@ -114,7 +114,7 @@ export const connectToMCPServer = async (
   }
 ): Promise<
   Result<Client, Error | MCPServerPersonalAuthenticationRequiredError>
-> => {
+> {
   // This is where we route the MCP client to the right server.
   const mcpClient = new Client({
     name: "dust-mcp-client",
@@ -436,7 +436,7 @@ export const connectToMCPServer = async (
   }
 
   return new Ok(mcpClient);
-};
+}
 
 // Try to connect via streamableHttpTransport first, and if that fails, fall back to sseTransport.
 // If the URL path ends with /sse, skip HTTP streaming and use SSE directly.
