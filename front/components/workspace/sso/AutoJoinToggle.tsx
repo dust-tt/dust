@@ -19,16 +19,16 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import type { PlanType, WorkspaceDomain, WorkspaceType } from "@app/types";
 import { pluralize } from "@app/types";
 
-type DomainAutoJoinModalProps = {
-  domains: Organization["domains"];
+interface DomainAutoJoinModalProps {
+  workspaceVerifiedDomains: WorkspaceDomain[];
   domainAutoJoinEnabled: boolean;
   isOpen: boolean;
   onClose: () => void;
   owner: WorkspaceType;
-};
+}
 
 function DomainAutoJoinModal({
-  domains,
+  workspaceVerifiedDomains,
   domainAutoJoinEnabled,
   isOpen,
   onClose,
@@ -44,11 +44,11 @@ function DomainAutoJoinModal({
     "New members will need to be invited in order to gain access to your Dust Workspace."
   ) : (
     <span>
-      Anyone with Google{" "}
+      Anyone with a{" "}
       <span className="font-bold">
-        {domains.map((d) => `"@${d.domain}"`).join(", ")}
+        {workspaceVerifiedDomains.map((d) => `"@${d.domain}"`).join(", ")}
       </span>{" "}
-      account will have access to your Dust Workspace.
+      email will have access to your Dust Workspace.
     </span>
   );
 
@@ -128,7 +128,7 @@ export function AutoJoinToggle({
   const domainAutoJoinEnabled =
     workspaceVerifiedDomains.length > 0 &&
     workspaceVerifiedDomains.every((d) => d.domainAutoJoinEnabled);
-  const isMultiDomain = domains.length > 1;
+  const isMultiDomain = workspaceVerifiedDomains.length > 1;
   const isAnyDomainAutoJoinEnabled = workspaceVerifiedDomains.some(
     (d) => d.domainAutoJoinEnabled
   );
@@ -152,7 +152,7 @@ export function AutoJoinToggle({
           onClose={() => {
             setIsActivateAutoJoinOpened(false);
           }}
-          domains={domains}
+          workspaceVerifiedDomains={workspaceVerifiedDomains}
           owner={owner}
         />
       )}
