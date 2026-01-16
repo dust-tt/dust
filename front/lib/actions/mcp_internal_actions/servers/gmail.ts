@@ -491,7 +491,14 @@ function createServer(
         agentLoopContext,
       },
       async (
-        { messageId, attachmentId, partId, filename, mimeType, hasRealAttachmentId },
+        {
+          messageId,
+          attachmentId,
+          partId,
+          filename,
+          mimeType,
+          hasRealAttachmentId,
+        },
         { authInfo }
       ) => {
         const accessToken = authInfo?.token;
@@ -517,7 +524,9 @@ function createServer(
           } else {
             const attachmentErrorText = await getErrorText(response);
             return new Err(
-              new MCPError(`Failed to fetch attachment via API: ${attachmentErrorText}`)
+              new MCPError(
+                `Failed to fetch attachment via API: ${attachmentErrorText}`
+              )
             );
           }
         } else {
@@ -552,9 +561,7 @@ function createServer(
         }
 
         // Gmail returns URL-safe base64, convert to standard base64
-        const standardBase64 = base64Data
-          .replace(/-/g, "+")
-          .replace(/_/g, "/");
+        const standardBase64 = base64Data.replace(/-/g, "+").replace(/_/g, "/");
 
         // Return proper content type based on mimeType
         // Images use "image" type, other files use "resource" with blob
