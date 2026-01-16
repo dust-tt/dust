@@ -1,5 +1,4 @@
 import {
-  Button,
   CheckBoxWithTextAndDescription,
   Dialog,
   DialogContainer,
@@ -9,7 +8,8 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { type ChangeEvent, type KeyboardEvent, useState } from "react";
+import type { CheckedState } from "@radix-ui/react-checkbox";
 
 interface CreateRoomDialogProps {
   isOpen: boolean;
@@ -44,7 +44,10 @@ export function CreateRoomDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open: boolean) => !open && handleClose()}
+    >
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>Create a new room</DialogTitle>
@@ -55,11 +58,11 @@ export function CreateRoomDialog({
               label="Room name"
               placeholder="Enter room name"
               value={roomName}
-              onChange={(e) => {
-                setRoomName(e.target.value);
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                setRoomName(e.currentTarget.value);
                 setError(null);
               }}
-              onKeyDown={(e) => {
+              onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                 if (e.key === "Enter") {
                   handleNext();
                 }
@@ -74,7 +77,9 @@ export function CreateRoomDialog({
               text="is public"
               description="Anyone in the workspace can find and join the room."
               checked={isPublic}
-              onCheckedChange={setIsPublic}
+              onCheckedChange={(checked: CheckedState) => {
+                setIsPublic(checked === true);
+              }}
             />
           </div>
         </DialogContainer>

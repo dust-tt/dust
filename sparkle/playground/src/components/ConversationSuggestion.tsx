@@ -1,14 +1,10 @@
-import {
-  Card,
-  CardGrid,
-  Icon,
-  type IconComponent,
-} from "@dust-tt/sparkle";
+import { Card, CardGrid, Icon } from "@dust-tt/sparkle";
+import type { ComponentType } from "react";
 
 export interface Suggestion {
   id: string;
   label: string;
-  icon: IconComponent;
+  icon: ComponentType<{ className?: string }>;
   onClick: () => void;
 }
 

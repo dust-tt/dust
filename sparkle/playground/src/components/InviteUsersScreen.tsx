@@ -11,9 +11,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
-
-import type { User } from "../data";
+import { type MouseEvent, useMemo, useState } from "react";
 import { getSpaceById } from "../data/spaces";
 import { mockUsers } from "../data/users";
 
@@ -96,7 +94,10 @@ export function InviteUsersScreen({
       : undefined;
 
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open: boolean) => !open && handleClose()}
+    >
       <SheetContent size="lg" side="right">
         <SheetHeader>
           <SheetTitle>Invite users to {spaceName}</SheetTitle>
@@ -120,7 +121,6 @@ export function InviteUsersScreen({
                   return (
                     <ListItem
                       key={user.id}
-                      interactive={true}
                       itemsAlignment="center"
                       onClick={() => toggleUser(user.id)}
                       className={
@@ -145,12 +145,12 @@ export function InviteUsersScreen({
                       </div>
                       <Checkbox
                         checked={isSelected}
-                        onCheckedChange={(checked) => {
+                        onCheckedChange={(checked: boolean | "indeterminate") => {
                           if (checked !== "indeterminate") {
                             handleCheckboxChange(user.id, checked);
                           }
                         }}
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent<HTMLButtonElement>) => {
                           e.stopPropagation();
                         }}
                       />

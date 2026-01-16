@@ -162,11 +162,7 @@ export function ConversationView({
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-overflow-hidden">
       <Bar
-        title={
-          <span className="s-text-base s-font-normal s-text-muted-foreground">
-            {conversationTitle || conversation.title || "Conversation"}
-          </span>
-        }
+        title={conversationTitle || conversation.title || "Conversation"}
         size="sm"
         leftActions={
           showBackButton && (
@@ -259,12 +255,6 @@ export function ConversationView({
                   <ConversationMessage
                     type={messageType}
                     name={name}
-                    emoji={owner && "emoji" in owner ? owner.emoji : undefined}
-                    backgroundColor={
-                      owner && "emoji" in owner
-                        ? owner.backgroundColor
-                        : undefined
-                    }
                     pictureUrl={pictureUrl}
                     timestamp={formatTimestamp(message.timestamp)}
                     buttons={

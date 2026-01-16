@@ -13,6 +13,10 @@ export default defineConfig({
     alias: {
       "@dust-tt/sparkle": path.resolve(__dirname, "../src"),
       "@sparkle": path.resolve(__dirname, "../src"),
+      "d3-sankey": path.resolve(
+        __dirname,
+        "../node_modules/d3-sankey/dist/d3-sankey.js"
+      ),
     },
   },
 });

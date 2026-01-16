@@ -23,6 +23,7 @@
     /* Path mapping */
     "baseUrl": ".",
     "paths": {
+      "@dust-tt/sparkle": ["../src/index.ts"],
       "@dust-tt/sparkle/*": ["../src/*"]
     }
   },

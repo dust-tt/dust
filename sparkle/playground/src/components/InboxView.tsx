@@ -241,7 +241,7 @@ export function InboxView({
                   <Collapsible
                     key="my-conversations"
                     open={!collapsedSpaces.has("my-conversations")}
-                    onOpenChange={(open) => {
+                    onOpenChange={(open: boolean) => {
                       if (!open) {
                         setCollapsedSpaces((prev) =>
                           new Set(prev).add("my-conversations")
@@ -343,7 +343,7 @@ export function InboxView({
                     <Collapsible
                       key={space.id}
                       open={!isCollapsed}
-                      onOpenChange={(open) => {
+                      onOpenChange={(open: boolean) => {
                         if (!open) {
                           setCollapsedSpaces((prev) =>
                             new Set(prev).add(space.id)

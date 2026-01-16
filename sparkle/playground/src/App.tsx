@@ -1,13 +1,18 @@
 import { Button, ListGroup, ListItem } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { type ComponentType, useEffect, useState } from "react";
+
+type StoryModule = {
+  default: ComponentType;
+};
 
 // Automatically discover all story files
-// @ts-expect-error - import.meta.glob is a Vite feature
-const storyModules = import.meta.glob("./stories/*.tsx", { eager: true });
+const storyModules = import.meta.glob<StoryModule>("./stories/*.tsx", {
+  eager: true,
+});
 
 // Extract story names and components
 const stories = Object.entries(storyModules).map(
-  ([path, module]: [string, unknown]) => {
+  ([path, module]: [string, StoryModule]) => {
     const name = path.split("/").pop()?.replace(".tsx", "") || "";
     return {
       name,

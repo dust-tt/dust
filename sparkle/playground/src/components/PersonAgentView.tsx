@@ -16,7 +16,6 @@ import {
 import { useMemo, useState } from "react";
 
 import type { Agent, Conversation, User } from "../data/types";
-import { getUserById } from "../data/users";
 import { InputBar } from "./InputBar";
 
 interface PersonAgentViewProps {
@@ -56,15 +55,6 @@ function getDateBucket(
   } else {
     return "Last Month";
   }
-}
-
-// Helper function to get creator from conversation
-function getCreator(conversation: Conversation, _users: User[]): User | null {
-  if (conversation.userParticipants.length === 0) {
-    return null;
-  }
-  const creatorId = conversation.userParticipants[0];
-  return getUserById(creatorId) || null;
 }
 
 // Helper function to generate more conversations with varied dates

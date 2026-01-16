@@ -49,7 +49,7 @@ import {
   TrashIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
@@ -63,7 +63,6 @@ import {
   createSpace,
   getAgentById,
   getConversationsBySpaceId,
-  getRandomAgents,
   getRandomSpaces,
   getRandomUsers,
   getUserById,
@@ -73,10 +72,6 @@ import {
   type Space,
   type User,
 } from "../data";
-
-type Collaborator =
-  | { type: "agent"; data: Agent }
-  | { type: "person"; data: User };
 
 type Participant =
   | { type: "user"; data: User }
@@ -115,11 +110,8 @@ function DustMain() {
     "chat"
   );
   const [searchText, setSearchText] = useState("");
-  const [agentSearchText, setAgentSearchText] = useState("");
-  const [peopleSearchText, setPeopleSearchText] = useState("");
   const [documentSearchText, setDocumentSearchText] = useState("");
   const [user, setUser] = useState<User | null>(null);
-  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<
     string | null
@@ -146,27 +138,6 @@ function DustMain() {
   useEffect(() => {
     const randomUser = getRandomUsers(1)[0];
     setUser(randomUser);
-
-    // Generate random total count of collaborators between 2 and 12
-    const totalCount = Math.floor(Math.random() * (12 - 2 + 1)) + 2;
-
-    // Randomly decide how many agents and people
-    const agentCount = Math.floor(Math.random() * (totalCount - 1)) + 1;
-    const peopleCount = totalCount - agentCount;
-
-    const randomAgents = getRandomAgents(agentCount);
-    const randomPeople = getRandomUsers(peopleCount);
-
-    // Create mixed collaborator list
-    const mixedCollaborators: Collaborator[] = [
-      ...randomAgents.map((agent) => ({ type: "agent" as const, data: agent })),
-      ...randomPeople.map((person) => ({
-        type: "person" as const,
-        data: person,
-      })),
-    ];
-
-    setCollaborators(mixedCollaborators);
 
     // Generate random number of spaces between 3 and 9
     const spaceCount = Math.floor(Math.random() * (9 - 3 + 1)) + 3;
@@ -237,58 +208,6 @@ function DustMain() {
 
     return groups;
   }, [filteredConversations]);
-
-  const filteredAgents = useMemo(() => {
-    if (!agentSearchText.trim()) {
-      return mockAgents;
-    }
-    const lowerSearch = agentSearchText.toLowerCase();
-    return mockAgents.filter((agent) =>
-      agent.name.toLowerCase().includes(lowerSearch)
-    );
-  }, [agentSearchText]);
-
-  const filteredPeople = useMemo(() => {
-    if (!peopleSearchText.trim()) {
-      return mockUsers;
-    }
-    const lowerSearch = peopleSearchText.toLowerCase();
-    return mockUsers.filter(
-      (person) =>
-        person.fullName.toLowerCase().includes(lowerSearch) ||
-        person.email.toLowerCase().includes(lowerSearch)
-    );
-  }, [peopleSearchText]);
-
-  const sortedCollaborators = useMemo(() => {
-    return [...collaborators].sort((a, b) => {
-      const nameA = a.type === "agent" ? a.data.name : a.data.fullName;
-      const nameB = b.type === "agent" ? b.data.name : b.data.fullName;
-      return nameA.localeCompare(nameB);
-    });
-  }, [collaborators]);
-
-  const filteredCollaborators = useMemo(() => {
-    if (!searchText.trim()) {
-      return sortedCollaborators;
-    }
-    const lowerSearch = searchText.toLowerCase();
-    return sortedCollaborators.filter((collaborator) => {
-      if (collaborator.type === "agent") {
-        const agent = collaborator.data;
-        return (
-          agent.name.toLowerCase().includes(lowerSearch) ||
-          agent.description.toLowerCase().includes(lowerSearch)
-        );
-      } else {
-        const person = collaborator.data;
-        return (
-          person.fullName.toLowerCase().includes(lowerSearch) ||
-          person.email.toLowerCase().includes(lowerSearch)
-        );
-      }
-    });
-  }, [searchText, sortedCollaborators]);
 
   const sortedSpaces = useMemo(() => {
     return [...spaces].sort((a, b) => {
@@ -369,7 +288,7 @@ function DustMain() {
           <DropdownMenuItem
             label="Rename"
             icon={PencilSquareIcon}
-            onClick={(e) => {
+            onClick={(e: MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();
               console.log("Rename conversation:", conversation.id);
@@ -413,7 +332,7 @@ function DustMain() {
                           />
                         )
                       }
-                      onClick={(e) => {
+                      onClick={(e: MouseEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
                         console.log(
@@ -436,7 +355,7 @@ function DustMain() {
             label="Delete"
             icon={TrashIcon}
             variant="warning"
-            onClick={(e) => {
+            onClick={(e: MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();
               console.log("Delete conversation:", conversation.id);
@@ -511,7 +430,7 @@ function DustMain() {
                     variant="ghost"
                     aria-label="Mark all as read"
                     tooltip="Mark all as read"
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                       // Add action logic here
@@ -550,7 +469,7 @@ function DustMain() {
                         icon={PlusIcon}
                         variant="ghost"
                         aria-label="Agents options"
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                           setIsCreateRoomDialogOpen(true);
@@ -563,7 +482,7 @@ function DustMain() {
                             icon={MoreIcon}
                             variant="ghost"
                             aria-label="Spaces options"
-                            onClick={(e) => {
+                            onClick={(e: MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
                             }}
@@ -573,7 +492,7 @@ function DustMain() {
                           <DropdownMenuItem
                             label="Browse"
                             icon={PencilSquareIcon}
-                            onClick={(e) => {
+                            onClick={(e: MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
                               console.log("Manage Spaces");
@@ -582,7 +501,7 @@ function DustMain() {
                           <DropdownMenuItem
                             icon={PlusIcon}
                             label="Create"
-                            onClick={(e) => {
+                            onClick={(e: MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
                               setIsCreateRoomDialogOpen(true);
@@ -617,7 +536,7 @@ function DustMain() {
                               <DropdownMenuItem
                                 label="Edit"
                                 icon={PencilSquareIcon}
-                                onClick={(e) => {
+                                onClick={(e: MouseEvent) => {
                                   e.preventDefault();
                                   e.stopPropagation();
                                   console.log("Edit space:", space.id);
@@ -626,7 +545,7 @@ function DustMain() {
                               <DropdownMenuItem
                                 label="Explore"
                                 icon={MagnifyingGlassIcon}
-                                onClick={(e) => {
+                                onClick={(e: MouseEvent) => {
                                   e.preventDefault();
                                   e.stopPropagation();
                                   console.log("Explore space:", space.id);
@@ -657,7 +576,7 @@ function DustMain() {
                         variant="ghost"
                         aria-label="New Conversation"
                         tooltip="New Conversation"
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                         }}
@@ -669,7 +588,7 @@ function DustMain() {
                             icon={MoreIcon}
                             variant="ghost"
                             aria-label="Conversations options"
-                            onClick={(e) => {
+                            onClick={(e: MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
                             }}
@@ -680,7 +599,7 @@ function DustMain() {
                           <DropdownMenuItem
                             label="Hide triggered"
                             icon={BoltOffIcon}
-                            onClick={(e) => {
+                            onClick={(e: MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
                               console.log("Edit Conversations");
@@ -689,7 +608,7 @@ function DustMain() {
                           <DropdownMenuItem
                             label="Edit history"
                             icon={ListSelectIcon}
-                            onClick={(e) => {
+                            onClick={(e: MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
                               console.log("Edit Conversations");
@@ -699,7 +618,7 @@ function DustMain() {
                             label="Clear history"
                             variant="warning"
                             icon={TrashIcon}
-                            onClick={(e) => {
+                            onClick={(e: MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
                               console.log("Clear history");
@@ -813,7 +732,7 @@ function DustMain() {
           <DropdownMenuTrigger asChild>
             <Card
               size="xs"
-              onClick={(e) => e.preventDefault()}
+              onClick={(e: MouseEvent) => e.preventDefault()}
               className="s-p-1"
               containerClassName="s-flex-1 s-min-w-0"
             >
@@ -839,7 +758,7 @@ function DustMain() {
             <DropdownMenuItem
               label="Profile"
               icon={UserIcon}
-              onClick={(e) => {
+              onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log("View profile");
@@ -848,7 +767,7 @@ function DustMain() {
             <DropdownMenuItem
               label="Administration"
               icon={Cog6ToothIcon}
-              onClick={(e) => {
+              onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log("Administration");
@@ -862,7 +781,7 @@ function DustMain() {
                   <DropdownMenuItem
                     label="Quickstart Guide"
                     icon={LightbulbIcon}
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                       console.log("Quickstart Guide");
@@ -871,7 +790,7 @@ function DustMain() {
                   <DropdownMenuItem
                     label="Guides & Documentation"
                     icon={BookOpenIcon}
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                       console.log("Guides & Documentation");
@@ -880,7 +799,7 @@ function DustMain() {
                   <DropdownMenuItem
                     label="Join the Slack Community"
                     icon={SlackLogo}
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                       console.log("Join the Slack Community");
@@ -891,7 +810,7 @@ function DustMain() {
                     label="Ask @help"
                     description="Ask anything about Dust"
                     icon={ChatBubbleLeftRightIcon}
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                       console.log("Ask @help");
@@ -900,7 +819,7 @@ function DustMain() {
                   <DropdownMenuItem
                     label="How to invite new users?"
                     icon={ChatBubbleLeftRightIcon}
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                       console.log("How to invite new users?");
@@ -909,7 +828,7 @@ function DustMain() {
                   <DropdownMenuItem
                     label="How to use agents in Slack workflow?"
                     icon={ChatBubbleLeftRightIcon}
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                       console.log("How to use agents in Slack workflow?");
@@ -918,7 +837,7 @@ function DustMain() {
                   <DropdownMenuItem
                     label="How to manage billing?"
                     icon={ChatBubbleLeftRightIcon}
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                       console.log("How to manage billing?");
@@ -931,7 +850,7 @@ function DustMain() {
             <DropdownMenuItem
               label="Signout"
               icon={LogoutIcon}
-              onClick={(e) => {
+              onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log("Signout");
