@@ -126,7 +126,7 @@ export function useRemoveSpaceConfirm({
             ))}
           </span>
           {hasKnowledge && (
-            <p className="dark:text-warning-night text-sm text-warning">
+            <p className="dark:text-warning-night text-sm">
               To remove this space, first update your instructions to remove the
               knowledge references.
             </p>
