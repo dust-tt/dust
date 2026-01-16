@@ -5,7 +5,11 @@ import { logger } from "../lib/logger";
 import { getZellijLayoutPath } from "../lib/paths";
 import { openCommand } from "./open";
 
-export const reloadCommand = withEnvironment("reload", async (env) => {
+interface ReloadOptions {
+  unifiedLogs?: boolean | undefined;
+}
+
+export const reloadCommand = withEnvironment("reload", async (env, options: ReloadOptions = {}) => {
   const sessionName = `dust-hive-${env.name}`;
 
   logger.step("Killing existing session...");
@@ -30,11 +34,11 @@ export const reloadCommand = withEnvironment("reload", async (env) => {
     await unlink(layoutPath);
   } catch (error) {
     if (isErrnoException(error) && error.code === "ENOENT") {
-      return openCommand(env.name);
+      return openCommand(env.name, { unifiedLogs: options.unifiedLogs });
     }
     throw error;
   }
 
   // Open fresh
-  return openCommand(env.name);
+  return openCommand(env.name, { unifiedLogs: options.unifiedLogs });
 });

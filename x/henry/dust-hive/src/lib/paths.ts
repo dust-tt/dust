@@ -98,6 +98,10 @@ export function getWatchScriptPath(): string {
   return join(DUST_HIVE_SCRIPTS, "watch-logs.sh");
 }
 
+export function getServiceLogsTuiPath(): string {
+  return join(DUST_HIVE_SCRIPTS, "service-logs-tui.sh");
+}
+
 // Check if a .git path represents a valid git repository
 // Returns true for: real git repos (.git/HEAD exists) or worktrees (.git is a file)
 async function isValidGitDir(gitPath: string): Promise<boolean> {
