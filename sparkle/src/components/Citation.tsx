@@ -1,10 +1,33 @@
 import { cva } from "class-variance-authority";
 import React, { ReactNode } from "react";
 
-import { Button, Card, CardProps, Spinner, Tooltip } from "@sparkle/components/";
+import {
+  Button,
+  Card,
+  CardProps,
+  Spinner,
+  Tooltip,
+} from "@sparkle/components/";
 import { ImagePreview } from "@sparkle/components/ImagePreview";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
+
+const citationVariants = cva(
+  "s-relative s-flex s-min-w-24 s-flex-none s-flex-col s-overflow-hidden",
+  {
+    variants: {
+      hasImage: {
+        // Use min() to maintain aspect ratio in grid mode (8% of width) while capping
+        // padding at 3 (0.75rem) for list mode to prevent excessive top padding on wide items.
+        false: "s-pt-[min(8%,theme(spacing.3))]",
+        true: "s-border-0 s-p-0",
+      },
+    },
+    defaultVariants: {
+      hasImage: false,
+    },
+  }
+);
 
 type CitationProps = CardProps & {
   children: React.ReactNode;
@@ -32,8 +55,7 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
             React.isValidElement(child) && child.type === CitationDescription
         ),
         hasImage: childrenArray.some(
-          (child) =>
-            React.isValidElement(child) && child.type === CitationImage
+          (child) => React.isValidElement(child) && child.type === CitationImage
         ),
       };
     }, [children]);
@@ -56,14 +78,7 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
         ref={ref}
         variant={variant}
         size="sm"
-        className={cn(
-          "s-relative s-flex s-min-w-24 s-flex-none s-flex-col s-overflow-hidden",
-          // Use min() to maintain aspect ratio in grid mode (8% of width) while capping
-          // padding at 3 (0.75rem) for list mode to prevent excessive top padding on wide items.
-          !hasImage && "s-pt-[min(8%,theme(spacing.3))]",
-          hasImage && "s-border-0 s-p-0",
-          className
-        )}
+        className={cn(citationVariants({ hasImage }), className)}
         {...props}
       >
         {contentWithDescription}
