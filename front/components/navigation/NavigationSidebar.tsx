@@ -25,7 +25,6 @@ import React, {
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
-import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
@@ -212,8 +211,6 @@ export const NavigationSidebar = React.forwardRef<
           )}
         >
           <UserMenu user={user} owner={owner} subscription={subscription} />
-          <div className="flex-1" />
-          <HelpDropdown owner={owner} user={user} />
         </div>
       )}
     </div>
