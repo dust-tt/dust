@@ -306,6 +306,7 @@ export async function* tryCallMCPTool(
     conversationId,
     messageId,
     toolName: toolConfiguration.originalName,
+    toolConfigurationId: toolConfiguration.sId,
     workspaceId,
   };
 
@@ -361,6 +362,8 @@ export async function* tryCallMCPTool(
       };
     }
     mcpClient = connectionResult.value;
+
+    heartbeat();
 
     const emitter = new EventEmitter();
 

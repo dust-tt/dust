@@ -1,4 +1,4 @@
-import { Context } from "@temporalio/activity";
+import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
@@ -68,6 +68,9 @@ export async function runToolActivity(
     }
     throw runAgentDataRes.error;
   }
+
+  // Heartbeating here as retrieving the agent loop data takes some time.
+  heartbeat();
 
   const {
     agentConfiguration,
