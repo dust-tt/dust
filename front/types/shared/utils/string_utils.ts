@@ -190,6 +190,7 @@ export function asDisplayName(name?: string | null) {
 }
 
 // Replace lone surrogates (actual Unicode surrogates, not escaped ones) with placeholder
+// and strip null bytes that cause PostgreSQL JSONB errors.
 // High surrogates: \uD800-\uDBFF
 // Low surrogates: \uDC00-\uDFFF
 export function toWellFormed(content: string): string {
@@ -199,6 +200,11 @@ export function toWellFormed(content: string): string {
   for (let i = 0; i < content.length; i++) {
     const char = content[i];
     const charCode = content.charCodeAt(i);
+
+    // Skip null bytes (code point 0)
+    if (charCode === 0) {
+      continue;
+    }
 
     // Check for high surrogate
     if (charCode >= 0xd800 && charCode <= 0xdbff) {
@@ -221,4 +227,14 @@ export function toWellFormed(content: string): string {
   }
 
   return result;
+}
+
+/**
+ * Sanitize all string fields in an object for PostgreSQL JSONB storage.
+ * Uses JSON serialization to clean strings without recursion.
+ */
+export function sanitizeForJsonb<T>(obj: T): T {
+  // JSON.stringify escapes null bytes as \u0000 - remove them
+  const json = JSON.stringify(obj).replace(/\\u0000/g, "");
+  return JSON.parse(json);
 }
