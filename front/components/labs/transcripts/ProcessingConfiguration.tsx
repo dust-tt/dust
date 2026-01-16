@@ -48,7 +48,6 @@ export function ProcessingConfiguration({
   ) => {
     setAssistantSelected(assistant);
     const response = await doUpdate({
-      isActive: transcriptsConfiguration.isActive,
       agentConfigurationId: assistant.sId,
     });
 
@@ -68,8 +67,10 @@ export function ProcessingConfiguration({
     }
   };
 
-  const handleSetIsActive = async (isActive: boolean) => {
-    const response = await doUpdate({ isActive });
+  const handleSetStatus = async (active: boolean) => {
+    const response = await doUpdate({
+      status: active ? "active" : "disabled",
+    });
 
     if (response.isOk()) {
       await mutateTranscriptsConfiguration();
@@ -127,8 +128,10 @@ export function ProcessingConfiguration({
       </Page.Layout>
       <Page.Layout direction="horizontal" gap="xl">
         <SliderToggle
-          selected={transcriptsConfiguration.isActive}
-          onClick={() => handleSetIsActive(!transcriptsConfiguration.isActive)}
+          selected={transcriptsConfiguration.status === "active"}
+          onClick={() =>
+            handleSetStatus(transcriptsConfiguration.status !== "active")
+          }
           disabled={!assistantSelected}
         />
         <Page.P>Enable transcripts email processing</Page.P>

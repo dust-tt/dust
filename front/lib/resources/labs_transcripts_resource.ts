@@ -17,6 +17,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
+  LabsTranscriptsConfigurationStatus,
   LabsTranscriptsConfigurationType,
   LabsTranscriptsProviderType,
   LightWorkspaceType,
@@ -43,14 +44,11 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   static async makeNew(
-    blob: Omit<
-      CreationAttributes<LabsTranscriptsConfigurationModel>,
-      "isActive"
-    >
+    blob: Omit<CreationAttributes<LabsTranscriptsConfigurationModel>, "status">
   ): Promise<LabsTranscriptsConfigurationResource> {
     const configuration = await LabsTranscriptsConfigurationModel.create({
       ...blob,
-      isActive: false,
+      status: "disabled",
     });
 
     return new LabsTranscriptsConfigurationResource(
@@ -204,12 +202,16 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ agentConfigurationId });
   }
 
-  async setIsActive(isActive: boolean) {
-    if (this.isActive === isActive) {
+  async setStatus(status: LabsTranscriptsConfigurationStatus) {
+    if (this.status === status) {
       return;
     }
 
-    return this.update({ isActive });
+    return this.update({ status });
+  }
+
+  isActive(): boolean {
+    return this.status === "active";
   }
 
   async setIsDefault(isDefault: boolean) {
@@ -427,7 +429,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       workspaceId: this.workspaceId,
       provider: this.provider,
       agentConfigurationId: this.agentConfigurationId,
-      isActive: this.isActive,
+      status: this.status,
       isDefaultWorkspaceConfiguration: this.isDefaultWorkspaceConfiguration,
       credentialId: this.credentialId,
       dataSourceViewId: this.dataSourceViewId,

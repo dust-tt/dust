@@ -3,7 +3,10 @@ import {
   pauseAllManagedDataSources,
   unpauseAllManagedDataSources,
 } from "@app/lib/api/data_sources";
-import { pauseAllLabsWorkflows } from "@app/lib/api/labs";
+import {
+  pauseAllLabsWorkflows,
+  unpauseAllLabsWorkflows,
+} from "@app/lib/api/labs";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
   config,
@@ -133,7 +136,7 @@ makeScript(
           }
 
           // 4) Pause all labs workflows.
-          const pauseLabsRes = await pauseAllLabsWorkflows(auth);
+          const pauseLabsRes = await pauseAllLabsWorkflows(auth, "relocating");
           if (pauseLabsRes.isErr()) {
             logger.error(
               `Failed to pause labs workflows: ${pauseLabsRes.error}`
@@ -218,6 +221,21 @@ makeScript(
             );
           }
 
+          // 4) Unpause all labs workflows.
+          const unpauseDestLabsRes = await unpauseAllLabsWorkflows(
+            auth,
+            "relocating"
+          );
+          if (unpauseDestLabsRes.isErr()) {
+            logger.error(
+              {
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                error: unpauseDestLabsRes.error,
+              },
+              "Failed to re-enable workspace labs workflows after relocation."
+            );
+          }
+
           break;
 
         case "rollback":
@@ -262,7 +280,22 @@ makeScript(
             );
           }
 
-          // 4) Update all users' region metadata.
+          // 4) Unpause all labs workflows.
+          const unpauseLabsRes = await unpauseAllLabsWorkflows(
+            auth,
+            "relocating"
+          );
+          if (unpauseLabsRes.isErr()) {
+            logger.error(
+              {
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                error: unpauseLabsRes.error,
+              },
+              "Failed to re-enable workspace labs workflows after relocation rollback."
+            );
+          }
+
+          // 5) Update all users' region metadata.
           const updateUsersRegionToSrcRes = await updateWorkspaceRegionMetadata(
             auth,
             logger,

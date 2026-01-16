@@ -424,7 +424,7 @@ export async function processTranscriptActivity(
 
   // Decide to process transcript or not (user needs to have participated)
   const shouldProcessTranscript =
-    transcriptsConfiguration.isActive && userParticipated;
+    transcriptsConfiguration.isActive() && userParticipated;
 
   localLogger.info(
     {
