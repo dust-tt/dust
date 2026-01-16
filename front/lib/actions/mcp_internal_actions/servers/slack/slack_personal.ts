@@ -680,17 +680,13 @@ async function createServer(
         }
 
         try {
-          return await executePostMessage(
-            auth,
-            agentLoopContext,
-            {
-              to,
-              message,
-              threadTs,
-              fileId,
-              accessToken,
-            }
-          );
+          return await executePostMessage(auth, agentLoopContext, {
+            to,
+            message,
+            threadTs,
+            fileId,
+            accessToken,
+          });
         } catch (error) {
           const authError = handleSlackAuthError(error);
           if (authError) {
