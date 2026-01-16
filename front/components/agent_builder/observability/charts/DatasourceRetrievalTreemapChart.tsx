@@ -1,4 +1,5 @@
 import {
+  cn,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -11,23 +12,31 @@ import { useCallback, useMemo, useState } from "react";
 import { ResponsiveContainer, Tooltip, Treemap } from "recharts";
 
 import {
+  buildColorClass,
   CHART_HEIGHT,
   INDEXED_COLORS,
 } from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
-import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
+import {
+  getIndexedBaseColor,
+  getIndexedColor,
+} from "@app/components/agent_builder/observability/utils";
 import {
   useAgentDatasourceRetrieval,
   useAgentDatasourceRetrievalDocuments,
 } from "@app/lib/swr/assistants";
 import { asDisplayName } from "@app/types";
 
+const LABEL_COLOR_VARIANT = 900;
+const VALUE_COLOR_VARIANT = 700;
+
 interface TreemapNode {
   name: string;
   size: number;
   color: string;
+  baseColor: string;
   mcpServerConfigId?: string;
   mcpServerDisplayName?: string;
   mcpServerName?: string;
@@ -49,6 +58,7 @@ interface TreemapContentProps {
   depth?: number;
   index?: number;
   color?: string;
+  baseColor?: string;
   mcpServerConfigId?: string;
   mcpServerDisplayName?: string;
   mcpServerName?: string;
@@ -74,6 +84,7 @@ const MIN_TILE_HEIGHT_FOR_NAME_AND_VALUE = 42;
 const GROUP_OUTLINE_INSET = 2;
 const GROUP_OUTLINE_STROKE_WIDTH = 2;
 const LEAF_STROKE_WIDTH = 1;
+const LEAF_BORDER_RADIUS = 4;
 const GROUP_LABEL_HEIGHT = 18;
 const MIN_GROUP_WIDTH_FOR_LABEL = 40;
 const MIN_GROUP_HEIGHT_FOR_LABEL = 24;
@@ -89,6 +100,7 @@ function TreemapContent({
   depth = 0,
   index,
   color = INDEXED_COLORS[0],
+  baseColor = "orange",
   mcpServerConfigId,
   mcpServerDisplayName,
   mcpServerName,
@@ -142,6 +154,7 @@ function TreemapContent({
         y={y}
         width={width}
         height={height}
+        rx={LEAF_BORDER_RADIUS}
         fill="currentColor"
         className={leafClassName}
         stroke="white"
@@ -154,6 +167,7 @@ function TreemapContent({
                   name,
                   size: value,
                   color,
+                  baseColor,
                   mcpServerConfigId,
                   mcpServerDisplayName,
                   mcpServerName,
@@ -176,12 +190,21 @@ function TreemapContent({
           <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 overflow-hidden p-1 text-center">
             {shouldShowName && (
               <div
-                className={`w-full truncate text-ellipsis ${nameTextClassName} font-medium text-foreground dark:text-foreground-night`}
+                className={cn(
+                  "w-full truncate text-ellipsis font-medium",
+                  nameTextClassName,
+                  buildColorClass(baseColor, LABEL_COLOR_VARIANT)
+                )}
               >
                 {name}
               </div>
             )}
-            <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+            <div
+              className={cn(
+                "text-xs",
+                buildColorClass(baseColor, VALUE_COLOR_VARIANT)
+              )}
+            >
               {value}
             </div>
           </div>
@@ -232,6 +255,7 @@ type ZoomSelection = {
   dataSourceId: string;
   dataSourceDisplayName: string;
   color: string;
+  baseColor: string;
 };
 
 export function DatasourceRetrievalTreemapChart({
@@ -278,6 +302,10 @@ export function DatasourceRetrievalTreemapChart({
         mcp.mcpServerConfigId,
         mcpServerConfigIds
       );
+      const serverBaseColor = getIndexedBaseColor(
+        mcp.mcpServerConfigId,
+        mcpServerConfigIds
+      );
       const serverDisplayName =
         asDisplayName(mcp.mcpServerConfigName) || mcp.mcpServerName;
 
@@ -296,6 +324,7 @@ export function DatasourceRetrievalTreemapChart({
           dataSourceId: ds.dataSourceId,
           size: ds.count,
           color: serverColor,
+          baseColor: serverBaseColor,
           mcpServerConfigId: mcp.mcpServerConfigId,
           mcpServerDisplayName: serverDisplayName,
           mcpServerName: mcp.mcpServerName,
@@ -349,6 +378,7 @@ export function DatasourceRetrievalTreemapChart({
       parentId: g.parentId,
       size: g.count,
       color: zoomSelection.color,
+      baseColor: zoomSelection.baseColor,
       children: isSlack
         ? undefined
         : (documentsByParentId.get(g.parentId) ?? []).map((d) => ({
@@ -357,6 +387,7 @@ export function DatasourceRetrievalTreemapChart({
             parentId: d.parentId,
             size: d.count,
             color: zoomSelection.color,
+            baseColor: zoomSelection.baseColor,
           })),
     }));
   }, [documents, groups, zoomSelection]);
@@ -378,6 +409,7 @@ export function DatasourceRetrievalTreemapChart({
       dataSourceId: node.dataSourceId,
       dataSourceDisplayName: node.name,
       color: node.color,
+      baseColor: node.baseColor,
     });
   }, []);
 
@@ -503,7 +535,9 @@ export function DatasourceRetrievalTreemapChart({
             </DialogTitle>
             {zoomSelection && (
               <DialogDescription>
-                {`Top documents retrieved from ${zoomSelection.dataSourceDisplayName} via ${zoomSelection.mcpServerDisplayName}, grouped by parent.`}
+                Top documents retrieved from $
+                {zoomSelection.dataSourceDisplayName} via $
+                {zoomSelection.mcpServerDisplayName}, grouped by parent.
               </DialogDescription>
             )}
           </DialogHeader>
