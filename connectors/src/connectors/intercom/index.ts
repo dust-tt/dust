@@ -305,6 +305,17 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
+    const intercomWorkspace = await IntercomWorkspaceModel.findOne({
+      where: { connectorId: connector.id },
+    });
+    if (!intercomWorkspace) {
+      logger.error(
+        { connectorId: this.connectorId },
+        "IntercomWorkspace not found. Cannot set permissions."
+      );
+      return new Err(new Error("IntercomWorkspace not found"));
+    }
+
     const helpCentersIds = await IntercomHelpCenterModel.findAll({
       where: {
         connectorId: this.connectorId,
@@ -317,11 +328,20 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       },
       attributes: ["teamId"],
     });
+    // Resetting the syncAllConversation flag to scheduled_activate to re-trigger the full sync.
+    const syncAllConversations =
+      intercomWorkspace.syncAllConversations === "activated";
+    if (syncAllConversations) {
+      await intercomWorkspace.update({
+        syncAllConversations: "scheduled_activate",
+      });
+    }
 
     const sendSignalToWorkflowResult = await launchIntercomFullSyncWorkflow({
       connectorId: this.connectorId,
       helpCenterIds: helpCentersIds.map((hc) => hc.helpCenterId),
       teamIds: teamsIds.map((team) => team.teamId),
+      hasUpdatedSelectAllConversations: syncAllConversations,
       forceResync: true,
     });
     if (sendSignalToWorkflowResult.isErr()) {
