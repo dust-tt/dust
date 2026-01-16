@@ -15,7 +15,7 @@ import {
   Input,
   LockIcon,
 } from "@dust-tt/sparkle";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -109,6 +109,29 @@ export function PersonalConnectionRequiredDialog({
     Record<string, Record<string, string>>
   >({});
 
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!isOpen) {
+      setAdditionalInputsMap({});
+    }
+  }, [isOpen]);
+
+  // Check if a server can connect (all required fields have values or defaults)
+  const canConnect = (mcpServerView: MCPServerViewType) => {
+    const personalAuthInputs =
+      mcpServerView.server.authorization?.personalAuthInputs ?? [];
+    const personalAuthDefaults =
+      mcpServerView.server.authorization?.personalAuthDefaults ?? {};
+    const serverInputs = additionalInputsMap[mcpServerView.sId] ?? {};
+
+    return personalAuthInputs.every(
+      (input) =>
+        !input.required ||
+        serverInputs[input.extraConfigKey]?.trim() ||
+        personalAuthDefaults[input.extraConfigKey]
+    );
+  };
+
   const disconnectedCount = useMemo(() => {
     return mcpServerViewsWithPersonalConnections.filter(
       ({ isAlreadyConnected }) => !isAlreadyConnected
@@ -183,7 +206,9 @@ export function PersonalConnectionRequiredDialog({
                             size="xs"
                             variant="outline"
                             label="Connect"
-                            disabled={isConnecting}
+                            disabled={
+                              isConnecting || !canConnect(mcpServerView)
+                            }
                             onClick={async () => {
                               if (!mcpServerView.server.authorization) {
                                 return;
