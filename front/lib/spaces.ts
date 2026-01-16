@@ -8,6 +8,8 @@ import {
   LockIcon,
   PlanetIcon,
   ServerIcon,
+  SpaceClosedIcon,
+  SpaceOpenIcon,
 } from "@dust-tt/sparkle";
 import groupBy from "lodash/groupBy";
 import type React from "react";
@@ -47,6 +49,18 @@ export function getSpaceIcon(
   }
 
   return ServerIcon;
+}
+
+export function getRestrictedSpaceIcon(): (
+  props: React.SVGProps<SVGSVGElement>
+) => React.ReactElement {
+  return SpaceClosedIcon;
+}
+
+export function getUnrestrictedSpaceIcon(): (
+  props: React.SVGProps<SVGSVGElement>
+) => React.ReactElement {
+  return SpaceOpenIcon;
 }
 
 export const getSpaceName = (space: SpaceType) => {
