@@ -46,4 +46,16 @@ export default async function setup() {
       `Failed to execute db migration script: ${JSON.stringify(stderr)}`
     );
   }
+
+  // Seed pro plans once before tests run to avoid race conditions when parallel
+  // test processes try to create the same plans simultaneously.
+  const { stderr: seedStderr } = await execAsync(
+    "FRONT_DATABASE_URI=$FRONT_DATABASE_URI npx tsx tests/seed_plans.ts"
+  );
+
+  if (seedStderr.toLowerCase().includes("error")) {
+    throw new Error(
+      `Failed to seed pro plans: ${JSON.stringify(seedStderr)}`
+    );
+  }
 }
