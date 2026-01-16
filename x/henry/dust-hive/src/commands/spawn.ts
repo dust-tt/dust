@@ -32,6 +32,7 @@ interface SpawnOptions {
   wait?: boolean;
   command?: string;
   compact?: boolean;
+  unifiedLogs?: boolean;
 }
 
 async function promptForName(): Promise<string> {
@@ -315,16 +316,24 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
 function buildOpenOptions(
   name: string,
   options: SpawnOptions
-): { warmCommand?: string; noAttach?: boolean; initialCommand?: string; compact?: boolean } {
+): {
+  warmCommand?: string;
+  noAttach?: boolean;
+  initialCommand?: string;
+  compact?: boolean;
+  unifiedLogs?: boolean;
+} {
   const openOpts: {
     warmCommand?: string;
     noAttach?: boolean;
     initialCommand?: string;
     compact?: boolean;
+    unifiedLogs?: boolean;
   } = {};
   if (options.warm) openOpts.warmCommand = `dust-hive warm ${name}`;
   if (options.noAttach) openOpts.noAttach = true;
   if (options.command) openOpts.initialCommand = options.command;
   if (options.compact) openOpts.compact = true;
+  if (options.unifiedLogs) openOpts.unifiedLogs = true;
   return openOpts;
 }

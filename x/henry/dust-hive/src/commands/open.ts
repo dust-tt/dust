@@ -8,6 +8,7 @@ import {
   MAIN_SESSION_NAME,
   TEMPORAL_LOG_PATH,
   getEnvFilePath,
+  getServiceLogsTuiPath,
   getWatchScriptPath,
   getWorktreeDir,
   getZellijLayoutPath,
@@ -16,27 +17,6 @@ import { restoreTerminal } from "../lib/prompt";
 import { Ok } from "../lib/result";
 import { ALL_SERVICES, type ServiceName } from "../lib/services";
 import { shellQuote } from "../lib/shell";
-
-// Tab display names (shorter names for better zellij tab bar)
-const TAB_NAMES: Record<ServiceName, string> = {
-  sdk: "sdk",
-  front: "front",
-  core: "core",
-  oauth: "oauth",
-  connectors: "connectors",
-  "front-workers": "workers",
-};
-
-const tabKeys = Object.keys(TAB_NAMES) as ServiceName[];
-const missingTabs = ALL_SERVICES.filter((service) => !tabKeys.includes(service));
-const extraTabs = tabKeys.filter((service) => !ALL_SERVICES.includes(service));
-if (missingTabs.length > 0 || extraTabs.length > 0) {
-  throw new Error(
-    `TAB_NAMES mismatch. Missing: ${missingTabs.join(", ") || "none"}. Extra: ${
-      extraTabs.join(", ") || "none"
-    }.`
-  );
-}
 
 function kdlEscape(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
@@ -130,6 +110,180 @@ done
 `;
 }
 
+// Unified service logs TUI - cycles through all services in one tab
+// Usage: service-logs-tui.sh <env-name>
+function getServiceLogsTuiContent(): string {
+  const services = ALL_SERVICES.join(" ");
+  return `#!/usr/bin/env bash
+# Unified service logs viewer - cycle through services with hotkeys
+# Usage: service-logs-tui.sh <env-name>
+
+ENV_NAME="\$1"
+if [[ -z "\$ENV_NAME" ]]; then
+  echo "Usage: service-logs-tui.sh <env-name>"
+  exit 1
+fi
+
+SERVICES=(${services})
+NUM_SERVICES=\${#SERVICES[@]}
+CURRENT_INDEX=0
+TAIL_PID=""
+TAIL_LINES=500
+
+get_log_file() {
+  local service="\$1"
+  echo "\$HOME/.dust-hive/envs/\$ENV_NAME/\$service.log"
+}
+
+cleanup() {
+  # Reset scroll region
+  printf "\\033[r"
+  if [[ -n "\$TAIL_PID" ]] && kill -0 "\$TAIL_PID" 2>/dev/null; then
+    kill "\$TAIL_PID" 2>/dev/null
+    wait "\$TAIL_PID" 2>/dev/null
+  fi
+}
+
+trap cleanup EXIT
+
+# Get terminal dimensions
+get_term_height() {
+  tput lines 2>/dev/null || echo 24
+}
+
+# Draw sticky header at top of screen
+draw_header() {
+  local service="\${SERVICES[\$CURRENT_INDEX]}"
+  local num=\$((CURRENT_INDEX + 1))
+  local term_height=\$(get_term_height)
+
+  # Save cursor, move to top, draw header, restore cursor
+  printf "\\033[s"                    # Save cursor position
+  printf "\\033[1;1H"                 # Move to row 1, col 1
+  printf "\\033[2K"                   # Clear the line
+  # Service name: bold + inverse (works across themes)
+  printf "\\033[1;7m  %s  \\033[0m" "\$service"
+  printf "  \\033[2m(%d/%d) [%d lines] n/p=switch +/-=lines r=restart q=stop x=exit\\033[0m" "\$num" "\$NUM_SERVICES" "\$TAIL_LINES"
+  printf "\\033[u"                    # Restore cursor position
+}
+
+# Set up scroll region (leave top line for header)
+setup_scroll_region() {
+  local term_height=\$(get_term_height)
+  printf "\\033[2;\${term_height}r"   # Set scroll region from line 2 to bottom
+  printf "\\033[2;1H"                 # Move cursor to line 2
+}
+
+# Reset scroll region to full screen
+reset_scroll_region() {
+  printf "\\033[r"                    # Reset scroll region
+}
+
+start_tail() {
+  local service="\${SERVICES[\$CURRENT_INDEX]}"
+  local log_file="\$(get_log_file "\$service")"
+
+  mkdir -p "\$(dirname "\$log_file")"
+  touch "\$log_file"
+
+  # Start tail in background with current line count
+  tail -n "\$TAIL_LINES" -F "\$log_file" &
+  TAIL_PID=\$!
+}
+
+stop_tail() {
+  if [[ -n "\$TAIL_PID" ]] && kill -0 "\$TAIL_PID" 2>/dev/null; then
+    kill "\$TAIL_PID" 2>/dev/null
+    wait "\$TAIL_PID" 2>/dev/null
+  fi
+  TAIL_PID=""
+}
+
+switch_service() {
+  stop_tail
+  clear
+  draw_header
+  setup_scroll_region
+  start_tail
+}
+
+next_service() {
+  CURRENT_INDEX=$(( (CURRENT_INDEX + 1) % NUM_SERVICES ))
+  switch_service
+}
+
+prev_service() {
+  CURRENT_INDEX=$(( (CURRENT_INDEX - 1 + NUM_SERVICES) % NUM_SERVICES ))
+  switch_service
+}
+
+restart_service() {
+  local service="\${SERVICES[\$CURRENT_INDEX]}"
+  stop_tail
+  echo ""
+  echo -e "\\033[33m[Restarting \$service...]\\033[0m"
+  dust-hive restart "\$ENV_NAME" "\$service"
+  echo -e "\\033[32m[\$service restarted]\\033[0m"
+  sleep 1
+  switch_service
+}
+
+quit_service() {
+  local service="\${SERVICES[\$CURRENT_INDEX]}"
+  stop_tail
+  echo ""
+  echo -e "\\033[33m[Stopping \$service...]\\033[0m"
+  dust-hive restart "\$ENV_NAME" "\$service" --stop 2>/dev/null || \\
+    pkill -f "dust-hive.*\$service" 2>/dev/null || true
+  echo -e "\\033[31m[\$service stopped]\\033[0m"
+  sleep 1
+  switch_service
+}
+
+increase_lines() {
+  if [[ \$TAIL_LINES -lt 10000 ]]; then
+    TAIL_LINES=\$((TAIL_LINES + 500))
+  fi
+  switch_service
+}
+
+decrease_lines() {
+  if [[ \$TAIL_LINES -gt 100 ]]; then
+    TAIL_LINES=\$((TAIL_LINES - 500))
+  fi
+  switch_service
+}
+
+# Initial draw
+clear
+draw_header
+setup_scroll_region
+start_tail
+
+# Main input loop - read single chars
+while true; do
+  # Read with timeout so we can check if tail died
+  if read -r -s -n 1 -t 1 key 2>/dev/null; then
+    case "\$key" in
+      n|N|j) next_service ;;
+      p|P|k) prev_service ;;
+      r|R) restart_service ;;
+      q|Q) quit_service ;;
+      x|X) exit 0 ;;
+      c|C) switch_service ;;  # clear/refresh
+      +|=) increase_lines ;;
+      -|_) decrease_lines ;;
+    esac
+  fi
+
+  # Restart tail if it died
+  if [[ -n "\$TAIL_PID" ]] && ! kill -0 "\$TAIL_PID" 2>/dev/null; then
+    start_tail
+  fi
+done
+`;
+}
+
 async function ensureWatchScript(): Promise<string> {
   await mkdir(DUST_HIVE_SCRIPTS, { recursive: true });
   const scriptPath = getWatchScriptPath();
@@ -138,6 +292,38 @@ async function ensureWatchScript(): Promise<string> {
   const proc = Bun.spawn(["chmod", "+x", scriptPath], { stdout: "ignore", stderr: "ignore" });
   await proc.exited;
   return scriptPath;
+}
+
+export async function ensureServiceLogsTui(): Promise<string> {
+  await mkdir(DUST_HIVE_SCRIPTS, { recursive: true });
+  const scriptPath = getServiceLogsTuiPath();
+  await Bun.write(scriptPath, getServiceLogsTuiContent());
+  // Make executable
+  const proc = Bun.spawn(["chmod", "+x", scriptPath], { stdout: "ignore", stderr: "ignore" });
+  await proc.exited;
+  return scriptPath;
+}
+
+// Tab display names (shorter names for better zellij tab bar)
+const TAB_NAMES: Record<ServiceName, string> = {
+  sdk: "sdk",
+  front: "front",
+  core: "core",
+  oauth: "oauth",
+  connectors: "connectors",
+  "front-workers": "workers",
+};
+
+interface LayoutOptions {
+  warmCommand?: string | undefined;
+  initialCommand?: string | undefined;
+  compact?: boolean | undefined;
+  unifiedLogs?: boolean | undefined;
+}
+
+interface ScriptPaths {
+  watchScript: string;
+  serviceLogsTui: string;
 }
 
 // Generate a single service tab with log watching and restart menu
@@ -151,15 +337,9 @@ function generateServiceTab(
         pane {
             command "${kdlEscape(watchScriptPath)}"
             args "${kdlEscape(envName)}" "${kdlEscape(service)}"
-            start_suspended false
+            start_suspended true
         }
     }`;
-}
-
-interface LayoutOptions {
-  warmCommand?: string | undefined;
-  initialCommand?: string | undefined;
-  compact?: boolean | undefined;
 }
 
 // Generate zellij layout for an environment
@@ -167,10 +347,10 @@ function generateLayout(
   envName: string,
   worktreePath: string,
   envShPath: string,
-  watchScriptPath: string,
+  scripts: ScriptPaths,
   options: LayoutOptions = {}
 ): string {
-  const { warmCommand, initialCommand, compact } = options;
+  const { warmCommand, initialCommand, compact, unifiedLogs } = options;
   const shellPath = getUserShell();
   // If initialCommand is provided, run it first then drop to shell on exit
   const shellCommand = initialCommand
@@ -186,9 +366,24 @@ function generateLayout(
         }
     }`
     : "";
-  const serviceTabs = ALL_SERVICES.map((service) =>
-    generateServiceTab(envName, service, watchScriptPath)
-  ).join("\n\n");
+
+  // Generate logs tabs based on mode
+  let logsTabs: string;
+  if (unifiedLogs) {
+    // Single unified logs tab (suspended by default, activates on focus)
+    logsTabs = `    tab name="logs" {
+        pane {
+            command "${kdlEscape(scripts.serviceLogsTui)}"
+            args "${kdlEscape(envName)}"
+            start_suspended true
+        }
+    }`;
+  } else {
+    // Individual service tabs (default)
+    logsTabs = ALL_SERVICES.map((service) =>
+      generateServiceTab(envName, service, scripts.watchScript)
+    ).join("\n\n");
+  }
 
   // When compact mode is enabled, use bottom bar; otherwise use top bar
   const tabTemplate = compact ? TAB_TEMPLATE_COMPACT : TAB_TEMPLATE;
@@ -205,7 +400,7 @@ ${tabTemplate}
         }
     }
 
-${warmTab ? `${warmTab}\n\n` : ""}${serviceTabs}
+${warmTab ? `${warmTab}\n\n` : ""}${logsTabs}
 }
 `;
 }
@@ -215,16 +410,25 @@ async function writeLayout(
   envName: string,
   worktreePath: string,
   envShPath: string,
-  watchScriptPath: string,
+  scripts: ScriptPaths,
   options: LayoutOptions = {}
 ): Promise<string> {
   await mkdir(DUST_HIVE_ZELLIJ, { recursive: true });
 
   const layoutPath = getZellijLayoutPath();
-  const content = generateLayout(envName, worktreePath, envShPath, watchScriptPath, options);
+  const content = generateLayout(envName, worktreePath, envShPath, scripts, options);
   await Bun.write(layoutPath, content);
 
   return layoutPath;
+}
+
+// Ensure all scripts exist and return their paths
+async function ensureScripts(): Promise<ScriptPaths> {
+  const [watchScript, serviceLogsTui] = await Promise.all([
+    ensureWatchScript(),
+    ensureServiceLogsTui(),
+  ]);
+  return { watchScript, serviceLogsTui };
 }
 
 interface OpenOptions {
@@ -232,6 +436,7 @@ interface OpenOptions {
   noAttach?: boolean | undefined;
   initialCommand?: string | undefined;
   compact?: boolean | undefined;
+  unifiedLogs?: boolean | undefined;
 }
 
 // Check if a zellij session exists
@@ -299,11 +504,12 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     // Ensure session exists (create in background if needed)
     const sessionExists = await checkSessionExists(sessionName);
     if (!sessionExists) {
-      const watchScriptPath = await ensureWatchScript();
-      const layoutPath = await writeLayout(env.name, worktreePath, envShPath, watchScriptPath, {
+      const scripts = await ensureScripts();
+      const layoutPath = await writeLayout(env.name, worktreePath, envShPath, scripts, {
         warmCommand: options.warmCommand,
         initialCommand: options.initialCommand,
         compact: options.compact,
+        unifiedLogs: options.unifiedLogs,
       });
       await createSessionInBackground(sessionName, layoutPath);
     }
@@ -326,8 +532,8 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     return Ok(undefined);
   }
 
-  // Ensure watch script exists
-  const watchScriptPath = await ensureWatchScript();
+  // Ensure scripts exist
+  const scripts = await ensureScripts();
 
   // Check if session already exists
   const sessionExists = await checkSessionExists(sessionName);
@@ -354,10 +560,11 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     await proc.exited;
   } else {
     // Create new session with layout
-    const layoutPath = await writeLayout(env.name, worktreePath, envShPath, watchScriptPath, {
+    const layoutPath = await writeLayout(env.name, worktreePath, envShPath, scripts, {
       warmCommand: options.warmCommand,
       initialCommand: options.initialCommand,
       compact: options.compact,
+      unifiedLogs: options.unifiedLogs,
     });
 
     if (options.noAttach) {
@@ -406,7 +613,7 @@ ${tabTemplate}
         pane {
             command "${kdlEscape(watchScriptPath)}"
             args "--temporal"
-            start_suspended false
+            start_suspended true
         }
     }
 }

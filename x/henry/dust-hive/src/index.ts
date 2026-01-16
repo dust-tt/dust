@@ -57,6 +57,7 @@ cli
   )
   .option("-c, --command <cmd>", "Run command in shell tab after opening (drops to shell on exit)")
   .option("-C, --compact", "Use compact zellij layout (no tab bar)")
+  .option("-u, --unified-logs", "Use single unified logs tab instead of per-service tabs")
   .action(
     async (
       name: string | undefined,
@@ -69,6 +70,7 @@ cli
         wait?: boolean;
         command?: string;
         compact?: boolean;
+        unifiedLogs?: boolean;
       }
     ) => {
       // Validate --wait cannot be used with --no-open
@@ -87,6 +89,7 @@ cli
         wait?: boolean;
         command?: string;
         compact?: boolean;
+        unifiedLogs?: boolean;
       } = {};
       if (resolvedName !== undefined) {
         spawnOptions.name = resolvedName;
@@ -112,6 +115,9 @@ cli
       if (options.compact) {
         spawnOptions.compact = true;
       }
+      if (options.unifiedLogs) {
+        spawnOptions.unifiedLogs = true;
+      }
       await prepareAndRun(spawnCommand(spawnOptions));
     }
   );
@@ -120,14 +126,20 @@ cli
   .command("open [name]", "Open environment's zellij session")
   .alias("o")
   .option("-C, --compact", "Use compact zellij layout (no tab bar)")
-  .action(async (name: string | undefined, options: { compact?: boolean }) => {
-    await prepareAndRun(openCommand(name, { compact: options.compact }));
-  });
+  .option("-u, --unified-logs", "Use single unified logs tab instead of per-service tabs")
+  .action(
+    async (name: string | undefined, options: { compact?: boolean; unifiedLogs?: boolean }) => {
+      await prepareAndRun(
+        openCommand(name, { compact: options.compact, unifiedLogs: options.unifiedLogs })
+      );
+    }
+  );
 
 cli
   .command("reload [name]", "Kill and reopen zellij session")
-  .action(async (name: string | undefined) => {
-    await prepareAndRun(reloadCommand(name));
+  .option("-u, --unified-logs", "Use single unified logs tab instead of per-service tabs")
+  .action(async (name: string | undefined, options: { unifiedLogs?: boolean }) => {
+    await prepareAndRun(reloadCommand(name, { unifiedLogs: options.unifiedLogs }));
   });
 
 cli
@@ -221,13 +233,19 @@ cli
   .command("logs [name] [service]", "Show service logs")
   .alias("log")
   .option("-f, --follow", "Follow log output")
+  .option("-i, --interactive", "Interactive TUI with service switching")
   .action(
     async (
       name: string | undefined,
       service: string | undefined,
-      options: { follow?: boolean }
+      options: { follow?: boolean; interactive?: boolean }
     ) => {
-      await prepareAndRun(logsCommand(name, service, { follow: Boolean(options.follow) }));
+      await prepareAndRun(
+        logsCommand(name, service, {
+          follow: Boolean(options.follow),
+          interactive: Boolean(options.interactive),
+        })
+      );
     }
   );
 
