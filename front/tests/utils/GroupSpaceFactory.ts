@@ -6,7 +6,7 @@ export class GroupSpaceFactory {
   static async associate(
     space: SpaceResource,
     group: GroupResource,
-    kind: "member" | "editor" = "member"
+    kind: "member" | "project_editor" | "project_viewer" = "member"
   ): Promise<GroupSpaceModel> {
     return GroupSpaceModel.create({
       groupId: group.id,

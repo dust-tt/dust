@@ -25,7 +25,7 @@ GroupSpaceModel.init(
       allowNull: false,
       defaultValue: "member",
       validate: {
-        isIn: [["member", "editor"]],
+        isIn: [["member", "project_editor", "project_viewer"]],
       },
     },
   },
