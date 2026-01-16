@@ -8,14 +8,20 @@ import {
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import apiConfig from "@app/lib/api/config";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { headersArrayToRecord } from "@app/types";
+import {
+  getOAuthConnectionAccessToken,
+  headersArrayToRecord,
+} from "@app/types";
 import { assertNever } from "@app/types";
 
 const PatchMCPServerBodySchema = z
@@ -112,7 +118,55 @@ async function handler(
             });
           }
 
-          return res.status(200).json({ server: server.toJSON() });
+          const serverJson = server.toJSON();
+
+          // For servers with personalAuthInputs, fetch defaults from workspace connection metadata
+          if (serverJson.authorization?.personalAuthInputs?.length) {
+            const workspaceConnectionRes =
+              await MCPServerConnectionResource.findByMCPServer(auth, {
+                mcpServerId: serverId,
+                connectionType: "workspace",
+              });
+
+            if (workspaceConnectionRes.isOk()) {
+              const tokenRes = await getOAuthConnectionAccessToken({
+                config: apiConfig.getOAuthAPIConfig(),
+                logger,
+                connectionId: workspaceConnectionRes.value.connectionId,
+              });
+
+              if (tokenRes.isOk()) {
+                const metadata = tokenRes.value.connection.metadata;
+                // Build defaults from metadata using extraConfigKey
+                const defaults: Record<string, string> = {};
+                for (const input of serverJson.authorization
+                  .personalAuthInputs) {
+                  const value = metadata[input.extraConfigKey];
+                  if (typeof value === "string" && value) {
+                    defaults[input.extraConfigKey] = value;
+                  }
+                }
+                if (Object.keys(defaults).length > 0) {
+                  serverJson.authorization = {
+                    ...serverJson.authorization,
+                    personalAuthDefaults: defaults,
+                  };
+                }
+              } else {
+                logger.warn(
+                  { serverId, error: tokenRes.error },
+                  "Failed to get OAuth token for personal auth defaults"
+                );
+              }
+            } else {
+              logger.warn(
+                { serverId, error: workspaceConnectionRes.error },
+                "No workspace connection found for server with personal auth inputs"
+              );
+            }
+          }
+
+          return res.status(200).json({ server: serverJson });
         }
         case "remote": {
           const server = await RemoteMCPServerResource.fetchById(

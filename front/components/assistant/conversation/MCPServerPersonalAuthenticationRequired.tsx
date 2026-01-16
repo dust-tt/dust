@@ -3,6 +3,7 @@ import {
   CloudArrowLeftRightIcon,
   ContentMessage,
   InformationCircleIcon,
+  Input,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -47,6 +48,15 @@ export function MCPServerPersonalAuthenticationRequired({
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
 
+  // Generic state for additional auth inputs - keyed by extraConfigKey
+  const personalAuthInputs =
+    mcpServer?.authorization?.personalAuthInputs ?? [];
+  const personalAuthDefaults =
+    mcpServer?.authorization?.personalAuthDefaults ?? {};
+  const [additionalInputs, setAdditionalInputs] = useState<
+    Record<string, string>
+  >({});
+
   const icon = mcpServer?.icon
     ? getIcon(mcpServer.icon)
     : InformationCircleIcon;
@@ -60,6 +70,8 @@ export function MCPServerPersonalAuthenticationRequired({
       provider,
       useCase: "personal_actions",
       scope,
+      additionalInputs:
+        Object.keys(additionalInputs).length > 0 ? additionalInputs : undefined,
     });
 
     setIsConnecting(false);
@@ -75,6 +87,14 @@ export function MCPServerPersonalAuthenticationRequired({
   const isTriggeredByCurrentUser = useMemo(
     () => triggeringUser?.sId === user?.sId,
     [triggeringUser, user?.sId]
+  );
+
+  // Validation: required inputs must have value OR default
+  const canConnect = personalAuthInputs.every(
+    (input) =>
+      !input.required ||
+      additionalInputs[input.extraConfigKey]?.trim() ||
+      personalAuthDefaults[input.extraConfigKey]
   );
 
   return (
@@ -103,16 +123,48 @@ export function MCPServerPersonalAuthenticationRequired({
             )}
           </div>
           {!isConnected && mcpServer && (
-            <div className="mt-3 flex flex-col justify-end sm:flex-row">
-              <Button
-                label="Connect"
-                variant="highlight"
-                size="xs"
-                icon={CloudArrowLeftRightIcon}
-                disabled={isConnecting}
-                onClick={() => void onConnectClick(mcpServer)}
-              />
-            </div>
+            <>
+              {personalAuthInputs.map((input) => (
+                <div
+                  key={input.extraConfigKey}
+                  className="mt-2 flex flex-col gap-2"
+                >
+                  {input.description && (
+                    <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      {input.description}
+                    </div>
+                  )}
+                  <Input
+                    name={input.extraConfigKey}
+                    placeholder={
+                      input.placeholder ?? `${input.label} (optional)`
+                    }
+                    value={additionalInputs[input.extraConfigKey] ?? ""}
+                    onChange={(e) =>
+                      setAdditionalInputs((prev) => ({
+                        ...prev,
+                        [input.extraConfigKey]: e.target.value,
+                      }))
+                    }
+                    message={
+                      personalAuthDefaults[input.extraConfigKey]
+                        ? `Workspace default: ${personalAuthDefaults[input.extraConfigKey]}`
+                        : undefined
+                    }
+                  />
+                </div>
+              ))}
+              <div className="mt-3 flex flex-col justify-end sm:flex-row">
+                <Button
+                  label="Connect"
+                  variant="highlight"
+                  size="xs"
+                  icon={CloudArrowLeftRightIcon}
+                  disabled={isConnecting || !canConnect}
+                  onClick={() => void onConnectClick(mcpServer)}
+                />
+              </div>
+            </>
           )}
         </>
       ) : (

@@ -858,12 +858,15 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     provider,
     useCase,
     scope,
+    additionalInputs,
   }: {
     mcpServerId: string;
     mcpServerDisplayName: string;
     provider: OAuthProvider;
     useCase: OAuthUseCase;
     scope?: string;
+    // Keys are extraConfigKey values from personalAuthInputs
+    additionalInputs?: Record<string, string>;
   }): Promise<boolean> => {
     try {
       const extraConfig: Record<string, string> = {
@@ -872,6 +875,15 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
 
       if (scope) {
         extraConfig.scope = scope;
+      }
+
+      // Pass all additional inputs directly to extraConfig
+      if (additionalInputs) {
+        for (const [extraConfigKey, value] of Object.entries(additionalInputs)) {
+          if (value) {
+            extraConfig[extraConfigKey] = value;
+          }
+        }
       }
 
       const cRes = await setupOAuthConnection({

@@ -12,6 +12,7 @@ import {
   DialogTitle,
   Hoverable,
   Icon,
+  Input,
   LockIcon,
 } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
@@ -103,6 +104,11 @@ export function PersonalConnectionRequiredDialog({
 }) {
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
   const [isConnecting, setIsConnecting] = useState(false);
+  // State for additional inputs per server - keyed by server sId, then by extraConfigKey
+  const [additionalInputsMap, setAdditionalInputsMap] = useState<
+    Record<string, Record<string, string>>
+  >({});
+
   const disconnectedCount = useMemo(() => {
     return mcpServerViewsWithPersonalConnections.filter(
       ({ isAlreadyConnected }) => !isAlreadyConnected
@@ -147,50 +153,94 @@ export function PersonalConnectionRequiredDialog({
 
           <DialogDescription>
             {mcpServerViewsWithPersonalConnections.map(
-              ({ mcpServerView, isAlreadyConnected }) => (
-                <div key={mcpServerView.sId}>
-                  <div className="flex w-full items-center justify-between gap-2 py-2">
-                    <div className="flex items-center gap-2">
-                      <Icon
-                        visual={getIcon(mcpServerView.server.icon)}
-                        size="md"
-                      />
-                      <strong>
-                        {getMcpServerViewDisplayName(mcpServerView)}
-                      </strong>
-                    </div>
-                    <div>
-                      {isAlreadyConnected ? (
-                        <Chip color="green" label="Connected" />
-                      ) : (
-                        <Button
-                          icon={CloudArrowLeftRightIcon}
-                          size="xs"
-                          variant="outline"
-                          label="Connect"
-                          disabled={isConnecting}
-                          onClick={async () => {
-                            if (!mcpServerView.server.authorization) {
-                              return;
-                            }
-                            setIsConnecting(true);
-                            await createPersonalConnection({
-                              mcpServerId: mcpServerView.server.sId,
-                              mcpServerDisplayName:
-                                getMcpServerViewDisplayName(mcpServerView),
-                              provider:
-                                mcpServerView.server.authorization.provider,
-                              useCase: "personal_actions",
-                              scope: mcpServerView.server.authorization.scope,
-                            });
-                            setIsConnecting(false);
-                          }}
+              ({ mcpServerView, isAlreadyConnected }) => {
+                const personalAuthInputs =
+                  mcpServerView.server.authorization?.personalAuthInputs ?? [];
+                const personalAuthDefaults =
+                  mcpServerView.server.authorization?.personalAuthDefaults ??
+                  {};
+                const serverInputs =
+                  additionalInputsMap[mcpServerView.sId] ?? {};
+
+                return (
+                  <div key={mcpServerView.sId} className="py-2">
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Icon
+                          visual={getIcon(mcpServerView.server.icon)}
+                          size="md"
                         />
-                      )}
+                        <strong>
+                          {getMcpServerViewDisplayName(mcpServerView)}
+                        </strong>
+                      </div>
+                      <div>
+                        {isAlreadyConnected ? (
+                          <Chip color="green" label="Connected" />
+                        ) : (
+                          <Button
+                            icon={CloudArrowLeftRightIcon}
+                            size="xs"
+                            variant="outline"
+                            label="Connect"
+                            disabled={isConnecting}
+                            onClick={async () => {
+                              if (!mcpServerView.server.authorization) {
+                                return;
+                              }
+                              setIsConnecting(true);
+                              await createPersonalConnection({
+                                mcpServerId: mcpServerView.server.sId,
+                                mcpServerDisplayName:
+                                  getMcpServerViewDisplayName(mcpServerView),
+                                provider:
+                                  mcpServerView.server.authorization.provider,
+                                useCase: "personal_actions",
+                                scope: mcpServerView.server.authorization.scope,
+                                additionalInputs:
+                                  Object.keys(serverInputs).length > 0
+                                    ? serverInputs
+                                    : undefined,
+                              });
+                              setIsConnecting(false);
+                            }}
+                          />
+                        )}
+                      </div>
                     </div>
+                    {/* Render personal auth input fields for disconnected servers */}
+                    {!isAlreadyConnected &&
+                      personalAuthInputs.map((input) => (
+                        <div
+                          key={input.extraConfigKey}
+                          className="mt-2 pl-8 pr-2"
+                        >
+                          <Input
+                            name={input.extraConfigKey}
+                            placeholder={
+                              input.placeholder ?? `${input.label} (optional)`
+                            }
+                            value={serverInputs[input.extraConfigKey] ?? ""}
+                            onChange={(e) => {
+                              setAdditionalInputsMap((prev) => ({
+                                ...prev,
+                                [mcpServerView.sId]: {
+                                  ...prev[mcpServerView.sId],
+                                  [input.extraConfigKey]: e.target.value,
+                                },
+                              }));
+                            }}
+                            message={
+                              personalAuthDefaults[input.extraConfigKey]
+                                ? `Default: ${personalAuthDefaults[input.extraConfigKey]}`
+                                : undefined
+                            }
+                          />
+                        </div>
+                      ))}
                   </div>
-                </div>
-              )
+                );
+              }
             )}
             <p className="mt-4">
               {disconnectedCount}{" "}
