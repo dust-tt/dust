@@ -288,7 +288,7 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   // Wait for SDK build if:
   // - --no-open is passed (forced, no UI to show progress)
   // - --wait is explicitly passed
-  // Otherwise, let the watch process run and show progress in zellij
+  // Otherwise, let the watch process run and show progress in terminal session
   const shouldWaitForSdk = options.noOpen || options.wait;
   const sdkResult = await startSdk(env, worktreePath, Boolean(shouldWaitForSdk), settings);
   if (!sdkResult.ok) return sdkResult;
@@ -301,10 +301,10 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   console.log();
   console.log("Next steps:");
   console.log(`  dust-hive warm ${name}    # Start all services`);
-  console.log(`  dust-hive open ${name}    # Open zellij session`);
+  console.log(`  dust-hive open ${name}    # Open terminal session`);
   console.log();
 
-  // Open zellij unless --no-open
+  // Open terminal session unless --no-open
   if (!options.noOpen) {
     return openCommand(name, buildOpenOptions(name, options));
   }

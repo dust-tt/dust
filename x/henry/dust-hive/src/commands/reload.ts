@@ -2,7 +2,7 @@ import { unlink } from "node:fs/promises";
 import { withEnvironment } from "../lib/commands";
 import { isErrnoException } from "../lib/errors";
 import { logger } from "../lib/logger";
-import { getZellijLayoutPath } from "../lib/paths";
+import { getConfiguredMultiplexer, getSessionName } from "../lib/multiplexer";
 import { openCommand } from "./open";
 
 interface ReloadOptions {
@@ -10,26 +10,19 @@ interface ReloadOptions {
 }
 
 export const reloadCommand = withEnvironment("reload", async (env, options: ReloadOptions = {}) => {
-  const sessionName = `dust-hive-${env.name}`;
+  const multiplexer = await getConfiguredMultiplexer();
+  const sessionName = getSessionName(env.name);
 
   logger.step("Killing existing session...");
 
   // Kill session first (stops it)
-  const killProc = Bun.spawn(["zellij", "kill-session", sessionName], {
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  await killProc.exited;
+  await multiplexer.killSession(sessionName);
 
   // Then delete it (removes from list)
-  const deleteProc = Bun.spawn(["zellij", "delete-session", sessionName], {
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  await deleteProc.exited;
+  await multiplexer.deleteSession(sessionName);
 
   // Remove old layout
-  const layoutPath = getZellijLayoutPath();
+  const layoutPath = multiplexer.getLayoutPath("layout.kdl");
   try {
     await unlink(layoutPath);
   } catch (error) {

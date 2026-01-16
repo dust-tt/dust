@@ -3,6 +3,7 @@ import { removeDockerVolumes, stopDocker } from "../lib/docker";
 import { type Environment, deleteEnvironmentDir, getEnvironment } from "../lib/environment";
 import { directoryExists } from "../lib/fs";
 import { logger } from "../lib/logger";
+import { getConfiguredMultiplexer, getSessionName } from "../lib/multiplexer";
 import { getWorktreeDir } from "../lib/paths";
 import { cleanupServicePorts } from "../lib/ports";
 import { readPid, stopAllServices } from "../lib/process";
@@ -14,22 +15,15 @@ import { isDockerRunning } from "../lib/state";
 import { dropTestDatabase } from "../lib/test-postgres";
 import { deleteBranch, hasUncommittedChanges, removeWorktree } from "../lib/worktree";
 
-async function cleanupZellijSession(envName: string): Promise<void> {
-  const sessionName = `dust-hive-${envName}`;
+async function cleanupMultiplexerSession(envName: string): Promise<void> {
+  const multiplexer = await getConfiguredMultiplexer();
+  const sessionName = getSessionName(envName);
 
   // Kill session first (stops it)
-  const killProc = Bun.spawn(["zellij", "kill-session", sessionName], {
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  await killProc.exited;
+  await multiplexer.killSession(sessionName);
 
   // Then delete it (removes from list)
-  const deleteProc = Bun.spawn(["zellij", "delete-session", sessionName], {
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  await deleteProc.exited;
+  await multiplexer.deleteSession(sessionName);
 }
 
 interface DestroyOptions {
@@ -87,9 +81,9 @@ async function destroySingleEnvironment(
   logger.step("Stopping all services...");
   await stopAllServices(env.name);
 
-  // Clean up zellij session
-  logger.step("Cleaning up zellij session...");
-  await cleanupZellijSession(env.name);
+  // Clean up multiplexer session
+  logger.step("Cleaning up multiplexer session...");
+  await cleanupMultiplexerSession(env.name);
 
   // Force cleanup any orphaned processes on service ports
   const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {

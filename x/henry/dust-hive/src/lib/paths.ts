@@ -9,9 +9,14 @@ export const DUST_HIVE_ROOT = resolve(dirname(import.meta.path), "../..");
 // Base directories
 export const DUST_HIVE_HOME = join(homedir(), ".dust-hive");
 export const DUST_HIVE_ENVS = join(DUST_HIVE_HOME, "envs");
-export const DUST_HIVE_ZELLIJ = join(DUST_HIVE_HOME, "zellij");
 export const DUST_HIVE_SCRIPTS = join(DUST_HIVE_HOME, "scripts");
 export const DUST_HIVE_WORKTREES = join(homedir(), "dust-hive");
+
+/**
+ * @deprecated Use multiplexer adapter's getLayoutDirectory() instead
+ * Kept for backward compatibility during migration
+ */
+export const DUST_HIVE_ZELLIJ = join(DUST_HIVE_HOME, "zellij");
 
 // Global config
 export const CONFIG_ENV_PATH = join(DUST_HIVE_HOME, "config.env");
@@ -41,7 +46,10 @@ export const TEST_POSTGRES_PASSWORD = "test";
 export const TEST_REDIS_CONTAINER_NAME = "dust-hive-test-redis";
 export const TEST_REDIS_PORT = 6479;
 
-// Main zellij session
+/**
+ * @deprecated Import MAIN_SESSION_NAME from "./multiplexer" instead
+ * Kept for backward compatibility during migration
+ */
 export const MAIN_SESSION_NAME = "dust-hive-main";
 
 // Seed user configuration
@@ -88,7 +96,10 @@ export function getLogPath(name: string, service: string): string {
   return join(getEnvDir(name), `${service}.log`);
 }
 
-// Zellij
+/**
+ * @deprecated Use multiplexer adapter's getLayoutPath() instead
+ * Kept for backward compatibility during migration
+ */
 export function getZellijLayoutPath(): string {
   return join(DUST_HIVE_ZELLIJ, "layout.kdl");
 }
