@@ -15,6 +15,7 @@ import { seedConversations } from "./seedConversations";
 import { seedMCPTools } from "./seedMCPTools";
 import { seedSkill } from "./seedSkill";
 import { seedSpace } from "./seedSpace";
+import { seedSuggestedSkills } from "./seedSuggestedSkills";
 import type { Assets, SeedContext } from "./types";
 
 // The workspace sId created by dust-hive seed
@@ -32,7 +33,10 @@ function loadAssets(): Assets {
   const conversations = JSON.parse(
     fs.readFileSync(path.join(assetsDir, "conversations.json"), "utf-8")
   );
-  return { agent, skill, conversations };
+  const suggestedSkills = JSON.parse(
+    fs.readFileSync(path.join(assetsDir, "suggested-skills.json"), "utf-8")
+  );
+  return { agent, skill, conversations, suggestedSkills };
 }
 
 interface SeedConfig {
@@ -54,6 +58,7 @@ makeScript({}, async ({ execute }, logger) => {
     agent: agentAsset,
     skill: skillAsset,
     conversations: conversationsAsset,
+    suggestedSkills: suggestedSkillsAsset,
   } = loadAssets();
 
   logger.info("Loading workspace...");
@@ -111,6 +116,7 @@ makeScript({}, async ({ execute }, logger) => {
   }
 
   await seedSkill(ctx, skillAsset);
+  await seedSuggestedSkills(ctx, suggestedSkillsAsset);
   const customAgentSId = await seedAgent(ctx, agentAsset);
   await seedConversations(ctx, conversationsAsset, customAgentSId);
   const restrictedSpace = await seedSpace(ctx);
