@@ -55,17 +55,17 @@ export function SkillBuilderRequestedSpacesSection() {
 
   const handleRemoveSpace = async (space: SpaceType) => {
     const actionsToRemove = spaceIdToActions[space.sId] || [];
-    const knowledgeToRemove = knowledgeToRemoveBySpaceId[space.sId] || [];
+    const knowledgeInSpace = knowledgeToRemoveBySpaceId[space.sId] || [];
 
     // Don't show confirmation if nothing to remove.
-    if (actionsToRemove.length === 0 && knowledgeToRemove.length === 0) {
+    if (actionsToRemove.length === 0 && knowledgeInSpace.length === 0) {
       return;
     }
 
     const confirmed = await confirmRemoveSpace(
       space,
       actionsToRemove,
-      knowledgeToRemove
+      knowledgeInSpace
     );
 
     if (!confirmed) {
@@ -73,19 +73,10 @@ export function SkillBuilderRequestedSpacesSection() {
     }
 
     const actionIdsToRemove = new Set(actionsToRemove.map((a) => a.id));
-    const knowledgeNodeIdsToRemove = new Set(
-      knowledgeToRemove.map((k) => k.nodeId)
-    );
 
     // Filter out the tools to remove and set the new value.
     const newTools = tools.filter((t) => !actionIdsToRemove.has(t.id));
     setValue("tools", newTools, { shouldDirty: true });
-
-    // Filter out the attached knowledge to remove and set the new value.
-    const newAttachedKnowledge = (attachedKnowledge ?? []).filter(
-      (k) => !knowledgeNodeIdsToRemove.has(k.nodeId)
-    );
-    setValue("attachedKnowledge", newAttachedKnowledge, { shouldDirty: true });
   };
 
   const globalSpace = useMemo(() => {

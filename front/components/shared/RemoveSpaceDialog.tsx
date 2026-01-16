@@ -101,12 +101,18 @@ export function useRemoveSpaceConfirm({
       })),
     ];
 
+    const hasKnowledge = knowledgeItems.length > 0;
+
     return confirm({
       title: `Remove ${getSpaceName(space)} space`,
       message: (
-        <p className="text-sm">
-          This will remove the following elements from the {entityName}:
-          <span className="mt-4 flex flex-wrap items-center gap-1">
+        <div className="space-y-3">
+          <p className="text-sm">
+            {hasKnowledge
+              ? `The following elements from this space are used in the ${entityName}:`
+              : `This will remove the following elements from the ${entityName}:`}
+          </p>
+          <span className="flex flex-wrap items-center gap-1">
             {allItems.map((item, index) => (
               <span key={item.id} className="inline-flex items-center gap-1">
                 {item.icon}
@@ -121,10 +127,17 @@ export function useRemoveSpaceConfirm({
               </span>
             ))}
           </span>
-        </p>
+          {hasKnowledge && (
+            <p className="dark:text-warning-night text-sm text-warning">
+              To remove this space, first update your instructions to remove the
+              knowledge references.
+            </p>
+          )}
+        </div>
       ),
       validateLabel: "OK",
       validateVariant: "warning",
+      validateDisabled: hasKnowledge,
     });
   };
 }
