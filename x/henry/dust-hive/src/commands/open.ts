@@ -6,10 +6,8 @@ import {
   DUST_HIVE_SCRIPTS,
   DUST_HIVE_ZELLIJ,
   MAIN_SESSION_NAME,
-  TEMPORAL_LOG_PATH,
   getEnvFilePath,
   getServiceLogsTuiPath,
-  getWatchScriptPath,
   getWorktreeDir,
   getZellijLayoutPath,
 } from "../lib/paths";
@@ -41,74 +39,6 @@ const TAB_TEMPLATE_COMPACT = `    default_tab_template {
             plugin location="zellij:compact-bar"
         }
     }`;
-
-// Unified watch script content - handles both env services and temporal
-// Usage: watch-logs.sh --temporal
-//        watch-logs.sh <env-name> <service>
-function getWatchScriptContent(): string {
-  return `#!/usr/bin/env bash
-# Log watcher with Ctrl+C menu for restart/clear/quit
-# Usage: watch-logs.sh --temporal
-#        watch-logs.sh <env-name> <service>
-
-if [[ "\$1" == "--temporal" ]]; then
-  # Temporal mode
-  LABEL="temporal"
-  LOG_FILE="${TEMPORAL_LOG_PATH}"
-  RESTART_CMD="dust-hive temporal restart"
-else
-  # Environment service mode
-  ENV_NAME="\$1"
-  SERVICE="\$2"
-
-  if [[ -z "\$ENV_NAME" || -z "\$SERVICE" ]]; then
-    echo "Usage: watch-logs.sh --temporal"
-    echo "       watch-logs.sh <env-name> <service>"
-    exit 1
-  fi
-
-  LABEL="\$SERVICE"
-  LOG_FILE="\$HOME/.dust-hive/envs/\$ENV_NAME/\$SERVICE.log"
-  RESTART_CMD="dust-hive restart \\"\$ENV_NAME\\" \\"\$SERVICE\\""
-fi
-
-mkdir -p "\$(dirname "\$LOG_FILE")"
-touch "\$LOG_FILE"
-
-# Trap SIGINT to prevent script from exiting on Ctrl+C
-trap '' SIGINT
-
-show_menu() {
-  echo ""
-  echo -e "\\033[100m [\$LABEL] r=restart | c=clear | q=quit | Enter=resume \\033[0m"
-  read -r -n 1 cmd
-  echo ""
-
-  case "\$cmd" in
-    r|R)
-      echo -e "\\033[33m[Restarting \$LABEL...]\\033[0m"
-      eval "\$RESTART_CMD"
-      echo -e "\\033[32m[\$LABEL restarted]\\033[0m"
-      sleep 1
-      ;;
-    c|C)
-      clear
-      ;;
-    q|Q)
-      exit 0
-      ;;
-  esac
-}
-
-while true; do
-  echo -e "\\033[100m [\$LABEL] Ctrl+C for menu \\033[0m"
-  echo ""
-  # Run tail in a subshell that doesn't ignore SIGINT
-  (trap - SIGINT; exec tail -n 500 -F "\$LOG_FILE") || true
-  show_menu
-done
-`;
-}
 
 // Unified service logs TUI - cycles through all services in one tab
 // Usage: service-logs-tui.sh <env-name>
@@ -284,16 +214,6 @@ done
 `;
 }
 
-async function ensureWatchScript(): Promise<string> {
-  await mkdir(DUST_HIVE_SCRIPTS, { recursive: true });
-  const scriptPath = getWatchScriptPath();
-  await Bun.write(scriptPath, getWatchScriptContent());
-  // Make executable
-  const proc = Bun.spawn(["chmod", "+x", scriptPath], { stdout: "ignore", stderr: "ignore" });
-  await proc.exited;
-  return scriptPath;
-}
-
 export async function ensureServiceLogsTui(): Promise<string> {
   await mkdir(DUST_HIVE_SCRIPTS, { recursive: true });
   const scriptPath = getServiceLogsTuiPath();
@@ -321,22 +241,13 @@ interface LayoutOptions {
   unifiedLogs?: boolean | undefined;
 }
 
-interface ScriptPaths {
-  watchScript: string;
-  serviceLogsTui: string;
-}
-
-// Generate a single service tab with log watching and restart menu
-function generateServiceTab(
-  envName: string,
-  service: ServiceName,
-  watchScriptPath: string
-): string {
+// Generate a single service tab using dust-hive logs command
+function generateServiceTab(envName: string, service: ServiceName): string {
   const tabName = TAB_NAMES[service];
   return `    tab name="${tabName}" {
         pane {
-            command "${kdlEscape(watchScriptPath)}"
-            args "${kdlEscape(envName)}" "${kdlEscape(service)}"
+            command "dust-hive"
+            args "logs" "${kdlEscape(envName)}" "${kdlEscape(service)}" "-f"
             start_suspended true
         }
     }`;
@@ -347,7 +258,6 @@ function generateLayout(
   envName: string,
   worktreePath: string,
   envShPath: string,
-  scripts: ScriptPaths,
   options: LayoutOptions = {}
 ): string {
   const { warmCommand, initialCommand, compact, unifiedLogs } = options;
@@ -370,19 +280,17 @@ function generateLayout(
   // Generate logs tabs based on mode
   let logsTabs: string;
   if (unifiedLogs) {
-    // Single unified logs tab (suspended by default, activates on focus)
+    // Single unified logs tab using dust-hive logs -i
     logsTabs = `    tab name="logs" {
         pane {
-            command "${kdlEscape(scripts.serviceLogsTui)}"
-            args "${kdlEscape(envName)}"
+            command "dust-hive"
+            args "logs" "${kdlEscape(envName)}" "-i"
             start_suspended true
         }
     }`;
   } else {
     // Individual service tabs (default)
-    logsTabs = ALL_SERVICES.map((service) =>
-      generateServiceTab(envName, service, scripts.watchScript)
-    ).join("\n\n");
+    logsTabs = ALL_SERVICES.map((service) => generateServiceTab(envName, service)).join("\n\n");
   }
 
   // When compact mode is enabled, use bottom bar; otherwise use top bar
@@ -410,25 +318,15 @@ async function writeLayout(
   envName: string,
   worktreePath: string,
   envShPath: string,
-  scripts: ScriptPaths,
   options: LayoutOptions = {}
 ): Promise<string> {
   await mkdir(DUST_HIVE_ZELLIJ, { recursive: true });
 
   const layoutPath = getZellijLayoutPath();
-  const content = generateLayout(envName, worktreePath, envShPath, scripts, options);
+  const content = generateLayout(envName, worktreePath, envShPath, options);
   await Bun.write(layoutPath, content);
 
   return layoutPath;
-}
-
-// Ensure all scripts exist and return their paths
-async function ensureScripts(): Promise<ScriptPaths> {
-  const [watchScript, serviceLogsTui] = await Promise.all([
-    ensureWatchScript(),
-    ensureServiceLogsTui(),
-  ]);
-  return { watchScript, serviceLogsTui };
 }
 
 interface OpenOptions {
@@ -504,8 +402,7 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     // Ensure session exists (create in background if needed)
     const sessionExists = await checkSessionExists(sessionName);
     if (!sessionExists) {
-      const scripts = await ensureScripts();
-      const layoutPath = await writeLayout(env.name, worktreePath, envShPath, scripts, {
+      const layoutPath = await writeLayout(env.name, worktreePath, envShPath, {
         warmCommand: options.warmCommand,
         initialCommand: options.initialCommand,
         compact: options.compact,
@@ -532,9 +429,6 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     return Ok(undefined);
   }
 
-  // Ensure scripts exist
-  const scripts = await ensureScripts();
-
   // Check if session already exists
   const sessionExists = await checkSessionExists(sessionName);
 
@@ -560,7 +454,7 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
     await proc.exited;
   } else {
     // Create new session with layout
-    const layoutPath = await writeLayout(env.name, worktreePath, envShPath, scripts, {
+    const layoutPath = await writeLayout(env.name, worktreePath, envShPath, {
       warmCommand: options.warmCommand,
       initialCommand: options.initialCommand,
       compact: options.compact,
@@ -594,7 +488,7 @@ export const openCommand = withEnvironment("open", async (env, options: OpenOpti
 });
 
 // Generate layout for main session (repo root + temporal logs)
-function generateMainLayout(repoRoot: string, watchScriptPath: string, compact?: boolean): string {
+function generateMainLayout(repoRoot: string, compact?: boolean): string {
   const shellPath = getUserShell();
   const tabTemplate = compact ? TAB_TEMPLATE_COMPACT : TAB_TEMPLATE;
 
@@ -611,8 +505,8 @@ ${tabTemplate}
 
     tab name="temporal" {
         pane {
-            command "${kdlEscape(watchScriptPath)}"
-            args "--temporal"
+            command "dust-hive"
+            args "temporal" "logs"
             start_suspended true
         }
     }
@@ -620,14 +514,10 @@ ${tabTemplate}
 `;
 }
 
-async function writeMainLayout(
-  repoRoot: string,
-  watchScriptPath: string,
-  compact?: boolean
-): Promise<string> {
+async function writeMainLayout(repoRoot: string, compact?: boolean): Promise<string> {
   await mkdir(DUST_HIVE_ZELLIJ, { recursive: true });
   const layoutPath = join(DUST_HIVE_ZELLIJ, "main-layout.kdl");
-  const content = generateMainLayout(repoRoot, watchScriptPath, compact);
+  const content = generateMainLayout(repoRoot, compact);
   await Bun.write(layoutPath, content);
   return layoutPath;
 }
@@ -647,9 +537,6 @@ export async function openMainSession(
   const inZellij = process.env["ZELLIJ"] !== undefined;
   const currentSession = process.env["ZELLIJ_SESSION_NAME"];
 
-  // Ensure watch script exists (same script, will be called with --temporal)
-  const watchScriptPath = await ensureWatchScript();
-
   // Check if session exists
   const sessionExists = await checkSessionExists(sessionName);
 
@@ -660,7 +547,7 @@ export async function openMainSession(
     }
 
     if (!sessionExists) {
-      const layoutPath = await writeMainLayout(repoRoot, watchScriptPath, options.compact);
+      const layoutPath = await writeMainLayout(repoRoot, options.compact);
       await createSessionInBackground(sessionName, layoutPath);
     }
 
@@ -696,7 +583,7 @@ export async function openMainSession(
     });
     await proc.exited;
   } else {
-    const layoutPath = await writeMainLayout(repoRoot, watchScriptPath, options.compact);
+    const layoutPath = await writeMainLayout(repoRoot, options.compact);
 
     if (!options.attach) {
       await createSessionInBackground(sessionName, layoutPath);
