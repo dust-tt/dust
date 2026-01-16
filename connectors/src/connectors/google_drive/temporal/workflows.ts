@@ -449,8 +449,7 @@ export async function googleDriveFullSyncV2({
   // Track folder changes that arrive during sync for next run
   const addedFoldersForNextRun = new Set<string>();
   const removedFoldersForNextRun = new Set<string>();
-  // Track folders removed during sync (to skip starting or cancel running)
-  const removedFolderIds = new Set<string>();
+  let syncHasStarted = false;
   let syncCompleted = false;
 
   // Track running workflows for cancellation
@@ -467,20 +466,16 @@ export async function googleDriveFullSyncV2({
     for (const { action, folderId } of folderUpdates) {
       switch (action) {
         case "added": {
-          if (syncCompleted && removedFoldersForNextRun.has(folderId)) {
-            removedFoldersForNextRun.delete(folderId);
-          } else {
+          if (syncHasStarted) {
             addedFoldersForNextRun.add(folderId);
+            removedFoldersForNextRun.delete(folderId);
           }
           break;
         }
         case "removed": {
-          if (syncCompleted && addedFoldersForNextRun.has(folderId)) {
+          if (syncHasStarted) {
             addedFoldersForNextRun.delete(folderId);
-          } else if (syncCompleted) {
             removedFoldersForNextRun.add(folderId);
-          } else {
-            removedFolderIds.add(folderId);
             const folderWorkflow = runningFolderWorkflows[folderId];
             if (folderWorkflow) {
               void cancelChildWorkflow(folderWorkflow.workflowId);
@@ -498,6 +493,8 @@ export async function googleDriveFullSyncV2({
       }
     }
   });
+
+  syncHasStarted = true;
 
   // Start progress reporting task (runs in parallel with child workflows)
   const progressReporting = async () => {
@@ -530,7 +527,7 @@ export async function googleDriveFullSyncV2({
     folderIds,
     async (folderId) => {
       // Skip if folder was removed before we could start
-      if (removedFolderIds.has(folderId)) {
+      if (removedFoldersForNextRun.has(folderId)) {
         return;
       }
 
@@ -560,7 +557,7 @@ export async function googleDriveFullSyncV2({
       };
 
       // Check again in case a removal signal arrived while starting
-      if (removedFolderIds.has(folderId)) {
+      if (removedFoldersForNextRun.has(folderId)) {
         void cancelChildWorkflow(childWorkflowId);
         delete runningFolderWorkflows[folderId];
         return;
@@ -605,23 +602,13 @@ export async function googleDriveFullSyncV2({
   }
 
   // If folders were added during sync, restart workflow to handle them
-  if (addedFoldersForNextRun.size > 0) {
+  if (addedFoldersForNextRun.size > 0 || removedFoldersForNextRun.size > 0) {
     await continueAsNew<typeof googleDriveFullSyncV2>({
       connectorId,
       garbageCollect: true,
       startSyncTs: undefined,
       mimeTypeFilter,
       foldersToBrowse: [...addedFoldersForNextRun],
-    });
-  } else if (removedFoldersForNextRun.size > 0) {
-    // Only removals, just re-launch GC to clean them up
-    await executeChild(googleDriveGarbageCollectorWorkflow, {
-      workflowId: googleDriveGarbageCollectorWorkflowId(connectorId),
-      searchAttributes: {
-        connectorId: [connectorId],
-      },
-      args: [connectorId, new Date().getTime()],
-      memo: workflowInfo().memo,
     });
   }
 }
@@ -667,7 +654,7 @@ export async function googleDriveIncrementalSyncPerDrive({
         await concurrentExecutor(
           newFolders,
           async (folderId) => {
-            await startChild(googleDriveFolderSync, {
+            const handle = await startChild(googleDriveFolderSync, {
               workflowId: googleDriveFolderSyncWorkflowId(
                 connectorId,
                 folderId
@@ -682,6 +669,7 @@ export async function googleDriveIncrementalSyncPerDrive({
               ],
               memo: workflowInfo().memo,
             });
+            await handle.result();
           },
           { concurrency: GDRIVE_MAX_CONCURRENT_FOLDER_SYNCS }
         );
