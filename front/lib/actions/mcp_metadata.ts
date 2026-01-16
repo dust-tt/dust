@@ -7,7 +7,7 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { ProxyAgent } from "undici";
+import type { ProxyAgent } from "undici";
 
 import {
   getConnectionForMCPServer,
@@ -27,20 +27,18 @@ import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
+import { isHostUnderVerifiedDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
-import { getUntrustedEgressAgent } from "@app/lib/egress/server";
+import {
+  getStaticIPProxyAgent,
+  getUntrustedEgressAgent,
+} from "@app/lib/egress/server";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase, Result } from "@app/types";
-import {
-  assertNever,
-  EnvironmentConfig,
-  Err,
-  normalizeError,
-  Ok,
-} from "@app/types";
+import { assertNever, Err, normalizeError, Ok } from "@app/types";
 
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
 
@@ -85,18 +83,27 @@ export type MCPConnectionParams =
   | ServerSideMCPConnectionParams
   | ClientSideMCPConnectionParams;
 
-function createMCPDispatcher(auth: Authenticator): ProxyAgent | undefined {
-  if (isWorkspaceUsingStaticIP(auth.getNonNullableWorkspace())) {
-    const proxyHost = `${EnvironmentConfig.getEnvVariable(
-      "PROXY_USER_NAME"
-    )}:${EnvironmentConfig.getEnvVariable(
-      "PROXY_USER_PASSWORD"
-    )}@${EnvironmentConfig.getEnvVariable("PROXY_HOST")}`;
-    const proxyPort = EnvironmentConfig.getEnvVariable("PROXY_PORT");
+async function createMCPDispatcher(
+  auth: Authenticator,
+  host: string
+): Promise<ProxyAgent | undefined> {
+  const workspace = auth.getNonNullableWorkspace();
 
-    if (proxyHost && proxyPort) {
-      const proxyUrl = `http://${proxyHost}:${proxyPort}`;
-      return new ProxyAgent(proxyUrl);
+  // Check if workspace should use static IP:
+  // 1. Legacy hardcoded check for specific workspaces
+  // 2. Domain-based check: host is under any verified domain for this workspace
+  const useStaticIP =
+    isWorkspaceUsingStaticIP(workspace) ||
+    (await isHostUnderVerifiedDomain(auth, host));
+
+  if (useStaticIP) {
+    const staticIPProxy = getStaticIPProxyAgent();
+    if (staticIPProxy) {
+      logger.info(
+        { workspaceId: workspace.sId, host, useStaticIP },
+        "Using static IP proxy for MCP request"
+      );
+      return staticIPProxy;
     }
   }
 
@@ -347,7 +354,7 @@ export async function connectToMCPServer(
               requestInit: {
                 // Include stored custom headers
                 headers: remoteMCPServer.customHeaders ?? {},
-                dispatcher: createMCPDispatcher(auth),
+                dispatcher: await createMCPDispatcher(auth, url.hostname),
               },
               authProvider: new MCPOAuthProvider(auth, token),
             };
@@ -378,7 +385,7 @@ export async function connectToMCPServer(
       const url = new URL(params.remoteMCPServerUrl);
       const req = {
         requestInit: {
-          dispatcher: createMCPDispatcher(auth),
+          dispatcher: await createMCPDispatcher(auth, url.hostname),
           headers: { ...(params.headers ?? {}) },
         },
         authProvider: new MCPOAuthProvider(auth, undefined),
