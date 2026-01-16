@@ -95,7 +95,7 @@ export const createEventMeta = {
         "Whether to create a conference (Google Meet) for the event. Defaults to true."
       ),
   },
-  stake: "low" as MCPToolStakeLevelType,
+  stake: "medium" as MCPToolStakeLevelType,
 };
 
 export const updateEventMeta = {
@@ -130,7 +130,7 @@ export const updateEventMeta = {
         "Whether to create a conference (Google Meet) for the event. If not provided, existing conference settings are preserved."
       ),
   },
-  stake: "low" as MCPToolStakeLevelType,
+  stake: "medium" as MCPToolStakeLevelType,
 };
 
 export const deleteEventMeta = {
@@ -143,7 +143,7 @@ export const deleteEventMeta = {
       .describe("The calendar ID (default: 'primary')."),
     eventId: z.string().describe("The ID of the event to delete."),
   },
-  stake: "low" as MCPToolStakeLevelType,
+  stake: "medium" as MCPToolStakeLevelType,
 };
 
 export const checkAvailabilityMeta = {

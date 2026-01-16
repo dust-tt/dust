@@ -288,15 +288,19 @@ describe("makeToolsWithStakesAndTimeout", () => {
         list_calendars: "high",
         list_events: "never_ask",
         get_event: "never_ask",
-        create_event: "low",
-        update_event: "low",
-        delete_event: "low",
+        create_event: "medium",
+        update_event: "medium",
+        delete_event: "medium",
         check_availability: "never_ask",
         get_user_timezones: "never_ask",
       },
       toolsRetryPolicies: undefined,
       serverTimeoutMs: undefined,
-      toolsArgumentsRequiringApproval: undefined,
+      toolsArgumentsRequiringApproval: {
+        create_event: ["calendarId"],
+        update_event: ["calendarId"],
+        delete_event: ["calendarId"],
+      },
     });
   });
 
