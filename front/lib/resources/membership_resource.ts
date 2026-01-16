@@ -920,6 +920,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       await this.model.destroy({
         where: {
           id: this.id,
+          workspaceId: this.workspaceId,
         },
         transaction,
       });
