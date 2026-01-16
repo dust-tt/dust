@@ -3,6 +3,11 @@ import { EnvironmentConfig, isDevelopment } from "@app/types";
 export const SUPPORTED_REGIONS = ["europe-west1", "us-central1"] as const;
 export type RegionType = (typeof SUPPORTED_REGIONS)[number];
 
+export const REGION_TIMEZONES: Record<RegionType, string> = {
+  "europe-west1": "Europe/Paris",
+  "us-central1": "America/New_York",
+};
+
 export interface RegionInfo {
   name: RegionType;
   url: string;
