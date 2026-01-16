@@ -363,6 +363,8 @@ export async function* tryCallMCPTool(
     }
     mcpClient = connectionResult.value;
 
+    heartbeat();
+
     const emitter = new EventEmitter();
 
     // Convert the emitter to an async generator.
