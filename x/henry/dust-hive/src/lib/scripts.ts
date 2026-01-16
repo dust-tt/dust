@@ -129,9 +129,12 @@ stop_tail() {
   const serviceFunctions = `
 switch_service() {
   stop_tail
-  clear
-  draw_header
-  setup_scroll_region
+  # Reset scroll region, clear screen properly, then set up header
+  printf "\\033[r"                    # Reset scroll region to full screen
+  printf "\\033[2J\\033[H"            # Clear screen and move cursor to home
+  setup_scroll_region                 # Set scroll region FIRST (lines 2+)
+  draw_header                         # Draw header at line 1 (outside scroll region)
+  printf "\\033[2;1H"                 # Move cursor to line 2 for tail output
   start_tail
 }
 
@@ -184,10 +187,11 @@ decrease_lines() {
 
   // Main loop
   const mainLoop = `
-# Initial draw
-clear
-draw_header
-setup_scroll_region
+# Initial draw - set scroll region FIRST to protect header line
+printf "\\033[2J\\033[H"            # Clear screen and move cursor to home
+setup_scroll_region                 # Set scroll region (lines 2+)
+draw_header                         # Draw header at line 1 (protected)
+printf "\\033[2;1H"                 # Move cursor to line 2 for tail output
 start_tail
 
 # Main input loop - read single chars
