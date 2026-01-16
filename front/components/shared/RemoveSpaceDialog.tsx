@@ -1,4 +1,4 @@
-import { Icon, InboxIcon } from "@dust-tt/sparkle";
+import { DocumentIcon, Icon } from "@dust-tt/sparkle";
 import React, { useContext } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
@@ -87,7 +87,7 @@ export function useRemoveSpaceConfirm({
       ...knowledgeItems.map((k) => ({
         id: k.nodeId,
         name: k.title,
-        icon: <Icon visual={InboxIcon} size="xs" />,
+        icon: <Icon visual={DocumentIcon} size="xs" />,
       })),
       ...skillItems.map((skill) => ({
         id: skill.sId,
