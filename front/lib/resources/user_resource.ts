@@ -356,7 +356,7 @@ export class UserResource extends BaseResource<UserModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    await this.deleteAllMetadata();
+    await this.deleteAllMetadata(auth);
 
     try {
       await this.model.destroy({
@@ -473,7 +473,7 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
-  async deleteAllMetadata() {
+  async deleteAllMetadata(auth: Authenticator) {
     await UserMetadataModel.destroy({
       where: {
         userId: this.id,
@@ -483,6 +483,7 @@ export class UserResource extends BaseResource<UserModel> {
     await UserToolApprovalModel.destroy({
       where: {
         userId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
 
