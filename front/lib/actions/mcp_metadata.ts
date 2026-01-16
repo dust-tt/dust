@@ -37,7 +37,7 @@ import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import logger from "@app/logger/logger";
-import type { MCPOAuthUseCase, ModelId, Result } from "@app/types";
+import type { MCPOAuthUseCase, Result } from "@app/types";
 import {
   assertNever,
   Err,
@@ -89,12 +89,12 @@ export type MCPConnectionParams =
   | ClientSideMCPConnectionParams;
 
 /**
- * Check if a host is under any verified domain for a workspace.
+ * Check if a host is under any verified domain for the workspace.
  * Used for MCP static IP egress routing.
  * Rejects IP address literals for security (only domain names are matched).
  */
 async function isHostUnderVerifiedDomain(
-  workspaceId: ModelId,
+  auth: Authenticator,
   host: string
 ): Promise<boolean> {
   if (isIpAddress(host)) {
@@ -103,7 +103,7 @@ async function isHostUnderVerifiedDomain(
 
   const verifiedDomains = await WorkspaceHasDomainModel.findAll({
     attributes: ["domain"],
-    where: { workspaceId },
+    where: { workspaceId: auth.getNonNullableWorkspace().id },
   });
 
   return verifiedDomains.some((d) => isHostUnderDomain(host, d.domain));
@@ -120,7 +120,7 @@ async function createMCPDispatcher(
   // 2. Domain-based check: host is under any verified domain for this workspace
   const useStaticIP =
     isWorkspaceUsingStaticIP(workspace) ||
-    (await isHostUnderVerifiedDomain(workspace.id, host));
+    (await isHostUnderVerifiedDomain(auth, host));
 
   if (useStaticIP) {
     const staticIPProxy = getStaticIPProxyAgent();
