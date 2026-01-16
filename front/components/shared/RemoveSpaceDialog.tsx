@@ -1,3 +1,4 @@
+import { Icon, InboxIcon } from "@dust-tt/sparkle";
 import React, { useContext } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
@@ -51,6 +52,11 @@ interface SkillToRemove {
   icon: string | null;
 }
 
+interface KnowledgeToRemove {
+  nodeId: string;
+  title: string;
+}
+
 interface UseRemoveSpaceConfirmParams {
   entityName: "agent" | "skill";
   mcpServerViews: MCPServerViewType[];
@@ -65,10 +71,25 @@ export function useRemoveSpaceConfirm({
   return async (
     space: SpaceType,
     actions: BuilderAction[],
-    skills: SkillToRemove[] = []
+    knowledgeOrSkills: KnowledgeToRemove[] | SkillToRemove[] = []
   ): Promise<boolean> => {
+    // Determine if we're dealing with knowledge items or skills based on the shape.
+    const isKnowledge = (
+      item: KnowledgeToRemove | SkillToRemove
+    ): item is KnowledgeToRemove => "nodeId" in item;
+
+    const knowledgeItems = knowledgeOrSkills.filter(isKnowledge);
+    const skillItems = knowledgeOrSkills.filter(
+      (item): item is SkillToRemove => !isKnowledge(item)
+    );
+
     const allItems: ItemToRemove[] = [
-      ...skills.map((skill) => ({
+      ...knowledgeItems.map((k) => ({
+        id: k.nodeId,
+        name: k.title,
+        icon: <Icon visual={InboxIcon} size="xs" />,
+      })),
+      ...skillItems.map((skill) => ({
         id: skill.sId,
         name: skill.name,
         icon: getSkillIcon(skill),

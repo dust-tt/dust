@@ -42,20 +42,50 @@ export function SkillBuilderRequestedSpacesSection() {
     );
   }, [spaceIdToActions, spaceIdsFromKnowledge, spaces]);
 
+  const knowledgeToRemoveBySpaceId = useMemo(() => {
+    const map: Record<string, NonNullable<typeof attachedKnowledge>> = {};
+    for (const k of attachedKnowledge ?? []) {
+      if (!map[k.spaceId]) {
+        map[k.spaceId] = [];
+      }
+      map[k.spaceId].push(k);
+    }
+    return map;
+  }, [attachedKnowledge]);
+
   const handleRemoveSpace = async (space: SpaceType) => {
     const actionsToRemove = spaceIdToActions[space.sId] || [];
+    const knowledgeToRemove = knowledgeToRemoveBySpaceId[space.sId] || [];
 
-    const confirmed = await confirmRemoveSpace(space, actionsToRemove);
+    // Don't show confirmation if nothing to remove.
+    if (actionsToRemove.length === 0 && knowledgeToRemove.length === 0) {
+      return;
+    }
+
+    const confirmed = await confirmRemoveSpace(
+      space,
+      actionsToRemove,
+      knowledgeToRemove
+    );
 
     if (!confirmed) {
       return;
     }
 
     const actionIdsToRemove = new Set(actionsToRemove.map((a) => a.id));
+    const knowledgeNodeIdsToRemove = new Set(
+      knowledgeToRemove.map((k) => k.nodeId)
+    );
 
-    // Filter out the tools to remove and set the new value
+    // Filter out the tools to remove and set the new value.
     const newTools = tools.filter((t) => !actionIdsToRemove.has(t.id));
     setValue("tools", newTools, { shouldDirty: true });
+
+    // Filter out the attached knowledge to remove and set the new value.
+    const newAttachedKnowledge = (attachedKnowledge ?? []).filter(
+      (k) => !knowledgeNodeIdsToRemove.has(k.nodeId)
+    );
+    setValue("attachedKnowledge", newAttachedKnowledge, { shouldDirty: true });
   };
 
   const globalSpace = useMemo(() => {
