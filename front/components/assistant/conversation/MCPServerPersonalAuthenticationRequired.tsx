@@ -48,13 +48,18 @@ export function MCPServerPersonalAuthenticationRequired({
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
 
-  // Generic state for additional auth inputs - keyed by extraConfigKey
   const personalAuthInputs = mcpServer?.authorization?.personalAuthInputs ?? [];
   const personalAuthDefaults =
     mcpServer?.authorization?.personalAuthDefaults ?? {};
   const [additionalInputs, setAdditionalInputs] = useState<
     Record<string, string>
   >({});
+  const canConnect = personalAuthInputs.every(
+    ({ extraConfigKey, required }) =>
+      !required ||
+      !!additionalInputs[extraConfigKey]?.trim() ||
+      !!personalAuthDefaults[extraConfigKey]?.trim()
+  );
 
   const icon = mcpServer?.icon
     ? getIcon(mcpServer.icon)
@@ -63,37 +68,31 @@ export function MCPServerPersonalAuthenticationRequired({
   const onConnectClick = async (mcpServer: MCPServerType) => {
     setIsConnecting(true);
 
-    const success = await createPersonalConnection({
-      mcpServerId: mcpServer.sId,
-      mcpServerDisplayName: getMcpServerDisplayName(mcpServer),
-      provider,
-      useCase: "personal_actions",
-      scope,
-      additionalInputs:
-        Object.keys(additionalInputs).length > 0 ? additionalInputs : undefined,
-    });
+    try {
+      const success = await createPersonalConnection({
+        mcpServerId: mcpServer.sId,
+        mcpServerDisplayName: getMcpServerDisplayName(mcpServer),
+        provider,
+        useCase: "personal_actions",
+        scope,
+        additionalInputs,
+      });
 
-    setIsConnecting(false);
+      if (!success) {
+        setIsConnected(false);
+        return;
+      }
 
-    if (!success) {
-      setIsConnected(false);
-    } else {
       setIsConnected(true);
       await retry();
+    } finally {
+      setIsConnecting(false);
     }
   };
 
   const isTriggeredByCurrentUser = useMemo(
     () => triggeringUser?.sId === user?.sId,
     [triggeringUser, user?.sId]
-  );
-
-  // Validation: required inputs must have value OR default
-  const canConnect = personalAuthInputs.every(
-    (input) =>
-      !input.required ||
-      additionalInputs[input.extraConfigKey]?.trim() ||
-      personalAuthDefaults[input.extraConfigKey]
   );
 
   return (
@@ -136,7 +135,10 @@ export function MCPServerPersonalAuthenticationRequired({
                   <Input
                     name={input.extraConfigKey}
                     placeholder={
-                      input.placeholder ?? `${input.label} (optional)`
+                      input.placeholder ??
+                      (input.required
+                        ? input.label
+                        : `${input.label} (optional)`)
                     }
                     value={additionalInputs[input.extraConfigKey] ?? ""}
                     onChange={(e) =>

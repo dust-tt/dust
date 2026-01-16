@@ -19,10 +19,10 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import {
+  assertNever,
   getOAuthConnectionAccessToken,
   headersArrayToRecord,
 } from "@app/types";
-import { assertNever } from "@app/types";
 
 const PatchMCPServerBodySchema = z
   .object({
@@ -119,8 +119,6 @@ async function handler(
           }
 
           const serverJson = server.toJSON();
-
-          // For servers with personalAuthInputs, fetch defaults from workspace connection metadata
           if (serverJson.authorization?.personalAuthInputs?.length) {
             const workspaceConnectionRes =
               await MCPServerConnectionResource.findByMCPServer(auth, {
@@ -137,32 +135,22 @@ async function handler(
 
               if (tokenRes.isOk()) {
                 const metadata = tokenRes.value.connection.metadata;
-                // Build defaults from metadata using extraConfigKey
                 const defaults: Record<string, string> = {};
                 for (const input of serverJson.authorization
                   .personalAuthInputs) {
                   const value = metadata[input.extraConfigKey];
-                  if (typeof value === "string" && value) {
-                    defaults[input.extraConfigKey] = value;
+                  if (typeof value === "string" && value.trim()) {
+                    defaults[input.extraConfigKey] = value.trim();
                   }
                 }
+
                 if (Object.keys(defaults).length > 0) {
                   serverJson.authorization = {
                     ...serverJson.authorization,
                     personalAuthDefaults: defaults,
                   };
                 }
-              } else {
-                logger.warn(
-                  { serverId, error: tokenRes.error },
-                  "Failed to get OAuth token for personal auth defaults"
-                );
               }
-            } else {
-              logger.warn(
-                { serverId, error: workspaceConnectionRes.error },
-                "No workspace connection found for server with personal auth inputs"
-              );
             }
           }
 

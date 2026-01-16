@@ -104,33 +104,15 @@ export function PersonalConnectionRequiredDialog({
 }) {
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
   const [isConnecting, setIsConnecting] = useState(false);
-  // State for additional inputs per server - keyed by server sId, then by extraConfigKey
   const [additionalInputsMap, setAdditionalInputsMap] = useState<
     Record<string, Record<string, string>>
   >({});
 
-  // Reset state when dialog closes
   useEffect(() => {
     if (!isOpen) {
       setAdditionalInputsMap({});
     }
   }, [isOpen]);
-
-  // Check if a server can connect (all required fields have values or defaults)
-  const canConnect = (mcpServerView: MCPServerViewType) => {
-    const personalAuthInputs =
-      mcpServerView.server.authorization?.personalAuthInputs ?? [];
-    const personalAuthDefaults =
-      mcpServerView.server.authorization?.personalAuthDefaults ?? {};
-    const serverInputs = additionalInputsMap[mcpServerView.sId] ?? {};
-
-    return personalAuthInputs.every(
-      (input) =>
-        !input.required ||
-        serverInputs[input.extraConfigKey]?.trim() ||
-        personalAuthDefaults[input.extraConfigKey]
-    );
-  };
 
   const disconnectedCount = useMemo(() => {
     return mcpServerViewsWithPersonalConnections.filter(
@@ -184,6 +166,12 @@ export function PersonalConnectionRequiredDialog({
                   {};
                 const serverInputs =
                   additionalInputsMap[mcpServerView.sId] ?? {};
+                const canConnect = personalAuthInputs.every(
+                  ({ extraConfigKey, required }) =>
+                    !required ||
+                    !!serverInputs[extraConfigKey]?.trim() ||
+                    !!personalAuthDefaults[extraConfigKey]?.trim()
+                );
 
                 return (
                   <div key={mcpServerView.sId} className="py-2">
@@ -206,34 +194,32 @@ export function PersonalConnectionRequiredDialog({
                             size="xs"
                             variant="outline"
                             label="Connect"
-                            disabled={
-                              isConnecting || !canConnect(mcpServerView)
-                            }
+                            disabled={isConnecting || !canConnect}
                             onClick={async () => {
                               if (!mcpServerView.server.authorization) {
                                 return;
                               }
                               setIsConnecting(true);
-                              await createPersonalConnection({
-                                mcpServerId: mcpServerView.server.sId,
-                                mcpServerDisplayName:
-                                  getMcpServerViewDisplayName(mcpServerView),
-                                provider:
-                                  mcpServerView.server.authorization.provider,
-                                useCase: "personal_actions",
-                                scope: mcpServerView.server.authorization.scope,
-                                additionalInputs:
-                                  Object.keys(serverInputs).length > 0
-                                    ? serverInputs
-                                    : undefined,
-                              });
-                              setIsConnecting(false);
+                              try {
+                                await createPersonalConnection({
+                                  mcpServerId: mcpServerView.server.sId,
+                                  mcpServerDisplayName:
+                                    getMcpServerViewDisplayName(mcpServerView),
+                                  provider:
+                                    mcpServerView.server.authorization.provider,
+                                  useCase: "personal_actions",
+                                  scope:
+                                    mcpServerView.server.authorization.scope,
+                                  additionalInputs: serverInputs,
+                                });
+                              } finally {
+                                setIsConnecting(false);
+                              }
                             }}
                           />
                         )}
                       </div>
                     </div>
-                    {/* Render personal auth input fields for disconnected servers */}
                     {!isAlreadyConnected &&
                       personalAuthInputs.map((input) => (
                         <div
@@ -243,7 +229,10 @@ export function PersonalConnectionRequiredDialog({
                           <Input
                             name={input.extraConfigKey}
                             placeholder={
-                              input.placeholder ?? `${input.label} (optional)`
+                              input.placeholder ??
+                              (input.required
+                                ? input.label
+                                : `${input.label} (optional)`)
                             }
                             value={serverInputs[input.extraConfigKey] ?? ""}
                             onChange={(e) => {

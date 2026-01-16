@@ -14,23 +14,19 @@ import type {
 import type { MCPOAuthUseCase, OAuthProvider } from "@app/types";
 import { isOAuthProvider } from "@app/types";
 
-// Schema for personal auth input fields that OAuth providers may require
 export type PersonalAuthInputType = {
-  name: string; // Display name, e.g., "role"
-  extraConfigKey: string; // Key used in OAuth extraConfig, e.g., "snowflake_role"
-  label: string; // UI label, e.g., "Snowflake Role"
-  placeholder?: string; // e.g., "e.g., ANALYST"
-  description?: string; // Explanatory text
-  required: boolean; // Whether input is required (if false, default may exist)
+  extraConfigKey: string;
+  label: string;
+  required: boolean;
+  placeholder?: string;
+  description?: string;
 };
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
   supported_use_cases: MCPOAuthUseCase[];
   scope?: string;
-  // Generic personal auth inputs schema
   personalAuthInputs?: PersonalAuthInputType[];
-  // Default values (populated from workspace connection metadata)
   personalAuthDefaults?: Record<string, string>;
 };
 

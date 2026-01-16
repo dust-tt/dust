@@ -877,13 +877,13 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
         extraConfig.scope = scope;
       }
 
-      // Pass all additional inputs directly to extraConfig
       if (additionalInputs) {
         for (const [extraConfigKey, value] of Object.entries(
           additionalInputs
         )) {
-          if (value) {
-            extraConfig[extraConfigKey] = value;
+          const trimmed = value.trim();
+          if (trimmed) {
+            extraConfig[extraConfigKey] = trimmed;
           }
         }
       }
