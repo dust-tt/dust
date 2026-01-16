@@ -2,6 +2,7 @@ import type { Options } from "@contentful/rich-text-react-renderer";
 import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
 import type { Block, Document, Inline } from "@contentful/rich-text-types";
 import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
+import { cn } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -12,7 +13,6 @@ import {
   isBlockOrInline,
   isTextNode,
 } from "@app/lib/contentful/tableOfContents";
-import { cn } from "@dust-tt/sparkle";
 import { isString } from "@app/types";
 import { slugify } from "@app/types/shared/utils/string_utils";
 
