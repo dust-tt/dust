@@ -113,13 +113,14 @@ async function createServer(
     )
   );
 
-  // Tool: update_agent_details
-  // Updates key configuration data for an agent.
+  // Tool: update_agent
+  // Updates agent configuration, skills, and tools in a single atomic operation.
   server.tool(
-    "update_agent_details",
-    "Update key configuration data for an agent. Only provided fields will be updated. Creates a new version of the agent.",
+    "update_agent",
+    "Update an agent's configuration, skills, and/or tools in a single call. All parameters except agent_id are optional - only provided fields will be updated.",
     {
       agent_id: z.string().describe("The agent configuration sId"),
+      // Details fields (optional)
       name: z.string().optional().describe("New name for the agent"),
       description: z
         .string()
@@ -141,438 +142,407 @@ async function createServer(
         })
         .optional()
         .describe("Model configuration updates (partial updates supported)"),
+      // Skills field (optional)
+      skill_ids: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Complete list of skill sIds that the agent should have. Skills not in this list will be removed. If not provided, skills are not modified."
+        ),
+      // Tools field (optional)
+      tool_ids: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Complete list of MCP server view sIds that the agent should have. Tools not in this list will be removed. If not provided, tools are not modified."
+        ),
     },
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "agent_copilot_update_agent_details",
+        toolNameForMonitoring: "agent_copilot_update_agent",
         agentLoopContext,
       },
-      async ({ agent_id, name, description, instructions, model }) => {
-        // Get the current agent configuration.
-        const agentConfig = await getAgentConfiguration(auth, {
+      async ({
+        agent_id,
+        name,
+        description,
+        instructions,
+        model,
+        skill_ids,
+        tool_ids,
+      }) => {
+        const workspace = auth.getNonNullableWorkspace();
+
+        // Get the current agent configuration (full variant for actions).
+        const initialAgentConfig = await getAgentConfiguration(auth, {
           agentId: agent_id,
-          variant: "light",
+          variant: "full",
         });
 
-        if (!agentConfig) {
+        if (!initialAgentConfig) {
           return new Err(new MCPError(`Agent not found: ${agent_id}`));
         }
 
-        // Check if the user can edit this agent.
-        if (!agentConfig.canEdit) {
+        if (!initialAgentConfig.canEdit) {
           return new Err(
             new MCPError(`You do not have permission to edit this agent`)
           );
         }
 
-        // Cannot update global agents.
-        if (agentConfig.scope === "global") {
+        if (initialAgentConfig.scope === "global") {
           return new Err(new MCPError(`Cannot update global agents`));
         }
 
-        // Get editors for the agent.
-        const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-          auth,
-          agentConfig
-        );
-        if (editorGroupRes.isErr()) {
-          return new Err(
-            new MCPError(
-              `Failed to get editors: ${editorGroupRes.error.message}`
-            )
+        const hasDetailsUpdate =
+          name !== undefined ||
+          description !== undefined ||
+          instructions !== undefined ||
+          model !== undefined;
+        const hasSkillsUpdate = skill_ids !== undefined;
+        const hasToolsUpdate = tool_ids !== undefined;
+
+        // Track what was changed for the response.
+        const changes: {
+          details?: {
+            name?: string;
+            description?: string;
+            instructions?: string | null;
+            model?: object;
+            newVersion?: number;
+          };
+          skills?: {
+            added: string[];
+            removed: string[];
+            current: string[];
+          };
+          tools?: {
+            added: string[];
+            removed: string[];
+            current: string[];
+          };
+        } = {};
+
+        // Track the current agent version (may be updated after details change).
+        let currentAgentVersion = initialAgentConfig.version;
+
+        // === Step 1: Update agent details (if any) ===
+        if (hasDetailsUpdate) {
+          // Get editors for the agent.
+          const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+            auth,
+            initialAgentConfig
           );
-        }
-        const members = await editorGroupRes.value.getActiveMembers(auth);
-        const editors = members.map((m) => m.toJSON());
-
-        // Get tags for the agent.
-        const tags = await TagResource.listForAgent(auth, agentConfig.id);
-
-        // Compute requestedSpaceIds from the current agent's requestedSpaceIds.
-        const requestedSpaceIds = removeNulls(
-          agentConfig.requestedSpaceIds.map((sId) => getResourceIdFromSId(sId))
-        );
-
-        // Merge model configuration.
-        // Start with the existing model to preserve proper types.
-        const mergedModel: AgentModelConfigurationType = {
-          ...agentConfig.model,
-        };
-        if (model?.providerId !== undefined) {
-          // Validate that the providerId is supported.
-          const supportedProviders = SUPPORTED_MODEL_CONFIGS.map(
-            (m) => m.providerId
-          );
-          if (
-            !supportedProviders.includes(
-              model.providerId as (typeof supportedProviders)[number]
-            )
-          ) {
-            return new Err(
-              new MCPError(`Invalid providerId: ${model.providerId}`)
-            );
-          }
-          mergedModel.providerId =
-            model.providerId as AgentModelConfigurationType["providerId"];
-        }
-        if (model?.modelId !== undefined) {
-          // Validate that the modelId is supported for the provider.
-          const supportedModels = SUPPORTED_MODEL_CONFIGS.filter(
-            (m) => m.providerId === mergedModel.providerId
-          ).map((m) => m.modelId);
-          if (
-            !supportedModels.includes(
-              model.modelId as (typeof supportedModels)[number]
-            )
-          ) {
+          if (editorGroupRes.isErr()) {
             return new Err(
               new MCPError(
-                `Invalid modelId: ${model.modelId} for provider ${mergedModel.providerId}`
+                `Failed to get editors: ${editorGroupRes.error.message}`
               )
             );
           }
-          mergedModel.modelId =
-            model.modelId as AgentModelConfigurationType["modelId"];
-        }
-        if (model?.temperature !== undefined) {
-          mergedModel.temperature = model.temperature;
-        }
-        if (model?.reasoningEffort !== undefined) {
-          mergedModel.reasoningEffort = model.reasoningEffort;
-        }
+          const members = await editorGroupRes.value.getActiveMembers(auth);
+          const editors = members.map((m) => m.toJSON());
 
-        // Create the updated agent configuration.
-        const result = await createAgentConfiguration(auth, {
-          name: name ?? agentConfig.name,
-          description: description ?? agentConfig.description,
-          instructions:
-            instructions !== undefined
-              ? instructions
-              : agentConfig.instructions,
-          pictureUrl: agentConfig.pictureUrl,
-          status: agentConfig.status as AgentStatus,
-          scope: agentConfig.scope as Exclude<
-            AgentConfigurationScope,
-            "global"
-          >,
-          model: mergedModel,
-          agentConfigurationId: agent_id,
-          templateId: agentConfig.templateId,
-          requestedSpaceIds,
-          tags: tags.map((t) => t.toJSON()),
-          editors,
-        });
-
-        if (result.isErr()) {
-          return new Err(
-            new MCPError(`Failed to update agent: ${result.error.message}`)
-          );
-        }
-
-        const updatedConfig = result.value;
-        return new Ok([
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                success: true,
-                agent: {
-                  sId: updatedConfig.sId,
-                  name: updatedConfig.name,
-                  description: updatedConfig.description,
-                  instructions: updatedConfig.instructions,
-                  model: updatedConfig.model,
-                  version: updatedConfig.version,
-                },
-              },
-              null,
-              2
-            ),
-          },
-        ]);
-      }
-    )
-  );
-
-  // Tool: update_skills
-  // Updates the skills attached to an agent.
-  server.tool(
-    "update_skills",
-    "Update the skills attached to an agent. Provide the complete list of skill sIds that the agent should have.",
-    {
-      agent_id: z.string().describe("The agent configuration sId"),
-      skill_ids: z
-        .array(z.string())
-        .describe(
-          "Complete list of skill sIds that the agent should have. Skills not in this list will be removed."
-        ),
-    },
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: "agent_copilot_update_skills",
-        agentLoopContext,
-      },
-      async ({ agent_id, skill_ids }) => {
-        // Get the current agent configuration.
-        const agentConfig = await getAgentConfiguration(auth, {
-          agentId: agent_id,
-          variant: "full",
-        });
-
-        if (!agentConfig) {
-          return new Err(new MCPError(`Agent not found: ${agent_id}`));
-        }
-
-        if (!agentConfig.canEdit) {
-          return new Err(
-            new MCPError(`You do not have permission to edit this agent`)
-          );
-        }
-
-        if (agentConfig.scope === "global") {
-          return new Err(new MCPError(`Cannot update global agents`));
-        }
-
-        const workspace = auth.getNonNullableWorkspace();
-
-        // Get current skills attached to the agent.
-        const currentSkills = await SkillResource.listByAgentConfiguration(
-          auth,
-          agentConfig
-        );
-        const currentSkillIds = new Set(currentSkills.map((s) => s.sId));
-        const desiredSkillIds = new Set(skill_ids);
-
-        // Fetch all desired skills to validate they exist.
-        const desiredSkills = await SkillResource.fetchByIds(auth, skill_ids);
-        const foundSkillIds = new Set(desiredSkills.map((s) => s.sId));
-        const missingSkills = skill_ids.filter((id) => !foundSkillIds.has(id));
-        if (missingSkills.length > 0) {
-          return new Err(
-            new MCPError(`Skills not found: ${missingSkills.join(", ")}`)
-          );
-        }
-
-        // Compute skills to add and remove.
-        const skillsToAdd = desiredSkills.filter(
-          (s) => !currentSkillIds.has(s.sId)
-        );
-        const skillsToRemove = currentSkills.filter(
-          (s) => !desiredSkillIds.has(s.sId)
-        );
-
-        await withTransaction(async (transaction) => {
-          // Add new skills.
-          for (const skill of skillsToAdd) {
-            await skill.addToAgent(auth, agentConfig);
-          }
-
-          // Remove skills.
-          for (const skill of skillsToRemove) {
-            // Custom skills have resource sIds (e.g., "skill_xxx"), global skills don't.
-            const isCustomSkill = isResourceSId("skill", skill.sId);
-            await AgentSkillModel.destroy({
-              where: {
-                workspaceId: workspace.id,
-                agentConfigurationId: agentConfig.id,
-                ...(isCustomSkill
-                  ? { customSkillId: skill.id }
-                  : { globalSkillId: skill.sId }),
-              },
-              transaction,
-            });
-          }
-
-          // Update agent requirements based on new skills.
-          const requirements =
-            await getAgentConfigurationRequirementsFromCapabilities(auth, {
-              actions: agentConfig.actions,
-              skills: desiredSkills,
-            });
-
-          await updateAgentRequirements(
+          // Get tags for the agent.
+          const tags = await TagResource.listForAgent(
             auth,
-            {
-              agentModelId: agentConfig.id,
-              newSpaceIds: requirements.requestedSpaceIds,
-            },
-            { transaction }
+            initialAgentConfig.id
           );
-        });
 
-        return new Ok([
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                success: true,
-                agentId: agent_id,
-                skillsAdded: skillsToAdd.map((s) => s.sId),
-                skillsRemoved: skillsToRemove.map((s) => s.sId),
-                currentSkills: skill_ids,
-              },
-              null,
-              2
-            ),
-          },
-        ]);
-      }
-    )
-  );
-
-  // Tool: update_tools
-  // Updates the tools (MCP server views) attached to an agent.
-  server.tool(
-    "update_tools",
-    "Update the tools (MCP server views) attached to an agent. Provide the complete list of tool sIds that the agent should have.",
-    {
-      agent_id: z.string().describe("The agent configuration sId"),
-      tool_ids: z
-        .array(z.string())
-        .describe(
-          "Complete list of MCP server view sIds that the agent should have. Tools not in this list will be removed."
-        ),
-    },
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: "agent_copilot_update_tools",
-        agentLoopContext,
-      },
-      async ({ agent_id, tool_ids }) => {
-        // Get the current agent configuration.
-        const agentConfig = await getAgentConfiguration(auth, {
-          agentId: agent_id,
-          variant: "full",
-        });
-
-        if (!agentConfig) {
-          return new Err(new MCPError(`Agent not found: ${agent_id}`));
-        }
-
-        if (!agentConfig.canEdit) {
-          return new Err(
-            new MCPError(`You do not have permission to edit this agent`)
-          );
-        }
-
-        if (agentConfig.scope === "global") {
-          return new Err(new MCPError(`Cannot update global agents`));
-        }
-
-        const workspace = auth.getNonNullableWorkspace();
-
-        // Get user-accessible spaces to fetch MCP server views.
-        const userSpaces =
-          await SpaceResource.listWorkspaceSpacesAsMember(auth);
-        const allMcpServerViews = await MCPServerViewResource.listBySpaces(
-          auth,
-          userSpaces
-        );
-
-        // Build map from sId to MCP server view.
-        const mcpServerViewMap = new Map(
-          allMcpServerViews.map((v) => [v.sId, v])
-        );
-
-        // Validate that all desired tool IDs exist and are accessible.
-        const desiredViews: MCPServerViewResource[] = [];
-        const missingTools: string[] = [];
-        for (const toolId of tool_ids) {
-          const view = mcpServerViewMap.get(toolId);
-          if (view) {
-            desiredViews.push(view);
-          } else {
-            missingTools.push(toolId);
-          }
-        }
-        if (missingTools.length > 0) {
-          return new Err(
-            new MCPError(
-              `Tools not found or not accessible: ${missingTools.join(", ")}`
+          // Compute requestedSpaceIds from the current agent's requestedSpaceIds.
+          const requestedSpaceIds = removeNulls(
+            initialAgentConfig.requestedSpaceIds.map((sId) =>
+              getResourceIdFromSId(sId)
             )
           );
-        }
 
-        // Get current tools from agent actions.
-        const currentMcpServerViewIds = new Set<string>();
-        for (const action of agentConfig.actions) {
-          if ("mcpServerViewId" in action && action.mcpServerViewId) {
-            currentMcpServerViewIds.add(action.mcpServerViewId);
+          // Merge model configuration.
+          const mergedModel: AgentModelConfigurationType = {
+            ...initialAgentConfig.model,
+          };
+          if (model?.providerId !== undefined) {
+            const supportedProviders = SUPPORTED_MODEL_CONFIGS.map(
+              (m) => m.providerId
+            );
+            if (
+              !supportedProviders.includes(
+                model.providerId as (typeof supportedProviders)[number]
+              )
+            ) {
+              return new Err(
+                new MCPError(`Invalid providerId: ${model.providerId}`)
+              );
+            }
+            mergedModel.providerId =
+              model.providerId as AgentModelConfigurationType["providerId"];
           }
-        }
+          if (model?.modelId !== undefined) {
+            const supportedModels = SUPPORTED_MODEL_CONFIGS.filter(
+              (m) => m.providerId === mergedModel.providerId
+            ).map((m) => m.modelId);
+            if (
+              !supportedModels.includes(
+                model.modelId as (typeof supportedModels)[number]
+              )
+            ) {
+              return new Err(
+                new MCPError(
+                  `Invalid modelId: ${model.modelId} for provider ${mergedModel.providerId}`
+                )
+              );
+            }
+            mergedModel.modelId =
+              model.modelId as AgentModelConfigurationType["modelId"];
+          }
+          if (model?.temperature !== undefined) {
+            mergedModel.temperature = model.temperature;
+          }
+          if (model?.reasoningEffort !== undefined) {
+            mergedModel.reasoningEffort = model.reasoningEffort;
+          }
 
-        const desiredMcpServerViewIds = new Set(tool_ids);
+          // Create the updated agent configuration.
+          const result = await createAgentConfiguration(auth, {
+            name: name ?? initialAgentConfig.name,
+            description: description ?? initialAgentConfig.description,
+            instructions:
+              instructions !== undefined
+                ? instructions
+                : initialAgentConfig.instructions,
+            pictureUrl: initialAgentConfig.pictureUrl,
+            status: initialAgentConfig.status as AgentStatus,
+            scope: initialAgentConfig.scope as Exclude<
+              AgentConfigurationScope,
+              "global"
+            >,
+            model: mergedModel,
+            agentConfigurationId: agent_id,
+            templateId: initialAgentConfig.templateId,
+            requestedSpaceIds,
+            tags: tags.map((t) => t.toJSON()),
+            editors,
+          });
 
-        // Compute tools to add and remove.
-        const viewsToAdd = desiredViews.filter(
-          (v) => !currentMcpServerViewIds.has(v.sId)
-        );
-        const viewIdsToRemove = [...currentMcpServerViewIds].filter(
-          (id) => !desiredMcpServerViewIds.has(id)
-        );
-
-        await withTransaction(async (transaction) => {
-          // Add new tools.
-          for (const view of viewsToAdd) {
-            const viewJson = view.toJSON();
-            await createAgentActionConfiguration(
-              auth,
-              {
-                type: "mcp_server_configuration",
-                mcpServerViewId: view.sId,
-                name: viewJson.server.name,
-                description: viewJson.server.description ?? null,
-                additionalConfiguration: {},
-                timeFrame: null,
-                dataSources: null,
-                tables: null,
-                childAgentId: null,
-                jsonSchema: null,
-                dustAppConfiguration: null,
-                secretName: null,
-              },
-              agentConfig
+          if (result.isErr()) {
+            return new Err(
+              new MCPError(`Failed to update agent: ${result.error.message}`)
             );
           }
 
-          // Remove tools.
-          if (viewIdsToRemove.length > 0) {
-            // Find the model IDs of the MCP server views to remove.
-            const viewModelIdsToRemove = removeNulls(
-              viewIdsToRemove.map((sId) => {
-                const view = mcpServerViewMap.get(sId);
-                return view?.id;
-              })
-            );
+          // Track the new version.
+          currentAgentVersion = result.value.version;
 
-            if (viewModelIdsToRemove.length > 0) {
-              await AgentMCPServerConfigurationModel.destroy({
+          changes.details = {
+            ...(name !== undefined && { name }),
+            ...(description !== undefined && { description }),
+            ...(instructions !== undefined && { instructions }),
+            ...(model !== undefined && { model: mergedModel }),
+            newVersion: currentAgentVersion,
+          };
+        }
+
+        // Re-fetch agent config with full variant if we need to process skills or tools.
+        // This ensures we have the latest version after details update.
+        let agentConfigForSkillsTools = initialAgentConfig;
+        if (hasDetailsUpdate && (hasSkillsUpdate || hasToolsUpdate)) {
+          const refetchedConfig = await getAgentConfiguration(auth, {
+            agentId: agent_id,
+            variant: "full",
+          });
+          if (!refetchedConfig) {
+            return new Err(
+              new MCPError(`Agent not found after update: ${agent_id}`)
+            );
+          }
+          agentConfigForSkillsTools = refetchedConfig;
+        }
+
+        // === Step 2: Update skills (if any) ===
+        let desiredSkills: SkillResource[] = [];
+        if (hasSkillsUpdate && skill_ids) {
+          // Get current skills attached to the agent.
+          const currentSkills = await SkillResource.listByAgentConfiguration(
+            auth,
+            agentConfigForSkillsTools
+          );
+          const currentSkillIds = new Set(currentSkills.map((s) => s.sId));
+          const desiredSkillIds = new Set(skill_ids);
+
+          // Fetch all desired skills to validate they exist.
+          desiredSkills = await SkillResource.fetchByIds(auth, skill_ids);
+          const foundSkillIds = new Set(desiredSkills.map((s) => s.sId));
+          const missingSkills = skill_ids.filter(
+            (id) => !foundSkillIds.has(id)
+          );
+          if (missingSkills.length > 0) {
+            return new Err(
+              new MCPError(`Skills not found: ${missingSkills.join(", ")}`)
+            );
+          }
+
+          // Compute skills to add and remove.
+          const skillsToAdd = desiredSkills.filter(
+            (s) => !currentSkillIds.has(s.sId)
+          );
+          const skillsToRemove = currentSkills.filter(
+            (s) => !desiredSkillIds.has(s.sId)
+          );
+
+          await withTransaction(async (transaction) => {
+            // Add new skills.
+            for (const skill of skillsToAdd) {
+              await skill.addToAgent(auth, agentConfigForSkillsTools);
+            }
+
+            // Remove skills.
+            for (const skill of skillsToRemove) {
+              const isCustomSkill = isResourceSId("skill", skill.sId);
+              await AgentSkillModel.destroy({
                 where: {
                   workspaceId: workspace.id,
-                  agentConfigurationId: agentConfig.id,
-                  mcpServerViewId: viewModelIdsToRemove,
+                  agentConfigurationId: agentConfigForSkillsTools.id,
+                  ...(isCustomSkill
+                    ? { customSkillId: skill.id }
+                    : { globalSkillId: skill.sId }),
                 },
                 transaction,
               });
             }
-          }
+          });
 
-          // Update agent requirements based on new tools.
-          const currentSkills = await SkillResource.listByAgentConfiguration(
+          changes.skills = {
+            added: skillsToAdd.map((s) => s.sId),
+            removed: skillsToRemove.map((s) => s.sId),
+            current: skill_ids,
+          };
+        }
+
+        // === Step 3: Update tools (if any) ===
+        if (hasToolsUpdate && tool_ids) {
+          // Get user-accessible spaces to fetch MCP server views.
+          const userSpaces =
+            await SpaceResource.listWorkspaceSpacesAsMember(auth);
+          const allMcpServerViews = await MCPServerViewResource.listBySpaces(
             auth,
-            agentConfig
+            userSpaces
           );
 
-          // Build the new actions list for requirements calculation.
-          const newActions = agentConfig.actions.filter((action) => {
-            if ("mcpServerViewId" in action && action.mcpServerViewId) {
-              return desiredMcpServerViewIds.has(action.mcpServerViewId);
+          // Build map from sId to MCP server view.
+          const mcpServerViewMap = new Map(
+            allMcpServerViews.map((v) => [v.sId, v])
+          );
+
+          // Validate that all desired tool IDs exist and are accessible.
+          const desiredViews: MCPServerViewResource[] = [];
+          const missingTools: string[] = [];
+          for (const toolId of tool_ids) {
+            const view = mcpServerViewMap.get(toolId);
+            if (view) {
+              desiredViews.push(view);
+            } else {
+              missingTools.push(toolId);
             }
-            return true;
+          }
+          if (missingTools.length > 0) {
+            return new Err(
+              new MCPError(
+                `Tools not found or not accessible: ${missingTools.join(", ")}`
+              )
+            );
+          }
+
+          // Get current tools from agent actions.
+          const currentMcpServerViewIds = new Set<string>();
+          for (const action of agentConfigForSkillsTools.actions) {
+            if ("mcpServerViewId" in action && action.mcpServerViewId) {
+              currentMcpServerViewIds.add(action.mcpServerViewId);
+            }
+          }
+
+          const desiredMcpServerViewIds = new Set(tool_ids);
+
+          // Compute tools to add and remove.
+          const viewsToAdd = desiredViews.filter(
+            (v) => !currentMcpServerViewIds.has(v.sId)
+          );
+          const viewIdsToRemove = [...currentMcpServerViewIds].filter(
+            (id) => !desiredMcpServerViewIds.has(id)
+          );
+
+          await withTransaction(async (transaction) => {
+            // Add new tools.
+            for (const view of viewsToAdd) {
+              const viewJson = view.toJSON();
+              await createAgentActionConfiguration(
+                auth,
+                {
+                  type: "mcp_server_configuration",
+                  mcpServerViewId: view.sId,
+                  name: viewJson.server.name,
+                  description: viewJson.server.description ?? null,
+                  additionalConfiguration: {},
+                  timeFrame: null,
+                  dataSources: null,
+                  tables: null,
+                  childAgentId: null,
+                  jsonSchema: null,
+                  dustAppConfiguration: null,
+                  secretName: null,
+                },
+                agentConfigForSkillsTools
+              );
+            }
+
+            // Remove tools.
+            if (viewIdsToRemove.length > 0) {
+              const viewModelIdsToRemove = removeNulls(
+                viewIdsToRemove.map((sId) => {
+                  const view = mcpServerViewMap.get(sId);
+                  return view?.id;
+                })
+              );
+
+              if (viewModelIdsToRemove.length > 0) {
+                await AgentMCPServerConfigurationModel.destroy({
+                  where: {
+                    workspaceId: workspace.id,
+                    agentConfigurationId: agentConfigForSkillsTools.id,
+                    mcpServerViewId: viewModelIdsToRemove,
+                  },
+                  transaction,
+                });
+              }
+            }
           });
+
+          changes.tools = {
+            added: viewsToAdd.map((v) => v.sId),
+            removed: viewIdsToRemove,
+            current: tool_ids,
+          };
+        }
+
+        // === Step 4: Update agent requirements if skills or tools changed ===
+        if (hasSkillsUpdate || hasToolsUpdate) {
+          // Get current state for requirements calculation.
+          const currentSkills = hasSkillsUpdate
+            ? desiredSkills
+            : await SkillResource.listByAgentConfiguration(
+                auth,
+                agentConfigForSkillsTools
+              );
+
+          // Build new actions list.
+          const newActions = agentConfigForSkillsTools.actions.filter(
+            (action) => {
+              if ("mcpServerViewId" in action && action.mcpServerViewId) {
+                if (hasToolsUpdate && tool_ids) {
+                  return tool_ids.includes(action.mcpServerViewId);
+                }
+              }
+              return true;
+            }
+          );
 
           const requirements =
             await getAgentConfigurationRequirementsFromCapabilities(auth, {
@@ -583,12 +553,12 @@ async function createServer(
           await updateAgentRequirements(
             auth,
             {
-              agentModelId: agentConfig.id,
+              agentModelId: agentConfigForSkillsTools.id,
               newSpaceIds: requirements.requestedSpaceIds,
             },
-            { transaction }
+            {}
           );
-        });
+        }
 
         return new Ok([
           {
@@ -597,9 +567,8 @@ async function createServer(
               {
                 success: true,
                 agentId: agent_id,
-                toolsAdded: viewsToAdd.map((v) => v.sId),
-                toolsRemoved: viewIdsToRemove,
-                currentTools: tool_ids,
+                agentVersion: currentAgentVersion,
+                changes,
               },
               null,
               2
