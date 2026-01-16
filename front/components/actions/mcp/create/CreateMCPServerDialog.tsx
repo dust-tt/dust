@@ -113,6 +113,12 @@ export function CreateMCPServerDialog({
   const { createWithURL } = useCreateRemoteMCPServer(owner);
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
 
+  useEffect(() => {
+    if (isOpen) {
+      form.reset(defaultValues);
+    }
+  }, [defaultValues, form, isOpen]);
+
   // Initialize authorization from internalMCPServer when dialog opens.
   useEffect(() => {
     if (internalMCPServer && isOpen) {
