@@ -7,9 +7,6 @@ import {
   validateTypeScriptSyntax,
 } from "@app/lib/api/files/content_validation";
 
-// Match the constant from content_validation.ts.
-const MAX_DISPLAYED_ERRORS = 5;
-
 // Helper function to check if any warning contains the expected text.
 function expectWarningsToContain(
   warnings: ValidationWarning[],
@@ -204,7 +201,9 @@ const MyComponent = () => {
     const result = validateTypeScriptSyntax(invalidCode);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("TypeScript syntax errors detected");
+      expect(result.error.message).toContain(
+        "TypeScript syntax errors detected"
+      );
     }
   });
 
@@ -224,7 +223,9 @@ const MyComponent = () => {
     const result = validateTypeScriptSyntax(invalidCode);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("TypeScript syntax errors detected");
+      expect(result.error.message).toContain(
+        "TypeScript syntax errors detected"
+      );
     }
   });
 
@@ -244,7 +245,9 @@ const MyComponent = () => {
     const result = validateTypeScriptSyntax(invalidCode);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("TypeScript syntax errors detected");
+      expect(result.error.message).toContain(
+        "TypeScript syntax errors detected"
+      );
     }
   });
 
@@ -310,7 +313,9 @@ const MyComponent = () => {
     const result = validateTypeScriptSyntax(invalidCode);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("TypeScript syntax errors detected");
+      expect(result.error.message).toContain(
+        "TypeScript syntax errors detected"
+      );
       expect(result.error.message).toContain("Line");
       expect(result.error.message).toContain("Column");
     }
@@ -340,7 +345,9 @@ const MyComponent = () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       // Should limit and indicate more errors exist
-      expect(result.error.message).toContain("TypeScript syntax errors detected");
+      expect(result.error.message).toContain(
+        "TypeScript syntax errors detected"
+      );
     }
   });
 
@@ -416,7 +423,9 @@ const MyComponent = () => {
     const result = validateTypeScriptSyntax(invalidCode);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("TypeScript syntax errors detected");
+      expect(result.error.message).toContain(
+        "TypeScript syntax errors detected"
+      );
       expect(result.error.message).toContain("error TS");
     }
   });

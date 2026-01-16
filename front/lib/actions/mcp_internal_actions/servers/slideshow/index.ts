@@ -17,8 +17,8 @@ import {
   editClientExecutableFile,
   getClientExecutableFileContent,
 } from "@app/lib/api/files/client_executable";
-import type { Authenticator } from "@app/lib/auth";
 import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_validation";
+import type { Authenticator } from "@app/lib/auth";
 import type { InteractiveContentFileContentType } from "@app/types";
 import {
   Err,
