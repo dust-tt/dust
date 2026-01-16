@@ -306,6 +306,7 @@ export async function* tryCallMCPTool(
     conversationId,
     messageId,
     toolName: toolConfiguration.originalName,
+    toolConfigurationId: toolConfiguration.sId,
     workspaceId,
   };
 
