@@ -29,13 +29,14 @@ vi.mock("@app/lib/utils/rate_limiter", () => ({
 vi.mock("@app/lib/plans/usage/seats", () => ({
   countActiveSeatsInWorkspace: vi.fn().mockResolvedValue(100),
   countActiveSeatsInWorkspaceCached: vi.fn().mockResolvedValue(100),
+  invalidateActiveSeatsCache: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe("/api/v1/viz/files/[fileId] security tests", () => {
   let workspace: LightWorkspaceType;
 
   beforeEach(async () => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
 
     const { workspace: w } = await createResourceTest({
       role: "user",

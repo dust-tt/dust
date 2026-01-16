@@ -6,10 +6,7 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 
-const TRIAL_DURATION_DAYS = 30;
-
-// TODO: Replace with actual verification service.
-const VALID_TEST_CODE = "424242";
+const TRIAL_DURATION_DAYS = 15;
 
 /**
  * Checks if a workspace is eligible for the trial page.
@@ -51,16 +48,8 @@ export async function isWorkspaceEligibleForTrial(
 }
 
 /**
- * Verifies the phone verification code.
- * TODO: Replace with actual SMS verification service.
- */
-export function isValidVerificationCode(code: string): boolean {
-  return code === VALID_TEST_CODE;
-}
-
-/**
  * Activates the phone trial subscription for a workspace.
- * Creates a subscription with FREE_TRIAL_PHONE_PLAN_CODE and a 30-day end date.
+ * Creates a subscription with FREE_TRIAL_PHONE_PLAN_CODE and a 15-day end date.
  */
 export async function activatePhoneTrial(auth: Authenticator): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
