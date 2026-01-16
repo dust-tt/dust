@@ -1,8 +1,8 @@
 import type { estypes } from "@elastic/elasticsearch";
 
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
-import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import config from "@app/lib/api/config";
+import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import {
   AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME,
   bucketsToArray,
