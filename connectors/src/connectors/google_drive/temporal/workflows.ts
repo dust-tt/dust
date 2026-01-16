@@ -538,7 +538,6 @@ export async function googleDriveFullSyncV2({
 
       const handle = await startChild(googleDriveFolderSync, {
         workflowId: childWorkflowId,
-        workflowIdReusePolicy: "TERMINATE_IF_RUNNING",
         searchAttributes: { connectorId: [connectorId] },
         args: [
           {
