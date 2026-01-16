@@ -4,7 +4,6 @@ import type { WhereOptions } from "sequelize";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageFeedbackModel,
   AgentMessageModel,
@@ -18,6 +17,7 @@ import {
   ConversationSkillModel,
 } from "@app/lib/models/skill/conversation_skill";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -213,11 +213,8 @@ export async function destroyConversation(
         workspaceId: owner.id,
       },
     });
-    await AgentStepContentModel.destroy({
-      where: {
-        agentMessageId: agentMessageIds,
-        workspaceId: owner.id,
-      },
+    await AgentStepContentResource.deleteByAgentMessageIds(auth, {
+      agentMessageIds,
     });
     await AgentMessageFeedbackModel.destroy({
       where: {
