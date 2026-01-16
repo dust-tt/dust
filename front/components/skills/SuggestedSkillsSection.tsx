@@ -40,8 +40,15 @@ function SuggestedSkillCard({
 
   const handleAddSkillClick = async () => {
     setIsAddingSkill(true);
-    await updateSkillEditors({ addEditorIds: [user.sId], removeEditorIds: [] });
-    void router.push(getSkillBuilderRoute(owner.sId, skill.sId));
+    try {
+      await updateSkillEditors({
+        addEditorIds: [user.sId],
+        removeEditorIds: [],
+      });
+      void router.push(getSkillBuilderRoute(owner.sId, skill.sId));
+    } finally {
+      setIsAddingSkill(false);
+    }
   };
 
   return (
