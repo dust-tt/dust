@@ -185,9 +185,8 @@ export const createUserMentions = async (
           }
 
           // Auto approve mentions for users who are members of the conversation's project space.
-          let userInProject = false;
           if (!autoApprove && conversation.spaceId) {
-            userInProject = await isUserMemberOfSpace(auth, {
+            autoApprove = await isUserMemberOfSpace(auth, {
               userId: user.sId,
               spaceId: conversation.spaceId,
             });
@@ -195,7 +194,7 @@ export const createUserMentions = async (
 
           const status: MentionStatusType = !canAccess
             ? "user_restricted_by_conversation_access"
-            : autoApprove || userInProject
+            : autoApprove
               ? "approved"
               : "pending";
 
