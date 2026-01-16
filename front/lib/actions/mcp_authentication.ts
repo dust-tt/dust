@@ -17,12 +17,16 @@ export async function getConnectionForMCPServer(
     mcpServerId: string;
     connectionType: MCPServerConnectionConnectionType;
   }
-): Promise<{
-  connection: OAuthConnectionType;
-  access_token: string;
-  access_token_expiry: number | null;
-  scrubbed_raw_json: unknown;
-} | null> {
+): Promise<
+  | {
+      status: "success";
+      connection: OAuthConnectionType;
+      access_token: string;
+      access_token_expiry: number | null;
+      scrubbed_raw_json: unknown;
+    }
+  | { status: "error"; error: "connection_not_found" | "access_token_error" }
+> {
   const connection = await MCPServerConnectionResource.findByMCPServer(auth, {
     mcpServerId,
     connectionType,
@@ -34,7 +38,7 @@ export async function getConnectionForMCPServer(
       connectionId: connection.value.connectionId,
     });
     if (token.isOk()) {
-      return token.value;
+      return { status: "success", ...token.value };
     } else {
       logger.warn(
         {
@@ -45,6 +49,7 @@ export async function getConnectionForMCPServer(
         },
         "Failed to get access token for MCP server"
       );
+      return { status: "error", error: "access_token_error" };
     }
   } else {
     logger.info(
@@ -56,8 +61,8 @@ export async function getConnectionForMCPServer(
       },
       "No connection found for MCP server"
     );
+    return { status: "error", error: "connection_not_found" };
   }
-  return null;
 }
 
 const MCPServerRequiresPersonalAuthenticationErrorName =

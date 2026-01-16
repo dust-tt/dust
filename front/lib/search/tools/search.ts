@@ -91,7 +91,7 @@ async function _getToolAndAccessTokenForView(
     connectionType,
   });
 
-  if (!connectionResult) {
+  if (connectionResult.status === "error") {
     return null;
   }
 

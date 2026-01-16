@@ -182,7 +182,7 @@ export const connectToMCPServer = async (
                     ? "personal"
                     : "workspace",
               });
-              if (c) {
+              if (c.status === "success") {
                 const authInfo: AuthInfo = {
                   token: c.access_token,
                   expiresAt: c.access_token_expiry ?? undefined,
@@ -206,6 +206,7 @@ export const connectToMCPServer = async (
                     workspaceId: auth.getNonNullableWorkspace().sId,
                     mcpServerId: params.mcpServerId,
                     oAuthUseCase: params.oAuthUseCase,
+                    error: c.error,
                   },
                   "Internal server requires workspace authentication but no connection found"
                 );
@@ -219,7 +220,10 @@ export const connectToMCPServer = async (
                     }
                   );
                   // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
-                  if (!adminConnection) {
+                  if (
+                    adminConnection.status === "error" &&
+                    adminConnection.error === "connection_not_found"
+                  ) {
                     return new Err(
                       new MCPServerRequiresAdminAuthenticationError(
                         params.mcpServerId,
@@ -291,7 +295,7 @@ export const connectToMCPServer = async (
               mcpServerId: params.mcpServerId,
               connectionType: connectionType,
             });
-            if (c) {
+            if (c.status === "success") {
               token = {
                 access_token: c.access_token,
                 token_type: "bearer",
@@ -306,7 +310,7 @@ export const connectToMCPServer = async (
                   connectionType: "workspace",
                 });
                 // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
-                if (!adminConnection) {
+                if (adminConnection.status === "error") {
                   return new Err(
                     new MCPServerRequiresAdminAuthenticationError(
                       params.mcpServerId,
