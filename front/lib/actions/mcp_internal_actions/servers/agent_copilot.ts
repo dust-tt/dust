@@ -5,15 +5,17 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { canUseModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { LightAgentConfigurationType } from "@app/types";
 import { Err, Ok, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
@@ -85,11 +87,12 @@ async function createServer(
   );
 
   // Tool: get_available_skills
-  // Lists skills available for agents (both custom and global).
+  // Lists skills available for agents, marking which are already used by the agent.
   server.tool(
     "get_available_skills",
-    "List skills that can be added to agents. Skills provide specialized capabilities and instructions.",
+    "List skills available for an agent. Returns all skills the user can add, with a flag indicating if each is already used by the agent.",
     {
+      agent_id: z.string().describe("The agent configuration sId"),
       include_global: z
         .boolean()
         .optional()
@@ -107,21 +110,40 @@ async function createServer(
         toolNameForMonitoring: "agent_copilot_get_available_skills",
         agentLoopContext,
       },
-      async ({ include_global, status }) => {
-        // Fetch custom skills from the database.
+      async ({ agent_id, include_global, status }) => {
+        // Fetch the agent configuration to get existing skills.
+        const agentConfig = await getAgentConfiguration(auth, {
+          agentId: agent_id,
+          variant: "light",
+        });
+
+        if (!agentConfig) {
+          return new Err(new MCPError(`Agent not found: ${agent_id}`));
+        }
+
+        // Get skills already attached to this agent.
+        const agentSkills = await SkillResource.listByAgentConfiguration(
+          auth,
+          agentConfig
+        );
+        const agentSkillIds = new Set(agentSkills.map((s) => s.sId));
+
+        // Fetch all available custom skills.
         const customSkills = await SkillResource.listByWorkspace(auth, {
           status: status ?? "active",
           onlyCustom: true,
         });
 
-        // Build custom skills response.
+        // Build custom skills response with isUsedByAgent flag.
         const customSkillsResult = customSkills.map((s) => ({
           sId: s.sId,
           name: s.name,
           userFacingDescription: s.userFacingDescription,
           agentFacingDescription: s.agentFacingDescription,
+          icon: s.icon,
           status: s.status,
           isGlobal: false,
+          isUsedByAgent: agentSkillIds.has(s.sId),
         }));
 
         // Fetch global skills if requested.
@@ -130,8 +152,10 @@ async function createServer(
           name: string;
           userFacingDescription: string;
           agentFacingDescription: string;
+          icon: string;
           isGlobal: boolean;
           isAutoEnabled: boolean;
+          isUsedByAgent: boolean;
         }> = [];
 
         if (include_global !== false) {
@@ -143,8 +167,10 @@ async function createServer(
             name: def.name,
             userFacingDescription: def.userFacingDescription,
             agentFacingDescription: def.agentFacingDescription,
+            icon: def.icon,
             isGlobal: true,
             isAutoEnabled: def.isAutoEnabled ?? false,
+            isUsedByAgent: agentSkillIds.has(def.sId),
           }));
         }
 
@@ -153,10 +179,10 @@ async function createServer(
             type: "text",
             text: JSON.stringify(
               {
-                customSkills: customSkillsResult,
-                globalSkills: globalSkillsResult,
+                skills: [...customSkillsResult, ...globalSkillsResult],
                 totalCount:
                   customSkillsResult.length + globalSkillsResult.length,
+                agentId: agent_id,
               },
               null,
               2
@@ -168,16 +194,12 @@ async function createServer(
   );
 
   // Tool: get_available_tools
-  // Lists MCP servers/tools available for agents.
+  // Lists MCP server views available for agents across all user-accessible spaces.
   server.tool(
     "get_available_tools",
-    "List tools (MCP servers) that can be added to agents.",
+    "List tools (MCP server views) available for an agent across all spaces the user has access to. Returns all tools with a flag indicating if each is already used by the agent.",
     {
-      include_internal: z
-        .boolean()
-        .optional()
-        .default(true)
-        .describe("Include internal (built-in) tools"),
+      agent_id: z.string().describe("The agent configuration sId"),
     },
     withToolLogging(
       auth,
@@ -185,37 +207,73 @@ async function createServer(
         toolNameForMonitoring: "agent_copilot_get_available_tools",
         agentLoopContext,
       },
-      async ({ include_internal }) => {
-        const tools: Array<{
-          sId: string;
-          name: string;
-          description: string;
-          type: "internal";
-          availability: string;
-        }> = [];
+      async ({ agent_id }) => {
+        // Fetch the agent configuration to get existing tools (actions).
+        const agentConfig = await getAgentConfiguration(auth, {
+          agentId: agent_id,
+          variant: "full",
+        });
 
-        // Get internal MCP servers if requested.
-        if (include_internal !== false) {
-          const internalServers =
-            await InternalMCPServerInMemoryResource.listAvailableInternalMCPServers(
-              auth
-            );
-          for (const s of internalServers) {
-            const json = s.toJSON();
-            tools.push({
-              sId: json.sId,
-              name: json.name,
-              description: json.description ?? "",
-              type: "internal",
-              availability: json.availability,
-            });
+        if (!agentConfig) {
+          return new Err(new MCPError(`Agent not found: ${agent_id}`));
+        }
+
+        // Get all spaces the user has access to.
+        const userSpaces =
+          await SpaceResource.listWorkspaceSpacesAsMember(auth);
+
+        // Fetch all MCP server views from those spaces.
+        const mcpServerViews = await MCPServerViewResource.listBySpaces(
+          auth,
+          userSpaces
+        );
+
+        // Build set of MCP server view sIds already used by the agent.
+        // The agent's actions have mcpServerViewId, match against view.sId.
+        // But we compare by server.sId to catch the same server in different spaces.
+        const viewToServerSId = new Map<string, string>();
+        for (const view of mcpServerViews) {
+          const json = view.toJSON();
+          viewToServerSId.set(view.sId, json.server.sId);
+        }
+
+        const agentServerSIds = new Set<string>();
+        for (const action of agentConfig.actions) {
+          if ("mcpServerViewId" in action && action.mcpServerViewId) {
+            const serverSId = viewToServerSId.get(action.mcpServerViewId);
+            if (serverSId) {
+              agentServerSIds.add(serverSId);
+            }
           }
         }
+
+        // Build tools response with isUsedByAgent flag.
+        const tools = mcpServerViews.map((view) => {
+          const json = view.toJSON();
+          return {
+            sId: json.sId,
+            name: json.server.name,
+            description: json.server.description ?? "",
+            icon: json.server.icon,
+            serverType: json.serverType,
+            availability: json.server.availability,
+            spaceId: json.spaceId,
+            isUsedByAgent: agentServerSIds.has(json.server.sId),
+          };
+        });
 
         return new Ok([
           {
             type: "text",
-            text: JSON.stringify({ tools, count: tools.length }, null, 2),
+            text: JSON.stringify(
+              {
+                tools,
+                count: tools.length,
+                agentId: agent_id,
+              },
+              null,
+              2
+            ),
           },
         ]);
       }
