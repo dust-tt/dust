@@ -180,12 +180,14 @@ export class TmuxAdapter implements MultiplexerAdapter {
     const { envName, worktreePath, envShPath, unifiedLogs, warmCommand, initialCommand } = config;
     const shellPath = getUserShell();
     const sessionName = `${SESSION_PREFIX}${envName}`;
+    const mainWindowName = envName;
 
     // Build the shell command that runs in the main window
     const shellCommand = initialCommand
       ? `source ${shellQuote(envShPath)} && ${initialCommand}; exec ${shellQuote(shellPath)}`
       : `source ${shellQuote(envShPath)} && exec ${shellQuote(shellPath)}`;
 
+    // Use window names instead of indices to avoid base-index issues
     const lines: string[] = [
       "#!/bin/bash",
       "# Auto-generated tmux layout script for dust-hive",
@@ -193,26 +195,24 @@ export class TmuxAdapter implements MultiplexerAdapter {
       "",
       `SESSION_NAME=${shellQuote(sessionName)}`,
       `WORKTREE_PATH=${shellQuote(worktreePath)}`,
+      `MAIN_WINDOW=${shellQuote(mainWindowName)}`,
       "",
       "# Create the session with the main window",
-      `tmux new-session -d -s "$SESSION_NAME" -n ${shellQuote(envName)} -c "$WORKTREE_PATH"`,
+      `tmux new-session -d -s "$SESSION_NAME" -n "$MAIN_WINDOW" -c "$WORKTREE_PATH"`,
       "",
-      "# Run the shell command in the main window",
-      `tmux send-keys -t "$SESSION_NAME:0" ${shellQuote(shellCommand)} Enter`,
+      "# Run the shell command in the main window (use window name, not index)",
+      `tmux send-keys -t "$SESSION_NAME:$MAIN_WINDOW" ${shellQuote(shellCommand)} Enter`,
       "",
     ];
-
-    let windowIndex = 1;
 
     // Generate warm window if requested
     if (warmCommand) {
       lines.push(
         "# Create warm window",
         `tmux new-window -t "$SESSION_NAME" -n "warm" -c "$WORKTREE_PATH"`,
-        `tmux send-keys -t "$SESSION_NAME:${windowIndex}" ${shellQuote(warmCommand)} Enter`,
+        `tmux send-keys -t "$SESSION_NAME:warm" ${shellQuote(warmCommand)} Enter`,
         ""
       );
-      windowIndex++;
     }
 
     // Generate logs windows based on mode
@@ -221,7 +221,7 @@ export class TmuxAdapter implements MultiplexerAdapter {
       lines.push(
         "# Create unified logs window",
         `tmux new-window -t "$SESSION_NAME" -n "logs"`,
-        `tmux send-keys -t "$SESSION_NAME:${windowIndex}" "dust-hive logs ${shellQuote(envName)} -i" Enter`,
+        `tmux send-keys -t "$SESSION_NAME:logs" "dust-hive logs ${shellQuote(envName)} -i" Enter`,
         ""
       );
     } else {
@@ -231,15 +231,18 @@ export class TmuxAdapter implements MultiplexerAdapter {
         lines.push(
           `# Create ${service} logs window`,
           `tmux new-window -t "$SESSION_NAME" -n ${shellQuote(tabName)}`,
-          `tmux send-keys -t "$SESSION_NAME:${windowIndex}" "dust-hive logs ${shellQuote(envName)} ${shellQuote(service)} -f" Enter`,
+          `tmux send-keys -t "$SESSION_NAME:${tabName}" "dust-hive logs ${shellQuote(envName)} ${shellQuote(service)} -f" Enter`,
           ""
         );
-        windowIndex++;
       }
     }
 
-    // Select the first window (main)
-    lines.push("# Select the main window", `tmux select-window -t "$SESSION_NAME:0"`, "");
+    // Select the first window (main) by name
+    lines.push(
+      "# Select the main window",
+      `tmux select-window -t "$SESSION_NAME:$MAIN_WINDOW"`,
+      ""
+    );
 
     return lines.join("\n");
   }
@@ -249,6 +252,7 @@ export class TmuxAdapter implements MultiplexerAdapter {
     const shellPath = getUserShell();
     const sessionName = `${SESSION_PREFIX}main`;
 
+    // Use window names instead of indices to avoid base-index issues
     const lines: string[] = [
       "#!/bin/bash",
       "# Auto-generated tmux layout script for dust-hive main session",
@@ -260,15 +264,15 @@ export class TmuxAdapter implements MultiplexerAdapter {
       "# Create the session with the main window",
       `tmux new-session -d -s "$SESSION_NAME" -n "main" -c "$REPO_ROOT"`,
       "",
-      "# Start the user's shell in the main window",
-      `tmux send-keys -t "$SESSION_NAME:0" ${shellQuote(`exec ${shellPath}`)} Enter`,
+      "# Start the user's shell in the main window (use window name, not index)",
+      `tmux send-keys -t "$SESSION_NAME:main" ${shellQuote(`exec ${shellPath}`)} Enter`,
       "",
       "# Create temporal logs window",
       `tmux new-window -t "$SESSION_NAME" -n "temporal"`,
-      `tmux send-keys -t "$SESSION_NAME:1" "dust-hive temporal logs" Enter`,
+      `tmux send-keys -t "$SESSION_NAME:temporal" "dust-hive temporal logs" Enter`,
       "",
-      "# Select the main window",
-      `tmux select-window -t "$SESSION_NAME:0"`,
+      "# Select the main window by name",
+      `tmux select-window -t "$SESSION_NAME:main"`,
       "",
     ];
 
