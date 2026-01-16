@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { logger } from "../logger";
 import { getInstallInstructions as getPlatformInstallInstructions } from "../platform";
 import { restoreTerminal } from "../prompt";
-import { ALL_SERVICES } from "../services";
+import { ALL_SERVICES, type ServiceName } from "../services";
 import { shellQuote } from "../shell";
 import type {
   InstallCheckResult,
@@ -296,8 +296,8 @@ ${tabTemplate}
 `;
   }
 
-  private generateServiceTab(envName: string, service: string): string {
-    const tabName = TAB_NAMES[service as keyof typeof TAB_NAMES] ?? service;
+  private generateServiceTab(envName: string, service: ServiceName): string {
+    const tabName = TAB_NAMES[service];
     return `    tab name="${tabName}" {
         pane {
             command "dust-hive"
