@@ -12,7 +12,7 @@ import {
   isBlockOrInline,
   isTextNode,
 } from "@app/lib/contentful/tableOfContents";
-import { cn } from "@app/lib/utils/cn";
+import { cn } from "@dust-tt/sparkle";
 import { isString } from "@app/types";
 import { slugify } from "@app/types/shared/utils/string_utils";
 
