@@ -3,7 +3,6 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { logger } from "../logger";
 import { getInstallInstructions as getPlatformInstallInstructions } from "../platform";
-import { restoreTerminal } from "../prompt";
 import { ALL_SERVICES } from "../services";
 import { shellQuote } from "../shell";
 import type {
@@ -94,9 +93,6 @@ export class TmuxAdapter implements MultiplexerAdapter {
     // First create the session in background
     await this.createSessionInBackground(sessionName, layoutPath);
 
-    // Ensure terminal is fully restored before attaching
-    restoreTerminal();
-
     // Then attach to it
     const proc = Bun.spawn(["tmux", "attach-session", "-t", sessionName], {
       stdin: "inherit",
@@ -109,9 +105,6 @@ export class TmuxAdapter implements MultiplexerAdapter {
 
   async attachSession(sessionName: string): Promise<void> {
     logger.info(`Attaching to existing session '${sessionName}'...`);
-
-    // Ensure terminal is fully restored before attaching
-    restoreTerminal();
 
     const proc = Bun.spawn(["tmux", "attach-session", "-t", sessionName], {
       stdin: "inherit",
