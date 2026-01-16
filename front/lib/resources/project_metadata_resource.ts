@@ -115,7 +115,10 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     await ProjectMetadataModel.destroy({
-      where: { id: this.id },
+      where: {
+        id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
       transaction,
     });
     return new Ok(undefined);
