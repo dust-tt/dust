@@ -59,7 +59,7 @@
     "react-resizable-panels": "^3.0.4",
     "react-resize-detector": "^11.0.1",
     "react-runner": "^1.0.5",
-    "recharts": "^2.15.4",
+    "recharts": "2.15.4",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
