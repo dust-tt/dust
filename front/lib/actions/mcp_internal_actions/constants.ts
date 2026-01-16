@@ -1837,6 +1837,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
+      get_agent_details: "never_ask",
       get_available_models: "never_ask",
       get_available_skills: "never_ask",
       get_available_tools: "never_ask",

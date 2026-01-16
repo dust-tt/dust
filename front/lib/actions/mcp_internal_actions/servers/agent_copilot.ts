@@ -16,7 +16,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { LightAgentConfigurationType } from "@app/types";
 import { Err, Ok, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 async function createServer(
@@ -391,14 +390,11 @@ async function createServer(
         const workspace = auth.getNonNullableWorkspace();
 
         // Get feedback items.
-        // The method only uses agentConfiguration.sId, so this cast is safe.
         const feedbacks =
           await AgentMessageFeedbackResource.getAgentConfigurationFeedbacksByDescVersion(
             {
               workspace,
-              agentConfiguration: {
-                sId: agent_id,
-              } as LightAgentConfigurationType,
+              agentConfigurationId: agent_id,
               paginationParams: {
                 limit: limit ?? 20,
                 orderColumn: "createdAt",
