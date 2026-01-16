@@ -196,6 +196,7 @@ export function LatencyChart({
         />
         <Line
           type="monotone"
+          strokeWidth={2}
           dataKey="avgLatencyMs"
           name="Average time to complete output"
           className={LATENCY_PALETTE.average}
@@ -205,6 +206,7 @@ export function LatencyChart({
         />
         <Line
           type="monotone"
+          strokeWidth={2}
           dataKey="percentilesLatencyMs"
           name="Median time to complete output"
           className={LATENCY_PALETTE.median}

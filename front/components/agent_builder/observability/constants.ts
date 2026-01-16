@@ -8,8 +8,8 @@ export const DEFAULT_PERIOD_DAYS = 30;
 
 export const USAGE_METRICS_PALETTE = {
   messages: "text-golden-500 dark:text-golden-500-night",
-  conversations: "text-blue-400 dark:text-blue-400-night",
-  activeUsers: "text-violet-300 dark:text-violet-300-night",
+  conversations: "text-blue-500 dark:text-blue-500-night",
+  activeUsers: "text-violet-500 dark:text-violet-500-night",
 } as const;
 
 export const USAGE_METRICS_LEGEND = [
@@ -19,8 +19,8 @@ export const USAGE_METRICS_LEGEND = [
 ] as const;
 
 export const LATENCY_PALETTE = {
-  average: "text-blue-400 dark:text-blue-400-night",
-  median: "text-violet-300 dark:text-violet-300-night",
+  average: "text-blue-500 dark:text-blue-500-night",
+  median: "text-violet-500 dark:text-violet-500-night",
 } as const;
 
 export const LATENCY_LEGEND = [
@@ -35,13 +35,23 @@ export const COST_PALETTE = {
 
 export const CHART_HEIGHT = 260;
 
-export const INDEXED_COLORS = [
-  "text-orange-300 dark:text-orange-300-night",
-  "text-golden-200 dark:text-golden-200-night",
-  "text-green-200 dark:text-green-200-night",
-  "text-violet-300 dark:text-violet-300-night",
-  "text-rose-300 dark:text-rose-300-night",
+export const INDEXED_BASE_COLORS = [
+  "orange",
+  "golden",
+  "green",
+  "violet",
+  "rose",
 ] as const;
+
+export type IndexedBaseColor = (typeof INDEXED_BASE_COLORS)[number];
+
+export function buildColorClass(baseColor: string, shade: number): string {
+  return `text-${baseColor}-${shade} dark:text-${baseColor}-${shade}-night`;
+}
+
+export const INDEXED_COLORS = INDEXED_BASE_COLORS.map((color) =>
+  buildColorClass(color, 500)
+);
 
 export const MAX_TOOLS_DISPLAYED = 5;
 
@@ -71,7 +81,7 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
   UserMessageOrigin,
   { label: string; color: string }
 > = {
-  api: { label: "API", color: "text-blue-300 dark:text-blue-300-night" },
+  api: { label: "API", color: "text-blue-500 dark:text-blue-500-night" },
   cli: { label: "CLI", color: "text-gray-500 dark:text-gray-500-night" },
   cli_programmatic: {
     label: "CLI",
@@ -79,16 +89,16 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
   },
   email: {
     label: "Email",
-    color: "text-violet-300 dark:text-violet-300-night",
+    color: "text-violet-500 dark:text-violet-500-night",
   },
-  excel: { label: "Excel", color: "text-rose-300 dark:text-rose-300-night" },
+  excel: { label: "Excel", color: "text-rose-500 dark:text-rose-500-night" },
   extension: {
     label: "Chrome extension",
-    color: "text-golden-300 dark:text-golden-300-night",
+    color: "text-golden-500 dark:text-golden-500-night",
   },
   gsheet: {
     label: "Google Sheets",
-    color: "text-green-300 dark:text-green-300-night",
+    color: "text-green-500 dark:text-green-500-night",
   },
   make: { label: "Make", color: "text-gray-600 dark:text-gray-600-night" },
   n8n: {

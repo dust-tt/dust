@@ -241,6 +241,7 @@ export function UsageMetricsChart({
               ? "linear"
               : "monotone"
           }
+          strokeWidth={2}
           dataKey="count"
           name="Messages"
           className={USAGE_METRICS_PALETTE.messages}
@@ -253,6 +254,7 @@ export function UsageMetricsChart({
               ? "linear"
               : "monotone"
           }
+          strokeWidth={2}
           dataKey="conversations"
           name="Conversations"
           className={USAGE_METRICS_PALETTE.conversations}
@@ -265,6 +267,7 @@ export function UsageMetricsChart({
               ? "linear"
               : "monotone"
           }
+          strokeWidth={2}
           dataKey="activeUsers"
           name="Active users"
           className={USAGE_METRICS_PALETTE.activeUsers}
