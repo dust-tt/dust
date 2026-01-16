@@ -391,8 +391,8 @@ async function createServer(
     connectionType: "workspace", // Always get the admin token.
   });
 
-  const slackAIStatus: SlackAIStatus = c
-    ? await getSlackAIEnablementStatus({ accessToken: c.access_token })
+  const slackAIStatus: SlackAIStatus = c.isOk()
+    ? await getSlackAIEnablementStatus({ accessToken: c.value.access_token })
     : "disconnected";
 
   localLogger.info(

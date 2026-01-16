@@ -91,14 +91,14 @@ async function _getToolAndAccessTokenForView(
     connectionType,
   });
 
-  if (!connectionResult) {
+  if (connectionResult.isErr()) {
     return null;
   }
 
   return {
     tool: SEARCHABLE_TOOLS[r.value.name],
-    accessToken: connectionResult.access_token,
-    metadata: connectionResult.connection.metadata,
+    accessToken: connectionResult.value.access_token,
+    metadata: connectionResult.value.connection.metadata,
   };
 }
 

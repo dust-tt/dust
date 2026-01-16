@@ -182,14 +182,14 @@ export const connectToMCPServer = async (
                     ? "personal"
                     : "workspace",
               });
-              if (c) {
+              if (c.isOk()) {
                 const authInfo: AuthInfo = {
-                  token: c.access_token,
-                  expiresAt: c.access_token_expiry ?? undefined,
+                  token: c.value.access_token,
+                  expiresAt: c.value.access_token_expiry ?? undefined,
                   clientId: "",
                   scopes: [],
                   extra: {
-                    ...c.connection.metadata,
+                    ...c.value.connection.metadata,
                     connectionType:
                       params.oAuthUseCase === "personal_actions"
                         ? "personal"
@@ -206,6 +206,7 @@ export const connectToMCPServer = async (
                     workspaceId: auth.getNonNullableWorkspace().sId,
                     mcpServerId: params.mcpServerId,
                     oAuthUseCase: params.oAuthUseCase,
+                    error: c.error,
                   },
                   "Internal server requires workspace authentication but no connection found"
                 );
@@ -219,7 +220,10 @@ export const connectToMCPServer = async (
                     }
                   );
                   // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
-                  if (!adminConnection) {
+                  if (
+                    adminConnection.isErr() &&
+                    adminConnection.error.message === "connection_not_found"
+                  ) {
                     return new Err(
                       new MCPServerRequiresAdminAuthenticationError(
                         params.mcpServerId,
@@ -291,12 +295,12 @@ export const connectToMCPServer = async (
               mcpServerId: params.mcpServerId,
               connectionType: connectionType,
             });
-            if (c) {
+            if (c.isOk()) {
               token = {
-                access_token: c.access_token,
+                access_token: c.value.access_token,
                 token_type: "bearer",
-                expires_in: c.access_token_expiry ?? undefined,
-                scope: c.connection.metadata.scope,
+                expires_in: c.value.access_token_expiry ?? undefined,
+                scope: c.value.connection.metadata.scope,
               };
             } else {
               if (connectionType === "personal") {
@@ -306,7 +310,7 @@ export const connectToMCPServer = async (
                   connectionType: "workspace",
                 });
                 // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
-                if (!adminConnection) {
+                if (adminConnection.isErr()) {
                   return new Err(
                     new MCPServerRequiresAdminAuthenticationError(
                       params.mcpServerId,
