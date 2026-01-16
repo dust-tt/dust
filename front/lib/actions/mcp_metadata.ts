@@ -6,6 +6,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import { heartbeat } from "@temporalio/activity";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { ProxyAgent } from "undici";
 
@@ -41,6 +42,8 @@ import {
   normalizeError,
   Ok,
 } from "@app/types";
+
+const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 15_000;
 
 interface ConnectViaMCPServerId {
   type: "mcpServerId";
@@ -453,7 +456,9 @@ async function connectToRemoteMCPServer(
     const streamableHttpTransport = new StreamableHTTPClientTransport(url, req);
     await mcpClient.connect(streamableHttpTransport);
   } catch (error) {
-    // Check if error message contains "HTTP 4xx" as suggested by the official doc.
+    // Heartbeat here, which prevents timing out in the case where we timed out above.
+    heartbeat();
+    // Check if the error message contains "HTTP 4xx" as suggested by the official doc.
     // Doc is here https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#client-side-compatibility.
     if (error instanceof Error && /HTTP 4\d\d/.test(error.message)) {
       logger.info(
