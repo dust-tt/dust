@@ -1,5 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
-import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isHostUnderDomain, isIpAddress } from "@app/types";
 
 /**
@@ -15,10 +15,14 @@ export async function isHostUnderVerifiedDomain(
     return false;
   }
 
-  const verifiedDomains = await WorkspaceHasDomainModel.findAll({
-    attributes: ["domain"],
-    where: { workspaceId: auth.getNonNullableWorkspace().id },
-  });
+  const workspace = await WorkspaceResource.fetchById(
+    auth.getNonNullableWorkspace().sId
+  );
+  if (!workspace) {
+    return false;
+  }
+
+  const verifiedDomains = await workspace.getVerifiedDomains();
 
   return verifiedDomains.some((d) => isHostUnderDomain(host, d.domain));
 }

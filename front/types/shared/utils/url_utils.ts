@@ -96,31 +96,44 @@ export const validateRelativePath = (
   }
 };
 
+// Pre-compiled regex for IPv4 validation.
+const IPV4_REGEX = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+
 /**
  * Check if a string is an IP address (IPv4 or IPv6).
- * Used to reject IP addresses when matching against domain names.
+ * Uses strict validation - only accepts properly formatted IP addresses.
  */
 export function isIpAddress(host: string): boolean {
-  // IPv4: four groups of 1-3 digits separated by dots, each 0-255
-  const ipv4Match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  // IPv4: exactly four octets, each 0-255
+  const ipv4Match = IPV4_REGEX.exec(host);
   if (ipv4Match) {
-    const octets = [ipv4Match[1], ipv4Match[2], ipv4Match[3], ipv4Match[4]];
-    const allValid = octets.every((octet) => {
-      const num = parseInt(octet, 10);
-      return num >= 0 && num <= 255;
-    });
-    if (allValid) {
+    return [ipv4Match[1], ipv4Match[2], ipv4Match[3], ipv4Match[4]].every(
+      (octet) => {
+        const num = parseInt(octet, 10);
+        return num >= 0 && num <= 255;
+      }
+    );
+  }
+
+  // IPv6 in URL format (with brackets)
+  if (host.startsWith("[") && host.endsWith("]")) {
+    const inner = host.slice(1, -1);
+    // Validate by trying to parse as URL
+    try {
+      new URL(`http://[${inner}]`);
       return true;
+    } catch {
+      return false;
     }
   }
 
-  // IPv6: contains colons and only hex digits, colons, dots (for IPv4-mapped)
-  if (host.includes(":")) {
-    if (/^[0-9a-f:.]+$/i.test(host)) {
-      const parts = host.split(":");
-      if (parts.length <= 9) {
-        return true;
-      }
+  // Raw IPv6 without brackets (contains colons, no dots except IPv4-mapped)
+  if (host.includes(":") && !host.startsWith("[")) {
+    try {
+      new URL(`http://[${host}]`);
+      return true;
+    } catch {
+      return false;
     }
   }
 
@@ -128,14 +141,20 @@ export function isIpAddress(host: string): boolean {
 }
 
 /**
+ * Normalize a hostname: lowercase and remove trailing dot.
+ */
+function normalizeHostname(host: string): string {
+  return host.toLowerCase().replace(/\.$/, "");
+}
+
+/**
  * Check if a host is under a domain.
  * - Exact match: host === domain
  * - Subdomain match: host ends with '.' + domain
- * Both are normalized to lowercase and trailing dots are removed.
  */
 export function isHostUnderDomain(host: string, domain: string): boolean {
-  const normalizedHost = host.toLowerCase().replace(/\.$/, "");
-  const normalizedDomain = domain.toLowerCase().replace(/\.$/, "");
+  const normalizedHost = normalizeHostname(host);
+  const normalizedDomain = normalizeHostname(domain);
 
   return (
     normalizedHost === normalizedDomain ||
