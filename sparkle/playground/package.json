@@ -11,17 +11,17 @@
   },
   "dependencies": {
     "@dust-tt/sparkle": "file:..",
+    "@vitejs/plugin-react": "^4.3.4",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "vite": "^5.4.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.14",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.2.4",
-    "typescript": "^5.4.5",
-    "vite": "^5.4.0"
+    "typescript": "^5.4.5"
   }
 }
