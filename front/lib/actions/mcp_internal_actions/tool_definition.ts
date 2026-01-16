@@ -48,11 +48,12 @@ export type ToolMeta<
   TSchema extends ZodRawShape = ZodRawShape,
 > = Omit<ToolDefinition<TName, TSchema>, "handler">;
 
-export function defineToolMeta<
-  TName extends string,
-  TSchema extends ZodRawShape,
->(def: ToolMeta<TName, TSchema>): ToolMeta<TName, TSchema> {
-  return def;
+export function createToolsRecord<
+  T extends Record<string, Omit<ToolMeta, "name">>,
+>(tools: T): { [K in keyof T]: T[K] & { name: K } } {
+  return Object.fromEntries(
+    Object.entries(tools).map(([key, value]) => [key, { ...value, name: key }])
+  ) as { [K in keyof T]: T[K] & { name: K } };
 }
 
 export function defineTool<TName extends string, TSchema extends ZodRawShape>(

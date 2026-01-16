@@ -8,18 +8,7 @@ import { fetch as undiciFetch, ProxyAgent } from "undici";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { defineTool } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  addIssueToProjectMeta,
-  commentOnIssueMeta,
-  createIssueMeta,
-  createPullRequestReviewMeta,
-  getIssueMeta,
-  getPullRequestMeta,
-  listIssuesMeta,
-  listOrganizationProjectsMeta,
-  listPullRequestsMeta,
-  searchAdvancedMeta,
-} from "@app/lib/api/actions/servers/github/metadata";
+import { GITHUB_TOOLS } from "@app/lib/api/actions/servers/github/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
@@ -57,7 +46,7 @@ export const createOctokit = async (
 
 export function createGithubTools(auth: Authenticator): ToolDefinition[] {
   const createIssueTool = defineTool({
-    ...createIssueMeta,
+    ...GITHUB_TOOLS.create_issue,
     handler: async (
       { owner, repo, title, body, assignees, labels },
       { authInfo }
@@ -93,7 +82,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
   });
 
   const getPullRequestTool = defineTool({
-    ...getPullRequestMeta,
+    ...GITHUB_TOOLS.get_pull_request,
     handler: async ({ owner, repo, pullNumber }, { authInfo }) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -359,7 +348,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
   });
 
   const createPullRequestReviewTool = defineTool({
-    ...createPullRequestReviewMeta,
+    ...GITHUB_TOOLS.create_pull_request_review,
     handler: async (
       { owner, repo, pullNumber, body, event, comments = [] },
       { authInfo }
@@ -398,7 +387,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
   });
 
   const listOrganizationProjectsTool = defineTool({
-    ...listOrganizationProjectsMeta,
+    ...GITHUB_TOOLS.list_organization_projects,
     handler: async ({ owner }, { authInfo }) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -505,7 +494,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
   });
 
   const addIssueToProjectTool = defineTool({
-    ...addIssueToProjectMeta,
+    ...GITHUB_TOOLS.add_issue_to_project,
     handler: async (
       { owner, repo, issueNumber, projectId, field },
       { authInfo }
@@ -601,7 +590,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
   });
 
   const commentOnIssueTool = defineTool({
-    ...commentOnIssueMeta,
+    ...GITHUB_TOOLS.comment_on_issue,
     handler: async ({ owner, repo, issueNumber, body }, { authInfo }) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -635,7 +624,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
   });
 
   const getIssueTool = defineTool({
-    ...getIssueMeta,
+    ...GITHUB_TOOLS.get_issue,
     handler: async ({ owner, repo, issueNumber }, { authInfo }) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -757,7 +746,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
   });
 
   const listIssuesTool = defineTool({
-    ...listIssuesMeta,
+    ...GITHUB_TOOLS.list_issues,
     handler: async (
       {
         owner,
@@ -907,7 +896,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
   });
 
   const searchAdvancedTool = defineTool({
-    ...searchAdvancedMeta,
+    ...GITHUB_TOOLS.search_advanced,
     handler: async ({ query, first = 30, after, before }, { authInfo }) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
@@ -1197,7 +1186,7 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
   });
 
   const listPullRequestsTool = defineTool({
-    ...listPullRequestsMeta,
+    ...GITHUB_TOOLS.list_pull_requests,
     handler: async (
       {
         owner,
