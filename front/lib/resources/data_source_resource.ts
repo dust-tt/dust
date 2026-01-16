@@ -580,7 +580,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     });
   }
 
-  async setConnectorId(connectorId: string) {
+  async setConnectorId(connectorId: string | null) {
     return this.update({
       connectorId,
     });

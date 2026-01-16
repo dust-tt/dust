@@ -1,21 +1,16 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-
 import { default as config } from "@app/lib/api/config";
 import {
   createDataSourceAndConnectorForProject,
   fetchProjectDataSource,
 } from "@app/lib/api/projects";
-import { PROJECT_CONTEXT_FOLDER_ID } from "@app/lib/api/projects/constants";
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { getSpaceConversationsRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { assertNever, ConnectorsAPI, CoreAPI } from "@app/types";
+import { ConnectorsAPI } from "@app/types";
 
 // Function to process a single project space
 async function processProjectSpace(
@@ -74,44 +69,43 @@ async function processProjectSpace(
   });
 
   try {
-    const owner = auth.getNonNullableWorkspace();
+    // Check if datasource already exists to track stats
+    const existingDataSource = await fetchProjectDataSource(auth, space);
+    const hadConnectorBefore =
+      existingDataSource.isOk() &&
+      existingDataSource.value.connectorId !== null;
 
-    // Check if data source already exists
-    const r = await fetchProjectDataSource(auth, space);
+    if (execute) {
+      // Use the idempotent function which handles all cases:
+      // - Creates missing components (Core API project, data source, folder, front datasource, connector)
+      // - Verifies existing components
+      // - Recreates missing components if needed
+      const createResult = await createDataSourceAndConnectorForProject(
+        auth,
+        space
+      );
 
-    // Make sure we handle all possible future error codes
-    if (r.isErr() && r.error.code !== "data_source_not_found") {
-      assertNever(r.error.code);
-    }
+      if (createResult.isErr()) {
+        throw createResult.error;
+      }
 
-    if (r.isOk() && r.value.connectorId) {
-      stats.alreadyHasConnector++;
+      // Fetch the datasource after creation to get updated state
+      const r = await fetchProjectDataSource(auth, space);
+      if (r.isOk() && r.value.connectorId) {
+        if (!hadConnectorBefore) {
+          stats.created++;
+          localLogger.info("Successfully created dust_project connector");
+        } else {
+          stats.alreadyHasConnector++;
+        }
 
-      // Check if sync needs to be started and ensure garbage collection is running
-      if (execute) {
         const connectorsAPI = new ConnectorsAPI(
           config.getConnectorsAPIConfig(),
           logger
         );
 
-        // Upsert the context folder
-        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-        await coreAPI.upsertDataSourceFolder({
-          projectId: r.value.dustAPIProjectId,
-          dataSourceId: r.value.dustAPIDataSourceId,
-          folderId: PROJECT_CONTEXT_FOLDER_ID,
-          parentId: null,
-          parents: [PROJECT_CONTEXT_FOLDER_ID],
-          mimeType: INTERNAL_MIME_TYPES.DUST_PROJECT.CONTEXT_FOLDER,
-          sourceUrl:
-            config.getClientFacingUrl() +
-            getSpaceConversationsRoute(owner.sId, space.sId),
-          timestamp: null,
-          providerVisibility: null,
-          title: "Context",
-        });
-
-        // Try to resume the connector (will start full sync if needed, or incremental sync if already synced)
+        // Try to resume/unpause the connector to ensure sync is running
+        // This is idempotent - if already running, it's a no-op
         const unpauseResult = await connectorsAPI.unpauseConnector(
           r.value.connectorId.toString()
         );
@@ -123,64 +117,23 @@ async function processProjectSpace(
             "Failed to unpause connector sync"
           );
         } else {
-          localLogger.info("Successfully unpaused connector sync");
+          localLogger.info("Successfully ensured connector sync is running");
           stats.syncStarted++;
         }
       } else {
-        localLogger.info(
-          "Would unpause connector sync and ensure garbage collection is running"
+        // This shouldn't happen if createDataSourceAndConnectorForProject succeeded
+        localLogger.warn(
+          "createDataSourceAndConnectorForProject succeeded but no connector found"
         );
-      }
-      return;
-    }
-
-    if (execute) {
-      localLogger.info("Creating dust_project connector for project");
-
-      // Create the connector
-      const createResult = await createDataSourceAndConnectorForProject(
-        auth,
-        space
-      );
-
-      if (createResult.isErr()) {
-        throw createResult.error;
-      }
-
-      stats.created++;
-      localLogger.info("Successfully created dust_project connector");
-
-      // Trigger initial sync
-      const r = await fetchProjectDataSource(auth, space);
-
-      if (r.isOk() && r.value.connectorId) {
-        const connectorsAPI = new ConnectorsAPI(
-          config.getConnectorsAPIConfig(),
-          logger
-        );
-
-        const syncResult = await connectorsAPI.syncConnector(
-          r.value.connectorId.toString()
-        );
-        if (syncResult.isErr()) {
-          localLogger.warn(
-            {
-              error: syncResult.error,
-            },
-            "Failed to trigger initial sync, but connector was created"
-          );
-        } else {
-          localLogger.info(
-            {
-              workflowId: syncResult.value.workflowId,
-            },
-            "Successfully triggered initial sync"
-          );
-          stats.syncStarted++;
-        }
       }
     } else {
-      localLogger.info("Would create dust_project connector and start sync");
+      if (hadConnectorBefore) {
+        localLogger.info("Would ensure dust_project connector sync is running");
+      } else {
+        localLogger.info(
+          "Would create dust_project connector and ensure sync is running"
+        );
+      }
     }
   } catch (e) {
     localLogger.error({ error: e }, "Error ensuring project connector");
