@@ -10,7 +10,11 @@ type DataLayer =
       gclid: string | null;
     }
   | {
-      event: "hubspot_form_submitted";
+      event: "contact_form_submitted";
+      is_qualified: boolean;
+    }
+  | {
+      event: "contact_form_qualified_lead";
     };
 
 interface Signals {
