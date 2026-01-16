@@ -25,6 +25,75 @@ async function createServer(
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("agent_copilot");
 
+  // Tool: get_agent_details
+  // Returns key configuration data for an agent.
+  server.tool(
+    "get_agent_details",
+    "Get key configuration data for an agent including name, description, instructions, model, and other settings. Optionally specify a version to get historical data.",
+    {
+      agent_id: z.string().describe("The agent configuration sId"),
+      version: z
+        .number()
+        .optional()
+        .describe(
+          "Specific version number to retrieve. If not provided, returns the latest version."
+        ),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "agent_copilot_get_agent_details",
+        agentLoopContext,
+      },
+      async ({ agent_id, version }) => {
+        const agentConfig = await getAgentConfiguration(auth, {
+          agentId: agent_id,
+          agentVersion: version,
+          variant: "light",
+        });
+
+        if (!agentConfig) {
+          return new Err(
+            new MCPError(
+              version !== undefined
+                ? `Agent not found: ${agent_id} (version ${version})`
+                : `Agent not found: ${agent_id}`
+            )
+          );
+        }
+
+        const result = {
+          sId: agentConfig.sId,
+          name: agentConfig.name,
+          description: agentConfig.description,
+          instructions: agentConfig.instructions,
+          model: {
+            providerId: agentConfig.model.providerId,
+            modelId: agentConfig.model.modelId,
+            temperature: agentConfig.model.temperature,
+            reasoningEffort: agentConfig.model.reasoningEffort,
+            responseFormat: agentConfig.model.responseFormat,
+          },
+          version: agentConfig.version,
+          versionCreatedAt: agentConfig.versionCreatedAt,
+          status: agentConfig.status,
+          scope: agentConfig.scope,
+          pictureUrl: agentConfig.pictureUrl,
+          maxStepsPerRun: agentConfig.maxStepsPerRun,
+          tags: agentConfig.tags.map((t) => ({ sId: t.sId, name: t.name })),
+          templateId: agentConfig.templateId,
+        };
+
+        return new Ok([
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ]);
+      }
+    )
+  );
+
   // Tool: get_available_models
   // Lists LLM models available for the workspace, optionally filtered by provider.
   server.tool(
