@@ -11,8 +11,8 @@ const storyModules = import.meta.glob<StoryModule>("./stories/*.tsx", {
 });
 
 // Extract story names and components
-const stories = Object.entries(storyModules).map(
-  ([path, module]: [string, StoryModule]) => {
+const stories = Object.entries(storyModules as Record<string, StoryModule>).map(
+  ([path, module]) => {
     const name = path.split("/").pop()?.replace(".tsx", "") || "";
     return {
       name,

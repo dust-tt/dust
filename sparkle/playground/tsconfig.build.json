@@ -6,6 +6,7 @@
       "@dust-tt/sparkle/*": ["../dist/esm/*"],
       "@sparkle": ["../dist/esm/index.d.ts"],
       "@sparkle/*": ["../dist/esm/*"]
-    }
+    },
+    "types": ["vite/client"]
   }
 }
