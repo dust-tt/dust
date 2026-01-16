@@ -14,7 +14,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useSWRConfig } from "swr";
 
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
@@ -40,6 +39,7 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import type { DustError } from "@app/lib/error";
+import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import {
   useConversation,
   useConversationFeedbacks,
@@ -109,7 +109,6 @@ export const ConversationViewer = ({
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
   const sendNotification = useSendNotification();
-  const { mutate: globalMutate } = useSWRConfig();
 
   const {
     conversation,
@@ -417,8 +416,7 @@ export const ConversationViewer = ({
               { revalidate: false }
             );
 
-            // Refresh trial message usage count after an agent message completes.
-            void globalMutate(`/api/w/${owner.sId}/trial-message-usage`);
+            window.dispatchEvent(new AgentMessageCompletedEvent());
             break;
           default:
             ((t: never) => {
@@ -430,12 +428,10 @@ export const ConversationViewer = ({
     [
       conversationId,
       debouncedMarkAsRead,
-      globalMutate,
       mutateConversation,
       mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
-      owner.sId,
       user.sId,
     ]
   );
