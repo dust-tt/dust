@@ -328,6 +328,11 @@ export function DatasourceRetrievalTreemapChart({
       return null;
     }
 
+    // For Slack, only show channel-level blocks (no individual threads).
+    const isSlack =
+      zoomSelection.mcpServerName === "slack" ||
+      zoomSelection.mcpServerName === "slack_bot";
+
     const documentsByParentId = new Map<string | null, typeof documents>();
     documents.forEach((d) => {
       const key = d.parentId ?? null;
@@ -344,13 +349,15 @@ export function DatasourceRetrievalTreemapChart({
       parentId: g.parentId,
       size: g.count,
       color: zoomSelection.color,
-      children: (documentsByParentId.get(g.parentId) ?? []).map((d) => ({
-        name: d.displayName,
-        documentId: d.documentId,
-        parentId: d.parentId,
-        size: d.count,
-        color: zoomSelection.color,
-      })),
+      children: isSlack
+        ? undefined
+        : (documentsByParentId.get(g.parentId) ?? []).map((d) => ({
+            name: d.displayName,
+            documentId: d.documentId,
+            parentId: d.parentId,
+            size: d.count,
+            color: zoomSelection.color,
+          })),
     }));
   }, [documents, groups, zoomSelection]);
 
