@@ -40,6 +40,7 @@ import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerNameAndWorkspaceId,
+  getInternalMCPServerToolStakes,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -145,7 +146,7 @@ export function getToolExtraFields(
       return r;
     }
     const serverName = r.value.name;
-    const defaultStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes ?? {};
+    const defaultStakes = getInternalMCPServerToolStakes(serverName) ?? {};
     toolsStakes = { ...defaultStakes };
     toolsRetryPolicies = INTERNAL_MCP_SERVERS[serverName].tools_retry_policies;
     serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
@@ -305,6 +306,7 @@ export async function* tryCallMCPTool(
     conversationId,
     messageId,
     toolName: toolConfiguration.originalName,
+    toolConfigurationId: toolConfiguration.sId,
     workspaceId,
   };
 
@@ -360,6 +362,8 @@ export async function* tryCallMCPTool(
       };
     }
     mcpClient = connectionResult.value;
+
+    heartbeat();
 
     const emitter = new EventEmitter();
 

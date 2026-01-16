@@ -78,6 +78,7 @@ export function AgentBuilderInstructionsEditor({
   const editorRef = useRef<ReactEditor | null>(null);
   const blockDropdown = useBlockInsertDropdown(editorRef);
   const suggestionHandler = blockDropdown.suggestionOptions;
+  const initialContentSetRef = useRef(false);
 
   const extensions = useMemo(() => {
     const extensions: Extensions = [
@@ -201,7 +202,8 @@ export function AgentBuilderInstructionsEditor({
   const editor = useEditor(
     {
       extensions,
-      content: field.value,
+      // Don't set content here - it can cause race conditions in Safari
+      // Content will be set in a separate useEffect after the editor is ready
       contentType: "markdown",
       onUpdate: ({ editor, transaction }) => {
         if (transaction.docChanged) {
@@ -217,12 +219,43 @@ export function AgentBuilderInstructionsEditor({
     [extensions]
   );
 
+  // Set initial content after editor is created, then focus
+  // This is separated from useEditor() to avoid Safari race conditions
+  // Only runs once when editor is first created
   useEffect(() => {
-    editorRef.current = editor;
-    if (editor && !editor.isDestroyed) {
-      editor.commands.focus("end");
+    if (!editor || editor.isDestroyed || initialContentSetRef.current) {
+      return;
     }
-  }, [editor]);
+
+    editorRef.current = editor;
+    // Mark as set immediately to prevent race conditions
+    initialContentSetRef.current = true;
+
+    // Use requestAnimationFrame to ensure DOM is fully ready
+    // This fixes "Applying a mismatched transaction" error in Safari/iOS
+    requestAnimationFrame(() => {
+      if (!editor || editor.isDestroyed) {
+        return;
+      }
+
+      // Set content first if we have initial value
+      if (field.value) {
+        editor.commands.setContent(field.value, {
+          emitUpdate: false,
+          contentType: "markdown",
+        });
+      }
+
+      // Then focus after content is set
+      // Use a second RAF to ensure content setting is complete
+      requestAnimationFrame(() => {
+        if (editor && !editor.isDestroyed) {
+          editor.commands.focus("end");
+        }
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor]); // Only run when editor is created, not when field.value changes
 
   useEffect(() => {
     return () => {
@@ -250,7 +283,12 @@ export function AgentBuilderInstructionsEditor({
   }, [editor, displayError]);
 
   useEffect(() => {
-    if (!editor || field.value === undefined || editor.isDestroyed) {
+    if (
+      !editor ||
+      field.value === undefined ||
+      editor.isDestroyed ||
+      !initialContentSetRef.current
+    ) {
       return;
     }
 
@@ -259,13 +297,15 @@ export function AgentBuilderInstructionsEditor({
     }
     const currentContent = editor.getMarkdown();
     if (currentContent !== field.value) {
-      // Use setTimeout to ensure this runs after any diff mode changes
-      setTimeout(() => {
-        editor.commands.setContent(field.value, {
-          emitUpdate: false,
-          contentType: "markdown",
-        });
-      }, 0);
+      // Use requestAnimationFrame to ensure DOM is ready (Safari fix)
+      requestAnimationFrame(() => {
+        if (editor && !editor.isDestroyed) {
+          editor.commands.setContent(field.value, {
+            emitUpdate: false,
+            contentType: "markdown",
+          });
+        }
+      });
     }
   }, [editor, field.value]);
 

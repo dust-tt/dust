@@ -112,7 +112,7 @@ export function SkillBuilderInstructionsEditor({
     () =>
       debounce((editor: Editor) => {
         if (!isInstructionDiffMode && !editor.isDestroyed) {
-          instructionsField.onChange(editor.getMarkdown());
+          instructionsField.onChange(editor.getMarkdown().trim());
           updateAttachedKnowledge(editor);
         }
       }, 250),

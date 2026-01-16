@@ -117,7 +117,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     name: "Free Trial",
     maxMessages: 100,
     isDeepDiveAllowed: false,
-    maxUsersInWorkspace: 5,
+    maxUsersInWorkspace: 3,
     maxVaultsInWorkspace: 5,
     maxImagesPerWeek: 10,
     maxMessagesTimeframe: "lifetime",

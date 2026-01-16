@@ -578,6 +578,7 @@ export const OAuthProviderSchema = FlexibleEnumSchema<
   | "notion"
   | "slack"
   | "slack_tools"
+  | "snowflake"
   | "gong"
   | "microsoft"
   | "microsoft_tools"

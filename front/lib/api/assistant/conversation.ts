@@ -7,6 +7,7 @@ import {
   getAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
+import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   createAgentMessages,
@@ -38,7 +39,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
-import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
+import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -430,36 +431,6 @@ async function getConversationRankVersionLock(
     },
     "[ASSISTANT_TRACE] Advisory lock acquired"
   );
-}
-
-export function getRelatedContentFragments(
-  conversation: ConversationType,
-  message: UserMessageType
-): ContentFragmentType[] {
-  const potentialContentFragments = conversation.content
-    // Only the latest version of each message.
-    .map((versions) => versions[versions.length - 1])
-    // Only the content fragments.
-    .filter(isContentFragmentType)
-    // That are preceding the message by rank in the conversation.
-    .filter((m) => m.rank < message.rank)
-    // Sort by rank descending.
-    .toSorted((a, b) => b.rank - a.rank);
-
-  const relatedContentFragments: ContentFragmentType[] = [];
-  let lastRank = message.rank;
-
-  // Add until we reach a gap in ranks.
-  for (const contentFragment of potentialContentFragments) {
-    if (contentFragment.rank === lastRank - 1) {
-      relatedContentFragments.push(contentFragment);
-      lastRank = contentFragment.rank;
-    } else {
-      break;
-    }
-  }
-
-  return relatedContentFragments;
 }
 
 export function isUserMessageContextValid(
@@ -1714,10 +1685,11 @@ async function isMessagesLimitReached(
   // anything (no LLM call) so we don't count them toward the limit.
   // The return value won't account for the parallel calls depending on network timing
   // but we are fine with a little bit of overusage.
-  // For free phone plans, don't multiply by activeSeats to prevent increased limits with more users.
-  const effectiveMaxMessages = isFreeTrialPhonePlan(plan.code)
-    ? maxMessages
-    : maxMessages * activeSeats;
+  const effectiveMaxMessages = computeEffectiveMessageLimit({
+    planCode: plan.code,
+    maxMessages,
+    activeSeats,
+  });
   const agentMentions = mentions.filter(isAgentMention);
   const remainingMentions = await Promise.all(
     agentMentions.map(() =>

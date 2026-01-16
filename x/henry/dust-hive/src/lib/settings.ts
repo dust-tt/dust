@@ -1,3 +1,4 @@
+import type { MultiplexerType } from "./multiplexer/types";
 import { SETTINGS_PATH } from "./paths";
 
 export interface Settings {
@@ -5,6 +6,8 @@ export interface Settings {
   branchPrefix?: string;
   // Enable git-spice for branch management (default: false)
   useGitSpice?: boolean;
+  // Terminal multiplexer to use (default: "zellij")
+  multiplexer?: MultiplexerType;
 }
 
 const DEFAULT_SETTINGS: Settings = {};

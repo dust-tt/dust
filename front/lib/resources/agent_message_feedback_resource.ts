@@ -118,6 +118,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     await this.model.destroy({
       where: {
         id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       transaction,
     });

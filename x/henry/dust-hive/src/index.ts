@@ -6,7 +6,7 @@ import { coolCommand } from "./commands/cool";
 import { destroyCommand } from "./commands/destroy";
 import { doctorCommand, setupCommand } from "./commands/doctor";
 import { downCommand } from "./commands/down";
-import { forwardCommand } from "./commands/forward";
+import { forwardCommand, forwardStatusCommand, forwardStopCommand } from "./commands/forward";
 import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
 import { openCommand } from "./commands/open";
@@ -48,15 +48,16 @@ cli
   .alias("s")
   .option("-n, --name <name>", "Environment name")
   .option("-b, --branch-name <branch>", "Git branch name (default: [prefix]<name>)")
-  .option("-O, --no-open", "Do not open zellij session after spawn")
-  .option("-A, --no-attach", "Create zellij session but don't attach to it")
-  .option("-w, --warm", "Open zellij with a warm tab running dust-hive warm")
+  .option("-O, --no-open", "Do not open terminal session after spawn")
+  .option("-A, --no-attach", "Create terminal session but don't attach to it")
+  .option("-w, --warm", "Open with a warm tab running dust-hive warm")
   .option(
     "-W, --wait",
-    "Wait for SDK to build before opening zellij (cannot be used with --no-open)"
+    "Wait for SDK to build before opening session (cannot be used with --no-open)"
   )
   .option("-c, --command <cmd>", "Run command in shell tab after opening (drops to shell on exit)")
-  .option("-C, --compact", "Use compact zellij layout (no tab bar)")
+  .option("-C, --compact", "Use compact layout (no tab bar)")
+  .option("-u, --unified-logs", "Use single unified logs tab instead of per-service tabs")
   .action(
     async (
       name: string | undefined,
@@ -69,6 +70,7 @@ cli
         wait?: boolean;
         command?: string;
         compact?: boolean;
+        unifiedLogs?: boolean;
       }
     ) => {
       // Validate --wait cannot be used with --no-open
@@ -87,6 +89,7 @@ cli
         wait?: boolean;
         command?: string;
         compact?: boolean;
+        unifiedLogs?: boolean;
       } = {};
       if (resolvedName !== undefined) {
         spawnOptions.name = resolvedName;
@@ -112,22 +115,31 @@ cli
       if (options.compact) {
         spawnOptions.compact = true;
       }
+      if (options.unifiedLogs) {
+        spawnOptions.unifiedLogs = true;
+      }
       await prepareAndRun(spawnCommand(spawnOptions));
     }
   );
 
 cli
-  .command("open [name]", "Open environment's zellij session")
+  .command("open [name]", "Open environment's terminal session")
   .alias("o")
-  .option("-C, --compact", "Use compact zellij layout (no tab bar)")
-  .action(async (name: string | undefined, options: { compact?: boolean }) => {
-    await prepareAndRun(openCommand(name, { compact: options.compact }));
-  });
+  .option("-C, --compact", "Use compact layout (no tab bar)")
+  .option("-u, --unified-logs", "Use single unified logs tab instead of per-service tabs")
+  .action(
+    async (name: string | undefined, options: { compact?: boolean; unifiedLogs?: boolean }) => {
+      await prepareAndRun(
+        openCommand(name, { compact: options.compact, unifiedLogs: options.unifiedLogs })
+      );
+    }
+  );
 
 cli
-  .command("reload [name]", "Kill and reopen zellij session")
-  .action(async (name: string | undefined) => {
-    await prepareAndRun(reloadCommand(name));
+  .command("reload [name]", "Kill and reopen terminal session")
+  .option("-u, --unified-logs", "Use single unified logs tab instead of per-service tabs")
+  .action(async (name: string | undefined, options: { unifiedLogs?: boolean }) => {
+    await prepareAndRun(reloadCommand(name, { unifiedLogs: options.unifiedLogs }));
   });
 
 cli
@@ -174,9 +186,9 @@ cli
 
 cli
   .command("up", "Start managed services (temporal + test postgres + test redis + main session)")
-  .option("-a, --attach", "Attach to main zellij session")
+  .option("-a, --attach", "Attach to main terminal session")
   .option("-f, --force", "Force rebuild even if no changes detected")
-  .option("-C, --compact", "Use compact zellij layout (bar at bottom)")
+  .option("-C, --compact", "Use compact layout (bar at bottom)")
   .action(async (options: { attach?: boolean; force?: boolean; compact?: boolean }) => {
     await prepareAndRun(
       upCommand({
@@ -221,13 +233,19 @@ cli
   .command("logs [name] [service]", "Show service logs")
   .alias("log")
   .option("-f, --follow", "Follow log output")
+  .option("-i, --interactive", "Interactive TUI with service switching")
   .action(
     async (
       name: string | undefined,
       service: string | undefined,
-      options: { follow?: boolean }
+      options: { follow?: boolean; interactive?: boolean }
     ) => {
-      await prepareAndRun(logsCommand(name, service, { follow: Boolean(options.follow) }));
+      await prepareAndRun(
+        logsCommand(name, service, {
+          follow: Boolean(options.follow),
+          interactive: Boolean(options.interactive),
+        })
+      );
     }
   );
 
@@ -250,10 +268,22 @@ cli.command("cache", "Show binary cache status").action(async () => {
   await prepareAndRun(cacheCommand());
 });
 
+cli.command("forward status", "Show current forwarding status").action(async () => {
+  await prepareAndRun(forwardStatusCommand());
+});
+
+cli.command("forward stop", "Stop the port forwarder").action(async () => {
+  await prepareAndRun(forwardStopCommand());
+});
+
 cli
-  .command("forward [target]", "Manage OAuth port forwarding")
-  .action(async (target: string | undefined) => {
-    await prepareAndRun(forwardCommand(target));
+  .command("forward [name]", "Forward OAuth ports to environment")
+  .example("dust-hive forward          # Forward to last warmed env")
+  .example("dust-hive forward my-env   # Forward to specific env")
+  .example("dust-hive forward status   # Show forwarding status")
+  .example("dust-hive forward stop     # Stop port forwarding")
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(forwardCommand(name));
   });
 
 cli

@@ -14,6 +14,7 @@ console.log(`Building for environment: ${nodeEnv}`);
 export default defineConfig({
   entry: ["src/index.tsx"],
   format: ["esm"],
+  platform: "node",
   dts: true,
   clean: true,
   // Inject environment variables into the build

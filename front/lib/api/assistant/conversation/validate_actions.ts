@@ -106,10 +106,8 @@ export async function validateAction(
 
   if (approvalState === "always_approved" && user) {
     switch (action.toolConfiguration.permission) {
-      // TODO(adrien): move "low" to createToolApproval storage
       case "low":
-        await setUserAlwaysApprovedTool({
-          user,
+        await setUserAlwaysApprovedTool(auth, {
           mcpServerId: action.toolConfiguration.toolServerId,
           functionCallName: action.functionCallName,
         });

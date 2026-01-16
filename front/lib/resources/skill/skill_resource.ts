@@ -1312,6 +1312,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await SkillMCPServerConfigurationModel.destroy({
         where: {
           id: { [Op.in]: idsToDelete },
+          workspaceId: workspace.id,
         },
         transaction,
       });

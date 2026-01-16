@@ -7,7 +7,7 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { ProxyAgent } from "undici";
+import type { ProxyAgent } from "undici";
 
 import {
   getConnectionForMCPServer,
@@ -27,20 +27,20 @@ import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
+import { isHostUnderVerifiedDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
-import { getUntrustedEgressAgent } from "@app/lib/egress/server";
+import {
+  getStaticIPProxyAgent,
+  getUntrustedEgressAgent,
+} from "@app/lib/egress/server";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase, Result } from "@app/types";
-import {
-  assertNever,
-  EnvironmentConfig,
-  Err,
-  normalizeError,
-  Ok,
-} from "@app/types";
+import { assertNever, Err, normalizeError, Ok } from "@app/types";
+
+const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
 
 interface ConnectViaMCPServerId {
   type: "mcpServerId";
@@ -48,11 +48,11 @@ interface ConnectViaMCPServerId {
   oAuthUseCase: MCPOAuthUseCase | null;
 }
 
-export const isConnectViaMCPServerId = (
+export function isConnectViaMCPServerId(
   params: MCPConnectionParams
-): params is ConnectViaMCPServerId => {
+): params is ConnectViaMCPServerId {
   return params.type === "mcpServerId";
-};
+}
 
 interface ConnectViaRemoteMCPServerUrl {
   type: "remoteMCPServerUrl";
@@ -67,11 +67,11 @@ interface ConnectViaClientSideMCPServer {
   mcpServerId: string;
 }
 
-export const isConnectViaClientSideMCPServer = (
+export function isConnectViaClientSideMCPServer(
   params: MCPConnectionParams
-): params is ConnectViaClientSideMCPServer => {
+): params is ConnectViaClientSideMCPServer {
   return params.type === "clientSideMCPServerId";
-};
+}
 
 export type ServerSideMCPConnectionParams =
   | ConnectViaMCPServerId
@@ -83,25 +83,34 @@ export type MCPConnectionParams =
   | ServerSideMCPConnectionParams
   | ClientSideMCPConnectionParams;
 
-function createMCPDispatcher(auth: Authenticator): ProxyAgent | undefined {
-  if (isWorkspaceUsingStaticIP(auth.getNonNullableWorkspace())) {
-    const proxyHost = `${EnvironmentConfig.getEnvVariable(
-      "PROXY_USER_NAME"
-    )}:${EnvironmentConfig.getEnvVariable(
-      "PROXY_USER_PASSWORD"
-    )}@${EnvironmentConfig.getEnvVariable("PROXY_HOST")}`;
-    const proxyPort = EnvironmentConfig.getEnvVariable("PROXY_PORT");
+async function createMCPDispatcher(
+  auth: Authenticator,
+  host: string
+): Promise<ProxyAgent | undefined> {
+  const workspace = auth.getNonNullableWorkspace();
 
-    if (proxyHost && proxyPort) {
-      const proxyUrl = `http://${proxyHost}:${proxyPort}`;
-      return new ProxyAgent(proxyUrl);
+  // Check if workspace should use static IP:
+  // 1. Legacy hardcoded check for specific workspaces
+  // 2. Domain-based check: host is under any verified domain for this workspace
+  const useStaticIP =
+    isWorkspaceUsingStaticIP(workspace) ||
+    (await isHostUnderVerifiedDomain(auth, host));
+
+  if (useStaticIP) {
+    const staticIPProxy = getStaticIPProxyAgent();
+    if (staticIPProxy) {
+      logger.info(
+        { workspaceId: workspace.sId, host, useStaticIP },
+        "Using static IP proxy for MCP request"
+      );
+      return staticIPProxy;
     }
   }
 
   return getUntrustedEgressAgent();
 }
 
-export const connectToMCPServer = async (
+export async function connectToMCPServer(
   auth: Authenticator,
   {
     params,
@@ -112,7 +121,7 @@ export const connectToMCPServer = async (
   }
 ): Promise<
   Result<Client, Error | MCPServerPersonalAuthenticationRequiredError>
-> => {
+> {
   // This is where we route the MCP client to the right server.
   const mcpClient = new Client({
     name: "dust-mcp-client",
@@ -182,14 +191,14 @@ export const connectToMCPServer = async (
                     ? "personal"
                     : "workspace",
               });
-              if (c) {
+              if (c.isOk()) {
                 const authInfo: AuthInfo = {
-                  token: c.access_token,
-                  expiresAt: c.access_token_expiry ?? undefined,
+                  token: c.value.access_token,
+                  expiresAt: c.value.access_token_expiry ?? undefined,
                   clientId: "",
                   scopes: [],
                   extra: {
-                    ...c.connection.metadata,
+                    ...c.value.connection.metadata,
                     connectionType:
                       params.oAuthUseCase === "personal_actions"
                         ? "personal"
@@ -206,6 +215,7 @@ export const connectToMCPServer = async (
                     workspaceId: auth.getNonNullableWorkspace().sId,
                     mcpServerId: params.mcpServerId,
                     oAuthUseCase: params.oAuthUseCase,
+                    error: c.error,
                   },
                   "Internal server requires workspace authentication but no connection found"
                 );
@@ -219,7 +229,10 @@ export const connectToMCPServer = async (
                     }
                   );
                   // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
-                  if (!adminConnection) {
+                  if (
+                    adminConnection.isErr() &&
+                    adminConnection.error.message === "connection_not_found"
+                  ) {
                     return new Err(
                       new MCPServerRequiresAdminAuthenticationError(
                         params.mcpServerId,
@@ -291,12 +304,12 @@ export const connectToMCPServer = async (
               mcpServerId: params.mcpServerId,
               connectionType: connectionType,
             });
-            if (c) {
+            if (c.isOk()) {
               token = {
-                access_token: c.access_token,
+                access_token: c.value.access_token,
                 token_type: "bearer",
-                expires_in: c.access_token_expiry ?? undefined,
-                scope: c.connection.metadata.scope,
+                expires_in: c.value.access_token_expiry ?? undefined,
+                scope: c.value.connection.metadata.scope,
               };
             } else {
               if (connectionType === "personal") {
@@ -306,7 +319,7 @@ export const connectToMCPServer = async (
                   connectionType: "workspace",
                 });
                 // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
-                if (!adminConnection) {
+                if (adminConnection.isErr()) {
                   return new Err(
                     new MCPServerRequiresAdminAuthenticationError(
                       params.mcpServerId,
@@ -341,7 +354,7 @@ export const connectToMCPServer = async (
               requestInit: {
                 // Include stored custom headers
                 headers: remoteMCPServer.customHeaders ?? {},
-                dispatcher: createMCPDispatcher(auth),
+                dispatcher: await createMCPDispatcher(auth, url.hostname),
               },
               authProvider: new MCPOAuthProvider(auth, token),
             };
@@ -372,7 +385,7 @@ export const connectToMCPServer = async (
       const url = new URL(params.remoteMCPServerUrl);
       const req = {
         requestInit: {
-          dispatcher: createMCPDispatcher(auth),
+          dispatcher: await createMCPDispatcher(auth, url.hostname),
           headers: { ...(params.headers ?? {}) },
         },
         authProvider: new MCPOAuthProvider(auth, undefined),
@@ -434,7 +447,7 @@ export const connectToMCPServer = async (
   }
 
   return new Ok(mcpClient);
-};
+}
 
 // Try to connect via streamableHttpTransport first, and if that fails, fall back to sseTransport.
 // If the URL path ends with /sse, skip HTTP streaming and use SSE directly.
@@ -451,11 +464,18 @@ async function connectToRemoteMCPServer(
 
   try {
     const streamableHttpTransport = new StreamableHTTPClientTransport(url, req);
-    await mcpClient.connect(streamableHttpTransport);
+    await mcpClient.connect(streamableHttpTransport, {
+      // The default timeout is 60 seconds, which may exceed the heartbeat timeout.
+      timeout: DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS,
+    });
   } catch (error) {
-    // Check if error message contains "HTTP 4xx" as suggested by the official doc.
+    // Check if the error message contains "HTTP 4xx" as suggested by the official doc.
     // Doc is here https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#client-side-compatibility.
-    if (error instanceof Error && /HTTP 4\d\d/.test(error.message)) {
+    if (
+      error instanceof Error &&
+      /HTTP 4\d\d/.test(error.message) &&
+      !error.message.includes("HTTP 429")
+    ) {
       logger.info(
         {
           url: url.toString(),
@@ -464,10 +484,11 @@ async function connectToRemoteMCPServer(
         "Error establishing connection to remote MCP server via streamableHttpTransport, falling back to sseTransport."
       );
       const sseTransport = new SSEClientTransport(url, req);
-      await mcpClient.connect(sseTransport);
-    } else {
-      throw error;
+      return mcpClient.connect(sseTransport, {
+        timeout: DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS,
+      });
     }
+    throw error;
   }
 }
 

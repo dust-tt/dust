@@ -163,7 +163,11 @@ export const CONTENT_NODE_MIME_TYPES = {
   }),
   DUST_PROJECT: generateConnectorRelativeMimeTypes({
     provider: "dust_project",
-    resourceTypes: ["CONVERSATION_FOLDER", "CONVERSATION_MESSAGES"],
+    resourceTypes: [
+      "CONVERSATION_FOLDER",
+      "CONVERSATION_MESSAGES",
+      "CONTEXT_FOLDER",
+    ],
   }),
 };
 
@@ -194,7 +198,10 @@ export const INCLUDABLE_INTERNAL_CONTENT_NODE_MIME_TYPES = {
   BIGQUERY: [],
   SALESFORCE: [],
   GONG: [],
-  DUST_PROJECT: [CONTENT_NODE_MIME_TYPES.DUST_PROJECT.CONVERSATION_MESSAGES],
+  DUST_PROJECT: [
+    CONTENT_NODE_MIME_TYPES.DUST_PROJECT.CONVERSATION_MESSAGES,
+    CONTENT_NODE_MIME_TYPES.DUST_PROJECT.CONTEXT_FOLDER,
+  ],
 };
 
 function generateToolMimeTypes<

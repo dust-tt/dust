@@ -1,10 +1,9 @@
 import { default as config } from "@app/lib/api/config";
 import {
-  createDustProjectConnectorForSpace,
-  getProjectConversationsDatasourceName,
-} from "@app/lib/api/project_connectors";
+  createDataSourceAndConnectorForProject,
+  fetchProjectDataSource,
+} from "@app/lib/api/projects";
 import { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -70,103 +69,71 @@ async function processProjectSpace(
   });
 
   try {
-    const owner = auth.getNonNullableWorkspace();
-    const plan = auth.getNonNullablePlan();
-
-    // Check if connector already exists
-    const existingDataSource = await DataSourceResource.fetchByNameOrId(
-      auth,
-      getProjectConversationsDatasourceName(space.id)
-    );
-
-    if (
-      existingDataSource?.connectorProvider === "dust_project" &&
-      existingDataSource.connectorId
-    ) {
-      stats.alreadyHasConnector++;
-
-      // Check if sync needs to be started and ensure garbage collection is running
-      if (execute) {
-        const connectorsAPI = new ConnectorsAPI(
-          config.getConnectorsAPIConfig(),
-          logger
-        );
-
-        // Try to resume the connector (will start full sync if needed, or incremental sync if already synced)
-        const resumeResult = await connectorsAPI.resumeConnector(
-          existingDataSource.connectorId.toString()
-        );
-        if (resumeResult.isErr()) {
-          localLogger.warn(
-            {
-              error: resumeResult.error,
-            },
-            "Failed to resume connector sync"
-          );
-        } else {
-          localLogger.info("Successfully resumed connector sync");
-          stats.syncStarted++;
-        }
-      } else {
-        localLogger.info(
-          "Would resume connector sync and ensure garbage collection is running"
-        );
-      }
-      return;
-    }
+    // Check if datasource already exists to track stats
+    const existingDataSource = await fetchProjectDataSource(auth, space);
+    const hadConnectorBefore =
+      existingDataSource.isOk() &&
+      existingDataSource.value.connectorId !== null;
 
     if (execute) {
-      localLogger.info("Creating dust_project connector for project");
-
-      // Create the connector
-      const createResult = await createDustProjectConnectorForSpace(
+      // Use the idempotent function which handles all cases:
+      // - Creates missing components (Core API project, data source, folder, front datasource, connector)
+      // - Verifies existing components
+      // - Recreates missing components if needed
+      const createResult = await createDataSourceAndConnectorForProject(
         auth,
-        space,
-        owner,
-        plan
+        space
       );
 
       if (createResult.isErr()) {
         throw createResult.error;
       }
 
-      stats.created++;
-      localLogger.info("Successfully created dust_project connector");
+      // Fetch the datasource after creation to get updated state
+      const r = await fetchProjectDataSource(auth, space);
+      if (r.isOk() && r.value.connectorId) {
+        if (!hadConnectorBefore) {
+          stats.created++;
+          localLogger.info("Successfully created dust_project connector");
+        } else {
+          stats.alreadyHasConnector++;
+        }
 
-      // Trigger initial sync
-      const dataSource = await DataSourceResource.fetchByNameOrId(
-        auth,
-        getProjectConversationsDatasourceName(space.id)
-      );
-
-      if (dataSource?.connectorId) {
         const connectorsAPI = new ConnectorsAPI(
           config.getConnectorsAPIConfig(),
           logger
         );
 
-        const syncResult = await connectorsAPI.syncConnector(
-          dataSource.connectorId.toString()
+        // Try to resume/unpause the connector to ensure sync is running
+        // This is idempotent - if already running, it's a no-op
+        const unpauseResult = await connectorsAPI.unpauseConnector(
+          r.value.connectorId.toString()
         );
-        if (syncResult.isErr()) {
+        if (unpauseResult.isErr()) {
           localLogger.warn(
             {
-              error: syncResult.error,
+              error: unpauseResult.error,
             },
-            "Failed to trigger initial sync, but connector was created"
+            "Failed to unpause connector sync"
           );
         } else {
-          localLogger.info(
-            {
-              workflowId: syncResult.value.workflowId,
-            },
-            "Successfully triggered initial sync"
-          );
+          localLogger.info("Successfully ensured connector sync is running");
           stats.syncStarted++;
         }
+      } else {
+        // This shouldn't happen if createDataSourceAndConnectorForProject succeeded
+        localLogger.warn(
+          "createDataSourceAndConnectorForProject succeeded but no connector found"
+        );
       }
     } else {
-      localLogger.info("Would create dust_project connector and start sync");
+      if (hadConnectorBefore) {
+        localLogger.info("Would ensure dust_project connector sync is running");
+      } else {
+        localLogger.info(
+          "Would create dust_project connector and ensure sync is running"
+        );
+      }
     }
   } catch (e) {
     localLogger.error({ error: e }, "Error ensuring project connector");

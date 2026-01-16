@@ -244,6 +244,7 @@ export class TagResource extends BaseResource<TagModel> {
       await TagAgentModel.destroy({
         where: {
           tagId: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
         transaction,
       });

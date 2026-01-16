@@ -9,6 +9,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GlobalSkillId } from "@app/lib/resources/skill/global/registry";
@@ -61,12 +62,20 @@ async function migrateToolToSkill(
     return "";
   }
 
-  // 2. Find all agent configs using this MCP server view.
+  // 2. Find all agent configs using this MCP server view (only active agents).
   const agentsWithTool = await AgentMCPServerConfigurationModel.findAll({
     where: {
       workspaceId: workspace.id,
       mcpServerViewId: mcpServerView.id,
     },
+    include: [
+      {
+        model: AgentConfigurationModel,
+        required: true,
+        where: { status: "active" },
+        attributes: [],
+      },
+    ],
   });
 
   if (agentsWithTool.length === 0) {

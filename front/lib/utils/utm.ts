@@ -14,6 +14,7 @@ export const extractUTMParams = (searchParams: {
     "gclid",
     "fbclid",
     "msclkid",
+    "li_fat_id",
   ];
 
   // Extract only string values from query parameters

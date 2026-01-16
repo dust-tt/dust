@@ -391,8 +391,8 @@ async function createServer(
     connectionType: "workspace", // Always get the admin token.
   });
 
-  const slackAIStatus: SlackAIStatus = c
-    ? await getSlackAIEnablementStatus({ accessToken: c.access_token })
+  const slackAIStatus: SlackAIStatus = c.isOk()
+    ? await getSlackAIEnablementStatus({ accessToken: c.value.access_token })
     : "disconnected";
 
   localLogger.info(
@@ -680,18 +680,13 @@ async function createServer(
         }
 
         try {
-          return await executePostMessage(
-            auth,
-            agentLoopContext,
-            {
-              to,
-              message,
-              threadTs,
-              fileId,
-              accessToken,
-            },
-            mcpServerId
-          );
+          return await executePostMessage(auth, agentLoopContext, {
+            to,
+            message,
+            threadTs,
+            fileId,
+            accessToken,
+          });
         } catch (error) {
           const authError = handleSlackAuthError(error);
           if (authError) {

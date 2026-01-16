@@ -4,9 +4,6 @@ import { isValidPhoneNumber as libIsValidPhoneNumber } from "react-phone-number-
 export const CODE_LENGTH = 6;
 export const RESEND_COOLDOWN_SECONDS = 60;
 
-// TODO: Replace with actual verification service.
-const VALID_TEST_CODE = "424242";
-
 /**
  * Validates a phone number using libphonenumber-js.
  * This validation ensures the phone number is valid for SMS services like Twilio.
@@ -37,12 +34,4 @@ export function maskPhoneNumber(phone: string): string {
   const masked = "*".repeat(Math.max(0, national.length - 2)) + lastDigits;
 
   return `+${parsed.countryCallingCode} ${masked}`;
-}
-
-/**
- * Verifies the phone verification code.
- * TODO: Replace with actual SMS verification service.
- */
-export function isValidVerificationCode(code: string): boolean {
-  return code === VALID_TEST_CODE;
 }

@@ -4,7 +4,7 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
-import { getRelatedContentFragments } from "@app/lib/api/assistant/conversation";
+import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import {
   getCompletionDuration,
   getRichMentionsWithStatusForMessage,
@@ -185,9 +185,8 @@ export const createUserMentions = async (
           }
 
           // Auto approve mentions for users who are members of the conversation's project space.
-          let userInProject = false;
           if (!autoApprove && conversation.spaceId) {
-            userInProject = await isUserMemberOfSpace(auth, {
+            autoApprove = await isUserMemberOfSpace(auth, {
               userId: user.sId,
               spaceId: conversation.spaceId,
             });
@@ -195,7 +194,7 @@ export const createUserMentions = async (
 
           const status: MentionStatusType = !canAccess
             ? "user_restricted_by_conversation_access"
-            : autoApprove || userInProject
+            : autoApprove
               ? "approved"
               : "pending";
 
@@ -884,10 +883,8 @@ export async function getUserMessageIdFromMessageId(
   });
 
   assert(
-    parentMessage &&
-      parentMessage.userMessage &&
-      parentMessage.userMessage.userId,
-    "A user message with a linked user is expected for the agent message"
+    parentMessage && parentMessage.userMessage,
+    "A user message is expected for the agent message's parent"
   );
 
   return {

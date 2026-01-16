@@ -2,6 +2,7 @@ import type { Options } from "@contentful/rich-text-react-renderer";
 import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
 import type { Block, Document, Inline } from "@contentful/rich-text-types";
 import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
+import { cn } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -269,6 +270,42 @@ const renderOptions: Options = {
         />
       );
     },
+    [BLOCKS.TABLE]: (_node, children) => (
+      <div
+        className={cn(
+          "rich-text-table",
+          "mb-10 mt-8 overflow-x-auto",
+          "rounded-lg border border-border"
+        )}
+      >
+        <table className={cn("w-full border-collapse")}>
+          <tbody>{children}</tbody>
+        </table>
+      </div>
+    ),
+    [BLOCKS.TABLE_ROW]: (_node, children) => <tr>{children}</tr>,
+    [BLOCKS.TABLE_HEADER_CELL]: (_node, children) => (
+      <th
+        className={cn(
+          "border-b border-r border-border/50",
+          "bg-gray-50 px-4 py-3",
+          "text-left align-middle text-sm font-semibold text-foreground"
+        )}
+      >
+        {children}
+      </th>
+    ),
+    [BLOCKS.TABLE_CELL]: (_node, children) => (
+      <td
+        className={cn(
+          "border-b border-r border-border/50",
+          "px-4 py-3",
+          "align-middle text-sm text-foreground"
+        )}
+      >
+        {children}
+      </td>
+    ),
     [INLINES.HYPERLINK]: (node, children) => {
       const url = node.data.uri;
       // Check if it's a YouTube URL and embed it

@@ -122,11 +122,14 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
   }
 
   async delete(
-    _auth: Authenticator,
+    auth: Authenticator,
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<number | undefined, Error>> {
     await this.model.destroy({
-      where: { id: this.id },
+      where: {
+        id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
       transaction,
     });
 

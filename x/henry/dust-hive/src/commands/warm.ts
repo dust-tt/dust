@@ -240,7 +240,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   }
   console.log();
   console.log("Next steps:");
-  console.log(`  dust-hive open ${env.name}      # Open zellij session`);
+  console.log(`  dust-hive open ${env.name}      # Open terminal session`);
   console.log(`  dust-hive status ${env.name}    # Check service health`);
   console.log(`  dust-hive cool ${env.name}      # Stop services, keep SDK`);
   console.log();

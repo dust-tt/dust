@@ -256,6 +256,29 @@ for (let i = 0; i < 10; i++) {
   });
 }
 
+// Generate "My conversations" - conversations without spaceId (2-3 conversations)
+const myConversationsCount = Math.floor(Math.random() * 2) + 2; // 2-3 conversations
+for (let i = 0; i < myConversationsCount; i++) {
+  const { userParticipants, agentParticipants } =
+    generateConversationParticipants();
+  const createdAt = randomDateBetween(
+    new Date(new Date().setHours(0, 0, 0, 0)),
+    new Date()
+  );
+  const title =
+    conversationTitles[Math.floor(Math.random() * conversationTitles.length)];
+  mockConversations.push({
+    id: `conv-${mockConversations.length + 1}`,
+    title,
+    createdAt,
+    updatedAt: randomDateBetween(createdAt, new Date()),
+    userParticipants,
+    agentParticipants,
+    description: generateDescription(title),
+    // No spaceId - these are "My conversations"
+  });
+}
+
 // Generate conversations for yesterday (15 conversations)
 for (let i = 0; i < 15; i++) {
   const { userParticipants, agentParticipants } =

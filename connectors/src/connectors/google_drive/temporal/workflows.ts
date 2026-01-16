@@ -1,7 +1,9 @@
 import { assertNever } from "@temporalio/common/lib/type-helpers";
+import type { ChildWorkflowHandle } from "@temporalio/workflow";
 import {
   continueAsNew,
   executeChild,
+  isCancellation,
   proxyActivities,
   setHandler,
   sleep,
@@ -21,8 +23,10 @@ import { GDRIVE_MAX_CONCURRENT_FOLDER_SYNCS } from "./config";
 import { folderUpdatesSignal } from "./signals";
 
 const {
+  cancelChildWorkflow,
   getDrivesToSync,
   garbageCollector,
+  getFilesCountForSync,
   getFoldersToSync,
   populateSyncTokens,
   garbageCollectorFinished,
@@ -98,9 +102,13 @@ export async function googleDriveFullSync({
             foldersToBrowse.push(folderId);
           }
           break;
-        case "removed":
-          foldersToBrowse.splice(foldersToBrowse.indexOf(folderId), 1);
+        case "removed": {
+          const index = foldersToBrowse.indexOf(folderId);
+          if (index !== -1) {
+            foldersToBrowse.splice(index, 1);
+          }
           break;
+        }
         default:
           assertNever(
             `Unexpected signal action ${action} received for Google Drive full sync workflow.`,
@@ -326,8 +334,291 @@ export async function googleDriveFixParentsConsistencyWorkflow(
 }
 
 /**
+ * Child workflow that syncs a single root folder and all its subfolders (subtree).
+ */
+export async function googleDriveFolderSync({
+  connectorId,
+  rootFolderId,
+  startSyncTs,
+  mimeTypeFilter,
+  foldersToBrowse = [],
+  totalCount = 0,
+}: {
+  connectorId: ModelId;
+  rootFolderId: string;
+  startSyncTs: number;
+  mimeTypeFilter?: string[];
+  foldersToBrowse?: string[];
+  totalCount?: number;
+}) {
+  // Initialize with root folder if not resuming
+  if (foldersToBrowse.length === 0) {
+    foldersToBrowse = [rootFolderId];
+  }
+
+  let nextPageToken: string | undefined = undefined;
+
+  foldersToBrowse = uniq(foldersToBrowse);
+
+  // Process all folders in this subtree
+  while (foldersToBrowse.length > 0) {
+    const folder = foldersToBrowse.pop();
+    if (!folder) {
+      throw new Error("folderId should be defined");
+    }
+
+    // Sync all files in this folder (with pagination)
+    do {
+      const res = await syncFiles(
+        connectorId,
+        folder,
+        startSyncTs,
+        nextPageToken,
+        mimeTypeFilter
+      );
+      nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
+      totalCount += res.count;
+      // Add discovered subfolders to the queue
+      foldersToBrowse = foldersToBrowse.concat(res.subfolders);
+    } while (nextPageToken);
+
+    // Mark folder as visited
+    await markFolderAsVisited(connectorId, folder, startSyncTs);
+
+    // Continue as new if history is getting too large
+    if (workflowInfo().historyLength > 4000) {
+      await continueAsNew<typeof googleDriveFolderSync>({
+        connectorId,
+        rootFolderId,
+        startSyncTs,
+        mimeTypeFilter,
+        foldersToBrowse,
+        totalCount,
+      });
+    }
+
+    // Deduplicate folders
+    foldersToBrowse = uniq(foldersToBrowse);
+  }
+}
+
+export function googleDriveFolderSyncWorkflowId(
+  connectorId: ModelId,
+  folderId: string
+): string {
+  return `googleDrive-fullSync-${connectorId}-folder-${folderId}`;
+}
+
+/**
+ * V2 Full Sync Coordinator Workflow - launches child workflows for each selected folder
+ * to enable parallel processing using ConcurrentExecutor.
+ *
+ * @param foldersToBrowse - Pass `null` to sync all folders from DB, or specific folder IDs to sync only those.
+ */
+export async function googleDriveFullSyncV2({
+  connectorId,
+  garbageCollect = true,
+  startSyncTs = undefined,
+  mimeTypeFilter,
+  foldersToBrowse = null,
+}: {
+  connectorId: ModelId;
+  garbageCollect: boolean;
+  startSyncTs: number | undefined;
+  mimeTypeFilter?: string[];
+  foldersToBrowse?: string[] | null;
+}) {
+  // Initialize sync timestamp
+  if (!startSyncTs) {
+    await syncStarted(connectorId);
+    startSyncTs = new Date().getTime();
+  }
+
+  // Populate sync tokens before starting
+  await populateSyncTokens(connectorId);
+
+  // Get folders to sync - use foldersToBrowse if provided, otherwise fetch all from DB
+  const folderIds =
+    foldersToBrowse !== null
+      ? foldersToBrowse
+      : await getFoldersToSync(connectorId);
+
+  // Upsert shared with me folder
+  await upsertSharedWithMeFolder(connectorId);
+
+  // Track folder changes that arrive during sync for next run
+  const addedFoldersForNextRun = new Set<string>();
+  const removedFoldersForNextRun = new Set<string>();
+  let syncHasStarted = false;
+  let syncCompleted = false;
+
+  // Track running workflows for cancellation
+  const runningFolderWorkflows: Record<
+    string,
+    {
+      handle: ChildWorkflowHandle<typeof googleDriveFolderSync>;
+      workflowId: string;
+    }
+  > = {};
+
+  // Set up signal handler for folder additions/removals
+  setHandler(folderUpdatesSignal, (folderUpdates: FolderUpdatesSignal[]) => {
+    for (const { action, folderId } of folderUpdates) {
+      switch (action) {
+        case "added": {
+          if (syncHasStarted) {
+            addedFoldersForNextRun.add(folderId);
+            removedFoldersForNextRun.delete(folderId);
+          }
+          break;
+        }
+        case "removed": {
+          if (syncHasStarted) {
+            addedFoldersForNextRun.delete(folderId);
+            removedFoldersForNextRun.add(folderId);
+            const folderWorkflow = runningFolderWorkflows[folderId];
+            if (folderWorkflow) {
+              void cancelChildWorkflow(folderWorkflow.workflowId);
+              delete runningFolderWorkflows[folderId];
+            }
+          }
+          break;
+        }
+        default: {
+          assertNever(
+            `Unexpected signal action ${action} received for Google Drive full sync V2 workflow.`,
+            action
+          );
+        }
+      }
+    }
+  });
+
+  syncHasStarted = true;
+
+  // Start progress reporting task (runs in parallel with child workflows)
+  const progressReporting = async () => {
+    if (folderIds.length === 0) {
+      return;
+    }
+
+    while (!syncCompleted) {
+      await sleep("30 seconds");
+      if (syncCompleted) break;
+
+      // Count total files synced so far in this run
+      const totalFilesSynced = await getFilesCountForSync(
+        connectorId,
+        startSyncTs
+      );
+      if (totalFilesSynced > 0) {
+        await reportInitialSyncProgress(
+          connectorId,
+          `Synced ${totalFilesSynced} files`
+        );
+      }
+    }
+  };
+
+  const progressReportingTask = progressReporting();
+
+  // Launch all folder sync workflows with bounded concurrency
+  await concurrentExecutor(
+    folderIds,
+    async (folderId) => {
+      // Skip if folder was removed before we could start
+      if (removedFoldersForNextRun.has(folderId)) {
+        return;
+      }
+
+      const childWorkflowId = googleDriveFolderSyncWorkflowId(
+        connectorId,
+        folderId
+      );
+
+      const handle = await startChild(googleDriveFolderSync, {
+        workflowId: childWorkflowId,
+        searchAttributes: { connectorId: [connectorId] },
+        args: [
+          {
+            connectorId,
+            rootFolderId: folderId,
+            startSyncTs,
+            mimeTypeFilter,
+          },
+        ],
+        memo: workflowInfo().memo,
+      });
+
+      runningFolderWorkflows[folderId] = {
+        handle,
+        workflowId: childWorkflowId,
+      };
+
+      // Check again in case a removal signal arrived while starting
+      if (removedFoldersForNextRun.has(folderId)) {
+        void cancelChildWorkflow(childWorkflowId);
+        delete runningFolderWorkflows[folderId];
+        return;
+      }
+
+      try {
+        await handle.result();
+      } catch (err) {
+        if (!isCancellation(err)) {
+          throw err;
+        }
+        // Child workflow was cancelled (e.g., folder was removed during sync)
+      } finally {
+        delete runningFolderWorkflows[folderId];
+      }
+    },
+    { concurrency: GDRIVE_MAX_CONCURRENT_FOLDER_SYNCS }
+  );
+
+  // Mark sync as completed - any signals from now on will be queued for next run
+  syncCompleted = true;
+
+  await progressReportingTask;
+
+  const finalFilesSynced = await getFilesCountForSync(connectorId, startSyncTs);
+  await reportInitialSyncProgress(
+    connectorId,
+    `Synced ${finalFilesSynced} files`
+  );
+
+  await syncSucceeded(connectorId);
+
+  if (garbageCollect) {
+    await executeChild(googleDriveGarbageCollectorWorkflow, {
+      workflowId: googleDriveGarbageCollectorWorkflowId(connectorId),
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      args: [connectorId, startSyncTs],
+      memo: workflowInfo().memo,
+    });
+  }
+
+  // If folders were added during sync, restart workflow to handle them
+  if (addedFoldersForNextRun.size > 0 || removedFoldersForNextRun.size > 0) {
+    await continueAsNew<typeof googleDriveFullSyncV2>({
+      connectorId,
+      garbageCollect: true,
+      startSyncTs: undefined,
+      mimeTypeFilter,
+      foldersToBrowse: [...addedFoldersForNextRun],
+    });
+  }
+}
+
+export function googleDriveFullSyncV2WorkflowId(connectorId: ModelId): string {
+  return `googleDrive-fullSyncV2-${connectorId}`;
+}
+
+/**
  * Child workflow that handles incremental sync for a single drive.
- * Processes all changes for the drive with pagination, and launches full sync for new folders.
+ * Processes all changes for the drive with pagination, and launches folder sync for new folders.
  */
 export async function googleDriveIncrementalSyncPerDrive({
   connectorId,
@@ -355,26 +646,32 @@ export async function googleDriveIncrementalSyncPerDrive({
     );
 
     if (syncRes) {
-      const foldersToBrowse = syncRes.newFolders;
+      const newFolders = syncRes.newFolders;
 
-      if (foldersToBrowse.length > 0) {
-        await executeChild(googleDriveFullSync, {
-          workflowId: `googleDrive-newFolders-${connectorId}-drive-${driveId}-${startSyncTs}`,
-          searchAttributes: {
-            connectorId: [connectorId],
+      // Launch folder sync for each new folder
+      if (newFolders.length > 0) {
+        await concurrentExecutor(
+          newFolders,
+          async (folderId) => {
+            const handle = await startChild(googleDriveFolderSync, {
+              workflowId: googleDriveFolderSyncWorkflowId(
+                connectorId,
+                folderId
+              ),
+              searchAttributes: { connectorId: [connectorId] },
+              args: [
+                {
+                  connectorId,
+                  rootFolderId: folderId,
+                  startSyncTs,
+                },
+              ],
+              memo: workflowInfo().memo,
+            });
+            await handle.result();
           },
-          args: [
-            {
-              connectorId: connectorId,
-              garbageCollect: false,
-              foldersToBrowse,
-              totalCount: 0,
-              startSyncTs: startSyncTs,
-              mimeTypeFilter: undefined,
-            },
-          ],
-          memo: workflowInfo().memo,
-        });
+          { concurrency: GDRIVE_MAX_CONCURRENT_FOLDER_SYNCS }
+        );
       }
       currentToken = syncRes.nextPageToken;
     } else {

@@ -50,6 +50,7 @@ export const OAUTH_PROVIDERS = [
   "hubspot",
   "mcp", // MCP is a special provider for MCP servers.
   "mcp_static", // MCP static is a special provider for MCP servers requiring static OAuth credentials.
+  "snowflake", // Snowflake OAuth for MCP server integration.
   "vanta",
 ] as const;
 
@@ -79,6 +80,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   hubspot: "Hubspot",
   mcp: "MCP",
   mcp_static: "MCP",
+  snowflake: "Snowflake",
   vanta: "Vanta",
 };
 
@@ -95,6 +97,9 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "freshworks_org_url",
   "zendesk_subdomain",
   "databricks_workspace_url",
+  "snowflake_account",
+  "snowflake_role",
+  "snowflake_warehouse",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -309,6 +314,47 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
         return result;
       }
       return null;
+    case "snowflake":
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
+        const result: OAuthCredentialInputs = {
+          snowflake_account: {
+            label: "Snowflake Account",
+            value: undefined,
+            helpMessage:
+              "Your Snowflake account identifier (e.g., abc123.us-east-1 or myorg-myaccount).",
+            validator: isValidSnowflakeAccount,
+          },
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage:
+              "The client ID from your Snowflake security integration.",
+            validator: isValidClientIdOrSecret,
+          },
+          client_secret: {
+            label: "OAuth Client Secret",
+            value: undefined,
+            helpMessage:
+              "The client secret from your Snowflake security integration.",
+            validator: isValidClientIdOrSecret,
+          },
+          snowflake_role: {
+            label: "Default Snowflake Role",
+            value: undefined,
+            helpMessage:
+              "The default role for users (e.g., ANALYST). Users can override this during their personal authentication.",
+            validator: isValidSnowflakeRole,
+          },
+          snowflake_warehouse: {
+            label: "Snowflake Warehouse",
+            value: undefined,
+            helpMessage: "The warehouse to use for queries (e.g., COMPUTE_WH).",
+            validator: isValidSnowflakeWarehouse,
+          },
+        };
+        return result;
+      }
+      return null;
     default:
       assertNever(provider);
   }
@@ -372,6 +418,40 @@ export function isValidOptionalClientSecret(s: unknown): s is string {
 
 export function isValidUrl(s: unknown): s is string {
   return typeof s === "string" && validateUrl(s).valid;
+}
+
+export function isValidSnowflakeAccount(s: unknown): s is string {
+  // Snowflake account identifiers can be in formats like:
+  // - abc123 (legacy locator)
+  // - abc123.us-east-1 (locator with region)
+  // - myorg-myaccount (org name format)
+  // - myorg-myaccount.privatelink (privatelink)
+  // Allow alphanumeric, hyphens, underscores, and dots
+  return (
+    typeof s === "string" &&
+    s.trim().length > 0 &&
+    /^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$/.test(s.trim())
+  );
+}
+
+export function isValidSnowflakeRole(s: unknown): s is string {
+  // Snowflake role names are uppercase identifiers
+  // Allow alphanumeric and underscores
+  return (
+    typeof s === "string" &&
+    s.trim().length > 0 &&
+    /^[A-Za-z_][A-Za-z0-9_]*$/.test(s.trim())
+  );
+}
+
+export function isValidSnowflakeWarehouse(s: unknown): s is string {
+  // Snowflake warehouse names follow same rules as roles
+  // Allow alphanumeric and underscores
+  return (
+    typeof s === "string" &&
+    s.trim().length > 0 &&
+    /^[A-Za-z_][A-Za-z0-9_]*$/.test(s.trim())
+  );
 }
 
 // Credentials Providers

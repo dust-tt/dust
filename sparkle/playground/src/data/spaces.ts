@@ -195,3 +195,22 @@ export function getSpaceById(id: string): Space | undefined {
 export function getSpacesByIds(ids: string[]): Space[] {
   return mockSpaces.filter((space) => ids.includes(space.id));
 }
+
+/**
+ * Create a new space
+ * @param name - Space name
+ * @param description - Optional space description
+ * @returns The newly created Space
+ */
+export function createSpace(
+  name: string,
+  description?: string
+): Space {
+  const newSpace: Space = {
+    id: `space-${Date.now()}`,
+    name,
+    description: description || `Room for ${name}`,
+  };
+  mockSpaces.push(newSpace);
+  return newSpace;
+}

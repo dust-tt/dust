@@ -490,11 +490,12 @@ export const conversationUnreadWorkflow = workflow(
           },
           conversations,
         });
+        const subject =
+          conversations.length > 1
+            ? `[Dust] New unread message(s) in ${conversations.length} conversations`
+            : `[Dust] ${conversations[0]?.title ?? "New unread message(s) in conversation"}`;
         return {
-          subject:
-            conversations.length > 1
-              ? `[Dust] new unread message(s) in ${conversations.length} conversations`
-              : `[Dust] new unread message(s) in conversation`,
+          subject,
           body,
         };
       },

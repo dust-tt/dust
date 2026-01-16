@@ -690,6 +690,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
   | "slideshow"
+  | "snowflake_tool"
   | "usage_data_api"
   | "xai_feature"
 >();
@@ -2936,6 +2937,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "PuzzleIcon"
   | "SalesforceLogo"
   | "SlackLogo"
+  | "SnowflakeLogo"
   | "StripeLogo"
   | "SupabaseLogo"
   | "ValTownLogo"

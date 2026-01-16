@@ -6,14 +6,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 
-import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import { submitConnectMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitConnectMCPServerDialogForm";
+import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
+import { mcpServerOAuthFormSchema } from "@app/components/actions/mcp/forms/types";
+import { getConnectMCPServerDialogDefaultValues } from "@app/components/actions/mcp/forms/utils";
+import {
+  AUTH_CREDENTIALS_ERROR_KEY,
+  MCPServerOAuthConnexion,
+} from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
+import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getMcpServerDisplayName,
@@ -28,20 +38,16 @@ import {
   useDiscoverOAuthMetadata,
   useUpdateMCPServerView,
 } from "@app/lib/swr/mcp_servers";
-import type {
-  MCPOAuthUseCase,
-  OAuthCredentials,
-  WorkspaceType,
-} from "@app/types";
-import { OAUTH_PROVIDER_NAMES, setupOAuthConnection } from "@app/types";
+import type { WorkspaceType } from "@app/types";
+import { OAUTH_PROVIDER_NAMES } from "@app/types";
 
-type ConnectMCPServerDialogProps = {
+interface ConnectMCPServerDialogProps {
   owner: WorkspaceType;
   mcpServerView: MCPServerViewType;
   setIsLoading: (isCreating: boolean) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-};
+}
 
 export function ConnectMCPServerDialog({
   owner,
@@ -51,10 +57,25 @@ export function ConnectMCPServerDialog({
   setIsOpen,
 }: ConnectMCPServerDialogProps) {
   const sendNotification = useSendNotification();
+
+  const defaultValues = getConnectMCPServerDialogDefaultValues();
+  const form = useForm<MCPServerOAuthFormValues>({
+    resolver: zodResolver(mcpServerOAuthFormSchema),
+    defaultValues,
+    mode: "onChange",
+    shouldUnregister: false,
+  });
+
+  // Check for credential validation errors set by MCPServerOAuthConnexion.
+  const hasCredentialErrors =
+    !!form.formState.errors[AUTH_CREDENTIALS_ERROR_KEY];
+
+  const useCase = useWatch({
+    control: form.control,
+    name: "useCase",
+  });
+
   const [isLoading, setIsLoading] = useState(false);
-  const [useCase, setUseCase] = useState<MCPOAuthUseCase | null>(null);
-  const [authCredentials, setAuthCredentials] =
-    useState<OAuthCredentials | null>(null);
   const [
     remoteMCPServerOAuthDiscoveryDone,
     setRemoteMCPServerOAuthDiscoveryDone,
@@ -62,7 +83,6 @@ export function ConnectMCPServerDialog({
   const [authorization, setAuthorization] = useState<AuthorizationInfo | null>(
     null
   );
-  const [isFormValid, setIsFormValid] = useState(true);
   const { createMCPServerConnection } = useCreateMCPServerConnection({
     owner,
     connectionType: "workspace",
@@ -75,7 +95,7 @@ export function ConnectMCPServerDialog({
     [mcpServerView]
   );
 
-  const toolName: string = useMemo(() => {
+  const toolName = useMemo(() => {
     if (mcpServerView.server) {
       return getMcpServerDisplayName(mcpServerView.server);
     }
@@ -90,6 +110,7 @@ export function ConnectMCPServerDialog({
       return DEFAULT_MCP_SERVER_ICON;
     }, [mcpServerView]);
 
+  // Discover OAuth metadata for remote MCP servers.
   useEffect(() => {
     const discoverOAuth = async () => {
       if (isOpen && mcpServerView) {
@@ -118,7 +139,7 @@ export function ConnectMCPServerDialog({
               provider: "mcp",
               supported_use_cases: ["platform_actions", "personal_actions"],
             });
-            setAuthCredentials({
+            form.setValue("authCredentials", {
               ...discoverOAuthMetadataRes.value.connectionMetadata,
             });
             setRemoteMCPServerOAuthDiscoveryDone(true);
@@ -143,73 +164,52 @@ export function ConnectMCPServerDialog({
     serverType,
     remoteMCPServerOAuthDiscoveryDone,
     discoverOAuthMetadata,
+    form,
     sendNotification,
   ]);
 
-  const resetState = useCallback(() => {
+  const resetState = () => {
     setExternalIsLoading(false);
-    setAuthCredentials(null);
+    form.reset(defaultValues);
     setIsLoading(false);
     setRemoteMCPServerOAuthDiscoveryDone(false);
     setAuthorization(null);
-    setUseCase(null);
-  }, [setExternalIsLoading]);
+  };
 
-  const handleSave = async () => {
-    if (!mcpServerView) {
-      throw new Error("MCP server view is null while trying to connect");
-    }
-
+  const handleSave = async (values: MCPServerOAuthFormValues) => {
     if (!authorization) {
-      throw new Error("Authorization is null while trying to connect");
+      return;
     }
 
-    if (!useCase) {
-      throw new Error("Use case is null while trying to connect");
-    }
-
-    // First setup connection
     setIsLoading(true);
-    const cRes = await setupOAuthConnection({
-      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+    const submitRes = await submitConnectMCPServerDialogForm({
       owner,
-      provider: authorization.provider,
-      // During setup, the use case is always "platform_actions".
-      useCase: "platform_actions",
-      extraConfig: {
-        ...(authCredentials ?? {}),
-        ...(authorization.scope ? { scope: authorization.scope } : {}),
-      },
+      mcpServerView,
+      authorization,
+      values,
+      createMCPServerConnection,
+      updateServerView,
+      onBeforeAssociateConnection: () => setExternalIsLoading(true),
     });
-    if (cRes.isErr()) {
+
+    if (submitRes.isErr()) {
       sendNotification({
         type: "error",
         title: `Failed to connect ${OAUTH_PROVIDER_NAMES[authorization.provider]}`,
-        description: cRes.error.message,
+        description: submitRes.error.message,
       });
       setIsLoading(false);
       return;
     }
-
-    setExternalIsLoading(true);
-    // Then associate connection.
-    await createMCPServerConnection({
-      connectionId: cRes.value.connection_id,
-      mcpServerId: mcpServerView.server.sId,
-      mcpServerDisplayName: getMcpServerDisplayName(mcpServerView.server),
-      provider: authorization.provider,
-    });
-
-    // And update the oAuthUseCase for the MCP server.
-    await updateServerView({
-      oAuthUseCase: useCase,
-    });
 
     setExternalIsLoading(false);
     setIsLoading(false);
     setIsOpen(false);
     resetState();
   };
+
+  // Form is valid when: use case selected AND no credential validation errors.
+  const isFormValid = !!useCase && !hasCredentialErrors;
 
   return (
     <Dialog
@@ -220,51 +220,47 @@ export function ConnectMCPServerDialog({
       }}
     >
       <DialogContent size="lg">
-        <DialogHeader>
-          <DialogTitle>
-            <div className="flex items-center gap-2">
-              {getAvatarFromIcon(toolIcon, "sm")}
-              <span>Connect {toolName}</span>
-            </div>
-          </DialogTitle>
-        </DialogHeader>
-        <DialogContainer>
-          {authorization && (
-            <MCPServerOAuthConnexion
-              toolName={toolName}
-              useCase={useCase}
-              setUseCase={setUseCase}
-              authorization={authorization}
-              authCredentials={authCredentials}
-              setAuthCredentials={setAuthCredentials}
-              setIsFormValid={setIsFormValid}
-              documentationUrl={
-                mcpServerView.server?.documentationUrl ?? undefined
-              }
-            />
-          )}
-        </DialogContainer>
-        <DialogFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "ghost",
-            onClick: resetState,
-          }}
-          rightButtonProps={{
-            isLoading: isLoading,
-            label: authorization ? "Setup connection" : "",
-            variant: "primary",
-            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (isFormValid) {
-                void handleSave();
-              }
-            },
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            disabled: !isFormValid || (authorization && !useCase) || isLoading,
-          }}
-        />
+        <FormProvider form={form} asForm={false}>
+          <DialogHeader>
+            <DialogTitle visual={getAvatarFromIcon(toolIcon, "sm")}>
+              Connect {toolName}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            {authorization && (
+              <MCPServerOAuthConnexion
+                toolName={toolName}
+                authorization={authorization}
+                documentationUrl={
+                  mcpServerView.server?.documentationUrl ?? undefined
+                }
+              />
+            )}
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "ghost",
+              onClick: resetState,
+            }}
+            rightButtonProps={
+              authorization
+                ? {
+                    isLoading: isLoading,
+                    label: "Setup connection",
+                    variant: "primary",
+                    onClick: (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // handleSubmit gates on form validity (including errors set via setError).
+                      void form.handleSubmit(handleSave)();
+                    },
+                    disabled: !isFormValid || isLoading,
+                  }
+                : undefined
+            }
+          />
+        </FormProvider>
       </DialogContent>
     </Dialog>
   );
