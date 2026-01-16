@@ -27,6 +27,7 @@ import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
+import { isHostUnderVerifiedDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getStaticIPProxyAgent,
@@ -35,17 +36,9 @@ import {
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase, Result } from "@app/types";
-import {
-  assertNever,
-  Err,
-  isHostUnderDomain,
-  isIpAddress,
-  normalizeError,
-  Ok,
-} from "@app/types";
+import { assertNever, Err, normalizeError, Ok } from "@app/types";
 
 interface ConnectViaMCPServerId {
   type: "mcpServerId";
@@ -87,27 +80,6 @@ export type ClientSideMCPConnectionParams = ConnectViaClientSideMCPServer;
 export type MCPConnectionParams =
   | ServerSideMCPConnectionParams
   | ClientSideMCPConnectionParams;
-
-/**
- * Check if a host is under any verified domain for the workspace.
- * Used for MCP static IP egress routing.
- * Rejects IP address literals for security (only domain names are matched).
- */
-async function isHostUnderVerifiedDomain(
-  auth: Authenticator,
-  host: string
-): Promise<boolean> {
-  if (isIpAddress(host)) {
-    return false;
-  }
-
-  const verifiedDomains = await WorkspaceHasDomainModel.findAll({
-    attributes: ["domain"],
-    where: { workspaceId: auth.getNonNullableWorkspace().id },
-  });
-
-  return verifiedDomains.some((d) => isHostUnderDomain(host, d.domain));
-}
 
 async function createMCPDispatcher(
   auth: Authenticator,
