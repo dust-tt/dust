@@ -4,7 +4,6 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { MCPToolType } from "@app/lib/api/mcp";
 import type { MCPOAuthUseCase } from "@app/types";
 
 export const GITHUB_TOOL_NAME = "github" as const;
@@ -265,15 +264,6 @@ export const TOOLS_META = [
   listPullRequestsMeta,
 ];
 
-export const GITHUB_TOOLS: MCPToolType[] = TOOLS_META.map((t) => ({
-  name: t.name,
-  description: t.description,
-  inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
-}));
-
-export const GITHUB_TOOL_STAKES: Record<string, MCPToolStakeLevelType> =
-  Object.fromEntries(TOOLS_META.map((t) => [t.name, t.stake]));
-
 export const GITHUB_SERVER_INFO = {
   name: "github" as const,
   version: "1.0.0",
@@ -292,6 +282,10 @@ export const GITHUB_SERVER_INFO = {
 
 export const GITHUB_SERVER = {
   serverInfo: GITHUB_SERVER_INFO,
-  tools: GITHUB_TOOLS,
-  tools_stakes: GITHUB_TOOL_STAKES,
+  tools: TOOLS_META.map((t) => ({
+    name: t.name,
+    description: t.description,
+    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+  })),
+  tools_stakes: Object.fromEntries(TOOLS_META.map((t) => [t.name, t.stake])),
 } as const satisfies ServerMetadata;
