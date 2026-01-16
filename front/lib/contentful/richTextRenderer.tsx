@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 
 import { A, H2, H3, H4, H5 } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
+import { cn } from "@app/lib/utils/cn";
 import {
   isBlockOrInline,
   isTextNode,
@@ -270,20 +271,38 @@ const renderOptions: Options = {
       );
     },
     [BLOCKS.TABLE]: (_node, children) => (
-      <div className="rich-text-table mb-10 mt-8 overflow-x-auto rounded-lg border border-border">
-        <table className="w-full border-collapse">
+      <div
+        className={cn(
+          "rich-text-table",
+          "mb-10 mt-8 overflow-x-auto",
+          "rounded-lg border border-border"
+        )}
+      >
+        <table className={cn("w-full border-collapse")}>
           <tbody>{children}</tbody>
         </table>
       </div>
     ),
     [BLOCKS.TABLE_ROW]: (_node, children) => <tr>{children}</tr>,
     [BLOCKS.TABLE_HEADER_CELL]: (_node, children) => (
-      <th className="border-b border-r border-border/50 bg-gray-50 px-4 py-3 text-left align-middle text-sm font-semibold text-foreground">
+      <th
+        className={cn(
+          "border-b border-r border-border/50",
+          "bg-gray-50 px-4 py-3",
+          "text-left align-middle text-sm font-semibold text-foreground"
+        )}
+      >
         {children}
       </th>
     ),
     [BLOCKS.TABLE_CELL]: (_node, children) => (
-      <td className="border-b border-r border-border/50 px-4 py-3 align-middle text-sm text-foreground">
+      <td
+        className={cn(
+          "border-b border-r border-border/50",
+          "px-4 py-3",
+          "align-middle text-sm text-foreground"
+        )}
+      >
         {children}
       </td>
     ),
