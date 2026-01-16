@@ -90,7 +90,10 @@ describe("basics seed script integration test", () => {
 
       // Verify messages exist
       const messages = await MessageModel.findAll({
-        where: { conversationId: conversation!.id },
+        where: {
+          workspaceId: workspace.id,
+          conversationId: conversation!.id,
+        },
         order: [["rank", "ASC"]],
       });
       expect(messages.length).toBe(convAsset.exchanges.length * 2);
