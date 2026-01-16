@@ -2,7 +2,7 @@ import type { Avatar } from "@dust-tt/sparkle";
 import { ConversationListItem, ReplySection } from "@dust-tt/sparkle";
 import uniqBy from "lodash/uniqBy";
 import moment from "moment";
-import type { useRouter } from "next/router";
+import { useRouter } from "next/router";
 import { useMemo } from "react";
 
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -16,14 +16,13 @@ import {
 interface SpaceConversationListItemProps {
   conversation: ConversationType;
   owner: WorkspaceType;
-  router: ReturnType<typeof useRouter>;
 }
 
 export function SpaceConversationListItem({
   conversation,
   owner,
-  router,
 }: SpaceConversationListItemProps) {
+  const router = useRouter();
   const firstUserMessage = conversation.content
     .map((m) => m[m.length - 1])
     .find(isUserMessageType);

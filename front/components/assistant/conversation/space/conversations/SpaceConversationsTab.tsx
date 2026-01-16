@@ -8,7 +8,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -58,7 +57,6 @@ export function SpaceConversationsTab({
   spaceInfo,
   onSubmit,
 }: SpaceConversationsTabProps) {
-  const router = useRouter();
   const [searchText, setSearchText] = useState("");
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
@@ -189,7 +187,6 @@ export function SpaceConversationsTab({
                               key={conversation.sId}
                               conversation={conversation}
                               owner={owner}
-                              router={router}
                             />
                           ))}
                       </ListGroup>
