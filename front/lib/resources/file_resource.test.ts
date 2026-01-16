@@ -21,7 +21,7 @@ vi.mock("@app/lib/api/files/upload", () => ({
 
 describe("FileResource", () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("fetchByShareTokenWithContent", () => {

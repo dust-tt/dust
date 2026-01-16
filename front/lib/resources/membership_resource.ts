@@ -11,6 +11,7 @@ import { Op } from "sequelize";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { Authenticator } from "@app/lib/auth";
+import { invalidateActiveSeatsCache } from "@app/lib/plans/usage/seats";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -573,6 +574,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       throw workflowResult.error;
     }
 
+    // Invalidate the active seats cache for this workspace.
+    await invalidateActiveSeatsCache(workspace.sId);
+
     return new MembershipResource(MembershipModel, newMembership.get());
   }
 
@@ -665,6 +669,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       // Throw if it fails to launch (unexpected).
       throw workflowResult.error;
     }
+
+    // Invalidate the active seats cache for this workspace.
+    await invalidateActiveSeatsCache(workspace.sId);
 
     return new Ok({
       role: membership.role,
