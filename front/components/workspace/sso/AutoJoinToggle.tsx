@@ -128,7 +128,7 @@ export function AutoJoinToggle({
   const domainAutoJoinEnabled =
     workspaceVerifiedDomains.length > 0 &&
     workspaceVerifiedDomains.every((d) => d.domainAutoJoinEnabled);
-  const isMultiDomain = workspaceVerifiedDomains.length > 1;
+  const isMultiDomain = domains.length > 1;
   const isAnyDomainAutoJoinEnabled = workspaceVerifiedDomains.some(
     (d) => d.domainAutoJoinEnabled
   );
