@@ -186,6 +186,9 @@ const ImagePreviewByVariant = ({
 );
 
 export const Gallery: Story = {
+  args: {
+    imgSrc: SAMPLE_IMAGE,
+  },
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">
       <ImagePreviewByVariant variant="square" />
