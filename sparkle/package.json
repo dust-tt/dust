@@ -9,6 +9,7 @@
     "build:cjs": "node scripts/build-cjs.mjs",
     "storybook": "storybook dev -p 6006 --debug-webpack",
     "build-storybook": "storybook build",
+    "build:vercel": "rm -rf vercel-dist && npm run build-storybook && npm --prefix playground run build && mkdir -p vercel-dist/storybook vercel-dist/playground && cp -R storybook-static/* vercel-dist/storybook/ && cp -R playground/dist/* vercel-dist/playground/",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "lint": "eslint ."
