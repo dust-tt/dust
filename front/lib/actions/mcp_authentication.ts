@@ -3,8 +3,8 @@ import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
-import type { OAuthConnectionType, OAuthProvider } from "@app/types";
-import { getOAuthConnectionAccessToken } from "@app/types";
+import type { OAuthConnectionType, OAuthProvider, Result } from "@app/types";
+import { Err, getOAuthConnectionAccessToken, Ok } from "@app/types";
 
 // Dedicated function to get the connection details for an MCP server.
 // Not using the one from mcp_metadata.ts to avoid circular dependency.
@@ -18,14 +18,15 @@ export async function getConnectionForMCPServer(
     connectionType: MCPServerConnectionConnectionType;
   }
 ): Promise<
-  | {
-      status: "success";
+  Result<
+    {
       connection: OAuthConnectionType;
       access_token: string;
       access_token_expiry: number | null;
       scrubbed_raw_json: unknown;
-    }
-  | { status: "error"; error: "connection_not_found" | "access_token_error" }
+    },
+    Error
+  >
 > {
   const connection = await MCPServerConnectionResource.findByMCPServer(auth, {
     mcpServerId,
@@ -38,7 +39,7 @@ export async function getConnectionForMCPServer(
       connectionId: connection.value.connectionId,
     });
     if (token.isOk()) {
-      return { status: "success", ...token.value };
+      return new Ok(token.value);
     } else {
       logger.warn(
         {
@@ -49,7 +50,7 @@ export async function getConnectionForMCPServer(
         },
         "Failed to get access token for MCP server"
       );
-      return { status: "error", error: "access_token_error" };
+      return new Err(new Error("access_token_error"));
     }
   } else {
     logger.info(
@@ -61,7 +62,7 @@ export async function getConnectionForMCPServer(
       },
       "No connection found for MCP server"
     );
-    return { status: "error", error: "connection_not_found" };
+    return new Err(new Error("connection_not_found"));
   }
 }
 
