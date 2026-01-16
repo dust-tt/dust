@@ -9,6 +9,10 @@ import {
   ConversationContainer,
   ConversationMessage,
   Icon,
+  AtomIcon,
+  BarChartIcon,
+  ListCheckIcon,
+  TestTubeIcon,
   ToolsIcon,
   BookOpenIcon,
   DropdownMenu,
@@ -18,6 +22,8 @@ import {
   SpaceClosedIcon as SpaceCloseIcon,
   UserGroupIcon,
   BoltIcon,
+  SidebarRightCloseIcon,
+  SidebarRightOpenIcon,
   EyeIcon,
   EyeSlashIcon,
   DropdownMenuItem,
@@ -55,6 +61,8 @@ export default function AgentBuilder() {
   const tagItems = useMemo(() => mockSpaces.slice(0, 6), []);
   const selectableSpaces = useMemo(() => mockSpaces.slice(0, 12), []);
   const [isSpacesSheetOpen, setIsSpacesSheetOpen] = useState(false);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+  const [activeRightPanelTab, setActiveRightPanelTab] = useState("copilot");
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<Set<string>>(() => {
     const defaultSpace = mockSpaces[0];
     return defaultSpace ? new Set([defaultSpace.id]) : new Set();
@@ -142,6 +150,12 @@ export default function AgentBuilder() {
       </div>
     );
   };
+  const rightPanelTabs = [
+    { value: "copilot", label: "Copilot", icon: AtomIcon },
+    { value: "testing", label: "Testing", icon: TestTubeIcon },
+    { value: "insights", label: "Insights", icon: BarChartIcon },
+    { value: "feedback", label: "Feedback", icon: ListCheckIcon },
+  ];
 
   return (
     <div className="s-h-screen s-w-full s-bg-background">
@@ -163,355 +177,402 @@ export default function AgentBuilder() {
           transition: width 200ms, background-color 200ms;
         }
       `}</style>
-      <Allotment
-        vertical={false}
-        proportionalLayout={true}
-        defaultSizes={[60, 40]}
-        className="s-h-full s-w-full"
-      >
-        <Allotment.Pane
-          minSize={360}
-          preferredSize={60}
-          className="s-flex s-h-full s-flex-col s-overflow-hidden s-border-r s-border-border"
+      <div className="s-flex s-h-full s-w-full">
+        <Allotment
+          key={isRightPanelOpen ? "with-right-panel" : "left-only"}
+          vertical={false}
+          proportionalLayout={true}
+          defaultSizes={[60, 40]}
+          className="s-h-full s-w-full s-flex-1"
         >
-          <div className="s-flex s-h-full s-flex-col">
-            <Bar
-              position="top"
-              variant="default"
-              size="sm"
-              title={agent?.name || "Agent"}
-              leftActions={
-                <Avatar
-                  size="sm"
-                  name={agent?.name || "Agent"}
-                  emoji={agent?.emoji}
-                  backgroundColor={agent?.backgroundColor}
-                  isRounded={false}
-                />
-              }
-              rightActions={<Bar.ButtonBar variant="close" />}
-            />
-            <div className="s-flex s-w-full s-flex-1 s-flex-col s-overflow-auto s-px-6">
-              <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-8 s-py-6">
-                <div className="s-flex s-flex-1 s-flex-col s-gap-3">
-                  <SectionHeader
-                    title="Instructions"
-                    description="Command or guideline you provide to your agent to direct its responses."
-                    action={
-                      <>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              label="Advanced"
-                              isSelect
-                            />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem label="No advanced options" />
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              icon={ArrowCircleIcon}
-                              isSelect
-                            />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            {historyItems.map((item) => (
-                              <DropdownMenuItem
-                                key={item.id}
-                                label={item.title}
+          <Allotment.Pane
+            minSize={360}
+            preferredSize={60}
+            className="s-flex s-h-full s-flex-col s-overflow-hidden s-border-r s-border-border"
+          >
+            <div className="s-flex s-h-full s-flex-col">
+              <Bar
+                position="top"
+                variant="default"
+                size="sm"
+                title={agent?.name || "Agent"}
+                leftActions={
+                  <Avatar
+                    size="sm"
+                    name={agent?.name || "Agent"}
+                    emoji={agent?.emoji}
+                    backgroundColor={agent?.backgroundColor}
+                    isRounded={false}
+                  />
+                }
+                rightActions={
+                  <div className="s-flex s-items-center s-gap-2">
+                    <Bar.ButtonBar variant="close" />
+                  </div>
+                }
+              />
+              <div className="s-flex s-w-full s-flex-1 s-flex-col s-overflow-auto s-px-6">
+                <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-8 s-py-6">
+                  <div className="s-flex s-flex-1 s-flex-col s-gap-3">
+                    <SectionHeader
+                      title="Instructions"
+                      description="Command or guideline you provide to your agent to direct its responses."
+                      action={
+                        <>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                label="Advanced"
+                                isSelect
                               />
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </>
-                    }
-                  />
-                  <TextArea
-                    resize="vertical"
-                    style={{ minHeight: "500px" }}
-                    placeholder="Write instructions for your agent..."
-                  />
-                </div>
-
-                <div className="s-flex s-flex-col s-gap-2">
-                  <SectionHeader
-                    title="Spaces"
-                    description="Set what knowledge and capabilities the agent can access."
-                    action={
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          label="Select"
-                          icon={SpacesIcon}
-                          onClick={() => setIsSpacesSheetOpen(true)}
-                        />
-                      </>
-                    }
-                  />
-                  {selectedSpaces.length > 0 ? (
-                    <div className="s-flex s-flex-wrap s-gap-2">
-                      {[...selectedSpaces]
-                        .sort(
-                          (a, b) =>
-                            Number(isRestrictedSpace(a.id)) -
-                            Number(isRestrictedSpace(b.id))
-                        )
-                        .map((space) => {
-                          const isRestricted = isRestrictedSpace(space.id);
-                          return (
-                            <Chip
-                              key={space.id}
-                              icon={
-                                isRestricted ? SpaceCloseIcon : SpaceOpenIcon
-                              }
-                              size="xs"
-                              color={isRestricted ? "rose" : "golden"}
-                              label={space.name}
-                              onRemove={() => removeSpace(space.id)}
-                            />
-                          );
-                        })}
-                    </div>
-                  ) : (
-                    <div className="s-copy-sm s-text-muted-foreground">
-                      No spaces selected.
-                    </div>
-                  )}
-                </div>
-
-                <div className="s-flex s-flex-col s-gap-2">
-                  <SectionHeader
-                    title="Knowledge and capabilities"
-                    description="Add knowledge, tools and skills to enhance your agent's
-                    abilities."
-                    action={
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          label="Capabilities"
-                          icon={ToolsIcon}
-                        />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          label="knowledge"
-                          icon={BookOpenIcon}
-                        />
-                      </>
-                    }
-                  />
-
-                  <EmptyCTA
-                    action={
-                      <div className="s-flex s-gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          label="Capabilities"
-                          icon={ToolsIcon}
-                        />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          label="knowledge"
-                          icon={BookOpenIcon}
-                        />
-                      </div>
-                    }
-                  />
-                </div>
-
-                <div className="s-flex s-flex-col s-gap-2">
-                  <SectionHeader
-                    title="Triggers"
-                    description="Add knowledge, tools and skills to enhance your agent's
-                    abilities."
-                    action={
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          label="Triggers"
-                          icon={BoltIcon}
-                        />
-                      </>
-                    }
-                  />
-
-                  <EmptyCTA
-                    action={
-                      <div className="s-flex s-gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          label="Triggers"
-                          icon={BoltIcon}
-                        />
-                      </div>
-                    }
-                  />
-                </div>
-
-                <div className="s-flex s-flex-col s-gap-3">
-                  <div className="s-heading-xl s-text-foreground">Settings</div>
-                  <div className="s-flex s-items-center s-gap-3">
-                    <div className="s-flex s-flex-1 s-flex-col s-gap-2">
-                      <div className="s-heading-sm s-text-foreground">
-                        Handle
-                      </div>
-                      <Input
-                        placeholder="Agent name"
-                        className="s-flex-1"
-                        defaultValue={agent?.name || ""}
-                      />
-                    </div>
-                    <Avatar
-                      size="lg"
-                      name={agent?.name || "Agent"}
-                      emoji={agent?.emoji}
-                      backgroundColor={agent?.backgroundColor}
-                      isRounded={false}
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem label="No advanced options" />
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                icon={ArrowCircleIcon}
+                                isSelect
+                              />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              {historyItems.map((item) => (
+                                <DropdownMenuItem
+                                  key={item.id}
+                                  label={item.title}
+                                />
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </>
+                      }
+                    />
+                    <TextArea
+                      resize="vertical"
+                      style={{ minHeight: "500px" }}
+                      placeholder="Write instructions for your agent..."
                     />
                   </div>
+
                   <div className="s-flex s-flex-col s-gap-2">
-                    <div className="s-heading-sm s-text-foreground">
-                      Description
-                    </div>
-                    <Input placeholder="Description" />
-                  </div>
-                  <div className="s-flex s-items-center s-border-y s-border-border s-py-2">
-                    <div className="s-mr-8 s-flex s-items-center s-gap-2">
-                      <div className="s-heading-sm s-text-foreground">
-                        Access
+                    <SectionHeader
+                      title="Spaces"
+                      description="Set what knowledge and capabilities the agent can access."
+                      action={
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            label="Select"
+                            icon={SpacesIcon}
+                            onClick={() => setIsSpacesSheetOpen(true)}
+                          />
+                        </>
+                      }
+                    />
+                    {selectedSpaces.length > 0 ? (
+                      <div className="s-flex s-flex-wrap s-gap-2">
+                        {[...selectedSpaces]
+                          .sort(
+                            (a, b) =>
+                              Number(isRestrictedSpace(a.id)) -
+                              Number(isRestrictedSpace(b.id))
+                          )
+                          .map((space) => {
+                            const isRestricted = isRestrictedSpace(space.id);
+                            return (
+                              <Chip
+                                key={space.id}
+                                icon={
+                                  isRestricted ? SpaceCloseIcon : SpaceOpenIcon
+                                }
+                                size="xs"
+                                color={isRestricted ? "rose" : "golden"}
+                                label={space.name}
+                                onRemove={() => removeSpace(space.id)}
+                              />
+                            );
+                          })}
                       </div>
+                    ) : (
+                      <div className="s-copy-sm s-text-muted-foreground">
+                        No spaces selected.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="s-flex s-flex-col s-gap-2">
+                    <SectionHeader
+                      title="Knowledge and capabilities"
+                      description="Add knowledge, tools and skills to enhance your agent's
+                    abilities."
+                      action={
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            label="Capabilities"
+                            icon={ToolsIcon}
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            label="knowledge"
+                            icon={BookOpenIcon}
+                          />
+                        </>
+                      }
+                    />
+
+                    <EmptyCTA
+                      action={
+                        <div className="s-flex s-gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            label="Capabilities"
+                            icon={ToolsIcon}
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            label="knowledge"
+                            icon={BookOpenIcon}
+                          />
+                        </div>
+                      }
+                    />
+                  </div>
+
+                  <div className="s-flex s-flex-col s-gap-2">
+                    <SectionHeader
+                      title="Triggers"
+                      description="Add knowledge, tools and skills to enhance your agent's
+                    abilities."
+                      action={
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            label="Triggers"
+                            icon={BoltIcon}
+                          />
+                        </>
+                      }
+                    />
+
+                    <EmptyCTA
+                      action={
+                        <div className="s-flex s-gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            label="Triggers"
+                            icon={BoltIcon}
+                          />
+                        </div>
+                      }
+                    />
+                  </div>
+
+                  <div className="s-flex s-flex-col s-gap-3">
+                    <div className="s-heading-xl s-text-foreground">
+                      Settings
+                    </div>
+                    <div className="s-flex s-items-center s-gap-3">
+                      <div className="s-flex s-flex-1 s-flex-col s-gap-2">
+                        <div className="s-heading-sm s-text-foreground">
+                          Handle
+                        </div>
+                        <Input
+                          placeholder="Agent name"
+                          className="s-flex-1"
+                          defaultValue={agent?.name || ""}
+                        />
+                      </div>
+                      <Avatar
+                        size="lg"
+                        name={agent?.name || "Agent"}
+                        emoji={agent?.emoji}
+                        backgroundColor={agent?.backgroundColor}
+                        isRounded={false}
+                      />
+                    </div>
+                    <div className="s-flex s-flex-col s-gap-2">
+                      <div className="s-heading-sm s-text-foreground">
+                        Description
+                      </div>
+                      <Input placeholder="Description" />
+                    </div>
+                    <div className="s-flex s-items-center s-border-y s-border-border s-py-2">
+                      <div className="s-mr-8 s-flex s-items-center s-gap-2">
+                        <div className="s-heading-sm s-text-foreground">
+                          Access
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              label="Unpublished"
+                              is
+                            />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem
+                              label="Unpublished"
+                              icon={EyeSlashIcon}
+                            />
+                            <DropdownMenuItem
+                              label="Published"
+                              icon={EyeIcon}
+                            />
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      <div className="s-flex s-items-center s-gap-2">
+                        <div className="s-heading-sm s-text-foreground">
+                          Edition
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          label="Editors"
+                          icon={UserGroupIcon}
+                        />
+                      </div>
+                    </div>
+                    <div className="s-flex s-items-center s-gap-2">
+                      <div className="s-heading-sm s-text-foreground">Tags</div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             size="sm"
                             variant="outline"
-                            label="Unpublished"
-                            is
+                            label="Select tags"
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuItem
-                            label="Unpublished"
-                            icon={EyeSlashIcon}
-                          />
-                          <DropdownMenuItem label="Published" icon={EyeIcon} />
+                          {tagItems.map((tag) => (
+                            <DropdownMenuItem key={tag.id} label={tag.name} />
+                          ))}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    <div className="s-flex s-items-center s-gap-2">
-                      <div className="s-heading-sm s-text-foreground">
-                        Edition
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        label="Editors"
-                        icon={UserGroupIcon}
-                      />
-                    </div>
-                  </div>
-                  <div className="s-flex s-items-center s-gap-2">
-                    <div className="s-heading-sm s-text-foreground">Tags</div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          label="Select tags"
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        {tagItems.map((tag) => (
-                          <DropdownMenuItem key={tag.id} label={tag.name} />
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </Allotment.Pane>
+          </Allotment.Pane>
 
-        <Allotment.Pane
-          minSize={280}
-          preferredSize={40}
-          className="s-flex s-h-full s-flex-col s-overflow-hidden"
-        >
-          <Tabs
-            defaultValue="copilot"
-            className="s-flex s-min-h-0 s-flex-1 s-flex-col s-pt-3"
-          >
-            <TabsList className="s-px-6">
-              <TabsTrigger value="copilot" label="Copilot" />
-              <TabsTrigger value="testing" label="Testing" />
-              <TabsTrigger value="insights" label="Insights" />
-              <TabsTrigger value="feedback" label="Feedback" />
-            </TabsList>
-            <TabsContent
-              value="copilot"
-              className="s-flex s-min-h-0 s-flex-1 s-flex-col"
+          {isRightPanelOpen && (
+            <Allotment.Pane
+              minSize={280}
+              preferredSize={40}
+              className="s-flex s-h-full s-flex-col s-overflow-hidden"
             >
-              <div className="s-flex s-min-h-0 s-flex-1 s-overflow-y-auto s-px-6 s-py-6">
-                <ConversationContainer>
-                  {copilotConversationItems.map((item) => (
-                    <ConversationMessage
-                      key={item.id}
-                      type={item.type}
-                      name={item.name}
-                      timestamp={item.timestamp}
-                    >
-                      {item.content}
-                    </ConversationMessage>
+              <Tabs
+                value={activeRightPanelTab}
+                onValueChange={setActiveRightPanelTab}
+                className="s-flex s-min-h-0 s-flex-1 s-flex-col s-pt-3"
+              >
+                <TabsList className="s-pl-6 s-pr-2">
+                  <Button
+                    icon={SidebarRightCloseIcon}
+                    variant="ghost-secondary"
+                    size="sm"
+                    onClick={() => setIsRightPanelOpen(false)}
+                  />
+                  {rightPanelTabs.map((tab) => (
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      label={tab.label}
+                      icon={tab.icon}
+                    />
                   ))}
-                </ConversationContainer>
-              </div>
-              <div className="s-border-t s-border-border s-px-6 s-py-4">
-                <div className="s-flex s-justify-center">
-                  <InputBar placeholder="Ask Copilot to help build your agent" />
-                </div>
-              </div>
-            </TabsContent>
-            <TabsContent
-              value="testing"
-              className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
-            >
-              <div className="s-copy-sm s-text-muted-foreground">
-                Testing panel content.
-              </div>
-            </TabsContent>
-            <TabsContent
-              value="insights"
-              className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
-            >
-              <div className="s-copy-sm s-text-muted-foreground">
-                Insights panel content.
-              </div>
-            </TabsContent>
-            <TabsContent
-              value="feedback"
-              className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
-            >
-              <div className="s-copy-sm s-text-muted-foreground">
-                Feedback panel content.
-              </div>
-            </TabsContent>
-          </Tabs>
-        </Allotment.Pane>
-      </Allotment>
+                </TabsList>
+                <TabsContent
+                  value="copilot"
+                  className="s-flex s-min-h-0 s-flex-1 s-flex-col"
+                >
+                  <div className="s-flex s-min-h-0 s-flex-1 s-overflow-y-auto s-p-3">
+                    <ConversationContainer>
+                      {copilotConversationItems.map((item) => (
+                        <ConversationMessage
+                          key={item.id}
+                          type={item.type}
+                          name={item.name}
+                          timestamp={item.timestamp}
+                        >
+                          {item.content}
+                        </ConversationMessage>
+                      ))}
+                    </ConversationContainer>
+                  </div>
+                  <div className="s-p-4">
+                    <div className="s-flex s-justify-center">
+                      <InputBar placeholder="Ask Copilot to help build your agent" />
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent
+                  value="testing"
+                  className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
+                >
+                  <div className="s-copy-sm s-text-muted-foreground">
+                    Testing panel content.
+                  </div>
+                </TabsContent>
+                <TabsContent
+                  value="insights"
+                  className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
+                >
+                  <div className="s-copy-sm s-text-muted-foreground">
+                    Insights panel content.
+                  </div>
+                </TabsContent>
+                <TabsContent
+                  value="feedback"
+                  className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
+                >
+                  <div className="s-copy-sm s-text-muted-foreground">
+                    Feedback panel content.
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </Allotment.Pane>
+          )}
+        </Allotment>
+        {!isRightPanelOpen && (
+          <div className="s-flex s-h-full s-w-16 s-flex-col s-items-center s-gap-2 s-py-3">
+            <Button
+              icon={SidebarRightOpenIcon}
+              size="sm"
+              variant="ghost-secondary"
+              onClick={() => setIsRightPanelOpen(true)}
+            />
+            {rightPanelTabs.map((tab) => (
+              <Button
+                key={tab.value}
+                icon={tab.icon}
+                size="sm"
+                variant="ghost-secondary"
+                onClick={() => {
+                  setActiveRightPanelTab(tab.value);
+                  setIsRightPanelOpen(true);
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
       <Sheet open={isSpacesSheetOpen} onOpenChange={setIsSpacesSheetOpen}>
         <SheetContent size="md" side="right">
           <SheetHeader>
