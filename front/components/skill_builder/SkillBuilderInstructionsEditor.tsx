@@ -52,11 +52,13 @@ const editorVariants = cva(
 interface SkillBuilderInstructionsEditorProps {
   compareVersion?: SkillType | null;
   isInstructionDiffMode?: boolean;
+  useCustomMarkdown: boolean;
 }
 
 export function SkillBuilderInstructionsEditor({
   compareVersion,
   isInstructionDiffMode = false,
+  useCustomMarkdown,
 }: SkillBuilderInstructionsEditorProps) {
   const { field: instructionsField, fieldState: instructionsFieldState } =
     useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
@@ -144,6 +146,7 @@ export function SkillBuilderInstructionsEditor({
   const { editor } = useSkillInstructionsEditor({
     content: instructionsField.value ?? "",
     isReadOnly: false,
+    useCustomMarkdown,
     onUpdate: handleUpdate,
     onBlur: handleBlur,
     onDelete: handleDelete,

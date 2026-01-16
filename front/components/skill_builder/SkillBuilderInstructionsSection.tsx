@@ -14,6 +14,7 @@ import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBu
 import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/SkillBuilderInstructionsEditor";
 import { SkillInstructionsHistory } from "@app/components/skill_builder/SkillInstructionsHistory";
 import { useSkillHistory } from "@app/lib/swr/skill_configurations";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   SkillType,
   SkillWithVersionType,
@@ -29,6 +30,8 @@ export function SkillBuilderInstructionsSection({
   skill,
 }: SkillBuilderInstructionsSectionProps) {
   const { owner } = useSkillBuilderContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const useCustomMarkdown = hasFeature("custom_markdown_implementation");
   const { setValue } = useFormContext<SkillBuilderFormData>();
   const [compareVersion, setCompareVersion] =
     useState<SkillWithVersionType | null>(null);
@@ -115,6 +118,7 @@ export function SkillBuilderInstructionsSection({
       <SkillBuilderInstructionsEditor
         compareVersion={compareVersion}
         isInstructionDiffMode={isInstructionDiffMode}
+        useCustomMarkdown={useCustomMarkdown}
       />
     </section>
   );

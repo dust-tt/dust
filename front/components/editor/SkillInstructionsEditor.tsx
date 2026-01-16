@@ -1,6 +1,5 @@
 import { cn, markdownStyles } from "@dust-tt/sparkle";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
-import { Markdown } from "@tiptap/markdown";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor, Extensions } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -9,6 +8,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
+import { getMarkdownExtension } from "@app/components/editor/extensions/markdown";
 import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import {
@@ -20,10 +20,11 @@ import { SlashCommandExtension } from "@app/components/editor/extensions/skill_b
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 export function buildSkillInstructionsExtensions(
-  isReadOnly: boolean
+  isReadOnly: boolean,
+  useCustomMarkdown: boolean
 ): Extensions {
   const baseExtensions: Extensions = [
-    Markdown,
+    getMarkdownExtension(useCustomMarkdown),
     StarterKit.configure({
       orderedList: false,
       listItem: false,
@@ -156,6 +157,7 @@ function useEditorService(editor: Editor | null) {
 interface UseSkillInstructionsEditorProps {
   content: string;
   isReadOnly: boolean;
+  useCustomMarkdown: boolean;
   onUpdate?: (props: { editor: Editor; transaction: Transaction }) => void;
   onBlur?: () => void;
   onDelete?: (editor: Editor) => void;
@@ -164,13 +166,14 @@ interface UseSkillInstructionsEditorProps {
 export function useSkillInstructionsEditor({
   content,
   isReadOnly,
+  useCustomMarkdown,
   onUpdate,
   onBlur,
   onDelete,
 }: UseSkillInstructionsEditorProps) {
   const extensions = useMemo(
-    () => buildSkillInstructionsExtensions(isReadOnly),
-    [isReadOnly]
+    () => buildSkillInstructionsExtensions(isReadOnly, useCustomMarkdown),
+    [isReadOnly, useCustomMarkdown]
   );
 
   // Track if initial content has been set

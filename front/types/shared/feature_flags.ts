@@ -226,6 +226,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Phone verification during trial sign-up",
     stage: "dust_only",
   },
+  custom_markdown_implementation: {
+    description:
+      "Use custom markdown-it based parser instead of marked (treats HTML tags as literal text)",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

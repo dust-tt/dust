@@ -6,6 +6,7 @@ import {
   SkillInstructionsEditorContent,
   useSkillInstructionsEditor,
 } from "@app/components/editor/SkillInstructionsEditor";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 
 interface SkillInstructionsReadOnlyEditorProps {
@@ -19,9 +20,13 @@ export function SkillInstructionsReadOnlyEditor({
   owner,
   onKnowledgeItemsChange,
 }: SkillInstructionsReadOnlyEditorProps) {
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const useCustomMarkdown = hasFeature("custom_markdown_implementation");
+
   const { editor, editorService } = useSkillInstructionsEditor({
     content,
     isReadOnly: true,
+    useCustomMarkdown,
   });
 
   useEffect(() => {

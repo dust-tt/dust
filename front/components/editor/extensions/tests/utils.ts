@@ -1,10 +1,10 @@
 import type { Extensions } from "@tiptap/core";
-import { Markdown } from "@tiptap/markdown";
 import { Editor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 
 import { EmptyLineParagraphExtension } from "@app/components/editor/extensions/EmptyLineParagraphExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
+import { getMarkdownExtension } from "@app/components/editor/extensions/markdown";
 import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
 
 export const EditorFactory = (extensions: Extensions) => {
@@ -21,7 +21,7 @@ export const EditorFactory = (extensions: Extensions) => {
       EmptyLineParagraphExtension,
       ListItemExtension,
       OrderedListExtension,
-      Markdown,
+      getMarkdownExtension(false), // Use default markdown for tests (tests can override by passing CustomMarkdown explicitly)
       ...extensions,
     ],
   });
