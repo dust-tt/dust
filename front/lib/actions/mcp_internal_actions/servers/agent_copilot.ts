@@ -169,7 +169,9 @@ async function createServer(
         );
         if (editorGroupRes.isErr()) {
           return new Err(
-            new MCPError(`Failed to get editors: ${editorGroupRes.error.message}`)
+            new MCPError(
+              `Failed to get editors: ${editorGroupRes.error.message}`
+            )
           );
         }
         const members = await editorGroupRes.value.getActiveMembers(auth);
@@ -236,10 +238,15 @@ async function createServer(
           name: name ?? agentConfig.name,
           description: description ?? agentConfig.description,
           instructions:
-            instructions !== undefined ? instructions : agentConfig.instructions,
+            instructions !== undefined
+              ? instructions
+              : agentConfig.instructions,
           pictureUrl: agentConfig.pictureUrl,
           status: agentConfig.status as AgentStatus,
-          scope: agentConfig.scope as Exclude<AgentConfigurationScope, "global">,
+          scope: agentConfig.scope as Exclude<
+            AgentConfigurationScope,
+            "global"
+          >,
           model: mergedModel,
           agentConfigurationId: agent_id,
           templateId: agentConfig.templateId,
