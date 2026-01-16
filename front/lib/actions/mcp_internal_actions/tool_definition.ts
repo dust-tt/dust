@@ -43,6 +43,18 @@ export interface ToolDefinition<
   ) => Promise<ToolHandlerResult>;
 }
 
+export type ToolMeta<
+  TName extends string = string,
+  TSchema extends ZodRawShape = ZodRawShape,
+> = Omit<ToolDefinition<TName, TSchema>, "handler">;
+
+export function defineToolMeta<
+  TName extends string,
+  TSchema extends ZodRawShape,
+>(def: ToolMeta<TName, TSchema>): ToolMeta<TName, TSchema> {
+  return def;
+}
+
 export function defineTool<TName extends string, TSchema extends ZodRawShape>(
   def: ToolDefinition<TName, TSchema>
 ): ToolDefinition<TName, TSchema> {

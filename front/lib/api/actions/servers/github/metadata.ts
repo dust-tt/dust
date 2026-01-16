@@ -2,14 +2,14 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { defineToolMeta } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { MCPOAuthUseCase } from "@app/types";
 
 export const GITHUB_TOOL_NAME = "github" as const;
 
-export const createIssueMeta = {
-  name: "create_issue" as const,
+export const createIssueMeta = defineToolMeta({
+  name: "create_issue",
   description: "Create a new issue on a specified GitHub repository.",
   schema: {
     owner: z
@@ -27,11 +27,11 @@ export const createIssueMeta = {
       .optional()
       .describe("Labels to associate with this issue."),
   },
-  stake: "low" as MCPToolStakeLevelType,
-};
+  stake: "low",
+});
 
-export const getPullRequestMeta = {
-  name: "get_pull_request" as const,
+export const getPullRequestMeta = defineToolMeta({
+  name: "get_pull_request",
   description:
     "Retrieve a pull request from a specified GitHub repository including" +
     " its associated description, diff, comments and reviews.",
@@ -42,11 +42,11 @@ export const getPullRequestMeta = {
     repo: z.string().describe("The name of the repository."),
     pullNumber: z.number().describe("The pull request number."),
   },
-  stake: "never_ask" as MCPToolStakeLevelType,
-};
+  stake: "never_ask",
+});
 
-export const createPullRequestReviewMeta = {
-  name: "create_pull_request_review" as const,
+export const createPullRequestReviewMeta = defineToolMeta({
+  name: "create_pull_request_review",
   description: "Create a review on a pull request with optional line comments.",
   schema: {
     owner: z
@@ -83,11 +83,11 @@ export const createPullRequestReviewMeta = {
       .describe("File comments to leave as part of the review.")
       .optional(),
   },
-  stake: "low" as MCPToolStakeLevelType,
-};
+  stake: "low",
+});
 
-export const listOrganizationProjectsMeta = {
-  name: "list_organization_projects" as const,
+export const listOrganizationProjectsMeta = defineToolMeta({
+  name: "list_organization_projects",
   description:
     "List the open projects of a GitHub organization along with their single select fields (generally used as columns)",
   schema: {
@@ -95,11 +95,11 @@ export const listOrganizationProjectsMeta = {
       .string()
       .describe("The owner of the repository (account or organization name)."),
   },
-  stake: "never_ask" as MCPToolStakeLevelType,
-};
+  stake: "never_ask",
+});
 
-export const addIssueToProjectMeta = {
-  name: "add_issue_to_project" as const,
+export const addIssueToProjectMeta = defineToolMeta({
+  name: "add_issue_to_project",
   description:
     "Add an existing issue to a GitHub project, optionally setting a field value.",
   schema: {
@@ -127,11 +127,11 @@ export const addIssueToProjectMeta = {
         "Optional field configuration with both fieldId and optionId required if provided."
       ),
   },
-  stake: "low" as MCPToolStakeLevelType,
-};
+  stake: "low",
+});
 
-export const commentOnIssueMeta = {
-  name: "comment_on_issue" as const,
+export const commentOnIssueMeta = defineToolMeta({
+  name: "comment_on_issue",
   description: "Add a comment to an existing GitHub issue.",
   schema: {
     owner: z
@@ -141,11 +141,11 @@ export const commentOnIssueMeta = {
     issueNumber: z.number().describe("The issue number."),
     body: z.string().describe("The contents of the comment (GitHub markdown)."),
   },
-  stake: "low" as MCPToolStakeLevelType,
-};
+  stake: "low",
+});
 
-export const getIssueMeta = {
-  name: "get_issue" as const,
+export const getIssueMeta = defineToolMeta({
+  name: "get_issue",
   description:
     "Retrieve an issue from a specified GitHub repository including its description, comments, and labels.",
   schema: {
@@ -155,11 +155,11 @@ export const getIssueMeta = {
     repo: z.string().describe("The name of the repository."),
     issueNumber: z.number().describe("The issue number."),
   },
-  stake: "never_ask" as MCPToolStakeLevelType,
-};
+  stake: "never_ask",
+});
 
-export const listIssuesMeta = {
-  name: "list_issues" as const,
+export const listIssuesMeta = defineToolMeta({
+  name: "list_issues",
   description:
     "List issues from a specified GitHub repository with optional filtering.",
   schema: {
@@ -189,11 +189,11 @@ export const listIssuesMeta = {
     after: z.string().optional().describe("The cursor to start after."),
     before: z.string().optional().describe("The cursor to start before."),
   },
-  stake: "never_ask" as MCPToolStakeLevelType,
-};
+  stake: "never_ask",
+});
 
-export const searchAdvancedMeta = {
-  name: "search_advanced" as const,
+export const searchAdvancedMeta = defineToolMeta({
+  name: "search_advanced",
   description:
     "Search issues and pull requests using GitHub's advanced search syntax with AND/OR operators and nested searches. " +
     "Supports advanced query syntax like 'is:issue AND assignee:@me AND (label:support OR comments:>5)' or 'is:pr AND assignee:@me'. " +
@@ -215,11 +215,11 @@ export const searchAdvancedMeta = {
     after: z.string().optional().describe("The cursor to start after."),
     before: z.string().optional().describe("The cursor to start before."),
   },
-  stake: "never_ask" as MCPToolStakeLevelType,
-};
+  stake: "never_ask",
+});
 
-export const listPullRequestsMeta = {
-  name: "list_pull_requests" as const,
+export const listPullRequestsMeta = defineToolMeta({
+  name: "list_pull_requests",
   description:
     "List pull requests from a specified GitHub repository with optional filtering.",
   schema: {
@@ -248,8 +248,8 @@ export const listPullRequestsMeta = {
     after: z.string().optional().describe("The cursor to start after."),
     before: z.string().optional().describe("The cursor to start before."),
   },
-  stake: "never_ask" as MCPToolStakeLevelType,
-};
+  stake: "never_ask",
+});
 
 export const TOOLS_META = [
   createIssueMeta,
