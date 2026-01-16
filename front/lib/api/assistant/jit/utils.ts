@@ -7,6 +7,7 @@ import type {
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conversation/content_types";
 import config from "@app/lib/api/config";
+import { fetchProjectDataSourceView } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -84,10 +85,10 @@ export async function getProjectContextDataSourceView(
     return null;
   }
 
-  // Try to fetch the project context datasource.
-  const view = await DataSourceViewResource.fetchByProjectId(auth, space.id);
+  // Try to fetch the project datasource.
+  const res = await fetchProjectDataSourceView(auth, space);
 
-  return view ?? null;
+  return res.isOk() ? res.value : null;
 }
 
 /**

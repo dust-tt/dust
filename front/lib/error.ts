@@ -7,6 +7,10 @@ export type DustErrorCode =
   | "file_not_found"
   | "unauthorized"
   | "agent_loop_already_running"
+  | "data_source_not_found"
+  | "data_source_view_not_found"
+  | "space_not_found"
+  | "invalid_request_error"
   // Data source
   | "data_source_error"
   | "data_source_quota_error"

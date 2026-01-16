@@ -1,15 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import {
-  getOrCreateConversationDataSourceFromFile,
-  getOrCreateProjectContextDataSourceFromFile,
-} from "@app/lib/api/data_sources";
+import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
+import { upsertProjectContextFile } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -341,43 +339,25 @@ async function handler(
         space &&
         isFileTypeUpsertableForUseCase(file)
       ) {
-        const projectContextDatasource =
-          await getOrCreateProjectContextDataSourceFromFile(auth, file);
-        if (projectContextDatasource.isErr()) {
-          logger.warn({
+        const upsertRes = await upsertProjectContextFile(auth, file);
+
+        if (upsertRes.isErr()) {
+          logger.error({
             fileModelId: file.id,
             workspaceId: auth.workspace()?.sId,
             contentType: file.contentType,
             useCase: file.useCase,
             useCaseMetadata: file.useCaseMetadata,
-            message: "Failed to get or create project context data source.",
-            error: projectContextDatasource.error,
+            message: "Failed to upsert the file.",
+            error: upsertRes.error,
           });
-        } else {
-          const rUpsert = await processAndUpsertToDataSource(
-            auth,
-            projectContextDatasource.value,
-            { file }
-          );
-
-          if (rUpsert.isErr()) {
-            logger.error({
-              fileModelId: file.id,
-              workspaceId: auth.workspace()?.sId,
-              contentType: file.contentType,
-              useCase: file.useCase,
-              useCaseMetadata: file.useCaseMetadata,
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
               message: "Failed to upsert the file.",
-              error: rUpsert.error,
-            });
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: "Failed to upsert the file.",
-              },
-            });
-          }
+            },
+          });
         }
       }
 

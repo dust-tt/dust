@@ -3,6 +3,7 @@ import React, { useRef } from "react";
 
 import { SpaceDataSourceViewContentList } from "@app/components/spaces/SpaceDataSourceViewContentList";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { PROJECT_CONTEXT_FOLDER_ID } from "@app/lib/api/projects/constants";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import type { PlanType, SpaceType, WorkspaceType } from "@app/types";
 import { getSupportedNonImageFileExtensions } from "@app/types";
@@ -31,13 +32,13 @@ export function SpaceContextTab({
     useSpaceDataSourceViews({
       workspaceId: owner.sId,
       spaceId: space.sId,
-      category: "folder",
+      category: "managed",
     });
 
   // Find the project context data source view
   const projectDataSourceView =
-    spaceDataSourceViews.find((dsv) =>
-      dsv.dataSource.name.includes("__project_context__")
+    spaceDataSourceViews.find(
+      (dsv) => dsv.dataSource.connectorProvider === "dust_project"
     ) ?? null;
 
   const projectFileUpload = useFileUploaderService({
@@ -107,6 +108,7 @@ export function SpaceContextTab({
             owner={owner}
             plan={plan}
             space={space}
+            parentId={PROJECT_CONTEXT_FOLDER_ID}
             systemSpace={systemSpace}
             useCaseForDocument={"project_context"}
           />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getRelatedContentFragments } from "@app/lib/api/assistant/conversation";
+import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type {
   ContentFragmentType,

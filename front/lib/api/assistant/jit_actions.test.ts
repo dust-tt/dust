@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
@@ -7,23 +7,52 @@ import {
   DEFAULT_PROJECT_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import { getProjectContextDataSourceView } from "@app/lib/api/assistant/jit/utils";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
-import { getProjectContextDatasourceName } from "@app/lib/api/projects";
+import {
+  createDataSourceAndConnectorForProject,
+  getProjectConversationsDatasourceName,
+} from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type {
   ConversationType,
+  CoreAPIFolder,
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
+import {
+  ConnectorsAPI,
+  CoreAPI,
+  DEFAULT_EMBEDDING_PROVIDER_ID,
+  DEFAULT_QDRANT_CLUSTER,
+  EMBEDDING_CONFIGS,
+  Ok,
+} from "@app/types";
+
+// Mock config to avoid requiring environment variables
+vi.mock("@app/lib/api/config", () => ({
+  default: {
+    getCoreAPIConfig: () => ({
+      url: "http://localhost:3001",
+      apiKey: "test-api-key",
+    }),
+    getConnectorsAPIConfig: () => ({
+      url: "http://localhost:3002",
+      secret: "test-secret",
+      webhookSecret: "test-webhook-secret",
+    }),
+    getClientFacingUrl: () => "http://localhost:3000",
+  },
+}));
 
 describe("getJITServers", () => {
   let auth: Authenticator;
@@ -31,12 +60,16 @@ describe("getJITServers", () => {
   let conversationsSpace: SpaceResource;
   let conversation: ConversationType;
   let agentConfig: LightAgentConfigurationType;
+  let globalGroup: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["globalGroup"];
 
   beforeEach(async () => {
     const setup = await createResourceTest({ role: "admin" });
     auth = setup.authenticator;
     workspace = setup.workspace;
     conversationsSpace = setup.conversationsSpace;
+    globalGroup = setup.globalGroup;
 
     // Ensure all auto MCP server views are created (requires admin auth).
     await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
@@ -191,28 +224,122 @@ describe("getJITServers", () => {
       await FeatureFlagFactory.basic("projects", workspace);
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-      // Create a data source view with the project context name.
-      const projectContextName = getProjectContextDatasourceName(
-        conversationsSpace.id
+      // Mock CoreAPI and ConnectorsAPI for createDataSourceAndConnectorForProject
+      const mockProjectId = Math.floor(Math.random() * 1000000);
+      const mockDataSourceId = "test-data-source-id-" + Math.random();
+      const mockConnectorId = "test-connector-id-" + Math.random();
+      const mockWorkflowId = "test-workflow-id-" + Math.random();
+
+      // Create system key for connector creation
+      const mockSystemKey = await KeyFactory.system(globalGroup);
+
+      const getSystemKeySpy = vi
+        .spyOn(await import("@app/lib/auth"), "getOrCreateSystemApiKey")
+        .mockResolvedValue(new Ok(mockSystemKey));
+
+      const createProjectSpy = vi
+        .spyOn(CoreAPI.prototype, "createProject")
+        .mockResolvedValue(
+          new Ok({
+            project: {
+              project_id: mockProjectId,
+            },
+          })
+        );
+
+      const createDataSourceSpy = vi
+        .spyOn(CoreAPI.prototype, "createDataSource")
+        .mockResolvedValue(
+          new Ok({
+            data_source: {
+              created: Date.now(),
+              data_source_id: mockDataSourceId,
+              data_source_internal_id: `internal-${mockDataSourceId}`,
+              name: getProjectConversationsDatasourceName(conversationsSpace),
+              config: {
+                embedder_config: {
+                  embedder: {
+                    provider_id: DEFAULT_EMBEDDING_PROVIDER_ID,
+                    model_id:
+                      EMBEDDING_CONFIGS[DEFAULT_EMBEDDING_PROVIDER_ID].model_id,
+                    splitter_id:
+                      EMBEDDING_CONFIGS[DEFAULT_EMBEDDING_PROVIDER_ID]
+                        .splitter_id,
+                    max_chunk_size:
+                      EMBEDDING_CONFIGS[DEFAULT_EMBEDDING_PROVIDER_ID]
+                        .max_chunk_size,
+                  },
+                },
+                qdrant_config: {
+                  cluster: DEFAULT_QDRANT_CLUSTER,
+                  shadow_write_cluster: null,
+                },
+              },
+            },
+          })
+        );
+
+      const upsertFolderSpy = vi
+        .spyOn(CoreAPI.prototype, "upsertDataSourceFolder")
+        .mockResolvedValue(
+          new Ok({
+            folder: {
+              data_source_id: mockDataSourceId,
+              folder_id: "project-context-folder-id",
+              timestamp: Date.now(),
+              title: "Project Context",
+              parent_id: null,
+              parents: [],
+            } as CoreAPIFolder,
+          })
+        );
+
+      const createConnectorSpy = vi
+        .spyOn(ConnectorsAPI.prototype, "createConnector")
+        .mockResolvedValue(
+          new Ok({
+            id: mockConnectorId,
+            type: "dust_project",
+            workspaceId: workspace.sId,
+            dataSourceId: "test-data-source-id",
+            connectionId: conversationsSpace.sId,
+            useProxy: false,
+            configuration: null,
+            updatedAt: Date.now(),
+          })
+        );
+
+      const syncConnectorSpy = vi
+        .spyOn(ConnectorsAPI.prototype, "syncConnector")
+        .mockResolvedValue(
+          new Ok({
+            workflowId: mockWorkflowId,
+          })
+        );
+
+      // Create the connector
+      const connectorResult = await createDataSourceAndConnectorForProject(
+        auth,
+        conversationsSpace
       );
-      const dataSourceView = await DataSourceViewFactory.folder(
-        workspace,
-        conversationsSpace,
-        auth.user()
+      expect(connectorResult.isOk()).toBe(true);
+
+      // Use a conversation with spaceId when checking for datasource view
+      const conversationWithSpace = {
+        ...conversation,
+        spaceId: conversationsSpace.sId,
+      };
+
+      const projectDatasourceView = await getProjectContextDataSourceView(
+        auth,
+        conversationWithSpace
       );
 
-      // Update the datasource name to match the project context name.
-      // @ts-expect-error -- access protected member for test
-      await dataSourceView.dataSource.update({
-        name: projectContextName,
-      });
+      expect(projectDatasourceView).toBeDefined();
 
       const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
-        conversation: {
-          ...conversation,
-          spaceId: conversationsSpace.sId,
-        },
+        conversation: conversationWithSpace,
         attachments: [],
       });
 
@@ -230,9 +357,17 @@ describe("getJITServers", () => {
       if (projectSearchServer?.dataSources) {
         expect(projectSearchServer.dataSources.length).toBeGreaterThan(0);
         expect(projectSearchServer.dataSources[0].dataSourceViewId).toBe(
-          dataSourceView.sId
+          projectDatasourceView!.sId
         );
       }
+
+      // Cleanup spies
+      getSystemKeySpy.mockRestore();
+      createProjectSpy.mockRestore();
+      createDataSourceSpy.mockRestore();
+      upsertFolderSpy.mockRestore();
+      createConnectorSpy.mockRestore();
+      syncConnectorSpy.mockRestore();
     });
 
     it("should not include project search server when feature flag is disabled", async () => {

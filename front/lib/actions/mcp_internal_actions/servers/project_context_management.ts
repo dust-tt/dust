@@ -9,9 +9,7 @@ import {
   getAttachmentFromToolOutput,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
-import { getProjectContextDataSourceView } from "@app/lib/api/assistant/jit/utils";
-import { getOrCreateProjectContextDataSource } from "@app/lib/api/data_sources";
-import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
+import { upsertProjectContextFile } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -254,34 +252,7 @@ function createServer(
               )
             );
           }
-
-          // Get or create project context datasource.
-          const dataSourceRes = await getOrCreateProjectContextDataSource(
-            auth,
-            space
-          );
-
-          if (dataSourceRes.isErr()) {
-            logger.error(
-              {
-                error: dataSourceRes.error,
-                spaceId: space.sId,
-              },
-              "Failed to get/create project context datasource"
-            );
-            return new Err(
-              new MCPError(
-                `Failed to create project datasource: ${dataSourceRes.error.message}`
-              )
-            );
-          }
-
-          // Upsert to datasource
-          const upsertRes = await processAndUpsertToDataSource(
-            auth,
-            dataSourceRes.value,
-            { file }
-          );
+          const upsertRes = await upsertProjectContextFile(auth, file);
 
           if (upsertRes.isErr()) {
             logger.error(
@@ -354,7 +325,7 @@ function createServer(
           return contextRes;
         }
 
-        const { conversation, space } = contextRes.value;
+        const { space } = contextRes.value;
 
         // Check write permissions.
         if (!space.canWrite(auth)) {
@@ -440,29 +411,17 @@ function createServer(
           await file.uploadContent(auth, fileContent);
 
           // Re-upsert to datasource to update search index.
-          const projectDataSourceView = await getProjectContextDataSourceView(
-            auth,
-            conversation
-          );
+          const upsertRes = await upsertProjectContextFile(auth, file);
 
-          if (projectDataSourceView) {
-            const dataSource = projectDataSourceView.dataSource;
-            const upsertRes = await processAndUpsertToDataSource(
-              auth,
-              dataSource,
-              { file }
+          if (upsertRes.isErr()) {
+            logger.error(
+              {
+                error: upsertRes.error,
+                fileId: file.sId,
+              },
+              "Failed to re-index updated file"
             );
-
-            if (upsertRes.isErr()) {
-              logger.error(
-                {
-                  error: upsertRes.error,
-                  fileId: file.sId,
-                },
-                "Failed to re-index updated file"
-              );
-              // Don't fail - content is updated, just not re-indexed.
-            }
+            // Don't fail - content is updated, just not re-indexed.
           }
 
           return new Ok([
