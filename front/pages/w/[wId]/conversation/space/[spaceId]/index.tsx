@@ -1,8 +1,3 @@
-import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-import React, { useCallback, useState } from "react";
-
 import {
   BookOpenIcon,
   ChatBubbleLeftRightIcon,
@@ -12,6 +7,10 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import type { InferGetServerSidePropsType } from "next";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+import React, { useCallback, useState } from "react";
 
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
@@ -32,7 +31,6 @@ import { useSpaceConversations } from "@app/lib/swr/conversations";
 import { useGroups } from "@app/lib/swr/groups";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { Err, Ok, toMentionType } from "@app/types";
 import type {
   ContentFragmentsType,
   PlanType,
@@ -43,6 +41,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { Err, Ok, toMentionType } from "@app/types";
 
 export interface ProjectLayoutProps {
   baseUrl: string;

@@ -2,7 +2,7 @@ import type { Avatar } from "@dust-tt/sparkle";
 import { ConversationListItem, ReplySection } from "@dust-tt/sparkle";
 import uniqBy from "lodash/uniqBy";
 import moment from "moment";
-import { useRouter } from "next/router";
+import type { useRouter } from "next/router";
 import { useMemo } from "react";
 
 import { getConversationRoute } from "@app/lib/utils/router";
