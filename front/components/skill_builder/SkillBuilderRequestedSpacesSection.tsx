@@ -15,6 +15,7 @@ export function SkillBuilderRequestedSpacesSection() {
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
 
   const tools = watch("tools");
+  const attachedKnowledge = watch("attachedKnowledge");
 
   const { mcpServerViews } = useMCPServerViewsContext();
   const { spaces } = useSpacesContext();
@@ -28,11 +29,17 @@ export function SkillBuilderRequestedSpacesSection() {
     return getSpaceIdToActionsMap(tools, mcpServerViews);
   }, [tools, mcpServerViews]);
 
+  const spaceIdsFromKnowledge = useMemo(() => {
+    return new Set(attachedKnowledge?.map((k) => k.spaceId) ?? []);
+  }, [attachedKnowledge]);
+
   const nonGlobalSpacesUsedInActions = useMemo(() => {
     return spaces.filter(
-      (s) => s.kind !== "global" && spaceIdToActions[s.sId]?.length > 0
+      (s) =>
+        s.kind !== "global" &&
+        (spaceIdToActions[s.sId]?.length > 0 || spaceIdsFromKnowledge.has(s.sId))
     );
-  }, [spaceIdToActions, spaces]);
+  }, [spaceIdToActions, spaceIdsFromKnowledge, spaces]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
     const actionsToRemove = spaceIdToActions[space.sId] || [];
