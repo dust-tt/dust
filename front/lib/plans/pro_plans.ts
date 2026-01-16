@@ -94,15 +94,17 @@ export const upsertProPlans = async (planCode?: string) => {
     : PRO_PLANS_DATA;
 
   for (const planData of plansToUpsert) {
-    // Use findOrCreate to avoid race conditions when multiple tests run in parallel.
-    // The check-then-act pattern (findOne + create) causes deadlocks and unique constraint
-    // violations when parallel test processes try to create the same plan simultaneously.
-    const [plan, created] = await PlanModel.findOrCreate({
-      where: { code: planData.code },
-      defaults: planData,
+    const plan = await PlanModel.findOne({
+      where: {
+        code: planData.code,
+      },
     });
-    if (!created) {
+    if (plan === null) {
+      await PlanModel.create(planData);
+      // console.log(`Pro plan ${planData.code} created.`);
+    } else {
       await plan.update(planData);
+      // console.log(`Pro plan ${planData.code} updated.`);
     }
   }
 };
