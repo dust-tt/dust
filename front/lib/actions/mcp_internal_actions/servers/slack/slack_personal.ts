@@ -689,8 +689,7 @@ async function createServer(
               threadTs,
               fileId,
               accessToken,
-            },
-            mcpServerId
+            }
           );
         } catch (error) {
           const authError = handleSlackAuthError(error);

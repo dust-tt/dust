@@ -78,8 +78,7 @@ async function createServer(
               threadTs,
               fileId,
               accessToken,
-            },
-            mcpServerId
+            }
           );
         } catch (error) {
           return new Err(
