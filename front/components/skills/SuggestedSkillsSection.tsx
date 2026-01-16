@@ -76,7 +76,6 @@ function SuggestedSkillCard({
         <div className="flex h-full w-full flex-col justify-between gap-3">
           <div className="flex flex-col">
             <div className="mb-2 flex items-center gap-2">
-              {/* eslint-disable-next-line react-hooks/static-components */}
               <SkillAvatar size="sm" />
               <span className="truncate text-sm font-medium">{skill.name}</span>
             </div>

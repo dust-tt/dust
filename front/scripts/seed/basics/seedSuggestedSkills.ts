@@ -33,7 +33,10 @@ export async function seedSuggestedSkills(
         instructions: skillAsset.instructions,
         status: "suggested",
       });
-      logger.info({ sId: skill.sId, name: skillAsset.name }, "Suggested skill created");
+      logger.info(
+        { sId: skill.sId, name: skillAsset.name },
+        "Suggested skill created"
+      );
     }
   }
 }
