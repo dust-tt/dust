@@ -27,6 +27,7 @@ import {
   useAgentDatasourceRetrieval,
   useAgentDatasourceRetrievalDocuments,
 } from "@app/lib/swr/assistants";
+import type { ConnectorProvider } from "@app/types";
 import { asDisplayName } from "@app/types";
 
 const LABEL_COLOR_VARIANT = 900;
@@ -41,6 +42,7 @@ interface TreemapNode {
   mcpServerDisplayName?: string;
   mcpServerName?: string;
   dataSourceId?: string;
+  connectorProvider?: ConnectorProvider;
   parentId?: string | null;
   documentId?: string;
   children?: TreemapNode[];
@@ -63,6 +65,7 @@ interface TreemapContentProps {
   mcpServerDisplayName?: string;
   mcpServerName?: string;
   dataSourceId?: string;
+  connectorProvider?: ConnectorProvider;
   parentId?: string | null;
   documentId?: string;
   children?: TreemapNode[] | null;
@@ -105,6 +108,7 @@ function TreemapContent({
   mcpServerDisplayName,
   mcpServerName,
   dataSourceId,
+  connectorProvider,
   parentId,
   documentId,
   children,
@@ -172,6 +176,7 @@ function TreemapContent({
                   mcpServerDisplayName,
                   mcpServerName,
                   dataSourceId,
+                  connectorProvider,
                   parentId,
                   documentId,
                 });
@@ -191,7 +196,7 @@ function TreemapContent({
             {shouldShowName && (
               <div
                 className={cn(
-                  "w-full truncate text-ellipsis font-medium",
+                  "w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-medium",
                   nameTextClassName,
                   buildColorClass(baseColor, LABEL_COLOR_VARIANT)
                 )}
@@ -232,7 +237,7 @@ function TreemapContent({
           pointerEvents="none"
         >
           <div className="flex h-full w-full items-center justify-center overflow-hidden">
-            <div className="w-full truncate text-ellipsis rounded bg-white/70 px-1 py-0.5 text-center text-[11px] font-medium text-foreground dark:bg-black/30 dark:text-foreground-night">
+            <div className="w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded bg-white/70 px-1 py-0.5 text-center text-[11px] font-medium text-foreground dark:bg-black/30 dark:text-foreground-night">
               {groupLabel}
             </div>
           </div>
@@ -254,6 +259,7 @@ type ZoomSelection = {
   mcpServerName: string;
   dataSourceId: string;
   dataSourceDisplayName: string;
+  connectorProvider?: ConnectorProvider;
   color: string;
   baseColor: string;
 };
@@ -328,6 +334,7 @@ export function DatasourceRetrievalTreemapChart({
           mcpServerConfigId: mcp.mcpServerConfigId,
           mcpServerDisplayName: serverDisplayName,
           mcpServerName: mcp.mcpServerName,
+          connectorProvider: ds.connectorProvider,
         });
       });
     });
@@ -359,8 +366,8 @@ export function DatasourceRetrievalTreemapChart({
 
     // For Slack, only show channel-level blocks (no individual threads).
     const isSlack =
-      zoomSelection.mcpServerName === "slack" ||
-      zoomSelection.mcpServerName === "slack_bot";
+      zoomSelection.connectorProvider === "slack" ||
+      zoomSelection.connectorProvider === "slack_bot";
 
     const documentsByParentId = new Map<string | null, typeof documents>();
     documents.forEach((d) => {
@@ -408,6 +415,7 @@ export function DatasourceRetrievalTreemapChart({
       mcpServerName: node.mcpServerName,
       dataSourceId: node.dataSourceId,
       dataSourceDisplayName: node.name,
+      connectorProvider: node.connectorProvider,
       color: node.color,
       baseColor: node.baseColor,
     });
