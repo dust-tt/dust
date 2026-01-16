@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
@@ -15,7 +15,19 @@ import type { PlanType } from "@app/types";
 
 import handler from "./available";
 
+// Store original config to restore after tests
+const originalPrimitiveTypesDebuggerConfig =
+  INTERNAL_MCP_SERVERS["primitive_types_debugger"];
+
 describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
+  // Restore original config after each test to prevent test interference
+  afterEach(() => {
+    Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+      value: originalPrimitiveTypesDebuggerConfig,
+      writable: true,
+      configurable: true,
+    });
+  });
   it("returns available servers for regular user", async () => {
     // Create mock request
     const { req, res, workspace, globalGroup } =

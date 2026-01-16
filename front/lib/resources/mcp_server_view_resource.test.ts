@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -15,7 +15,19 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { PlanType, WhitelistableFeature, WorkspaceType } from "@app/types";
 
+// Store original config to restore after tests that modify INTERNAL_MCP_SERVERS
+const originalPrimitiveTypesDebuggerConfig =
+  INTERNAL_MCP_SERVERS["primitive_types_debugger"];
+
 describe("MCPServerViewResource", () => {
+  // Restore original config after each test to prevent test interference
+  afterEach(() => {
+    Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+      value: originalPrimitiveTypesDebuggerConfig,
+      writable: true,
+      configurable: true,
+    });
+  });
   describe("listByWorkspace", () => {
     it("should only return views for the current workspace", async () => {
       // Create two workspaces

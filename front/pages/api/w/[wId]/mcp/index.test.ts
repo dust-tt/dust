@@ -1,5 +1,5 @@
 import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
@@ -16,6 +16,9 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types";
 
 import handler from "./index";
+
+// Store original config to restore after tests
+const originalAgentMemoryConfig = INTERNAL_MCP_SERVERS["agent_memory"];
 
 // Mock the data_sources module to spy on upsertTable
 vi.mock(
@@ -141,6 +144,15 @@ describe("POST /api/w/[wId]/mcp/", () => {
 });
 
 describe("POST /api/w/[wId]/mcp/", () => {
+  // Restore original config after each test to prevent test interference
+  afterEach(() => {
+    Object.defineProperty(INTERNAL_MCP_SERVERS, "agent_memory", {
+      value: originalAgentMemoryConfig,
+      writable: true,
+      configurable: true,
+    });
+  });
+
   it("should create an internal MCP server", async () => {
     const { req, res, authenticator } = await setupTest("admin", "POST");
 
@@ -256,12 +268,6 @@ describe("POST /api/w/[wId]/mcp/", () => {
       }),
     });
     expect(res._getJSONData().server.id).not.toBe(internalServer.id);
-
-    Object.defineProperty(INTERNAL_MCP_SERVERS, "agent_memory", {
-      value: originalConfig,
-      writable: true,
-      configurable: true,
-    });
   });
 
   it("should create an internal MCP server with bearer token credentials", async () => {
