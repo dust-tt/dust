@@ -200,7 +200,7 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
         isLoading={isLoading}
         onClose={onClose ? () => onClose() : undefined}
         className={className}
-        variant="absolute"
+        variant="embedded"
         titlePosition="bottom"
       />
     );
