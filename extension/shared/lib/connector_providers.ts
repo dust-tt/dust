@@ -142,4 +142,11 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return MicrosoftLogo;
     },
   },
+  dust_project: {
+    name: "Dust Project",
+    getLogoComponent: () => {
+      //TODO(project): replace with Dust project logo
+      return GongLogo;
+    },
+  },
 };
