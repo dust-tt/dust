@@ -11,6 +11,7 @@ import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
 import { openCommand } from "./commands/open";
 import { reloadCommand } from "./commands/reload";
+import { remoteCommand } from "./commands/remote";
 import { restartCommand } from "./commands/restart";
 import { seedConfigCommand } from "./commands/seed-config";
 import { spawnCommand } from "./commands/spawn";
@@ -189,15 +190,24 @@ cli
   .option("-a, --attach", "Attach to main zellij session")
   .option("-f, --force", "Force rebuild even if no changes detected")
   .option("-C, --compact", "Use compact zellij layout (bar at bottom)")
-  .action(async (options: { attach?: boolean; force?: boolean; compact?: boolean }) => {
-    await prepareAndRun(
-      upCommand({
-        attach: Boolean(options.attach),
-        force: Boolean(options.force),
-        compact: Boolean(options.compact),
-      })
-    );
-  });
+  .option("--skip-sync", "Skip sync and branch checks (for fresh installs)")
+  .action(
+    async (options: {
+      attach?: boolean;
+      force?: boolean;
+      compact?: boolean;
+      skipSync?: boolean;
+    }) => {
+      await prepareAndRun(
+        upCommand({
+          attach: Boolean(options.attach),
+          force: Boolean(options.force),
+          compact: Boolean(options.compact),
+          noSync: Boolean(options.skipSync),
+        })
+      );
+    }
+  );
 
 cli
   .command("down", "Stop all envs, temporal, test postgres, test redis, and sessions")
@@ -307,6 +317,26 @@ cli
   )
   .action(async (postgresUri: string) => {
     await prepareAndRun(seedConfigCommand(postgresUri));
+  });
+
+// Remote environment management (single command with subcommands)
+cli
+  .command("remote [...args]", "Manage remote environments (run 'dust-hive remote' for help)")
+  .alias("r")
+  .allowUnknownOptions()
+  .action(async (args: string[], options: Record<string, unknown>) => {
+    // Reconstruct args with options for the subcommand handler
+    const fullArgs = [...args];
+    for (const [key, value] of Object.entries(options)) {
+      if (key !== "--" && value !== undefined && value !== false) {
+        if (value === true) {
+          fullArgs.push(`--${key}`);
+        } else {
+          fullArgs.push(`--${key}`, String(value));
+        }
+      }
+    }
+    await prepareAndRun(remoteCommand(fullArgs));
   });
 
 cli.help();

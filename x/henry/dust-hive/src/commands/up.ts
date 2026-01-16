@@ -17,6 +17,7 @@ interface UpOptions {
   attach?: boolean;
   force?: boolean;
   compact?: boolean;
+  noSync?: boolean; // Skip sync and branch checks (for fresh installs)
 }
 
 // Check preconditions for managed services mode
@@ -125,18 +126,20 @@ export async function upCommand(options: UpOptions = {}): Promise<Result<void>> 
   logger.info("Starting dust-hive managed services...");
   console.log();
 
-  // Check preconditions
-  const preconditions = await checkPreconditions(repoRoot);
-  if (!preconditions.ok) {
-    return preconditions;
-  }
+  // Check preconditions and run sync (unless --no-sync)
+  if (!options.noSync) {
+    const preconditions = await checkPreconditions(repoRoot);
+    if (!preconditions.ok) {
+      return preconditions;
+    }
 
-  // Run sync first
-  logger.step("Running sync...");
-  console.log();
-  const syncResult = await syncCommand(options.force ? { force: true } : {});
-  if (!syncResult.ok) {
-    return syncResult;
+    // Run sync first
+    logger.step("Running sync...");
+    console.log();
+    const syncResult = await syncCommand(options.force ? { force: true } : {});
+    if (!syncResult.ok) {
+      return syncResult;
+    }
   }
   console.log();
 

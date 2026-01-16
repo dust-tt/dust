@@ -1,7 +1,8 @@
 import YAML from "yaml";
+import { loadEnvVars } from "./env-utils";
 import type { Environment } from "./environment";
 import { logger } from "./logger";
-import { getDockerComposePath, getDockerOverridePath } from "./paths";
+import { getDockerComposePath, getDockerOverridePath, getEnvFilePath } from "./paths";
 import type { PortAllocation } from "./ports";
 
 export interface DockerComposeOverride {
@@ -86,6 +87,9 @@ export function getDockerProjectName(name: string): string {
   return `dust-hive-${name}`;
 }
 
+// All services in the dust-hive docker-compose.yml
+const DUST_HIVE_SERVICES = ["db", "redis", "qdrant", "elasticsearch", "apache-tika"] as const;
+
 // Start docker-compose containers (starts in background, services have retry logic)
 export async function startDocker(env: Environment): Promise<void> {
   logger.step("Starting Docker containers...");
@@ -94,10 +98,28 @@ export async function startDocker(env: Environment): Promise<void> {
   const overridePath = getDockerOverridePath(env.name);
   const basePath = getDockerComposePath();
 
-  // Start all containers in detached mode (no --wait)
+  // Load environment variables for docker compose (needed for compose file validation)
+  // Merge with current process env to preserve PATH and other system vars
+  const envShPath = getEnvFilePath(env.name);
+  const loadedEnvVars = await loadEnvVars(envShPath);
+  const envVars = { ...process.env, ...loadedEnvVars };
+
+  // Start only the specific services we need in detached mode (no --wait)
   const proc = Bun.spawn(
-    ["docker", "compose", "-f", basePath, "-f", overridePath, "-p", projectName, "up", "-d"],
-    { stdout: "pipe", stderr: "pipe" }
+    [
+      "docker",
+      "compose",
+      "-f",
+      basePath,
+      "-f",
+      overridePath,
+      "-p",
+      projectName,
+      "up",
+      "-d",
+      ...DUST_HIVE_SERVICES,
+    ],
+    { stdout: "pipe", stderr: "pipe", env: envVars }
   );
 
   const stderr = await new Response(proc.stderr).text();
@@ -119,12 +141,11 @@ export async function pauseDocker(envName: string): Promise<boolean> {
   logger.step("Pausing Docker containers...");
 
   const projectName = getDockerProjectName(envName);
-  const overridePath = getDockerOverridePath(envName);
-  const basePath = getDockerComposePath();
 
-  const args = ["docker", "compose", "-f", basePath, "-f", overridePath, "-p", projectName, "stop"];
-
-  const proc = Bun.spawn(args, {
+  // Use docker stop directly instead of docker-compose stop
+  // This avoids compose file validation errors from services we don't use
+  const containers = DUST_HIVE_SERVICES.map((s) => `${projectName}-${s}-1`);
+  const proc = Bun.spawn(["docker", "stop", ...containers], {
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -149,23 +170,38 @@ export async function stopDocker(
   logger.step("Stopping Docker containers...");
 
   const projectName = getDockerProjectName(envName);
-  const overridePath = getDockerOverridePath(envName);
-  const basePath = getDockerComposePath();
 
-  const args = ["docker", "compose", "-f", basePath, "-f", overridePath, "-p", projectName, "down"];
+  // Stop and remove containers directly instead of using docker-compose down
+  // This avoids compose file validation errors from services we don't use
+  const containers = DUST_HIVE_SERVICES.map((s) => `${projectName}-${s}-1`);
 
-  if (options.removeVolumes) {
-    args.push("-v");
-  }
-
-  const proc = Bun.spawn(args, {
+  // First stop containers
+  const stopProc = Bun.spawn(["docker", "stop", ...containers], {
     stdout: "pipe",
     stderr: "pipe",
   });
+  await stopProc.exited;
 
-  await proc.exited;
+  // Then remove containers
+  const rmProc = Bun.spawn(["docker", "rm", "-f", ...containers], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await rmProc.exited;
 
-  if (proc.exitCode === 0) {
+  // Remove volumes if requested
+  if (options.removeVolumes) {
+    const volumes = getVolumeNames(envName);
+    for (const volume of volumes) {
+      const volProc = Bun.spawn(["docker", "volume", "rm", "-f", volume], {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      await volProc.exited;
+    }
+  }
+
+  if (rmProc.exitCode === 0 || stopProc.exitCode === 0) {
     const msg = options.removeVolumes
       ? "Docker containers and volumes removed"
       : "Docker containers stopped and removed";
