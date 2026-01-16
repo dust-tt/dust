@@ -162,7 +162,7 @@ export function SpaceAboutTab({
   ]);
 
   return (
-    <div className="flex w-full flex-col gap-y-4 px-4 py-8">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col gap-y-4 overflow-y-scroll p-8">
       <div className="flex flex-col gap-y-2">
         <Label>Description</Label>
         <Input
