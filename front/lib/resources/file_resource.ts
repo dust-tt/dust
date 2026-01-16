@@ -335,6 +335,7 @@ export class FileResource extends BaseResource<FileModel> {
       await this.model.destroy({
         where: {
           id: this.id,
+          workspaceId: this.workspaceId,
         },
       });
 

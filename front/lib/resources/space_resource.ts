@@ -391,6 +391,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await GroupSpaceModel.destroy({
       where: {
         vaultId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       transaction,
     });
