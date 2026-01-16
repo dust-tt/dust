@@ -467,29 +467,20 @@ export async function googleDriveFullSyncV2({
     for (const { action, folderId } of folderUpdates) {
       switch (action) {
         case "added": {
-          if (syncCompleted) {
-            if (removedFoldersForNextRun.has(folderId)) {
-              removedFoldersForNextRun.delete(folderId);
-            } else {
-              addedFoldersForNextRun.add(folderId);
-            }
+          if (syncCompleted && removedFoldersForNextRun.has(folderId)) {
+            removedFoldersForNextRun.delete(folderId);
           } else {
-            // During sync, new folders go directly to next run
             addedFoldersForNextRun.add(folderId);
           }
           break;
         }
         case "removed": {
-          if (syncCompleted) {
-            if (addedFoldersForNextRun.has(folderId)) {
-              addedFoldersForNextRun.delete(folderId);
-            } else {
-              removedFoldersForNextRun.add(folderId);
-            }
+          if (syncCompleted && addedFoldersForNextRun.has(folderId)) {
+            addedFoldersForNextRun.delete(folderId);
+          } else if (syncCompleted) {
+            removedFoldersForNextRun.add(folderId);
           } else {
-            // Mark as removed - prevents starting new workflows
             removedFolderIds.add(folderId);
-            // Cancel running workflow if present
             const folderWorkflow = runningFolderWorkflows[folderId];
             if (folderWorkflow) {
               void cancelChildWorkflow(folderWorkflow.workflowId);
