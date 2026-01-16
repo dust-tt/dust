@@ -1,5 +1,6 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
@@ -33,8 +34,6 @@ import type {
   WhitelistableFeature,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
-
-export const RUN_AGENT_CALL_TOOL_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 export const USE_SUMMARY_SWITCH = "useSummary";

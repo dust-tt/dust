@@ -14,8 +14,8 @@ import {
 import {
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
+  RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
-import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
