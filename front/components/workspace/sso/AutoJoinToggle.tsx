@@ -12,7 +12,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { Organization } from "@workos-inc/node";
 import { useEffect, useState } from "react";
-import { mutate } from "swr";
 
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -105,7 +104,8 @@ function DomainAutoJoinModal({
                       "Failed to update auto-join for the whitelisted domain.",
                   });
                 } else {
-                  void mutate(`/api/w/${owner.sId}/verified-domains`);
+                  // Full refresh to update owner object and keep formValidation logic working.
+                  window.location.reload();
                 }
               } finally {
                 setIsSubmitting(false);
@@ -203,8 +203,6 @@ function MultiDomainAutoJoinModal({
         }
       });
 
-      void mutate(`/api/w/${owner.sId}/verified-domains`);
-
       if (failedDomains.length > 0) {
         sendNotification({
           type: "error",
@@ -212,6 +210,9 @@ function MultiDomainAutoJoinModal({
           description: `Failed to update auto-join for: ${failedDomains.map((d) => `@${d}`).join(", ")}`,
         });
       }
+
+      // Full refresh to update owner object and keep formValidation logic working.
+      window.location.reload();
     } finally {
       setIsSubmitting(false);
       onClose();
