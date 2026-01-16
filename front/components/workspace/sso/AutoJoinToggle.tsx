@@ -342,7 +342,7 @@ export function AutoJoinToggle({
                 size="sm"
                 variant={isAnyDomainAutoJoinEnabled ? "outline" : "primary"}
                 tooltip={
-                  !!owner.ssoEnforced
+                  owner.ssoEnforced
                     ? "Auto-join is not available when SSO is enforced"
                     : domains.length === 0
                       ? "Add a domain to enable Auto-join"
