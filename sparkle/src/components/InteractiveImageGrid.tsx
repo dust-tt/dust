@@ -85,7 +85,7 @@ function InteractiveImageGrid({
               isLoading={images[0].isLoading}
               onClick={() => setCurrentImageIndex(0)}
               onClose={onClose ? () => onClose() : undefined}
-              variant="square"
+              variant="embedded"
               titlePosition="center"
               manageZoomDialog={false}
             />
@@ -101,7 +101,7 @@ function InteractiveImageGrid({
                 downloadUrl={image.downloadUrl}
                 isLoading={image.isLoading}
                 onClick={() => setCurrentImageIndex(idx)}
-                variant="square"
+                variant="embedded"
                 titlePosition="center"
                 manageZoomDialog={false}
               />

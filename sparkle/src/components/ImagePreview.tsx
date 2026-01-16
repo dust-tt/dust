@@ -9,7 +9,7 @@ import {
 import { ArrowDownOnSquareIcon, XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
-export const IMAGE_PREVIEW_VARIANTS = ["absolute", "square"] as const;
+export const IMAGE_PREVIEW_VARIANTS = ["embedded", "standalone"] as const;
 export type ImagePreviewVariantType = (typeof IMAGE_PREVIEW_VARIANTS)[number];
 
 export const IMAGE_PREVIEW_TITLE_POSITIONS = ["bottom", "center"] as const;
@@ -17,19 +17,22 @@ export type ImagePreviewTitlePositionType =
   (typeof IMAGE_PREVIEW_TITLE_POSITIONS)[number];
 
 const containerVariants = cva(
-  cn("s-group/grid-image", "s-cursor-pointer s-overflow-hidden s-rounded-xl"),
+  cn("s-cursor-pointer s-overflow-hidden s-rounded-xl"),
   {
     variants: {
       variant: {
-        absolute: "s-absolute s-inset-0",
-        square: cn(
+        // Embedded inside a parent component (like Citation) that provides the group
+        embedded: "s-absolute s-inset-0",
+        // Standalone, self-contained component managing its own hover
+        standalone: cn(
+          "s-group/image-preview",
           "s-relative s-aspect-square",
           "s-bg-muted-background dark:s-bg-muted-background-night"
         ),
       },
     },
     defaultVariants: {
-      variant: "absolute",
+      variant: "embedded",
     },
   }
 );
@@ -38,8 +41,7 @@ const overlayVariants = cva(
   cn(
     "s-absolute s-inset-0 s-z-10",
     "s-bg-primary-100/60 dark:s-bg-primary-100-night/60",
-    "s-opacity-0 s-transition s-duration-200",
-    "group-hover/grid-image:s-opacity-100"
+    "s-opacity-0 s-transition s-duration-200"
   ),
   {
     variants: {
@@ -50,9 +52,16 @@ const overlayVariants = cva(
         ),
         center: "s-flex s-items-center s-justify-center",
       },
+      variant: {
+        // Embedded: uses parent's s-group for hover
+        embedded: "group-hover:s-opacity-100",
+        // Standalone: uses its own s-group/image-preview
+        standalone: "group-hover/image-preview:s-opacity-100",
+      },
     },
     defaultVariants: {
       titlePosition: "bottom",
+      variant: "embedded",
     },
   }
 );
@@ -102,7 +111,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
       onClose,
       onClick,
       className,
-      variant = "absolute",
+      variant = "embedded",
       titlePosition = "bottom",
       manageZoomDialog = true,
     },
@@ -166,10 +175,15 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
               <img
                 src={imgSrc}
                 alt={alt}
-                className="s-h-full s-w-full s-object-cover s-transition s-duration-200 group-hover/grid-image:s-blur-sm"
+                className={cn(
+                  "s-h-full s-w-full s-object-cover s-transition s-duration-200",
+                  variant === "embedded"
+                    ? "group-hover:s-blur-sm"
+                    : "group-hover/image-preview:s-blur-sm"
+                )}
               />
               {/* Overlay with title - shown on hover */}
-              <div className={overlayVariants({ titlePosition })}>
+              <div className={overlayVariants({ titlePosition, variant })}>
                 <span className={titleVariants({ titlePosition })}>
                   {title}
                 </span>
@@ -179,7 +193,9 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
                 className={cn(
                   "s-absolute s-right-2 s-top-2 s-z-20",
                   "s-opacity-0 s-transition-opacity s-duration-200",
-                  "group-hover/grid-image:s-opacity-100"
+                  variant === "embedded"
+                    ? "group-hover:s-opacity-100"
+                    : "group-hover/image-preview:s-opacity-100"
                 )}
               >
                 {onClose && (
