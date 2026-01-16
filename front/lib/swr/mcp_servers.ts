@@ -879,7 +879,9 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
 
       // Pass all additional inputs directly to extraConfig
       if (additionalInputs) {
-        for (const [extraConfigKey, value] of Object.entries(additionalInputs)) {
+        for (const [extraConfigKey, value] of Object.entries(
+          additionalInputs
+        )) {
           if (value) {
             extraConfig[extraConfigKey] = value;
           }

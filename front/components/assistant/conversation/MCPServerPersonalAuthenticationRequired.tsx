@@ -49,8 +49,7 @@ export function MCPServerPersonalAuthenticationRequired({
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
 
   // Generic state for additional auth inputs - keyed by extraConfigKey
-  const personalAuthInputs =
-    mcpServer?.authorization?.personalAuthInputs ?? [];
+  const personalAuthInputs = mcpServer?.authorization?.personalAuthInputs ?? [];
   const personalAuthDefaults =
     mcpServer?.authorization?.personalAuthDefaults ?? {};
   const [additionalInputs, setAdditionalInputs] = useState<
