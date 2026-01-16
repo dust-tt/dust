@@ -200,4 +200,13 @@ body {
 .rich-text-table table td > div,
 .rich-text-table table th > div {
   margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  min-height: 1.5em;
+}
+
+/* Style first row as header (Contentful doesn't always use th elements) */
+.rich-text-table table tr:first-child td {
+  background-color: theme("colors.gray.50");
+  font-weight: 600;
 }
