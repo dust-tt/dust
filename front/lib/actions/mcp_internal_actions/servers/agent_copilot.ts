@@ -5,18 +5,29 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  createAgentConfiguration,
+  getAgentConfiguration,
+} from "@app/lib/api/assistant/configuration/agent";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { canUseModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { Err, Ok, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { TagResource } from "@app/lib/resources/tags_resource";
+import type {
+  AgentConfigurationScope,
+  AgentModelConfigurationType,
+  AgentStatus,
+} from "@app/types";
+import { Err, Ok, removeNulls, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 async function createServer(
   auth: Authenticator,
@@ -87,6 +98,181 @@ async function createServer(
           {
             type: "text",
             text: JSON.stringify(result, null, 2),
+          },
+        ]);
+      }
+    )
+  );
+
+  // Tool: update_agent_details
+  // Updates key configuration data for an agent.
+  server.tool(
+    "update_agent_details",
+    "Update key configuration data for an agent. Only provided fields will be updated. Creates a new version of the agent.",
+    {
+      agent_id: z.string().describe("The agent configuration sId"),
+      name: z.string().optional().describe("New name for the agent"),
+      description: z
+        .string()
+        .optional()
+        .describe("New description for the agent"),
+      instructions: z
+        .string()
+        .nullable()
+        .optional()
+        .describe("New instructions for the agent (can be null to clear)"),
+      model: z
+        .object({
+          providerId: z.string().optional(),
+          modelId: z.string().optional(),
+          temperature: z.number().optional(),
+          reasoningEffort: z
+            .enum(["none", "light", "medium", "high"])
+            .optional(),
+        })
+        .optional()
+        .describe("Model configuration updates (partial updates supported)"),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "agent_copilot_update_agent_details",
+        agentLoopContext,
+      },
+      async ({ agent_id, name, description, instructions, model }) => {
+        // Get the current agent configuration.
+        const agentConfig = await getAgentConfiguration(auth, {
+          agentId: agent_id,
+          variant: "light",
+        });
+
+        if (!agentConfig) {
+          return new Err(new MCPError(`Agent not found: ${agent_id}`));
+        }
+
+        // Check if the user can edit this agent.
+        if (!agentConfig.canEdit) {
+          return new Err(
+            new MCPError(`You do not have permission to edit this agent`)
+          );
+        }
+
+        // Cannot update global agents.
+        if (agentConfig.scope === "global") {
+          return new Err(new MCPError(`Cannot update global agents`));
+        }
+
+        // Get editors for the agent.
+        const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+          auth,
+          agentConfig
+        );
+        if (editorGroupRes.isErr()) {
+          return new Err(
+            new MCPError(`Failed to get editors: ${editorGroupRes.error.message}`)
+          );
+        }
+        const members = await editorGroupRes.value.getActiveMembers(auth);
+        const editors = members.map((m) => m.toJSON());
+
+        // Get tags for the agent.
+        const tags = await TagResource.listForAgent(auth, agentConfig.id);
+
+        // Compute requestedSpaceIds from the current agent's requestedSpaceIds.
+        const requestedSpaceIds = removeNulls(
+          agentConfig.requestedSpaceIds.map((sId) => getResourceIdFromSId(sId))
+        );
+
+        // Merge model configuration.
+        // Start with the existing model to preserve proper types.
+        const mergedModel: AgentModelConfigurationType = {
+          ...agentConfig.model,
+        };
+        if (model?.providerId !== undefined) {
+          // Validate that the providerId is supported.
+          const supportedProviders = SUPPORTED_MODEL_CONFIGS.map(
+            (m) => m.providerId
+          );
+          if (
+            !supportedProviders.includes(
+              model.providerId as (typeof supportedProviders)[number]
+            )
+          ) {
+            return new Err(
+              new MCPError(`Invalid providerId: ${model.providerId}`)
+            );
+          }
+          mergedModel.providerId =
+            model.providerId as AgentModelConfigurationType["providerId"];
+        }
+        if (model?.modelId !== undefined) {
+          // Validate that the modelId is supported for the provider.
+          const supportedModels = SUPPORTED_MODEL_CONFIGS.filter(
+            (m) => m.providerId === mergedModel.providerId
+          ).map((m) => m.modelId);
+          if (
+            !supportedModels.includes(
+              model.modelId as (typeof supportedModels)[number]
+            )
+          ) {
+            return new Err(
+              new MCPError(
+                `Invalid modelId: ${model.modelId} for provider ${mergedModel.providerId}`
+              )
+            );
+          }
+          mergedModel.modelId =
+            model.modelId as AgentModelConfigurationType["modelId"];
+        }
+        if (model?.temperature !== undefined) {
+          mergedModel.temperature = model.temperature;
+        }
+        if (model?.reasoningEffort !== undefined) {
+          mergedModel.reasoningEffort = model.reasoningEffort;
+        }
+
+        // Create the updated agent configuration.
+        const result = await createAgentConfiguration(auth, {
+          name: name ?? agentConfig.name,
+          description: description ?? agentConfig.description,
+          instructions:
+            instructions !== undefined ? instructions : agentConfig.instructions,
+          pictureUrl: agentConfig.pictureUrl,
+          status: agentConfig.status as AgentStatus,
+          scope: agentConfig.scope as Exclude<AgentConfigurationScope, "global">,
+          model: mergedModel,
+          agentConfigurationId: agent_id,
+          templateId: agentConfig.templateId,
+          requestedSpaceIds,
+          tags: tags.map((t) => t.toJSON()),
+          editors,
+        });
+
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(`Failed to update agent: ${result.error.message}`)
+          );
+        }
+
+        const updatedConfig = result.value;
+        return new Ok([
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                success: true,
+                agent: {
+                  sId: updatedConfig.sId,
+                  name: updatedConfig.name,
+                  description: updatedConfig.description,
+                  instructions: updatedConfig.instructions,
+                  model: updatedConfig.model,
+                  version: updatedConfig.version,
+                },
+              },
+              null,
+              2
+            ),
           },
         ]);
       }
