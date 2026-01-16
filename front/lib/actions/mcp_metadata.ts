@@ -454,13 +454,20 @@ async function connectToRemoteMCPServer(
 
   try {
     const streamableHttpTransport = new StreamableHTTPClientTransport(url, req);
-    await mcpClient.connect(streamableHttpTransport);
+    await mcpClient.connect(streamableHttpTransport, {
+      // The default timeout is 60 seconds, which may exceed the heartbeat timeout.
+      timeout: DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS,
+    });
   } catch (error) {
     // Heartbeat here, which prevents timing out in the case where we timed out above.
     heartbeat();
     // Check if the error message contains "HTTP 4xx" as suggested by the official doc.
     // Doc is here https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#client-side-compatibility.
-    if (error instanceof Error && /HTTP 4\d\d/.test(error.message)) {
+    if (
+      error instanceof Error &&
+      /HTTP 4\d\d/.test(error.message) &&
+      !error.message.includes("HTTP 429")
+    ) {
       logger.info(
         {
           url: url.toString(),
@@ -469,10 +476,9 @@ async function connectToRemoteMCPServer(
         "Error establishing connection to remote MCP server via streamableHttpTransport, falling back to sseTransport."
       );
       const sseTransport = new SSEClientTransport(url, req);
-      await mcpClient.connect(sseTransport);
-    } else {
-      throw error;
+      return mcpClient.connect(sseTransport);
     }
+    throw error;
   }
 }
 
