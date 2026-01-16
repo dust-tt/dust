@@ -143,7 +143,7 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
 ): Promise<Result<DatasourceRetrievalDocuments, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const mcpServerConfig = await AgentMCPServerConfigurationResource.fetchBySId(
+  const mcpServerConfig = await AgentMCPServerConfigurationResource.fetchById(
     auth,
     mcpServerConfigId
   );
