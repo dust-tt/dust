@@ -3,7 +3,6 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
-  DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
@@ -34,6 +33,8 @@ import type {
   WhitelistableFeature,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
+
+const RUN_AGENT_CALL_TOOL_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 export const USE_SUMMARY_SWITCH = "useSummary";
@@ -1481,7 +1482,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+    timeoutMs: RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
     serverInfo: {
       name: "run_agent",
       version: "1.0.0",
