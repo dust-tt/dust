@@ -3,6 +3,7 @@ import type { ChildWorkflowHandle } from "@temporalio/workflow";
 import {
   continueAsNew,
   executeChild,
+  isCancellation,
   proxyActivities,
   setHandler,
   sleep,
@@ -357,6 +358,8 @@ export async function googleDriveFolderSync({
 
   let nextPageToken: string | undefined = undefined;
 
+  foldersToBrowse = uniq(foldersToBrowse);
+
   // Process all folders in this subtree
   while (foldersToBrowse.length > 0) {
     const folder = foldersToBrowse.pop();
@@ -574,8 +577,11 @@ export async function googleDriveFullSyncV2({
 
       try {
         await handle.result();
-      } catch {
-        // Workflow failed or was cancelled
+      } catch (err) {
+        if (!isCancellation(err)) {
+          throw err;
+        }
+        // Child workflow was cancelled (e.g., folder was removed during sync)
       } finally {
         delete runningFolderWorkflows[folderId];
       }
