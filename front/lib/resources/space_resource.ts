@@ -391,6 +391,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await GroupSpaceModel.destroy({
       where: {
         vaultId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       transaction,
     });
@@ -530,12 +531,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
       // If the space should be restricted and was not restricted before, remove the global group.
       if (!wasRestricted && isRestricted) {
-        await this.removeGroup(globalGroup);
+        await this.removeGroup(auth, globalGroup);
       }
 
       // If the space should not be restricted and was restricted before, add the global group.
       if (wasRestricted && !isRestricted) {
-        await this.addGroup(globalGroup);
+        await this.addGroup(auth, globalGroup);
       }
 
       const previousManagementMode = this.managementMode;
@@ -581,6 +582,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             where: {
               groupId: group.id,
               vaultId: this.id,
+              workspaceId: auth.getNonNullableWorkspace().id,
             },
             transaction: t,
           });
@@ -612,19 +614,20 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
-  private async addGroup(group: GroupResource) {
+  private async addGroup(auth: Authenticator, group: GroupResource) {
     await GroupSpaceModel.create({
       groupId: group.id,
       vaultId: this.id,
-      workspaceId: this.workspaceId,
+      workspaceId: auth.getNonNullableWorkspace().id,
     });
   }
 
-  private async removeGroup(group: GroupResource) {
+  private async removeGroup(auth: Authenticator, group: GroupResource) {
     await GroupSpaceModel.destroy({
       where: {
         groupId: group.id,
         vaultId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
   }

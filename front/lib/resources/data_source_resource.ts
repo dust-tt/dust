@@ -543,6 +543,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     const deletedCount = await DataSourceModel.destroy({
       where: {
         id: this.id,
+        workspaceId,
       },
       transaction,
       // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,

@@ -1330,11 +1330,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
+    const owner = auth.getNonNullableWorkspace();
     try {
       await KeyModel.destroy({
         where: {
           groupId: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
+          workspaceId: owner.id,
         },
         transaction,
       });
@@ -1342,6 +1343,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       await GroupSpaceModel.destroy({
         where: {
           groupId: this.id,
+          workspaceId: owner.id,
         },
         transaction,
       });
@@ -1349,6 +1351,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       await GroupAgentModel.destroy({
         where: {
           groupId: this.id,
+          workspaceId: owner.id,
         },
         transaction,
       });
@@ -1356,6 +1359,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       await GroupMembershipModel.destroy({
         where: {
           groupId: this.id,
+          workspaceId: owner.id,
         },
         transaction,
       });
@@ -1363,6 +1367,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       await this.model.destroy({
         where: {
           id: this.id,
+          workspaceId: owner.id,
         },
         transaction,
       });

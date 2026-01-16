@@ -3,6 +3,7 @@ import type {
   CountWithOptions,
   CreationOptional,
   DestroyOptions,
+  Filterable,
   FindOptions,
   ForeignKey,
   GroupedCountResultItem,
@@ -16,10 +17,14 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { DataTypes, Op } from "sequelize";
+import type { ModelHooks } from "sequelize/lib/hooks";
 
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import logger from "@app/logger/logger";
+
+// Log only 1 time out of 100 on average.
+const WORKSPACE_ISOLATION_SAMPLING_RATE = 0.01;
 
 // Helper type and type guard for workspaceId check.
 type WhereClauseWithNumericWorkspaceId<TAttributes> =
@@ -80,6 +85,63 @@ interface WorkspaceTenantIsolationSecurityBypassOptions<
   dangerouslyBypassWorkspaceIsolationSecurity?: boolean;
 }
 
+function checkWorkspaceIsolation<MS extends ModelStatic<Model>>(
+  options: Filterable<InferAttributes<InstanceType<MS>>>,
+  {
+    modelName,
+    queryType,
+  }: {
+    modelName: string;
+    queryType: "find" | "bulkDestroy";
+  }
+) {
+  // Skip validation if specifically requested for this query.
+  if (isWorkspaceIsolationBypassEnabled(options)) {
+    return;
+  }
+
+  const whereClause = options.where;
+
+  if (
+    !isWhereClauseWithNumericWorkspaceId<InferAttributes<InstanceType<MS>>>(
+      whereClause
+    )
+  ) {
+    const stack = new Error().stack;
+
+    if (
+      // Do not rely on `isDevelopment` since we want to run this check everywhere except
+      // production.
+      process.env.NODE_ENV !== "production" &&
+      !TEMPORARY_WHITELISTED_MODELS_FOR_WORKSPACE_ISOLATION_BYPASS.includes(
+        modelName
+      )
+    ) {
+      throw new Error(
+        `Query attempted without workspaceId on ${modelName}. All workspace-aware model ` +
+          "queries must be scoped to a specific workspaceId for query isolation. " +
+          "See Runbook https://www.notion.so/dust-tt/Runbook-WorkspaceAwareModel-Workspace-Isolation-Enforcement-2d128599d94180dbbbace7cffcd958f6"
+      );
+    }
+
+    if (Math.random() > WORKSPACE_ISOLATION_SAMPLING_RATE) {
+      logger.warn(
+        {
+          model: modelName,
+          query_type: queryType,
+          stack_trace: stack,
+          error: {
+            message: "workspace_isolation_violation",
+            stack,
+          },
+          where: whereClause,
+        },
+        "workspace_isolation_violation"
+      );
+    }
+  }
+}
+
 function isWorkspaceIsolationBypassEnabled<T>(
   options: FindOptions<T>
 ): options is WorkspaceTenantIsolationSecurityBypassOptions<T> {
@@ -116,59 +178,24 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
     const { relationship = "hasMany", ...restOptions } = options;
 
     // Define a hook to ensure all find queries are properly scoped to a workspace.
-    const hooks = {
+    const hooks: Partial<
+      ModelHooks<InstanceType<MS>, Attributes<InstanceType<MS>>>
+    > = {
       beforeFind: (options: FindOptions<InferAttributes<InstanceType<MS>>>) => {
-        // Skip validation if specifically requested for this query.
-        if (isWorkspaceIsolationBypassEnabled(options)) {
-          return;
-        }
-
-        // log only 1 time on 100 approximately
-        if (Math.random() < 0.99) {
-          return;
-        }
-
-        const whereClause = options.where;
-
-        if (
-          !isWhereClauseWithNumericWorkspaceId<
-            InferAttributes<InstanceType<MS>>
-          >(whereClause)
-        ) {
-          const stack = new Error().stack;
-
-          logger.warn(
-            {
-              model: this.name,
-              query_type: "find",
-              stack_trace: stack,
-              error: {
-                message: "workspace_isolation_violation",
-                stack,
-              },
-              where: whereClause,
-            },
-            "workspace_isolation_violation"
-          );
-
-          if (
-            // Do not rely on `isDevelopment` since we want to run this check everywhere except
-            // production.
-            process.env.NODE_ENV !== "production" &&
-            !TEMPORARY_WHITELISTED_MODELS_FOR_WORKSPACE_ISOLATION_BYPASS.includes(
-              this.name
-            )
-          ) {
-            throw new Error(
-              `Query attempted without workspaceId on ${this.name}. All workspace-aware model ` +
-                "queries must be scoped to a specific workspaceId for query isolation. " +
-                "See Runbook https://www.notion.so/dust-tt/Runbook-WorkspaceAwareModel-Workspace-Isolation-Enforcement-2d128599d94180dbbbace7cffcd958f6"
-            );
-          }
-        }
+        checkWorkspaceIsolation(options, {
+          modelName: this.name,
+          queryType: "find",
+        });
       },
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      ...(restOptions.hooks || {}),
+      beforeBulkDestroy: (
+        options: DestroyOptions<InferAttributes<InstanceType<MS>>>
+      ) => {
+        checkWorkspaceIsolation(options, {
+          modelName: this.name,
+          queryType: "bulkDestroy",
+        });
+      },
+      ...(restOptions.hooks ?? {}),
     };
 
     const model = super.init(attrs, {

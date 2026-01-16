@@ -69,6 +69,7 @@ export class ExtensionConfigurationResource extends BaseResource<ExtensionConfig
       await this.model.destroy({
         where: {
           id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
         transaction,
       });

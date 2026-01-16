@@ -293,6 +293,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         });
         await WebhookRequestModel.destroy({
           where: {
+            workspaceId: owner.id,
             id: { [Op.in]: webhookRequests.map((w) => w.id) },
           },
         });
