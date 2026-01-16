@@ -1,8 +1,6 @@
 import type { Transaction } from "sequelize";
 
-import {
-  DustProjectConfigurationModel,
-} from "@connectors/lib/models/dust_project";
+import { DustProjectConfigurationModel } from "@connectors/lib/models/dust_project";
 import type {
   ConnectorProviderConfigurationType,
   ConnectorProviderModelResourceMapping,
