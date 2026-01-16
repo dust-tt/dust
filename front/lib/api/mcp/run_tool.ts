@@ -14,7 +14,7 @@ import type {
   ToolEarlyExitEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
-import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/utils";
+import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
