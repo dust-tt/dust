@@ -6,6 +6,7 @@ import { useRouter } from "next/router";
 import { useMemo } from "react";
 
 import { getConversationRoute } from "@app/lib/utils/router";
+import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { ConversationType, WorkspaceType } from "@app/types";
 import {
   isAgentMessageType,
@@ -62,13 +63,7 @@ export function SpaceConversationListItem({
       ? "New Conversation"
       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
-  const time = new Date(conversation.updated)
-    .toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    })
-    .replace("24:", "00:");
+  const time = formatTimestring(conversation.updated);
 
   const agentAndUserMessages = conversation.content.filter(
     (versions) => !isContentFragmentType(versions[versions.length - 1])
