@@ -196,7 +196,7 @@ function TreemapContent({
             {shouldShowName && (
               <div
                 className={cn(
-                  "w-full min-w-0 truncate text-ellipsis font-medium",
+                  "w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-medium",
                   nameTextClassName,
                   buildColorClass(baseColor, LABEL_COLOR_VARIANT)
                 )}
@@ -237,7 +237,7 @@ function TreemapContent({
           pointerEvents="none"
         >
           <div className="flex h-full w-full items-center justify-center overflow-hidden">
-            <div className="w-full min-w-0 truncate text-ellipsis rounded bg-white/70 px-1 py-0.5 text-center text-[11px] font-medium text-foreground dark:bg-black/30 dark:text-foreground-night">
+            <div className="w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded bg-white/70 px-1 py-0.5 text-center text-[11px] font-medium text-foreground dark:bg-black/30 dark:text-foreground-night">
               {groupLabel}
             </div>
           </div>
