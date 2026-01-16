@@ -1,5 +1,6 @@
 // Interactive prompts for environment selection and confirmations
 // Uses @clack/prompts for beautiful arrow-key navigation
+// Also provides fzf-based selection for terminal-sensitive contexts (like tmux)
 
 import * as p from "@clack/prompts";
 import { getLastActiveEnv } from "./activity";
@@ -203,4 +204,54 @@ export async function selectMultipleEnvironments(
   }
 
   return selectedNames;
+}
+
+/**
+ * Select an environment using fzf instead of clack prompts.
+ * This is useful for terminal-sensitive contexts like tmux where
+ * clack prompts leave the terminal in a bad state.
+ *
+ * @param message Header message to display in fzf
+ * @returns Selected environment name or null if cancelled
+ */
+export async function selectEnvironmentWithFzf(message?: string): Promise<string | null> {
+  const envs = await listEnvironments();
+  if (envs.length === 0) {
+    return null;
+  }
+
+  const currentEnv = detectEnvFromCwd();
+  const lastActiveEnv = await getLastActiveEnv();
+  const sortedEnvs = sortEnvs(envs, currentEnv, lastActiveEnv);
+
+  // Build the fzf input with hints
+  const lines = sortedEnvs.map((name) => {
+    if (name === currentEnv) return `${name} (current)`;
+    if (name === lastActiveEnv) return `${name} (last)`;
+    return name;
+  });
+
+  const header = message ?? "Select environment";
+  const input = lines.join("\n");
+
+  const proc = Bun.spawn(["fzf", "--reverse", "--header", header], {
+    stdin: "pipe",
+    stdout: "pipe",
+    stderr: "inherit",
+  });
+
+  // Write environments to fzf's stdin
+  proc.stdin.write(input);
+  proc.stdin.end();
+
+  const output = await new Response(proc.stdout).text();
+  await proc.exited;
+
+  if (proc.exitCode !== 0 || !output.trim()) {
+    return null;
+  }
+
+  // Extract just the environment name (remove hints like " (current)")
+  const selected = output.trim().split(" ")[0];
+  return selected ?? null;
 }

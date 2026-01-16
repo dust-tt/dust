@@ -1,4 +1,5 @@
-import { withEnvironment } from "../lib/commands";
+import { setLastActiveEnv } from "../lib/activity";
+import { getEnvironment } from "../lib/environment";
 import { logger } from "../lib/logger";
 import {
   type LayoutConfig,
@@ -8,7 +9,8 @@ import {
   getSessionName,
 } from "../lib/multiplexer";
 import { getEnvFilePath, getWorktreeDir } from "../lib/paths";
-import { Ok } from "../lib/result";
+import { selectEnvironmentWithFzf } from "../lib/prompt";
+import { CommandError, Err, Ok, type Result, envNotFoundError } from "../lib/result";
 
 interface OpenOptions {
   warmCommand?: string | undefined;
@@ -18,85 +20,121 @@ interface OpenOptions {
   unifiedLogs?: boolean | undefined;
 }
 
-export const openCommand = withEnvironment("open", async (env, options: OpenOptions = {}) => {
+/**
+ * Open command - uses fzf for environment selection.
+ * fzf properly handles terminal state, which is important when spawning
+ * terminal multiplexers like tmux or zellij.
+ */
+export async function openCommand(
+  nameArg: string | undefined,
+  options: OpenOptions = {}
+): Promise<Result<void>> {
+  // Get environment name - use fzf for selection to avoid clack terminal issues
+  const envResult = await resolveEnvironment(nameArg);
+  if (!envResult.ok) return envResult;
+  const env = envResult.value;
+
   const multiplexer = await getConfiguredMultiplexer();
   const worktreePath = getWorktreeDir(env.name);
   const envShPath = getEnvFilePath(env.name);
   const sessionName = getSessionName(env.name);
 
-  // Detect if running inside the multiplexer to avoid nesting
-  const inMultiplexer = multiplexer.isInsideMultiplexer();
+  const layoutConfig: LayoutConfig = {
+    envName: env.name,
+    worktreePath,
+    envShPath,
+    warmCommand: options.warmCommand,
+    initialCommand: options.initialCommand,
+    compact: options.compact,
+    unifiedLogs: options.unifiedLogs,
+  };
+
+  // Handle being inside multiplexer (use switch instead of attach)
+  if (multiplexer.isInsideMultiplexer() && !options.noAttach) {
+    return handleInsideMultiplexer(multiplexer, sessionName, layoutConfig);
+  }
+
+  // Handle being outside multiplexer
+  return handleOutsideMultiplexer(multiplexer, sessionName, layoutConfig, env.name, options);
+}
+
+async function resolveEnvironment(
+  nameArg: string | undefined
+): Promise<Result<{ name: string }, CommandError>> {
+  let envName = nameArg;
+  if (!envName) {
+    const selected = await selectEnvironmentWithFzf("Select environment to open");
+    if (!selected) {
+      return Err(new CommandError("No environment selected"));
+    }
+    envName = selected;
+  }
+
+  const env = await getEnvironment(envName);
+  if (!env) {
+    return Err(envNotFoundError(envName));
+  }
+
+  await setLastActiveEnv(env.name);
+  return Ok(env);
+}
+
+async function handleInsideMultiplexer(
+  multiplexer: Awaited<ReturnType<typeof getConfiguredMultiplexer>>,
+  sessionName: string,
+  layoutConfig: LayoutConfig
+): Promise<Result<void>> {
   const currentSession = multiplexer.getCurrentSessionName();
-
-  // If inside multiplexer and trying to attach, use session switching instead
-  if (inMultiplexer && !options.noAttach) {
-    // If already in the target session, nothing to do
-    if (currentSession === sessionName) {
-      logger.info(`Already in session '${sessionName}'`);
-      return Ok(undefined);
-    }
-
-    // Ensure session exists (create in background if needed)
-    const sessionExists = await multiplexer.sessionExists(sessionName);
-    if (!sessionExists) {
-      const layoutConfig: LayoutConfig = {
-        envName: env.name,
-        worktreePath,
-        envShPath,
-        warmCommand: options.warmCommand,
-        initialCommand: options.initialCommand,
-        compact: options.compact,
-        unifiedLogs: options.unifiedLogs,
-      };
-      const layoutContent = multiplexer.generateLayout(layoutConfig);
-      const layoutPath = multiplexer.getLayoutPath("layout.kdl");
-      await multiplexer.writeLayout(layoutContent, layoutPath);
-      await multiplexer.createSessionInBackground(sessionName, layoutPath);
-    }
-
-    // Switch to target session
-    await multiplexer.switchToSession(sessionName);
+  if (currentSession === sessionName) {
+    logger.info(`Already in session '${sessionName}'`);
     return Ok(undefined);
   }
 
-  // Check if session already exists
+  const sessionExists = await multiplexer.sessionExists(sessionName);
+  if (!sessionExists) {
+    const layoutContent = multiplexer.generateLayout(layoutConfig);
+    const layoutPath = multiplexer.getLayoutPath("layout.kdl");
+    await multiplexer.writeLayout(layoutContent, layoutPath);
+    await multiplexer.createSessionInBackground(sessionName, layoutPath);
+  }
+
+  await multiplexer.switchToSession(sessionName);
+  return Ok(undefined);
+}
+
+async function handleOutsideMultiplexer(
+  multiplexer: Awaited<ReturnType<typeof getConfiguredMultiplexer>>,
+  sessionName: string,
+  layoutConfig: LayoutConfig,
+  envName: string,
+  options: OpenOptions
+): Promise<Result<void>> {
   const sessionExists = await multiplexer.sessionExists(sessionName);
 
   if (sessionExists) {
     if (options.noAttach) {
       logger.info(`Session '${sessionName}' already exists.`);
-      logger.info(`Use 'dust-hive open ${env.name}' to attach.`);
+      logger.info(`Use 'dust-hive open ${envName}' to attach.`);
       return Ok(undefined);
     }
-
-    // Attach to existing session
     await multiplexer.attachSession(sessionName);
-  } else {
-    // Create new session with layout
-    const layoutConfig: LayoutConfig = {
-      envName: env.name,
-      worktreePath,
-      envShPath,
-      warmCommand: options.warmCommand,
-      initialCommand: options.initialCommand,
-      compact: options.compact,
-      unifiedLogs: options.unifiedLogs,
-    };
-    const layoutContent = multiplexer.generateLayout(layoutConfig);
-    const layoutPath = multiplexer.getLayoutPath("layout.kdl");
-    await multiplexer.writeLayout(layoutContent, layoutPath);
-
-    if (options.noAttach) {
-      await multiplexer.createSessionInBackground(sessionName, layoutPath);
-      logger.info(`Use 'dust-hive open ${env.name}' to attach.`);
-      return Ok(undefined);
-    }
-
-    await multiplexer.createAndAttachSession(sessionName, layoutPath);
+    return Ok(undefined);
   }
 
+  // Create new session
+  const layoutContent = multiplexer.generateLayout(layoutConfig);
+  const layoutPath = multiplexer.getLayoutPath("layout.kdl");
+  await multiplexer.writeLayout(layoutContent, layoutPath);
+
+  if (options.noAttach) {
+    await multiplexer.createSessionInBackground(sessionName, layoutPath);
+    logger.info(`Use 'dust-hive open ${envName}' to attach.`);
+    return Ok(undefined);
+  }
+
+  await multiplexer.createAndAttachSession(sessionName, layoutPath);
   return Ok(undefined);
-});
+}
 
 interface MainSessionOptions {
   attach?: boolean;
