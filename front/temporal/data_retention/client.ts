@@ -19,7 +19,7 @@ export async function launchDataRetentionWorkflow(): Promise<
     workflowId: "data-retention-workflow",
     signal: runSignal,
     signalArgs: undefined,
-    cronSchedule: "0 14 * * 1-5", // Every weekday at 2pm.
+    cronSchedule: "0 0 * * 1-5", // Every weekday at midnight.
   });
 
   return new Ok(undefined);
