@@ -465,7 +465,7 @@ dust-hive sync
 │       ├── *.pid              # Process IDs
 │       └── *.log              # Service logs
 ├── scripts/
-│   └── watch-logs.sh          # Log watcher (supports --temporal flag)
+│   └── service-logs-tui.sh    # Interactive service logs viewer
 └── zellij/
     ├── layout.kdl             # Environment zellij layout
     └── main-layout.kdl        # Main session layout

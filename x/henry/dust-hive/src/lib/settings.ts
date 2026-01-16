@@ -27,11 +27,6 @@ export async function loadSettings(): Promise<Settings> {
   }
 }
 
-// Save settings to disk
-export async function saveSettings(settings: Settings): Promise<void> {
-  await Bun.write(SETTINGS_PATH, `${JSON.stringify(settings, null, 2)}\n`);
-}
-
 // Get the branch name for an environment
 export function getBranchName(envName: string, settings: Settings): string {
   const prefix = settings.branchPrefix ?? "";
