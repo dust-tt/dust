@@ -299,7 +299,7 @@ describe("UserResource", () => {
         await user.setMetadata("key2", "value2");
         await user.setMetadata("key3", "value3");
 
-        await user.deleteAllMetadata(auth);
+        await user.deleteAllMetadata();
 
         expect(await user.getMetadata("key1")).toBeNull();
         expect(await user.getMetadata("key2")).toBeNull();
