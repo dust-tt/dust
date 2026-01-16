@@ -1,6 +1,8 @@
 import type { StorybookConfig } from "@storybook/react-webpack5";
 import path from "path";
 
+const STORYBOOK_PUBLIC_PATH = "/storybook/";
+
 const config: StorybookConfig = {
   stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
 
@@ -50,6 +52,17 @@ const config: StorybookConfig = {
       "jest-util": "jest-util",
     };
 
+    if (config.output) {
+      config.output.publicPath = STORYBOOK_PUBLIC_PATH;
+    }
+
+    return config;
+  },
+
+  managerWebpack: async (config) => {
+    if (config.output) {
+      config.output.publicPath = STORYBOOK_PUBLIC_PATH;
+    }
     return config;
   },
 
