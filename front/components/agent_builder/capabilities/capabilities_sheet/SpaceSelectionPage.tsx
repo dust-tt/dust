@@ -127,9 +127,6 @@ export function SpaceSelectionPageContent({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Select spaces
-      </p>
       {selectableSpaces.length > 0 ? (
         <DataTable
           data={tableData}
