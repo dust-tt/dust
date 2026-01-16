@@ -6,6 +6,7 @@
  */
 
 import { loadSettings } from "../settings";
+import { TmuxAdapter } from "./tmux";
 import type { MultiplexerAdapter, MultiplexerType } from "./types";
 import { ZellijAdapter } from "./zellij";
 
@@ -18,12 +19,7 @@ export { getSessionName, MAIN_SESSION_NAME, SESSION_PREFIX, TAB_NAMES } from "./
  */
 const adapters: Record<MultiplexerType, () => MultiplexerAdapter> = {
   zellij: () => new ZellijAdapter(),
-  // tmux: () => new TmuxAdapter(), // Future implementation
-  tmux: () => {
-    throw new Error(
-      "tmux adapter not yet implemented. Please use zellij or contribute a tmux implementation."
-    );
-  },
+  tmux: () => new TmuxAdapter(),
 };
 
 /**
