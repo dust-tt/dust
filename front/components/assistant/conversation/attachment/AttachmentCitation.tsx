@@ -22,7 +22,7 @@ import { getFileFormat, isSupportedImageContentType } from "@app/types";
 interface AttachmentCitationProps {
   owner: LightWorkspaceType;
   attachmentCitation: AttachmentCitation;
-  conversationId: string | null;
+  conversationId?: string | null;
 }
 
 export function AttachmentCitation({

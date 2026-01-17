@@ -174,7 +174,7 @@ export interface CustomEditorProps {
   disableAutoFocus: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
   owner: WorkspaceType;
-  conversationId: string | null;
+  conversationId?: string | null;
   // If provided, large pasted text will be routed to this callback along with selection bounds
   onLongTextPaste?: (payload: {
     text: string;
@@ -192,7 +192,7 @@ export const buildEditorExtensions = ({
   onUrlDetected,
 }: {
   owner: WorkspaceType;
-  conversationId: string | null;
+  conversationId?: string | null;
   onInlineText?: (fileId: string, textContent: string) => void;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
 }) => {
