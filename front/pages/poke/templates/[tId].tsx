@@ -17,7 +17,6 @@ import {
 } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import _ from "lodash";
-import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -60,22 +59,13 @@ import {
   TEMPLATES_TAGS_CONFIG,
 } from "@app/types";
 
-export const getServerSideProps = withSuperUserAuthRequirements<{
-  templateId: string;
-}>(async (context) => {
-  const { tId: templateId } = context.query;
-  if (!templateId || typeof templateId !== "string") {
+export const getServerSideProps = withSuperUserAuthRequirements<object>(
+  async () => {
     return {
-      notFound: true,
+      props: {},
     };
   }
-
-  return {
-    props: {
-      templateId,
-    },
-  };
-});
+);
 
 function InputField({
   control,
@@ -442,16 +432,16 @@ function PreviewDialog({ form }: { form: any }) {
   );
 }
 
-function TemplatesPage({
-  templateId,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function TemplatesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  const templateId =
+    typeof router.query.tId === "string" ? router.query.tId : null;
 
   const sendNotification = useSendNotification();
 
   const { assistantTemplate } = usePokeAssistantTemplate({
-    templateId: templateId === "new" ? null : templateId,
+    templateId: templateId === "new" || templateId === null ? null : templateId,
   });
 
   const onSubmit = useCallback(
@@ -576,6 +566,14 @@ function TemplatesPage({
       });
     }
   }, [assistantTemplate, form]);
+
+  if (!templateId) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-primary-50 dark:bg-primary-50-night">
+        <div className="text-primary-900">Loading...</div>
+      </div>
+    );
+  }
 
   if (isSubmitting) {
     return (
@@ -758,11 +756,8 @@ function TemplatesPage({
   );
 }
 
-TemplatesPage.getLayout = (
-  page: ReactElement,
-  { templateId }: { templateId: string }
-) => {
-  return <PokeLayout title={`Templates ${templateId}`}>{page}</PokeLayout>;
+TemplatesPage.getLayout = (page: ReactElement) => {
+  return <PokeLayout title="Template">{page}</PokeLayout>;
 };
 
 export default TemplatesPage;
