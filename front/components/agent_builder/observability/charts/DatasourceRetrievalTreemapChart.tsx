@@ -457,25 +457,25 @@ export function DatasourceRetrievalTreemapChart({
   if (isDialogOpen) {
     if (isDatasourceRetrievalDocumentsLoading) {
       dialogBody = (
-        <div className="flex h-48 w-full items-center justify-center">
+        <div className="flex h-full w-full items-center justify-center">
           <Spinner size="lg" />
         </div>
       );
     } else if (isDatasourceRetrievalDocumentsError) {
       dialogBody = (
-        <div className="flex h-48 w-full items-center justify-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground dark:text-muted-foreground-night">
           Failed to load document breakdown.
         </div>
       );
     } else if (!zoomTreemapData || zoomTreemapData.length === 0) {
       dialogBody = (
-        <div className="flex h-48 w-full items-center justify-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground dark:text-muted-foreground-night">
           No document data for this selection.
         </div>
       );
     } else {
       dialogBody = (
-        <div className="h-[60vh] w-full">
+        <div className="h-full w-full">
           <ResponsiveContainer width="100%" height="100%">
             <Treemap
               data={zoomTreemapData}
@@ -543,13 +543,15 @@ export function DatasourceRetrievalTreemapChart({
             </DialogTitle>
             {zoomSelection && (
               <DialogDescription>
-                Top documents retrieved from $
-                {zoomSelection.dataSourceDisplayName} via $
+                Top documents retrieved from{" "}
+                {zoomSelection.dataSourceDisplayName} via{" "}
                 {zoomSelection.mcpServerDisplayName}, grouped by parent.
               </DialogDescription>
             )}
           </DialogHeader>
-          <DialogContainer>{dialogBody}</DialogContainer>
+          <DialogContainer className="h-full w-full">
+            {dialogBody}
+          </DialogContainer>
         </DialogContent>
       </Dialog>
     </>
