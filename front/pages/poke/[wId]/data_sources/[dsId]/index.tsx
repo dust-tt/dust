@@ -29,66 +29,28 @@ import {
   PokeAlertDescription,
 } from "@app/components/poke/shadcn/ui/alert";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import { decodeSqids, timeAgoFrom } from "@app/lib/utils";
-import logger from "@app/logger/logger";
+import type { FeaturesType } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/details";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
+import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
 import type {
-  CoreAPIDataSource,
   DataSourceType,
-  DataSourceViewType,
   NotionCheckUrlResponseType,
   NotionFindUrlResponseType,
-  SlackAutoReadPattern,
   WorkspaceType,
   ZendeskFetchTicketResponseType,
 } from "@app/types";
-import {
-  ConnectorsAPI,
-  CoreAPI,
-  isSlackAutoReadPatterns,
-  normalizeError,
-  safeParseJSON,
-} from "@app/types";
-import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
-const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
+import { normalizeError } from "@app/types";
 
 const maxNotionParentChainDepth = 20;
 
-type FeaturesType = {
-  slackBotEnabled: boolean;
-  googleDrivePdfEnabled: boolean;
-  googleDriveLargeFilesEnabled: boolean;
-  googleDriveParallelSyncEnabled: boolean;
-  microsoftPdfEnabled: boolean;
-  microsoftLargeFilesEnabled: boolean;
-  googleDriveCsvEnabled: boolean;
-  microsoftCsvEnabled: boolean;
-  githubCodeSyncEnabled: boolean;
-  githubUseProxyEnabled: boolean;
-  autoReadChannelPatterns: SlackAutoReadPattern[];
-};
-
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
-  dataSource: DataSourceType;
-  dataSourceViews: DataSourceViewType[];
-  coreDataSource: CoreAPIDataSource;
-  connector: InternalConnectorType | null;
-  features: FeaturesType;
-  temporalWorkspace: string;
-  temporalRunningWorkflows: {
-    workflowId: string;
-    runId: string;
-    status: string;
-  }[];
+  params: { wId: string; dsId: string };
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
@@ -99,237 +61,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const dataSource = await DataSourceResource.fetchById(auth, dsId, {
-    includeEditedBy: true,
-  });
-  if (!dataSource) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const coreDataSourceRes = await coreAPI.getDataSource({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-  });
-
-  const dataSourceViews = await DataSourceViewResource.listForDataSources(
-    auth,
-    [dataSource]
-  );
-
-  if (coreDataSourceRes.isErr()) {
-    return {
-      notFound: true,
-    };
-  }
-
-  let connector: InternalConnectorType | null = null;
-  const workflowInfos: { workflowId: string; runId: string; status: string }[] =
-    [];
-  if (dataSource.connectorId) {
-    const connectorsAPI = new ConnectorsAPI(
-      config.getConnectorsAPIConfig(),
-      logger
-    );
-    const connectorRes = await connectorsAPI.getConnector(
-      dataSource.connectorId
-    );
-    if (connectorRes.isOk()) {
-      connector = connectorRes.value;
-      const temporalClient = await getTemporalClientForConnectorsNamespace();
-
-      const res = temporalClient.workflow.list({
-        query: `ExecutionStatus = 'Running' AND connectorId = ${connector.id}`,
-      });
-
-      for await (const infos of res) {
-        workflowInfos.push({
-          workflowId: infos.workflowId,
-          runId: infos.runId,
-          status: infos.status.name,
-        });
-      }
-    } else {
-      logger.error(
-        { connectorId: dataSource.connectorId },
-        "Failed to get connector"
-      );
-    }
-  }
-
-  const features: FeaturesType = {
-    slackBotEnabled: false,
-    googleDrivePdfEnabled: false,
-    googleDriveLargeFilesEnabled: false,
-    googleDriveParallelSyncEnabled: false,
-    microsoftPdfEnabled: false,
-    microsoftLargeFilesEnabled: false,
-    googleDriveCsvEnabled: false,
-    microsoftCsvEnabled: false,
-    githubCodeSyncEnabled: false,
-    githubUseProxyEnabled: false,
-    autoReadChannelPatterns: [],
-  };
-
-  const connectorsAPI = new ConnectorsAPI(
-    config.getConnectorsAPIConfig(),
-    logger
-  );
-  if (dataSource.connectorId) {
-    switch (dataSource.connectorProvider) {
-      case "slack_bot":
-      case "slack":
-        const botEnabledRes = await connectorsAPI.getConnectorConfig(
-          dataSource.connectorId,
-          "botEnabled"
-        );
-        if (botEnabledRes.isErr()) {
-          throw botEnabledRes.error;
-        }
-        features.slackBotEnabled = botEnabledRes.value.configValue === "true";
-
-        const autoReadChannelPatternsRes =
-          await connectorsAPI.getConnectorConfig(
-            dataSource.connectorId,
-            "autoReadChannelPatterns"
-          );
-        if (autoReadChannelPatternsRes.isErr()) {
-          throw autoReadChannelPatternsRes.error;
-        }
-
-        const parsedAutoReadChannelPatternsRes = safeParseJSON(
-          autoReadChannelPatternsRes.value.configValue
-        );
-        if (parsedAutoReadChannelPatternsRes.isErr()) {
-          throw parsedAutoReadChannelPatternsRes.error;
-        }
-
-        if (
-          !parsedAutoReadChannelPatternsRes.value ||
-          !Array.isArray(parsedAutoReadChannelPatternsRes.value) ||
-          !isSlackAutoReadPatterns(parsedAutoReadChannelPatternsRes.value)
-        ) {
-          throw new Error("Invalid auto read channel patterns");
-        }
-
-        features.autoReadChannelPatterns =
-          parsedAutoReadChannelPatternsRes.value;
-        break;
-
-      case "google_drive":
-        const gdrivePdfEnabledRes = await connectorsAPI.getConnectorConfig(
-          dataSource.connectorId,
-          "pdfEnabled"
-        );
-        if (gdrivePdfEnabledRes.isErr()) {
-          throw gdrivePdfEnabledRes.error;
-        }
-        features.googleDrivePdfEnabled =
-          gdrivePdfEnabledRes.value.configValue === "true";
-
-        const gdriveCsvEnabledRes = await connectorsAPI.getConnectorConfig(
-          dataSource.connectorId,
-          "csvEnabled"
-        );
-        if (gdriveCsvEnabledRes.isErr()) {
-          throw gdriveCsvEnabledRes.error;
-        }
-        features.googleDriveCsvEnabled =
-          gdriveCsvEnabledRes.value.configValue === "true";
-
-        const gdriveLargeFilesEnabledRes =
-          await connectorsAPI.getConnectorConfig(
-            dataSource.connectorId,
-            "largeFilesEnabled"
-          );
-        if (gdriveLargeFilesEnabledRes.isErr()) {
-          throw gdriveLargeFilesEnabledRes.error;
-        }
-        features.googleDriveLargeFilesEnabled =
-          gdriveLargeFilesEnabledRes.value.configValue === "true";
-
-        const gdriveParallelSyncEnabledRes =
-          await connectorsAPI.getConnectorConfig(
-            dataSource.connectorId,
-            "useParallelSync"
-          );
-        if (gdriveParallelSyncEnabledRes.isErr()) {
-          throw gdriveParallelSyncEnabledRes.error;
-        }
-        features.googleDriveParallelSyncEnabled =
-          gdriveParallelSyncEnabledRes.value.configValue === "true";
-        break;
-
-      case "microsoft":
-        const microsoftPdfEnabledRes = await connectorsAPI.getConnectorConfig(
-          dataSource.connectorId,
-          "pdfEnabled"
-        );
-        if (microsoftPdfEnabledRes.isErr()) {
-          throw microsoftPdfEnabledRes.error;
-        }
-        features.microsoftPdfEnabled =
-          microsoftPdfEnabledRes.value.configValue === "true";
-
-        const microsoftCsvEnabledRes = await connectorsAPI.getConnectorConfig(
-          dataSource.connectorId,
-          "csvEnabled"
-        );
-        if (microsoftCsvEnabledRes.isErr()) {
-          throw microsoftCsvEnabledRes.error;
-        }
-        features.microsoftCsvEnabled =
-          microsoftCsvEnabledRes.value.configValue === "true";
-
-        const microsoftLargeFilesEnabledRes =
-          await connectorsAPI.getConnectorConfig(
-            dataSource.connectorId,
-            "largeFilesEnabled"
-          );
-        if (microsoftLargeFilesEnabledRes.isErr()) {
-          throw microsoftLargeFilesEnabledRes.error;
-        }
-        features.microsoftLargeFilesEnabled =
-          microsoftLargeFilesEnabledRes.value.configValue === "true";
-        break;
-
-      case "github":
-        const githubConnectorEnabledRes =
-          await connectorsAPI.getConnectorConfig(
-            dataSource.connectorId,
-            "codeSyncEnabled"
-          );
-        if (githubConnectorEnabledRes.isErr()) {
-          throw githubConnectorEnabledRes.error;
-        }
-        features.githubCodeSyncEnabled =
-          githubConnectorEnabledRes.value.configValue === "true";
-
-        const githubUseProxyRes = await connectorsAPI.getConnectorConfig(
-          dataSource.connectorId,
-          "useProxy"
-        );
-        if (githubUseProxyRes.isErr()) {
-          throw githubUseProxyRes.error;
-        }
-        features.githubUseProxyEnabled =
-          githubUseProxyRes.value.configValue === "true";
-        break;
-    }
-  }
-
   return {
     props: {
       owner,
-      dataSource: dataSource.toJSON(),
-      dataSourceViews: dataSourceViews.map((view) => view.toJSON()),
-      coreDataSource: coreDataSourceRes.value.data_source,
-      connector,
-      features,
-      temporalWorkspace: TEMPORAL_CONNECTORS_NAMESPACE,
-      temporalRunningWorkflows: workflowInfos,
+      params: context.params as { wId: string; dsId: string },
     },
   };
 });
@@ -341,7 +76,7 @@ function FolderDisplay({
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
-  onDisplayDocumentSource: (documentId: string) => void;
+  onDisplayDocumentSource: (documentId: string, dataSourceSId: string) => void;
 }) {
   const [limit] = useState(10);
   const [offsetDocument, setOffsetDocument] = useState(0);
@@ -459,7 +194,9 @@ function FolderDisplay({
                     <Button
                       variant="outline"
                       icon={EyeIcon}
-                      onClick={() => onDisplayDocumentSource(d.document_id)}
+                      onClick={() =>
+                        onDisplayDocumentSource(d.document_id, dataSource.sId)
+                      }
                       tooltip="View"
                     />
                   </div>
@@ -562,29 +299,61 @@ function FolderDisplay({
 
 const DataSourcePage = ({
   owner,
-  dataSource,
-  dataSourceViews,
-  coreDataSource,
-  connector,
-  temporalWorkspace,
-  temporalRunningWorkflows,
-  features,
+  params,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
+  const { dsId } = params;
 
-  const onDisplayDocumentSource = (documentId: string) => {
+  const {
+    data: dataSourceDetails,
+    isLoading,
+    isError,
+  } = usePokeDataSourceDetails({
+    owner,
+    dsId,
+    disabled: false,
+  });
+
+  const onDisplayDocumentSource = (
+    documentId: string,
+    dataSourceSId: string
+  ) => {
     if (
       window.confirm(
         "Are you sure you want to access this sensible user data? (Access will be logged)"
       )
     ) {
       window.open(
-        `/poke/${owner.sId}/data_sources/${
-          dataSource.sId
-        }/view?documentId=${encodeURIComponent(documentId)}`
+        `/poke/${owner.sId}/data_sources/${dataSourceSId}/view?documentId=${encodeURIComponent(documentId)}`
       );
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError || !dataSourceDetails) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading data source details.</p>
+      </div>
+    );
+  }
+
+  const {
+    dataSource,
+    dataSourceViews,
+    coreDataSource,
+    connector,
+    features,
+    temporalWorkspace,
+    temporalRunningWorkflows,
+  } = dataSourceDetails;
 
   return (
     <>
@@ -813,7 +582,9 @@ const DataSourcePage = ({
             <PokePermissionTree
               owner={owner}
               dataSource={dataSource}
-              onDocumentViewClick={onDisplayDocumentSource}
+              onDocumentViewClick={(documentId) =>
+                onDisplayDocumentSource(documentId, dataSource.sId)
+              }
               permissionFilter="read"
             />
           )}
@@ -825,11 +596,9 @@ const DataSourcePage = ({
 
 DataSourcePage.getLayout = (
   page: ReactElement,
-  { owner, dataSource }: { owner: WorkspaceType; dataSource: DataSourceType }
+  { owner }: { owner: WorkspaceType }
 ) => {
-  return (
-    <PokeLayout title={`${owner.name} - ${dataSource.name}`}>{page}</PokeLayout>
-  );
+  return <PokeLayout title={`${owner.name} - Data Source`}>{page}</PokeLayout>;
 };
 
 async function handleCheckOrFindNotionUrl(

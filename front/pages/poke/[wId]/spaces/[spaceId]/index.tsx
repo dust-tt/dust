@@ -1,3 +1,4 @@
+import { Spinner } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
@@ -7,21 +8,13 @@ import { MembersDataTable } from "@app/components/poke/members/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
-import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { spaceToPokeJSON } from "@app/lib/poke/utils";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import type {
-  LightWorkspaceType,
-  PokeSpaceType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@app/types";
+import { usePokeSpaceDetails } from "@app/poke/swr/space_details";
+import type { LightWorkspaceType } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  members: Record<string, UserTypeWithWorkspaces[]>;
   owner: LightWorkspaceType;
-  space: PokeSpaceType;
+  params: { wId: string; spaceId: string };
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
@@ -33,53 +26,48 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const members: Record<string, UserTypeWithWorkspaces[]> = {};
-
-  const allGroups = space.groups.filter((g) =>
-    space.managementMode === "manual"
-      ? g.kind === "regular" || g.kind === "space_editors"
-      : g.kind === "provisioned"
-  );
-
-  const memberships = await getMembers(auth);
-
-  for (const group of allGroups) {
-    const groupMembers = await group.getActiveMembers(auth);
-    members[group.name] = groupMembers.reduce<UserTypeWithWorkspaces[]>(
-      (acc, user) => {
-        const member = memberships.members.find((m) => m.sId === user.sId);
-
-        if (member) {
-          acc.push(member);
-        }
-
-        return acc;
-      },
-      []
-    );
-  }
-
   return {
     props: {
-      members,
       owner,
-      space: spaceToPokeJSON(space),
+      params: context.params as { wId: string; spaceId: string },
     },
   };
 });
 
 export default function SpacePage({
-  members,
   owner,
-  space,
+  params,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { spaceId } = params;
+
+  const {
+    data: spaceDetails,
+    isLoading,
+    isError,
+  } = usePokeSpaceDetails({
+    owner,
+    spaceId,
+    disabled: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError || !spaceDetails) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading space details.</p>
+      </div>
+    );
+  }
+
+  const { members, space } = spaceDetails;
+
   return (
     <>
       <h3 className="text-xl font-bold">
@@ -117,9 +105,7 @@ export default function SpacePage({
 
 SpacePage.getLayout = (
   page: ReactElement,
-  { owner, space }: { owner: WorkspaceType; space: PokeSpaceType }
+  { owner }: { owner: LightWorkspaceType }
 ) => {
-  return (
-    <PokeLayout title={`${owner.name} - ${space.name}`}>{page}</PokeLayout>
-  );
+  return <PokeLayout title={`${owner.name} - Space`}>{page}</PokeLayout>;
 };

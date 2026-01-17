@@ -1,3 +1,4 @@
+import { Spinner } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
@@ -6,23 +7,13 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { PokeRecentWebhookRequests } from "@app/components/poke/triggers/RecentWebhookRequests";
 import { ViewTriggerTable } from "@app/components/poke/triggers/view";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
-import type { TriggerType } from "@app/types/assistant/triggers";
+import { usePokeTriggerDetails } from "@app/poke/swr/trigger_details";
+import type { LightWorkspaceType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  trigger: TriggerType;
-  agent: LightAgentConfigurationType;
   owner: LightWorkspaceType;
-  editorUser: UserType | null;
+  params: { wId: string; aId: string; triggerId: string };
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
@@ -34,45 +25,48 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: aId,
-    variant: "full",
-  });
-  if (!agentConfiguration) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const trigger = await TriggerResource.fetchById(auth, triggerId);
-  if (!trigger || trigger.agentConfigurationId !== agentConfiguration.sId) {
-    return {
-      notFound: true,
-    };
-  }
-
-  // Fetch editor user
-  const editorUsers = trigger.editor
-    ? await UserResource.fetchByModelIds([trigger.editor])
-    : [];
-  const editorUser = editorUsers.length > 0 ? editorUsers[0].toJSON() : null;
-
   return {
     props: {
-      trigger: trigger.toJSON(),
-      agent: agentConfiguration,
       owner,
-      editorUser,
+      params: context.params as { wId: string; aId: string; triggerId: string },
     },
   };
 });
 
 export default function TriggerPage({
-  trigger,
-  agent,
   owner,
-  editorUser,
+  params,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { triggerId } = params;
+
+  const {
+    data: triggerDetails,
+    isLoading,
+    isError,
+  } = usePokeTriggerDetails({
+    owner,
+    triggerId,
+    disabled: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError || !triggerDetails) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading trigger details.</p>
+      </div>
+    );
+  }
+
+  const { trigger, agent, editorUser } = triggerDetails;
+
   return (
     <>
       <h3 className="text-xl font-bold">
@@ -120,19 +114,7 @@ export default function TriggerPage({
 
 TriggerPage.getLayout = (
   page: ReactElement,
-  {
-    owner,
-    agent,
-    trigger,
-  }: {
-    owner: WorkspaceType;
-    agent: LightAgentConfigurationType;
-    trigger: TriggerType;
-  }
+  { owner }: { owner: WorkspaceType }
 ) => {
-  return (
-    <PokeLayout title={`${owner.name} - ${agent.name} - ${trigger.name}`}>
-      {page}
-    </PokeLayout>
-  );
+  return <PokeLayout title={`${owner.name} - Trigger`}>{page}</PokeLayout>;
 };

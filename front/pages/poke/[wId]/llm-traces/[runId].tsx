@@ -20,21 +20,9 @@ import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: LightWorkspaceType;
-  runId: string;
+  params: { wId: string; runId: string };
 }>(async (context, auth) => {
-  const owner = auth.workspace();
-  if (!owner) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const wId = context.params?.wId;
-  if (!wId || !isString(wId)) {
-    return {
-      notFound: true,
-    };
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const runId = context.params?.runId;
   if (!runId || !isString(runId) || !isLLMTraceId(runId)) {
@@ -46,16 +34,16 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      runId,
+      params: context.params as { wId: string; runId: string },
     },
   };
 });
 
-interface LLMTracePageProps extends InferGetServerSidePropsType<
-  typeof getServerSideProps
-> {}
-
-const LLMTracePage = ({ owner, runId }: LLMTracePageProps) => {
+const LLMTracePage = ({
+  owner,
+  params,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) => {
+  const { runId } = params;
   const { trace, isLLMTraceLoading, isLLMTraceError } = usePokeLLMTrace({
     workspace: owner,
     runId,

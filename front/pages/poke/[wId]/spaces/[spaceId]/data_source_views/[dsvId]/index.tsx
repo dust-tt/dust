@@ -1,3 +1,4 @@
+import { Spinner } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
@@ -6,16 +7,15 @@ import { ViewDataSourceViewTable } from "@app/components/poke/data_source_views/
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { dataSourceViewToPokeJSON } from "@app/lib/poke/utils";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { DataSourceViewContentNodesProps } from "@app/poke/swr/data_source_views";
 import { usePokeDataSourceViewContentNodes } from "@app/poke/swr/data_source_views";
-import type { PokeDataSourceViewType, WorkspaceType } from "@app/types";
+import { usePokeDataSourceViewDetails } from "@app/poke/swr/data_source_view_details";
+import type { LightWorkspaceType } from "@app/types";
 import { defaultSelectionConfiguration } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  dataSourceView: PokeDataSourceViewType;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
+  params: { wId: string; spaceId: string; dsvId: string };
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
@@ -27,32 +27,55 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId, {
-    includeEditedBy: true,
-  });
-  if (!dataSourceView) {
-    return {
-      notFound: true,
-    };
-  }
-
   return {
     props: {
       owner,
-      dataSourceView: await dataSourceViewToPokeJSON(dataSourceView),
+      params: context.params as { wId: string; spaceId: string; dsvId: string },
     },
   };
 });
 
 export default function DataSourceViewPage({
-  dataSourceView,
   owner,
+  params,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const useContentNodes = (params: DataSourceViewContentNodesProps) => {
+  const { dsvId } = params;
+
+  const {
+    data: dataSourceViewDetails,
+    isLoading,
+    isError,
+  } = usePokeDataSourceViewDetails({
+    owner,
+    dataSourceViewId: dsvId,
+    disabled: false,
+  });
+
+  const useContentNodes = (
+    contentNodesParams: DataSourceViewContentNodesProps
+  ) => {
     return usePokeDataSourceViewContentNodes({
-      ...params,
+      ...contentNodesParams,
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError || !dataSourceViewDetails) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading data source view details.</p>
+      </div>
+    );
+  }
+
+  const { dataSourceView } = dataSourceViewDetails;
 
   return (
     <>
@@ -107,16 +130,9 @@ export default function DataSourceViewPage({
 
 DataSourceViewPage.getLayout = (
   page: ReactElement,
-  {
-    owner,
-    dataSourceView,
-  }: { owner: WorkspaceType; dataSourceView: PokeDataSourceViewType }
+  { owner }: { owner: LightWorkspaceType }
 ) => {
   return (
-    <PokeLayout
-      title={`${owner.name} - ${dataSourceView.name} in ${dataSourceView.space.name}`}
-    >
-      {page}
-    </PokeLayout>
+    <PokeLayout title={`${owner.name} - Data Source View`}>{page}</PokeLayout>
   );
 };

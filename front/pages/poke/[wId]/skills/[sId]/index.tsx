@@ -1,4 +1,4 @@
-import { TextArea } from "@dust-tt/sparkle";
+import { Spinner, TextArea } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -8,17 +8,13 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { SkillOverviewTable } from "@app/components/poke/skills/SkillOverviewTable";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { SpaceType, UserType, WorkspaceType } from "@app/types";
+import { usePokeSkillDetails } from "@app/poke/swr/skill_details";
+import type { WorkspaceType } from "@app/types";
 import { isString } from "@app/types";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  skill: SkillType;
-  editedByUser: UserType | null;
-  spaces: SpaceType[];
   owner: WorkspaceType;
+  params: { wId: string; sId: string };
 }>(async (context, auth) => {
   const sId = context.params?.sId;
   if (!isString(sId)) {
@@ -27,38 +23,48 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const skill = await SkillResource.fetchById(auth, sId);
-
-  if (!skill) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const serializedSkill = skill.toJSON(auth);
-  const editedByUser = await skill.fetchEditedByUser(auth);
-  const spaces = await SpaceResource.fetchByIds(
-    auth,
-    serializedSkill.requestedSpaceIds
-  );
-
   return {
     props: {
       owner: auth.getNonNullableWorkspace(),
-      skill: serializedSkill,
-      editedByUser: editedByUser ? editedByUser.toJSON() : null,
-      spaces: spaces.map((s) => s.toJSON()),
+      params: context.params as { wId: string; sId: string },
     },
   };
 });
 
 const SkillDetailsPage = ({
   owner,
-  skill,
-  editedByUser,
-  spaces,
+  params,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const { isDark } = useTheme();
+  const { sId } = params;
+
+  const {
+    data: skillDetails,
+    isLoading,
+    isError,
+  } = usePokeSkillDetails({
+    owner,
+    skillId: sId,
+    disabled: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError || !skillDetails) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading skill details.</p>
+      </div>
+    );
+  }
+
+  const { skill, editedByUser, spaces } = skillDetails;
 
   return (
     <div>
@@ -136,11 +142,9 @@ const SkillDetailsPage = ({
 
 SkillDetailsPage.getLayout = (
   page: ReactElement,
-  { owner, skill }: { owner: WorkspaceType; skill: SkillType }
+  { owner }: { owner: WorkspaceType }
 ) => {
-  return (
-    <PokeLayout title={`${owner.name} - ${skill.name}`}>{page}</PokeLayout>
-  );
+  return <PokeLayout title={`${owner.name} - Skill`}>{page}</PokeLayout>;
 };
 
 export default SkillDetailsPage;

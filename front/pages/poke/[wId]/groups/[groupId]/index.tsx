@@ -1,29 +1,19 @@
+import { Spinner } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import { ViewGroupTable } from "@app/components/poke/groups/view";
 import { MembersDataTable } from "@app/components/poke/members/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import type {
-  GroupType,
-  LightWorkspaceType,
-  UserTypeWithWorkspaces,
-} from "@app/types";
+import { usePokeGroupDetails } from "@app/poke/swr/group_details";
+import type { LightWorkspaceType } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  members: UserTypeWithWorkspaces[];
   owner: LightWorkspaceType;
-  group: GroupType;
+  params: { wId: string; groupId: string };
 }>(async (context, auth) => {
-  const owner = auth.workspace();
-  if (!owner) {
-    return {
-      notFound: true,
-    };
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { groupId } = context.params || {};
@@ -33,45 +23,48 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const groupRes = await GroupResource.fetchById(auth, groupId);
-  if (groupRes.isErr()) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const group = groupRes.value;
-
-  const groupMembers = await group.getActiveMembers(auth);
-  const memberships = await getMembers(auth);
-
-  const userWithWorkspaces = groupMembers.reduce<UserTypeWithWorkspaces[]>(
-    (acc, user) => {
-      const member = memberships.members.find((m) => m.sId === user.sId);
-
-      if (member) {
-        acc.push(member);
-      }
-
-      return acc;
-    },
-    []
-  );
-
   return {
     props: {
-      members: userWithWorkspaces,
       owner,
-      group: group.toJSON(),
+      params: context.params as { wId: string; groupId: string },
     },
   };
 });
 
 export default function GroupPage({
-  members,
   owner,
-  group,
+  params,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { groupId } = params;
+
+  const {
+    data: groupDetails,
+    isLoading,
+    isError,
+  } = usePokeGroupDetails({
+    owner,
+    groupId,
+    disabled: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError || !groupDetails) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading group details.</p>
+      </div>
+    );
+  }
+
+  const { members, group } = groupDetails;
+
   return (
     <>
       <h3 className="text-xl font-bold">

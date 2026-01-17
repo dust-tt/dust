@@ -6,6 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Page,
+  Spinner,
   TextArea,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
@@ -19,25 +20,15 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
-import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { decodeSqids } from "@app/lib/utils";
-import type {
-  AgentConfigurationType,
-  SpaceType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+import { usePokeAgentDetails } from "@app/poke/swr/agent_details";
+import type { WorkspaceType } from "@app/types";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  agentConfigurations: AgentConfigurationType[];
-  authors: UserType[];
-  lastVersionEditors: UserType[];
-  spaces: SpaceType[];
-  workspace: WorkspaceType;
+  owner: WorkspaceType;
+  params: { wId: string; aId: string };
 }>(async (context, auth) => {
   const aId = context.params?.aId;
   if (!aId || typeof aId !== "string") {
@@ -46,45 +37,57 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const agentConfigurations = await listsAgentConfigurationVersions(auth, {
-    agentId: aId,
-    variant: "full",
-  });
-
-  const lastVersionEditors = await getEditors(auth, agentConfigurations[0]);
-  const [latestAgentConfiguration] = agentConfigurations;
-
-  const spaces = await SpaceResource.fetchByIds(
-    auth,
-    latestAgentConfiguration.requestedSpaceIds
-  );
-
   return {
     props: {
-      agentConfigurations,
-      authors: await getAuthors(agentConfigurations),
-      lastVersionEditors,
-      spaces: spaces.map((s) => s.toJSON()),
-      workspace: auth.getNonNullableWorkspace(),
+      owner: auth.getNonNullableWorkspace(),
+      params: context.params as { wId: string; aId: string },
     },
   };
 });
 
 const AssistantDetailsPage = ({
-  agentConfigurations,
-  authors,
-  lastVersionEditors,
-  spaces,
-  workspace,
+  owner,
+  params,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const { isDark } = useTheme();
+  const { aId } = params;
+
+  const {
+    data: agentDetails,
+    isLoading,
+    isError,
+  } = usePokeAgentDetails({
+    owner,
+    aId,
+    disabled: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError || !agentDetails) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading agent details.</p>
+      </div>
+    );
+  }
+
+  const { agentConfigurations, authors, lastVersionEditors, spaces } =
+    agentDetails;
+
   return (
     <div>
       <div className="flex flex-row items-center gap-4">
         <h3 className="text-xl font-bold">
           Agent from workspace{" "}
-          <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
-            {workspace.name}
+          <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+            {owner.name}
           </a>
         </h3>
         <DropdownMenu>
@@ -126,7 +129,7 @@ const AssistantDetailsPage = ({
             pluginResourceTarget={{
               resourceId: agentConfigurations[0].sId,
               resourceType: "agents",
-              workspace: workspace,
+              workspace: owner,
             }}
           />
         </div>
@@ -134,16 +137,13 @@ const AssistantDetailsPage = ({
 
       <div className="mt-4">
         <ConversationAgentDataTable
-          owner={workspace}
+          owner={owner}
           agentId={agentConfigurations[0].sId}
         />
       </div>
 
       <div className="mt-4">
-        <TriggerDataTable
-          owner={workspace}
-          agentId={agentConfigurations[0].sId}
-        />
+        <TriggerDataTable owner={owner} agentId={agentConfigurations[0].sId} />
       </div>
 
       <Page.Vertical align="stretch">
@@ -233,11 +233,9 @@ const AssistantDetailsPage = ({
 
 AssistantDetailsPage.getLayout = (
   page: ReactElement,
-  { workspace }: { workspace: WorkspaceType }
+  { owner }: { owner: WorkspaceType }
 ) => {
-  return (
-    <PokeLayout title={`${workspace.name} - Assistants`}>{page}</PokeLayout>
-  );
+  return <PokeLayout title={`${owner.name} - Assistants`}>{page}</PokeLayout>;
 };
 
 export default AssistantDetailsPage;

@@ -24,31 +24,26 @@ import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
-import config from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { classNames } from "@app/lib/utils";
 import { usePokeConversation } from "@app/poke/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
+import { usePokeConversationConfig } from "@app/poke/swr/conversation_config";
 import type {
   ContentFragmentType,
+  LightWorkspaceType,
   PokeAgentMessageType,
   UserMessageType,
-  WorkspaceType,
 } from "@app/types";
 import { assertNever, isFileContentFragment } from "@app/types";
 
-const { TEMPORAL_AGENT_NAMESPACE = "" } = process.env;
-
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  conversationDataSourceId: string | null;
-  conversationId: string;
-  langfuseUiBaseUrl: string | null;
-  temporalWorkspace: string;
-  workspace: WorkspaceType;
+  owner: LightWorkspaceType;
+  params: { wId: string; cId: string };
 }>(async (context, auth) => {
+  const owner = auth.getNonNullableWorkspace();
+
   const cId = context.params?.cId;
   if (!cId || typeof cId !== "string") {
     return {
@@ -56,35 +51,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const wId = context.params?.wId;
-  if (!wId || typeof wId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const cRes = await ConversationResource.fetchConversationWithoutContent(
-    auth,
-    cId
-  );
-  if (cRes.isErr()) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const conversationDataSource = await DataSourceResource.fetchByConversation(
-    auth,
-    cRes.value
-  );
-
   return {
     props: {
-      conversationDataSourceId: conversationDataSource?.sId ?? null,
-      conversationId: cId,
-      langfuseUiBaseUrl: config.getLangfuseUiBaseUrl() ?? null,
-      temporalWorkspace: TEMPORAL_AGENT_NAMESPACE,
-      workspace: auth.getNonNullableWorkspace(),
+      owner,
+      params: context.params as { wId: string; cId: string },
     },
   };
 });
@@ -144,14 +114,14 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
 interface AgentMessageViewProps {
   message: PokeAgentMessageType;
   useMarkdown: boolean;
-  workspace: WorkspaceType;
+  owner: LightWorkspaceType;
   langfuseUiBaseUrl: string | null;
 }
 
 const AgentMessageView = ({
   message,
   useMarkdown,
-  workspace,
+  owner,
   langfuseUiBaseUrl,
 }: AgentMessageViewProps) => {
   const [expandedActions, setExpandedActions] = useState<Set<number>>(
@@ -179,7 +149,7 @@ const AgentMessageView = ({
           <>
             {message.configuration.name}{" "}
             <a
-              href={`/poke/${workspace.sId}/assistants/${message.configuration.sId}`}
+              href={`/poke/${owner.sId}/assistants/${message.configuration.sId}`}
               target="_blank"
               className="text-highlight-500"
             >
@@ -202,7 +172,7 @@ const AgentMessageView = ({
           date: {new Date(message.created).toLocaleString()} • message version :{" "}
           {message.version} • message sId : {message.sId} {" • "} agent sId :
           <a
-            href={`/poke/${workspace.sId}/assistants/${message.configuration.sId}`}
+            href={`/poke/${owner.sId}/assistants/${message.configuration.sId}`}
             target="_blank"
             className="text-highlight-500"
           >
@@ -341,24 +311,29 @@ const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
   );
 };
 
-interface ConversationPageProps extends InferGetServerSidePropsType<
-  typeof getServerSideProps
-> {}
-
 const ConversationPage = ({
-  conversationDataSourceId,
-  conversationId,
-  langfuseUiBaseUrl,
-  temporalWorkspace,
-  workspace,
-}: ConversationPageProps) => {
+  owner,
+  params,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) => {
+  const { cId: conversationId } = params;
+
+  const {
+    data: conversationConfig,
+    isLoading: isConfigLoading,
+    isError: isConfigError,
+  } = usePokeConversationConfig({
+    owner,
+    conversationId,
+    disabled: false,
+  });
+
   const { conversation } = usePokeConversation({
-    workspaceId: workspace.sId,
+    workspaceId: owner.sId,
     conversationId,
   });
   const [useMarkdown, setUseMarkdown] = useState(false);
   const { data: agents } = usePokeAgentConfigurations({
-    owner: workspace,
+    owner,
     agentsGetView: "admin_internal",
   });
 
@@ -405,7 +380,7 @@ const ConversationPage = ({
     setRenderResult(null);
     try {
       const response = await clientFetch(
-        `/api/poke/workspaces/${workspace.sId}/conversations/${conversationId}/render`,
+        `/api/poke/workspaces/${owner.sId}/conversations/${conversationId}/render`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -436,13 +411,32 @@ const ConversationPage = ({
     }
   }
 
+  if (isConfigLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isConfigError || !conversationConfig) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading conversation config.</p>
+      </div>
+    );
+  }
+
+  const { conversationDataSourceId, langfuseUiBaseUrl, temporalWorkspace } =
+    conversationConfig;
+
   return (
     conversation && (
       <div className="max-w-4xl">
         <h3 className="text-xl font-bold">
           Conversation in workspace{" "}
-          <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
-            {workspace.name}
+          <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+            {owner.name}
           </a>
         </h3>
         <Page.Vertical align="stretch">
@@ -471,7 +465,7 @@ const ConversationPage = ({
               target="_blank"
             />
             <Button
-              href={`/poke/${workspace.sId}/data_sources/${conversationDataSourceId}`}
+              href={`/poke/${owner.sId}/data_sources/${conversationDataSourceId}`}
               label="Conversation DS"
               variant="primary"
               size="xs"
@@ -609,7 +603,7 @@ const ConversationPage = ({
                             key={`message-${i}-${j}`}
                             message={m}
                             useMarkdown={useMarkdown}
-                            workspace={workspace}
+                            owner={owner}
                             langfuseUiBaseUrl={langfuseUiBaseUrl}
                           />
                         );
@@ -647,11 +641,9 @@ const ConversationPage = ({
 
 ConversationPage.getLayout = (
   page: ReactElement,
-  { workspace }: { workspace: WorkspaceType }
+  { owner }: { owner: LightWorkspaceType }
 ) => {
-  return (
-    <PokeLayout title={`${workspace.name} - Conversation`}>{page}</PokeLayout>
-  );
+  return <PokeLayout title={`${owner.name} - Conversation`}>{page}</PokeLayout>;
 };
 
 export default ConversationPage;

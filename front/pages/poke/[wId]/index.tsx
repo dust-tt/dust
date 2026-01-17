@@ -4,17 +4,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Spinner,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import { format } from "date-fns/format";
-import keyBy from "lodash/keyBy";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import type Stripe from "stripe";
 
 import { AppDataTable } from "@app/components/poke/apps/table";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
@@ -39,122 +37,39 @@ import {
 } from "@app/components/poke/subscriptions/table";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
-import config from "@app/lib/api/config";
-import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
-import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
-import { getStripeSubscription } from "@app/lib/plans/stripe";
-import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
-import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
-import type {
-  ExtensionConfigurationType,
-  ProgrammaticUsageConfigurationType,
-  SubscriptionType,
-  WhitelistableFeature,
-  WorkspaceDomain,
-  WorkspaceSegmentationType,
-  WorkspaceType,
-} from "@app/types";
-import { isString, WHITELISTABLE_FEATURES } from "@app/types";
+import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
+import type { WorkspaceSegmentationType, WorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  activeSubscription: SubscriptionType;
-  baseUrl: string;
-  extensionConfig: ExtensionConfigurationType | null;
   owner: WorkspaceType;
-  programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
-  stripeSubscription: Stripe.Subscription | null;
-  subscriptions: SubscriptionType[];
-  whitelistableFeatures: WhitelistableFeature[];
-  workspaceVerifiedDomains: WorkspaceDomain[];
-  workspaceCreationDay: string;
-  workosEnvironmentId: string;
 }>(async (_context, auth) => {
-  const owner = auth.workspace();
-  const activeSubscription = auth.subscription();
-
-  if (!owner || !activeSubscription) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const subscriptionModels = await SubscriptionModel.findAll({
-    where: { workspaceId: owner.id },
-  });
-
-  const plans = keyBy(
-    await PlanModel.findAll({
-      where: {
-        id: subscriptionModels.map((s) => s.planId),
-      },
-    }),
-    "id"
-  );
-
-  const subscriptions = subscriptionModels.map((s) =>
-    renderSubscriptionFromModels({
-      plan: plans[s.planId],
-      activeSubscription: s,
-    })
-  );
-
-  const workspaceResource = await WorkspaceResource.fetchById(owner.sId);
-  if (!workspaceResource) {
-    throw new Error(`Workspace not found: ${owner.sId}`);
-  }
-  const workspaceVerifiedDomains = await workspaceResource.getVerifiedDomains();
-
-  const workspaceCreationDay = await getWorkspaceCreationDate(owner.sId);
-
-  const extensionConfig =
-    await ExtensionConfigurationResource.fetchForWorkspace(auth);
-
-  const programmaticUsageConfig =
-    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-
-  let stripeSubscription: Stripe.Subscription | null = null;
-  if (activeSubscription.stripeSubscriptionId) {
-    stripeSubscription = await getStripeSubscription(
-      activeSubscription.stripeSubscriptionId
-    );
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   return {
     props: {
       owner,
-      activeSubscription,
-      stripeSubscription,
-      subscriptions,
-      whitelistableFeatures: WHITELISTABLE_FEATURES,
-      workspaceVerifiedDomains,
-      workspaceCreationDay: format(workspaceCreationDay, "yyyy-MM-dd"),
-      extensionConfig: extensionConfig?.toJSON() ?? null,
-      programmaticUsageConfig: programmaticUsageConfig?.toJSON() ?? null,
-      baseUrl: config.getClientFacingUrl(),
-      workosEnvironmentId: config.getWorkOSEnvironmentId(),
     },
   };
 });
 
 const WorkspacePage = ({
   owner,
-  activeSubscription,
-  stripeSubscription,
-  subscriptions,
-  whitelistableFeatures,
-  workspaceVerifiedDomains,
-  workspaceCreationDay,
-  extensionConfig,
-  programmaticUsageConfig,
-  workosEnvironmentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
+
+  const {
+    data: workspaceInfo,
+    isLoading,
+    isError,
+  } = usePokeWorkspaceInfo({
+    owner,
+    disabled: false,
+  });
 
   const currentTab = !isString(router.query.tab)
     ? "datasources"
@@ -188,7 +103,6 @@ const WorkspacePage = ({
         }
         router.reload();
       } catch (e) {
-        console.error(e);
         window.alert("An error occurred while updating the workspace.");
       }
     }
@@ -201,6 +115,34 @@ const WorkspacePage = ({
 
   const agentsRetention = dataRetention?.agents ?? {};
   const isInMaintenance = owner.metadata?.maintenance;
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError || !workspaceInfo) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading workspace information.</p>
+      </div>
+    );
+  }
+
+  const {
+    activeSubscription,
+    stripeSubscription,
+    subscriptions,
+    whitelistableFeatures,
+    workspaceVerifiedDomains,
+    workspaceCreationDay,
+    extensionConfig,
+    programmaticUsageConfig,
+    workosEnvironmentId,
+  } = workspaceInfo;
 
   return (
     <div className="ml-8 p-6">
