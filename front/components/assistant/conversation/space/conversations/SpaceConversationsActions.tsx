@@ -22,7 +22,7 @@ export function SpaceConversationsActions() {
       icon: ContactsUserIcon,
       onClick: () => {
         // todo(projects) open side panel to invite members
-        console.log("Invite members clicked");
+        window.location.hash = "settings";
       },
     },
   ];

@@ -114,7 +114,7 @@ export const getServerSideProps =
     };
   });
 
-type SpaceTab = "conversations" | "context" | "tools" | "settings";
+type SpaceTab = "conversations" | "context" | "settings";
 
 export default function SpaceConversations({
   owner,
@@ -158,12 +158,7 @@ export default function SpaceConversations({
   // Parse and validate the current tab from URL hash
   const getCurrentTabFromHash = useCallback((): SpaceTab => {
     const hash = window.location.hash.slice(1); // Remove the # prefix
-    if (
-      hash === "context" ||
-      hash === "tools" ||
-      hash === "settings" ||
-      hash === "conversations"
-    ) {
+    if (hash === "context" || hash === "settings" || hash === "conversations") {
       return hash;
     }
     return "conversations";
