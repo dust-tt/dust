@@ -119,7 +119,7 @@ function PreviewContent({
               stickyMentions={
                 draftAgent ? [toRichAgentMentionType(draftAgent)] : []
               }
-              conversationId={null}
+              conversation={null}
               actions={["attachment"]}
               disableAutoFocus
               isFloating={false}

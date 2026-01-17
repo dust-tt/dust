@@ -43,7 +43,7 @@ interface InputBarAttachmentsProps {
   owner: LightWorkspaceType;
   files: FileAttachmentsProps;
   nodes?: NodeAttachmentsProps;
-  conversationId: string | null;
+  conversationId?: string | null;
   disable?: boolean;
 }
 

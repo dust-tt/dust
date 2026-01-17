@@ -47,7 +47,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     const submitFeedback = useMessageFeedback({
       owner: context.owner,
-      conversationId: context.conversationId,
+      conversationId: context.conversation?.sId,
     });
 
     const { submit: onSubmitThumb, isSubmitting: isSubmittingThumb } =
@@ -75,7 +75,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     const { onReactionToggle } = useReaction({
       owner: context.owner,
-      conversationId: context.conversationId,
+      conversationId: context.conversation?.sId,
       message: data,
     });
 
@@ -104,7 +104,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 owner={context.owner}
                 key={index}
                 attachmentCitation={attachmentCitation}
-                conversationId={context.conversationId}
+                conversationId={context.conversation?.sId}
               />
             );
           })
@@ -134,6 +134,11 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return null;
     }
 
+    // No message without a conversation
+    if (!context.conversation) {
+      return null;
+    }
+
     return (
       <>
         {!areSameDate && <MessageDateIndicator message={data} />}
@@ -145,7 +150,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           {isUserMessage(data) && (
             <UserMessage
               citations={citations}
-              conversationId={context.conversationId}
+              conversationId={context.conversation.sId}
               enableReactions={context.enableReactions}
               currentUserId={context.user.sId}
               isLastMessage={!nextData}
@@ -158,7 +163,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             <AgentMessage
               user={context.user}
               triggeringUser={triggeringUser}
-              conversationId={context.conversationId}
+              conversationId={context.conversation.sId}
               isLastMessage={!nextData}
               agentMessage={data}
               messageFeedback={messageFeedbackWithSubmit}
@@ -168,6 +173,11 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           )}
           {data.visibility !== "deleted" &&
             data.richMentions.map((mention) => {
+              // To please the type checker
+              if (!context.conversation) {
+                return null;
+              }
+
               if (mention.status === "pending") {
                 return (
                   <MentionValidationRequired
@@ -176,7 +186,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                     message={data}
                     owner={context.owner}
                     triggeringUser={triggeringUser}
-                    conversationId={context.conversationId}
+                    conversationId={context.conversation.sId}
                   />
                 );
               } else if (
@@ -190,7 +200,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                     message={data}
                     owner={context.owner}
                     triggeringUser={triggeringUser}
-                    conversationId={context.conversationId}
+                    conversationId={context.conversation.sId}
                   />
                 );
               }

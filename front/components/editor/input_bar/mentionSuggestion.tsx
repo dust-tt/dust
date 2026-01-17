@@ -22,7 +22,7 @@ export function createMentionSuggestion({
   includeCurrentUser = false,
 }: {
   owner: WorkspaceType;
-  conversationId: string | null;
+  conversationId?: string | null;
   includeCurrentUser?: boolean;
   select: {
     agents: boolean;

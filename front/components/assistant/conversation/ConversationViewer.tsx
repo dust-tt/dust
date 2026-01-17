@@ -621,7 +621,7 @@ export const ConversationViewer = ({
       data: VirtuosoMessage;
       context: VirtuosoMessageListContext;
     }) => {
-      return `conversation-${context.conversationId}-message-rank-${data.rank}`;
+      return `conversation-${context.conversation?.sId}-message-rank-${data.rank}`;
     },
     []
   );
@@ -640,12 +640,12 @@ export const ConversationViewer = ({
     );
   }, [feedbacks]);
 
-  const context = useMemo(() => {
+  const context: VirtuosoMessageListContext = useMemo(() => {
     return {
       user,
       owner,
       handleSubmit,
-      conversationId,
+      conversation,
       enableReactions: !!conversation?.spaceId,
       agentBuilderContext,
       feedbacksByMessageId,
@@ -654,8 +654,7 @@ export const ConversationViewer = ({
     user,
     owner,
     handleSubmit,
-    conversationId,
-    conversation?.spaceId,
+    conversation,
     agentBuilderContext,
     feedbacksByMessageId,
   ]);
