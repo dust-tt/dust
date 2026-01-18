@@ -129,7 +129,9 @@ type InstallableTool =
   | "cargo"
   | "cmake"
   | "protobuf"
-  | "direnv";
+  | "direnv"
+  | "psql"
+  | "fzf";
 
 const INSTALL_INSTRUCTIONS: Record<PlatformName, Record<InstallableTool, string>> = {
   macos: {
@@ -144,6 +146,8 @@ const INSTALL_INSTRUCTIONS: Record<PlatformName, Record<InstallableTool, string>
     cmake: "brew install cmake",
     protobuf: "brew install protobuf",
     direnv: "brew install direnv && add shell hook (see README for setup)",
+    psql: "brew install postgresql (provides psql client)",
+    fzf: "brew install fzf",
   },
   linux: {
     zellij: "cargo install zellij (or download from https://github.com/zellij-org/zellij/releases)",
@@ -159,6 +163,8 @@ const INSTALL_INSTRUCTIONS: Record<PlatformName, Record<InstallableTool, string>
       "sudo apt install protobuf-compiler (Debian/Ubuntu) or sudo dnf install protobuf-compiler (Fedora)",
     direnv:
       "sudo apt install direnv (Debian/Ubuntu) or sudo dnf install direnv (Fedora) && add shell hook (see README)",
+    psql: "sudo apt install postgresql-client (Debian/Ubuntu) or sudo dnf install postgresql (Fedora)",
+    fzf: "sudo apt install fzf (Debian/Ubuntu) or sudo dnf install fzf (Fedora)",
   },
 };
 

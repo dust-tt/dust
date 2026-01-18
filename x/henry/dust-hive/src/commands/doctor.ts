@@ -269,6 +269,26 @@ async function checkConfig(): Promise<CheckResult> {
   };
 }
 
+async function checkPsql(): Promise<CheckResult> {
+  const version = await getCommandVersion("psql");
+  return {
+    name: "psql",
+    ok: version !== null,
+    message: version ?? "Not found",
+    fix: getInstallInstructions("psql"),
+  };
+}
+
+async function checkFzf(): Promise<CheckResult> {
+  const version = await getCommandVersion("fzf");
+  return {
+    name: "fzf",
+    ok: version !== null,
+    message: version ?? "Not found",
+    fix: getInstallInstructions("fzf"),
+  };
+}
+
 function printResults(results: CheckResult[]): boolean {
   console.log("Prerequisites:");
   console.log();
@@ -302,6 +322,8 @@ async function runAllChecks(): Promise<CheckResult[]> {
     await checkDocker(),
     await checkDockerCompose(),
     await checkTemporalCli(),
+    await checkPsql(),
+    await checkFzf(),
     await checkNvm(),
     await checkCargo(),
     await checkCmake(),
