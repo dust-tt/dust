@@ -250,8 +250,8 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
 
         // Use user-provided role if specified, otherwise use the default from workspace connection.
         let role = wsRole;
-        if (isString(userRole) && userRole.trim()) {
-          const trimmedUserRole = userRole.trim();
+        const trimmedUserRole = isString(userRole) ? userRole.trim() : "";
+        if (trimmedUserRole) {
           if (!isValidSnowflakeRole(trimmedUserRole)) {
             throw new Error(
               `Invalid Snowflake role format: "${trimmedUserRole}". ` +
