@@ -1,6 +1,6 @@
 import { setCacheSource } from "../lib/cache";
 import { withEnvironment } from "../lib/commands";
-import { getDockerProjectName, startDocker } from "../lib/docker";
+import { startDocker } from "../lib/docker";
 import { isInitialized, markInitialized } from "../lib/environment";
 import { startForwarder } from "../lib/forward";
 import { FORWARDER_PORTS } from "../lib/forwarderConfig";
@@ -130,7 +130,6 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
 
   // Check if first warm (needs initialization)
   const needsInit = !(await isInitialized(env.name));
-  const projectName = getDockerProjectName(env.name);
 
   // Start Docker + front + pre-warming all in parallel
   // Front can compile pages while Docker starts and init runs
@@ -157,7 +156,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     console.log();
 
     // Run all init tasks in parallel with Rust service compilation
-    const dbInitPromise = runAllDbInits(env, projectName);
+    const dbInitPromise = runAllDbInits(env);
     const temporalRunningPromise = isTemporalRunning();
     const [, , temporalRunning] = await Promise.all([
       // Start Rust services - they'll compile while init runs

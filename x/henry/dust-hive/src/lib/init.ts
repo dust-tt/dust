@@ -1,6 +1,7 @@
 // Data-driven database initialization with binary caching
 
 import { type InitBinary, binaryExists, getBinaryPath, getCacheSource } from "./cache";
+import { getServiceContainerId } from "./docker";
 import { buildPostgresUri, loadEnvVars } from "./env-utils";
 import type { Environment } from "./environment";
 import { logger } from "./logger";
@@ -244,14 +245,22 @@ async function initElasticsearchTS(
 }
 
 // Wait for a Docker container to be healthy
-async function waitForContainer(projectName: string, service: string): Promise<void> {
-  const containerName = `${projectName}-${service}-1`;
+// Uses getServiceContainerId instead of constructing container name (more reliable)
+async function waitForContainer(envName: string, service: string): Promise<void> {
   const maxWait = 60000;
   const start = Date.now();
 
   while (Date.now() - start < maxWait) {
+    // Get container ID using docker compose (handles naming variations)
+    const containerId = await getServiceContainerId(envName, service);
+    if (!containerId) {
+      // Container doesn't exist yet, wait and retry
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      continue;
+    }
+
     const proc = Bun.spawn(
-      ["docker", "inspect", "--format", "{{.State.Health.Status}}", containerName],
+      ["docker", "inspect", "--format", "{{.State.Health.Status}}", containerId],
       { stdout: "pipe", stderr: "pipe" }
     );
     const output = await new Response(proc.stdout).text();
@@ -441,17 +450,17 @@ async function runConnectorsDbInit(env: Environment): Promise<boolean> {
 
 // Run all DB initialization steps in parallel
 // Each init waits for its container, then runs
-export async function runAllDbInits(env: Environment, projectName: string): Promise<void> {
+export async function runAllDbInits(env: Environment): Promise<void> {
   logger.info("Initializing databases (parallel)...");
 
   // Run all inits in parallel - each waits for its container first
   await Promise.all([
     // Postgres: wait for container → create DBs → run schema inits
-    waitForContainer(projectName, "db").then(() => initAllPostgres(env)),
+    waitForContainer(env.name, "db").then(() => initAllPostgres(env)),
     // Qdrant: wait for container → create collections
-    waitForContainer(projectName, "qdrant").then(() => initAllQdrant(env)),
+    waitForContainer(env.name, "qdrant").then(() => initAllQdrant(env)),
     // Elasticsearch: wait for container → create indices
-    waitForContainer(projectName, "elasticsearch").then(() => initAllElasticsearch(env)),
+    waitForContainer(env.name, "elasticsearch").then(() => initAllElasticsearch(env)),
   ]);
 
   logger.success("All databases initialized");
