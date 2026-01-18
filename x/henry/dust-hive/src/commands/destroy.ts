@@ -5,7 +5,7 @@ import { directoryExists } from "../lib/fs";
 import { logger } from "../lib/logger";
 import { getConfiguredMultiplexer, getSessionName } from "../lib/multiplexer";
 import { getWorktreeDir } from "../lib/paths";
-import { cleanupServicePorts } from "../lib/ports";
+import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
 import { readPid, stopAllServices } from "../lib/process";
 import { restoreTerminal, selectMultipleEnvironments } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
@@ -91,14 +91,7 @@ async function destroySingleEnvironment(
     force: options.force,
   });
   if (blockedPorts.length > 0) {
-    const details = blockedPorts
-      .map(({ port, processes }) => {
-        const procInfo = processes
-          .map((proc) => `${proc.pid}${proc.command ? ` (${proc.command})` : ""}`)
-          .join(", ");
-        return `${port}: ${procInfo}`;
-      })
-      .join("; ");
+    const details = formatBlockedPorts(blockedPorts);
     return Err(
       new CommandError(
         `Ports in use by other processes: ${details}. Stop them or rerun destroy with --force to terminate.`

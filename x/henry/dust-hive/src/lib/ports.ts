@@ -275,3 +275,17 @@ export async function cleanupServicePorts(
 
   return { killedPorts, blockedPorts };
 }
+
+// Format blocked ports for display in error messages
+export function formatBlockedPorts(
+  blockedPorts: Array<{ port: number; processes: PortProcessInfo[] }>
+): string {
+  return blockedPorts
+    .map(({ port, processes }) => {
+      const procInfo = processes
+        .map((proc) => `${proc.pid}${proc.command ? ` (${proc.command})` : ""}`)
+        .join(", ");
+      return `${port}: ${procInfo}`;
+    })
+    .join("; ");
+}
