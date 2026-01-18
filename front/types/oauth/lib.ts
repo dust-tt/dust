@@ -117,7 +117,11 @@ export type OAuthCredentialInput = {
   helpMessage?: string;
   validator?: (value: string) => boolean;
 } & (
-  | { overridableAtPersonalAuth: true; personalAuthLabel: string; personalAuthHelpMessage: string }
+  | {
+      overridableAtPersonalAuth: true;
+      personalAuthLabel: string;
+      personalAuthHelpMessage: string;
+    }
   | { overridableAtPersonalAuth?: false }
 );
 
@@ -134,7 +138,10 @@ export function getOverridablePersonalAuthInputs({
 }: {
   provider: OAuthProvider;
 }): OAuthCredentialInputs | null {
-  const allInputs = getProviderCredentialInputsImpl(provider, "personal_actions");
+  const allInputs = getProviderCredentialInputsImpl(
+    provider,
+    "personal_actions"
+  );
   if (!allInputs) {
     return null;
   }
