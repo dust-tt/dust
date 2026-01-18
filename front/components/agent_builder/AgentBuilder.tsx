@@ -13,10 +13,10 @@ import {
   AgentBuilderFormContext,
   agentBuilderFormSchema,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
+import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import {
   PersonalConnectionRequiredDialog,
