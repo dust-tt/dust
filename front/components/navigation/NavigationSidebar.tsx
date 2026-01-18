@@ -14,7 +14,13 @@ import {
 } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useCallback, useContext, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import type { SidebarNavigation } from "@app/components/navigation/config";
@@ -24,6 +30,7 @@ import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingC
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
 import type { AppStatus } from "@app/lib/api/status";
+import { AGENT_MESSAGE_COMPLETED_EVENT } from "@app/lib/notifications/events";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useTrialMessageUsage } from "@app/lib/swr/trial_message_usage";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
@@ -335,7 +342,25 @@ interface TrialMessageUsageProps {
 }
 
 function TrialMessageUsage({ isAdmin, workspaceId }: TrialMessageUsageProps) {
-  const { messageUsage } = useTrialMessageUsage({ workspaceId });
+  const { messageUsage, mutateMessageUsage } = useTrialMessageUsage({
+    workspaceId,
+  });
+
+  useEffect(() => {
+    const handleAgentMessageCompleted = () => {
+      void mutateMessageUsage();
+    };
+    window.addEventListener(
+      AGENT_MESSAGE_COMPLETED_EVENT,
+      handleAgentMessageCompleted
+    );
+    return () => {
+      window.removeEventListener(
+        AGENT_MESSAGE_COMPLETED_EVENT,
+        handleAgentMessageCompleted
+      );
+    };
+  }, [mutateMessageUsage]);
 
   if (!messageUsage || messageUsage.limit === -1) {
     return null;
