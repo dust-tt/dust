@@ -53,12 +53,21 @@ function createForwarder(listenPort: number, targetPort: number, name: string) {
           pendingBytes: 0,
         };
 
+        // Set up connection timeout - cleared on success or failure
+        const timeoutId = setTimeout(() => {
+          if (!client.data.clientClosed) {
+            console.error(`[${name}] Upstream connection timed out`);
+            client.end();
+          }
+        }, CONNECT_TIMEOUT_MS);
+
         // Connect to upstream
         Bun.connect<ConnectionData>({
           hostname: TARGET_HOST,
           port: targetPort,
           socket: {
             open(upstream) {
+              clearTimeout(timeoutId);
               client.data.upstream = upstream;
               upstream.data = {
                 upstream: client,
@@ -93,24 +102,26 @@ function createForwarder(listenPort: number, targetPort: number, name: string) {
               }
             },
             connectError(_upstream, error) {
+              clearTimeout(timeoutId);
               console.error(`[${name}] Failed to connect to upstream: ${error.message}`);
               if (!client.data.clientClosed) {
                 client.end();
               }
             },
           },
-          data: { upstream: null, clientClosed: false, pendingData: [], pendingBytes: 0 },
+          data: {
+            upstream: null,
+            clientClosed: false,
+            pendingData: [],
+            pendingBytes: 0,
+          },
         }).catch((error) => {
+          clearTimeout(timeoutId);
           console.error(`[${name}] Connection error: ${error.message}`);
-          client.end();
-        });
-
-        setTimeout(() => {
-          if (!(client.data.upstream || client.data.clientClosed)) {
-            console.error(`[${name}] Upstream connection timed out`);
+          if (!client.data.clientClosed) {
             client.end();
           }
-        }, CONNECT_TIMEOUT_MS);
+        });
       },
       data(client, data) {
         const upstream = client.data.upstream;
