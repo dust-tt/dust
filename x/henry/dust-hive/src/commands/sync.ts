@@ -388,7 +388,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<Result<voi
         hash: await hashFile(`${path}/package-lock.json`),
       }))
     ),
-    hashFile(`${dustHiveDir}/bun.lockb`),
+    hashFile(`${dustHiveDir}/bun.lock`),
   ]);
 
   // Determine what needs updating
