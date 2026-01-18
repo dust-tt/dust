@@ -1,4 +1,4 @@
-import { Spinner, TestTubeIcon } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 import { useWatch } from "react-hook-form";
 
@@ -7,8 +7,6 @@ import {
   useDraftAgent,
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
-import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
-import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
@@ -107,6 +105,13 @@ function PreviewContent({
               key={conversation.sId}
             />
           )}
+          {!conversation && (
+            <div className="flex h-full items-center justify-center px-6 text-center">
+              <div className="text-base font-medium text-muted-foreground">
+                Preview your agent here
+              </div>
+            </div>
+          )}
         </div>
 
         {!conversation && (
@@ -154,9 +159,10 @@ export function AgentBuilderPreview() {
 
   const [instructions, actions, agentName] = watchedFields;
 
-  const hasContent = useMemo(() => {
-    return !!instructions?.trim() || (actions?.length ?? 0) > 0;
-  }, [instructions, actions]);
+  const hasContent = useMemo(
+    () => !!instructions?.trim() || !!actions?.length,
+    [instructions, actions]
+  );
 
   const {
     draftAgent,
@@ -245,13 +251,11 @@ export function AgentBuilderPreview() {
   const renderContent = () => {
     if (!hasContent) {
       return (
-        <TabContentLayout title="Testing">
-          <EmptyPlaceholder
-            icon={TestTubeIcon}
-            title="Ready to test your agent?"
-            description="Add some instructions or actions to your agent to start testing it here."
-          />
-        </TabContentLayout>
+        <div className="flex h-full flex-1 items-center justify-center px-6 text-center">
+          <div className="text-base font-medium text-muted-foreground">
+            Preview your agent here
+          </div>
+        </div>
       );
     }
 

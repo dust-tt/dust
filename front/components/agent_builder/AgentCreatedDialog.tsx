@@ -43,15 +43,18 @@ export function AgentCreatedDialog({
     }
   }, [isCopied, sendNotification]);
 
+  const agentHandle = `@${agentName}`;
+  const conversationQuery = `agent=${agentId}`;
+
   const conversationRoute = getConversationRoute(
     owner.sId,
     "new",
-    `agent=${agentId}`
+    conversationQuery
   );
   const shareLink = getConversationRoute(
     owner.sId,
     "new",
-    `agent=${agentId}`,
+    conversationQuery,
     process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL
   );
 
@@ -59,10 +62,10 @@ export function AgentCreatedDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Agent @{agentName} has been created!</DialogTitle>
+          <DialogTitle>Agent {agentHandle} has been created!</DialogTitle>
           <DialogDescription>
-            You can now use @{agentName} in conversations. Start a chat or share
-            the link with your team.
+            You can now use {agentHandle} in conversations. Start a chat or
+            share the link with your team.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter

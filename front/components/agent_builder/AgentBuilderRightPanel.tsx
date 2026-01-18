@@ -24,7 +24,7 @@ import { TabContentLayout } from "@app/components/agent_builder/observability/Ta
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 
 type AgentBuilderRightPanelTabType =
-  | "testing"
+  | "preview"
   | "feedback"
   | "template"
   | "insights";
@@ -59,10 +59,10 @@ function PanelHeader({
                   onClick={onTogglePanel}
                 />
                 <TabsTrigger
-                  value="testing"
-                  label="Testing"
+                  value="preview"
+                  label="Preview"
                   icon={TestTubeIcon}
-                  onClick={() => onTabChange("testing")}
+                  onClick={() => onTabChange("preview")}
                 />
                 <TabsTrigger
                   value="insights"
@@ -115,8 +115,8 @@ function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
         icon={TestTubeIcon}
         variant="ghost"
         size="sm"
-        tooltip="Testing"
-        onClick={() => onTabSelect("testing")}
+        tooltip="Preview"
+        onClick={() => onTabSelect("preview")}
       />
       <Button
         icon={BarChartIcon}
@@ -164,7 +164,7 @@ function ExpandedContent({
           onAddPresetAction={setPresetActionToAdd}
         />
       )}
-      {selectedTab === "testing" && (
+      {selectedTab === "preview" && (
         <div className="min-h-0 flex-1">
           <AgentBuilderPreview />
         </div>
@@ -173,7 +173,7 @@ function ExpandedContent({
         {selectedTab === "insights" &&
           (agentConfigurationSId ? (
             <AgentBuilderObservability
-              agentConfigurationSId={agentConfigurationSId ?? ""}
+              agentConfigurationSId={agentConfigurationSId}
             />
           ) : (
             <TabContentLayout title="Insights">
@@ -217,11 +217,11 @@ export function AgentBuilderRightPanel({
   const hasTemplate = !!assistantTemplate;
 
   const [selectedTab, setSelectedTab] = useState<AgentBuilderRightPanelTabType>(
-    hasTemplate ? "template" : "testing"
+    hasTemplate ? "template" : "preview"
   );
 
   const handleTogglePanel = () => {
-    setIsPreviewPanelOpen(!isPreviewPanelOpen);
+    setIsPreviewPanelOpen((prev) => !prev);
   };
 
   const handleTabChange = (tab: AgentBuilderRightPanelTabType) => {
