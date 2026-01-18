@@ -102,7 +102,7 @@ const WorkspacePage = ({
           throw new Error("Failed to update workspace.");
         }
         router.reload();
-      } catch (e) {
+      } catch {
         window.alert("An error occurred while updating the workspace.");
       }
     }

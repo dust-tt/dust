@@ -7,9 +7,9 @@ import { ViewDataSourceViewTable } from "@app/components/poke/data_source_views/
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { usePokeDataSourceViewDetails } from "@app/poke/swr/data_source_view_details";
 import type { DataSourceViewContentNodesProps } from "@app/poke/swr/data_source_views";
 import { usePokeDataSourceViewContentNodes } from "@app/poke/swr/data_source_views";
-import { usePokeDataSourceViewDetails } from "@app/poke/swr/data_source_view_details";
 import type { LightWorkspaceType } from "@app/types";
 import { defaultSelectionConfiguration } from "@app/types";
 

@@ -53,7 +53,7 @@ async function handler(
         return apiError(req, res, {
           status_code: 404,
           api_error: {
-            type: "connector_not_found",
+            type: "connector_not_found_error",
             message: "Connector not found.",
           },
         });

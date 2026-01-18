@@ -6,8 +6,8 @@ import { cleanSpecificationFromCore, getSpecification } from "@app/lib/api/run";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { apiError } from "@app/logger/withlogging";
 import logger from "@app/logger/logger";
+import { apiError } from "@app/logger/withlogging";
 import type {
   AppType,
   SpecificationType,

@@ -23,7 +23,7 @@ export function usePokeDocument({
       ? `/api/poke/workspaces/${owner.sId}/data_sources/${dsId}/document?documentId=${encodeURIComponent(documentId)}`
       : null,
     documentFetcher,
-    { disabled: disabled || !documentId }
+    { disabled: disabled ?? !documentId }
   );
 
   return {
