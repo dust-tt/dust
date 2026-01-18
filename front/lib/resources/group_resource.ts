@@ -1047,7 +1047,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const userResources = await UserResource.fetchByIds(userIds);
 
     if (userResources.length !== userIds.length) {
-      new Err(
+      return new Err(
         new DustError(
           "user_not_found",
           userIds.length === 1 ? "User not found" : "Some users were not found"
