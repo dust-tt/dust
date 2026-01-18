@@ -186,6 +186,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slideshow MCP tool",
     stage: "dust_only",
   },
+  snowflake_tool: {
+    description: "Snowflake MCP tool for read-only SQL queries",
+    stage: "dust_only",
+  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",

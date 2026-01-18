@@ -137,6 +137,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "slab",
   "slack",
   "slack_bot",
+  "snowflake",
   "sound_studio",
   "speech_generator",
   "toolsets",
@@ -1876,6 +1877,38 @@ export const INTERNAL_MCP_SERVERS = {
       icon: "ProductboardLogo",
       documentationUrl: "https://docs.dust.tt/docs/productboard",
       instructions: PRODUCTBOARD_SERVER_INSTRUCTIONS,
+    },
+  },
+  snowflake: {
+    id: 47,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("snowflake_tool");
+    },
+    isPreview: false,
+    tools_stakes: {
+      list_databases: "never_ask",
+      list_schemas: "never_ask",
+      list_tables: "never_ask",
+      describe_table: "never_ask",
+      query: "low",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "snowflake",
+      version: "1.0.0",
+      description:
+        "Execute read-only SQL queries and browse schema in Snowflake.",
+      authorization: {
+        provider: "snowflake" as const,
+        supported_use_cases: ["personal_actions"] as const,
+      },
+      icon: "SnowflakeLogo",
+      documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
+      instructions: null,
     },
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
