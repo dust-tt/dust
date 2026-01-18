@@ -117,7 +117,7 @@ export function useDismissMention({
           sendNotification({
             type: "error",
             title: `Error dismissing mention`,
-            description: errorData.message || "An error occurred",
+            description: errorData.message ?? "An error occurred",
           });
           return false;
         }
@@ -150,7 +150,7 @@ export function useMentionValidation({
   const validateMention = useCallback(
     async (
       mention: RichMentionWithStatus,
-      action: "approved" | "rejected"
+      action: "approved" | "rejected" | "approved_and_add_to_project"
     ): Promise<boolean> => {
       try {
         const url = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/mentions`;
@@ -169,30 +169,52 @@ export function useMentionValidation({
 
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
+          const actionLabel =
+            action === "approved_and_add_to_project"
+              ? "adding to project"
+              : action === "approved"
+                ? "approving"
+                : "rejecting";
           sendNotification({
             type: "error",
-            title: `Error ${action === "approved" ? "approving" : "rejecting"} mention`,
-            description: errorData.message || "An error occurred",
+            title: `Error ${actionLabel} mention`,
+            description: errorData.message ?? "An error occurred",
           });
           return false;
         }
 
         const result: PostMentionActionResponseBody = await res.json();
 
-        if (result.success && action === "approved") {
-          sendNotification({
-            type: "success",
-            title: "Success",
-            description: `${mention.label} has been invited to the conversation.`,
-          });
-          return true;
+        if (result.success) {
+          if (action === "approved_and_add_to_project") {
+            sendNotification({
+              type: "success",
+              title: "Success",
+              description: `${mention.label} has been added to the project.`,
+            });
+            return true;
+          }
+          if (action === "approved") {
+            sendNotification({
+              type: "success",
+              title: "Success",
+              description: `${mention.label} has been invited to the conversation.`,
+            });
+            return true;
+          }
         }
 
-        return false;
+        return result.success;
       } catch (error) {
+        const actionLabel =
+          action === "approved_and_add_to_project"
+            ? "adding to project"
+            : action === "approved"
+              ? "approving"
+              : "rejecting";
         sendNotification({
           type: "error",
-          title: `Error ${action === "approved" ? "approving" : "rejecting"} mention`,
+          title: `Error ${actionLabel} mention`,
           description:
             error instanceof Error ? error.message : "An error occurred",
         });

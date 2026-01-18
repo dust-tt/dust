@@ -4,6 +4,7 @@ import {
   ContentMessage,
   Icon,
   InformationCircleIcon,
+  PlusIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
@@ -18,7 +19,7 @@ import type {
   UserType,
 } from "@app/types";
 
-interface MentionValidationRequired {
+interface MentionValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
   mention: Extract<
@@ -29,6 +30,7 @@ interface MentionValidationRequired {
   >;
   conversationId: string;
   message: VirtuosoMessage;
+  spaceId: string | null;
 }
 
 export function MentionValidationRequired({
@@ -37,7 +39,8 @@ export function MentionValidationRequired({
   mention,
   conversationId,
   message,
-}: MentionValidationRequired) {
+  spaceId,
+}: MentionValidationRequiredProps) {
   const { user } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { validateMention } = useMentionValidation({
@@ -50,6 +53,8 @@ export function MentionValidationRequired({
     () => !triggeringUser || triggeringUser.sId === user?.sId,
     [triggeringUser, user?.sId]
   );
+
+  const isProjectConversation = !!spaceId;
 
   const handleReject = async () => {
     setIsSubmitting(true);
@@ -69,11 +74,19 @@ export function MentionValidationRequired({
     }
   };
 
+  const handleApproveAndAddToProject = async () => {
+    setIsSubmitting(true);
+    try {
+      await validateMention(mention, "approved_and_add_to_project");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (!isTriggeredByCurrentUser) {
     return null;
   }
 
-  // Original behavior for users who can access
   return (
     <ContentMessage variant="info" className="my-3 w-full max-w-full">
       <div className="flex flex-col items-center gap-2 sm:flex-row">
@@ -85,13 +98,29 @@ export function MentionValidationRequired({
                 @{message.configuration.name}
               </span>{" "}
               mentioned <span className="font-semibold">{mention.label}</span>.
-              Do you want to invite them? They'll see the full history and be
-              able to reply.
+              {isProjectConversation ? (
+                <> Do you want to add them to this project?</>
+              ) : (
+                <>
+                  {" "}
+                  Do you want to invite them? They'll see the full history and
+                  be able to reply.
+                </>
+              )}
             </>
           ) : (
             <>
-              Invite <b>{mention.label}</b> to this conversation? They'll see
-              the full history and be able to reply.
+              {isProjectConversation ? (
+                <>
+                  Add <b>{mention.label}</b> to this project? They'll have
+                  access to all project conversations.
+                </>
+              ) : (
+                <>
+                  Invite <b>{mention.label}</b> to this conversation? They'll
+                  see the full history and be able to reply.
+                </>
+              )}
             </>
           )}
         </div>
@@ -104,14 +133,25 @@ export function MentionValidationRequired({
             disabled={isSubmitting}
             onClick={handleReject}
           />
-          <Button
-            label="Yes"
-            variant="highlight"
-            size="xs"
-            icon={CheckIcon}
-            disabled={isSubmitting}
-            onClick={handleApprove}
-          />
+          {isProjectConversation ? (
+            <Button
+              label="Add to project"
+              variant="highlight"
+              size="xs"
+              icon={PlusIcon}
+              disabled={isSubmitting}
+              onClick={handleApproveAndAddToProject}
+            />
+          ) : (
+            <Button
+              label="Yes"
+              variant="highlight"
+              size="xs"
+              icon={CheckIcon}
+              disabled={isSubmitting}
+              onClick={handleApprove}
+            />
+          )}
         </div>
       </div>
     </ContentMessage>

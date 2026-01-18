@@ -753,6 +753,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return false;
   }
 
+  // TODO(projects): Update to check editor permissions once project roles PR is merged.
+  // For now, falls back to membership check.
+  async isEditor(user: UserResource): Promise<boolean> {
+    return this.isMember(user);
+  }
+
   /**
    * Computes resource permissions based on space type and group configuration.
    *

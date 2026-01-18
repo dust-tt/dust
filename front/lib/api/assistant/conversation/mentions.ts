@@ -907,7 +907,7 @@ export async function validateUserMention(
     conversationId: string;
     userId: string;
     messageId: string;
-    approvalState: "approved" | "rejected";
+    approvalState: "approved" | "rejected" | "approved_and_add_to_project";
   }
 ): Promise<Result<void, APIErrorWithStatusCode>> {
   const conversationRes = await getConversation(auth, conversationId);
@@ -922,6 +922,69 @@ export async function validateUserMention(
   }
 
   const conversation = conversationRes.value;
+
+  // Handle add-to-project action: add user to project space first, then proceed as approved.
+  if (approvalState === "approved_and_add_to_project") {
+    if (!conversation.spaceId) {
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Conversation is not in a project",
+        },
+      });
+    }
+
+    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (!space) {
+      return new Err({
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "Project space not found",
+        },
+      });
+    }
+
+    const currentUser = auth.user();
+    if (!currentUser) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "not_authenticated",
+          message: "User not authenticated",
+        },
+      });
+    }
+
+    // TODO(projects): isEditor will check editor permissions once project roles PR is merged.
+    const canEdit = await space.isEditor(currentUser);
+    if (!canEdit) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Only project editors can add members to the project",
+        },
+      });
+    }
+
+    // Add user to project (will fail if current user lacks admin permissions - acceptable for now).
+    const addResult = await space.addMembers(auth, { userIds: [userId] });
+    if (addResult.isErr()) {
+      const error = addResult.error;
+      return new Err({
+        status_code: error.code === "unauthorized" ? 403 : 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: error.message,
+        },
+      });
+    }
+
+    // Continue with standard approval flow.
+    approvalState = "approved";
+  }
 
   // Verify the message exists
   const message = conversation.content.flat().find((m) => m.sId === messageId);
