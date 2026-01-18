@@ -17,6 +17,8 @@ import {
   OPENING_TAG_BEGINNING_REGEX,
   OPENING_TAG_REGEX,
 } from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
+import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types";
 
 export interface InstructionBlockAttributes {
   type: string;
@@ -507,6 +509,35 @@ export const InstructionBlockExtension =
 
         const tagName = match[1] || "instructions";
 
+        let tokens;
+        try {
+          // Attempt to tokenize nested content with original text in a try-catch
+          // Sometimes we can't tokenize with non-breakable-space content, hence
+          // the .trim() fallback
+          tokens = lexer.blockTokens(match[2]);
+        } catch (error) {
+          try {
+            tokens = lexer.blockTokens(match[2].trim());
+            logger.warn("Marked lexer state corruption, passed with trim()", {
+              error: normalizeError(error),
+              sourceString: src,
+              match2: match[2],
+            });
+          } catch (error) {
+            // Marked lexer state corruption - fallback to treating as undefined, so we still at least display the content
+            // but not the `<instructions>`
+            logger.error(
+              "Marked lexer state corruption, failed with trim(). Fallbacking...",
+              {
+                error: normalizeError(error),
+                sourceString: src,
+                match2: match[2].trim(),
+              }
+            );
+            return undefined;
+          }
+        }
+
         return {
           type: "instructionBlock",
           raw: match[0],
@@ -514,7 +545,7 @@ export const InstructionBlockExtension =
             type: tagName.toLowerCase(),
           },
           text: match[2],
-          tokens: lexer.blockTokens(match[2]),
+          tokens,
         };
       },
     },
