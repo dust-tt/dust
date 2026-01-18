@@ -682,7 +682,7 @@ async function handleUserRemovedFromGroup(
   }
 
   const res = await group.removeMember(auth, user.toJSON());
-  if (res.isErr()) {
+  if (res.isErr() && res.error.code !== "user_not_member") {
     throw new Error(res.error.message);
   }
 
