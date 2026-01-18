@@ -6,6 +6,10 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
+import {
+  areCredentialOverridesValid,
+  PersonalAuthCredentialOverrides,
+} from "@app/components/oauth/PersonalAuthCredentialOverrides";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -16,6 +20,7 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import { useUser } from "@app/lib/swr/user";
 import type { LightWorkspaceType, OAuthProvider, UserType } from "@app/types";
+import { getOverridablePersonalAuthInputs } from "@app/types";
 
 interface MCPServerPersonalAuthenticationRequiredProps {
   triggeringUser: UserType | null;
@@ -46,6 +51,11 @@ export function MCPServerPersonalAuthenticationRequired({
 
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
+  const [credentialOverrides, setCredentialOverrides] = useState<
+    Record<string, string>
+  >({});
+
+  const overridableInputs = getOverridablePersonalAuthInputs({ provider });
 
   const icon = mcpServer?.icon
     ? getIcon(mcpServer.icon)
@@ -54,21 +64,27 @@ export function MCPServerPersonalAuthenticationRequired({
   const onConnectClick = async (mcpServer: MCPServerType) => {
     setIsConnecting(true);
 
-    const success = await createPersonalConnection({
-      mcpServerId: mcpServer.sId,
-      mcpServerDisplayName: getMcpServerDisplayName(mcpServer),
-      provider,
-      useCase: "personal_actions",
-      scope,
-    });
+    try {
+      const success = await createPersonalConnection({
+        mcpServerId: mcpServer.sId,
+        mcpServerDisplayName: getMcpServerDisplayName(mcpServer),
+        provider,
+        useCase: "personal_actions",
+        scope,
+        credentialOverrides:
+          Object.keys(credentialOverrides).length > 0
+            ? credentialOverrides
+            : undefined,
+      });
 
-    setIsConnecting(false);
-
-    if (!success) {
-      setIsConnected(false);
-    } else {
-      setIsConnected(true);
-      await retry();
+      if (!success) {
+        setIsConnected(false);
+      } else {
+        setIsConnected(true);
+        await retry();
+      }
+    } finally {
+      setIsConnecting(false);
     }
   };
 
@@ -103,16 +119,39 @@ export function MCPServerPersonalAuthenticationRequired({
             )}
           </div>
           {!isConnected && mcpServer && (
-            <div className="mt-3 flex flex-col justify-end sm:flex-row">
-              <Button
-                label="Connect"
-                variant="highlight"
-                size="xs"
-                icon={CloudArrowLeftRightIcon}
-                disabled={isConnecting}
-                onClick={() => void onConnectClick(mcpServer)}
-              />
-            </div>
+            <>
+              {overridableInputs && (
+                <div className="mt-2">
+                  <PersonalAuthCredentialOverrides
+                    inputs={overridableInputs}
+                    values={credentialOverrides}
+                    idPrefix={mcpServerId}
+                    onChange={(key, value) =>
+                      setCredentialOverrides((prev) => ({
+                        ...prev,
+                        [key]: value,
+                      }))
+                    }
+                  />
+                </div>
+              )}
+              <div className="mt-3 flex flex-col justify-end sm:flex-row">
+                <Button
+                  label="Connect"
+                  variant="highlight"
+                  size="xs"
+                  icon={CloudArrowLeftRightIcon}
+                  disabled={
+                    isConnecting ||
+                    !areCredentialOverridesValid(
+                      overridableInputs,
+                      credentialOverrides
+                    )
+                  }
+                  onClick={() => void onConnectClick(mcpServer)}
+                />
+              </div>
+            </>
           )}
         </>
       ) : (
