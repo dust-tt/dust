@@ -113,7 +113,9 @@ export async function getConversationDataSourceViews(
   const fileResourceById = new Map(fileResources.map((f) => [f.sId, f]));
 
   const conversationIds = new Set<string>();
+  // Add the current conversation.
   conversationIds.add(conversation.sId);
+  // Add conversations from files.
   for (const file of fileResources) {
     if (file.useCaseMetadata?.conversationId) {
       conversationIds.add(file.useCaseMetadata.conversationId);
