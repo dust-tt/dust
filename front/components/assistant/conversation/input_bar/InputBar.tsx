@@ -256,6 +256,10 @@ export const InputBar = React.memo(function InputBar({
       setLoading(true);
       setIsLocalSubmitting(true);
 
+      // Clear draft immediately before async operation to prevent it from persisting
+      // if the component unmounts during the await (e.g., due to navigation).
+      clearDraft();
+
       const r = await onSubmit(
         markdown,
         mentions,
@@ -281,7 +285,6 @@ export const InputBar = React.memo(function InputBar({
       setIsLocalSubmitting(false);
       if (r.isOk()) {
         resetEditorText();
-        clearDraft();
         fileUploaderService.resetUpload();
       }
     } else {
