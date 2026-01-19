@@ -68,10 +68,7 @@ async function handler(
         agentConfiguration.sId
       );
 
-      if (
-        restoredResult.isErr() ||
-        (restoredResult.isOk() && !restoredResult.value.restored)
-      ) {
+      if (!restoredResult.isOk() || !restoredResult.value.restored) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
