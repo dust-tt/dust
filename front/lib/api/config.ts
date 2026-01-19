@@ -137,14 +137,6 @@ const config = {
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
   },
-  getDustAppsWorkspaceId: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_APPS_WORKSPACE_ID");
-  },
-  getDustAppsHelperDatasourceViewId: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "DUST_APPS_HELPER_DATASOURCE_VIEW_ID"
-    );
-  },
   getRegionResolverSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
   },
