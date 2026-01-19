@@ -294,13 +294,17 @@ export function AgentBuilderPreview() {
   return (
     <div className="flex h-full w-full flex-col" aria-label="Agent preview">
       {isTrialPlan && (
-        <div className="flex-shrink-0 p-4 pb-0">
+        <div className="flex-shrink-0 px-4 pt-4">
           <TrialMessageUsage isAdmin={isAdmin} workspaceId={owner.sId} />
         </div>
       )}
-      <BlockedActionsProvider owner={owner} conversation={conversation}>
-        <GenerationContextProvider>{renderContent()}</GenerationContextProvider>
-      </BlockedActionsProvider>
+      <div className="min-h-0 flex-1">
+        <BlockedActionsProvider owner={owner} conversation={conversation}>
+          <GenerationContextProvider>
+            {renderContent()}
+          </GenerationContextProvider>
+        </BlockedActionsProvider>
+      </div>
     </div>
   );
 }
