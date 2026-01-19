@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
+import { wakeLock } from "@app/lib/wake_lock";
 import type { AgenticMessageData, MentionType } from "@app/types";
 import type {
   AgentMessageType,
@@ -166,29 +167,38 @@ export async function postUserMessageAndWaitForCompletion(
     PubSubError
   >
 > {
-  const postResult = await postUserMessage(auth, {
-    content,
-    context,
-    agenticMessageData,
-    conversation,
-    mentions,
-    skipToolsValidation,
-  });
+  return wakeLock(
+    async () => {
+      const postResult = await postUserMessage(auth, {
+        content,
+        context,
+        agenticMessageData,
+        conversation,
+        mentions,
+        skipToolsValidation,
+      });
 
-  if (postResult.isErr()) {
-    return postResult;
-  }
+      if (postResult.isErr()) {
+        return postResult;
+      }
 
-  const { userMessage, agentMessages } = postResult.value;
-  if (agentMessages.length === 0) {
-    return new Ok({ userMessage, agentMessages });
-  }
+      const { userMessage, agentMessages } = postResult.value;
+      if (agentMessages.length === 0) {
+        return new Ok({ userMessage, agentMessages });
+      }
 
-  // Wait for all agent messages to complete.
-  const completedAgentMessages = await waitForAgentCompletion(agentMessages);
+      // Wait for all agent messages to complete.
+      const completedAgentMessages = await waitForAgentCompletion(agentMessages);
 
-  return new Ok({
-    userMessage,
-    agentMessages: completedAgentMessages,
-  });
+      return new Ok({
+        userMessage,
+        agentMessages: completedAgentMessages,
+      });
+    },
+    {
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
+      operation: "postUserMessageAndWaitForCompletion",
+    }
+  );
 }
