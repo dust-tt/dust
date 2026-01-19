@@ -215,9 +215,9 @@ export const NavigationSidebar = React.forwardRef<
             user={user}
             owner={owner}
             subscription={subscription}
-            showHelp={hasFeature("new_sidebar")}
+            showHelp={hasFeature("sidebar_v2")}
           />
-          {!hasFeature("new_sidebar") && (
+          {!hasFeature("sidebar_v2") && (
             <>
               <div className="flex-1" />
               <HelpDropdown owner={owner} user={user} />
