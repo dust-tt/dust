@@ -79,7 +79,6 @@ interface PreviewContentProps {
   ) => Promise<Result<undefined, DustError>>;
   draftAgent: LightAgentConfigurationType | null;
   isSavingDraftAgent: boolean;
-  hasTrialUsageBar: boolean;
 }
 
 function PreviewContent({
@@ -91,14 +90,11 @@ function PreviewContent({
   createConversation,
   draftAgent,
   isSavingDraftAgent,
-  hasTrialUsageBar,
 }: PreviewContentProps) {
   return (
     <>
       <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
-        <div
-          className={`flex-1 overflow-y-auto ${hasTrialUsageBar ? "pb-16" : ""}`}
-        >
+        <div className="flex-1 overflow-y-auto">
           {conversation && user && (
             <ConversationViewer
               owner={owner}
@@ -291,7 +287,6 @@ export function AgentBuilderPreview() {
         createConversation={createConversation}
         draftAgent={draftAgent}
         isSavingDraftAgent={isSavingDraftAgent}
-        hasTrialUsageBar={isTrialPlan}
       />
     );
   };
