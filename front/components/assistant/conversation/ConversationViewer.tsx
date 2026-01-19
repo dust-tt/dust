@@ -63,11 +63,12 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
+  Err,
   isRichAgentMention,
   isUserMessageTypeWithContentFragments,
+  Ok,
   toMentionType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
 
@@ -92,6 +93,7 @@ function customSmoothScroll() {
     easing: easeOutQuint,
   };
 }
+
 /**
  *
  * @param isInModal is the conversation happening in a side modal, i.e. when testing an agent?
@@ -510,7 +512,7 @@ export const ConversationViewer = ({
           ? () => {
               return {
                 index: nbMessages, // Avoid jumping around when the agent message is generated.
-                align: "start",
+                align: "start-no-overflow",
                 behavior: customSmoothScroll,
               };
             }
@@ -708,7 +710,7 @@ export const ConversationViewer = ({
           EmptyPlaceholder={ConversationViewerEmptyState}
           // Large buffer to avoid manipulating the dom too much when the user scrolls a bit.
           increaseViewportBy={8192}
-          enforceStickyFooterAtBottom={true}
+          enforceStickyFooterAtBottom
         />
       </VirtuosoMessageListLicense>
     </>

@@ -162,7 +162,7 @@ export const AgentInputBar = ({
           const targetIndex = fullyAboveIndices[fullyAboveIndices.length - 1];
           methods.scrollToItem({
             index: targetIndex,
-            align: "start",
+            align: "start-no-overflow",
             behavior: "smooth",
           });
         }
@@ -173,7 +173,7 @@ export const AgentInputBar = ({
           const targetIndex = belowTopQuarterIndices[0];
           methods.scrollToItem({
             index: targetIndex,
-            align: "start",
+            align: "start-no-overflow",
             behavior: "smooth",
           });
         } else if (bottomOffset > 0) {

@@ -328,7 +328,7 @@ export const InputBar = React.memo(function InputBar({
     <div className="flex w-full flex-col">
       <div
         className={classNames(
-          "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch sm:flex-row",
+          "relative flex w-full flex-col items-stretch gap-0 self-stretch sm:flex-row",
           "rounded-2xl transition-all",
           "bg-muted-background dark:bg-muted-background-night",
           "border",
@@ -349,7 +349,7 @@ export const InputBar = React.memo(function InputBar({
           isAnimating ? "duration-600 animate-shake" : "duration-300"
         )}
       >
-        <div className="relative flex w-full flex-1 flex-col">
+        <div className="relative flex w-full flex-col">
           <InputBarAttachments
             owner={owner}
             files={{ service: fileUploaderService }}
