@@ -1,8 +1,8 @@
 import { Spinner } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect } from "react";
 
+import { useAppRouter } from "@app/lib/platform";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isString } from "@app/types";
 
@@ -45,7 +45,7 @@ export function withAuth<P extends object>(Component: ComponentType<P>) {
   const displayName = Component.displayName ?? Component.name ?? "Component";
 
   function WithAuth(props: P) {
-    const router = useRouter();
+    const router = useAppRouter();
     const { wId } = router.query;
 
     if (!isString(wId)) {

@@ -84,7 +84,7 @@ export function usePokeWorkspaces({
   }
 
   const { data, error } = useSWRWithDefaults(
-    `api/poke/workspaces${query}`,
+    `/api/poke/workspaces${query}`,
     workspacesFetcher,
     {
       disabled,

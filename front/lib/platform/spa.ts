@@ -1,0 +1,298 @@
+/**
+ * SPA platform implementation
+ * Used when running in Vite SPA environment (React Router)
+ */
+import {
+  Children,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  useLocation,
+  useNavigate,
+  useOutletContext,
+  useSearchParams,
+} from "react-router-dom";
+
+import type {
+  AppRouter,
+  HeadProps,
+  RouterEvents,
+  ScriptProps,
+  TransitionOptions,
+  UrlObject,
+} from "./types";
+
+/**
+ * Safe wrapper around useNavigate that handles the case where
+ * we're not inside a Router context (can happen during production build initialization)
+ */
+function useSafeNavigate() {
+  try {
+    return useNavigate();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Safe wrapper around useLocation that handles the case where
+ * we're not inside a Router context
+ */
+function useSafeLocation() {
+  try {
+    return useLocation();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Safe wrapper around useSearchParams that handles the case where
+ * we're not inside a Router context
+ */
+function useSafeSearchParams() {
+  try {
+    return useSearchParams();
+  } catch {
+    return [new URLSearchParams(window.location.search), () => {}] as const;
+  }
+}
+
+/**
+ * Convert URL object to string
+ */
+function urlToString(url: string | UrlObject): string {
+  if (typeof url === "string") {
+    return url;
+  }
+  let result = url.pathname ?? "";
+  if (url.query && Object.keys(url.query).length > 0) {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(url.query)) {
+      if (value !== undefined) {
+        if (Array.isArray(value)) {
+          value.forEach((v) => params.append(key, v));
+        } else {
+          params.append(key, value);
+        }
+      }
+    }
+    const queryString = params.toString();
+    if (queryString) {
+      result += "?" + queryString;
+    }
+  }
+  if (url.hash) {
+    result += url.hash;
+  }
+  return result;
+}
+
+/**
+ * Create a no-op events object for SPA
+ * In SPA mode, we don't have router events like Next.js
+ */
+function createNoopEvents(): RouterEvents {
+  return {
+    on: () => {},
+    off: () => {},
+    emit: () => {},
+  };
+}
+
+export function useAppRouter(): AppRouter {
+  const navigate = useSafeNavigate();
+  const location = useSafeLocation();
+  const [searchParams] = useSafeSearchParams();
+
+  // Force re-render when location changes via window (fallback mode)
+  const [, setForceUpdate] = useState(0);
+  useEffect(() => {
+    if (!location) {
+      // We're in fallback mode, listen to popstate to update
+      const handlePopState = () => setForceUpdate((n) => n + 1);
+      window.addEventListener("popstate", handlePopState);
+      return () => window.removeEventListener("popstate", handlePopState);
+    }
+  }, [location]);
+
+  const push = useCallback(
+    (url: string | UrlObject, _as?: string, _options?: TransitionOptions) => {
+      const urlString = urlToString(url);
+      if (navigate) {
+        navigate(urlString);
+      } else {
+        // Fallback to window.location if not in Router context
+        window.location.href = urlString;
+      }
+      return Promise.resolve(true);
+    },
+    [navigate]
+  );
+
+  const replace = useCallback(
+    (url: string | UrlObject, _as?: string, _options?: TransitionOptions) => {
+      const urlString = urlToString(url);
+      if (navigate) {
+        navigate(urlString, { replace: true });
+      } else {
+        // Fallback to window.location if not in Router context
+        window.location.replace(urlString);
+      }
+      return Promise.resolve(true);
+    },
+    [navigate]
+  );
+
+  const back = useCallback(() => {
+    if (navigate) {
+      navigate(-1);
+    } else {
+      window.history.back();
+    }
+  }, [navigate]);
+
+  const reload = useCallback(() => {
+    window.location.reload();
+  }, []);
+
+  const query = useMemo(() => {
+    const result: Record<string, string | string[] | undefined> = {};
+    searchParams.forEach((value: string, key: string) => {
+      const existing = result[key];
+      if (existing !== undefined) {
+        if (Array.isArray(existing)) {
+          existing.push(value);
+        } else {
+          result[key] = [existing, value];
+        }
+      } else {
+        result[key] = value;
+      }
+    });
+    return result;
+  }, [searchParams]);
+
+  const pathname = location?.pathname ?? window.location.pathname;
+  const search = location?.search ?? window.location.search;
+
+  // In SPA mode, router is always ready (no SSR hydration needed)
+  const isReady = true;
+
+  // No-op events for SPA
+  const events = useMemo(() => createNoopEvents(), []);
+
+  return {
+    push,
+    replace,
+    back,
+    reload,
+    pathname,
+    asPath: pathname + search,
+    query,
+    isReady,
+    events,
+    // beforePopState is a noop in SPA mode (not supported in React Router)
+    beforePopState: () => {},
+  };
+}
+
+/**
+ * Head component for SPA - manages document head elements
+ * This is a simplified implementation that extracts title and link elements
+ */
+export function Head({ children }: HeadProps) {
+  useEffect(() => {
+    const cleanupFns: (() => void)[] = [];
+
+    Children.forEach(children, (child) => {
+      if (!isValidElement(child)) {
+        return;
+      }
+
+      const props = child.props as Record<string, unknown>;
+
+      if (child.type === "title") {
+        const previousTitle = document.title;
+        document.title = String(props.children ?? "");
+        cleanupFns.push(() => {
+          document.title = previousTitle;
+        });
+      } else if (child.type === "link") {
+        const link = document.createElement("link");
+        Object.entries(props).forEach(([key, value]) => {
+          if (key !== "children" && value !== undefined) {
+            link.setAttribute(key, String(value));
+          }
+        });
+        document.head.appendChild(link);
+        cleanupFns.push(() => {
+          document.head.removeChild(link);
+        });
+      } else if (child.type === "meta") {
+        const meta = document.createElement("meta");
+        Object.entries(props).forEach(([key, value]) => {
+          if (key !== "children" && value !== undefined) {
+            meta.setAttribute(key, String(value));
+          }
+        });
+        document.head.appendChild(meta);
+        cleanupFns.push(() => {
+          document.head.removeChild(meta);
+        });
+      }
+    });
+
+    return () => {
+      cleanupFns.forEach((fn) => fn());
+    };
+  }, [children]);
+
+  return null;
+}
+
+/**
+ * Script component for SPA - loads external scripts
+ */
+export function Script({ id, src, children }: ScriptProps) {
+  useEffect(() => {
+    const script = document.createElement("script");
+
+    if (id) {
+      script.id = id;
+    }
+
+    if (src) {
+      script.src = src;
+      script.async = true;
+    } else if (children) {
+      script.textContent = children;
+    }
+
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, [id, src, children]);
+
+  return null;
+}
+
+/**
+ * Hook to get page context (auth data) in SPA
+ * Uses React Router's outlet context
+ */
+export function usePageContext<T>(): T | null {
+  try {
+    return useOutletContext<T>();
+  } catch {
+    return null;
+  }
+}
+
+export type { AppRouter, HeadProps, ScriptProps };

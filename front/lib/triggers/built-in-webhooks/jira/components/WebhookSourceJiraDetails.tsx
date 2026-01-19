@@ -28,6 +28,7 @@ export function WebhookSourceJiraDetails({
       </div>
       <div>
         {projects.map((project) => (
+          // @ts-expect-error TODO: ?
           <Chip
             key={project.key}
             label={`${project.key} - ${project.name}`}

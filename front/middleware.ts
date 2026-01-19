@@ -6,7 +6,6 @@ import {
   isAllowedHeader,
   isAllowedOrigin,
 } from "@app/config/cors";
-import logger from "@app/logger/logger";
 
 export function middleware(request: NextRequest) {
   // Block TRACE requests
@@ -61,8 +60,12 @@ export function middleware(request: NextRequest) {
     });
   }
 
-  // Handle CORS only for public API endpoints.
-  if (url.startsWith("/api/v1")) {
+  // Handle CORS for public API endpoints and poke endpoints (dev only).
+  const isDevelopment = process.env.NODE_ENV === "development";
+  const needsCors =
+    url.startsWith("/api/v1") || (isDevelopment && url.startsWith("/api/"));
+
+  if (needsCors) {
     if (request.method === "OPTIONS") {
       // Handle preflight request.
       const response = new NextResponse(null, { status: 200 });
@@ -129,7 +132,8 @@ function setCorsHeaders(
     response.headers.set("Access-Control-Allow-Origin", origin);
     response.headers.set("Access-Control-Allow-Credentials", "true");
   } else {
-    logger.info({ origin }, "Forbidden: Unauthorized Origin");
+    // Using console.log instead of pino logger (pino doesn't work in Edge Runtime)
+    console.log("Forbidden: Unauthorized Origin", { origin });
 
     return new NextResponse(null, {
       status: 403,

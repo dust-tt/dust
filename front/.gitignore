@@ -37,6 +37,8 @@ next-env.d.ts
 
 # build output
 dist/
+app/dist/
+public/spa/
 
 # cache
 .cache/
