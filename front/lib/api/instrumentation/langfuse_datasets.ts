@@ -2,6 +2,8 @@ import { LangfuseClient } from "@langfuse/client";
 
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 let langfuseClient: LangfuseClient | null = null;
 
@@ -38,18 +40,25 @@ function isLangfuseNotFoundError(
 async function ensureLangfuseDatasetExists(
   client: LangfuseClient,
   datasetName: string
-): Promise<void> {
+): Promise<Result<undefined, Error>> {
   try {
     await client.api.datasets.get(datasetName);
+    return new Ok(undefined);
   } catch (error) {
     if (!isLangfuseNotFoundError(error)) {
-      throw error;
+      return new Err(normalizeError(error));
     }
+  }
+
+  try {
     // Dataset doesn't exist, create it
     await client.api.datasets.create({
       name: datasetName,
       description: `Negative feedback traces for ${datasetName.replace("-feedback", "")} agent`,
     });
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err(normalizeError(error));
   }
 }
 
@@ -119,7 +128,20 @@ export async function addTraceToLangfuseDataset(
 
   try {
     // Ensure dataset exists
-    await ensureLangfuseDatasetExists(client, datasetName);
+    const datasetResult = await ensureLangfuseDatasetExists(client, datasetName);
+    if (datasetResult.isErr()) {
+      logger.error(
+        {
+          datasetName,
+          feedbackId,
+          dustTraceId,
+          workspaceId,
+          error: datasetResult.error,
+        },
+        "[Langfuse] Failed to ensure dataset exists"
+      );
+      return false;
+    }
 
     // Fetch the trace from Langfuse by searching for dustTraceId in metadata
     const trace = await fetchTraceByDustTraceId(client, dustTraceId);
