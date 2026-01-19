@@ -66,7 +66,15 @@ cleanup() {
   fi
 }
 
+# Handle terminal resize - redraw with new dimensions
+handle_resize() {
+  # Redraw scroll region and footer with new terminal size
+  setup_scroll_region
+  draw_footer
+}
+
 trap cleanup EXIT
+trap handle_resize WINCH
 
 # Get terminal dimensions
 get_term_height() {
@@ -75,15 +83,15 @@ get_term_height() {
 
   // UI rendering functions
   const uiFunctions = `
-# Draw sticky header at top of screen
-draw_header() {
+# Draw sticky footer at bottom of screen
+draw_footer() {
   local service="\${SERVICES[$CURRENT_INDEX]}"
   local num=$((CURRENT_INDEX + 1))
   local term_height=$(get_term_height)
 
-  # Save cursor, move to top, draw header, restore cursor
+  # Save cursor, move to bottom, draw footer, restore cursor
   printf "\\033[s"                    # Save cursor position
-  printf "\\033[1;1H"                 # Move to row 1, col 1
+  printf "\\033[\${term_height};1H"   # Move to last row, col 1
   printf "\\033[2K"                   # Clear the line
   # Service name: bold + inverse (works across themes)
   printf "\\033[1;7m  %s  \\033[0m" "$service"
@@ -91,11 +99,12 @@ draw_header() {
   printf "\\033[u"                    # Restore cursor position
 }
 
-# Set up scroll region (leave top line for header)
+# Set up scroll region (leave bottom line for footer)
 setup_scroll_region() {
   local term_height=$(get_term_height)
-  printf "\\033[2;\${term_height}r"   # Set scroll region from line 2 to bottom
-  printf "\\033[2;1H"                 # Move cursor to line 2
+  local scroll_end=$((term_height - 1))
+  printf "\\033[1;\${scroll_end}r"    # Set scroll region from line 1 to bottom-1
+  printf "\\033[1;1H"                 # Move cursor to line 1
 }
 
 # Reset scroll region to full screen
@@ -129,12 +138,12 @@ stop_tail() {
   const serviceFunctions = `
 switch_service() {
   stop_tail
-  # Reset scroll region, clear screen properly, then set up header
+  # Reset scroll region, clear screen properly, then set up footer
   printf "\\033[r"                    # Reset scroll region to full screen
   printf "\\033[2J\\033[H"            # Clear screen and move cursor to home
-  setup_scroll_region                 # Set scroll region FIRST (lines 2+)
-  draw_header                         # Draw header at line 1 (outside scroll region)
-  printf "\\033[2;1H"                 # Move cursor to line 2 for tail output
+  setup_scroll_region                 # Set scroll region (lines 1 to bottom-1)
+  draw_footer                         # Draw footer at last line (outside scroll region)
+  printf "\\033[1;1H"                 # Move cursor to line 1 for tail output
   start_tail
 }
 
@@ -187,11 +196,11 @@ decrease_lines() {
 
   // Main loop
   const mainLoop = `
-# Initial draw - set scroll region FIRST to protect header line
+# Initial draw - set scroll region to protect footer line
 printf "\\033[2J\\033[H"            # Clear screen and move cursor to home
-setup_scroll_region                 # Set scroll region (lines 2+)
-draw_header                         # Draw header at line 1 (protected)
-printf "\\033[2;1H"                 # Move cursor to line 2 for tail output
+setup_scroll_region                 # Set scroll region (lines 1 to bottom-1)
+draw_footer                         # Draw footer at last line (protected)
+printf "\\033[1;1H"                 # Move cursor to line 1 for tail output
 start_tail
 
 # Main input loop - read single chars
