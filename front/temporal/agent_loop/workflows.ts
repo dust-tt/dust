@@ -31,7 +31,9 @@ import type {
   AgentLoopArgsWithTiming,
 } from "@app/types/assistant/agent_run";
 
-const toolActivityStartToCloseTimeout = `${Math.max(RUN_AGENT_CALL_TOOL_TIMEOUT_MS, DEFAULT_MCP_REQUEST_TIMEOUT_MS) / 1000 / 60 + 1} minutes`;
+const toolActivityStartToCloseTimeoutMs =
+  Math.max(RUN_AGENT_CALL_TOOL_TIMEOUT_MS, DEFAULT_MCP_REQUEST_TIMEOUT_MS) +
+  60 * 1000;
 
 const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
 const MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
@@ -64,7 +66,7 @@ const { runModelAndCreateActionsActivity } = proxyActivities<
 
 const { runToolActivity } = proxyActivities<typeof runToolActivities>({
   // Activity timeout keeps a short buffer above the tool timeout to detect worker restarts promptly.
-  startToCloseTimeout: toolActivityStartToCloseTimeout,
+  startToCloseTimeout: toolActivityStartToCloseTimeoutMs,
   heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
   retry: {
     // Do not retry tool activities. Those are not idempotent.
@@ -75,7 +77,7 @@ const { runToolActivity } = proxyActivities<typeof runToolActivities>({
 const { runToolActivity: runRetryableToolActivity } = proxyActivities<
   typeof runToolActivities
 >({
-  startToCloseTimeout: toolActivityStartToCloseTimeout,
+  startToCloseTimeout: toolActivityStartToCloseTimeoutMs,
   heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
   retry: {
     maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
