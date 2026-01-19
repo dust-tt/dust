@@ -513,17 +513,17 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return dataSourceViews[0] ?? null;
   }
 
-  static async fetchByConversationIds(
+  static async fetchByConversationModelIds(
     auth: Authenticator,
-    conversationIds: ModelId[]
+    conversationModelIds: ModelId[]
   ): Promise<DataSourceViewResource[]> {
-    if (conversationIds.length === 0) {
+    if (conversationModelIds.length === 0) {
       return [];
     }
 
-    const dataSources = await DataSourceResource.fetchByConversationIds(
+    const dataSources = await DataSourceResource.fetchByConversationModelIds(
       auth,
-      conversationIds
+      conversationModelIds
     );
     if (dataSources.length === 0) {
       return [];

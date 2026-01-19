@@ -108,12 +108,10 @@ export async function getConversationDataSourceViews(
     return fileIdToDataSourceViewMap;
   }
 
-  // Fetch files.
   const fileIds = fileAttachments.map((a) => a.fileId);
   const fileResources = await FileResource.fetchByIds(auth, fileIds);
   const fileResourceById = new Map(fileResources.map((f) => [f.sId, f]));
 
-  // Find all conversations to fetch.
   const conversationIds = new Set<string>();
   conversationIds.add(conversation.sId);
   for (const file of fileResources) {
@@ -122,23 +120,16 @@ export async function getConversationDataSourceViews(
     }
   }
 
-  // Batch fetch all conversations.
   const conversations = await ConversationResource.fetchByIds(auth, [
     ...conversationIds,
   ]);
 
-  const conversationIdToModelId = new Map(
-    conversations.map((c) => [c.sId, c.id])
-  );
+  const dataSourceViews =
+    await DataSourceViewResource.fetchByConversationModelIds(
+      auth,
+      conversations.map((c) => c.id)
+    );
 
-  // Batch fetch all data source views by conversation ModelIds.
-  const conversationModelIds = conversations.map((c) => c.id);
-  const dataSourceViews = await DataSourceViewResource.fetchByConversationIds(
-    auth,
-    conversationModelIds
-  );
-
-  // Build map from conversation ModelId to DataSourceView.
   const modelIdToDataSourceView = new Map<ModelId, DataSourceViewResource>();
   for (const dsv of dataSourceViews) {
     const conversationId = dsv.dataSource.conversationId;
@@ -147,12 +138,11 @@ export async function getConversationDataSourceViews(
     }
   }
 
-  // Create map from conversation sId to DataSourceView.
   const conversationSIdToDataSourceView = new Map<
     string,
     DataSourceViewResource
   >();
-  for (const [sId, modelId] of conversationIdToModelId) {
+  for (const { sId, id: modelId } of conversations) {
     const dsv = modelIdToDataSourceView.get(modelId);
     if (dsv) {
       conversationSIdToDataSourceView.set(sId, dsv);

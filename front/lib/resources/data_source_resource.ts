@@ -284,18 +284,18 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     return dataSource ?? null;
   }
 
-  static async fetchByConversationIds(
+  static async fetchByConversationModelIds(
     auth: Authenticator,
-    conversationIds: ModelId[],
+    conversationModelIds: ModelId[],
     options?: FetchDataSourceOptions
   ): Promise<DataSourceResource[]> {
-    if (conversationIds.length === 0) {
+    if (conversationModelIds.length === 0) {
       return [];
     }
 
     return this.baseFetch(auth, options, {
       where: {
-        conversationId: { [Op.in]: conversationIds },
+        conversationId: { [Op.in]: conversationModelIds },
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
