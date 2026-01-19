@@ -572,11 +572,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         // Handle member-based management
         const users = await UserResource.fetchByIds(memberIds);
 
-        const setMembersRes = await defaultSpaceGroup.setMembers(
-          auth,
-          { users: users.map((u) => u.toJSON()) },
-          { transaction: t }
-        );
+        const setMembersRes = await defaultSpaceGroup.setMembers(auth, {
+          users: users.map((u) => u.toJSON()),
+          transaction: t,
+        });
         if (setMembersRes.isErr()) {
           return setMembersRes;
         }
