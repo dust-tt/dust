@@ -413,7 +413,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
             conversationSId: message.sId,
             agentMessageId: agentMessage.id,
             agentConfigurationId: agentMessage.agentConfigurationId,
-            agentConfigurationIds: [...agentConfigurationsById.keys()],
+            agentConfigurationIds: Array.from(agentConfigurationsById.keys()),
           },
           "Conversation with unavailable agents"
         );
@@ -669,7 +669,6 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
     ConversationError
   >
 > {
-  // Consolidated MentionModel query (was 2 separate queries in child functions).
   const allMentionRows = await MentionModel.findAll({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -690,7 +689,6 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
     }
   }
 
-  // Consolidated getAgentConfigurations call (was 2 separate calls in child functions).
   const agentConfigurations =
     agentConfigurationSIds.size > 0
       ? await getAgentConfigurations(auth, {
