@@ -188,6 +188,7 @@ export function ConversationContainerVirtuoso({
               user={user}
               onSubmit={handleConversationCreation}
               conversation={null}
+              draftKey="home-new-conversation"
               disableAutoFocus={false}
             />
           </div>

@@ -10,11 +10,8 @@ interface ConversationDraft {
 
 type KeyId = string;
 
-const getKeyId = (
-  workspaceId: string,
-  userId: string,
-  conversationId: string
-) => `${userId}::${workspaceId}::${conversationId}` satisfies KeyId;
+const getKeyId = (workspaceId: string, userId: string, draftKey: string) =>
+  `${userId}::${workspaceId}::${draftKey}` satisfies KeyId;
 
 interface DraftStorage {
   [keyId: KeyId]: ConversationDraft;
@@ -30,16 +27,14 @@ const DRAFT_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 export function useConversationDrafts({
   workspaceId,
   userId,
-  conversationId,
+  draftKey,
   shouldUseDraft = true,
 }: {
   workspaceId: string;
   userId: string | null;
-  conversationId?: string | null;
+  draftKey: string;
   shouldUseDraft?: boolean;
 }) {
-  const internalConversationId = conversationId ?? "new";
-
   // Get all drafts from localStorage.
   const getDraftsFromStorage = useCallback((): DraftStorage => {
     try {
@@ -93,13 +88,13 @@ export function useConversationDrafts({
       ({
         workspaceId,
         userId,
-        conversationId,
+        draftKey,
         text,
         timestamp,
       }: {
         workspaceId: string;
         userId: string;
-        conversationId: string;
+        draftKey: string;
         text: string;
         timestamp: number;
       }) => {
@@ -108,7 +103,7 @@ export function useConversationDrafts({
         }
 
         const drafts = getDraftsFromStorage();
-        drafts[getKeyId(workspaceId, userId, conversationId)] = {
+        drafts[getKeyId(workspaceId, userId, draftKey)] = {
           text,
           timestamp,
         };
@@ -128,12 +123,12 @@ export function useConversationDrafts({
       debouncedSave({
         workspaceId,
         userId,
-        conversationId: internalConversationId,
+        draftKey,
         text,
         timestamp: Date.now(),
       });
     },
-    [debouncedSave, workspaceId, userId, shouldUseDraft, internalConversationId]
+    [debouncedSave, workspaceId, userId, shouldUseDraft, draftKey]
   );
 
   // Get draft for current conversation.
@@ -144,10 +139,8 @@ export function useConversationDrafts({
       return null;
     }
 
-    return (
-      drafts[getKeyId(workspaceId, userId, internalConversationId)] ?? null
-    );
-  }, [getDraftsFromStorage, workspaceId, userId, internalConversationId]);
+    return drafts[getKeyId(workspaceId, userId, draftKey)] ?? null;
+  }, [getDraftsFromStorage, workspaceId, userId, draftKey]);
 
   // Clear draft for the current conversation.
   const clearDraft = useCallback(() => {
@@ -157,16 +150,17 @@ export function useConversationDrafts({
 
     const drafts = getDraftsFromStorage();
 
-    delete drafts[getKeyId(workspaceId, userId, internalConversationId)];
-    saveDraftsToStorage(drafts);
+    delete drafts[getKeyId(workspaceId, userId, draftKey)];
 
     // Also, cancel any pending debounced save.
     debouncedSave.cancel();
+
+    saveDraftsToStorage(drafts);
   }, [
     getDraftsFromStorage,
     workspaceId,
     userId,
-    internalConversationId,
+    draftKey,
     saveDraftsToStorage,
     debouncedSave,
   ]);

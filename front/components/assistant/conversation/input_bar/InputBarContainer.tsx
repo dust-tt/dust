@@ -94,6 +94,7 @@ const InputBarContainer = ({
   onEnterKeyDown,
   owner,
   conversationId,
+
   selectedAgent,
   stickyMentions,
   actions,

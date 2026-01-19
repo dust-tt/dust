@@ -649,6 +649,7 @@ export const ConversationViewer = ({
       owner,
       handleSubmit,
       conversation,
+      draftKey: `conversation-${conversationId}`,
       enableReactions: !!conversation?.spaceId,
       agentBuilderContext,
       feedbacksByMessageId,
@@ -658,6 +659,7 @@ export const ConversationViewer = ({
     owner,
     handleSubmit,
     conversation,
+    conversationId,
     agentBuilderContext,
     feedbacksByMessageId,
   ]);

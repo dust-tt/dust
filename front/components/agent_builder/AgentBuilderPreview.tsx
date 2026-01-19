@@ -138,6 +138,7 @@ function PreviewContent({
                 draftAgent ? [toRichAgentMentionType(draftAgent)] : []
               }
               conversation={null}
+              draftKey={`agent-${draftAgent?.name}-builder-preview`}
               actions={["attachment"]}
               disableAutoFocus
               isFloating={false}
