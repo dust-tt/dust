@@ -1,8 +1,16 @@
-import { Spinner } from "@dust-tt/sparkle";
+import {
+  ContentMessage,
+  InformationCircleIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 import { useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import {
+  TrialMessageUsage,
+  useIsTrialPlanWithMessageLimit,
+} from "@app/components/app/TrialMessageUsage";
 import {
   useDraftAgent,
   useDraftConversation,
@@ -146,8 +154,9 @@ function PreviewContent({
 }
 
 export function AgentBuilderPreview() {
-  const { owner } = useAgentBuilderContext();
+  const { owner, isAdmin } = useAgentBuilderContext();
   const { user } = useUser();
+  const { isTrialPlan } = useIsTrialPlanWithMessageLimit(owner.sId);
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
   const { isPreviewPanelOpen } = usePreviewPanelContext();
 
@@ -288,6 +297,19 @@ export function AgentBuilderPreview() {
 
   return (
     <div className="flex h-full w-full flex-col" aria-label="Agent preview">
+      {isTrialPlan && (
+        <div className="flex flex-col gap-3 p-4">
+          <ContentMessage
+            variant="info"
+            icon={InformationCircleIcon}
+            title="Testing consumes trial message credits"
+          >
+            Every message you send to test this agent will be counted in your
+            trial message usage.
+          </ContentMessage>
+          <TrialMessageUsage isAdmin={isAdmin} workspaceId={owner.sId} />
+        </div>
+      )}
       <BlockedActionsProvider owner={owner} conversation={conversation}>
         <GenerationContextProvider>{renderContent()}</GenerationContextProvider>
       </BlockedActionsProvider>
