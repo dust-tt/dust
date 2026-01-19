@@ -140,7 +140,7 @@ export function SpaceConversationsTab({
               owner={owner}
               user={user}
               onSubmit={onSubmit}
-              conversationId={null}
+              conversation={null}
               disableAutoFocus={false}
             />
           </div>
