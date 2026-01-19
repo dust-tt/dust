@@ -980,10 +980,15 @@ export async function validateUserMention(
         },
       });
     }
-
-    // Continue with standard approval flow.
-    approvalState = "approved";
   }
+
+  const isApproval =
+    approvalState === "approved" ||
+    approvalState === "approved_and_add_to_project";
+  // The mention status stored in DB is "approved" or "rejected", not "approved_and_add_to_project".
+  const mentionStatus: "approved" | "rejected" = isApproval
+    ? "approved"
+    : approvalState;
 
   // Verify the message exists
   const message = conversation.content.flat().find((m) => m.sId === messageId);
@@ -997,7 +1002,11 @@ export async function validateUserMention(
       },
     });
   }
-  if (approvalState === "approved") {
+  if (isApproval) {
+    const auditMessage =
+      approvalState === "approved_and_add_to_project"
+        ? "User approved a mention and added user to project"
+        : "User approved a mention";
     auditLog(
       {
         author: auth.getNonNullableUser().toJSON(),
@@ -1007,7 +1016,7 @@ export async function validateUserMention(
         userId,
         approvalState,
       },
-      "User approved a mention"
+      auditMessage
     );
   }
 
@@ -1091,12 +1100,12 @@ export async function validateUserMention(
       if (!mentionModel) {
         continue;
       }
-      await mentionModel.update({ status: approvalState });
+      await mentionModel.update({ status: mentionStatus });
       const newRichMentions = latestMessage.richMentions.map((m) =>
         isRichUserMention(m) && m.id === userId
           ? {
               ...m,
-              status: approvalState,
+              status: mentionStatus,
             }
           : m
       );
@@ -1141,7 +1150,7 @@ export async function validateUserMention(
     }
   );
 
-  if (!isParticipant && approvalState === "approved") {
+  if (!isParticipant && isApproval) {
     const status = await ConversationResource.upsertParticipation(auth, {
       conversation,
       action: "subscribed",
