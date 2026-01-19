@@ -40,7 +40,6 @@ import type {
   ContentFragmentVersion,
   ContentNodeContentFragmentType,
   ContentNodeType,
-  ConversationType,
   FileContentFragmentType,
   ModelConfigurationType,
   ModelId,
@@ -670,7 +669,6 @@ export async function getContentFragmentFromAttachmentFile(
 export async function renderLightContentFragmentForModel(
   auth: Authenticator,
   message: ContentFragmentType,
-  conversation: ConversationType,
   model: ModelConfigurationType,
   {
     excludeImages,
@@ -678,24 +676,16 @@ export async function renderLightContentFragmentForModel(
     excludeImages: boolean;
   }
 ): Promise<ContentFragmentMessageTypeModel | null> {
-  const { contentType, sId } = message;
+  const { contentType } = message;
 
-  const contentFragment = await ContentFragmentResource.fromMessageId(
-    auth,
-    message.id
-  );
-  if (!contentFragment) {
-    throw new Error(`Content fragment not found for message ${sId}`);
-  }
-
-  if (contentFragment.expiredReason) {
+  if (message.expiredReason) {
     return {
       role: "content_fragment",
       name: `attach_${contentType}`,
       content: [
         {
           type: "text",
-          text: `The content of this file is no longer available. Reason: ${contentFragment.expiredReason}`,
+          text: `The content of this file is no longer available. Reason: ${message.expiredReason}`,
         },
       ],
     };
@@ -706,14 +696,9 @@ export async function renderLightContentFragmentForModel(
     return null;
   }
 
-  const { fileId: fileModelId } = contentFragment;
-
-  const fileStringId = fileModelId
-    ? FileResource.modelIdToSId({
-        id: fileModelId,
-        workspaceId: conversation.owner.id,
-      })
-    : null;
+  // Get fileId directly from the message based on content fragment type.
+  const fileStringId =
+    message.contentFragmentType === "file" ? message.fileId : null;
 
   // Check if this is pasted content - render with simplified format
   if (fileStringId && isPastedFile(contentType)) {
