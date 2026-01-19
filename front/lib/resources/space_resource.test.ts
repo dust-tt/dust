@@ -188,10 +188,9 @@ describe("SpaceResource", () => {
 
       it("should restore suspended members when switching from group to manual mode", async () => {
         // Add members first
-        await regularGroup.addMembers(adminAuth, [
-          user1.toJSON(),
-          user2.toJSON(),
-        ]);
+        await regularGroup.addMembers(adminAuth, {
+          users: [user1.toJSON(), user2.toJSON()],
+        });
 
         // Switch to group mode (this should suspend members)
         const provisionedGroup = await GroupResource.makeNew({
@@ -387,10 +386,9 @@ describe("SpaceResource", () => {
 
       it("should suspend active members when switching from manual to group mode", async () => {
         // Add members first
-        await regularGroup.addMembers(adminAuth, [
-          user1.toJSON(),
-          user2.toJSON(),
-        ]);
+        await regularGroup.addMembers(adminAuth, {
+          users: [user1.toJSON(), user2.toJSON()],
+        });
 
         // Set space to manual mode first
         await regularSpace.updatePermissions(adminAuth, {

@@ -107,7 +107,7 @@ makeScript(
       );
 
       if (execute) {
-        const result = await group.addMembers(auth, usersForGroup);
+        const result = await group.addMembers(auth, { users: usersForGroup });
         if (result.isErr()) {
           scriptLogger.error(
             { groupId: group.id, error: result.error },
