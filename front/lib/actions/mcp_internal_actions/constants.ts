@@ -818,14 +818,16 @@ export const INTERNAL_MCP_SERVERS = {
     tools_stakes: {
       get_messages: "never_ask",
       get_drafts: "never_ask",
-      create_draft: "low",
+      create_draft: "medium",
       delete_draft: "low",
-      create_reply_draft: "low",
+      create_reply_draft: "medium",
       get_contacts: "never_ask",
       create_contact: "high",
       update_contact: "high",
     },
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      create_draft: ["to"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1182,9 +1184,11 @@ export const INTERNAL_MCP_SERVERS = {
       list_channels: "never_ask",
       list_chats: "never_ask",
       list_messages: "never_ask",
-      post_message: "low",
+      post_message: "medium",
     },
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      post_message: ["channelId"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
