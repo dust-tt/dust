@@ -191,7 +191,7 @@ type ChipBaseProps = {
 type ChipButtonProps = ChipBaseProps & {
   onClick?: () => void;
 } & {
-  [K in keyof Omit<LinkWrapperProps, "children">]?: never;
+  [K in keyof Omit<LinkWrapperProps, "children" | "className">]?: never;
 };
 
 type ChipLinkProps = ChipBaseProps &
