@@ -2,17 +2,12 @@ import { ToolsIcon } from "@dust-tt/sparkle";
 
 import type { ActionSpecification } from "@app/components/agent_builder/types";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type { StepContext } from "@app/lib/actions/types";
 import {
-  isMCPInternalCatTool,
-  isMCPInternalDataSourceFileSystem,
-  isMCPInternalInclude,
-  isMCPInternalNotion,
-  isMCPInternalRunAgent,
-  isMCPInternalSearch,
-  isMCPInternalSlack,
-  isMCPInternalWebsearch,
-} from "@app/lib/actions/types/guards";
+  INTERNAL_SERVERS_WITH_WEBSEARCH,
+  isInternalMCPServerOfName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
+import type { StepContext } from "@app/lib/actions/types";
+import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { AgentConfigurationType } from "@app/types";
 
@@ -46,9 +41,24 @@ export function getRetrievalTopK({
 }): number {
   const model = getSupportedModelConfig(agentConfiguration.model);
 
-  const searchActions = stepActions.filter(isMCPInternalSearch);
-  const includeActions = stepActions.filter(isMCPInternalInclude);
-  const dsFsActions = stepActions.filter(isMCPInternalDataSourceFileSystem);
+  const searchActions = stepActions.filter(
+    (tool) =>
+      isServerSideMCPToolConfiguration(tool) &&
+      isInternalMCPServerOfName(tool.internalMCPServerId, "search")
+  );
+  const includeActions = stepActions.filter(
+    (tool) =>
+      isServerSideMCPToolConfiguration(tool) &&
+      isInternalMCPServerOfName(tool.internalMCPServerId, "include_data")
+  );
+  const dsFsActions = stepActions.filter(
+    (tool) =>
+      isServerSideMCPToolConfiguration(tool) &&
+      isInternalMCPServerOfName(
+        tool.internalMCPServerId,
+        "data_sources_file_system"
+      )
+  );
 
   const actionsCount =
     searchActions.length + includeActions.length + dsFsActions.length;
@@ -79,7 +89,13 @@ export function getWebsearchNumResults({
 }: {
   stepActions: MCPToolConfigurationType[];
 }): number {
-  const websearchActions = stepActions.filter(isMCPInternalWebsearch);
+  const websearchActions = stepActions.filter(
+    (tool) =>
+      isServerSideMCPToolConfiguration(tool) &&
+      INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+        isInternalMCPServerOfName(tool.internalMCPServerId, n)
+      )
+  );
   const totalActions = websearchActions.length;
 
   if (totalActions === 0) {
@@ -109,26 +125,38 @@ export function getCitationsCount({
 }): number {
   const action = stepActions[stepActionIndex];
 
-  if (isMCPInternalWebsearch(action)) {
-    return getWebsearchNumResults({
-      stepActions,
-    });
-  }
+  if (isServerSideMCPToolConfiguration(action)) {
+    if (
+      INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+        isInternalMCPServerOfName(action.internalMCPServerId, n)
+      )
+    ) {
+      return getWebsearchNumResults({
+        stepActions,
+      });
+    }
 
-  if (isMCPInternalSlack(action)) {
-    return SLACK_SEARCH_ACTION_NUM_RESULTS;
-  }
+    if (isInternalMCPServerOfName(action.internalMCPServerId, "slack")) {
+      return SLACK_SEARCH_ACTION_NUM_RESULTS;
+    }
 
-  if (isMCPInternalNotion(action)) {
-    return NOTION_SEARCH_ACTION_NUM_RESULTS;
-  }
+    if (isInternalMCPServerOfName(action.internalMCPServerId, "notion")) {
+      return NOTION_SEARCH_ACTION_NUM_RESULTS;
+    }
 
-  if (isMCPInternalRunAgent(action)) {
-    return RUN_AGENT_ACTION_NUM_RESULTS;
-  }
+    if (isInternalMCPServerOfName(action.internalMCPServerId, "run_agent")) {
+      return RUN_AGENT_ACTION_NUM_RESULTS;
+    }
 
-  if (isMCPInternalCatTool(action)) {
-    return 1;
+    if (
+      isInternalMCPServerOfName(
+        action.internalMCPServerId,
+        "data_sources_file_system"
+      ) &&
+      action.originalName === "cat"
+    ) {
+      return 1;
+    }
   }
 
   return getRetrievalTopK({

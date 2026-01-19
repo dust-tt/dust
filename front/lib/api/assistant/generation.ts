@@ -9,15 +9,19 @@ import {
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
+import type {
+  MCPServerConfigurationType,
+  ServerSideMCPServerConfigurationType,
+} from "@app/lib/actions/mcp";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import {
-  isMCPConfigurationForInternalNotion,
-  isMCPConfigurationForInternalSlack,
-  isMCPConfigurationForInternalWebsearch,
-  isMCPConfigurationForRunAgent,
-  isMCPConfigurationWithDataSource,
-} from "@app/lib/actions/types/guards";
+  INTERNAL_SERVERS_WITH_WEBSEARCH,
+  isInternalMCPServerOfName,
+  SKILL_MANAGEMENT_SERVER_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -317,6 +321,16 @@ function constructPastedContentSection(): string {
   );
 }
 
+function areDataSourcesConfigured(
+  arg: MCPServerConfigurationType
+): arg is ServerSideMCPServerConfigurationType {
+  return (
+    isServerSideMCPServerConfiguration(arg) &&
+    !!arg.dataSources &&
+    arg.dataSources.length > 0
+  );
+}
+
 export function constructGuidelinesSection({
   agentConfiguration,
   userMessage,
@@ -328,15 +342,20 @@ export function constructGuidelinesSection({
 
   const canRetrieveDocuments = agentConfiguration.actions.some(
     (action) =>
-      isMCPConfigurationWithDataSource(action) ||
-      isMCPConfigurationForInternalWebsearch(action) ||
-      isMCPConfigurationForRunAgent(action) ||
-      isMCPConfigurationForInternalSlack(action) ||
-      isMCPConfigurationForInternalNotion(action)
+      areDataSourcesConfigured(action) ||
+      (isServerSideMCPServerConfiguration(action) &&
+        (INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+          isInternalMCPServerOfName(action.internalMCPServerId, n)
+        ) ||
+          isInternalMCPServerOfName(action.internalMCPServerId, "run_agent") ||
+          isInternalMCPServerOfName(action.internalMCPServerId, "slack") ||
+          isInternalMCPServerOfName(action.internalMCPServerId, "notion")))
   );
 
-  const isUsingRunAgent = agentConfiguration.actions.some((action) =>
-    isMCPConfigurationForRunAgent(action)
+  const isUsingRunAgent = agentConfiguration.actions.some(
+    (action) =>
+      isServerSideMCPServerConfiguration(action) &&
+      isInternalMCPServerOfName(action.internalMCPServerId, "run_agent")
   );
 
   if (canRetrieveDocuments) {

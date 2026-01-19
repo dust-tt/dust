@@ -33,7 +33,11 @@ import { AgentMemoryTab } from "@app/components/assistant/details/tabs/AgentMemo
 import { AgentPerformanceTab } from "@app/components/assistant/details/tabs/AgentPerformanceTab";
 import { AgentTriggersTab } from "@app/components/assistant/details/tabs/AgentTriggersTab";
 import { RestoreAgentDialog } from "@app/components/assistant/RestoreAgentDialog";
-import { isMCPConfigurationForAgentMemory } from "@app/lib/actions/types/guards";
+import {
+  AGENT_MEMORY_SERVER_NAME,
+  isInternalMCPServerOfName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationScope,
@@ -117,7 +121,12 @@ export function AgentDetails({
   const showTriggersTabs =
     agentId != null && agentId === GLOBAL_AGENTS_SID.DUST;
   const showAgentMemory = !!agentConfiguration?.actions.find(
-    isMCPConfigurationForAgentMemory
+    (arg) =>
+      isServerSideMCPServerConfiguration(arg) &&
+      isInternalMCPServerOfName(
+        arg.internalMCPServerId,
+        AGENT_MEMORY_SERVER_NAME
+      )
   );
 
   const showPerformanceTabs =
