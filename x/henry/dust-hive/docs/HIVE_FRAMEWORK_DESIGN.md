@@ -241,8 +241,8 @@ Features are composed via configuration and plugins, not class hierarchies.
 // Good: Compose features via config
 export default defineConfig({
   ...baseConfig,
-  temporal: { enabled: true, namespaces: [...] },
-  plugins: [temporalPlugin(), forwarderPlugin({ mappings: [...] })]
+  managedServices: { services: [...] },
+  plugins: [forwarderPlugin({ mappings: [...] })]
 });
 
 // Avoid: Deep inheritance chains
@@ -389,14 +389,11 @@ interface HiveConfig {
   /** Initialization pipeline (optional) */
   init?: InitConfig;
 
-  /** Temporal integration (optional) */
-  temporal?: TemporalConfig;
+  /** Managed services - global daemons shared across envs (optional) */
+  managedServices?: ManagedServicesConfig;
 
   /** Sync/cache management (optional) */
   sync?: SyncConfig;
-
-  /** Managed services config (optional) */
-  managedServices?: ManagedServicesConfig;
 
   /** Port forwarding (optional) */
   forwarding?: ForwardingConfig;
@@ -438,9 +435,6 @@ interface ProjectConfig {
 
   /** Prefix for Docker projects/volumes. Default: `${cliName}-` */
   dockerPrefix?: string;
-
-  /** Prefix for Temporal namespaces. Default: `${cliName}-` */
-  temporalPrefix?: string;
 }
 ```
 
@@ -600,7 +594,7 @@ interface EnvExport {
 }
 
 // Template strings support: {{env.name}}, {{ports.*}}, {{paths.*}},
-// {{project.*}}, {{docker.*}}, {{temporal.namespaces.*}}
+// {{project.*}}, {{docker.*}}, {{mainRepo}}, {{worktree}}
 type TemplateString = string;
 ```
 
@@ -711,46 +705,180 @@ type InitRunner =
   | { type: "cargoBinary"; cwd: string; binary: string; args?: TemplateString[]; useCache?: boolean };
 ```
 
-### TemporalConfig
+### ManagedServicesConfig
 
-Temporal workflow engine integration.
+Managed services are **global daemons shared across all environments**. Unlike per-environment services (front, api, etc.), managed services run once and are used by all environments simultaneously.
+
+Examples:
+- **Temporal** - workflow engine with per-env namespaces
+- **Kafka/Redpanda** - message broker with per-env topics
+- **LocalStack** - AWS emulator
+- **Shared test databases** - Postgres/Redis for running tests
 
 ```typescript
-interface TemporalConfig {
-  /** Enable Temporal support. Default: false */
-  enabled: boolean;
-
-  /** Managed Temporal server configuration */
-  server?: {
-    /** Let Hive manage the Temporal server */
-    manage: boolean;
-    /** Server port. Default: 7233 */
-    port?: number;
-    /** Database file path */
-    dbPath?: string;
-  };
-
-  /** Namespace definitions */
-  namespaces: TemporalNamespace[];
+interface ManagedServicesConfig {
+  /** List of managed service definitions */
+  services: ManagedServiceDefinition[];
 }
 
-interface TemporalNamespace {
-  /** Namespace identifier */
+interface ManagedServiceDefinition {
+  /** Unique service identifier */
   id: string;
 
-  /** Full namespace name template */
-  nameTemplate: TemplateString;
+  /** Human-readable name */
+  displayName?: string;
 
-  /** Environment variable to export */
-  envVar: string;
+  /** How to start the service daemon */
+  start: {
+    /** Command to run */
+    command: TemplateString;
+    /** Working directory */
+    cwd?: TemplateString;
+    /** Additional arguments */
+    args?: TemplateString[];
+  };
 
-  /** Search attributes to register */
-  searchAttributes?: Array<{
-    name: string;
-    type: "Text" | "Int" | "Bool" | "Keyword" | "Datetime";
-  }>;
+  /** Health check to determine if service is ready */
+  readiness?: ReadinessCheck;
+
+  /** Paths for daemon management */
+  paths?: {
+    pidFile?: TemplateString;
+    logFile?: TemplateString;
+    dataDir?: TemplateString;
+  };
+
+  /** Per-environment setup (run when environment is warmed) */
+  perEnvSetup?: ManagedServiceEnvSetup[];
+
+  /** Environment variables to export (global, not per-env) */
+  globalEnvExports?: EnvExport[];
+
+  /** CLI subcommand (e.g., "temporal" creates `hive temporal start/stop/logs`) */
+  cliSubcommand?: string;
+}
+
+interface ManagedServiceEnvSetup {
+  /** Setup task identifier */
+  id: string;
+
+  /** Description */
+  description?: string;
+
+  /** Command to run for each environment */
+  command: TemplateString;
+
+  /** Environment variables to export per environment */
+  envExports?: EnvExport[];
+
+  /** Only run on first warm */
+  onlyFirstWarm?: boolean;
 }
 ```
+
+**Example: Temporal as a managed service**
+
+```typescript
+managedServices: {
+  services: [
+    {
+      id: "temporal",
+      displayName: "Temporal Server",
+      start: {
+        command: "temporal server start-dev --db-filename {{paths.home}}/temporal.db --port 7233",
+      },
+      readiness: { type: "tcp", port: "7233" },
+      paths: {
+        pidFile: "{{paths.home}}/temporal.pid",
+        logFile: "{{paths.home}}/temporal.log",
+        dataDir: "{{paths.home}}/temporal.db",
+      },
+      cliSubcommand: "temporal", // Creates: hive temporal start|stop|status|logs
+      perEnvSetup: [
+        {
+          id: "create-namespaces",
+          description: "Create Temporal namespaces",
+          command: "temporal operator namespace create {{project.name}}-{{env.name}} --address localhost:7233",
+          envExports: [
+            { name: "TEMPORAL_NAMESPACE", value: "{{project.name}}-{{env.name}}" },
+          ],
+          onlyFirstWarm: true,
+        },
+        {
+          id: "create-agent-namespace",
+          description: "Create agent namespace",
+          command: "temporal operator namespace create {{project.name}}-{{env.name}}-agent --address localhost:7233",
+          envExports: [
+            { name: "TEMPORAL_AGENT_NAMESPACE", value: "{{project.name}}-{{env.name}}-agent" },
+          ],
+          onlyFirstWarm: true,
+        },
+      ],
+    },
+  ],
+}
+```
+
+**Example: Shared test Postgres as a managed service**
+
+```typescript
+managedServices: {
+  services: [
+    {
+      id: "test-postgres",
+      displayName: "Test Postgres",
+      start: {
+        command: "docker run --name {{project.name}}-test-postgres -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -p 5433:5432 postgres:14",
+      },
+      readiness: { type: "tcp", port: "5433" },
+      cliSubcommand: "test-db",
+      perEnvSetup: [
+        {
+          id: "create-test-db",
+          description: "Create per-env test database",
+          command: "createdb -h localhost -p 5433 -U test {{project.name}}_test_{{env.name}}",
+          envExports: [
+            { name: "TEST_DATABASE_URI", value: "postgres://test:test@localhost:5433/{{project.name}}_test_{{env.name}}" },
+          ],
+          onlyFirstWarm: true,
+        },
+      ],
+    },
+  ],
+}
+```
+
+**Example: LocalStack for AWS emulation**
+
+```typescript
+managedServices: {
+  services: [
+    {
+      id: "localstack",
+      displayName: "LocalStack",
+      start: {
+        command: "docker run --name {{project.name}}-localstack -p 4566:4566 localstack/localstack",
+      },
+      readiness: { type: "http", url: "http://localhost:4566/_localstack/health" },
+      globalEnvExports: [
+        { name: "AWS_ENDPOINT_URL", value: "http://localhost:4566" },
+        { name: "AWS_ACCESS_KEY_ID", value: "test" },
+        { name: "AWS_SECRET_ACCESS_KEY", value: "test" },
+      ],
+    },
+  ],
+}
+```
+
+**Key differences from per-env services:**
+
+| Aspect | Per-Env Services | Managed Services |
+|--------|-----------------|------------------|
+| Lifecycle | Start/stop with environment | Start with `up`, stop with `down` |
+| Instances | One per environment | One shared globally |
+| Ports | From environment's port range | Fixed global ports |
+| State | Isolated per environment | Shared (may have per-env namespaces/DBs) |
+| Commands | `hive warm/cool/stop` | `hive <service> start/stop` |
 
 ### SyncConfig
 
@@ -964,32 +1092,24 @@ interface CustomCommand {
 The framework ships with optional plugins for common use cases:
 
 ```typescript
-import {
-  temporalPlugin,
-  forwarderPlugin,
-  testContainersPlugin,
-} from "@dust-tt/hive/plugins";
+import { forwarderPlugin } from "@dust-tt/hive/plugins";
 
 export default defineConfig({
   // ...
   plugins: [
-    temporalPlugin({
-      server: { manage: true },
-      namespaces: [/* ... */],
-    }),
+    // Port forwarder: map fixed ports to active environment
+    // Useful for OAuth callbacks that require fixed redirect URIs
     forwarderPlugin({
       mappings: [
         { listenPort: 3000, targetPortKey: "front" },
         { listenPort: 3001, targetPortKey: "api" },
       ],
     }),
-    testContainersPlugin({
-      postgres: { port: 5433, databases: ["myapp_test_{{env.name}}"] },
-      redis: { port: 6479 },
-    }),
   ],
 });
 ```
+
+**Note**: Temporal, test databases, and other shared services are now configured via `managedServices` in the main config, not as plugins. This provides a unified way to define any global daemon.
 
 ---
 
@@ -1037,7 +1157,7 @@ Simple, safe string interpolation.
 
 - Syntax: `{{path.to.value}}`
 - No logic (loops, conditionals) - just value substitution
-- Predefined context: `env`, `ports`, `paths`, `project`, `docker`, `temporal`
+- Predefined context: `env`, `ports`, `paths`, `project`, `docker`, `mainRepo`, `worktree`
 - Validation at config load time
 
 ### Multiplexer Adapters
@@ -1090,7 +1210,7 @@ If the main repo is outdated, all worktrees break. `sync` is the single command 
 
 5. Move service registry to config format
 6. Move environment variable definitions to config
-7. Move Docker/init/temporal settings to config
+7. Move Docker/init/managed services settings to config
 8. Dust config lives alongside framework code
 
 ### Phase 3: Package Split
@@ -1195,7 +1315,7 @@ export default defineConfig({
         cwd: "connectors",
         start: {
           runner: { type: "node", command: "npx tsx src/start.ts -p {{ports.connectors}}", useNvm: true },
-          bootstrap: { sourceEnvFile: true, env: { TEMPORAL_NAMESPACE: "{{temporal.namespaces.connectors}}" } },
+          bootstrap: { sourceEnvFile: true },  // TEMPORAL_CONNECTORS_NAMESPACE comes from managed service perEnvSetup
         },
         ports: { primary: "connectors" },
       },
@@ -1242,14 +1362,39 @@ export default defineConfig({
     },
   },
 
-  temporal: {
-    enabled: true,
-    server: { manage: true, port: 7233, dbPath: "{{paths.home}}/temporal.db" },
-    namespaces: [
-      { id: "default", nameTemplate: "{{project.temporalPrefix}}{{env.name}}", envVar: "TEMPORAL_NAMESPACE", searchAttributes: [{ name: "conversationId", type: "Text" }, { name: "workspaceId", type: "Text" }] },
-      { id: "agent", nameTemplate: "{{project.temporalPrefix}}{{env.name}}-agent", envVar: "TEMPORAL_AGENT_NAMESPACE", searchAttributes: [{ name: "conversationId", type: "Text" }, { name: "workspaceId", type: "Text" }] },
-      { id: "connectors", nameTemplate: "{{project.temporalPrefix}}{{env.name}}-connectors", envVar: "TEMPORAL_CONNECTORS_NAMESPACE", searchAttributes: [{ name: "connectorId", type: "Int" }] },
-      { id: "relocation", nameTemplate: "{{project.temporalPrefix}}{{env.name}}-relocation", envVar: "TEMPORAL_RELOCATION_NAMESPACE" },
+  managedServices: {
+    services: [
+      {
+        id: "temporal",
+        displayName: "Temporal Server",
+        start: { command: "temporal server start-dev --db-filename {{paths.home}}/temporal.db --port 7233" },
+        readiness: { type: "tcp", port: "7233" },
+        paths: { pidFile: "{{paths.home}}/temporal.pid", logFile: "{{paths.home}}/temporal.log" },
+        cliSubcommand: "temporal",
+        perEnvSetup: [
+          { id: "ns-default", command: "temporal operator namespace create {{project.name}}-{{env.name}}", envExports: [{ name: "TEMPORAL_NAMESPACE", value: "{{project.name}}-{{env.name}}" }], onlyFirstWarm: true },
+          { id: "ns-agent", command: "temporal operator namespace create {{project.name}}-{{env.name}}-agent", envExports: [{ name: "TEMPORAL_AGENT_NAMESPACE", value: "{{project.name}}-{{env.name}}-agent" }], onlyFirstWarm: true },
+          { id: "ns-connectors", command: "temporal operator namespace create {{project.name}}-{{env.name}}-connectors", envExports: [{ name: "TEMPORAL_CONNECTORS_NAMESPACE", value: "{{project.name}}-{{env.name}}-connectors" }], onlyFirstWarm: true },
+          { id: "ns-relocation", command: "temporal operator namespace create {{project.name}}-{{env.name}}-relocation", envExports: [{ name: "TEMPORAL_RELOCATION_NAMESPACE", value: "{{project.name}}-{{env.name}}-relocation" }], onlyFirstWarm: true },
+        ],
+      },
+      {
+        id: "test-postgres",
+        displayName: "Test Postgres",
+        start: { command: "docker run --rm --name dust-hive-test-postgres -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -p 5433:5432 postgres:14" },
+        readiness: { type: "tcp", port: "5433" },
+        cliSubcommand: "test-db",
+        perEnvSetup: [
+          { id: "create-db", command: "createdb -h localhost -p 5433 -U test dust_front_test_{{env.name}}", envExports: [{ name: "TEST_FRONT_DATABASE_URI", value: "postgres://test:test@localhost:5433/dust_front_test_{{env.name}}" }], onlyFirstWarm: true },
+        ],
+      },
+      {
+        id: "test-redis",
+        displayName: "Test Redis",
+        start: { command: "docker run --rm --name dust-hive-test-redis -p 6479:6379 redis:latest" },
+        readiness: { type: "tcp", port: "6479" },
+        globalEnvExports: [{ name: "TEST_REDIS_URI", value: "redis://localhost:6479" }],
+      },
     ],
   },
 
@@ -1372,8 +1517,7 @@ export default defineConfig({
       postgres: { ports: [{ host: "{{ports.postgres}}", container: 5432 }] },
     },
   },
-
-  temporal: { enabled: false },
+  // No managedServices - this project doesn't need Temporal or shared test DBs
 });
 ```
 
