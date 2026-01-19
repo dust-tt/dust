@@ -1,14 +1,10 @@
-import {
-  Card,
-  CardGrid,
-  Icon,
-  type IconComponent,
-} from "@dust-tt/sparkle";
+import { Card, CardGrid, Icon, type IconComponent } from "@dust-tt/sparkle";
 
 export interface Suggestion {
   id: string;
   label: string;
   icon: IconComponent;
+  description: string;
   onClick: () => void;
 }
 
@@ -26,13 +22,13 @@ export function ConversationSuggestion({
   return (
     <div className="s-flex s-flex-col s-gap-3">
       <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-        Suggested actions
+        New room? Let us help you setup.
       </h3>
       <CardGrid>
         {suggestions.map((suggestion) => (
           <Card
             key={suggestion.id}
-            variant="primary"
+            variant="secondary"
             size="md"
             onClick={suggestion.onClick}
             className="s-cursor-pointer"
@@ -42,6 +38,11 @@ export function ConversationSuggestion({
                 <Icon visual={suggestion.icon} size="sm" />
                 <div className="s-w-full">{suggestion.label}</div>
               </div>
+              {suggestion.description && (
+                <div className="s-text-sm s-text-muted-foreground">
+                  {suggestion.description}
+                </div>
+              )}
             </div>
           </Card>
         ))}

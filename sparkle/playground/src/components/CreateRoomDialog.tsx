@@ -1,6 +1,4 @@
 import {
-  Button,
-  CheckBoxWithTextAndDescription,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -8,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  SliderToggle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -49,32 +48,38 @@ export function CreateRoomDialog({
         <DialogHeader>
           <DialogTitle>Create a new room</DialogTitle>
         </DialogHeader>
-        <DialogContainer>
-          <div className="s-flex s-flex-col s-gap-3">
-            <Input
-              label="Room name"
-              placeholder="Enter room name"
-              value={roomName}
-              onChange={(e) => {
-                setRoomName(e.target.value);
-                setError(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleNext();
-                }
-              }}
-              isError={!!error}
-              message={error}
-              messageStatus={error ? "error" : "default"}
-              autoFocus
-            />
-            <CheckBoxWithTextAndDescription
-              id="is-public-checkbox"
-              text="is public"
-              description="Anyone in the workspace can find and join the room."
-              checked={isPublic}
-              onCheckedChange={setIsPublic}
+        <DialogContainer className="s-space-y-6">
+          <Input
+            label="Room name"
+            placeholder="Enter room name"
+            value={roomName}
+            onChange={(e) => {
+              setRoomName(e.target.value);
+              setError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleNext();
+              }
+            }}
+            isError={!!error}
+            message={error}
+            messageStatus={error ? "error" : "default"}
+            autoFocus
+          />
+          <div className="s-flex s-items-start s-justify-between s-gap-4">
+            <div className="s-flex s-flex-col">
+              <div className="s-text-sm s-font-semibold s-text-foreground">
+                Opened to everyone
+              </div>
+              <div className="s-text-sm s-text-muted-foreground">
+                Anyone in the workspace can find and join the room.
+              </div>
+            </div>
+            <SliderToggle
+              size="xs"
+              selected={isPublic}
+              onClick={() => setIsPublic((prev) => !prev)}
             />
           </div>
         </DialogContainer>

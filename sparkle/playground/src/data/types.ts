@@ -40,4 +40,15 @@ export interface Space {
   id: string;
   name: string;
   description: string;
+  isPublic?: boolean;
+}
+
+export interface DataSource {
+  id: string;
+  fileName: string;
+  fileType: "pdf" | "doc" | "docx" | "xlsx" | "pptx" | "txt" | "md";
+  createdBy: string; // user ID
+  createdAt: Date;
+  updatedAt: Date;
+  icon?: React.ComponentType<{ className?: string }>; // Icon component
 }
