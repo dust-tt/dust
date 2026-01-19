@@ -29,7 +29,11 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
-import type { AgentsUsageType, Result } from "@app/types";
+import type {
+  AgentConfigurationType,
+  AgentsUsageType,
+  Result,
+} from "@app/types";
 import { Err, Ok, removeNulls, SPACE_GROUP_PREFIX } from "@app/types";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
@@ -151,19 +155,35 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       const agentIds = uniq(
         usages.flatMap((u) => u.agents).map((agent) => agent.sId)
       );
+      const agentConfigurations = await getAgentConfigurations(auth, {
+        agentIds,
+        variant: "full",
+      });
+      const agentConfigurationsById = new Map<string, AgentConfigurationType>();
+      for (const agentConfig of agentConfigurations) {
+        agentConfigurationsById.set(agentConfig.sId, agentConfig);
+      }
+
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+
       await concurrentExecutor(
         agentIds,
         async (agentId) => {
-          const agentConfigs = await getAgentConfigurations(auth, {
-            agentIds: [agentId],
-            variant: "full",
-          });
-          const [agentConfig] = agentConfigs;
+          const agentConfig = agentConfigurationsById.get(agentId);
+          if (!agentConfig) {
+            logger.error(
+              {
+                agentId,
+                workspaceId: auth.getNonNullableWorkspace().sId,
+              },
+              "Agent configuration not found for space soft delete"
+            );
+            return;
+          }
 
           let skills: SkillResource[] = [];
-          const featureFlags = await getFeatureFlags(
-            auth.getNonNullableWorkspace()
-          );
           if (featureFlags.includes("skills")) {
             skills = await SkillResource.listByAgentConfiguration(
               auth,
