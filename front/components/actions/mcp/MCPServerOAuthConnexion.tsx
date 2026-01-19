@@ -18,6 +18,7 @@ import { useController, useFormContext } from "react-hook-form";
 
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
+import config from "@app/lib/api/config";
 import type {
   MCPOAuthUseCase,
   OAuthCredentialInputs,
@@ -325,7 +326,7 @@ function UseCaseCard({
 function SnowflakeSetupInstructions() {
   const [isOpen, setIsOpen] = useState(false);
 
-  const redirectUri = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/oauth/snowflake/finalize`;
+  const redirectUri = `${config.getClientFacingUrl()}/oauth/snowflake/finalize`;
 
   return (
     <div className="w-full pt-4">
