@@ -207,18 +207,19 @@ function interleaveConditionalNewlines(parts: string[]): string[] {
 
 async function batchRenderUserMessages(
   auth: Authenticator,
-  messages: MessageModel[]
+  messages: MessageModel[],
+  allMentionRows: MentionModel[],
+  agentConfigurationsById: Map<string, LightAgentConfigurationType>
 ): Promise<UserMessageType[]> {
   const userMessages = messages.filter(
     (m) => m.userMessage !== null && m.userMessage !== undefined
   );
 
-  const mentionRows = await MentionModel.findAll({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      messageId: userMessages.map((m) => m.id),
-    },
-  });
+  // Filter mentions to only user messages.
+  const userMessageIds = new Set(userMessages.map((m) => m.id));
+  const mentionRows = allMentionRows.filter((m) =>
+    userMessageIds.has(m.messageId)
+  );
 
   const userIds = [
     ...new Set(
@@ -229,26 +230,10 @@ async function batchRenderUserMessages(
     ),
   ];
 
-  const agentConfigurationSIds = [
-    ...new Set(
-      removeNulls([...mentionRows.map((m) => m.agentConfigurationId)])
-    ),
-  ];
-
-  const [users, agentConfigurations] = await Promise.all([
-    userIds.length > 0 ? UserResource.fetchByModelIds(userIds) : [],
-    agentConfigurationSIds.length > 0
-      ? getAgentConfigurations(auth, {
-          agentIds: agentConfigurationSIds,
-          variant: "extra_light",
-        })
-      : [],
-  ]);
+  const users =
+    userIds.length > 0 ? await UserResource.fetchByModelIds(userIds) : [];
 
   const usersById = new Map(users.map((u) => [u.id, u.toJSON()]));
-  const agentConfigurationsById = new Map(
-    agentConfigurations.map((a) => [a.sId, a])
-  );
 
   const reactionsByMessageId = await getMessagesReactions(auth, {
     messageIds: userMessages.map((m) => m.id),
@@ -333,7 +318,9 @@ async function batchRenderUserMessages(
 async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   messages: MessageModel[],
-  viewType: V
+  viewType: V,
+  allMentionRows: MentionModel[],
+  agentConfigurationsById: Map<string, LightAgentConfigurationType>
 ): Promise<
   Result<
     V extends "full" ? AgentMessageType[] : LightAgentMessageType[],
@@ -345,44 +332,20 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     agentMessages.map((m) => m.agentMessageId ?? null)
   );
 
-  const mentionRows = await MentionModel.findAll({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      messageId: agentMessages.map((m) => m.id),
-    },
-  });
+  // Filter mentions to only agent messages.
+  const agentMessageModelIds = new Set(agentMessages.map((m) => m.id));
+  const mentionRows = allMentionRows.filter((m) =>
+    agentMessageModelIds.has(m.messageId)
+  );
 
   const userIds = [
     ...new Set(removeNulls([...mentionRows.map((m) => m.userId)])),
   ];
 
-  // Get all unique pairs id-version for the agent configurations
-  const agentConfigurationIds = [
-    ...new Set(
-      removeNulls([...mentionRows.map((m) => m.agentConfigurationId)])
-    ),
-    ...agentMessages.reduce((acc, m) => {
-      if (m.agentMessage) {
-        acc.add(m.agentMessage.agentConfigurationId);
-      }
-      return acc;
-    }, new Set<string>()),
-  ];
-
-  const [users, agentConfigurations] = await Promise.all([
-    userIds.length > 0 ? UserResource.fetchByModelIds(userIds) : [],
-    agentConfigurationIds.length > 0
-      ? getAgentConfigurations(auth, {
-          agentIds: [...agentConfigurationIds],
-          variant: "extra_light",
-        })
-      : [],
-  ]);
+  const users =
+    userIds.length > 0 ? await UserResource.fetchByModelIds(userIds) : [];
 
   const usersById = new Map(users.map((u) => [u.id, u.toJSON()]));
-  const agentConfigurationsById = new Map(
-    agentConfigurations.map((a) => [a.sId, a])
-  );
 
   const stepContents = await AgentStepContentResource.fetchByAgentMessages(
     auth,
@@ -391,12 +354,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       latestVersionsOnly: true,
     }
   );
-
-  if (!agentConfigurations) {
-    return new Err(
-      new ConversationError("conversation_with_unavailable_agent")
-    );
-  }
 
   const agentMCPActions = await AgentMCPActionResource.fetchByStepContents(
     auth,
@@ -456,7 +413,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
             conversationSId: message.sId,
             agentMessageId: agentMessage.id,
             agentConfigurationId: agentMessage.agentConfigurationId,
-            agentConfigurations,
+            agentConfigurationIds: [...agentConfigurationsById.keys()],
           },
           "Conversation with unavailable agents"
         );
@@ -712,9 +669,54 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
     ConversationError
   >
 > {
+  // Consolidated MentionModel query (was 2 separate queries in child functions).
+  const allMentionRows = await MentionModel.findAll({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      messageId: messages.map((m) => m.id),
+    },
+  });
+
+  // Collect all agent configuration IDs from mentions and agent messages.
+  const agentConfigurationSIds = new Set<string>();
+  for (const mention of allMentionRows) {
+    if (mention.agentConfigurationId) {
+      agentConfigurationSIds.add(mention.agentConfigurationId);
+    }
+  }
+  for (const message of messages) {
+    if (message.agentMessage) {
+      agentConfigurationSIds.add(message.agentMessage.agentConfigurationId);
+    }
+  }
+
+  // Consolidated getAgentConfigurations call (was 2 separate calls in child functions).
+  const agentConfigurations =
+    agentConfigurationSIds.size > 0
+      ? await getAgentConfigurations(auth, {
+          agentIds: [...agentConfigurationSIds],
+          variant: "extra_light",
+        })
+      : [];
+
+  const agentConfigurationsById = new Map(
+    agentConfigurations.map((a) => [a.sId, a])
+  );
+
   const [userMessages, agentMessagesRes, contentFragments] = await Promise.all([
-    batchRenderUserMessages(auth, messages),
-    batchRenderAgentMessages(auth, messages, viewType),
+    batchRenderUserMessages(
+      auth,
+      messages,
+      allMentionRows,
+      agentConfigurationsById
+    ),
+    batchRenderAgentMessages(
+      auth,
+      messages,
+      viewType,
+      allMentionRows,
+      agentConfigurationsById
+    ),
     batchRenderContentFragment(auth, conversation.sId, messages),
   ]);
 
