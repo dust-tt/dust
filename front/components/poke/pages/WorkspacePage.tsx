@@ -57,11 +57,19 @@ export function WorkspacePage({ owner }: WorkspacePageProps) {
     disabled: false,
   });
 
-  const tabParam = router.query.tab;
-  const currentTab = !isString(tabParam) ? "datasources" : tabParam;
+  const currentTab = !isString(router.query.tab)
+    ? "datasources"
+    : router.query.tab;
 
   const handleTabChange = (value: string) => {
-    void router.push(`/poke/${owner.sId}?tab=${value}`);
+    void router.push(
+      {
+        pathname: router.pathname,
+        query: { ...router.query, tab: value },
+      },
+      undefined,
+      { shallow: true }
+    );
   };
 
   const { submit: onWorkspaceUpdate } = useSubmitFunction(
