@@ -1,0 +1,1276 @@
+# Hive Framework Design Document
+
+**Package:** `@dust-tt/hive`
+**Status:** Draft
+**Date:** 2026-01-19
+**Authors:** Dust Engineering
+
+---
+
+## Table of Contents
+
+1. [Executive Summary](#executive-summary)
+2. [Problem Statement](#problem-statement)
+3. [Goals & Non-Goals](#goals--non-goals)
+4. [Architecture Overview](#architecture-overview)
+5. [Core Design Principles](#core-design-principles)
+6. [Public API](#public-api)
+7. [Configuration Schema](#configuration-schema)
+8. [Plugin & Hook System](#plugin--hook-system)
+9. [Subsystem Details](#subsystem-details)
+10. [Migration Path](#migration-path)
+11. [Example Configurations](#example-configurations)
+12. [Open Questions](#open-questions)
+
+---
+
+## Executive Summary
+
+`@dust-tt/hive` is a framework for building CLI tools that manage multiple isolated development environments for monorepos. It extracts the generic infrastructure from `dust-hive` into a reusable library that other teams can use to create their own "Hive" for their codebases.
+
+The framework provides:
+- **Environment isolation** via git worktrees with dedicated port ranges
+- **Service orchestration** with daemon management and health checks
+- **Docker infrastructure** with per-environment port and volume isolation
+- **Terminal multiplexer UI** (zellij/tmux) for log viewing
+- **Managed services** (Temporal, test databases) shared across environments
+- **Extensibility** via configuration, hooks, and plugins
+
+Teams import `@dust-tt/hive` and create their own branded CLI (e.g., `acme-hive`) by providing a configuration file that defines their services, environment variables, initialization steps, and optional custom commands.
+
+---
+
+## Problem Statement
+
+Modern monorepos often require running multiple services simultaneously during development (frontends, APIs, workers, databases). Developers frequently need to:
+
+1. Work on multiple features in parallel without port conflicts
+2. Test changes in isolation before merging
+3. Switch between branches without rebuilding everything
+4. Share infrastructure (databases, caches) efficiently
+
+`dust-hive` solved these problems for Dust's monorepo, but the solution is tightly coupled to Dust's specific services, directory layout, and conventions. Other teams at Dust (and potentially external teams) face similar challenges but cannot use `dust-hive` without forking and heavily modifying it.
+
+---
+
+## Goals & Non-Goals
+
+### Goals
+
+1. **Extract a reusable framework** from `dust-hive` that other teams can adopt
+2. **Maintain full backward compatibility** with existing `dust-hive` users during transition
+3. **Provide a clean, typed configuration API** using TypeScript
+4. **Support diverse tech stacks** (Node, Rust, Go, Python, etc.)
+5. **Enable customization** via hooks and plugins without forking
+6. **Keep the core minimal** - project-specific logic belongs in configuration/modules
+
+### Non-Goals
+
+1. **Windows support** - focus on macOS/Linux for v1
+2. **Kubernetes/cloud deployment** - this is a local development tool
+3. **GUI** - CLI-first, multiplexer for visualization
+4. **Package management** - we orchestrate services, not dependencies
+5. **Replacing Docker Compose** - we complement it with environment isolation
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        @dust-tt/hive                             │
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │                      Public API                             │ │
+│  │  createHiveCLI()  defineConfig()  types & utilities        │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                              │                                   │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │                    Core Subsystems                          │ │
+│  │                                                              │ │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐      │ │
+│  │  │ Config   │ │ Ports    │ │ Environ- │ │ Docker   │      │ │
+│  │  │ Loader   │ │ Allocator│ │ ment Mgr │ │ Manager  │      │ │
+│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘      │ │
+│  │                                                              │ │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐      │ │
+│  │  │ Process  │ │ Service  │ │ Init     │ │ Worktree │      │ │
+│  │  │ Manager  │ │ Registry │ │ Runner   │ │ Manager  │      │ │
+│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘      │ │
+│  │                                                              │ │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────────────────┐       │ │
+│  │  │ Mux      │ │ Template │ │ Managed Services     │       │ │
+│  │  │ Adapters │ │ Engine   │ │ (Temporal, TestDBs)  │       │ │
+│  │  └──────────┘ └──────────┘ └──────────────────────┘       │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                              │                                   │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │                    Plugin Interface                         │ │
+│  │  Hooks (lifecycle)    Dependency Strategies    Commands    │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                               │
+                               │ import & configure
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Project CLI (e.g., dust-hive)                 │
+│                                                                  │
+│  hive.config.ts     ← Services, init, env, docker config        │
+│  src/commands/      ← Custom commands (sync, seed-config)       │
+│  src/plugins/       ← Custom plugins (shallow node_modules)     │
+│  src/index.ts       ← CLI entry: createHiveCLI(config)          │
+│                                                                  │
+│  Binary: dust-hive                                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow
+
+1. **CLI Invocation**: User runs `dust-hive warm myenv`
+2. **Config Loading**: Framework loads `hive.config.ts`, validates schema
+3. **Context Resolution**: Resolves environment (from arg, cwd, or prompt)
+4. **Template Expansion**: Expands `{{ports.front}}`, `{{paths.worktree}}` in config
+5. **Command Execution**: Runs the command with resolved context
+6. **Hook Invocation**: Calls registered hooks (beforeWarm, afterWarm)
+7. **Subsystem Delegation**: Command delegates to subsystems (Docker, ProcessManager, etc.)
+
+---
+
+## Core Design Principles
+
+### 1. Configuration Over Code
+
+Project-specific behavior should be expressed as configuration, not code changes to the framework. The framework should be data-driven.
+
+```typescript
+// Good: Behavior expressed in config
+services: {
+  front: {
+    cwd: "front",
+    start: { runner: { type: "node", command: "npm run dev" } },
+    readiness: { type: "http", url: "http://localhost:{{ports.front}}/health" }
+  }
+}
+
+// Avoid: Hardcoding project-specific logic in framework
+if (service === "front") {
+  await runNpmDev();
+}
+```
+
+### 2. Explicit Over Implicit
+
+Dependencies, ordering, and behavior should be explicit in configuration rather than inferred from conventions or array order.
+
+```typescript
+// Good: Explicit dependencies
+services: {
+  api: {
+    dependsOn: ["docker:db", "sdk"],  // Clear what must be ready first
+  }
+}
+
+// Avoid: Implicit ordering via array position
+services: ["sdk", "api"]  // Why is sdk first? Must read code to understand
+```
+
+### 3. Fail Fast, Fail Clearly
+
+Errors should be detected early (config validation, prerequisite checks) and reported with actionable messages.
+
+```typescript
+// Good: Validate config at load time
+if (!config.services.front.readiness) {
+  throw new ConfigError(
+    `Service 'front' missing readiness check`,
+    { hint: "Add a readiness config to enable health monitoring" }
+  );
+}
+
+// Avoid: Silent failures or generic errors
+// "Cannot read property 'url' of undefined"
+```
+
+### 4. Escape Hatches Exist
+
+While configuration handles most cases, the framework provides hooks and plugins for scenarios that cannot be expressed as data.
+
+```typescript
+// Config handles 90% of cases
+services: { api: { start: { runner: { type: "node", command: "npm start" } } } }
+
+// Hooks handle edge cases
+hooks: {
+  afterSpawn: async (ctx) => {
+    // Custom SDK linking logic that can't be expressed as config
+    await setupShallowNodeModules(ctx.worktree, ctx.mainRepo);
+  }
+}
+```
+
+### 5. Sensible Defaults, Full Overridability
+
+The framework provides defaults that work for common cases, but everything can be overridden.
+
+```typescript
+// Minimal config uses defaults
+export default defineConfig({
+  project: { name: "acme" },
+  services: { api: { cwd: ".", start: { command: "npm start" } } }
+});
+
+// Full control when needed
+export default defineConfig({
+  project: {
+    name: "acme",
+    cliName: "acme-hive",           // Override CLI name
+    sessionPrefix: "ah-",            // Custom session prefix
+  },
+  ports: {
+    base: 20000,                     // Different port range
+    increment: 500,                  // Smaller blocks
+  }
+});
+```
+
+### 6. Composition Over Inheritance
+
+Features are composed via configuration and plugins, not class hierarchies.
+
+```typescript
+// Good: Compose features via config
+export default defineConfig({
+  ...baseConfig,
+  temporal: { enabled: true, namespaces: [...] },
+  plugins: [temporalPlugin(), forwarderPlugin({ mappings: [...] })]
+});
+
+// Avoid: Deep inheritance chains
+class MyHive extends DustHive extends BaseHive { ... }
+```
+
+---
+
+## Public API
+
+### Main Exports
+
+```typescript
+// @dust-tt/hive
+
+// === Configuration ===
+export function defineConfig(config: HiveConfig): HiveConfig;
+export function definePlugin(plugin: HivePlugin): HivePlugin;
+
+// === CLI Factory ===
+export function createHiveCLI(config: HiveConfig): HiveCLI;
+
+// === Types (fully exported for consumers) ===
+export type {
+  // Core config types
+  HiveConfig,
+  ProjectConfig,
+  RepoConfig,
+  PortsConfig,
+
+  // Service types
+  ServiceDefinition,
+  ServiceRunner,
+  ReadinessCheck,
+
+  // Environment types
+  EnvironmentConfig,
+  EnvExport,
+
+  // Docker types
+  DockerConfig,
+  DockerServiceOverride,
+
+  // Init types
+  InitConfig,
+  InitTask,
+  InitRunner,
+
+  // Temporal types
+  TemporalConfig,
+  TemporalNamespace,
+
+  // Plugin types
+  HivePlugin,
+  HiveHooks,
+  DependencyStrategy,
+
+  // Runtime types
+  HiveContext,
+  Environment,
+  PortAllocation,
+};
+
+// === Utilities ===
+export { logger } from "./lib/logger";
+export { Result, ok, err } from "./lib/result";
+```
+
+### `createHiveCLI(config)`
+
+Creates and returns a CLI instance configured with the provided config.
+
+```typescript
+// src/index.ts in your project
+import { createHiveCLI, defineConfig } from "@dust-tt/hive";
+import { config } from "./hive.config";
+
+const cli = createHiveCLI(config);
+cli.run(process.argv);
+```
+
+The returned CLI includes all core commands (spawn, warm, cool, start, stop, destroy, list, status, logs, open, etc.) plus any custom commands registered via config.
+
+### `defineConfig(config)`
+
+Type-safe configuration helper with validation and defaults.
+
+```typescript
+import { defineConfig } from "@dust-tt/hive";
+
+export const config = defineConfig({
+  project: {
+    name: "dust",
+    cliName: "dust-hive",
+  },
+  // ... rest of config
+});
+```
+
+### `definePlugin(plugin)`
+
+Creates a reusable plugin that can be shared across projects.
+
+```typescript
+import { definePlugin } from "@dust-tt/hive";
+
+export const myPlugin = definePlugin({
+  name: "my-plugin",
+  hooks: {
+    beforeWarm: async (ctx) => { /* ... */ },
+  },
+  commands: [
+    { name: "my-command", handler: async (ctx) => { /* ... */ } }
+  ],
+});
+```
+
+---
+
+## Configuration Schema
+
+### Complete HiveConfig Interface
+
+```typescript
+interface HiveConfig {
+  /** Project identity and naming */
+  project: ProjectConfig;
+
+  /** Git repository settings */
+  repo: RepoConfig;
+
+  /** Port allocation scheme */
+  ports: PortsConfig;
+
+  /** Service definitions */
+  services: ServicesConfig;
+
+  /** Environment variable generation */
+  env: EnvironmentConfig;
+
+  /** Docker infrastructure (optional) */
+  docker?: DockerConfig;
+
+  /** Initialization pipeline (optional) */
+  init?: InitConfig;
+
+  /** Temporal integration (optional) */
+  temporal?: TemporalConfig;
+
+  /** Managed services config (optional) */
+  managedServices?: ManagedServicesConfig;
+
+  /** Port forwarding (optional) */
+  forwarding?: ForwardingConfig;
+
+  /** Multiplexer settings (optional) */
+  multiplexer?: MultiplexerConfig;
+
+  /** Lifecycle hooks (optional) */
+  hooks?: HiveHooks;
+
+  /** Custom commands (optional) */
+  commands?: CustomCommand[];
+
+  /** Plugins (optional) */
+  plugins?: HivePlugin[];
+}
+```
+
+### ProjectConfig
+
+Controls naming and branding across the tool.
+
+```typescript
+interface ProjectConfig {
+  /** Project name (used in messages, docs) */
+  name: string;
+
+  /** CLI binary name. Default: `${name}-hive` */
+  cliName?: string;
+
+  /** Home directory name under ~/. Default: `.${name}-hive` */
+  homeDirName?: string;
+
+  /** Worktrees directory name under ~/. Default: `${name}-hive` */
+  worktreesDirName?: string;
+
+  /** Prefix for multiplexer sessions. Default: `${cliName}-` */
+  sessionPrefix?: string;
+
+  /** Prefix for Docker projects/volumes. Default: `${cliName}-` */
+  dockerPrefix?: string;
+
+  /** Prefix for Temporal namespaces. Default: `${cliName}-` */
+  temporalPrefix?: string;
+}
+```
+
+### RepoConfig
+
+Git worktree and repository settings.
+
+```typescript
+interface RepoConfig {
+  /** Base branch for worktrees. Default: "main" */
+  baseBranch?: string;
+
+  /** Absolute path to worktrees directory. Default: `~/${project.worktreesDirName}` */
+  worktreesDir?: string;
+
+  /** Branch naming template. Default: `{{settings.branchPrefix}}{{env.name}}` */
+  branchNameTemplate?: string;
+
+  /** Dependency linking strategies */
+  dependencies?: DependencyConfig;
+}
+
+interface DependencyConfig {
+  /** Named dependency strategies */
+  strategies: Record<string, DependencyStrategy>;
+
+  /** Which strategies to apply during spawn */
+  applyOnSpawn: string[];
+}
+
+type DependencyStrategy =
+  | { type: "symlink"; from: string; to: string }
+  | { type: "copy"; from: string; to: string; globs?: string[] }
+  | { type: "shallowNodeModules"; from: string; to: string; overrides?: Record<string, string> }
+  | { type: "custom"; handler: (ctx: SpawnContext) => Promise<void> };
+```
+
+### PortsConfig
+
+Port allocation scheme.
+
+```typescript
+interface PortsConfig {
+  /** Starting port for first environment. Default: 10000 */
+  base?: number;
+
+  /** Port range per environment. Default: 1000 */
+  increment?: number;
+
+  /** Named port offsets within each environment's range */
+  offsets: Record<string, number>;
+}
+
+// Example: With base=10000, increment=1000, offsets={front:0, api:1, postgres:432}
+// Env 1: front=10000, api=10001, postgres=10432
+// Env 2: front=11000, api=11001, postgres=11432
+```
+
+### ServicesConfig
+
+Service definitions and orchestration.
+
+```typescript
+interface ServicesConfig {
+  /** Service start order (also used as default dependency order) */
+  order: string[];
+
+  /** Service definitions keyed by ID */
+  definitions: Record<string, ServiceDefinition>;
+}
+
+interface ServiceDefinition {
+  /** Working directory relative to worktree root */
+  cwd: string;
+
+  /** How to start the service */
+  start: {
+    /** Command runner configuration */
+    runner: ServiceRunner;
+
+    /** Pre-start bootstrap steps */
+    bootstrap?: {
+      /** Source the generated env.sh before starting */
+      sourceEnvFile?: boolean;
+      /** Source nvm before starting (for Node services) */
+      sourceNvm?: boolean;
+      /** Additional environment variables */
+      env?: Record<string, TemplateString>;
+    };
+  };
+
+  /** Health check configuration */
+  readiness?: ReadinessCheck;
+
+  /** Port mapping for display/status */
+  ports?: {
+    /** Primary port key from PortsConfig.offsets */
+    primary?: string;
+  };
+
+  /** Explicit dependencies (service IDs or infra tokens like "docker:db") */
+  dependsOn?: string[];
+
+  /** When to start this service */
+  startOn?: ("spawn" | "warm")[];
+
+  /** Display name (defaults to ID) */
+  displayName?: string;
+}
+
+type ServiceRunner =
+  | { type: "shell"; command: TemplateString }
+  | { type: "node"; command: TemplateString; useNvm?: boolean }
+  | { type: "cargo"; command: TemplateString }
+  | { type: "bun"; command: TemplateString }
+  | { type: "go"; command: TemplateString }
+  | { type: "python"; command: TemplateString };
+
+type ReadinessCheck =
+  | { type: "http"; url: TemplateString; timeoutMs?: number; intervalMs?: number }
+  | { type: "tcp"; host?: TemplateString; port: TemplateString; timeoutMs?: number }
+  | { type: "file"; path: TemplateString; timeoutMs?: number; errorPatterns?: string[] }
+  | { type: "command"; command: TemplateString; timeoutMs?: number };
+```
+
+### EnvironmentConfig
+
+Environment variable generation.
+
+```typescript
+interface EnvironmentConfig {
+  /** Path to secrets file (sourced at top of env.sh) */
+  secretsFile: string;
+
+  /** Required secret keys (validated by doctor command) */
+  requiredSecrets?: string[];
+
+  /** Environment variable exports */
+  exports: EnvExport[];
+
+  /** Direnv integration */
+  direnv?: {
+    enabled: boolean;
+    autoAllow?: boolean;
+  };
+}
+
+interface EnvExport {
+  /** Environment variable name */
+  name: string;
+
+  /** Value (supports template strings) */
+  value: TemplateString;
+
+  /** Optional comment in generated env.sh */
+  comment?: string;
+}
+
+// Template strings support: {{env.name}}, {{ports.*}}, {{paths.*}},
+// {{project.*}}, {{docker.*}}, {{temporal.namespaces.*}}
+type TemplateString = string;
+```
+
+### DockerConfig
+
+Docker Compose integration.
+
+```typescript
+interface DockerConfig {
+  /** Enable Docker support. Default: true */
+  enabled?: boolean;
+
+  /** Path to base docker-compose.yml */
+  baseComposePath: string;
+
+  /** Path template for generated override file */
+  overridePathTemplate?: string;
+
+  /** Docker Compose project name template */
+  projectNameTemplate?: string;
+
+  /** Per-service overrides (ports, volumes) */
+  overrides: Record<string, DockerServiceOverride>;
+
+  /** Volume name template */
+  volumeNameTemplate?: string;
+}
+
+interface DockerServiceOverride {
+  /** Port mappings */
+  ports?: Array<{
+    host: TemplateString;
+    container: number;
+  }>;
+
+  /** Volume mappings */
+  volumes?: Array<{
+    name: TemplateString;
+    mount: string;
+  }>;
+}
+```
+
+### InitConfig
+
+Initialization pipeline.
+
+```typescript
+interface InitConfig {
+  /** Enable initialization. Default: true */
+  enabled?: boolean;
+
+  /** Infrastructure to wait for before running tasks */
+  waitFor?: Array<{
+    id: string;
+    type: "dockerHealth";
+    dockerService: string;
+    timeoutMs?: number;
+  }>;
+
+  /** Initialization tasks */
+  tasks: InitTask[];
+
+  /** Database seeding configuration */
+  seed?: {
+    enabled: boolean;
+    task: InitTask;
+  };
+}
+
+interface InitTask {
+  /** Unique task identifier */
+  id: string;
+
+  /** Human-readable description */
+  description?: string;
+
+  /** Dependencies (other task IDs or wait IDs) */
+  dependsOn?: string[];
+
+  /** When to run: "firstWarm" (default), "always", or "manual" */
+  when?: "firstWarm" | "always" | "manual";
+
+  /** Task runner */
+  runner: InitRunner;
+
+  /** Idempotency detection */
+  idempotent?: {
+    /** Treat as success if stdout/stderr contains these */
+    successPatterns?: string[];
+    /** Require stdout to contain these for success */
+    requiredOutput?: string[];
+  };
+
+  /** Retry configuration */
+  retry?: {
+    maxAttempts: number;
+    backoffMs?: number;
+    retryOnPatterns?: string[];
+  };
+}
+
+type InitRunner =
+  | { type: "shell"; cwd: string; command: TemplateString; bootstrap?: { sourceEnvFile?: boolean; sourceNvm?: boolean } }
+  | { type: "psql"; uri: TemplateString; sql: string }
+  | { type: "psqlFile"; uri: TemplateString; path: TemplateString }
+  | { type: "createDatabases"; uri: TemplateString; databases: string[] }
+  | { type: "cargoBinary"; cwd: string; binary: string; args?: TemplateString[]; useCache?: boolean };
+```
+
+### TemporalConfig
+
+Temporal workflow engine integration.
+
+```typescript
+interface TemporalConfig {
+  /** Enable Temporal support. Default: false */
+  enabled: boolean;
+
+  /** Managed Temporal server configuration */
+  server?: {
+    /** Let Hive manage the Temporal server */
+    manage: boolean;
+    /** Server port. Default: 7233 */
+    port?: number;
+    /** Database file path */
+    dbPath?: string;
+  };
+
+  /** Namespace definitions */
+  namespaces: TemporalNamespace[];
+}
+
+interface TemporalNamespace {
+  /** Namespace identifier */
+  id: string;
+
+  /** Full namespace name template */
+  nameTemplate: TemplateString;
+
+  /** Environment variable to export */
+  envVar: string;
+
+  /** Search attributes to register */
+  searchAttributes?: Array<{
+    name: string;
+    type: "Text" | "Int" | "Bool" | "Keyword" | "Datetime";
+  }>;
+}
+```
+
+### HiveHooks
+
+Lifecycle hooks for custom behavior.
+
+```typescript
+interface HiveHooks {
+  /** Called before spawning a new environment */
+  beforeSpawn?: (ctx: SpawnContext) => Promise<void>;
+
+  /** Called after spawning (worktree created, SDK started) */
+  afterSpawn?: (ctx: SpawnContext) => Promise<void>;
+
+  /** Called before warming an environment */
+  beforeWarm?: (ctx: WarmContext) => Promise<void>;
+
+  /** Called after warming (all services started) */
+  afterWarm?: (ctx: WarmContext) => Promise<void>;
+
+  /** Called before initialization tasks run */
+  beforeInit?: (ctx: InitContext) => Promise<void>;
+
+  /** Called after initialization completes */
+  afterInit?: (ctx: InitContext) => Promise<void>;
+
+  /** Called before destroying an environment */
+  beforeDestroy?: (ctx: DestroyContext) => Promise<void>;
+
+  /** Called after environment is destroyed */
+  afterDestroy?: (ctx: DestroyContext) => Promise<void>;
+}
+```
+
+---
+
+## Plugin & Hook System
+
+### Plugin Interface
+
+Plugins bundle related functionality (hooks, commands, config extensions).
+
+```typescript
+interface HivePlugin {
+  /** Unique plugin name */
+  name: string;
+
+  /** Plugin version */
+  version?: string;
+
+  /** Lifecycle hooks */
+  hooks?: Partial<HiveHooks>;
+
+  /** Custom commands */
+  commands?: CustomCommand[];
+
+  /** Config preprocessor (modify config before validation) */
+  preprocessConfig?: (config: HiveConfig) => HiveConfig;
+
+  /** Subsystem extensions */
+  extensions?: {
+    /** Additional dependency strategies */
+    dependencyStrategies?: Record<string, DependencyStrategyHandler>;
+    /** Additional init runners */
+    initRunners?: Record<string, InitRunnerHandler>;
+    /** Additional service runners */
+    serviceRunners?: Record<string, ServiceRunnerHandler>;
+  };
+}
+
+interface CustomCommand {
+  /** Command name (e.g., "sync") */
+  name: string;
+
+  /** Command description for help text */
+  description: string;
+
+  /** Argument signature (cac-style, e.g., "[name]") */
+  args?: string;
+
+  /** Command options */
+  options?: Array<{
+    flags: string;
+    description: string;
+    default?: unknown;
+  }>;
+
+  /** Command handler */
+  handler: (ctx: CommandContext, ...args: unknown[]) => Promise<void>;
+}
+```
+
+### Built-in Plugins
+
+The framework ships with optional plugins for common use cases:
+
+```typescript
+import {
+  temporalPlugin,
+  forwarderPlugin,
+  testContainersPlugin,
+} from "@dust-tt/hive/plugins";
+
+export default defineConfig({
+  // ...
+  plugins: [
+    temporalPlugin({
+      server: { manage: true },
+      namespaces: [/* ... */],
+    }),
+    forwarderPlugin({
+      mappings: [
+        { listenPort: 3000, targetPortKey: "front" },
+        { listenPort: 3001, targetPortKey: "api" },
+      ],
+    }),
+    testContainersPlugin({
+      postgres: { port: 5433, databases: ["myapp_test_{{env.name}}"] },
+      redis: { port: 6479 },
+    }),
+  ],
+});
+```
+
+---
+
+## Subsystem Details
+
+### Port Allocator
+
+Manages port allocation with file-based locking for concurrent safety.
+
+- Base port configurable (default: 10000)
+- 1000-port blocks per environment (configurable)
+- Named offsets for predictable port mapping
+- Lock file prevents race conditions during allocation
+
+### Process Manager
+
+Manages service daemons via PID files.
+
+- Services run as detached process groups
+- Logs captured to per-service files with rotation
+- Graceful shutdown via SIGTERM with fallback to SIGKILL
+- Health checks determine "running" vs "healthy" status
+
+### Docker Manager
+
+Orchestrates Docker Compose with per-environment isolation.
+
+- Base compose file (project-provided) + generated override
+- Override sets host ports and volume names per environment
+- Project naming ensures container isolation
+- Health checks wait for container readiness
+
+### Init Runner
+
+Executes initialization tasks as a DAG.
+
+- Tasks declare dependencies on other tasks or infrastructure
+- Parallel execution where dependencies allow
+- Idempotency detection via output pattern matching
+- Retry with backoff for transient failures
+
+### Template Engine
+
+Simple, safe string interpolation.
+
+- Syntax: `{{path.to.value}}`
+- No logic (loops, conditionals) - just value substitution
+- Predefined context: `env`, `ports`, `paths`, `project`, `docker`, `temporal`
+- Validation at config load time
+
+### Multiplexer Adapters
+
+Abstraction over terminal multiplexers.
+
+- Supported: zellij (default), tmux
+- Sessions are view-only (logs + shell)
+- Closing session does NOT stop services
+- Layout generation from service registry
+
+---
+
+## Migration Path
+
+### Phase 1: Internal Refactor (No External Changes)
+
+1. Introduce `ProjectConfig` internally
+2. Replace hardcoded strings with config-derived values
+3. Add config loader that reads from internal defaults
+4. Verify all tests pass, behavior unchanged
+
+### Phase 2: Config Extraction
+
+5. Move service registry to config format
+6. Move environment variable definitions to config
+7. Move Docker/init/temporal settings to config
+8. Dust config lives alongside framework code
+
+### Phase 3: Package Split
+
+9. Create `@dust-tt/hive` package structure
+10. Export public API (types, createHiveCLI, defineConfig)
+11. Dust CLI imports from `@dust-tt/hive`
+12. Publish to npm (internal registry first)
+
+### Phase 4: Documentation & Adoption
+
+13. Write getting started guide
+14. Create starter templates for common setups
+15. Document migration for existing users
+16. Support early adopter teams
+
+### Backward Compatibility
+
+During transition:
+- Existing `~/.dust-hive` directories continue to work
+- Old port allocations are honored
+- No forced migration of volumes/sessions
+- `dust-hive` binary works exactly as before
+
+---
+
+## Example Configurations
+
+### Example 1: Dust (Current Behavior)
+
+```typescript
+// hive.config.ts
+import { defineConfig } from "@dust-tt/hive";
+import { dustSyncCommand, dustSeedConfigCommand } from "./commands";
+import { shallowNodeModulesStrategy } from "./plugins";
+
+export default defineConfig({
+  project: {
+    name: "dust",
+    cliName: "dust-hive",
+  },
+
+  repo: {
+    baseBranch: "main",
+    dependencies: {
+      strategies: {
+        cargoTarget: { type: "symlink", from: "{{mainRepo}}/core/target", to: "{{worktree}}/core/target" },
+        sdkNodeModules: { type: "symlink", from: "{{mainRepo}}/sdks/js/node_modules", to: "{{worktree}}/sdks/js/node_modules" },
+        frontNodeModules: { type: "shallowNodeModules", from: "{{mainRepo}}/front/node_modules", to: "{{worktree}}/front/node_modules", overrides: { "@dust-tt/client": "{{worktree}}/sdks/js" } },
+        connectorsNodeModules: { type: "shallowNodeModules", from: "{{mainRepo}}/connectors/node_modules", to: "{{worktree}}/connectors/node_modules", overrides: { "@dust-tt/client": "{{worktree}}/sdks/js" } },
+      },
+      applyOnSpawn: ["cargoTarget", "sdkNodeModules", "frontNodeModules", "connectorsNodeModules"],
+    },
+  },
+
+  ports: {
+    base: 10000,
+    increment: 1000,
+    offsets: {
+      front: 0,
+      core: 1,
+      connectors: 2,
+      oauth: 6,
+      postgres: 432,
+      redis: 379,
+      qdrantHttp: 333,
+      qdrantGrpc: 334,
+      elasticsearch: 200,
+      apacheTika: 998,
+    },
+  },
+
+  services: {
+    order: ["sdk", "front", "core", "oauth", "connectors", "front-workers"],
+    definitions: {
+      sdk: {
+        cwd: "sdks/js",
+        start: { runner: { type: "node", command: "npm run watch", useNvm: true } },
+        readiness: { type: "file", path: "{{paths.worktree}}/sdks/js/dist/client.esm.js" },
+        startOn: ["spawn"],
+      },
+      front: {
+        cwd: "front",
+        start: { runner: { type: "node", command: "npm run dev", useNvm: true }, bootstrap: { sourceEnvFile: true } },
+        readiness: { type: "http", url: "http://localhost:{{ports.front}}/api/healthz" },
+        ports: { primary: "front" },
+        dependsOn: ["sdk"],
+      },
+      core: {
+        cwd: "core",
+        start: { runner: { type: "cargo", command: "cargo run --bin core-api" }, bootstrap: { sourceEnvFile: true } },
+        readiness: { type: "http", url: "http://localhost:{{ports.core}}/" },
+        ports: { primary: "core" },
+      },
+      oauth: {
+        cwd: "core",
+        start: { runner: { type: "cargo", command: "cargo run --bin oauth" }, bootstrap: { sourceEnvFile: true } },
+        readiness: { type: "http", url: "http://localhost:{{ports.oauth}}/" },
+        ports: { primary: "oauth" },
+      },
+      connectors: {
+        cwd: "connectors",
+        start: {
+          runner: { type: "node", command: "npx tsx src/start.ts -p {{ports.connectors}}", useNvm: true },
+          bootstrap: { sourceEnvFile: true, env: { TEMPORAL_NAMESPACE: "{{temporal.namespaces.connectors}}" } },
+        },
+        ports: { primary: "connectors" },
+      },
+      "front-workers": {
+        cwd: "front",
+        start: { runner: { type: "shell", command: "./admin/dev_worker.sh" }, bootstrap: { sourceEnvFile: true, sourceNvm: true } },
+      },
+    },
+  },
+
+  env: {
+    secretsFile: "~/.dust-hive/config.env",
+    exports: [
+      { name: "PORT", value: "{{ports.front}}" },
+      { name: "CORE_PORT", value: "{{ports.core}}" },
+      { name: "CONNECTORS_PORT", value: "{{ports.connectors}}" },
+      { name: "OAUTH_PORT", value: "{{ports.oauth}}" },
+      { name: "CORE_API", value: "http://localhost:{{ports.core}}" },
+      { name: "CONNECTORS_API", value: "http://localhost:{{ports.connectors}}" },
+      { name: "OAUTH_API", value: "http://localhost:{{ports.oauth}}" },
+      { name: "DUST_FRONT_API", value: "http://localhost:{{ports.front}}" },
+      { name: "DUST_CLIENT_FACING_URL", value: "http://localhost:{{ports.front}}" },
+      { name: "FRONT_DATABASE_URI", value: "postgres://dev:dev@localhost:{{ports.postgres}}/dust_front" },
+      { name: "CORE_DATABASE_URI", value: "postgres://dev:dev@localhost:{{ports.postgres}}/dust_api" },
+      { name: "CONNECTORS_DATABASE_URI", value: "postgres://dev:dev@localhost:{{ports.postgres}}/dust_connectors" },
+      { name: "OAUTH_DATABASE_URI", value: "postgres://dev:dev@localhost:{{ports.postgres}}/dust_oauth" },
+      { name: "REDIS_URI", value: "redis://localhost:{{ports.redis}}" },
+      { name: "QDRANT_CLUSTER_0_URL", value: "http://127.0.0.1:{{ports.qdrantGrpc}}" },
+      { name: "ELASTICSEARCH_URL", value: "http://localhost:{{ports.elasticsearch}}" },
+      { name: "TEXT_EXTRACTION_URL", value: "http://localhost:{{ports.apacheTika}}" },
+      // ... more exports
+    ],
+    direnv: { enabled: true, autoAllow: true },
+  },
+
+  docker: {
+    baseComposePath: "{{paths.hiveRoot}}/docker-compose.yml",
+    overrides: {
+      db: { ports: [{ host: "{{ports.postgres}}", container: 5432 }], volumes: [{ name: "{{project.dockerPrefix}}{{env.name}}-pgsql", mount: "/var/lib/postgresql/data" }] },
+      redis: { ports: [{ host: "{{ports.redis}}", container: 6379 }] },
+      qdrant: { ports: [{ host: "{{ports.qdrantHttp}}", container: 6333 }, { host: "{{ports.qdrantGrpc}}", container: 6334 }], volumes: [{ name: "{{project.dockerPrefix}}{{env.name}}-qdrant", mount: "/qdrant/storage" }] },
+      elasticsearch: { ports: [{ host: "{{ports.elasticsearch}}", container: 9200 }], volumes: [{ name: "{{project.dockerPrefix}}{{env.name}}-elasticsearch", mount: "/usr/share/elasticsearch/data" }] },
+      "apache-tika": { ports: [{ host: "{{ports.apacheTika}}", container: 9998 }] },
+    },
+  },
+
+  temporal: {
+    enabled: true,
+    server: { manage: true, port: 7233, dbPath: "{{paths.home}}/temporal.db" },
+    namespaces: [
+      { id: "default", nameTemplate: "{{project.temporalPrefix}}{{env.name}}", envVar: "TEMPORAL_NAMESPACE", searchAttributes: [{ name: "conversationId", type: "Text" }, { name: "workspaceId", type: "Text" }] },
+      { id: "agent", nameTemplate: "{{project.temporalPrefix}}{{env.name}}-agent", envVar: "TEMPORAL_AGENT_NAMESPACE", searchAttributes: [{ name: "conversationId", type: "Text" }, { name: "workspaceId", type: "Text" }] },
+      { id: "connectors", nameTemplate: "{{project.temporalPrefix}}{{env.name}}-connectors", envVar: "TEMPORAL_CONNECTORS_NAMESPACE", searchAttributes: [{ name: "connectorId", type: "Int" }] },
+      { id: "relocation", nameTemplate: "{{project.temporalPrefix}}{{env.name}}-relocation", envVar: "TEMPORAL_RELOCATION_NAMESPACE" },
+    ],
+  },
+
+  commands: [dustSyncCommand, dustSeedConfigCommand],
+});
+```
+
+### Example 2: Simple Node Monorepo
+
+```typescript
+// hive.config.ts
+import { defineConfig } from "@dust-tt/hive";
+
+export default defineConfig({
+  project: { name: "acme" },
+
+  ports: {
+    offsets: { web: 0, api: 1, postgres: 432, redis: 379 },
+  },
+
+  services: {
+    order: ["web", "api"],
+    definitions: {
+      web: {
+        cwd: "apps/web",
+        start: { runner: { type: "node", command: "npm run dev", useNvm: true }, bootstrap: { sourceEnvFile: true } },
+        readiness: { type: "http", url: "http://localhost:{{ports.web}}/" },
+        ports: { primary: "web" },
+      },
+      api: {
+        cwd: "apps/api",
+        start: { runner: { type: "node", command: "npm run dev", useNvm: true }, bootstrap: { sourceEnvFile: true } },
+        readiness: { type: "http", url: "http://localhost:{{ports.api}}/health" },
+        ports: { primary: "api" },
+        dependsOn: ["docker:db"],
+      },
+    },
+  },
+
+  env: {
+    secretsFile: "~/.acme-hive/config.env",
+    exports: [
+      { name: "WEB_PORT", value: "{{ports.web}}" },
+      { name: "API_PORT", value: "{{ports.api}}" },
+      { name: "DATABASE_URL", value: "postgres://dev:dev@localhost:{{ports.postgres}}/acme" },
+      { name: "REDIS_URL", value: "redis://localhost:{{ports.redis}}" },
+    ],
+  },
+
+  docker: {
+    baseComposePath: "./docker-compose.yml",
+    overrides: {
+      db: { ports: [{ host: "{{ports.postgres}}", container: 5432 }] },
+      redis: { ports: [{ host: "{{ports.redis}}", container: 6379 }] },
+    },
+  },
+
+  init: {
+    waitFor: [{ id: "postgres", type: "dockerHealth", dockerService: "db" }],
+    tasks: [
+      { id: "migrate", dependsOn: ["postgres"], runner: { type: "shell", cwd: "apps/api", command: "npm run db:migrate", bootstrap: { sourceEnvFile: true, sourceNvm: true } } },
+    ],
+  },
+});
+```
+
+### Example 3: Go Microservices
+
+```typescript
+// hive.config.ts
+import { defineConfig } from "@dust-tt/hive";
+
+export default defineConfig({
+  project: { name: "platform" },
+
+  ports: {
+    base: 15000,
+    offsets: { gateway: 0, users: 1, orders: 2, postgres: 432 },
+  },
+
+  services: {
+    order: ["gateway", "users", "orders"],
+    definitions: {
+      gateway: {
+        cwd: "services/gateway",
+        start: { runner: { type: "go", command: "go run ./cmd/gateway" }, bootstrap: { sourceEnvFile: true } },
+        readiness: { type: "tcp", port: "{{ports.gateway}}" },
+        ports: { primary: "gateway" },
+      },
+      users: {
+        cwd: "services/users",
+        start: { runner: { type: "go", command: "go run ./cmd/users" }, bootstrap: { sourceEnvFile: true } },
+        readiness: { type: "http", url: "http://localhost:{{ports.users}}/health" },
+        ports: { primary: "users" },
+        dependsOn: ["docker:db"],
+      },
+      orders: {
+        cwd: "services/orders",
+        start: { runner: { type: "go", command: "go run ./cmd/orders" }, bootstrap: { sourceEnvFile: true } },
+        readiness: { type: "http", url: "http://localhost:{{ports.orders}}/health" },
+        ports: { primary: "orders" },
+        dependsOn: ["docker:db"],
+      },
+    },
+  },
+
+  env: {
+    secretsFile: "~/.platform-hive/secrets.env",
+    exports: [
+      { name: "GATEWAY_PORT", value: "{{ports.gateway}}" },
+      { name: "USERS_PORT", value: "{{ports.users}}" },
+      { name: "ORDERS_PORT", value: "{{ports.orders}}" },
+      { name: "DB_DSN", value: "postgres://dev:dev@localhost:{{ports.postgres}}/platform?sslmode=disable" },
+    ],
+  },
+
+  docker: {
+    baseComposePath: "./docker-compose.yml",
+    overrides: {
+      postgres: { ports: [{ host: "{{ports.postgres}}", container: 5432 }] },
+    },
+  },
+
+  temporal: { enabled: false },
+});
+```
+
+---
+
+## Open Questions
+
+### Resolved
+
+| Question | Decision | Rationale |
+|----------|----------|-----------|
+| Config format | TypeScript only | Type safety, IDE support, Bun ecosystem |
+| Distribution | Library approach | Teams own their CLI |
+| Worktrees | Required | Simpler, matches current behavior |
+| Module power | Code + Config | Needed for complex customization |
+| Managed services | Core concept | Consistent `up/down` semantics |
+
+### Still Open
+
+1. **Dependency strategy plugin vs. built-in**: Should `shallowNodeModules` be a built-in strategy or require a plugin?
+
+2. **Init runner extensibility**: How many init runners should be built-in vs. plugin-provided?
+
+3. **Multiplexer as optional**: Should multiplexer support be an optional plugin for teams that don't need it?
+
+4. **Config file discovery**: Should we look for `hive.config.ts` in repo root, or require explicit path?
+
+5. **Versioning**: How do we handle config schema evolution across framework versions?
+
+---
+
+## Appendix: Glossary
+
+| Term | Definition |
+|------|------------|
+| **Environment** | An isolated instance with its own worktree, port range, and Docker volumes |
+| **Worktree** | A git worktree providing an isolated checkout of the repository |
+| **Warm** | Start all services for an environment |
+| **Cool** | Stop services but keep SDK running (fast restart) |
+| **Spawn** | Create a new environment (worktree + initial setup) |
+| **Managed Services** | Global services (Temporal, test DBs) shared across environments |
+| **Multiplexer** | Terminal multiplexer (zellij/tmux) for viewing logs |
+
+---
+
+*This document is a living specification. Updates will be made as implementation progresses and decisions are refined.*
