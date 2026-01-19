@@ -160,7 +160,6 @@ export function MCPServerOAuthConnexion({
     }
   }, [authCredentials, inputs, setError, clearErrors]);
 
-  // User interaction handlers use field.onChange for proper lifecycle integration.
   const handleCredentialChange = (key: string, value: string) => {
     if (!isSupportedOAuthCredential(key)) {
       return;
