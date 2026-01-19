@@ -282,7 +282,7 @@ const NavigationListLabel = React.forwardRef<
 NavigationListLabel.displayName = "NavigationListLabel";
 
 const variantCompactStyles = cva(
-  "s-flex s-px-2 s-py-1 s-pl-3 s-text-[10px] s-font-semibold s-text-foreground s-pt-3 s-uppercase s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
+  "s-flex s-px-2 s-py-1 s-pl-3 s-text-[10px] s-font-semibold s-text-foreground dark:s-text-foreground-night s-pt-3 s-uppercase s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
   {
     variants: {
       isSticky: {
