@@ -76,8 +76,21 @@ handle_resize() {
 trap cleanup EXIT
 trap handle_resize WINCH
 
-# Get terminal dimensions
+# Get terminal dimensions - try multiple methods for reliability
 get_term_height() {
+  local height
+  # Try stty first (most reliable for actual terminal)
+  height=$(stty size 2>/dev/null | cut -d' ' -f1)
+  if [[ -n "$height" && "$height" -gt 0 ]]; then
+    echo "$height"
+    return
+  fi
+  # Try LINES env var (set by bash)
+  if [[ -n "$LINES" && "$LINES" -gt 0 ]]; then
+    echo "$LINES"
+    return
+  fi
+  # Fall back to tput
   tput lines 2>/dev/null || echo 24
 }`;
 
