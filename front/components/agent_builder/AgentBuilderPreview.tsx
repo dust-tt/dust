@@ -8,10 +8,9 @@ import {
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
-import {
-  TrialMessageUsage,
-  useIsTrialPlanWithMessageLimit,
-} from "@app/components/app/TrialMessageUsage";
+import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
+import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
+import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -161,7 +160,9 @@ function PreviewContent({
 export function AgentBuilderPreview() {
   const { owner, isAdmin } = useAgentBuilderContext();
   const { user } = useUser();
-  const { isTrialPlan } = useIsTrialPlanWithMessageLimit(owner.sId);
+  const { activeSubscription } = useWorkspaceActiveSubscription({ owner });
+  const isTrialPlan =
+    activeSubscription && isFreeTrialPhonePlan(activeSubscription.plan.code);
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
   const { isPreviewPanelOpen } = usePreviewPanelContext();
 
@@ -296,7 +297,7 @@ export function AgentBuilderPreview() {
         createConversation={createConversation}
         draftAgent={draftAgent}
         isSavingDraftAgent={isSavingDraftAgent}
-        isTrialPlan={isTrialPlan}
+        isTrialPlan={!!isTrialPlan}
         isAdmin={isAdmin}
       />
     );
