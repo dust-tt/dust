@@ -8,6 +8,10 @@ import {
   jsonToMarkdown,
   makeInternalMCPServer,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  extractTextFromBuffer,
+  processAttachment,
+} from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -562,30 +566,14 @@ function createServer(
 
         // Gmail returns URL-safe base64, convert to standard base64
         const standardBase64 = base64Data.replace(/-/g, "+").replace(/_/g, "/");
+        const buffer = Buffer.from(standardBase64, "base64");
 
-        // Return proper content type based on mimeType
-        // Images use "image" type, other files use "resource" with blob
-        if (mimeType.startsWith("image/")) {
-          return new Ok([
-            {
-              type: "image" as const,
-              data: standardBase64,
-              mimeType,
-            },
-          ]);
-        }
-
-        // For non-image files, return as resource with blob
-        return new Ok([
-          {
-            type: "resource" as const,
-            resource: {
-              uri: filename,
-              mimeType,
-              blob: standardBase64,
-            },
-          },
-        ]);
+        return processAttachment({
+          mimeType,
+          filename,
+          extractText: async () => extractTextFromBuffer(buffer, mimeType),
+          downloadContent: async () => new Ok(buffer),
+        });
       }
     )
   );
