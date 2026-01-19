@@ -4,42 +4,36 @@ import {
   TRACKING_PARAMS,
 } from "@app/lib/attribution";
 
-// Extract UTM parameters from query string
-export const extractUTMParams = (searchParams: {
+/**
+ * Extract UTM parameters from query string.
+ */
+export function extractUTMParams(searchParams: {
   [key: string]: string | string[] | undefined;
-}): { [key: string]: string } => {
-  const utmParams: { [key: string]: string } = {};
-
-  // Extract only string values from query parameters
-  TRACKING_PARAMS.forEach((key) => {
-    const value = searchParams[key];
-    if (typeof value === "string") {
-      utmParams[key] = value;
-    }
-  });
-
-  return utmParams;
-};
+}): Record<string, string> {
+  return Object.fromEntries(
+    TRACKING_PARAMS.filter(
+      (key) => typeof searchParams[key] === "string"
+    ).map((key) => [key, searchParams[key] as string])
+  );
+}
 
 /**
  * Get stored UTM parameters.
  * Uses the new attribution layer with localStorage persistence,
  * with fallback to legacy sessionStorage for backward compatibility.
  */
-export const getStoredUTMParams = (): Record<string, string> => {
+export function getStoredUTMParams(): Record<string, string> {
   if (typeof window === "undefined") {
     return {};
   }
 
   // Try new attribution layer first (localStorage)
   const fromAttribution = getStoredUTMParamsFromAttribution();
-  // Filter out undefined values to match expected return type
-  const filtered: Record<string, string> = {};
-  for (const [key, value] of Object.entries(fromAttribution)) {
-    if (value !== undefined) {
-      filtered[key] = value;
-    }
-  }
+  const filtered = Object.fromEntries(
+    Object.entries(fromAttribution).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined
+    )
+  );
   if (Object.keys(filtered).length > 0) {
     return filtered;
   }
@@ -51,7 +45,7 @@ export const getStoredUTMParams = (): Record<string, string> => {
   } catch {
     return {};
   }
-};
+}
 
 /**
  * Get full attribution data with first-touch and last-touch.
@@ -59,11 +53,13 @@ export const getStoredUTMParams = (): Record<string, string> => {
  */
 export { getAttribution as getFullAttribution };
 
-// Helper to append UTM parameters to URLs
-export const appendUTMParams = (
+/**
+ * Append UTM parameters to a URL.
+ */
+export function appendUTMParams(
   url: string,
-  utmParams?: { [key: string]: string }
-): string => {
+  utmParams?: Record<string, string>
+): string {
   if (typeof window === "undefined") {
     return url;
   }
@@ -76,15 +72,15 @@ export const appendUTMParams = (
   }
 
   const [baseUrl, existingQuery] = url.split("?");
-  const searchParams = new URLSearchParams(existingQuery || "");
+  const searchParams = new URLSearchParams(existingQuery ?? "");
 
-  // Add UTM parameters, avoiding duplicates
-  Object.entries(params).forEach(([key, value]) => {
+  // Add UTM parameters, avoiding duplicates.
+  for (const [key, value] of Object.entries(params)) {
     if (!searchParams.has(key)) {
       searchParams.set(key, value);
     }
-  });
+  }
 
   const queryString = searchParams.toString();
   return queryString ? `${baseUrl}?${queryString}` : baseUrl;
-};
+}

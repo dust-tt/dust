@@ -1,5 +1,5 @@
 import type { AttributionData, TrackingData, UTMParams } from "./types";
-import { STORAGE_KEYS } from "./types";
+import { STORAGE_KEYS, TRACKING_PARAMS } from "./types";
 
 /**
  * Check if we're in a browser environment.
@@ -112,47 +112,10 @@ export function getStoredUTMParamsFromAttribution(): UTMParams {
     return {};
   }
 
-  // Extract only UTM params, exclude metadata
-  const {
-    utm_source,
-    utm_medium,
-    utm_campaign,
-    utm_content,
-    utm_term,
-    gclid,
-    fbclid,
-    msclkid,
-    li_fat_id,
-  } = lastTouch;
-
-  const params: UTMParams = {};
-  if (utm_source) {
-    params.utm_source = utm_source;
-  }
-  if (utm_medium) {
-    params.utm_medium = utm_medium;
-  }
-  if (utm_campaign) {
-    params.utm_campaign = utm_campaign;
-  }
-  if (utm_content) {
-    params.utm_content = utm_content;
-  }
-  if (utm_term) {
-    params.utm_term = utm_term;
-  }
-  if (gclid) {
-    params.gclid = gclid;
-  }
-  if (fbclid) {
-    params.fbclid = fbclid;
-  }
-  if (msclkid) {
-    params.msclkid = msclkid;
-  }
-  if (li_fat_id) {
-    params.li_fat_id = li_fat_id;
-  }
-
-  return params;
+  return Object.fromEntries(
+    TRACKING_PARAMS.filter((key) => lastTouch[key] !== undefined).map((key) => [
+      key,
+      lastTouch[key],
+    ])
+  );
 }

@@ -38,12 +38,7 @@ export function AttributionProvider({
 
     // Extract UTM params from current URL
     const urlParams = new URLSearchParams(window.location.search);
-    const searchParams: Record<string, string | undefined> = {};
-    urlParams.forEach((value, key) => {
-      searchParams[key] = value;
-    });
-
-    const utmParams = extractUTMParams(searchParams);
+    const utmParams = extractUTMParams(Object.fromEntries(urlParams));
 
     // Only store if we have tracking params
     if (Object.keys(utmParams).length === 0) {

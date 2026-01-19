@@ -59,14 +59,6 @@ export const STORAGE_KEYS = {
  * Flat UTM params object for backward compatibility with existing code.
  * This is what gets sent to APIs and included in form submissions.
  */
-export interface UTMParams {
-  utm_source?: string;
-  utm_medium?: string;
-  utm_campaign?: string;
-  utm_content?: string;
-  utm_term?: string;
-  gclid?: string;
-  fbclid?: string;
-  msclkid?: string;
-  li_fat_id?: string;
-}
+export type UTMParams = Partial<
+  Pick<TrackingData, (typeof TRACKING_PARAMS)[number]>
+>;
