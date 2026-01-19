@@ -322,7 +322,7 @@ export async function* tryCallMCPTool(
         content: [
           {
             type: "text",
-            text: "The tool execution failed: MCP server view not found",
+            text: "Could not call tool: configuration not found",
           },
         ],
       };
