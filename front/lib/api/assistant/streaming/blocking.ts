@@ -188,7 +188,8 @@ export async function postUserMessageAndWaitForCompletion(
       }
 
       // Wait for all agent messages to complete.
-      const completedAgentMessages = await waitForAgentCompletion(agentMessages);
+      const completedAgentMessages =
+        await waitForAgentCompletion(agentMessages);
 
       return new Ok({
         userMessage,
