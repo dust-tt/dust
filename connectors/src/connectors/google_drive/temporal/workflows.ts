@@ -678,9 +678,8 @@ export async function googleDriveIncrementalSyncPerDrive({
                 err instanceof Error &&
                 err.name === "WorkflowExecutionAlreadyStartedError"
               ) {
-                // Workflow already running, wait for it to complete
-                const existing = getExternalWorkflowHandle(workflowId);
-                await existing.result();
+                // Workflow already running, folder will be synced by that execution
+                return;
               } else {
                 throw err;
               }
