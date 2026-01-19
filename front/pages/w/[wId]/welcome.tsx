@@ -27,6 +27,7 @@ import { useMemo, useState } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
+import { getAttributionForGTM } from "@app/lib/attribution";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -35,6 +36,7 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { detectEmailProvider } from "@app/lib/utils/email_provider_detection";
 import { getConversationRoute } from "@app/lib/utils/router";
+import { getFullAttribution } from "@app/lib/utils/utm";
 import type { UserType, WorkspaceType } from "@app/types";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { FAVORITE_PLATFORM_OPTIONS } from "@app/types/favorite_platforms";
@@ -426,11 +428,12 @@ export default function Welcome({
 
     if (typeof window !== "undefined") {
       window.dataLayer = window.dataLayer ?? [];
+      const attributionData = getAttributionForGTM(getFullAttribution());
       window.dataLayer.push({
         event: "signup_completed",
         user_email: user.email,
         company_name: owner.name,
-        gclid: sessionStorage.getItem("gclid") ?? null,
+        ...attributionData,
       });
     }
 

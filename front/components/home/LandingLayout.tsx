@@ -6,13 +6,13 @@ import Script from "next/script";
 import { useCallback, useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
+import { AttributionProvider } from "@app/components/attribution/AttributionProvider";
 import { A } from "@app/components/home/ContentComponents";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import UTMButton from "@app/components/UTMButton";
-import UTMHandler from "@app/components/UTMHandler";
 import {
   DUST_COOKIES_ACCEPTED,
   hasCookiesAccepted,
@@ -26,7 +26,6 @@ export interface LandingLayoutProps {
   shape: number;
   postLoginReturnToUrl?: string;
   gtmTrackingId?: string;
-  utmParams?: { [key: string]: string | string[] | undefined };
 }
 
 export default function LandingLayout({
@@ -36,11 +35,7 @@ export default function LandingLayout({
   children: React.ReactNode;
   pageProps: LandingLayoutProps;
 }) {
-  const {
-    postLoginReturnToUrl = "/api/login",
-    gtmTrackingId,
-    utmParams,
-  } = pageProps;
+  const { postLoginReturnToUrl = "/api/login", gtmTrackingId } = pageProps;
 
   const [cookies, setCookie] = useCookies([DUST_COOKIES_ACCEPTED], {
     doNotParse: true,
@@ -106,9 +101,8 @@ export default function LandingLayout({
   return (
     <>
       <Header />
-      {/* Handle UTM parameter storage */}
-      {utmParams && <UTMHandler utmParams={utmParams} />}
-      <ScrollingHeader>
+      <AttributionProvider hasConsent={hasAcceptedCookies}>
+        <ScrollingHeader>
         <div className="flex h-full w-full items-center gap-4 px-6 xl:gap-10">
           <div className="hidden h-[24px] w-[96px] xl:block">
             <PublicWebsiteLogo />
@@ -179,22 +173,12 @@ export default function LandingLayout({
               j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
               })(window,document,'script','dataLayer','${gtmTrackingId}');
-              (function(){
-                var utmParams = {};
-                var urlParams = new URLSearchParams(window.location.search);
-                ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid', 'msclkid'].forEach(function(param) {
-                  var value = urlParams.get(param);
-                  if (value) {
-                    utmParams[param] = value;
-                    sessionStorage.setItem(param, value);
-                  }
-                });
-              })();
             `}
           </Script>
         )}
         <FooterNavigation />
       </main>
+      </AttributionProvider>
     </>
   );
 }
