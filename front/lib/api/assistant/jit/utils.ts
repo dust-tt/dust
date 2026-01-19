@@ -130,22 +130,27 @@ export async function getConversationDataSourceViews(
       conversations.map((c) => c.id)
     );
 
-  const modelIdToDataSourceView = new Map<ModelId, DataSourceViewResource>();
+  // Going from the data source view to conversation Model ID.
+  const conversationModelIdToDataSourceView = new Map<
+    ModelId,
+    DataSourceViewResource
+  >();
   for (const dsv of dataSourceViews) {
     const conversationId = dsv.dataSource.conversationId;
     if (conversationId) {
-      modelIdToDataSourceView.set(conversationId, dsv);
+      conversationModelIdToDataSourceView.set(conversationId, dsv);
     }
   }
 
-  const conversationSIdToDataSourceView = new Map<
+  // Going from the conversation to the data source view via the conversation Model ID.
+  const conversationIdToDataSourceView = new Map<
     string,
     DataSourceViewResource
   >();
   for (const { sId, id: modelId } of conversations) {
-    const dsv = modelIdToDataSourceView.get(modelId);
+    const dsv = conversationModelIdToDataSourceView.get(modelId);
     if (dsv) {
-      conversationSIdToDataSourceView.set(sId, dsv);
+      conversationIdToDataSourceView.set(sId, dsv);
     }
   }
 
@@ -157,7 +162,7 @@ export async function getConversationDataSourceViews(
       continue;
     }
 
-    const dsv = conversationSIdToDataSourceView.get(
+    const dsv = conversationIdToDataSourceView.get(
       fileResource.useCaseMetadata.conversationId
     );
     if (dsv) {
