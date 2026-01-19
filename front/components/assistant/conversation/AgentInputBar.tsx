@@ -192,7 +192,6 @@ export const AgentInputBar = ({
   }, [methods, listOffset, visibleListHeight, bottomOffset]);
 
   const showStopButton = generatingMessages.length > 0;
-  const resetConversation = context.agentBuilderContext?.resetConversation;
   const showMessageNavigation = !context.agentBuilderContext;
   const showNavigationContainer = showStopButton || showMessageNavigation;
   const blockedActions = getBlockedActions(context.user.sId);
@@ -290,11 +289,11 @@ export const AgentInputBar = ({
           </div>
         )}
 
-        {resetConversation && !showStopButton && (
+        {context.agentBuilderContext?.resetConversation && !showStopButton && (
           <Button
             variant="outline"
             icon={ArrowPathIcon}
-            onClick={resetConversation}
+            onClick={context.agentBuilderContext.resetConversation}
             label="Clear"
             style={{
               position: "absolute",
