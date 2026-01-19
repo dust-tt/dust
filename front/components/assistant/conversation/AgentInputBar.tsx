@@ -191,10 +191,9 @@ export const AgentInputBar = ({
     };
   }, [methods, listOffset, visibleListHeight, bottomOffset]);
 
-  const showClearButton =
-    context.agentBuilderContext?.resetConversation &&
-    generatingMessages.length > 0;
   const showStopButton = generatingMessages.length > 0;
+  const showMessageNavigation = !context.agentBuilderContext;
+  const showNavigationContainer = showStopButton || showMessageNavigation;
   const blockedActions = getBlockedActions(context.user.sId);
 
   // Keep blockedActionIndex in sync when blockedActions array changes.
@@ -246,47 +245,55 @@ export const AgentInputBar = ({
       }
     >
       <div className="flex w-full justify-center gap-2">
-        <div
-          className="flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night"
-          style={{
-            position: "absolute",
-            top: "-2em",
-          }}
-        >
-          {showStopButton && (
-            <>
-              <Button
-                variant="ghost"
-                label={getStopButtonLabel()}
-                icon={StopIcon}
-                onClick={handleStopGeneration}
-                disabled={isStopping}
-                size="xs"
-              />
-              <div className="h-4 w-px bg-border dark:bg-border-night" />
-            </>
-          )}
-          <IconButton
-            icon={ArrowUpIcon}
-            onClick={scrollToPreviousUserMessage}
-            disabled={!canScrollUp}
-            size="xs"
-            tooltip="Previous message"
-          />
-          <IconButton
-            icon={ArrowDownIcon}
-            onClick={scrollToNextUserMessage}
-            disabled={!canScrollDown}
-            size="xs"
-            tooltip="Next message"
-          />
-        </div>
+        {showNavigationContainer && (
+          <div
+            className="flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night"
+            style={{
+              position: "absolute",
+              top: "-2em",
+            }}
+          >
+            {showStopButton && (
+              <>
+                <Button
+                  variant="ghost"
+                  label={getStopButtonLabel()}
+                  icon={StopIcon}
+                  onClick={handleStopGeneration}
+                  disabled={isStopping}
+                  size="xs"
+                />
+                {showMessageNavigation && (
+                  <div className="h-4 w-px bg-border dark:bg-border-night" />
+                )}
+              </>
+            )}
+            {showMessageNavigation && (
+              <>
+                <IconButton
+                  icon={ArrowUpIcon}
+                  onClick={scrollToPreviousUserMessage}
+                  disabled={!canScrollUp}
+                  size="xs"
+                  tooltip="Previous message"
+                />
+                <IconButton
+                  icon={ArrowDownIcon}
+                  onClick={scrollToNextUserMessage}
+                  disabled={!canScrollDown}
+                  size="xs"
+                  tooltip="Next message"
+                />
+              </>
+            )}
+          </div>
+        )}
 
-        {showClearButton && (
+        {context.agentBuilderContext?.resetConversation && !showStopButton && (
           <Button
             variant="outline"
             icon={ArrowPathIcon}
-            onClick={context.agentBuilderContext?.resetConversation}
+            onClick={context.agentBuilderContext.resetConversation}
             label="Clear"
             style={{
               position: "absolute",
