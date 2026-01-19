@@ -20,6 +20,7 @@ import {
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
+import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import {
   AgentMessageFeedbackModel,
   AgentMessageModel,
@@ -208,6 +209,8 @@ async function main() {
   await AgentMessageSkillModel.sync({ alter: true });
   await SkillMCPServerConfigurationModel.sync({ alter: true });
   await WorkspaceVerificationAttemptModel.sync({ alter: true });
+
+  await AgentSuggestionModel.sync({ alter: true });
 
   process.exit(0);
 }
