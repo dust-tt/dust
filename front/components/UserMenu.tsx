@@ -48,7 +48,7 @@ import {
 import { serializeMention } from "@app/lib/mentions/format";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { AgentMention, MentionType } from "@app/types";
+import type { MentionType } from "@app/types";
 import type {
   SubscriptionType,
   UserTypeWithWorkspaces,
@@ -174,7 +174,7 @@ export function UserMenu({
           ? mentions
           : [
               ...mentions,
-              { configurationId: GLOBAL_AGENTS_SID.HELPER } as AgentMention,
+              { type: "agent", configurationId: GLOBAL_AGENTS_SID.HELPER },
             ];
         const conversationRes = await createConversationWithMessage({
           messageData: {
