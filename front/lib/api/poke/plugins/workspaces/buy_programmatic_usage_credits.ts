@@ -115,7 +115,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
         type: "boolean",
         label: "⚠️ Confirm Pro Override",
         description:
-          "I confirm this Pro customer is trusted and will pay the invoice. This is an exceptional override - Pro users normally pay via card.",
+          "I confirm this Pro customer is trusted and will pay the invoice. This is an exceptional override - Pro users normally pay upfront.",
         dependsOn: { field: "isFreeCredit", value: false },
       },
     },
