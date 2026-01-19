@@ -29,6 +29,14 @@ export function isItemNotFoundError(err: unknown): err is GraphError {
   );
 }
 
+export function isSiteAccessBlockedError(err: unknown): err is GraphError {
+  return (
+    err instanceof GraphError &&
+    err.statusCode === 403 &&
+    err.message.includes("Access to this site has been blocked")
+  );
+}
+
 export class MicrosoftCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,

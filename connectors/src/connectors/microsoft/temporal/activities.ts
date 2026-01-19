@@ -31,7 +31,10 @@ import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
-import { isItemNotFoundError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
+import {
+  isItemNotFoundError,
+  isSiteAccessBlockedError,
+} from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
   deleteFile,
   deleteFolder,
@@ -181,8 +184,11 @@ export async function getRootNodesToSyncFromResources(
               nextLink
             );
           } catch (error) {
-            if (isItemNotFoundError(error)) {
-              logger.warn({ sitePath }, "Site not found, skipping drives");
+            if (
+              isItemNotFoundError(error) ||
+              isSiteAccessBlockedError(error)
+            ) {
+              logger.warn({ sitePath }, "Site not accessible, skipping drives");
               return { results: [] };
             }
             throw error;
