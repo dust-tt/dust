@@ -51,7 +51,7 @@ export function MCPServerPersonalAuthenticationRequired({
 
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
-  const [credentialOverrides, setCredentialOverrides] = useState<
+  const [overriddenCredentials, setCredentialOverrides] = useState<
     Record<string, string>
   >({});
 
@@ -71,9 +71,9 @@ export function MCPServerPersonalAuthenticationRequired({
         provider,
         useCase: "personal_actions",
         scope,
-        credentialOverrides:
-          Object.keys(credentialOverrides).length > 0
-            ? credentialOverrides
+        overriddenCredentials:
+          Object.keys(overriddenCredentials).length > 0
+            ? overriddenCredentials
             : undefined,
       });
 
@@ -124,7 +124,7 @@ export function MCPServerPersonalAuthenticationRequired({
                 <div className="mt-2">
                   <PersonalAuthCredentialOverrides
                     inputs={overridableInputs}
-                    values={credentialOverrides}
+                    values={overriddenCredentials}
                     idPrefix={mcpServerId}
                     onChange={(key, value) =>
                       setCredentialOverrides((prev) => ({
@@ -145,7 +145,7 @@ export function MCPServerPersonalAuthenticationRequired({
                     isConnecting ||
                     !areCredentialOverridesValid(
                       overridableInputs,
-                      credentialOverrides
+                      overriddenCredentials
                     )
                   }
                   onClick={() => void onConnectClick(mcpServer)}

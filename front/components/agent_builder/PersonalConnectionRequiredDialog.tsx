@@ -108,7 +108,7 @@ export function PersonalConnectionRequiredDialog({
 }) {
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [credentialOverridesMap, setCredentialOverridesMap] = useState<
+  const [overriddenCredentialsMap, setCredentialOverridesMap] = useState<
     Record<string, Record<string, string>>
   >({});
 
@@ -181,7 +181,7 @@ export function PersonalConnectionRequiredDialog({
                   ? getOverridablePersonalAuthInputs({ provider })
                   : null;
                 const serverOverrides =
-                  credentialOverridesMap[mcpServerView.server.sId] ?? {};
+                  overriddenCredentialsMap[mcpServerView.server.sId] ?? {};
 
                 return (
                   <div key={mcpServerView.sId} className="py-2">
@@ -226,7 +226,7 @@ export function PersonalConnectionRequiredDialog({
                                   useCase: "personal_actions",
                                   scope:
                                     mcpServerView.server.authorization.scope,
-                                  credentialOverrides:
+                                  overriddenCredentials:
                                     Object.keys(serverOverrides).length > 0
                                       ? serverOverrides
                                       : undefined,

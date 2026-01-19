@@ -859,14 +859,14 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     provider,
     useCase,
     scope,
-    credentialOverrides,
+    overriddenCredentials,
   }: {
     mcpServerId: string;
     mcpServerDisplayName: string;
     provider: OAuthProvider;
     useCase: OAuthUseCase;
     scope?: string;
-    credentialOverrides?: Record<string, string>;
+    overriddenCredentials?: Record<string, string>;
   }): Promise<boolean> => {
     try {
       const extraConfig: Record<string, string> = {
@@ -877,8 +877,8 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
         extraConfig.scope = scope;
       }
 
-      if (credentialOverrides) {
-        for (const [key, value] of Object.entries(credentialOverrides)) {
+      if (overriddenCredentials) {
+        for (const [key, value] of Object.entries(overriddenCredentials)) {
           const trimmedValue = value.trim();
           if (trimmedValue && isSupportedOAuthCredential(key)) {
             extraConfig[key] = trimmedValue;
