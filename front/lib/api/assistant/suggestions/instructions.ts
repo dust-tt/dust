@@ -8,7 +8,7 @@ import type {
   ModelMessageTypeMultiActionsWithoutContentFragment,
   Result,
 } from "@app/types";
-import { Err, GPT_4_TURBO_MODEL_ID, isStringArray, Ok } from "@app/types";
+import { Err, GPT_5_MINI_MODEL_ID, isStringArray, Ok } from "@app/types";
 
 const FUNCTION_NAME = "send_ranked_suggestions";
 
@@ -112,7 +112,7 @@ export async function getBuilderInstructionsSuggestions(
     auth,
     {
       functionCall: FUNCTION_NAME,
-      modelId: GPT_4_TURBO_MODEL_ID,
+      modelId: GPT_5_MINI_MODEL_ID,
       providerId: "openai",
       temperature: 0.7,
       useCache: false,
