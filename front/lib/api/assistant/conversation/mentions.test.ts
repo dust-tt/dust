@@ -3597,8 +3597,8 @@ describe("validateUserMention", () => {
         await refreshedProjectSpace!.isMember(mentionedUser);
       expect(isMemberBefore).toBe(false);
 
-      // Approve the mention and add to project (use userAuth - the user who is an editor of the project)
-      const result = await validateUserMention(userAuth, {
+      // Approve the mention and add to project
+      const result = await validateUserMention(adminAuth, {
         conversationId: projectConversation.sId,
         userId: mentionedUser.sId,
         messageId: userMessage.sId,
