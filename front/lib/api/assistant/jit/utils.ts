@@ -108,29 +108,26 @@ export async function getConversationDataSourceViews(
     return fileIdToDataSourceViewMap;
   }
 
-  // Batch fetch all file resources.
+  // Fetch files.
   const fileIds = fileAttachments.map((a) => a.fileId);
   const fileResources = await FileResource.fetchByIds(auth, fileIds);
   const fileResourceById = new Map(fileResources.map((f) => [f.sId, f]));
 
-  // Collect unique conversation sIds from file metadata.
-  const conversationSIds = new Set<string>();
-  conversationSIds.add(conversation.sId);
+  // Find all conversations to fetch.
+  const conversationIds = new Set<string>();
+  conversationIds.add(conversation.sId);
   for (const file of fileResources) {
     if (file.useCaseMetadata?.conversationId) {
-      conversationSIds.add(file.useCaseMetadata.conversationId);
+      conversationIds.add(file.useCaseMetadata.conversationId);
     }
   }
 
   // Batch fetch all conversations.
-  const conversations = await ConversationResource.fetchByIds(
-    auth,
-    [...conversationSIds],
-    { includeDeleted: false, includeTest: false }
-  );
+  const conversations = await ConversationResource.fetchByIds(auth, [
+    ...conversationIds,
+  ]);
 
-  // Create map from conversation sId to ModelId.
-  const conversationSIdToModelId = new Map(
+  const conversationIdToModelId = new Map(
     conversations.map((c) => [c.sId, c.id])
   );
 
@@ -155,7 +152,7 @@ export async function getConversationDataSourceViews(
     string,
     DataSourceViewResource
   >();
-  for (const [sId, modelId] of conversationSIdToModelId) {
+  for (const [sId, modelId] of conversationIdToModelId) {
     const dsv = modelIdToDataSourceView.get(modelId);
     if (dsv) {
       conversationSIdToDataSourceView.set(sId, dsv);
