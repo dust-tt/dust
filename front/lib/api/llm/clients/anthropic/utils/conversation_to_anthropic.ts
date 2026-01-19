@@ -99,10 +99,20 @@ function functionMessage(message: FunctionMessageTypeModel): MessageParam {
   };
 }
 
-function userMessage(message: UserMessageTypeModel): MessageParam {
+function userMessage(
+  message: UserMessageTypeModel,
+  { isLast }: { isLast: boolean }
+): MessageParam {
+  const content = message.content.map(userContentToParam);
+
+  // Add cache_control to the last content block if this is the last message.
+  if (isLast && content.length > 0) {
+    content[content.length - 1].cache_control = { type: "ephemeral" };
+  }
+
   return {
     role: "user",
-    content: message.content.map(userContentToParam),
+    content,
   };
 }
 
@@ -120,11 +130,12 @@ function assistantMessage(
 }
 
 export function toMessage(
-  message: ModelMessageTypeMultiActionsWithoutContentFragment
+  message: ModelMessageTypeMultiActionsWithoutContentFragment,
+  { isLast }: { isLast: boolean } = { isLast: false }
 ): MessageParam {
   switch (message.role) {
     case "user":
-      return userMessage(message);
+      return userMessage(message, { isLast });
     case "function":
       return functionMessage(message);
     case "assistant":
