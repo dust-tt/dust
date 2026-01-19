@@ -23,6 +23,7 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types";
+import { isBuilder } from "@app/types";
 
 interface CreateDropdownProps {
   owner: LightWorkspaceType;
@@ -58,7 +59,9 @@ export const CreateDropdown = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        {hasFeature("skills") && <DropdownMenuLabel label="Agents" />}
+        {hasFeature("skills") && isBuilder(owner) && (
+          <DropdownMenuLabel label="Agents" />
+        )}
         <DropdownMenuItem
           label="agent from scratch"
           icon={DocumentIcon}
@@ -91,7 +94,7 @@ export const CreateDropdown = ({
             onClick={triggerYAMLUpload}
           />
         )}
-        {hasFeature("skills") && (
+        {hasFeature("skills") && isBuilder(owner) && (
           <>
             <DropdownMenuLabel label="Skills" />
             <DropdownMenuItem
