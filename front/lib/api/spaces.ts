@@ -29,11 +29,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
-import type {
-  AgentConfigurationType,
-  AgentsUsageType,
-  Result,
-} from "@app/types";
+import type { AgentsUsageType, Result } from "@app/types";
 import { Err, Ok, removeNulls, SPACE_GROUP_PREFIX } from "@app/types";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
@@ -159,10 +155,9 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
         agentIds,
         variant: "full",
       });
-      const agentConfigurationsById = new Map<string, AgentConfigurationType>();
-      for (const agentConfig of agentConfigurations) {
-        agentConfigurationsById.set(agentConfig.sId, agentConfig);
-      }
+      const agentConfigurationsById = new Map(
+        agentConfigurations.map((config) => [config.sId, config])
+      );
 
       const featureFlags = await getFeatureFlags(
         auth.getNonNullableWorkspace()
