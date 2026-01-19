@@ -1,38 +1,30 @@
 import "@dust-tt/sparkle/styles/allotment.css";
 
 import {
+  ArrowCircleIcon,
   Avatar,
   Bar,
+  BarChartIcon,
+  BoltIcon,
+  BookOpenIcon,
   Button,
   Checkbox,
   Chip,
   ConversationContainer,
   ConversationMessage,
-  Icon,
-  AtomIcon,
-  BarChartIcon,
-  ListCheckIcon,
-  TestTubeIcon,
-  ToolsIcon,
-  BookOpenIcon,
+  CopilotIcon,
   DropdownMenu,
   DropdownMenuContent,
-  SpacesIcon,
-  SpaceOpenIcon,
-  SpaceClosedIcon as SpaceCloseIcon,
-  UserGroupIcon,
-  BoltIcon,
-  SidebarRightCloseIcon,
-  SidebarRightOpenIcon,
-  EyeIcon,
-  EyeSlashIcon,
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyCTA,
+  EyeIcon,
+  EyeSlashIcon,
+  Icon,
   Input,
   ListGroup,
-  ListItemSection,
   ListItem,
+  ListItemSection,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -40,20 +32,36 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  SidebarRightCloseIcon,
+  SidebarRightOpenIcon,
+  SpaceClosedIcon as SpaceCloseIcon,
+  SpaceOpenIcon,
+  SpacesIcon,
   Tabs,
   TabsContent,
-  ArrowCircleIcon,
   TabsList,
   TabsTrigger,
-  TextArea,
+  TagIcon,
+  TestTubeIcon,
+  ToolsIcon,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { Allotment } from "allotment";
-import { useMemo, useState, type MouseEvent } from "react";
+import { type MouseEvent, useMemo, useRef, useState } from "react";
 
 import { customColors } from "@sparkle/lib/colors";
 
-import { getRandomAgents, getRandomConversations, mockSpaces } from "../data";
 import { InputBar } from "../components/InputBar";
+import {
+  RichTextArea,
+  type RichTextAreaHandle,
+} from "../components/RichTextArea";
+import {
+  getRandomAgents,
+  getRandomConversations,
+  mockSpaces,
+  mockUsers,
+} from "../data";
 
 export default function AgentBuilder() {
   const agent = useMemo(() => getRandomAgents(1)[0], []);
@@ -63,10 +71,35 @@ export default function AgentBuilder() {
   const [isSpacesSheetOpen, setIsSpacesSheetOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const [activeRightPanelTab, setActiveRightPanelTab] = useState("copilot");
+  const [accessStatus, setAccessStatus] = useState<"published" | "unpublished">(
+    "unpublished"
+  );
+  const richTextAreaRef = useRef<RichTextAreaHandle | null>(null);
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<Set<string>>(() => {
     const defaultSpace = mockSpaces[0];
     return defaultSpace ? new Set([defaultSpace.id]) : new Set();
   });
+  const publishedMetadata = useMemo(() => {
+    const daysAgo = Math.floor(Math.random() * 21) + 1;
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    const users = Math.floor(Math.random() * 900) + 100;
+
+    return {
+      dateLabel: date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+      usersLabel: new Intl.NumberFormat("en-US").format(users),
+    };
+  }, []);
+  const editorNames = useMemo(() => {
+    const count = Math.floor(Math.random() * 5) + 1;
+    return mockUsers
+      .slice(0, count)
+      .map((user) => user.fullName || `${user.firstName} ${user.lastName}`);
+  }, []);
   const isRestrictedSpace = (spaceId: string) =>
     spaceId.charCodeAt(spaceId.length - 1) % 2 === 0;
 
@@ -151,10 +184,9 @@ export default function AgentBuilder() {
     );
   };
   const rightPanelTabs = [
-    { value: "copilot", label: "Copilot", icon: AtomIcon },
-    { value: "testing", label: "Testing", icon: TestTubeIcon },
+    { value: "copilot", label: "Copilot", icon: CopilotIcon },
+    { value: "testing", label: "Test", icon: TestTubeIcon },
     { value: "insights", label: "Insights", icon: BarChartIcon },
-    { value: "feedback", label: "Feedback", icon: ListCheckIcon },
   ];
 
   return (
@@ -253,9 +285,9 @@ export default function AgentBuilder() {
                         </>
                       }
                     />
-                    <TextArea
-                      resize="vertical"
-                      style={{ minHeight: "500px" }}
+                    <RichTextArea
+                      ref={richTextAreaRef}
+                      className="s-min-h-[512px]"
                       placeholder="Write instructions for your agent..."
                     />
                   </div>
@@ -381,20 +413,22 @@ export default function AgentBuilder() {
                     />
                   </div>
 
-                  <div className="s-flex s-flex-col s-gap-3">
-                    <div className="s-heading-xl s-text-foreground">
-                      Settings
-                    </div>
-                    <div className="s-flex s-items-center s-gap-3">
-                      <div className="s-flex s-flex-1 s-flex-col s-gap-2">
-                        <div className="s-heading-sm s-text-foreground">
-                          Handle
+                  <div className="s-flex s-flex-col">
+                    <div className="s-flex s-w-full s-min-w-0 s-flex-1 s-items-end s-gap-2">
+                      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-3">
+                        <div className="s-heading-xl s-text-foreground">
+                          Settings
                         </div>
-                        <Input
-                          placeholder="Agent name"
-                          className="s-flex-1"
-                          defaultValue={agent?.name || ""}
-                        />
+                        <div className="s-flex s-flex-1 s-items-center s-gap-2 s-py-2">
+                          <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
+                            Handle
+                          </div>
+                          <Input
+                            placeholder="Agent name"
+                            containerClassName="s-flex-1"
+                            defaultValue={agent?.name || ""}
+                          />
+                        </div>
                       </div>
                       <Avatar
                         size="lg"
@@ -402,60 +436,83 @@ export default function AgentBuilder() {
                         emoji={agent?.emoji}
                         backgroundColor={agent?.backgroundColor}
                         isRounded={false}
+                        className="s-mb-2"
                       />
                     </div>
-                    <div className="s-flex s-flex-col s-gap-2">
-                      <div className="s-heading-sm s-text-foreground">
+                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-2">
+                      <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
                         Description
                       </div>
-                      <Input placeholder="Description" />
+                      <Input
+                        placeholder="Description"
+                        containerClassName="s-flex-1"
+                      />
                     </div>
-                    <div className="s-flex s-items-center s-border-y s-border-border s-py-2">
-                      <div className="s-mr-8 s-flex s-items-center s-gap-2">
-                        <div className="s-heading-sm s-text-foreground">
-                          Access
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              label="Unpublished"
-                              is
-                            />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem
-                              label="Unpublished"
-                              icon={EyeSlashIcon}
-                            />
-                            <DropdownMenuItem
-                              label="Published"
-                              icon={EyeIcon}
-                            />
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-2">
+                      <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
+                        Access
                       </div>
-                      <div className="s-flex s-items-center s-gap-2">
-                        <div className="s-heading-sm s-text-foreground">
-                          Edition
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            label={
+                              accessStatus === "published"
+                                ? "Published"
+                                : "Unpublished"
+                            }
+                            icon={
+                              accessStatus === "published" ? EyeIcon : EyeSlashIcon
+                            }
+                            isSelect
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem
+                            label="Unpublished"
+                            icon={EyeSlashIcon}
+                            onSelect={() => setAccessStatus("unpublished")}
+                          />
+                          <DropdownMenuItem
+                            label="Published"
+                            icon={EyeIcon}
+                            onSelect={() => setAccessStatus("published")}
+                          />
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      {accessStatus === "published" && (
+                        <div className="s-text-sm s-text-muted-foreground">
+                          Since {publishedMetadata.dateLabel}{", "}
+                          {publishedMetadata.usersLabel} users last 30 days
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          label="Editors"
-                          icon={UserGroupIcon}
-                        />
+                      )}
+                    </div>
+                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-2">
+                      <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
+                        Edition
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        label="Editors"
+                        icon={UserGroupIcon}
+                      />
+                      <div className="s-text-sm s-text-muted-foreground">
+                        {editorNames.join(", ")}
                       </div>
                     </div>
-                    <div className="s-flex s-items-center s-gap-2">
-                      <div className="s-heading-sm s-text-foreground">Tags</div>
+                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-2">
+                      <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
+                        Tags
+                      </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             size="sm"
                             variant="outline"
                             label="Select tags"
+                            icon={TagIcon}
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
@@ -493,6 +550,7 @@ export default function AgentBuilder() {
                     <TabsTrigger
                       key={tab.value}
                       value={tab.value}
+                      tooltip={tab.label}
                       label={tab.label}
                       icon={tab.icon}
                     />
@@ -517,7 +575,19 @@ export default function AgentBuilder() {
                     </ConversationContainer>
                   </div>
                   <div className="s-p-4">
-                    <div className="s-flex s-justify-center">
+                    <div className="s-flex s-flex-col s-items-center s-gap-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        label="Suggest"
+                        onClick={() =>
+                          richTextAreaRef.current?.insertSuggestion({
+                            removedText: "Keep responses friendly but concise.",
+                            addedText:
+                              "Keep responses friendly, concise, and focused on next steps.",
+                          })
+                        }
+                      />
                       <InputBar placeholder="Ask Copilot to help build your agent" />
                     </div>
                   </div>
