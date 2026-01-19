@@ -131,53 +131,53 @@ export async function addTraceToLangfuseDataset(
 
   const itemId = `feedback_${feedbackId}_${dustTraceId}`;
 
+  // Ensure dataset exists
+  const datasetResult = await ensureLangfuseDatasetExists(client, datasetName);
+  if (datasetResult.isErr()) {
+    logger.error(
+      {
+        datasetName,
+        feedbackId,
+        dustTraceId,
+        workspaceId,
+        error: datasetResult.error,
+      },
+      "[Langfuse] Failed to ensure dataset exists"
+    );
+    return false;
+  }
+
+  // Fetch the trace from Langfuse by searching for dustTraceId in metadata
+  const traceResult = await fetchTraceByDustTraceId(client, dustTraceId);
+  if (traceResult.isErr()) {
+    logger.error(
+      {
+        datasetName,
+        feedbackId,
+        dustTraceId,
+        workspaceId,
+        error: traceResult.error,
+      },
+      "[Langfuse] Failed to fetch trace by dustTraceId"
+    );
+    return false;
+  }
+  const trace = traceResult.value;
+
+  if (!trace) {
+    logger.warn(
+      {
+        datasetName,
+        feedbackId,
+        dustTraceId,
+        workspaceId,
+      },
+      "[Langfuse] Trace not found by dustTraceId metadata"
+    );
+    return false;
+  }
+
   try {
-    // Ensure dataset exists
-    const datasetResult = await ensureLangfuseDatasetExists(client, datasetName);
-    if (datasetResult.isErr()) {
-      logger.error(
-        {
-          datasetName,
-          feedbackId,
-          dustTraceId,
-          workspaceId,
-          error: datasetResult.error,
-        },
-        "[Langfuse] Failed to ensure dataset exists"
-      );
-      return false;
-    }
-
-    // Fetch the trace from Langfuse by searching for dustTraceId in metadata
-    const traceResult = await fetchTraceByDustTraceId(client, dustTraceId);
-    if (traceResult.isErr()) {
-      logger.error(
-        {
-          datasetName,
-          feedbackId,
-          dustTraceId,
-          workspaceId,
-          error: traceResult.error,
-        },
-        "[Langfuse] Failed to fetch trace by dustTraceId"
-      );
-      return false;
-    }
-    const trace = traceResult.value;
-
-    if (!trace) {
-      logger.warn(
-        {
-          datasetName,
-          feedbackId,
-          dustTraceId,
-          workspaceId,
-        },
-        "[Langfuse] Trace not found by dustTraceId metadata"
-      );
-      return false;
-    }
-
     // Create dataset item with trace data
     // sourceTraceId links to the trace in Langfuse UI for reference
     await client.api.datasetItems.create({
@@ -193,20 +193,6 @@ export async function addTraceToLangfuseDataset(
         timestamp: new Date().toISOString(),
       },
     });
-
-    logger.info(
-      {
-        datasetName,
-        feedbackId,
-        dustTraceId,
-        langfuseTraceId: trace.id,
-        workspaceId,
-        itemId,
-      },
-      "[Langfuse] Added trace to dataset"
-    );
-
-    return true;
   } catch (error) {
     // Log error but don't throw - Langfuse failures should not block feedback submission
     logger.error(
@@ -215,10 +201,24 @@ export async function addTraceToLangfuseDataset(
         feedbackId,
         dustTraceId,
         itemId,
-        error,
+        error: normalizeError(error),
       },
       "[Langfuse] Failed to add trace to dataset"
     );
     return false;
   }
+
+  logger.info(
+    {
+      datasetName,
+      feedbackId,
+      dustTraceId,
+      langfuseTraceId: trace.id,
+      workspaceId,
+      itemId,
+    },
+    "[Langfuse] Added trace to dataset"
+  );
+
+  return true;
 }
