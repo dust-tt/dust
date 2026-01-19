@@ -351,6 +351,7 @@ export const AgentInputBar = ({
         onSubmit={context.handleSubmit}
         stickyMentions={autoMentions}
         conversation={context.conversation}
+        draftKey={context.draftKey}
         disableAutoFocus={isMobile}
         actions={context.agentBuilderContext?.actionsToShow}
         isSubmitting={context.agentBuilderContext?.isSavingDraftAgent === true}
