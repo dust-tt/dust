@@ -1175,8 +1175,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       user,
       requestedPermissions,
-    }: { user: UserType; requestedPermissions?: CombinedResourcePermissions },
-    { transaction }: { transaction?: Transaction } = {}
+      transaction,
+    }: {
+      user: UserType;
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
   ): Promise<
     Result<
       undefined,
