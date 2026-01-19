@@ -3,6 +3,7 @@ import type { ChildWorkflowHandle } from "@temporalio/workflow";
 import {
   continueAsNew,
   executeChild,
+  getExternalWorkflowHandle,
   isCancellation,
   proxyActivities,
   setHandler,
@@ -653,22 +654,37 @@ export async function googleDriveIncrementalSyncPerDrive({
         await concurrentExecutor(
           newFolders,
           async (folderId) => {
-            const handle = await startChild(googleDriveFolderSync, {
-              workflowId: googleDriveFolderSyncWorkflowId(
-                connectorId,
-                folderId
-              ),
-              searchAttributes: { connectorId: [connectorId] },
-              args: [
-                {
-                  connectorId,
-                  rootFolderId: folderId,
-                  startSyncTs,
-                },
-              ],
-              memo: workflowInfo().memo,
-            });
-            await handle.result();
+            const workflowId = googleDriveFolderSyncWorkflowId(
+              connectorId,
+              folderId
+            );
+
+            try {
+              const handle = await startChild(googleDriveFolderSync, {
+                workflowId,
+                searchAttributes: { connectorId: [connectorId] },
+                args: [
+                  {
+                    connectorId,
+                    rootFolderId: folderId,
+                    startSyncTs,
+                  },
+                ],
+                memo: workflowInfo().memo,
+              });
+              await handle.result();
+            } catch (err) {
+              if (
+                err instanceof Error &&
+                err.name === "WorkflowExecutionAlreadyStartedError"
+              ) {
+                // Workflow already running, wait for it to complete
+                const existing = getExternalWorkflowHandle(workflowId);
+                await existing.result();
+              } else {
+                throw err;
+              }
+            }
           },
           { concurrency: GDRIVE_MAX_CONCURRENT_FOLDER_SYNCS }
         );
