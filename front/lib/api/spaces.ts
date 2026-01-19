@@ -376,7 +376,7 @@ export async function createSpaceAndGroup(
 
     const groups = removeNulls([
       memberGroup,
-      globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
+      globalGroupRes?.isOk() ? globalGroupRes.value : undefined, // todo: add the global group as project_viewer for projects (it's "member" by default)
     ]);
 
     const space = await SpaceResource.makeNew(
@@ -405,16 +405,15 @@ export async function createSpaceAndGroup(
           { transaction: t }
         );
 
-        // Add editor group to space with kind="editor"
-        await space.linkGroup(editorGroup, "editor", t);
+        // Add editor group to space with kind="project_editor"
+        await space.linkGroup(auth, editorGroup, "project_editor", t);
 
-        // Add editors to the editor group
         const editorUsers = (
           await UserResource.fetchByIds(params.editorIds)
         ).map((user) => user.toJSON());
 
         // Add user to the newly created group. For the specific purpose of
-        // space_editors group creation, we don't use addMembers, since admins
+        // space_editors group creation, we don't use addMembers, since only admins
         // can add/remove members this way. We create the relation directly.
         await GroupMembershipModel.create(
           {
@@ -490,7 +489,7 @@ export async function createSpaceAndGroup(
 
         const selectedGroups = selectedGroupsResult.value;
         for (const selectedGroup of selectedGroups) {
-          await space.linkGroup(selectedGroup, "member", t);
+          await space.linkGroup(auth, selectedGroup, "member", t);
         }
       }
 
@@ -514,7 +513,7 @@ export async function createSpaceAndGroup(
 
         const selectedEditorGroups = selectedEditorGroupsResult.value;
         for (const selectedGroup of selectedEditorGroups) {
-          await space.linkGroup(selectedGroup, "editor", t);
+          await space.linkGroup(auth, selectedGroup, "project_editor", t);
         }
       }
     }

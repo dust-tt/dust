@@ -116,7 +116,7 @@ async function handler(
       // Check permissions based on space kind
       // Projects can be created by any workspace member
       // Regular spaces require admin permissions
-      if (requestBody.spaceKind === "regular" && !auth.isAdmin()) {
+      if (requestBody.spaceKind !== "project" && !auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {

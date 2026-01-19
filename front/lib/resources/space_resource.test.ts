@@ -657,12 +657,12 @@ describe("SpaceResource", () => {
             [projectMemberGroup]
           );
 
-          // Link the editor group to the project space with kind="editor"
+          // Link the editor group to the project space with kind="project_editor"
           await GroupSpaceModel.create({
             groupId: projectEditorGroup.id,
             vaultId: projectSpace.id,
             workspaceId: workspace.id,
-            kind: "editor",
+            kind: "project_editor",
           });
         });
 
@@ -795,12 +795,12 @@ describe("SpaceResource", () => {
             [projectMemberGroup, provisionedMemberGroup]
           );
 
-          // Link the editor group to the project space with kind="editor"
+          // Link the editor group to the project space with kind="project_editor"
           await GroupSpaceModel.create({
             groupId: provisionedEditorGroup.id,
             vaultId: projectSpace.id,
             workspaceId: workspace.id,
-            kind: "editor",
+            kind: "project_editor",
           });
         });
 

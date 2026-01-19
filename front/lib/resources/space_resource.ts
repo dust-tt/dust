@@ -536,12 +536,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
       // If the space should be restricted and was not restricted before, remove the global group.
       if (!wasRestricted && isRestricted) {
-        await this.removeGroup(auth, globalGroup);
+        await this.removeGroup(auth, globalGroup, t);
       }
 
       // If the space should not be restricted and was restricted before, add the global group.
       if (wasRestricted && !isRestricted) {
-        await this.addGroup(auth, globalGroup);
+        await this.linkGroup(auth, globalGroup, "member", t);
       }
 
       const previousManagementMode = this.managementMode;
@@ -565,55 +565,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         const memberIds = params.memberIds;
         const editorIds = params.editorIds ?? [];
 
-        // Handle editor group - create if needed and update members
-        if (editorIds.length > 0) {
-          const editorUsers = await UserResource.fetchByIds(editorIds);
-
-          if (!editorGroup) {
-            // Create a new editor group
-            editorGroup = await GroupResource.makeNew(
-              {
-                name: `Editors for ${this.kind === "project" ? "project" : "space"} ${this.name}`,
-                kind: "space_editors",
-                workspaceId: this.workspaceId,
-              },
-              { transaction: t }
-            );
-
-            // Link the editor group to the space with kind="editor"
-            await GroupSpaceModel.create(
-              {
-                groupId: editorGroup.id,
-                vaultId: this.id,
-                workspaceId: this.workspaceId,
-                kind: "project_editor",
-              },
-              { transaction: t }
-            );
-          }
-
-          // Set members of the editor group
-          const setEditorsRes = await editorGroup.setMembers(
-            auth,
-            { users: editorUsers.map((u) => u.toJSON()) },
-            { transaction: t }
-          );
-          if (setEditorsRes.isErr()) {
-            return setEditorsRes;
-          }
-        } else if (editorGroup) {
-          // No editors specified, clear the editor group
-          const setEditorsRes = await editorGroup.setMembers(
-            auth,
-            { users: [] },
-            {
-              transaction: t,
-            }
-          );
-          if (setEditorsRes.isErr()) {
-            return setEditorsRes;
-          }
-        }
         // Handle member-based management
         const users = await UserResource.fetchByIds(memberIds);
 
@@ -645,6 +596,48 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         if (setMembersRes.isErr()) {
           return setMembersRes;
         }
+
+        // Handle editor group - create if needed and update members
+        if (editorIds.length > 0) {
+          const editorUsers = await UserResource.fetchByIds(editorIds);
+
+          if (!editorGroup) {
+            // Create a new editor group
+            editorGroup = await GroupResource.makeNew(
+              {
+                name: `Editors for ${this.kind === "project" ? "project" : "space"} ${this.name}`,
+                kind: "space_editors",
+                workspaceId: this.workspaceId,
+              },
+              { transaction: t }
+            );
+
+            // Link the editor group to the space with kind="project_editor"
+            await this.linkGroup(auth, editorGroup, "project_editor", t);
+          }
+
+          // Set members of the editor group
+          const setEditorsRes = await editorGroup.setMembers(
+            auth,
+            { users: editorUsers.map((u) => u.toJSON()) },
+            { transaction: t }
+          );
+          if (setEditorsRes.isErr()) {
+            return setEditorsRes;
+          }
+        } else if (editorGroup) {
+          // No editors specified, clear the editor group
+          const setEditorsRes = await editorGroup.setMembers(
+            auth,
+            { users: [] },
+            {
+              transaction: t,
+            }
+          );
+          if (setEditorsRes.isErr()) {
+            return setEditorsRes;
+          }
+        }
       } else if (managementMode === "group") {
         // Handle group-based management
         const groupIds = params.groupIds;
@@ -655,14 +648,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           (g) => g.kind === "provisioned"
         );
         for (const group of existingExternalGroups) {
-          await GroupSpaceModel.destroy({
-            where: {
-              groupId: group.id,
-              vaultId: this.id,
-              workspaceId: auth.getNonNullableWorkspace().id,
-            },
-            transaction: t,
-          });
+          await this.removeGroup(auth, group, t);
         }
 
         // Add the new groups
@@ -675,6 +661,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         }
         const selectedGroups = selectedGroupsResult.value;
 
+        for (const selectedGroup of selectedGroups) {
+          await this.linkGroup(auth, selectedGroup, "member", t);
+        }
+
         if (editorGroupIds.length > 0) {
           const editorGroupsResult = await GroupResource.fetchByIds(
             auth,
@@ -685,28 +675,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           }
           const selectedEditorGroups = editorGroupsResult.value;
           for (const selectedEditorGroup of selectedEditorGroups) {
-            await GroupSpaceModel.create(
-              {
-                groupId: selectedEditorGroup.id,
-                vaultId: this.id,
-                workspaceId: this.workspaceId,
-                kind: "project_editor",
-              },
-              { transaction: t }
-            );
+            this.linkGroup(auth, selectedEditorGroup, "project_editor", t);
           }
-        }
-
-        for (const selectedGroup of selectedGroups) {
-          await GroupSpaceModel.create(
-            {
-              groupId: selectedGroup.id,
-              vaultId: this.id,
-              workspaceId: this.workspaceId,
-              kind: "member",
-            },
-            { transaction: t }
-          );
         }
       }
 
@@ -714,22 +684,18 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
-  private async addGroup(auth: Authenticator, group: GroupResource) {
-    await GroupSpaceModel.create({
-      groupId: group.id,
-      vaultId: this.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
-      kind: "member",
-    });
-  }
-
-  private async removeGroup(auth: Authenticator, group: GroupResource) {
+  private async removeGroup(
+    auth: Authenticator,
+    group: GroupResource,
+    transaction?: Transaction
+  ) {
     await GroupSpaceModel.destroy({
       where: {
         groupId: group.id,
         vaultId: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
+      transaction,
     });
   }
 
@@ -850,6 +816,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   async linkGroup(
+    auth: Authenticator,
     group: GroupResource,
     kind: "member" | "project_editor" | "project_viewer" = "member",
     t: Transaction
@@ -858,7 +825,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       {
         groupId: group.id,
         vaultId: this.id,
-        workspaceId: this.workspaceId,
+        workspaceId: auth.getNonNullableWorkspace().id,
         kind,
       },
       { transaction: t }
