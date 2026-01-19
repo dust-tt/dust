@@ -20,7 +20,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import React, {
   useCallback,
   useEffect,
@@ -38,6 +37,7 @@ import { ManageDropdownMenu } from "@app/components/assistant/ManageDropdownMenu
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { usePersistedAgentBrowserSelection } from "@app/hooks/usePersistedAgentBrowserSelection";
+import { useAppRouter } from "@app/lib/platform";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
@@ -213,7 +213,7 @@ export function AgentBrowser({
     string | null
   >(null);
 
-  const router = useRouter();
+  const router = useAppRouter();
   const { createAgentButtonRef } = useWelcomeTourGuide();
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [sortType, setSortType] = useState<

@@ -1,6 +1,5 @@
-import { Spinner, TextArea } from "@dust-tt/sparkle";
+import { LinkWrapper, Spinner, TextArea } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
-import Link from "next/link";
 
 import { SkillOverviewTable } from "@app/components/poke/skills/SkillOverviewTable";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -47,9 +46,9 @@ export function SkillDetailsPage({ owner, sId }: SkillDetailsPageProps) {
     <div>
       <h3 className="text-xl font-bold">
         Skill {skill.name} from workspace&nbsp;
-        <Link href={`/poke/${owner.sId}`} className="text-highlight-500">
+        <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
-        </Link>
+        </LinkWrapper>
       </h3>
 
       <div className="mt-4 flex flex-row items-stretch space-x-3">

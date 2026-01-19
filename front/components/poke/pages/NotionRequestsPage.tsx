@@ -1,4 +1,10 @@
-import { Button, Input, Spinner, TextArea } from "@dust-tt/sparkle";
+import {
+  Button,
+  Input,
+  LinkWrapper,
+  Spinner,
+  TextArea,
+} from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import { useState } from "react";
 
@@ -127,9 +133,9 @@ export function NotionRequestsPage({ owner, dsId }: NotionRequestsPageProps) {
     <div className="max-w-6xl">
       <h3 className="text-xl font-bold">
         Notion API Requests for {dataSource.name} in workspace{" "}
-        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+        <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
-        </a>
+        </LinkWrapper>
       </h3>
 
       <div className="mt-2 text-sm text-gray-600">

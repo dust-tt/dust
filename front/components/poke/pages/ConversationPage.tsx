@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
+  LinkWrapper,
   Markdown,
   Page,
   Spinner,
@@ -123,13 +124,13 @@ const AgentMessageView = ({
         renderName={() => (
           <>
             {message.configuration.name}{" "}
-            <a
+            <LinkWrapper
               href={`/poke/${owner.sId}/assistants/${message.configuration.sId}`}
               target="_blank"
               className="text-highlight-500"
             >
               ({message.configuration.sId})
-            </a>
+            </LinkWrapper>
           </>
         )}
         type="agent"
@@ -146,13 +147,13 @@ const AgentMessageView = ({
         <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
           date: {new Date(message.created).toLocaleString()} • message version :{" "}
           {message.version} • message sId : {message.sId} {" • "} agent sId :
-          <a
+          <LinkWrapper
             href={`/poke/${owner.sId}/assistants/${message.configuration.sId}`}
             target="_blank"
             className="text-highlight-500"
           >
             {message.configuration.sId}
-          </a>
+          </LinkWrapper>
           {message.runUrls && (
             <>
               {" • "}
@@ -413,9 +414,12 @@ export function ConversationPage({
       <div className="max-w-4xl">
         <h3 className="text-xl font-bold">
           Conversation in workspace{" "}
-          <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+          <LinkWrapper
+            href={`/poke/${owner.sId}`}
+            className="text-highlight-500"
+          >
             {owner.name}
-          </a>
+          </LinkWrapper>
         </h3>
         <Page.Vertical align="stretch">
           <div className="flex space-x-2">

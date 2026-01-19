@@ -7,13 +7,12 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useRouter } from "next/router";
 
 import { ViewAppTable } from "@app/components/poke/apps/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import { decodeSqids } from "@app/lib/utils";
 import { usePokeAppDetails } from "@app/poke/swr/app_details";
 import type {
@@ -92,10 +91,10 @@ function AppSpecification({
   specificationHashes: string[] | null;
 }) {
   const { isDark } = useTheme();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParamsInner = useSearchParams();
-  const hash = searchParamsInner?.get("hash") ?? null;
+  const router = useAppRouter();
+  const pathname = router.pathname;
+  const hashParam = router.query.hash;
+  const hash = typeof hashParam === "string" ? hashParam : null;
 
   const submit = async () => {
     try {

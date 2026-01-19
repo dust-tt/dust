@@ -15,7 +15,6 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import React from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -26,6 +25,7 @@ import { LeaveConversationDialog } from "@app/components/assistant/conversation/
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useConversationParticipants,
   useConversationParticipationOptions,
@@ -123,7 +123,7 @@ export function ConversationMenu({
   triggerPosition?: { x: number; y: number };
 }) {
   const { user } = useUser();
-  const router = useRouter();
+  const router = useAppRouter();
   const sendNotification = useSendNotification();
 
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");

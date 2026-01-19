@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 import { ViewGroupTable } from "@app/components/poke/groups/view";
 import { MembersDataTable } from "@app/components/poke/members/table";
@@ -43,9 +43,9 @@ export function GroupPage({ owner, groupId }: GroupPageProps) {
     <>
       <h3 className="text-xl font-bold">
         Group {group.name} ({group.kind}) within workspace{" "}
-        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+        <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
-        </a>
+        </LinkWrapper>
       </h3>
       <div className="flex flex-row gap-x-6">
         <ViewGroupTable group={group} />

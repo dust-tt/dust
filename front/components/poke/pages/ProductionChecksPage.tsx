@@ -5,10 +5,10 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  LinkWrapper,
   PlayIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
 import type { ComponentProps } from "react";
 import React, { useCallback, useMemo, useState } from "react";
 
@@ -151,14 +151,14 @@ function ActionLinksList({ payload, links, checkName }: ActionLinksListProps) {
           {link.label}
         </span>
       ) : (
-        <Link
+        <LinkWrapper
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
           className="text-sm text-blue-600 hover:underline dark:text-blue-400"
         >
           {link.label}
-        </Link>
+        </LinkWrapper>
       )}
       {isGdriveCheck && item && Array.isArray(item.notDeleted) && (
         <Button
@@ -424,14 +424,14 @@ function ProductionCheckCard({
   const detailsContent = (
     <div className="mt-4 space-y-4 border-t border-gray-200 pt-4 dark:border-gray-700">
       <div className="flex items-center gap-2">
-        <Link
+        <LinkWrapper
           href={getDatadogLogsUrl(check.name)}
           target="_blank"
           rel="noopener noreferrer"
           className="text-sm text-purple-600 hover:underline dark:text-purple-400"
         >
           View logs in Datadog →
-        </Link>
+        </LinkWrapper>
       </div>
 
       {check.status === "alert" &&

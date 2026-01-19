@@ -5,6 +5,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  LinkWrapper,
   Page,
   Spinner,
   TextArea,
@@ -67,9 +68,12 @@ export function AssistantDetailsPage({
       <div className="flex flex-row items-center gap-4">
         <h3 className="text-xl font-bold">
           Agent from workspace{" "}
-          <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+          <LinkWrapper
+            href={`/poke/${owner.sId}`}
+            className="text-highlight-500"
+          >
             {owner.name}
-          </a>
+          </LinkWrapper>
         </h3>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

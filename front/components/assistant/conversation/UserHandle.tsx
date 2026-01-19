@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { useRouter } from "next/router";
+
+import { useAppRouter } from "@app/lib/platform";
 
 interface UserHandleProps {
   user: {
@@ -9,7 +10,7 @@ interface UserHandleProps {
 }
 
 export function UserHandle({ user }: UserHandleProps) {
-  const router = useRouter();
+  const router = useAppRouter();
 
   const href = {
     pathname: router.pathname,

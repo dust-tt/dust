@@ -5,6 +5,7 @@ import {
   DocumentTextIcon,
   EyeIcon,
   Input,
+  LinkWrapper,
   LockIcon,
   MagnifyingGlassIcon,
   SliderToggle,
@@ -14,7 +15,6 @@ import {
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import capitalize from "lodash/capitalize";
-import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
@@ -29,6 +29,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import { decodeSqids, timeAgoFrom } from "@app/lib/utils";
 import type { FeaturesType } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/details";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
@@ -841,8 +842,7 @@ const ConfigToggle = ({
   configKey: string;
   dataSource: DataSourceType;
 }) => {
-  const router = useRouter();
-
+  const router = useAppRouter();
   const { isSubmitting, submit: onToggle } = useSubmitFunction(async () => {
     try {
       const r = await clientFetch(
@@ -888,7 +888,7 @@ interface DataSourcePageProps {
 }
 
 export function DataSourcePage({ owner, dsId }: DataSourcePageProps) {
-  const router = useRouter();
+  const router = useAppRouter();
 
   const {
     data: dataSourceDetails,
@@ -945,9 +945,9 @@ export function DataSourcePage({ owner, dsId }: DataSourcePageProps) {
     <>
       <h3 className="text-xl font-bold">
         Data Source {dataSource.name} in workspace{" "}
-        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+        <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
-        </a>
+        </LinkWrapper>
       </h3>
       {dataSource.connectorProvider === "notion" && (
         <PokeAlert variant="destructive" className="my-4">

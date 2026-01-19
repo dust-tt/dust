@@ -1,8 +1,8 @@
-import { useRouter } from "next/router";
 import { useContext, useEffect } from "react";
 import React from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
+import { useAppRouter } from "@app/lib/platform";
 
 export function useNavigationLock(
   isEnabled = true,
@@ -13,7 +13,7 @@ export function useNavigationLock(
     validation: "primaryWarning",
   }
 ) {
-  const router = useRouter();
+  const router = useAppRouter();
   const confirm = useContext(ConfirmContext);
   const isNavigatingAway = React.useRef<boolean>(false);
 

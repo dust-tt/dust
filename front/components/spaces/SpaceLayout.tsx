@@ -9,7 +9,6 @@ import {
   InformationCircleIcon,
   Page,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import React, { useCallback, useState } from "react";
 
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
@@ -17,6 +16,7 @@ import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type {
@@ -69,7 +69,7 @@ export function SpaceLayout({
     space,
     subscription,
   } = pageProps;
-  const router = useRouter();
+  const router = useAppRouter();
 
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,

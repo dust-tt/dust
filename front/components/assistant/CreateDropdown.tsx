@@ -12,10 +12,10 @@ import {
   PuzzleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { useAppRouter } from "@app/lib/platform";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
@@ -34,7 +34,7 @@ export const CreateDropdown = ({
   owner,
   dataGtmLocation,
 }: CreateDropdownProps) => {
-  const router = useRouter();
+  const router = useAppRouter();
   const [isLoading, setIsLoading] = useState(false);
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,

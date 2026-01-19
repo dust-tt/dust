@@ -1,10 +1,10 @@
 import Head from "next/head";
-import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
+import { useAppRouter } from "@app/lib/platform";
 
 import { CompetitorHeroSection } from "./CompetitorHeroSection";
 import { FAQSection } from "./FAQSection";
@@ -68,7 +68,7 @@ export default function CompetitorTemplate({
   config,
   trackingPrefix,
 }: CompetitorTemplateProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const prefix = trackingPrefix ?? config.competitorName.toLowerCase();
 
   // Render a section based on its type
