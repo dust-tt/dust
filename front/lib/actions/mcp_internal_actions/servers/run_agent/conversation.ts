@@ -34,7 +34,8 @@ import { Err, isUserMessageType, Ok } from "@app/types";
 function isUserSideError(error: APIError): boolean {
   return (
     error.type === "invalid_request_error" ||
-    error.type === "plan_message_limit_exceeded"
+    error.type === "plan_message_limit_exceeded" ||
+    error.type === "rate_limit_error"
   );
 }
 
