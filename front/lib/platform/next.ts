@@ -32,12 +32,4 @@ export function Script({ id, src, strategy, children }: ScriptProps) {
   return NextScript({ id, src, strategy, children });
 }
 
-/**
- * Hook to get page context in Next.js
- * Returns null - in Next.js, props are passed directly via getServerSideProps
- */
-export function usePageContext<T>(): T | null {
-  return null;
-}
-
 export type { AppRouter, HeadProps, ScriptProps };

@@ -9,5 +9,5 @@
  * For Vite SPA builds, the alias in vite.spa.config.ts redirects
  * imports to the SPA implementation.
  */
-export { Head, Script, useAppRouter, usePageContext } from "./next";
+export { Head, Script, useAppRouter } from "./next";
 export type { AppRouter, HeadProps, ScriptProps } from "./types";
