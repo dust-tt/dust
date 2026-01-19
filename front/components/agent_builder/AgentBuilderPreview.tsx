@@ -1,8 +1,4 @@
-import {
-  ContentMessage,
-  InformationCircleIcon,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 import { useWatch } from "react-hook-form";
 
@@ -298,15 +294,7 @@ export function AgentBuilderPreview() {
   return (
     <div className="flex h-full w-full flex-col" aria-label="Agent preview">
       {isTrialPlan && (
-        <div className="flex flex-col gap-3 p-4">
-          <ContentMessage
-            variant="info"
-            icon={InformationCircleIcon}
-            title="Testing consumes trial message credits"
-          >
-            Every message you send to test this agent will be counted in your
-            trial message usage.
-          </ContentMessage>
+        <div className="flex-shrink-0 p-4 pb-0">
           <TrialMessageUsage isAdmin={isAdmin} workspaceId={owner.sId} />
         </div>
       )}
