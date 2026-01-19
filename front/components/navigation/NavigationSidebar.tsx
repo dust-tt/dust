@@ -60,10 +60,10 @@ export const NavigationSidebar = React.forwardRef<
 ) {
   const router = useAppRouter();
   const activePath = useMemo(() => {
-    if (!router.isReady) {
-      return "";
+    if (router.isReady && router.pathname) {
+      return router.pathname;
     }
-    return router.pathname || "";
+    return "";
   }, [router.isReady, router.pathname]);
 
   const { featureFlags } = useFeatureFlags({
