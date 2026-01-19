@@ -14,7 +14,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import type { ConversationWithoutContentType, ModelId } from "@app/types";
+import type { ConversationWithoutContentType } from "@app/types";
 import { CoreAPI } from "@app/types";
 
 export async function getTablesFromMultiSheetSpreadsheet(
@@ -126,33 +126,27 @@ export async function getConversationDataSourceViews(
     ...conversationIds,
   ]);
 
+  const conversationModelIdToSId = new Map(
+    conversations.map((c) => [c.id, c.sId])
+  );
+
   const dataSourceViews =
     await DataSourceViewResource.fetchByConversationModelIds(
       auth,
       conversations.map((c) => c.id)
     );
 
-  // Going from the data source view to conversation Model ID.
-  const conversationModelIdToDataSourceView = new Map<
-    ModelId,
-    DataSourceViewResource
-  >();
-  for (const dsv of dataSourceViews) {
-    const conversationId = dsv.dataSource.conversationId;
-    if (conversationId) {
-      conversationModelIdToDataSourceView.set(conversationId, dsv);
-    }
-  }
-
-  // Going from the conversation to the data source view via the conversation Model ID.
   const conversationIdToDataSourceView = new Map<
     string,
     DataSourceViewResource
   >();
-  for (const { sId, id: modelId } of conversations) {
-    const dsv = conversationModelIdToDataSourceView.get(modelId);
-    if (dsv) {
-      conversationIdToDataSourceView.set(sId, dsv);
+  for (const dsv of dataSourceViews) {
+    const conversationModelId = dsv.dataSource.conversationId;
+    if (conversationModelId) {
+      const sId = conversationModelIdToSId.get(conversationModelId);
+      if (sId) {
+        conversationIdToDataSourceView.set(sId, dsv);
+      }
     }
   }
 
