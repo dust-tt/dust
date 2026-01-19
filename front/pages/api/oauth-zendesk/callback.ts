@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { isString } from "@app/types/shared/utils/general";
+
 // App ID 1073173 is stable across deployments
 const ZENDESK_APP_ID = "1073173";
 
@@ -26,65 +28,49 @@ export default async function handler(
 
   const { code, state, error, error_description } = req.query;
 
-  // Handle OAuth errors
-  if (error) {
-    const errorMsg = Array.isArray(error) ? error[0] : error;
-    const errorDesc = Array.isArray(error_description)
-      ? error_description[0]
-      : error_description;
-
-    // Try to redirect to Zendesk callback with error if we have state
-    if (state) {
-      try {
-        const zendeskCallbackUrl = decodeState(state);
-        const redirectUrl = new URL(zendeskCallbackUrl);
-        redirectUrl.searchParams.set("error", errorMsg);
-        if (errorDesc) {
-          redirectUrl.searchParams.set("error_description", errorDesc);
-        }
-        return res.redirect(redirectUrl.toString());
-      } catch {
-        // If state decoding fails, show error page
-      }
-    }
-
-    return res.status(400).json({
-      error: errorMsg,
-      error_description: errorDesc,
-    });
-  }
-
   // Validate required parameters
-  if (!code || !state) {
+  if (!isString(state)) {
     return res.status(400).json({
       error: "Missing required parameters",
-      details: "Both 'code' and 'state' query parameters are required",
     });
   }
 
-  const codeStr = Array.isArray(code) ? code[0] : code;
-
-  // Decode state to get the actual Zendesk callback URL
   const zendeskCallbackUrl = decodeState(state);
+  if (!zendeskCallbackUrl) {
+    return res.status(400).json({
+      error: "Invalid state parameter",
+    });
+  }
 
-  // Validate the callback URL is from our Zendesk app
-  const url = new URL(zendeskCallbackUrl);
+  const redirectUrl = new URL(zendeskCallbackUrl);
+
   const expectedHostname = `${ZENDESK_APP_ID}.apps.zdusercontent.com`;
   const expectedPathPrefix = `/${ZENDESK_APP_ID}/`;
 
   if (
-    url.hostname !== expectedHostname ||
-    !url.pathname.startsWith(expectedPathPrefix)
+    redirectUrl.hostname !== expectedHostname ||
+    !redirectUrl.pathname.startsWith(expectedPathPrefix)
   ) {
     return res.status(400).json({
       error: "Invalid callback URL",
-      details: "Callback URL must be from the authorized Zendesk app",
     });
   }
 
-  // Build the redirect URL with the authorization code
-  const redirectUrl = new URL(zendeskCallbackUrl);
-  redirectUrl.searchParams.set("code", codeStr);
+  if (isString(error)) {
+    redirectUrl.searchParams.set("error", error);
+    if (isString(error_description)) {
+      redirectUrl.searchParams.set("error_description", error_description);
+    }
+    return res.redirect(redirectUrl.toString());
+  }
+
+  if (!isString(code)) {
+    return res.status(400).json({
+      error: "Missing required parameters",
+    });
+  }
+
+  redirectUrl.searchParams.set("code", code);
 
   return res.redirect(redirectUrl.toString());
 }
@@ -92,19 +78,15 @@ export default async function handler(
 /**
  * Decode the state parameter (base64url encoded JSON with the Zendesk callback URL)
  */
-function decodeState(state: string | string[]): string {
-  const stateStr = Array.isArray(state) ? state[0] : state;
-
+function decodeState(state: string): string | undefined {
   // Base64url decode
-  const base64 = stateStr.replace(/-/g, "+").replace(/_/g, "/");
+  const base64 = state.replace(/-/g, "+").replace(/_/g, "/");
   const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
   const decoded = Buffer.from(padded, "base64").toString("utf-8");
 
   // Parse JSON and extract callback URL
   const stateObj = JSON.parse(decoded);
-  if (!stateObj.callback_url || typeof stateObj.callback_url !== "string") {
-    throw new Error("Missing callback_url in state");
+  if (isString(stateObj.callback_url)) {
+    return stateObj.callback_url;
   }
-
-  return stateObj.callback_url;
 }
