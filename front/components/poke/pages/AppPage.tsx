@@ -92,7 +92,8 @@ function AppSpecification({
 }) {
   const { isDark } = useTheme();
   const router = useAppRouter();
-  const pathname = router.pathname;
+  // Use asPath (actual URL) and strip query string to get the real pathname
+  const pathname = router.asPath.split("?")[0];
   const hashParam = router.query.hash;
   const hash = typeof hashParam === "string" ? hashParam : null;
 

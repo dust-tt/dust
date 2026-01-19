@@ -53,7 +53,13 @@ export interface AppRouter {
   ) => Promise<boolean>;
   back: () => void;
   reload: () => void;
+  /**
+   * The route pattern with dynamic segments (e.g., "/w/[wId]/conversation/[cId]")
+   */
   pathname: string;
+  /**
+   * The actual URL path including query string (e.g., "/w/abc123/conversation/xyz?foo=bar")
+   */
   asPath: string;
   query: Record<string, string | string[] | undefined>;
   isReady: boolean;
