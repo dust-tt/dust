@@ -288,10 +288,6 @@ export const InstructionBlockExtension =
             const type = match[1] ? match[1].toLowerCase() : "";
             const tagType = type || "instructions";
 
-            if (this.editor.isActive(this.name)) {
-              return;
-            }
-
             const content = {
               type: this.name,
               attrs: { type: tagType, isCollapsed: false },
