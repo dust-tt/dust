@@ -54,6 +54,7 @@ import { default as slabServer } from "@app/lib/actions/mcp_internal_actions/ser
 import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_bot";
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_personal";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
+import { default as snowflakeServer } from "@app/lib/actions/mcp_internal_actions/servers/snowflake";
 import { default as soundStudio } from "@app/lib/actions/mcp_internal_actions/servers/sound_studio";
 import { default as speechGenerator } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
@@ -162,6 +163,8 @@ export async function getInternalMCPServer(
       return salesloftServer(auth, agentLoopContext);
     case "slab":
       return slabServer(auth, agentLoopContext);
+    case "snowflake":
+      return snowflakeServer(auth, agentLoopContext);
     case "gmail":
       return gmailServer(auth, agentLoopContext);
     case "google_calendar":

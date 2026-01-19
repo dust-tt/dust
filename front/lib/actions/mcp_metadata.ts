@@ -35,6 +35,7 @@ import {
 } from "@app/lib/egress/server";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase, Result } from "@app/types";
@@ -221,17 +222,17 @@ export async function connectToMCPServer(
                 );
                 if (params.oAuthUseCase === "personal_actions") {
                   // Check if admin connection exists for the server.
-                  const adminConnection = await getConnectionForMCPServer(
-                    auth,
-                    {
+                  // We only check if the connection resource exists (not if the token is valid)
+                  // because for personal_actions we just need to know if admin setup is done.
+                  const adminConnectionRes =
+                    await MCPServerConnectionResource.findByMCPServer(auth, {
                       mcpServerId: params.mcpServerId,
                       connectionType: "workspace",
-                    }
-                  );
+                    });
                   // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
                   if (
-                    adminConnection.isErr() &&
-                    adminConnection.error.message === "connection_not_found"
+                    adminConnectionRes.isErr() &&
+                    adminConnectionRes.error.message === "connection_not_found"
                   ) {
                     return new Err(
                       new MCPServerRequiresAdminAuthenticationError(
