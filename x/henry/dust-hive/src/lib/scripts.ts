@@ -164,9 +164,7 @@ quit_service() {
   stop_tail
   echo ""
   echo -e "\\033[33m[Stopping $service...]\\033[0m"
-  dust-hive restart "$ENV_NAME" "$service" --stop 2>/dev/null || \\
-    pkill -f "dust-hive.*$service" 2>/dev/null || true
-  echo -e "\\033[31m[$service stopped]\\033[0m"
+  dust-hive stop "$ENV_NAME" "$service"
   sleep 1
   switch_service
 }
