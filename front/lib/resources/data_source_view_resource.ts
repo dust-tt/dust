@@ -38,7 +38,6 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
-  ConversationWithoutContentType,
   DataSourceViewCategory,
   DataSourceViewType,
   ModelId,
@@ -483,34 +482,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     );
 
     return dataSourceViews ?? [];
-  }
-
-  static async fetchByConversation(
-    auth: Authenticator,
-    conversation: ConversationWithoutContentType
-  ): Promise<DataSourceViewResource | null> {
-    // Fetch the data source view associated with the datasource that is associated with the conversation.
-    const dataSource = await DataSourceResource.fetchByConversation(
-      auth,
-      conversation
-    );
-    if (!dataSource) {
-      return null;
-    }
-
-    const dataSourceViews = await this.baseFetch(
-      auth,
-      {},
-      {
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          kind: "default",
-          dataSourceId: dataSource.id,
-        },
-      }
-    );
-
-    return dataSourceViews[0] ?? null;
   }
 
   static async fetchByConversationModelIds(
