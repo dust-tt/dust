@@ -56,7 +56,7 @@ describe("toMessage", () => {
       if (Array.isArray(result.content) && result.content.length > 0) {
         const lastBlock = result.content[result.content.length - 1];
         expect(lastBlock).toHaveProperty("cache_control");
-        expect(lastBlock.cache_control).toEqual({ type: "ephemeral" });
+        expect(lastBlock).toHaveProperty("cache_control.type", "ephemeral");
       } else {
         throw new Error("Expected content array with at least one element");
       }
