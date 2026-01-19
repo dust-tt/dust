@@ -6,6 +6,7 @@ import {
   ScrollArea,
   SidebarRightCloseIcon,
   SidebarRightOpenIcon,
+  SparklesIcon,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -14,6 +15,7 @@ import {
 import React, { useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { AgentBuilderImprove } from "@app/components/agent_builder/AgentBuilderImprove";
 import { AgentBuilderObservability } from "@app/components/agent_builder/AgentBuilderObservability";
 import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
@@ -27,7 +29,8 @@ type AgentBuilderRightPanelTabType =
   | "testing"
   | "feedback"
   | "template"
-  | "insights";
+  | "insights"
+  | "improve";
 
 interface PanelHeaderProps {
   isPreviewPanelOpen: boolean;
@@ -35,6 +38,7 @@ interface PanelHeaderProps {
   onTogglePanel: () => void;
   onTabChange: (tab: AgentBuilderRightPanelTabType) => void;
   hasTemplate: boolean;
+  hasImprove: boolean;
 }
 
 function PanelHeader({
@@ -43,6 +47,7 @@ function PanelHeader({
   onTogglePanel,
   onTabChange,
   hasTemplate,
+  hasImprove,
 }: PanelHeaderProps) {
   return (
     <div className="flex h-16 items-end">
@@ -84,6 +89,14 @@ function PanelHeader({
                     onClick={() => onTabChange("template")}
                   />
                 )}
+                {hasImprove && (
+                  <TabsTrigger
+                    value="improve"
+                    label="Improve"
+                    icon={SparklesIcon}
+                    onClick={() => onTabChange("improve")}
+                  />
+                )}
               </TabsList>
             </Tabs>
           </ScrollArea>
@@ -106,9 +119,14 @@ function PanelHeader({
 interface CollapsedTabsProps {
   onTabSelect: (tab: AgentBuilderRightPanelTabType) => void;
   hasTemplate: boolean;
+  hasImprove: boolean;
 }
 
-function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
+function CollapsedTabs({
+  onTabSelect,
+  hasTemplate,
+  hasImprove,
+}: CollapsedTabsProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
       <Button
@@ -139,6 +157,15 @@ function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
           size="sm"
           tooltip="Template"
           onClick={() => onTabSelect("template")}
+        />
+      )}
+      {hasImprove && (
+        <Button
+          icon={SparklesIcon}
+          variant="ghost"
+          size="sm"
+          tooltip="Improve"
+          onClick={() => onTabSelect("improve")}
         />
       )}
     </div>
@@ -199,6 +226,11 @@ function ExpandedContent({
             </TabContentLayout>
           ))}
       </ObservabilityProvider>
+      {selectedTab === "improve" && agentConfigurationSId && (
+        <div className="min-h-0 flex-1">
+          <AgentBuilderImprove agentConfigurationSId={agentConfigurationSId} />
+        </div>
+      )}
     </div>
   );
 }
@@ -215,6 +247,7 @@ export function AgentBuilderRightPanel({
   const { assistantTemplate } = useAgentBuilderContext();
 
   const hasTemplate = !!assistantTemplate;
+  const hasImprove = !!agentConfigurationSId;
 
   const [selectedTab, setSelectedTab] = useState<AgentBuilderRightPanelTabType>(
     hasTemplate ? "template" : "testing"
@@ -242,6 +275,7 @@ export function AgentBuilderRightPanel({
           onTogglePanel={handleTogglePanel}
           onTabChange={handleTabChange}
           hasTemplate={hasTemplate}
+          hasImprove={hasImprove}
         />
       </div>
       {isPreviewPanelOpen ? (
@@ -253,6 +287,7 @@ export function AgentBuilderRightPanel({
         <CollapsedTabs
           onTabSelect={handleTabSelect}
           hasTemplate={hasTemplate}
+          hasImprove={hasImprove}
         />
       )}
     </div>

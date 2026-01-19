@@ -1,7 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { TARGET_AGENT_ID } from "@app/lib/actions/mcp_internal_actions/constants";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -38,6 +40,29 @@ import type {
 } from "@app/types";
 import { Err, Ok, removeNulls, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
+function isServerSideTool(
+  toolConfig: LightMCPToolConfigurationType
+): toolConfig is LightMCPToolConfigurationType & {
+  additionalConfiguration: Record<string, unknown>;
+} {
+  return "mcpServerViewId" in toolConfig;
+}
+
+function getTargetAgentId(
+  agentLoopContext: AgentLoopContextType | undefined
+): string | null {
+  if (agentLoopContext?.runContext) {
+    const toolConfig = agentLoopContext.runContext.toolConfiguration;
+    if (isServerSideTool(toolConfig)) {
+      const targetAgentId = toolConfig.additionalConfiguration[TARGET_AGENT_ID];
+      if (typeof targetAgentId === "string") {
+        return targetAgentId;
+      }
+    }
+  }
+  return null;
+}
+
 async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -48,9 +73,8 @@ async function createServer(
   // Returns key configuration data for an agent.
   server.tool(
     "get_agent_details",
-    "Get key configuration data for an agent including name, description, instructions, model, and other settings. Optionally specify a version to get historical data.",
+    "Get key configuration data for the target agent including name, description, instructions, model, and other settings. Optionally specify a version to get historical data.",
     {
-      agent_id: z.string().describe("The agent configuration sId"),
       version: z
         .number()
         .optional()
@@ -64,9 +88,16 @@ async function createServer(
         toolNameForMonitoring: "agent_copilot_get_agent_details",
         agentLoopContext,
       },
-      async ({ agent_id, version }) => {
+      async ({ version }) => {
+        const agentId = getTargetAgentId(agentLoopContext);
+        if (!agentId) {
+          return new Err(
+            new MCPError("No target agent ID configured for this copilot")
+          );
+        }
+
         const agentConfig = await getAgentConfiguration(auth, {
-          agentId: agent_id,
+          agentId,
           agentVersion: version,
           variant: "light",
         });
@@ -75,8 +106,8 @@ async function createServer(
           return new Err(
             new MCPError(
               version !== undefined
-                ? `Agent not found: ${agent_id} (version ${version})`
-                : `Agent not found: ${agent_id}`
+                ? `Agent not found: ${agentId} (version ${version})`
+                : `Agent not found: ${agentId}`
             )
           );
         }
@@ -117,9 +148,8 @@ async function createServer(
   // Updates agent configuration, skills, and tools in a single atomic operation.
   server.tool(
     "update_agent",
-    "Update an agent's configuration, skills, and/or tools in a single call. All parameters except agent_id are optional - only provided fields will be updated.",
+    "Update the target agent's configuration, skills, and/or tools in a single call. All parameters are optional - only provided fields will be updated.",
     {
-      agent_id: z.string().describe("The agent configuration sId"),
       // Details fields (optional)
       name: z.string().optional().describe("New name for the agent"),
       description: z
@@ -163,25 +193,24 @@ async function createServer(
         toolNameForMonitoring: "agent_copilot_update_agent",
         agentLoopContext,
       },
-      async ({
-        agent_id,
-        name,
-        description,
-        instructions,
-        model,
-        skill_ids,
-        tool_ids,
-      }) => {
+      async ({ name, description, instructions, model, skill_ids, tool_ids }) => {
+        const agentId = getTargetAgentId(agentLoopContext);
+        if (!agentId) {
+          return new Err(
+            new MCPError("No target agent ID configured for this copilot")
+          );
+        }
+
         const workspace = auth.getNonNullableWorkspace();
 
         // Get the current agent configuration (full variant for actions).
         const initialAgentConfig = await getAgentConfiguration(auth, {
-          agentId: agent_id,
+          agentId,
           variant: "full",
         });
 
         if (!initialAgentConfig) {
-          return new Err(new MCPError(`Agent not found: ${agent_id}`));
+          return new Err(new MCPError(`Agent not found: ${agentId}`));
         }
 
         if (!initialAgentConfig.canEdit) {
@@ -316,7 +345,7 @@ async function createServer(
               "global"
             >,
             model: mergedModel,
-            agentConfigurationId: agent_id,
+            agentConfigurationId: agentId,
             templateId: initialAgentConfig.templateId,
             requestedSpaceIds,
             tags: tags.map((t) => t.toJSON()),
@@ -346,12 +375,12 @@ async function createServer(
         let agentConfigForSkillsTools = initialAgentConfig;
         if (hasDetailsUpdate && (hasSkillsUpdate || hasToolsUpdate)) {
           const refetchedConfig = await getAgentConfiguration(auth, {
-            agentId: agent_id,
+            agentId,
             variant: "full",
           });
           if (!refetchedConfig) {
             return new Err(
-              new MCPError(`Agent not found after update: ${agent_id}`)
+              new MCPError(`Agent not found after update: ${agentId}`)
             );
           }
           agentConfigForSkillsTools = refetchedConfig;
@@ -566,7 +595,7 @@ async function createServer(
             text: JSON.stringify(
               {
                 success: true,
-                agentId: agent_id,
+                agentId,
                 agentVersion: currentAgentVersion,
                 changes,
               },
@@ -644,9 +673,8 @@ async function createServer(
   // Lists skills available for agents, marking which are already used by the agent.
   server.tool(
     "get_available_skills",
-    "List skills available for an agent. Returns all skills the user can add, with a flag indicating if each is already used by the agent.",
+    "List skills available for the target agent. Returns all skills the user can add, with a flag indicating if each is already used by the agent.",
     {
-      agent_id: z.string().describe("The agent configuration sId"),
       include_global: z
         .boolean()
         .optional()
@@ -664,15 +692,22 @@ async function createServer(
         toolNameForMonitoring: "agent_copilot_get_available_skills",
         agentLoopContext,
       },
-      async ({ agent_id, include_global, status }) => {
+      async ({ include_global, status }) => {
+        const agentId = getTargetAgentId(agentLoopContext);
+        if (!agentId) {
+          return new Err(
+            new MCPError("No target agent ID configured for this copilot")
+          );
+        }
+
         // Fetch the agent configuration to get existing skills.
         const agentConfig = await getAgentConfiguration(auth, {
-          agentId: agent_id,
+          agentId,
           variant: "light",
         });
 
         if (!agentConfig) {
-          return new Err(new MCPError(`Agent not found: ${agent_id}`));
+          return new Err(new MCPError(`Agent not found: ${agentId}`));
         }
 
         // Get skills already attached to this agent.
@@ -736,7 +771,7 @@ async function createServer(
                 skills: [...customSkillsResult, ...globalSkillsResult],
                 totalCount:
                   customSkillsResult.length + globalSkillsResult.length,
-                agentId: agent_id,
+                agentId,
               },
               null,
               2
@@ -751,25 +786,30 @@ async function createServer(
   // Lists MCP server views available for agents across all user-accessible spaces.
   server.tool(
     "get_available_tools",
-    "List tools (MCP server views) available for an agent across all spaces the user has access to. Returns all tools with a flag indicating if each is already used by the agent.",
-    {
-      agent_id: z.string().describe("The agent configuration sId"),
-    },
+    "List tools (MCP server views) available for the target agent across all spaces the user has access to. Returns all tools with a flag indicating if each is already used by the agent.",
+    {},
     withToolLogging(
       auth,
       {
         toolNameForMonitoring: "agent_copilot_get_available_tools",
         agentLoopContext,
       },
-      async ({ agent_id }) => {
+      async () => {
+        const agentId = getTargetAgentId(agentLoopContext);
+        if (!agentId) {
+          return new Err(
+            new MCPError("No target agent ID configured for this copilot")
+          );
+        }
+
         // Fetch the agent configuration to get existing tools (actions).
         const agentConfig = await getAgentConfiguration(auth, {
-          agentId: agent_id,
+          agentId,
           variant: "full",
         });
 
         if (!agentConfig) {
-          return new Err(new MCPError(`Agent not found: ${agent_id}`));
+          return new Err(new MCPError(`Agent not found: ${agentId}`));
         }
 
         // Get all spaces the user has access to.
@@ -823,7 +863,7 @@ async function createServer(
               {
                 tools,
                 count: tools.length,
-                agentId: agent_id,
+                agentId,
               },
               null,
               2
@@ -838,9 +878,8 @@ async function createServer(
   // Gets user feedback for a specific agent with filtering options.
   server.tool(
     "get_agent_feedback",
-    "Get user feedback for an agent with filters for version, time range, and rating.",
+    "Get user feedback for the target agent with filters for version, time range, and rating.",
     {
-      agent_id: z.string().describe("The agent configuration sId"),
       version: z
         .number()
         .optional()
@@ -872,7 +911,14 @@ async function createServer(
         toolNameForMonitoring: "agent_copilot_get_agent_feedback",
         agentLoopContext,
       },
-      async ({ agent_id, version, days, rating, include_dismissed, limit }) => {
+      async ({ version, days, rating, include_dismissed, limit }) => {
+        const agentId = getTargetAgentId(agentLoopContext);
+        if (!agentId) {
+          return new Err(
+            new MCPError("No target agent ID configured for this copilot")
+          );
+        }
+
         const workspace = auth.getNonNullableWorkspace();
 
         // Get feedback items.
@@ -880,7 +926,7 @@ async function createServer(
           await AgentMessageFeedbackResource.getAgentConfigurationFeedbacksByDescVersion(
             {
               workspace,
-              agentConfigurationId: agent_id,
+              agentConfigurationId: agentId,
               paginationParams: {
                 limit: limit ?? 20,
                 orderColumn: "createdAt",
@@ -905,7 +951,7 @@ async function createServer(
         const counts =
           await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
             auth,
-            [agent_id],
+            [agentId],
             days ?? 30
           );
 
@@ -922,7 +968,7 @@ async function createServer(
             negative: negativeCount,
           },
           filters: {
-            agent_id,
+            agentId,
             version: version ?? "all",
             days: days ?? 30,
             rating: rating ?? "all",
@@ -943,9 +989,8 @@ async function createServer(
   // Gets analytics/observability data for an agent.
   server.tool(
     "get_agent_insights",
-    "Get analytics and observability data for an agent including usage metrics and feedback summary.",
+    "Get analytics and observability data for the target agent including usage metrics and feedback summary.",
     {
-      agent_id: z.string().describe("The agent configuration sId"),
       days: z
         .number()
         .optional()
@@ -959,14 +1004,21 @@ async function createServer(
         toolNameForMonitoring: "agent_copilot_get_agent_insights",
         agentLoopContext,
       },
-      async ({ agent_id, days, version }) => {
+      async ({ days, version }) => {
+        const agentId = getTargetAgentId(agentLoopContext);
+        if (!agentId) {
+          return new Err(
+            new MCPError("No target agent ID configured for this copilot")
+          );
+        }
+
         const workspace = auth.getNonNullableWorkspace();
         const daysValue = days ?? 30;
 
         // Build base query for Elasticsearch.
         const baseQuery = buildAgentAnalyticsBaseQuery({
           workspaceId: workspace.sId,
-          agentId: agent_id,
+          agentId,
           days: daysValue,
           version,
         });
