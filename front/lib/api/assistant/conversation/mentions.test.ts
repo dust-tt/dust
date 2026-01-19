@@ -3521,4 +3521,175 @@ describe("validateUserMention", () => {
 
     expect(participant).toBeNull();
   });
+
+  describe("approved_and_add_to_project action", () => {
+    it("should add user to project space AND as participant when approving with add_to_project", async () => {
+      // Create a project space
+      const projectSpace = await SpaceFactory.project(workspace);
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      // Add the current user to the project space (they need to be a member/editor)
+      const currentUser = auth.getNonNullableUser();
+      await projectSpace.addMembers(adminAuth, {
+        userIds: [currentUser.sId],
+      });
+
+      // Create a fresh authenticator after adding user to space
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        currentUser.sId,
+        workspace.sId
+      );
+
+      const refreshedProjectSpace = await SpaceResource.fetchById(
+        userAuth,
+        projectSpace.sId
+      );
+      expect(refreshedProjectSpace).not.toBeNull();
+
+      // Create a conversation in the project space
+      const projectConversation = await createConversation(userAuth, {
+        title: "Project Conversation",
+        visibility: "unlisted",
+        spaceId: refreshedProjectSpace!.id,
+      });
+
+      // Create a user who will be mentioned but is NOT a member of the project space
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      // Create a user message that mentions the user
+      const userJson = currentUser.toJSON();
+      const userMessage = await withTransaction(async (transaction) => {
+        return createUserMessage(userAuth, {
+          conversation: projectConversation,
+          content: `Hello @${mentionedUser.sId}`,
+          metadata: {
+            type: "create",
+            user: userJson,
+            rank: 0,
+            context: {
+              username: userJson.username,
+              timezone: "UTC",
+              fullName: userJson.fullName,
+              email: userJson.email,
+              profilePictureUrl: userJson.image,
+              origin: "web",
+            },
+          },
+          transaction,
+        });
+      });
+
+      // Create the mention with status "pending"
+      await MentionModel.create({
+        messageId: userMessage.id,
+        userId: mentionedUser.id,
+        workspaceId: workspace.id,
+        status: "pending",
+      });
+
+      // Verify the mentioned user is NOT a member of the project space before
+      const isMemberBefore = await refreshedProjectSpace!.isMember(
+        mentionedUser
+      );
+      expect(isMemberBefore).toBe(false);
+
+      // Approve the mention and add to project
+      const result = await validateUserMention(adminAuth, {
+        conversationId: projectConversation.sId,
+        userId: mentionedUser.sId,
+        messageId: userMessage.sId,
+        approvalState: "approved_and_add_to_project",
+      });
+
+      expect(result.isOk()).toBe(true);
+
+      // Verify the mentioned user is now a member of the project space
+      const updatedProjectSpace = await SpaceResource.fetchById(
+        adminAuth,
+        projectSpace.sId
+      );
+      const isMemberAfter = await updatedProjectSpace!.isMember(mentionedUser);
+      expect(isMemberAfter).toBe(true);
+
+      // Verify the mentioned user is now a participant
+      const participant = await ConversationParticipantModel.findOne({
+        where: {
+          workspaceId: workspace.id,
+          conversationId: projectConversation.id,
+          userId: mentionedUser.id,
+        },
+      });
+      expect(participant).not.toBeNull();
+      expect(participant?.action).toBe("subscribed");
+
+      // Verify the mention status is updated to "approved"
+      const mention = await MentionModel.findOne({
+        where: {
+          messageId: userMessage.id,
+          userId: mentionedUser.id,
+          workspaceId: workspace.id,
+        },
+      });
+      expect(mention?.status).toBe("approved");
+    });
+
+    it("should return error when using approved_and_add_to_project on non-project conversation", async () => {
+      // Create a second user who will be mentioned
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      // Create a user message (conversation has no spaceId)
+      const userJson = auth.getNonNullableUser().toJSON();
+      const userMessage = await withTransaction(async (transaction) => {
+        return createUserMessage(auth, {
+          conversation,
+          content: `Hello @${mentionedUser.sId}`,
+          metadata: {
+            type: "create",
+            user: userJson,
+            rank: 0,
+            context: {
+              username: userJson.username,
+              timezone: "UTC",
+              fullName: userJson.fullName,
+              email: userJson.email,
+              profilePictureUrl: userJson.image,
+              origin: "web",
+            },
+          },
+          transaction,
+        });
+      });
+
+      // Create the mention with status "pending"
+      await MentionModel.create({
+        messageId: userMessage.id,
+        userId: mentionedUser.id,
+        workspaceId: workspace.id,
+        status: "pending",
+      });
+
+      // Try to approve with add_to_project on a non-project conversation
+      const result = await validateUserMention(auth, {
+        conversationId: conversation.sId,
+        userId: mentionedUser.sId,
+        messageId: userMessage.sId,
+        approvalState: "approved_and_add_to_project",
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.api_error.message).toBe(
+          "Conversation is not in a project"
+        );
+      }
+    });
+  });
 });
