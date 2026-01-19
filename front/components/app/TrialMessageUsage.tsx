@@ -93,21 +93,3 @@ export function TrialMessageUsage({
     </div>
   );
 }
-
-/**
- * Hook to check if the workspace is on a trial plan with message limits.
- * Returns true if the workspace has a message limit (trial plan), false otherwise.
- */
-export function useIsTrialPlanWithMessageLimit(workspaceId: string): {
-  isTrialPlan: boolean;
-  isLoading: boolean;
-} {
-  const { messageUsage, isMessageUsageLoading } = useTrialMessageUsage({
-    workspaceId,
-  });
-
-  return {
-    isTrialPlan: !!messageUsage && messageUsage.limit !== -1,
-    isLoading: isMessageUsageLoading,
-  };
-}

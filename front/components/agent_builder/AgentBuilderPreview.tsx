@@ -8,10 +8,7 @@ import {
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
-import {
-  TrialMessageUsage,
-  useIsTrialPlanWithMessageLimit,
-} from "@app/components/app/TrialMessageUsage";
+import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -20,7 +17,9 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { DustError } from "@app/lib/error";
+import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
+import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import type {
   ContentFragmentsType,
   ConversationWithoutContentType,
@@ -161,7 +160,9 @@ function PreviewContent({
 export function AgentBuilderPreview() {
   const { owner, isAdmin } = useAgentBuilderContext();
   const { user } = useUser();
-  const { isTrialPlan } = useIsTrialPlanWithMessageLimit(owner.sId);
+  const { activeSubscription } = useWorkspaceActiveSubscription({ owner });
+  const isTrialPlan =
+    activeSubscription && isFreeTrialPhonePlan(activeSubscription.plan.code);
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
   const { isPreviewPanelOpen } = usePreviewPanelContext();
 
@@ -296,7 +297,7 @@ export function AgentBuilderPreview() {
         createConversation={createConversation}
         draftAgent={draftAgent}
         isSavingDraftAgent={isSavingDraftAgent}
-        isTrialPlan={isTrialPlan}
+        isTrialPlan={!!isTrialPlan}
         isAdmin={isAdmin}
       />
     );
