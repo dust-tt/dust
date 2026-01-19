@@ -4,6 +4,7 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   Checkbox,
+  CheckDoubleIcon,
   DocumentIcon,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -167,11 +168,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   >([]);
   const doDelete = useDeleteConversation(owner);
 
-  const {
-    hideTriggeredConversations,
-    setHideTriggeredConversations,
-    isLoading: isHideTriggeredLoading,
-  } = useHideTriggeredConversations();
+  const { hideTriggeredConversations } = useHideTriggeredConversations();
 
   const hasSkills = hasFeature("skills");
 
@@ -335,6 +332,45 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     );
   }, [conversations, hideTriggeredConversations]);
 
+  const projectsSection = useMemo(() => {
+    if (!hasSpaceConversations) {
+      return null;
+    }
+    return (
+      <NavigationList className="px-2">
+        <NavigationListCollapsibleSection
+          label="Projects"
+          defaultOpen
+          action={
+            isAdmin(owner) ? (
+              <Button
+                size="xs"
+                icon={PlusIcon}
+                label="New"
+                variant="ghost"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsCreateProjectModalOpen(true);
+                }}
+              />
+            ) : null
+          }
+        >
+          {summary.length > 0 ? (
+            <ProjectsList owner={owner} summary={summary} />
+          ) : (
+            <NavigationListItem
+              label="Create a Project"
+              icon={PlusIcon}
+              onClick={() => setIsCreateProjectModalOpen(true)}
+            />
+          )}
+        </NavigationListCollapsibleSection>
+      </NavigationList>
+    );
+  }, [hasSpaceConversations, owner, summary, setIsCreateProjectModalOpen]);
+
   const conversationsList = useMemo(() => {
     return (
       <NavigationListWithInbox
@@ -347,6 +383,8 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         toggleConversationSelection={toggleConversationSelection}
         router={router}
         owner={owner}
+        projectsSection={projectsSection}
+        hasTriggeredConversations={hasTriggeredConversations}
       />
     );
   }, [
@@ -359,6 +397,8 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     toggleConversationSelection,
     router,
     owner,
+    projectsSection,
+    hasTriggeredConversations,
   ]);
 
   return (
@@ -560,68 +600,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                 Error loading conversations
               </Label>
             )}
-            {hasSpaceConversations ? (
-              <div className="overflow-y-auto">
-                <NavigationListCollapsibleSection
-                  label="Projects"
-                  defaultOpen
-                  action={
-                    isAdmin(owner) ? (
-                      <Button
-                        size="xs"
-                        icon={PlusIcon}
-                        label="New"
-                        variant="ghost"
-                        // aria-label="Create new project"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setIsCreateProjectModalOpen(true);
-                        }}
-                      />
-                    ) : null
-                  }
-                >
-                  <div className="mt-0.5 px-3 sm:flex sm:flex-col sm:gap-0.5">
-                    {summary.length > 0 ? (
-                      <ProjectsList owner={owner} summary={summary} />
-                    ) : (
-                      <NavigationListItem
-                        label="Create a Project"
-                        icon={PlusIcon}
-                        onClick={() => setIsCreateProjectModalOpen(true)}
-                      />
-                    )}
-                  </div>
-                </NavigationListCollapsibleSection>
-
-                <NavigationListCollapsibleSection
-                  label="My conversations"
-                  defaultOpen
-                  action={
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="xs" icon={MoreIcon} variant="ghost" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuCheckboxItem
-                          label="Hide triggered conversations"
-                          checked={hideTriggeredConversations}
-                          onCheckedChange={setHideTriggeredConversations}
-                          disabled={
-                            isHideTriggeredLoading || !hasTriggeredConversations
-                          }
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  }
-                >
-                  {conversationsList}
-                </NavigationListCollapsibleSection>
-              </div>
-            ) : (
-              conversationsList
-            )}
+            {conversationsList}
 
             <StackedInAppBanners owner={owner} />
           </div>
@@ -651,7 +630,7 @@ interface ConversationListContainerProps {
 const ConversationListContainer = ({
   children,
 }: ConversationListContainerProps) => {
-  return <div className="px-3 sm:flex sm:flex-col sm:gap-0.5">{children}</div>;
+  return <div className="sm:flex sm:flex-col sm:gap-0.5">{children}</div>;
 };
 
 const InboxConversationList = ({
@@ -674,26 +653,24 @@ const InboxConversationList = ({
     onMarkAllAsRead;
 
   return (
-    <ConversationListContainer>
-      <div className="sticky top-0 z-10 flex items-center justify-between overflow-auto bg-background dark:bg-background-night">
-        <NavigationListLabel
-          label={dateLabel}
-          className="bg-background dark:bg-background-night"
-        />
-        {shouldShowMarkAllAsReadButton && (
-          <div className="flex">
-            <Button
-              size="xs"
-              variant="ghost"
-              label={`Mark as read`}
-              onClick={() => onMarkAllAsRead(inboxConversations)}
-              isLoading={isMarkingAllAsRead}
-              className="mt-2 text-muted-foreground dark:text-muted-foreground-night"
-            />
-          </div>
-        )}
-      </div>
-
+    <NavigationListCollapsibleSection
+      label={dateLabel}
+      className="border-b border-t border-border bg-background/50 px-2 pb-2 dark:bg-background-night/50"
+      defaultOpen
+      actionOnHover={false}
+      action={
+        shouldShowMarkAllAsReadButton ? (
+          <Button
+            size="xmini"
+            variant="ghost"
+            icon={CheckDoubleIcon}
+            tooltip="Mark all as read"
+            onClick={() => onMarkAllAsRead(inboxConversations)}
+            isLoading={isMarkingAllAsRead}
+          />
+        ) : null
+      }
+    >
       {inboxConversations.map((conversation) => (
         <ConversationListItem
           key={conversation.sId}
@@ -702,7 +679,7 @@ const InboxConversationList = ({
           {...props}
         />
       ))}
-    </ConversationListContainer>
+    </NavigationListCollapsibleSection>
   );
 };
 
@@ -725,11 +702,13 @@ const ConversationList = ({
 
   return (
     <ConversationListContainer>
-      <NavigationListLabel
-        label={dateLabel}
-        isSticky
-        className="bg-muted-background dark:bg-muted-background-night"
-      />
+      {dateLabel !== "Today" && (
+        <NavigationListLabel
+          label={dateLabel}
+          isSticky
+          className="bg-muted-background dark:bg-muted-background-night"
+        />
+      )}
 
       {conversations.map((conversation) => (
         <ConversationListItem
@@ -846,6 +825,8 @@ interface NavigationListWithInboxProps {
   ) => void;
   router: NextRouter;
   owner: WorkspaceType;
+  projectsSection?: React.ReactNode;
+  hasTriggeredConversations: boolean;
 }
 
 const NavigationListWithInbox = forwardRef<
@@ -862,9 +843,16 @@ const NavigationListWithInbox = forwardRef<
       toggleConversationSelection,
       router,
       owner,
+      projectsSection,
+      hasTriggeredConversations,
     },
     ref
   ) => {
+    const {
+      hideTriggeredConversations,
+      setHideTriggeredConversations,
+      isLoading: isHideTriggeredLoading,
+    } = useHideTriggeredConversations();
     const { readConversations, inboxConversations } = useMemo(() => {
       return getGroupConversationsByUnreadAndActionRequired(
         conversations,
@@ -878,8 +866,6 @@ const NavigationListWithInbox = forwardRef<
       }
     );
 
-    const shouldDisplayInbox = inboxConversations.length > 0;
-
     // TODO: Remove filtering by titleFilter when we release the inbox.
     const conversationsByDate = readConversations?.length
       ? getGroupConversationsByDate({
@@ -891,48 +877,73 @@ const NavigationListWithInbox = forwardRef<
         })
       : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
 
+    const conversationsContent = (
+      <>
+        {Object.keys(conversationsByDate).map((dateLabel) => (
+          <ConversationList
+            key={dateLabel}
+            conversations={conversationsByDate[dateLabel as GroupLabel]}
+            dateLabel={dateLabel}
+            isMultiSelect={isMultiSelect}
+            selectedConversations={selectedConversations}
+            toggleConversationSelection={toggleConversationSelection}
+            router={router}
+            owner={owner}
+          />
+        ))}
+        <div
+          // Change the key each page to force a re-render and get a new entry
+          key={`infinite-scroll-conversation-${conversationsPage}`}
+          id="infinite-scroll-conversations"
+          ref={ref}
+          style={{ height: "2px" }}
+        />
+      </>
+    );
+
     return (
-      <NavigationList className="dd-privacy-mask h-full w-full">
-        {shouldDisplayInbox && (
-          <div className="bg-background pb-3 dark:bg-background-night">
-            <InboxConversationList
-              inboxConversations={inboxConversations}
-              dateLabel={`Inbox (${inboxConversations.length})`}
-              isMultiSelect={isMultiSelect}
-              isMarkingAllAsRead={isMarkingAllAsRead}
-              titleFilter={titleFilter}
-              onMarkAllAsRead={markAllAsRead}
-              selectedConversations={selectedConversations}
-              toggleConversationSelection={toggleConversationSelection}
-              router={router}
-              owner={owner}
-            />
-          </div>
+      <div className="dd-privacy-mask h-full w-full overflow-y-auto">
+        {inboxConversations.length > 0 && (
+          <InboxConversationList
+            inboxConversations={inboxConversations}
+            dateLabel={`Inbox (${inboxConversations.length})`}
+            isMultiSelect={isMultiSelect}
+            isMarkingAllAsRead={isMarkingAllAsRead}
+            titleFilter={titleFilter}
+            onMarkAllAsRead={markAllAsRead}
+            selectedConversations={selectedConversations}
+            toggleConversationSelection={toggleConversationSelection}
+            router={router}
+            owner={owner}
+          />
         )}
-        {readConversations.length > 0 && (
-          <>
-            {Object.keys(conversationsByDate).map((dateLabel) => (
-              <ConversationList
-                key={dateLabel}
-                conversations={conversationsByDate[dateLabel as GroupLabel]}
-                dateLabel={dateLabel}
-                isMultiSelect={isMultiSelect}
-                selectedConversations={selectedConversations}
-                toggleConversationSelection={toggleConversationSelection}
-                router={router}
-                owner={owner}
-              />
-            ))}
-            <div
-              // Change the key each page to force a re-render and get a new entry
-              key={`infinite-scroll-conversation-${conversationsPage}`}
-              id="infinite-scroll-conversations"
-              ref={ref}
-              style={{ height: "2px" }}
-            />
-          </>
-        )}
-      </NavigationList>
+        {projectsSection}
+        <NavigationList className="px-2">
+          <NavigationListCollapsibleSection
+            label="Conversations"
+            defaultOpen
+            action={
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button size="xs" icon={MoreIcon} variant="ghost" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuCheckboxItem
+                    label="Hide triggered conversations"
+                    checked={hideTriggeredConversations}
+                    onCheckedChange={setHideTriggeredConversations}
+                    disabled={
+                      isHideTriggeredLoading || !hasTriggeredConversations
+                    }
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            }
+          >
+            {conversationsContent}
+          </NavigationListCollapsibleSection>
+        </NavigationList>
+      </div>
     );
   }
 );
