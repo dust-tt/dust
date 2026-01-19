@@ -1,3 +1,13 @@
+type ContactFormEventData = {
+  user_email: string;
+  user_phone: string | undefined;
+  user_first_name: string | undefined;
+  user_last_name: string | undefined;
+  user_language: string;
+  user_headquarters_region: string | undefined;
+  user_company_headcount: string;
+};
+
 type DataLayer =
   | {
       event: "userIdentified";
@@ -9,27 +19,13 @@ type DataLayer =
       company_name: string;
       gclid: string | null;
     }
-  | {
+  | ({
       event: "contact_form_submitted";
       is_qualified: boolean;
-      user_email: string;
-      user_phone: string | undefined;
-      user_first_name: string | undefined;
-      user_last_name: string | undefined;
-      user_language: string;
-      user_headquarters_region: string | undefined;
-      user_company_headcount: string;
-    }
-  | {
+    } & ContactFormEventData)
+  | ({
       event: "contact_form_qualified_lead";
-      user_email: string;
-      user_phone: string | undefined;
-      user_first_name: string | undefined;
-      user_last_name: string | undefined;
-      user_language: string;
-      user_headquarters_region: string | undefined;
-      user_company_headcount: string;
-    };
+    } & ContactFormEventData);
 
 interface Signals {
   identify: (data: { email: string; name: string }) => void;
