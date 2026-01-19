@@ -46,7 +46,7 @@ describe("renderAllMessages", () => {
         }) as UserMessageTypeModel
     );
 
-    vi.mocked(getSteps).mockResolvedValue([
+    vi.mocked(getSteps).mockReturnValue([
       {
         contents: [{ type: "text_content", value: "Agent response" }],
         actions: [],
