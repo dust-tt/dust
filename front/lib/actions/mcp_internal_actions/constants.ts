@@ -37,6 +37,7 @@ import { Err, Ok } from "@app/types";
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
 export const USE_SUMMARY_SWITCH = "useSummary";
+export const TARGET_AGENT_ID = "targetAgentId";
 
 export const SEARCH_TOOL_NAME = "semantic_search";
 export const INCLUDE_TOOL_NAME = "retrieve_recent_documents";
@@ -151,6 +152,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "skill_management",
   "schedules_management",
   "project_context_management",
+  "agent_copilot",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -1820,6 +1822,35 @@ export const INTERNAL_MCP_SERVERS = {
         "Only text-based files are supported for adding/updating. " +
         "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
         "Requires write permissions on the project space.",
+    },
+  },
+  agent_copilot: {
+    id: 1022,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: {
+      get_agent_details: "never_ask",
+      update_agent: "high",
+      get_available_models: "never_ask",
+      get_available_skills: "never_ask",
+      get_available_tools: "never_ask",
+      get_agent_feedback: "never_ask",
+      get_agent_insights: "never_ask",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "agent_copilot",
+      version: "1.0.0",
+      description:
+        "Tools for Agent Copilot to analyze and suggest improvements to agents.",
+      authorization: null,
+      icon: "ActionRobotIcon",
+      documentationUrl: null,
+      instructions: null,
     },
   },
   databricks: {

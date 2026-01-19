@@ -212,7 +212,7 @@ export async function getAgentFeedbacks({
     await AgentMessageFeedbackResource.getAgentConfigurationFeedbacksByDescVersion(
       {
         workspace: owner,
-        agentConfiguration,
+        agentConfigurationId: agentConfiguration.sId,
         paginationParams,
         filter,
       }

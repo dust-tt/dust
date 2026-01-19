@@ -26,7 +26,6 @@ import type {
   AgentConfigurationType,
   AgentMessageType,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
   MessageType,
   ModelId,
   Result,
@@ -187,19 +186,19 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   static async getAgentConfigurationFeedbacksByDescVersion({
     workspace,
-    agentConfiguration,
+    agentConfigurationId,
     paginationParams,
     filter = "active",
   }: {
     workspace: WorkspaceType;
-    agentConfiguration: LightAgentConfigurationType;
+    agentConfigurationId: string;
     paginationParams: PaginationParams;
     filter?: "active" | "all";
   }) {
     const where: WhereOptions<AgentMessageFeedbackModel> = {
       // Safety check: global models share ids across workspaces and some have had feedbacks.
       workspaceId: workspace.id,
-      agentConfigurationId: agentConfiguration.sId,
+      agentConfigurationId,
     };
 
     if (filter === "active") {
