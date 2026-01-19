@@ -3,7 +3,6 @@ import type { ChildWorkflowHandle } from "@temporalio/workflow";
 import {
   continueAsNew,
   executeChild,
-  getExternalWorkflowHandle,
   isCancellation,
   proxyActivities,
   setHandler,
