@@ -379,7 +379,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     } else if (key.scope === "restricted_group_only") {
       // Special case for restricted keys.
-      // Those are regular keys for witch we want to restrict access to the global group.
+      // Those are regular keys for which we want to restrict access to the global group.
       groups = await this.model.findAll({
         where: {
           workspaceId: key.workspaceId,
@@ -768,7 +768,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const groupIds = groupSpaces.map((gs) => gs.groupId);
     const { groupKinds } = options;
 
-    const whereClause: any = {
+    const whereClause: WhereOptions<GroupModel> = {
       id: {
         [Op.in]: groupIds,
       },
@@ -1045,14 +1045,16 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     const userIds = users.map((u) => u.sId);
     const userResources = await UserResource.fetchByIds(userIds);
+
     if (userResources.length !== userIds.length) {
-      new Err(
+      return new Err(
         new DustError(
           "user_not_found",
           userIds.length === 1 ? "User not found" : "Some users were not found"
         )
       );
     }
+
     const { memberships: workspaceMemberships } =
       await MembershipResource.getActiveMemberships({
         users: userResources,
@@ -1136,7 +1138,18 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     user: UserType,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, DustError>> {
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_already_member"
+        | "group_requirements_not_met"
+        | "system_or_global_group"
+      >
+    >
+  > {
     return this.addMembers(auth, [user], { transaction });
   }
 
@@ -1247,7 +1260,17 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     users: UserType,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, DustError>> {
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_not_member"
+        | "system_or_global_group"
+      >
+    >
+  > {
     return this.removeMembers(auth, [users], { transaction });
   }
 
@@ -1393,7 +1416,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    *    read "agent_editors" and "skill_editors" groups.
    *
    * CAUTION: if / when editing, note that for role permissions, permissions are
-   * NOT inherited, i.e. if you set a permission for role "user", an "admin"
+   * NOT inherited, i.e., if you set a permission for role "user", an "admin"
    * will NOT have it
    *
    * @returns Array of ResourcePermission objects defining the default access
