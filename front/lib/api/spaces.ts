@@ -431,6 +431,7 @@ export async function createSpaceAndGroup(
             groupId: selectedGroup.id,
             vaultId: space.id,
             workspaceId: space.workspaceId,
+            kind: "member",
           },
           { transaction: t }
         );
