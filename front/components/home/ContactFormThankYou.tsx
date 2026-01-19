@@ -93,7 +93,16 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
         });
       }
     }
-  }, [isQualified]);
+  }, [
+    isQualified,
+    email,
+    phone,
+    firstName,
+    lastName,
+    language,
+    headquartersRegion,
+    companyHeadcount,
+  ]);
 
   // Load Default.com SDK and submit form data for all leads
   useEffect(() => {
