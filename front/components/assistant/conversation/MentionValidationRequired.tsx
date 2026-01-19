@@ -30,7 +30,7 @@ interface MentionValidationRequiredProps {
   >;
   conversationId: string;
   message: VirtuosoMessage;
-  spaceId: string | null;
+  isProjectConversation: boolean;
 }
 
 export function MentionValidationRequired({
@@ -39,7 +39,7 @@ export function MentionValidationRequired({
   mention,
   conversationId,
   message,
-  spaceId,
+  isProjectConversation,
 }: MentionValidationRequiredProps) {
   const { user } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,8 +53,6 @@ export function MentionValidationRequired({
     () => !triggeringUser || triggeringUser.sId === user?.sId,
     [triggeringUser, user?.sId]
   );
-
-  const isProjectConversation = !!spaceId;
 
   const handleReject = async () => {
     setIsSubmitting(true);

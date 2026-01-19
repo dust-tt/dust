@@ -969,7 +969,6 @@ export async function validateUserMention(
       });
     }
 
-    // Add user to project (will fail if current user lacks admin permissions - acceptable for now).
     const addResult = await space.addMembers(auth, { userIds: [userId] });
     if (addResult.isErr()) {
       const error = addResult.error;
