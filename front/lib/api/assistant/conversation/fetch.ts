@@ -13,6 +13,7 @@ import type {
   AgentMessageType,
   ContentFragmentType,
   ConversationType,
+  ModelId,
   Result,
   UserMessageType,
 } from "@app/types";
@@ -35,53 +36,7 @@ export async function getConversation(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
-  const messages = await MessageModel.findAll({
-    where: {
-      conversationId: conversation.id,
-      workspaceId: owner.id,
-    },
-    order: [
-      ["rank", "ASC"],
-      ["version", "ASC"],
-    ],
-    include: [
-      {
-        model: UserMessageModel,
-        as: "userMessage",
-        required: false,
-      },
-      {
-        model: AgentMessageModel,
-        as: "agentMessage",
-        required: false,
-        include: [
-          {
-            model: AgentStepContentModel,
-            as: "agentStepContents",
-            required: false,
-          },
-        ],
-      },
-      // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
-      // along with messages in one query). Only once we move to a MessageResource will we be able
-      // to properly abstract this.
-      {
-        model: ContentFragmentModel,
-        as: "contentFragment",
-        required: false,
-      },
-    ],
-  });
-
-  // Filter to only keep the step content with the maximum version for each step and index combination.
-  for (const message of messages) {
-    if (message.agentMessage && message.agentMessage.agentStepContents) {
-      message.agentMessage.agentStepContents =
-        getMaximalVersionAgentStepContent(
-          message.agentMessage.agentStepContents
-        );
-    }
-  }
+  const messages = await getConversationMessages(auth, conversation);
 
   const renderRes = await batchRenderMessages(
     auth,
@@ -136,4 +91,105 @@ export async function getConversation(
     requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
     spaceId: conversation.space?.sId ?? null,
   });
+}
+
+async function getConversationMessages(
+  auth: Authenticator,
+  conversation: ConversationResource
+): Promise<MessageModel[]> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const messages = await MessageModel.findAll({
+    where: {
+      conversationId: conversation.id,
+      workspaceId: owner.id,
+    },
+    order: [
+      ["rank", "ASC"],
+      ["version", "ASC"],
+    ],
+  });
+
+  const userMessageModelIds: ModelId[] = [];
+  const agentMessageModelIds: ModelId[] = [];
+  const contentFragmentModelIds: ModelId[] = [];
+
+  for (const { userMessageId, agentMessageId, contentFragmentId } of messages) {
+    if (userMessageId) {
+      userMessageModelIds.push(userMessageId);
+    }
+    if (agentMessageId) {
+      agentMessageModelIds.push(agentMessageId);
+    }
+    if (contentFragmentId) {
+      contentFragmentModelIds.push(contentFragmentId);
+    }
+  }
+
+  // Fetch related models in parallel using indexed lookups.
+  const userMessages = await UserMessageModel.findAll({
+    where: {
+      id: userMessageModelIds,
+      workspaceId: owner.id,
+    },
+  });
+  const agentMessages = await AgentMessageModel.findAll({
+    where: {
+      id: agentMessageModelIds,
+      workspaceId: owner.id,
+    },
+  });
+  const contentFragments = await ContentFragmentModel.findAll({
+    where: {
+      id: contentFragmentModelIds,
+      workspaceId: owner.id,
+    },
+  });
+
+  // Fetch step contents for agent messages.
+  const agentStepContents = await AgentStepContentModel.findAll({
+    where: {
+      agentMessageId: agentMessageModelIds,
+      workspaceId: owner.id,
+    },
+  });
+
+  const userMessageMap = new Map(userMessages.map((um) => [um.id, um]));
+  const agentMessageMap = new Map(agentMessages.map((am) => [am.id, am]));
+  const contentFragmentMap = new Map(contentFragments.map((cf) => [cf.id, cf]));
+
+  // Group step contents by agent message ID.
+  const stepContentsByAgentMessage = new Map<number, AgentStepContentModel[]>();
+  for (const sc of agentStepContents) {
+    const existing = stepContentsByAgentMessage.get(sc.agentMessageId);
+    if (existing) {
+      existing.push(sc);
+    } else {
+      stepContentsByAgentMessage.set(sc.agentMessageId, [sc]);
+    }
+  }
+
+  // Assemble relationships onto message objects.
+  for (const message of messages) {
+    if (message.userMessageId) {
+      message.userMessage = userMessageMap.get(message.userMessageId);
+    }
+    if (message.agentMessageId) {
+      const agentMessage = agentMessageMap.get(message.agentMessageId);
+      if (agentMessage) {
+        const stepContents =
+          stepContentsByAgentMessage.get(message.agentMessageId) ?? [];
+        agentMessage.agentStepContents =
+          getMaximalVersionAgentStepContent(stepContents);
+        message.agentMessage = agentMessage;
+      }
+    }
+    if (message.contentFragmentId) {
+      message.contentFragment = contentFragmentMap.get(
+        message.contentFragmentId
+      );
+    }
+  }
+
+  return messages;
 }
