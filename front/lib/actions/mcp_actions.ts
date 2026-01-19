@@ -310,14 +310,18 @@ export async function* tryCallMCPTool(
     workspaceId,
   };
 
-  const connectionParamsRes = await getMCPClientConnectionParams(
-    auth,
-    toolConfiguration,
-    {
-      conversationId,
-      messageId,
-    }
-  );
+  const mcpServerView = isServerSideMCPToolConfiguration(toolConfiguration)
+    ? await MCPServerViewResource.fetchById(
+        auth,
+        toolConfiguration.mcpServerViewId
+      )
+    : null;
+
+  const connectionParamsRes = getMCPClientConnectionParams(toolConfiguration, {
+    conversationId,
+    messageId,
+    mcpServerView,
+  });
   if (connectionParamsRes.isErr()) {
     return {
       isError: true,
@@ -569,26 +573,23 @@ export async function* tryCallMCPTool(
   }
 }
 
-async function getMCPClientConnectionParams(
-  auth: Authenticator,
+function getMCPClientConnectionParams(
   config: MCPServerConfigurationType | MCPToolConfigurationType,
   {
     conversationId,
     messageId,
+    mcpServerView,
   }: {
     conversationId: string;
     messageId: string;
+    mcpServerView: MCPServerViewResource | null;
   }
-): Promise<Result<MCPConnectionParams, Error>> {
+): Result<MCPConnectionParams, Error> {
   if (
     (isMCPServerConfiguration(config) &&
       isServerSideMCPServerConfiguration(config)) ||
     (isMCPToolConfiguration(config) && isServerSideMCPToolConfiguration(config))
   ) {
-    const mcpServerView = await MCPServerViewResource.fetchById(
-      auth,
-      config.mcpServerViewId
-    );
     if (!mcpServerView) {
       return new Err(new Error("MCP server view not found"));
     }
@@ -783,15 +784,36 @@ export async function tryListMCPTools(
     deduplicatedConfigs
   );
 
+  // Pre-fetch all MCPServerViews for server-side configs to avoid N+1 queries.
+  const serverSideViewIds = mcpServerActions
+    .filter((config) => isServerSideMCPServerConfiguration(config))
+    .map((config) => config.mcpServerViewId);
+  const preFetchedViews = await MCPServerViewResource.fetchByIds(
+    auth,
+    serverSideViewIds
+  );
+  const preFetchedMcpServerViews = new Map(
+    preFetchedViews.map((view) => [view.sId, view])
+  );
+
   // Discover all tools exposed by all available MCP servers.
   const results = await concurrentExecutor(
     mcpServerActions,
     async (action) => {
+      const mcpServerView = isServerSideMCPServerConfiguration(action)
+        ? (preFetchedMcpServerViews.get(action.mcpServerViewId) ?? null)
+        : null;
+
       const toolsAndInstructionsRes =
-        await listMCPServerToolsAndServerInstructions(auth, action, {
-          ...agentLoopListToolsContext,
-          agentActionConfiguration: action,
-        });
+        await listMCPServerToolsAndServerInstructions(
+          auth,
+          action,
+          {
+            ...agentLoopListToolsContext,
+            agentActionConfiguration: action,
+          },
+          mcpServerView
+        );
 
       if (toolsAndInstructionsRes.isErr()) {
         logger.error(
@@ -1060,16 +1082,18 @@ export async function listToolsForServerSideMCPServer(
 async function listMCPServerToolsAndServerInstructions(
   auth: Authenticator,
   config: MCPServerConfigurationType,
-  agentLoopListToolsContext: AgentLoopListToolsContextType
+  agentLoopListToolsContext: AgentLoopListToolsContextType,
+  mcpServerView: MCPServerViewResource | null
 ): Promise<
   Result<{ instructions?: string; tools: MCPToolConfigurationType[] }, Error>
 > {
   const owner = auth.getNonNullableWorkspace();
   let mcpClient;
 
-  const connectionParamsRes = await getMCPClientConnectionParams(auth, config, {
+  const connectionParamsRes = getMCPClientConnectionParams(config, {
     conversationId: agentLoopListToolsContext.conversation.sId,
     messageId: agentLoopListToolsContext.agentMessage.sId,
+    mcpServerView,
   });
 
   if (connectionParamsRes.isErr()) {
