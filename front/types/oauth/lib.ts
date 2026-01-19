@@ -138,10 +138,10 @@ export function getOverridablePersonalAuthInputs({
 }: {
   provider: OAuthProvider;
 }): OAuthCredentialInputs | null {
-  const allInputs = getProviderCredentialInputsImpl(
+  const allInputs = getProviderRequiredOAuthCredentialInputs({
     provider,
-    "personal_actions"
-  );
+    useCase: "personal_actions",
+  });
   if (!allInputs) {
     return null;
   }
@@ -156,20 +156,13 @@ export function getOverridablePersonalAuthInputs({
   return Object.keys(filtered).length > 0 ? filtered : null;
 }
 
-export const getProviderRequiredOAuthCredentialInputs = async ({
+export function getProviderRequiredOAuthCredentialInputs({
   provider,
   useCase,
 }: {
   provider: OAuthProvider;
   useCase: OAuthUseCase;
-}): Promise<OAuthCredentialInputs | null> => {
-  return getProviderCredentialInputsImpl(provider, useCase);
-};
-
-function getProviderCredentialInputsImpl(
-  provider: OAuthProvider,
-  useCase: OAuthUseCase
-): OAuthCredentialInputs | null {
+}): OAuthCredentialInputs | null {
   switch (provider) {
     case "salesforce":
       if (useCase === "personal_actions" || useCase === "platform_actions") {
