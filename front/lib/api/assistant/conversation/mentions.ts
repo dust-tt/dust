@@ -192,7 +192,12 @@ export const createUserMentions = async (
             });
           }
 
-          const status: MentionStatusType = !canAccess
+          // For project conversations, workspace members who can't access (because they're not
+          // in the project) should get "pending" status so they can be invited to the project.
+          // For non-project conversations, inability to access means truly restricted.
+          const isRestrictedAccess = !canAccess && !conversation.spaceId;
+
+          const status: MentionStatusType = isRestrictedAccess
             ? "user_restricted_by_conversation_access"
             : autoApprove
               ? "approved"
@@ -969,7 +974,12 @@ export async function validateUserMention(
       });
     }
 
-    const addResult = await space.addMembers(auth, { userIds: [userId] });
+    // Use admin auth to add members since addMembers requires admin permissions,
+    // but we've already validated the user is an editor above.
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      auth.getNonNullableWorkspace().sId
+    );
+    const addResult = await space.addMembers(adminAuth, { userIds: [userId] });
     if (addResult.isErr()) {
       const error = addResult.error;
       return new Err({
