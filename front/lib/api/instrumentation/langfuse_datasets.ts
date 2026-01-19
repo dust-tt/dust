@@ -27,11 +27,7 @@ function hasProperty<K extends string>(
 function isLangfuseNotFoundError(
   error: unknown
 ): error is { statusCode: 404 } {
-  if (!hasProperty(error, "statusCode")) {
-    return false;
-  }
-
-  return error.statusCode === 404;
+  return hasProperty(error, "statusCode") && error.statusCode === 404;
 }
 
 /**
@@ -69,6 +65,12 @@ interface AddTraceToDatasetParams {
   workspaceId: string;
 }
 
+type LangfuseTraceSummary = {
+  id: string;
+  input: unknown;
+  output: unknown;
+};
+
 /**
  * Fetches a trace from Langfuse by searching for its dustTraceId in metadata.
  *
@@ -78,7 +80,7 @@ interface AddTraceToDatasetParams {
 async function fetchTraceByDustTraceId(
   client: LangfuseClient,
   dustTraceId: string
-): Promise<Result<{ id: string; input: unknown; output: unknown } | null, Error>> {
+): Promise<Result<LangfuseTraceSummary | null, Error>> {
   // Use Langfuse's advanced filtering to find trace by metadata.dustTraceId
   const filter = JSON.stringify([
     {
@@ -100,11 +102,11 @@ async function fetchTraceByDustTraceId(
     return new Err(normalizeError(error));
   }
 
-  if (!traces.data || traces.data.length === 0) {
+  const trace = traces.data?.[0];
+  if (!trace) {
     return new Ok(null);
   }
 
-  const trace = traces.data[0];
   return new Ok({
     id: trace.id,
     input: trace.input,
