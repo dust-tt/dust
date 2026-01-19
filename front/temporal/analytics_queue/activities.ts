@@ -714,15 +714,15 @@ async function appendNegativeFeedbackTracesToLangfuseDataset({
   }
 
   const datasetName = `${agentConfigurationId}-feedback`;
+  // Feedback applies to the final agent response, so use the most recent LLM trace.
+  const latestTraceId = llmTraceIds[llmTraceIds.length - 1];
 
   for (const feedback of negativeFeedbacks) {
-    for (const dustTraceId of llmTraceIds) {
-      await addTraceToLangfuseDataset({
-        datasetName,
-        dustTraceId,
-        feedbackId: feedback.id,
-        workspaceId,
-      });
-    }
+    await addTraceToLangfuseDataset({
+      datasetName,
+      dustTraceId: latestTraceId,
+      feedbackId: feedback.id,
+      workspaceId,
+    });
   }
 }
