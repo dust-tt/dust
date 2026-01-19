@@ -743,6 +743,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * doesn't indicate explicit space membership. System groups also have no impact
    * on membership (since isMember will return false for system groups).
    */
+  // TODO(projects): update this method to check groups whose group_vaults relationship is
+  // space_member or space_editor (not space_viewer) when the PR adding the relationship is live.
+  // At that point, we can reinstate global groups in the check if their relation is member or editor.
   async isMember(user: UserResource): Promise<boolean> {
     for (const group of this.groups) {
       if (group.isGlobal()) {
