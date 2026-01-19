@@ -56,19 +56,6 @@ export const STORAGE_KEYS = {
 } as const;
 
 /**
- * Cookie names for server-side storage (Safari ITP bypass).
- */
-export const COOKIE_NAMES = {
-  FIRST_TOUCH: "dust_attr_first",
-  LAST_TOUCH: "dust_attr_last",
-} as const;
-
-/**
- * Cookie expiration in days (matches Google Ads 90-day attribution window).
- */
-export const COOKIE_EXPIRATION_DAYS = 90;
-
-/**
  * Flat UTM params object for backward compatibility with existing code.
  * This is what gets sent to APIs and included in form submissions.
  */

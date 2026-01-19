@@ -9,7 +9,6 @@ import {
   setAttribution,
   syncAttributionToPostHog,
 } from "@app/lib/attribution";
-import { clientFetch } from "@app/lib/egress/client";
 import { extractUTMParams } from "@app/lib/utils/utm";
 
 interface AttributionProviderProps {
@@ -64,18 +63,6 @@ export function AttributionProvider({
 
     // Sync to PostHog
     syncAttributionToPostHog(getAttribution());
-
-    // Call server endpoint for Safari ITP bypass
-    void clientFetch("/api/attribution/store", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        firstTouch: getAttribution().firstTouch,
-        lastTouch: getAttribution().lastTouch,
-      }),
-    }).catch(() => {
-      // Silently fail - localStorage is primary storage
-    });
 
     hasProcessedRef.current = true;
   }, [hasConsent, router.asPath]);
