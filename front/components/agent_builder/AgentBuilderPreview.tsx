@@ -79,6 +79,8 @@ interface PreviewContentProps {
   ) => Promise<Result<undefined, DustError>>;
   draftAgent: LightAgentConfigurationType | null;
   isSavingDraftAgent: boolean;
+  isTrialPlan: boolean;
+  isAdmin: boolean;
 }
 
 function PreviewContent({
@@ -90,11 +92,18 @@ function PreviewContent({
   createConversation,
   draftAgent,
   isSavingDraftAgent,
+  isTrialPlan,
+  isAdmin,
 }: PreviewContentProps) {
   return (
     <>
       <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
         <div className="flex-1 overflow-y-auto">
+          {isTrialPlan && (
+            <div className="px-4 pt-4">
+              <TrialMessageUsage isAdmin={isAdmin} workspaceId={owner.sId} />
+            </div>
+          )}
           {conversation && user && (
             <ConversationViewer
               owner={owner}
@@ -287,24 +296,17 @@ export function AgentBuilderPreview() {
         createConversation={createConversation}
         draftAgent={draftAgent}
         isSavingDraftAgent={isSavingDraftAgent}
+        isTrialPlan={isTrialPlan}
+        isAdmin={isAdmin}
       />
     );
   };
 
   return (
     <div className="flex h-full w-full flex-col" aria-label="Agent preview">
-      {isTrialPlan && (
-        <div className="flex-shrink-0 px-4 pt-4">
-          <TrialMessageUsage isAdmin={isAdmin} workspaceId={owner.sId} />
-        </div>
-      )}
-      <div className="min-h-0 flex-1">
-        <BlockedActionsProvider owner={owner} conversation={conversation}>
-          <GenerationContextProvider>
-            {renderContent()}
-          </GenerationContextProvider>
-        </BlockedActionsProvider>
-      </div>
+      <BlockedActionsProvider owner={owner} conversation={conversation}>
+        <GenerationContextProvider>{renderContent()}</GenerationContextProvider>
+      </BlockedActionsProvider>
     </div>
   );
 }
