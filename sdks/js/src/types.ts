@@ -670,6 +670,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_transcripts"
   | "legacy_dust_apps"
   | "monday_tool"
+  | "new_sidebar"
   | "noop_model_feature"
   | "notion_private_integration"
   | "openai_o1_custom_assistants_feature"

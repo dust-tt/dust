@@ -25,6 +25,7 @@ import React, {
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
+import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
@@ -73,7 +74,7 @@ export const NavigationSidebar = React.forwardRef<
     return "";
   }, [router.isReady, router.route]);
 
-  const { featureFlags } = useFeatureFlags({
+  const { featureFlags, hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
@@ -210,7 +211,18 @@ export const NavigationSidebar = React.forwardRef<
             "text-foreground dark:text-foreground-night"
           )}
         >
-          <UserMenu user={user} owner={owner} subscription={subscription} />
+          <UserMenu
+            user={user}
+            owner={owner}
+            subscription={subscription}
+            showHelp={hasFeature("new_sidebar")}
+          />
+          {!hasFeature("new_sidebar") && (
+            <>
+              <div className="flex-1" />
+              <HelpDropdown owner={owner} user={user} />
+            </>
+          )}
         </div>
       )}
     </div>

@@ -57,15 +57,19 @@ import type {
 import { GLOBAL_AGENTS_SID, isAgentMention } from "@app/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
 
+interface UserMenuProps {
+  user: UserTypeWithWorkspaces;
+  owner: WorkspaceType;
+  subscription: SubscriptionType | null;
+  showHelp?: boolean;
+}
+
 export function UserMenu({
   user,
   owner,
   subscription,
-}: {
-  user: UserTypeWithWorkspaces;
-  owner: WorkspaceType;
-  subscription: SubscriptionType | null;
-}) {
+  showHelp = false,
+}: UserMenuProps) {
   const router = useRouter();
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -279,73 +283,77 @@ export function UserMenu({
           />
         )}
 
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger icon={HeartIcon} label="Help & Support" />
-          <DropdownMenuPortal>
-            <DropdownMenuSubContent>
-              <DropdownMenuLabel label="Learn about Dust" />
-              <DropdownMenuItem
-                label="Quickstart Guide"
-                icon={LightbulbIcon}
-                onClick={() =>
-                  router.push(
-                    {
-                      pathname: router.pathname,
-                      query: { ...router.query, quickGuide: "true" },
-                    },
-                    undefined,
-                    { shallow: true }
-                  )
-                }
-              />
-              <DropdownMenuItem
-                label="Guides & Documentation"
-                icon={DocumentIcon}
-                href="https://docs.dust.tt"
-                target="_blank"
-              />
-              <DropdownMenuItem
-                label="Join the Slack Community"
-                icon={SlackLogo}
-                href="https://dust-community.tightknit.community/join"
-                target="_blank"
-              />
-              <DropdownMenuLabel label="Ask questions" />
-              <DropdownMenuItem
-                label="Ask @help"
-                description="Ask anything about Dust"
-                icon={ChatBubbleLeftRightIcon}
-                onClick={() => void handleAskHelp()}
-              />
-              <DropdownMenuItem
-                label="How to invite new users?"
-                icon={ChatBubbleBottomCenterTextIcon}
-                onClick={() =>
-                  void handleHelpSubmit("How to invite new users?", [])
-                }
-              />
-              <DropdownMenuItem
-                label="How to use agents in Slack workflow?"
-                icon={ChatBubbleBottomCenterTextIcon}
-                onClick={() =>
-                  void handleHelpSubmit(
-                    "How to use agents in Slack workflow?",
-                    []
-                  )
-                }
-              />
-              <DropdownMenuItem
-                label="How to manage billing?"
-                icon={ChatBubbleBottomCenterTextIcon}
-                onClick={() =>
-                  void handleHelpSubmit("How to manage billing?", [])
-                }
-              />
-            </DropdownMenuSubContent>
-          </DropdownMenuPortal>
-        </DropdownMenuSub>
+        {showHelp && (
+          <>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger icon={HeartIcon} label="Help & Support" />
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  <DropdownMenuLabel label="Learn about Dust" />
+                  <DropdownMenuItem
+                    label="Quickstart Guide"
+                    icon={LightbulbIcon}
+                    onClick={() =>
+                      router.push(
+                        {
+                          pathname: router.pathname,
+                          query: { ...router.query, quickGuide: "true" },
+                        },
+                        undefined,
+                        { shallow: true }
+                      )
+                    }
+                  />
+                  <DropdownMenuItem
+                    label="Guides & Documentation"
+                    icon={DocumentIcon}
+                    href="https://docs.dust.tt"
+                    target="_blank"
+                  />
+                  <DropdownMenuItem
+                    label="Join the Slack Community"
+                    icon={SlackLogo}
+                    href="https://dust-community.tightknit.community/join"
+                    target="_blank"
+                  />
+                  <DropdownMenuLabel label="Ask questions" />
+                  <DropdownMenuItem
+                    label="Ask @help"
+                    description="Ask anything about Dust"
+                    icon={ChatBubbleLeftRightIcon}
+                    onClick={() => void handleAskHelp()}
+                  />
+                  <DropdownMenuItem
+                    label="How to invite new users?"
+                    icon={ChatBubbleBottomCenterTextIcon}
+                    onClick={() =>
+                      void handleHelpSubmit("How to invite new users?", [])
+                    }
+                  />
+                  <DropdownMenuItem
+                    label="How to use agents in Slack workflow?"
+                    icon={ChatBubbleBottomCenterTextIcon}
+                    onClick={() =>
+                      void handleHelpSubmit(
+                        "How to use agents in Slack workflow?",
+                        []
+                      )
+                    }
+                  />
+                  <DropdownMenuItem
+                    label="How to manage billing?"
+                    icon={ChatBubbleBottomCenterTextIcon}
+                    onClick={() =>
+                      void handleHelpSubmit("How to manage billing?", [])
+                    }
+                  />
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
 
-        <DropdownMenuSeparator />
+            <DropdownMenuSeparator />
+          </>
+        )}
 
         <DropdownMenuItem
           label="Sign&nbsp;out"
