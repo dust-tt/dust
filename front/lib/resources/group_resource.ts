@@ -1054,7 +1054,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth, requestedPermissions)) {
+    if (
+      !auth.canWrite(
+        requestedPermissions
+          ? [requestedPermissions]
+          : this.requestedPermissions()
+      )
+    ) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1210,7 +1216,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth, requestedPermissions)) {
+    if (
+      !auth.canWrite(
+        requestedPermissions
+          ? [requestedPermissions]
+          : this.requestedPermissions()
+      )
+    ) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1350,7 +1362,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth, requestedPermissions)) {
+    if (
+      !auth.canWrite(
+        requestedPermissions
+          ? [requestedPermissions]
+          : this.requestedPermissions()
+      )
+    ) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1548,15 +1566,8 @@ export class GroupResource extends BaseResource<GroupModel> {
     return auth.canRead(this.requestedPermissions());
   }
 
-  canWrite(
-    auth: Authenticator,
-    requestedPermissions?: CombinedResourcePermissions
-  ): boolean {
-    return auth.canWrite(
-      requestedPermissions
-        ? [requestedPermissions]
-        : this.requestedPermissions()
-    );
+  canWrite(auth: Authenticator): boolean {
+    return auth.canWrite(this.requestedPermissions());
   }
 
   isSystem(): boolean {
