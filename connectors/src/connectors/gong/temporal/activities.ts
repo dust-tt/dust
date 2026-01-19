@@ -110,13 +110,12 @@ export async function gongSyncTranscriptsActivity({
 }) {
   const connector = await fetchGongConnector({ connectorId });
   const configuration = await fetchGongConfiguration(connector);
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     connectorId: connector.id,
-    dataSourceId: dataSourceConfig.dataSourceId,
+    dataSourceId: connector.dataSourceId,
     provider: "gong",
     startTimestamp: configuration.lastSyncTimestamp,
-    workspaceId: dataSourceConfig.workspaceId,
+    workspaceId: connector.workspaceId,
   };
 
   const gongClient = await getGongClient(connector);
@@ -243,7 +242,6 @@ export async function gongSyncTranscriptsActivity({
       await syncGongTranscript({
         transcript,
         transcriptMetadata,
-        dataSourceConfig,
         speakerToEmailMap,
         loggerArgs,
         participantEmails,
