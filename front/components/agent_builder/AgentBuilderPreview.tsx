@@ -9,8 +9,6 @@ import {
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
-import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
-import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -19,7 +17,9 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { DustError } from "@app/lib/error";
+import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
+import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import type {
   ContentFragmentsType,
   ConversationWithoutContentType,
