@@ -127,32 +127,21 @@ async function getConversationMessages(
   }
 
   // Fetch related models in parallel using indexed lookups.
-  const userMessages = await UserMessageModel.findAll({
-    where: {
-      id: userMessageModelIds,
-      workspaceId: owner.id,
-    },
-  });
-  const agentMessages = await AgentMessageModel.findAll({
-    where: {
-      id: agentMessageModelIds,
-      workspaceId: owner.id,
-    },
-  });
-  const contentFragments = await ContentFragmentModel.findAll({
-    where: {
-      id: contentFragmentModelIds,
-      workspaceId: owner.id,
-    },
-  });
-
-  // Fetch step contents for agent messages.
-  const agentStepContents = await AgentStepContentModel.findAll({
-    where: {
-      agentMessageId: agentMessageModelIds,
-      workspaceId: owner.id,
-    },
-  });
+  const [userMessages, agentMessages, contentFragments, agentStepContents] =
+    await Promise.all([
+      UserMessageModel.findAll({
+        where: { id: userMessageModelIds, workspaceId: owner.id },
+      }),
+      AgentMessageModel.findAll({
+        where: { id: agentMessageModelIds, workspaceId: owner.id },
+      }),
+      ContentFragmentModel.findAll({
+        where: { id: contentFragmentModelIds, workspaceId: owner.id },
+      }),
+      AgentStepContentModel.findAll({
+        where: { agentMessageId: agentMessageModelIds, workspaceId: owner.id },
+      }),
+    ]);
 
   const userMessageMap = new Map(userMessages.map((um) => [um.id, um]));
   const agentMessageMap = new Map(agentMessages.map((am) => [am.id, am]));
