@@ -158,7 +158,7 @@ export async function gongSyncTranscriptsActivity({
   const processedRecords = transcripts.length;
 
   if (totalRecords > 0) {
-    const progressMessage = `${processedRecords + currentRecordCount + 1}/${totalRecords} transcripts`;
+    const progressMessage = `${processedRecords + currentRecordCount}/${totalRecords} transcripts`;
     await reportInitialSyncProgress(connectorId, progressMessage);
   }
 
