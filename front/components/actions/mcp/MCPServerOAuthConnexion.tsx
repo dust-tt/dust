@@ -13,12 +13,11 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useController, useFormContext } from "react-hook-form";
+import { useEffect, useRef, useState } from "react";
+import { useFormContext } from "react-hook-form";
 
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import config from "@app/lib/api/config";
 import type {
   MCPOAuthUseCase,
   OAuthCredentialInputs,
@@ -57,31 +56,20 @@ export function MCPServerOAuthConnexion({
   authorization,
   documentationUrl,
 }: MCPServerOAuthConnexionProps) {
-  const { setError, clearErrors } = useFormContext<MCPServerOAuthFormValues>();
+  const { setError, clearErrors, setValue, watch } =
+    useFormContext<MCPServerOAuthFormValues>();
 
-  // Use useController for form fields to get field.onChange for proper lifecycle integration.
-  // field.onChange triggers validation and updates dirty/touched states correctly.
-  const { field: useCaseField } = useController<
-    MCPServerOAuthFormValues,
-    "useCase"
-  >({
-    name: "useCase",
-  });
-  const useCase = useCaseField.value;
-
-  const { field: credentialsField } = useController<
-    MCPServerOAuthFormValues,
-    "authCredentials"
-  >({
-    name: "authCredentials",
-  });
-  const authCredentials = credentialsField.value;
+  const useCase = watch("useCase");
+  const authCredentials = watch("authCredentials");
 
   // Dynamically fetched credential inputs based on provider and use case.
   const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
 
-  // Effect 1: Initialize use case and fetch credential inputs.
-  // Handles both auto-selecting a default use case and fetching credentials when it changes.
+  // Track the last initialized provider+useCase to avoid re-initializing on every render.
+  const lastInitializedRef = useRef<string | null>(null);
+
+  // Initialize use case and fetch credential inputs.
+  // setValue is stable across renders, so no ref tricks needed.
   useEffect(() => {
     let effectiveUseCase = useCase;
 
@@ -93,13 +81,20 @@ export function MCPServerOAuthConnexion({
         effectiveUseCase = authorization.supported_use_cases[0];
       }
       if (effectiveUseCase) {
-        useCaseField.onChange(effectiveUseCase);
+        setValue("useCase", effectiveUseCase);
       }
     }
 
     if (!effectiveUseCase) {
       return;
     }
+
+    // Skip if we've already initialized for this provider+useCase combination.
+    const initKey = `${authorization.provider}:${effectiveUseCase}`;
+    if (lastInitializedRef.current === initKey) {
+      return;
+    }
+    lastInitializedRef.current = initKey;
 
     // Get credential inputs for the selected provider/use case.
     const credentialInputs = getProviderRequiredOAuthCredentialInputs({
@@ -116,9 +111,9 @@ export function MCPServerOAuthConnexion({
           nextCredentials[key] = inputData.value ?? "";
         }
       }
-      credentialsField.onChange(nextCredentials);
+      setValue("authCredentials", nextCredentials);
     }
-  }, [authorization, useCaseField, credentialsField, useCase]);
+  }, [authorization, useCase, setValue]);
 
   // Validate credentials based on dynamic requirements.
   // Runs when credentials or inputs change, uses setError/clearErrors.
@@ -169,11 +164,11 @@ export function MCPServerOAuthConnexion({
     if (!isSupportedOAuthCredential(key)) {
       return;
     }
-    credentialsField.onChange({ ...(authCredentials ?? {}), [key]: value });
+    setValue("authCredentials", { ...(authCredentials ?? {}), [key]: value });
   };
 
   const handleUseCaseSelect = (selectedUseCase: MCPOAuthUseCase) => {
-    useCaseField.onChange(selectedUseCase);
+    setValue("useCase", selectedUseCase);
   };
 
   const supportsPersonalActions =
@@ -326,7 +321,7 @@ function UseCaseCard({
 function SnowflakeSetupInstructions() {
   const [isOpen, setIsOpen] = useState(false);
 
-  const redirectUri = `${config.getClientFacingUrl()}/oauth/snowflake/finalize`;
+  const redirectUri = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/oauth/snowflake/finalize`;
 
   return (
     <div className="w-full pt-4">
