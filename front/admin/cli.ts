@@ -469,7 +469,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       await launchRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-      await transcriptsConfiguration.setIsActive(true);
+      await transcriptsConfiguration.setStatus("active");
 
       logger.info(
         {
@@ -491,7 +491,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         const configs =
           await LabsTranscriptsConfigurationResource.findByWorkspaceId(ws.id);
         for (const config of configs) {
-          if (config.isActive === true || !!config.dataSourceViewId) {
+          if (config.status === "active" || !!config.dataSourceViewId) {
             activeConfigSIds.push(config.sId);
             if (execute) {
               await stopRetrieveTranscriptsWorkflow(config);

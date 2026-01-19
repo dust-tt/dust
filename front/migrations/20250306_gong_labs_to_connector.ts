@@ -33,7 +33,7 @@ async function getAuthsForWorkspacesWithGong(): Promise<
     await LabsTranscriptsConfigurationResource.model.findAll({
       where: {
         provider: PROVIDER,
-        isActive: true,
+        status: "active",
       },
       include: [
         {
