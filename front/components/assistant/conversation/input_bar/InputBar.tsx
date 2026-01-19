@@ -27,6 +27,7 @@ import type {
   DataSourceViewContentNode,
   Result,
   RichMention,
+  SpaceType,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -45,8 +46,9 @@ interface InputBarProps {
     selectedMCPServerViewIds?: string[],
     selectedSkillIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
-  conversation: ConversationWithoutContentType | null;
   draftKey: string;
+  conversation?: ConversationWithoutContentType;
+  space?: SpaceType;
   stickyMentions?: RichMention[];
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
@@ -63,6 +65,7 @@ export const InputBar = React.memo(function InputBar({
   onSubmit,
   conversation,
   draftKey,
+  space,
   stickyMentions,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
@@ -364,7 +367,8 @@ export const InputBar = React.memo(function InputBar({
             disableAutoFocus={disableAutoFocus}
             allAgents={activeAgents}
             owner={owner}
-            conversationId={conversation?.sId}
+            conversation={conversation}
+            space={space}
             selectedAgent={selectedAgent}
             onEnterKeyDown={handleSubmit}
             stickyMentions={stickyMentions}

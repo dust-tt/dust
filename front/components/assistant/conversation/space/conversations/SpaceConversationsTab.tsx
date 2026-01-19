@@ -21,6 +21,7 @@ import type {
   ConversationType,
   Result,
   RichMention,
+  SpaceType,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -38,9 +39,7 @@ interface SpaceConversationsTabProps {
   user: UserType;
   conversations: ConversationType[];
   isConversationsLoading: boolean;
-  spaceInfo: {
-    name: string;
-  };
+  spaceInfo: SpaceType;
   onSubmit: (
     input: string,
     mentions: RichMention[],
@@ -140,8 +139,8 @@ export function SpaceConversationsTab({
               owner={owner}
               user={user}
               onSubmit={onSubmit}
-              conversation={null}
-              draftKey={`space-${spaceInfo.name}-new-conversation`}
+              draftKey={`space-${spaceInfo.sId}-new-conversation`}
+              space={spaceInfo}
               disableAutoFocus={false}
             />
           </div>

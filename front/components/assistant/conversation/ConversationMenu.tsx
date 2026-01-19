@@ -114,7 +114,7 @@ export function ConversationMenu({
   triggerPosition,
 }: {
   activeConversationId: string | null;
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   owner: WorkspaceType;
   trigger: ReactElement;
   isConversationDisplayed: boolean;

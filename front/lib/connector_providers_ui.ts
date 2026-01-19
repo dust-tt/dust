@@ -3,6 +3,7 @@ import {
   ConfluenceLogo,
   DiscordLogo,
   DriveLogo,
+  DustLogoSquare,
   FolderIcon,
   GithubLogo,
   GithubWhiteLogo,
@@ -435,8 +436,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     mismatchError: `You cannot change the Dust project. Please add a new Dust project connection instead.`,
     guideLink: null,
     getLogoComponent: () => {
-      //TODO(project): replace with Dust project logo
-      return GongLogo;
+      return DustLogoSquare;
     },
     isNested: false,
     permissions: {

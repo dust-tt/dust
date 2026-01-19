@@ -69,9 +69,9 @@ export type VirtuosoMessageListContext = {
     mentions: RichMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
-  conversation: ConversationWithoutContentType | null;
   draftKey: string;
   enableExtendedActions: boolean;
+  conversation?: ConversationWithoutContentType;
   agentBuilderContext?: {
     draftAgent?: LightAgentConfigurationType;
     isSavingDraftAgent: boolean;

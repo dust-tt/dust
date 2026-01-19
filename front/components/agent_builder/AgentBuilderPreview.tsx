@@ -66,7 +66,7 @@ function LoadingState({ message }: LoadingStateProps) {
 }
 
 interface PreviewContentProps {
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   user: UserType | null;
   owner: WorkspaceType;
   currentPanel: ConversationSidePanelType;
@@ -136,7 +136,6 @@ function PreviewContent({
               stickyMentions={
                 draftAgent ? [toRichAgentMentionType(draftAgent)] : []
               }
-              conversation={null}
               draftKey={`agent-${draftAgent?.name}-builder-preview`}
               actions={["attachment"]}
               disableAutoFocus

@@ -61,7 +61,7 @@ export function useBlockedActionsContext() {
 
 interface BlockedActionsProviderProps {
   owner: LightWorkspaceType;
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   children: ReactNode;
 }
 

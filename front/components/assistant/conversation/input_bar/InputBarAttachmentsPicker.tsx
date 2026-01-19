@@ -42,6 +42,7 @@ import type {
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type {
+  ConversationWithoutContentType,
   DataSourceType,
   DataSourceViewContentNode,
   LightWorkspaceType,
@@ -72,7 +73,8 @@ interface InputBarAttachmentsPickerProps {
   isLoading?: boolean;
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
-  conversationId?: string | null;
+  conversation?: ConversationWithoutContentType;
+  space?: SpaceType;
 }
 
 const PAGE_SIZE = 25;
@@ -196,7 +198,8 @@ export const InputBarAttachmentsPicker = ({
   isLoading = false,
   disabled = false,
   buttonSize = "xs",
-  conversationId,
+  conversation,
+  space,
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
@@ -218,7 +221,17 @@ export const InputBarAttachmentsPicker = ({
     disabled: !isOpen,
   });
 
-  const spaceIds = useMemo(() => spaces.map((s) => s.sId), [spaces]);
+  const spaceIds = useMemo(() => {
+    // We are having a conversation within a specific space, so we only allow datasources/tools from that space and the global space.
+    // This is a project v1 limitation.
+    if (space) {
+      return spaces
+        .filter((s) => s.sId === space.sId || s.kind === "global")
+        .map((s) => s.sId);
+    } else {
+      return spaces.map((s) => s.sId);
+    }
+  }, [spaces, space]);
 
   const {
     knowledgeResults: searchResultNodes,
@@ -356,7 +369,7 @@ export const InputBarAttachmentsPicker = ({
   } = useToolFileUpload({
     owner,
     fileUploaderService,
-    conversationId: conversationId ?? undefined,
+    conversationId: conversation?.sId,
   });
 
   const showLoader =
