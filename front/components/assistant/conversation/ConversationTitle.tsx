@@ -41,14 +41,14 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   return (
     <AppLayoutTitle>
       <div
-        className="grid h-full min-w-0 max-w-full grid-cols-[auto,1fr,auto] items-center gap-4"
+        className="grid h-full min-w-0 max-w-full grid-cols-[auto,1fr,auto] items-center gap-3"
         onContextMenu={handleRightClick}
       >
         <div className="flex min-w-0">
           {conversation?.spaceId && (
             <IconButton
-              size="sm"
-              variant="ghost"
+              size="xmini"
+              variant="outline"
               icon={ArrowLeftIcon}
               aria-label={`Back to ${spaceInfo?.name}`}
               onClick={() => {
@@ -64,7 +64,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           )}
         </div>
         <div className="flex min-w-0 flex-row items-center gap-4 text-primary dark:text-primary-night">
-          <div className="dd-privacy-mask min-w-0 overflow-hidden truncate text-sm font-normal">
+          <div className="dd-privacy-mask min-w-0 overflow-hidden truncate text-base font-normal text-muted-foreground">
             {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
             {conversation?.title || ""}
           </div>

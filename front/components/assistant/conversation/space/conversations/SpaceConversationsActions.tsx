@@ -1,0 +1,55 @@
+import {
+  BookOpenIcon,
+  Card,
+  CardGrid,
+  ContactsUserIcon,
+  Icon,
+} from "@dust-tt/sparkle";
+
+export function SpaceConversationsActions() {
+  const suggestions = [
+    {
+      id: "add-context",
+      label: "Add context",
+      icon: BookOpenIcon,
+      onClick: () => {
+        window.location.hash = "context";
+      },
+    },
+    {
+      id: "invite-members",
+      label: "Invite members",
+      icon: ContactsUserIcon,
+      onClick: () => {
+        // todo(projects) open side panel to invite members
+        window.location.hash = "settings";
+      },
+    },
+  ];
+
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="heading-lg text-foreground dark:text-foreground-night">
+        Suggested actions
+      </h3>
+      <CardGrid>
+        {suggestions.map((suggestion) => (
+          <Card
+            key={suggestion.id}
+            variant="primary"
+            size="md"
+            onClick={suggestion.onClick}
+            className="cursor-pointer"
+          >
+            <div className="flex w-full flex-col gap-2 text-sm">
+              <div className="flex w-full items-center gap-2 font-semibold text-foreground">
+                <Icon visual={suggestion.icon} size="sm" />
+                <div className="w-full">{suggestion.label}</div>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </CardGrid>
+    </div>
+  );
+}
