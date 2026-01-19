@@ -6,7 +6,7 @@ import { startForwarder } from "../lib/forward";
 import { FORWARDER_PORTS } from "../lib/forwarderConfig";
 import { createTemporalNamespaces, runAllDbInits, runSeedScript } from "../lib/init";
 import { logger } from "../lib/logger";
-import { cleanupServicePorts } from "../lib/ports";
+import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
 import { isServiceRunning, readPid } from "../lib/process";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok } from "../lib/result";
@@ -109,14 +109,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   });
 
   if (blockedPorts.length > 0) {
-    const details = blockedPorts
-      .map(({ port, processes }) => {
-        const procInfo = processes
-          .map((proc) => `${proc.pid}${proc.command ? ` (${proc.command})` : ""}`)
-          .join(", ");
-        return `${port}: ${procInfo}`;
-      })
-      .join("; ");
+    const details = formatBlockedPorts(blockedPorts);
     return Err(
       new CommandError(
         `Ports in use by other processes: ${details}. Stop them or rerun with --force-ports to terminate.`
