@@ -78,7 +78,7 @@ interface AddTraceToDatasetParams {
 async function fetchTraceByDustTraceId(
   client: LangfuseClient,
   dustTraceId: string
-): Promise<{ id: string; input: unknown; output: unknown } | null> {
+): Promise<Result<{ id: string; input: unknown; output: unknown } | null, Error>> {
   // Use Langfuse's advanced filtering to find trace by metadata.dustTraceId
   const filter = JSON.stringify([
     {
@@ -90,21 +90,26 @@ async function fetchTraceByDustTraceId(
     },
   ]);
 
-  const traces = await client.api.trace.list({
-    filter,
-    limit: 1,
-  });
+  let traces: Awaited<ReturnType<typeof client.api.trace.list>>;
+  try {
+    traces = await client.api.trace.list({
+      filter,
+      limit: 1,
+    });
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
 
   if (!traces.data || traces.data.length === 0) {
-    return null;
+    return new Ok(null);
   }
 
   const trace = traces.data[0];
-  return {
+  return new Ok({
     id: trace.id,
     input: trace.input,
     output: trace.output,
-  };
+  });
 }
 
 /**
@@ -144,7 +149,21 @@ export async function addTraceToLangfuseDataset(
     }
 
     // Fetch the trace from Langfuse by searching for dustTraceId in metadata
-    const trace = await fetchTraceByDustTraceId(client, dustTraceId);
+    const traceResult = await fetchTraceByDustTraceId(client, dustTraceId);
+    if (traceResult.isErr()) {
+      logger.error(
+        {
+          datasetName,
+          feedbackId,
+          dustTraceId,
+          workspaceId,
+          error: traceResult.error,
+        },
+        "[Langfuse] Failed to fetch trace by dustTraceId"
+      );
+      return false;
+    }
+    const trace = traceResult.value;
 
     if (!trace) {
       logger.warn(
