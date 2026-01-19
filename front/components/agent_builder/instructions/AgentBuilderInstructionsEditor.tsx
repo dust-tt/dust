@@ -26,6 +26,7 @@ import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/in
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
+import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import type { LightAgentConfigurationType } from "@app/types";
 
@@ -164,6 +165,12 @@ export function AgentBuilderInstructionsEditor({
         },
       }),
       EmojiExtension,
+      LinkExtension.configure({
+        HTMLAttributes: {
+          class: "text-blue-600 hover:underline hover:text-blue-800",
+        },
+        autolink: false,
+      }),
     ];
 
     extensions.push(
