@@ -13,12 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, {
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
