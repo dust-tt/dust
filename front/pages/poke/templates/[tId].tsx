@@ -1,34 +1,34 @@
-import { useRouter } from "next/router";
+import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import { TemplateDetailPage } from "@app/components/poke/pages/TemplateDetailPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { isString } from "@app/types";
 
-export const getServerSideProps = withSuperUserAuthRequirements<object>(
-  async () => {
+export const getServerSideProps = withSuperUserAuthRequirements<{
+  templateId: string;
+}>(async (context) => {
+  const { tId } = context.params ?? {};
+  if (!isString(tId)) {
     return {
-      props: {},
+      notFound: true,
     };
   }
-);
 
-export default function TemplatesPage() {
-  const router = useRouter();
-  const templateId =
-    typeof router.query.tId === "string" ? router.query.tId : null;
+  return {
+    props: {
+      templateId: tId,
+    },
+  };
+});
 
-  if (!templateId) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-primary-50 dark:bg-primary-50-night">
-        <div className="text-primary-900">Loading...</div>
-      </div>
-    );
-  }
-
+export default function TemplatesPageWrapper({
+  templateId,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return <TemplateDetailPage templateId={templateId} />;
 }
 
-TemplatesPage.getLayout = (page: ReactElement) => {
+TemplatesPageWrapper.getLayout = (page: ReactElement) => {
   return <PokeLayout title="Template">{page}</PokeLayout>;
 };

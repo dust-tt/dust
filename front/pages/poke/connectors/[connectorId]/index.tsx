@@ -1,4 +1,5 @@
 import { Spinner } from "@dust-tt/sparkle";
+import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useEffect } from "react";
@@ -7,24 +8,32 @@ import useSWR from "swr";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { fetcher } from "@app/lib/swr/swr";
+import { isString } from "@app/types";
 
-export const getServerSideProps = withSuperUserAuthRequirements<object>(
-  async () => {
+export const getServerSideProps = withSuperUserAuthRequirements<{
+  connectorId: string;
+}>(async (context) => {
+  const { connectorId } = context.params ?? {};
+  if (!isString(connectorId)) {
     return {
-      props: {},
+      notFound: true,
     };
   }
-);
 
-export default function ConnectorRedirect() {
+  return {
+    props: {
+      connectorId,
+    },
+  };
+});
+
+export default function ConnectorRedirectWrapper({
+  connectorId,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const connectorId =
-    typeof router.query.connectorId === "string"
-      ? router.query.connectorId
-      : null;
 
   const { data, error } = useSWR<{ redirectUrl: string }>(
-    connectorId ? `/api/poke/connectors/${connectorId}/redirect` : null,
+    `/api/poke/connectors/${connectorId}/redirect`,
     fetcher
   );
 
@@ -49,6 +58,6 @@ export default function ConnectorRedirect() {
   );
 }
 
-ConnectorRedirect.getLayout = (page: ReactElement) => {
+ConnectorRedirectWrapper.getLayout = (page: ReactElement) => {
   return <PokeLayout title="Connector Redirect">{page}</PokeLayout>;
 };
