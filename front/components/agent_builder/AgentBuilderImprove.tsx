@@ -1,4 +1,4 @@
-import { SparklesIcon,Spinner } from "@dust-tt/sparkle";
+import { SparklesIcon, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";

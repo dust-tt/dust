@@ -193,7 +193,14 @@ async function createServer(
         toolNameForMonitoring: "agent_copilot_update_agent",
         agentLoopContext,
       },
-      async ({ name, description, instructions, model, skill_ids, tool_ids }) => {
+      async ({
+        name,
+        description,
+        instructions,
+        model,
+        skill_ids,
+        tool_ids,
+      }) => {
         const agentId = getTargetAgentId(agentLoopContext);
         if (!agentId) {
           return new Err(
