@@ -50,7 +50,9 @@ export class AnthropicLLM extends LLM {
     forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
-      const messages = conversation.messages.map(toMessage);
+      const messages = conversation.messages.map((msg, index, array) =>
+        toMessage(msg, { isLast: index === array.length - 1 })
+      );
 
       const events = this.client.beta.messages.stream({
         model: this.modelId,
