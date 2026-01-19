@@ -1036,8 +1036,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     {
       users,
-      permissionsToWrite,
-    }: { users: UserType[]; permissionsToWrite?: CombinedResourcePermissions },
+      requestedPermissions,
+    }: {
+      users: UserType[];
+      requestedPermissions?: CombinedResourcePermissions;
+    },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1051,7 +1054,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth, permissionsToWrite)) {
+    if (!this.canWrite(auth, requestedPermissions)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1164,8 +1167,8 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     {
       user,
-      permissionsToWrite,
-    }: { user: UserType; permissionsToWrite?: CombinedResourcePermissions },
+      requestedPermissions,
+    }: { user: UserType; requestedPermissions?: CombinedResourcePermissions },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1181,7 +1184,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   > {
     return this.addMembers(
       auth,
-      { users: [user], permissionsToWrite },
+      { users: [user], requestedPermissions },
       { transaction }
     );
   }
@@ -1190,8 +1193,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     {
       users,
-      permissionsToWrite,
-    }: { users: UserType[]; permissionsToWrite?: CombinedResourcePermissions },
+      requestedPermissions,
+    }: {
+      users: UserType[];
+      requestedPermissions?: CombinedResourcePermissions;
+    },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1204,7 +1210,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth, permissionsToWrite)) {
+    if (!this.canWrite(auth, requestedPermissions)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1300,8 +1306,8 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     {
       user,
-      permissionsToWrite,
-    }: { user: UserType; permissionsToWrite?: CombinedResourcePermissions },
+      requestedPermissions,
+    }: { user: UserType; requestedPermissions?: CombinedResourcePermissions },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1316,7 +1322,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   > {
     return this.removeMembers(
       auth,
-      { users: [user], permissionsToWrite },
+      { users: [user], requestedPermissions },
       { transaction }
     );
   }
@@ -1325,8 +1331,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     {
       users,
-      permissionsToWrite,
-    }: { users: UserType[]; permissionsToWrite?: CombinedResourcePermissions },
+      requestedPermissions,
+    }: {
+      users: UserType[];
+      requestedPermissions?: CombinedResourcePermissions;
+    },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
@@ -1341,7 +1350,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth, permissionsToWrite)) {
+    if (!this.canWrite(auth, requestedPermissions)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1361,7 +1370,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (usersToAdd.length > 0) {
       const addResult = await this.addMembers(
         auth,
-        { users: usersToAdd, permissionsToWrite },
+        { users: usersToAdd, requestedPermissions },
         {
           transaction,
         }
@@ -1378,7 +1387,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (usersToRemove.length > 0) {
       const removeResult = await this.removeMembers(
         auth,
-        { users: usersToRemove, permissionsToWrite },
+        { users: usersToRemove, requestedPermissions },
         {
           transaction,
         }
@@ -1541,10 +1550,12 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   canWrite(
     auth: Authenticator,
-    permissionsToWrite?: CombinedResourcePermissions
+    requestedPermissions?: CombinedResourcePermissions
   ): boolean {
     return auth.canWrite(
-      permissionsToWrite ? [permissionsToWrite] : this.requestedPermissions()
+      requestedPermissions
+        ? [requestedPermissions]
+        : this.requestedPermissions()
     );
   }
 
