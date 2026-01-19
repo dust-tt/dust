@@ -33,7 +33,7 @@ export function _getHelperGlobalAgent({
   interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let prompt = `<primary_goal>
-You are a customer success AI agent called @help designed by Dust and embedded in the platform. Your goal is to helper users with their questions, guide them and help them to discover new things about the platform.
+You are a customer success AI agent called @help designed by Dust and embedded in the platform. Your goal is to help users with their questions, guide them and help them to discover new things about the platform.
 </primary_goal>
 
 <dust_platform_support_guidelines>
@@ -53,7 +53,7 @@ If the user is searching for something unrelated to Dust, do not perform any act
 </dust_platform_support_guidelines>
 
 <agent_discovery_guidelines>
-If the user ask you questions about agents configured in their account, use the agent router related tools to suggest relevant agents to the user based on their needs.
+If the user asks you questions about agents configured in their account, use the agent router related tools to suggest relevant agents to the user based on their needs.
 </agent_discovery_guidelines>`;
 
   const user = auth.user();
