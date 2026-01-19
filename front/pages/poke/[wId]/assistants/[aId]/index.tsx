@@ -24,14 +24,14 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { decodeSqids } from "@app/lib/utils";
 import { usePokeAgentDetails } from "@app/poke/swr/agent_details";
 import type { WorkspaceType } from "@app/types";
-import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { isString, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
   params: { wId: string; aId: string };
 }>(async (context, auth) => {
-  const aId = context.params?.aId;
-  if (!aId || typeof aId !== "string") {
+  const { wId, aId } = context.params ?? {};
+  if (!isString(wId) || !isString(aId)) {
     return {
       notFound: true,
     };
@@ -40,7 +40,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner: auth.getNonNullableWorkspace(),
-      params: context.params as { wId: string; aId: string },
+      params: { wId, aId },
     },
   };
 });

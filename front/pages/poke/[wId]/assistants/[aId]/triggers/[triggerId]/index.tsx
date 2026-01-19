@@ -10,6 +10,7 @@ import { ViewTriggerTable } from "@app/components/poke/triggers/view";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeTriggerDetails } from "@app/poke/swr/trigger_details";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: LightWorkspaceType;
@@ -17,9 +18,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const { aId, triggerId } = context.params || {};
-  if (typeof aId !== "string" || typeof triggerId !== "string") {
+  const { wId, aId, triggerId } = context.params ?? {};
+  if (!isString(wId) || !isString(aId) || !isString(triggerId)) {
     return {
       notFound: true,
     };
@@ -28,7 +28,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      params: context.params as { wId: string; aId: string; triggerId: string },
+      params: { wId, aId, triggerId },
     },
   };
 });

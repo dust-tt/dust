@@ -25,6 +25,7 @@ import type {
   LightWorkspaceType,
   SpecificationType,
 } from "@app/types";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: LightWorkspaceType;
@@ -32,9 +33,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const { appId, spaceId } = context.params || {};
-  if (typeof spaceId !== "string" || typeof appId !== "string") {
+  const { wId, spaceId, appId } = context.params ?? {};
+  if (!isString(wId) || !isString(spaceId) || !isString(appId)) {
     return {
       notFound: true,
     };
@@ -43,7 +43,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      params: context.params as { wId: string; spaceId: string; appId: string },
+      params: { wId, spaceId, appId },
     },
   };
 });

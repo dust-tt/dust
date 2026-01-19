@@ -9,6 +9,7 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeTables } from "@app/poke/swr";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
 import type { DataSourceType, LightWorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: LightWorkspaceType;
@@ -16,9 +17,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const { dsId } = context.params || {};
-  if (typeof dsId !== "string") {
+  const { wId, dsId } = context.params ?? {};
+  if (!isString(wId) || !isString(dsId)) {
     return {
       notFound: true,
     };
@@ -27,7 +27,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      params: context.params as { wId: string; dsId: string },
+      params: { wId, dsId },
     },
   };
 });

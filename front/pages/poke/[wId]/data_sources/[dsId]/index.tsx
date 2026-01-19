@@ -44,7 +44,7 @@ import type {
   WorkspaceType,
   ZendeskFetchTicketResponseType,
 } from "@app/types";
-import { normalizeError } from "@app/types";
+import { isString, normalizeError } from "@app/types";
 
 const maxNotionParentChainDepth = 20;
 
@@ -54,8 +54,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  const { dsId } = context.params ?? {};
-  if (typeof dsId !== "string") {
+  const { wId, dsId } = context.params ?? {};
+  if (!isString(wId) || !isString(dsId)) {
     return {
       notFound: true,
     };
@@ -64,7 +64,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      params: context.params as { wId: string; dsId: string },
+      params: { wId, dsId },
     },
   };
 });

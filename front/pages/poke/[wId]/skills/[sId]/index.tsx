@@ -16,8 +16,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
   params: { wId: string; sId: string };
 }>(async (context, auth) => {
-  const sId = context.params?.sId;
-  if (!isString(sId)) {
+  const { wId, sId } = context.params ?? {};
+  if (!isString(wId) || !isString(sId)) {
     return {
       notFound: true,
     };
@@ -26,7 +26,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner: auth.getNonNullableWorkspace(),
-      params: context.params as { wId: string; sId: string },
+      params: { wId, sId },
     },
   };
 });

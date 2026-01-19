@@ -11,6 +11,7 @@ import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeSpaceDetails } from "@app/poke/swr/space_details";
 import type { LightWorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: LightWorkspaceType;
@@ -18,9 +19,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const { spaceId } = context.params || {};
-  if (typeof spaceId !== "string") {
+  const { wId, spaceId } = context.params ?? {};
+  if (!isString(wId) || !isString(spaceId)) {
     return {
       notFound: true,
     };
@@ -29,7 +29,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      params: context.params as { wId: string; spaceId: string },
+      params: { wId, spaceId },
     },
   };
 });

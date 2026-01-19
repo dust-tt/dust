@@ -9,6 +9,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeMCPServerViewDetails } from "@app/poke/swr/mcp_server_view_details";
 import type { LightWorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: LightWorkspaceType;
@@ -16,9 +17,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const { svId } = context.params || {};
-  if (typeof svId !== "string") {
+  const { wId, spaceId, svId } = context.params ?? {};
+  if (!isString(wId) || !isString(spaceId) || !isString(svId)) {
     return {
       notFound: true,
     };
@@ -27,7 +27,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      params: context.params as { wId: string; spaceId: string; svId: string },
+      params: { wId, spaceId, svId },
     },
   };
 });

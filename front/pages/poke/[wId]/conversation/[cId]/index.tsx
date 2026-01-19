@@ -36,7 +36,7 @@ import type {
   PokeAgentMessageType,
   UserMessageType,
 } from "@app/types";
-import { assertNever, isFileContentFragment } from "@app/types";
+import { assertNever, isFileContentFragment, isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: LightWorkspaceType;
@@ -44,8 +44,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  const cId = context.params?.cId;
-  if (!cId || typeof cId !== "string") {
+  const { wId, cId } = context.params ?? {};
+  if (!isString(wId) || !isString(cId)) {
     return {
       notFound: true,
     };
@@ -54,7 +54,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      params: context.params as { wId: string; cId: string },
+      params: { wId, cId },
     },
   };
 });

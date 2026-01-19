@@ -24,8 +24,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  const runId = context.params?.runId;
-  if (!runId || !isString(runId) || !isLLMTraceId(runId)) {
+  const { wId, runId } = context.params ?? {};
+  if (!isString(wId) || !isString(runId) || !isLLMTraceId(runId)) {
     return {
       notFound: true,
     };
@@ -34,7 +34,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      params: context.params as { wId: string; runId: string },
+      params: { wId, runId },
     },
   };
 });

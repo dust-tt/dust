@@ -8,6 +8,7 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeGroupDetails } from "@app/poke/swr/group_details";
 import type { LightWorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: LightWorkspaceType;
@@ -15,9 +16,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const { groupId } = context.params || {};
-  if (typeof groupId !== "string") {
+  const { wId, groupId } = context.params ?? {};
+  if (!isString(wId) || !isString(groupId)) {
     return {
       notFound: true,
     };
@@ -26,7 +26,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      params: context.params as { wId: string; groupId: string },
+      params: { wId, groupId },
     },
   };
 });

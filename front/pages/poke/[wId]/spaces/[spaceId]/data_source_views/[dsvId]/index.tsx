@@ -11,7 +11,7 @@ import { usePokeDataSourceViewDetails } from "@app/poke/swr/data_source_view_det
 import type { DataSourceViewContentNodesProps } from "@app/poke/swr/data_source_views";
 import { usePokeDataSourceViewContentNodes } from "@app/poke/swr/data_source_views";
 import type { LightWorkspaceType } from "@app/types";
-import { defaultSelectionConfiguration } from "@app/types";
+import { defaultSelectionConfiguration, isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: LightWorkspaceType;
@@ -19,9 +19,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const { dsvId } = context.params || {};
-  if (typeof dsvId !== "string") {
+  const { wId, spaceId, dsvId } = context.params ?? {};
+  if (!isString(wId) || !isString(spaceId) || !isString(dsvId)) {
     return {
       notFound: true,
     };
@@ -30,7 +29,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      params: context.params as { wId: string; spaceId: string; dsvId: string },
+      params: { wId, spaceId, dsvId },
     },
   };
 });
