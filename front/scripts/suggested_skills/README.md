@@ -1,52 +1,77 @@
-# Generate skills suggestion
+# Generate Skills Suggestion
 
-This script is used to generate skills suggestions based on the most used agents.
-It must be run step-by-step to get the best possible skills.
+This script pipeline generates skill suggestions based on the most used agents in a workspace.
 
-## Step 0: Get agents information
+## Prerequisites
 
-First, extract agent data from the workspace:
+- Download `4_examples.json` from [Notion](https://www.notion.so/dust-tt/Suggested-skills-2e628599d9418051bd9aca4a73321733?source=copy_link#2e828599d94180d1825cd7b5296fa540) and place it in this directory
 
-```bash
-npx tsx scripts/suggested_skills/0_get_agents.ts --workspaceName <workspaceName>
-```
+## Usage
 
-Optionally, get internal tools information:
+All scripts use `--workspaceSId` as the main argument (the workspace's string ID, e.g., `0Kxxxx`).
 
-```bash
-npx tsx scripts/suggested_skills/0_bis_get_internal_tools.ts --workspaceName <workspaceName>
-```
-
-## Step 1: Generate skills for each agent
-
-Generate skill suggestions based on each agent's capabilities:
+### Step 1: Extract agents from workspace
 
 ```bash
-npx tsx scripts/suggested_skills/1_get_suggested_skills.ts --workspaceName <workspaceName>
+npx tsx scripts/suggested_skills/1_get_agents.ts --workspaceSId <workspaceSId>
 ```
 
-## Step 2: Filter top skills
+This fetches active visible agents with their tools and datasources, sorted by usage in the last 30 days.
 
-Extract the top skills based on confidence scores:
+Options:
+- `--limit <n>` - Maximum number of agents to fetch (default: 60)
+
+Output: `<workspaceSId>/agents.json`
+
+### Step 2: Generate skill suggestions
 
 ```bash
-npx tsx scripts/suggested_skills/2_extract_top.ts --workspaceName <workspaceName>
+npx tsx scripts/suggested_skills/2_generate_skills.ts --workspaceSId <workspaceSId>
 ```
 
-## Step 3: Format JSON to readable document
+Uses Claude to analyze each agent and propose 0-2 skills based on their capabilities.
 
-Format the top skills into a human-readable text document:
+Output: `<workspaceSId>/suggested_skills.json`
+
+### Step 3: Extract and format top skills
 
 ```bash
-npx tsx scripts/suggested_skills/3_format_top.ts --workspaceName <workspaceName>
+npx tsx scripts/suggested_skills/3_extract_and_format.ts --workspaceSId <workspaceSId>
 ```
 
-## Step 4: Grade the best skills and extract the top 3
+Filters and extracts the top skills, outputting both JSON and human-readable text files.
 
-Download the `4_examples.json` file from https://www.notion.so/dust-tt/Suggested-skills-2e628599d9418051bd9aca4a73321733?source=copy_link#2e828599d94180d1825cd7b5296fa540
+Options:
+- `--topN <n>` - Number of top skills to extract (default: 10)
+- `--withDatasources` - Include skills that require datasources (default: false)
 
-Place it in the `scripts/suggested_skills/` directory, then run:
+Output:
+- `<workspaceSId>/top_skills.json`
+- `<workspaceSId>/formatted_skills/*.txt`
+
+### Step 4: Grade skills and select the best
 
 ```bash
-npx tsx scripts/suggested_skills/4_grade_skills.ts --input <path_to_skills_json> [--output <output_path>]
+npx tsx scripts/suggested_skills/4_grade_skills.ts --workspaceSId <workspaceSId>
 ```
+
+Uses Google Gemini to grade each skill and select the top N.
+
+Options:
+- `--topN <n>` - Number of top skills to select (default: 3)
+
+Output:
+- `<workspaceSId>/final_skills.json`
+- `<workspaceSId>/grading_report.json`
+
+## Example workflow
+
+```bash
+# Run all steps for workspace 0Kxxx
+npx tsx scripts/suggested_skills/1_get_agents.ts --workspaceSId 0Kxxx
+npx tsx scripts/suggested_skills/2_generate_skills.ts --workspaceSId 0Kxxx
+npx tsx scripts/suggested_skills/3_extract_and_format.ts --workspaceSId 0Kxxx
+npx tsx scripts/suggested_skills/4_grade_skills.ts --workspaceSId 0Kxxx
+```
+
+The final output in `<workspaceSId>/final_skills.json` can be used with `create_hard_coded_suggested_skills.ts` to create the skills in the workspace.

@@ -79,7 +79,7 @@ Intended for agent so they can chose to use the skill based on a conversation tu
 
 - Should explain what the skill does, how is it useful and in what situation it should be used.
 - Typically consists in a WHAT block (up to 2 sentences) and a WHEN block (up to 2 sentences) separated by a line break
-- Should be concise but specific enough so the agent knows in which situation it can enable it and expand the skill’s instructions
+- Should be concise but specific enough so the agent knows in which situation it can enable it and expand the skill's instructions
 
 **Instructions** (HOW)
 
@@ -114,11 +114,11 @@ Some examples of actions accomplished by a skills:
 ### What does NOT represent a skill:
 
 - Broad instructions with conditions based on datasource or input
-- bad example: “If the input looks like a CRM inquiry, fetch information in Salesforce, otherwise look in Google”
+- bad example: "If the input looks like a CRM inquiry, fetch information in Salesforce, otherwise look in Google"
 - Instructions whose output is intended for humans
-- bad example: “ScoreLead” that classifies lead after a search in internal documents based on the lead email adress. This is intended for humans.
-- good example: “LeadInformationGetter” which can be reused across multiple agents as an intermediary step for different end purposes (e.g. write results in a Notion page, send a marketing email to the lead etc.)
-- Skills should not be used as a prompt library in the more classical sense of the term, e.g. “Analyze the following reports and extract the key insights into a single memo.”, “Help me write a feedback for a candidate”. These examples are not skills because their outputs are more intended for humans than agents. They do not represent an intermediary step of an agent instructions.
+- bad example: "ScoreLead" that classifies lead after a search in internal documents based on the lead email adress. This is intended for humans.
+- good example: "LeadInformationGetter" which can be reused across multiple agents as an intermediary step for different end purposes (e.g. write results in a Notion page, send a marketing email to the lead etc.)
+- Skills should not be used as a prompt library in the more classical sense of the term, e.g. "Analyze the following reports and extract the key insights into a single memo.", "Help me write a feedback for a candidate". These examples are not skills because their outputs are more intended for humans than agents. They do not represent an intermediary step of an agent instructions.
 
 
 You should also attach a confidenceScore (between 0 and 1) to each skill, representing how confident you are that the skill is relevant and useful given the agent's instructions and tools.
@@ -172,47 +172,45 @@ Output your analysis as JSON with the following structure:
       }`;
 
 type AgentTool = {
-  tool_sid?: string;
-  tool_name: string | null;
+  mcp_server_view_id: number;
   tool_type: "internal" | "remote";
+  tool_name: string | null;
   tool_description: string | null;
-  mcp_server_view_id: number | null;
-  remote_mcp_server_id: string | null;
   internal_mcp_server_id: string | null;
-  // For internal tools, add the information from the codebase
+  remote_mcp_server_id: string | null;
   internal_tool_name?: string;
   internal_tool_description?: string;
 };
 
 type Datasource = {
-  tags_in: string[] | null;
-  tags_mode: string | null;
-  parents_in: string[] | null;
-  tags_not_in: string[] | null;
   datasource_id: string;
   datasource_name: string;
-  connector_provider: string;
+  datasource_description: string | null;
+  connector_provider: string | null;
   data_source_view_id: number;
-  datasource_description: string;
+  parents_in: string[] | null;
+  tags_in: string[] | null;
+  tags_not_in: string[] | null;
+  tags_mode: string | null;
 };
 
 type Agent = {
   agent_sid: string;
   agent_name: string;
   description: string;
-  instructions: string;
+  instructions: string | null;
   total_messages: number;
-  first_usage: string;
-  last_usage: string;
+  first_usage: Date | null;
+  last_usage: Date | null;
   tools: AgentTool[];
   datasources: Datasource[];
 };
 
 const argumentSpecs: ArgumentSpecs = {
-  workspaceName: {
+  workspaceSId: {
     type: "string",
     required: true,
-    description: "The workspace name to process agents for",
+    description: "The workspace sId to process agents for",
   },
 };
 
@@ -357,17 +355,17 @@ const OUTPUT_FORMAT = {
   },
 } as const;
 
-// Usage: npx tsx scripts/suggested_skills/1_get_suggested_skills.ts --workspaceName <workspace-name>
-// Example: npx tsx scripts/suggested_skills/1_get_suggested_skills.ts --workspaceName dust
+/**
+ * Generates skill suggestions for agents using the Anthropic API.
+ *
+ * Usage:
+ *   npx tsx scripts/suggested_skills/2_generate_skills.ts --workspaceSId <workspaceSId>
+ */
 makeScript(argumentSpecs, async (args, scriptLogger) => {
-  const workspaceName = args.workspaceName as string;
+  const workspaceSId = args.workspaceSId as string;
 
-  // Read agents from <workspaceName>/agents_with_tools.json
-  const agentsFilePath = join(
-    __dirname,
-    workspaceName,
-    "agents_with_tools.json"
-  );
+  // Read agents from <workspaceSId>/agents.json
+  const agentsFilePath = join(__dirname, workspaceSId, "agents.json");
   const fileContent = readFileSync(agentsFilePath, "utf-8");
   const allAgents = JSON.parse(fileContent) as Agent[];
 
@@ -388,7 +386,7 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
 
   const suggestedSkills = [];
 
-  // Process agents in batches of 20
+  // Process agents in batches
   const BATCH_SIZE = 15;
   const batches = [];
   for (let i = 0; i < allAgents.length; i += BATCH_SIZE) {
@@ -485,7 +483,7 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
               agentSid: agent.agent_sid,
               agentName: agent.agent_name,
               jsonError,
-              responseText: content.text.substring(0, 500), // Log first 500 chars
+              responseText: content.text.substring(0, 500),
             },
             "Failed to parse JSON response"
           );
@@ -527,7 +525,7 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
     );
   }
 
-  // Augment skills with full tool data from agents_with_tools
+  // Augment skills with full tool data from agents
   scriptLogger.info("Augmenting skills with full tool data");
 
   const agentsByAgentSid = new Map(
@@ -550,7 +548,7 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
       agent.tools.map((tool) => [tool.mcp_server_view_id, tool])
     );
 
-    // Augment each requiredTool with full data from agents_with_tools
+    // Augment each requiredTool with full data from agents
     const augmentedRequiredTools = skill.requiredTools.map((skillTool) => {
       const fullToolData = toolsByMcpViewId.get(skillTool.mcp_server_view_id);
 
@@ -566,10 +564,10 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
         return skillTool;
       }
 
-      // Merge the skill tool data with the full tool data from agents_with_tools
+      // Merge the skill tool data with the full tool data from agents
       return {
         ...skillTool,
-        remote_mcp_server_id: fullToolData.remote_mcp_server_id?.toString(),
+        remote_mcp_server_id: fullToolData.remote_mcp_server_id,
         internal_mcp_server_id: fullToolData.internal_mcp_server_id,
         ...(fullToolData.internal_tool_name && {
           internal_tool_name: fullToolData.internal_tool_name,
@@ -587,11 +585,7 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
   });
 
   // Write results to file
-  const resultsFilePath = join(
-    __dirname,
-    workspaceName,
-    "suggested_skills.json"
-  );
+  const resultsFilePath = join(__dirname, workspaceSId, "suggested_skills.json");
   writeFileSync(
     resultsFilePath,
     JSON.stringify(
@@ -605,7 +599,7 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
     {
       processedAgents: allAgents.length,
       totalSkills: suggestedSkills.length,
-      outputFile: `${workspaceName}/suggested_skills.json`,
+      outputFile: resultsFilePath,
     },
     "Completed processing"
   );
