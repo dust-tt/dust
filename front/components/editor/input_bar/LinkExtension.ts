@@ -1,4 +1,3 @@
-import { getAttributes } from "@tiptap/core";
 import Link from "@tiptap/extension-link";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 
@@ -52,19 +51,20 @@ export const LinkExtension = Link.extend({
                 return false;
               }
 
-              const keyPressed = event.ctrlKey || event.metaKey;
-              if (!keyPressed) {
+              // Cmd+click: open link and focus the new tab
+              if (event.ctrlKey || event.metaKey) {
                 event.preventDefault();
-                return false;
+                const href = link.getAttribute("href");
+                if (href) {
+                  const newWindow = window.open(href, "_blank");
+                  newWindow?.focus();
+                }
+                return true;
               }
 
-              const attrs = getAttributes(view.state, "link");
-              if (!attrs.href) {
-                return false;
-              }
-
-              window.open(attrs.href, attrs.target);
-              return true;
+              // Block regular clicks from navigating
+              event.preventDefault();
+              return false;
             },
           },
         },
