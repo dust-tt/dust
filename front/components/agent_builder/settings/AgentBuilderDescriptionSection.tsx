@@ -49,7 +49,7 @@ export function AgentBuilderDescriptionSection({
     const result = await getDescriptionSuggestion({
       owner,
       instructions,
-      name: name || "Assistant",
+      name: name || "Agent",
     });
 
     if (result.isErr()) {
