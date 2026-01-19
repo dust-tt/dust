@@ -482,7 +482,7 @@ export default function AgentBuilder() {
                 onValueChange={setActiveRightPanelTab}
                 className="s-flex s-min-h-0 s-flex-1 s-flex-col s-pt-3"
               >
-                <TabsList className="s-pl-6 s-pr-2">
+                <TabsList className="s-pl-2 s-pr-6">
                   <Button
                     icon={SidebarRightCloseIcon}
                     variant="ghost-secondary"
@@ -551,7 +551,7 @@ export default function AgentBuilder() {
           )}
         </Allotment>
         {!isRightPanelOpen && (
-          <div className="s-flex s-h-full s-w-16 s-flex-col s-items-center s-gap-2 s-py-3">
+          <div className="s-flex s-h-full s-w-14 s-flex-col s-items-center s-gap-2 s-py-3">
             <Button
               icon={SidebarRightOpenIcon}
               size="sm"
