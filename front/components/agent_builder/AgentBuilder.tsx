@@ -16,6 +16,7 @@ import {
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
+import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import {
   PersonalConnectionRequiredDialog,
@@ -48,26 +49,23 @@ import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types";
-import { isBuilder, normalizeError, removeNulls } from "@app/types";
+import { isBuilder, isString, normalizeError, removeNulls } from "@app/types";
 
 function processActionsFromStorage(
   actions: AgentBuilderMCPConfigurationWithId[]
 ): BuilderAction[] {
-  return [
-    ...actions.map((action) => {
-      return {
-        ...action,
-        configuration: {
-          ...action.configuration,
-          additionalConfiguration: processAdditionalConfigurationFromStorage(
-            action.configuration.additionalConfiguration
-          ),
-        },
-      };
-    }),
-  ];
+  return actions.map((action) => ({
+    ...action,
+    configuration: {
+      ...action.configuration,
+      additionalConfiguration: processAdditionalConfigurationFromStorage(
+        action.configuration.additionalConfiguration
+      ),
+    },
+  }));
 }
 
 function processAdditionalConfigurationFromStorage(
@@ -99,6 +97,7 @@ export default function AgentBuilder({
   const router = useRouter();
   const sendNotification = useSendNotification(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
 
   const { actions, isActionsLoading } = useAgentConfigurationActions(
     owner.sId,
@@ -281,6 +280,21 @@ export default function AgentBuilder({
     mcpServerViews,
   });
 
+  useEffect(() => {
+    const createdParam = router.query.showCreatedDialog;
+    const shouldOpenDialog =
+      Boolean(agentConfiguration) &&
+      isString(createdParam) &&
+      (createdParam === "1" || createdParam === "true");
+
+    if (!shouldOpenDialog) {
+      return;
+    }
+
+    setIsCreatedDialogOpen(true);
+    void removeParamFromRouter(router, "showCreatedDialog");
+  }, [agentConfiguration, router, router.query.showCreatedDialog]);
+
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {
       setIsSaving(true);
@@ -345,7 +359,7 @@ export default function AgentBuilder({
       await mutateTriggers();
 
       if (isCreatingNew && createdAgent.sId) {
-        const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
+        const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}?showCreatedDialog=1`;
         await router.replace(newUrl, undefined, { shallow: true });
       } else {
         // For existing agents, just reset form state
@@ -436,6 +450,15 @@ export default function AgentBuilder({
           onCancel={dialogProps.onCancel}
           onClose={dialogProps.onClose}
         />
+        {agentConfiguration && (
+          <AgentCreatedDialog
+            open={isCreatedDialogOpen}
+            onOpenChange={setIsCreatedDialogOpen}
+            agentName={agentConfiguration.name}
+            agentId={agentConfiguration.sId}
+            owner={owner}
+          />
+        )}
         <AgentBuilderLayout
           leftPanel={
             <AgentBuilderLeftPanel
