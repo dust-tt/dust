@@ -21,7 +21,7 @@ import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { MessageModel } from "@app/lib/models/agent/conversation";
+import type { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -180,22 +180,6 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       ContentFragmentResource.model,
       contentFragment.get()
     );
-  }
-
-  static async fromMessageId(auth: Authenticator, id: ModelId) {
-    const message = await MessageModel.findOne({
-      where: {
-        id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      include: [{ model: ContentFragmentModel, as: "contentFragment" }],
-    });
-    if (!message) {
-      throw new Error(
-        "No message found for the given id when trying to create a ContentFragmentResource"
-      );
-    }
-    return ContentFragmentResource.fromMessage(message);
   }
 
   static async fetchManyByModelIds(auth: Authenticator, ids: Array<ModelId>) {
