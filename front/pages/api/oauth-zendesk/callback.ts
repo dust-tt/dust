@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+// App ID 1073173 is stable across deployments
+const ZENDESK_APP_ID = "1073173";
+
 /**
  * OAuth callback proxy for Zendesk app.
  *
@@ -64,12 +67,18 @@ export default async function handler(
   // Decode state to get the actual Zendesk callback URL
   const zendeskCallbackUrl = decodeState(state);
 
-  // Validate the callback URL is from Zendesk
+  // Validate the callback URL is from our Zendesk app
   const url = new URL(zendeskCallbackUrl);
-  if (!url.hostname.endsWith(".zdusercontent.com")) {
+  const expectedHostname = `${ZENDESK_APP_ID}.apps.zdusercontent.com`;
+  const expectedPathPrefix = `/${ZENDESK_APP_ID}/`;
+
+  if (
+    url.hostname !== expectedHostname ||
+    !url.pathname.startsWith(expectedPathPrefix)
+  ) {
     return res.status(400).json({
       error: "Invalid callback URL",
-      details: "Callback URL must be a Zendesk app URL",
+      details: "Callback URL must be from the authorized Zendesk app",
     });
   }
 
