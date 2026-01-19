@@ -188,7 +188,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   snowflake_tool: {
     description: "Snowflake MCP tool for read-only SQL queries",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   slack_message_splitting: {
     description:
