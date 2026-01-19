@@ -195,7 +195,6 @@ export async function renderAllMessages(
         const renderedContentFragment = await renderContentFragment(
           auth,
           m,
-          conversation,
           model,
           !!excludeImages
         );
