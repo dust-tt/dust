@@ -760,8 +760,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   // TODO(projects): update this method to check groups whose group_vaults relationship is
-  // space_member or space_editor (not space_viewer) when the PR adding the relationship is live.
-  // At that point, we can reinstate global groups in the check if their relation is member or editor.
+  // space_editor (not space_viewer or space_member) when the PR adding the relationship is live.
   async isEditor(user: UserResource): Promise<boolean> {
     return this.isMember(user);
   }
