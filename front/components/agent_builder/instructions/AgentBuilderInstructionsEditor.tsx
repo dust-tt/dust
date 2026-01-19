@@ -90,6 +90,7 @@ export function AgentBuilderInstructionsEditor({
         hardBreak: false, // we use custom EmptyLineParagraphExtension instead
         orderedList: false, // we use custom OrderedListExtension instead
         listItem: false, // we use custom ListItemExtension instead
+        link: false, // we use custom LinkExtension instead
         bulletList: {
           HTMLAttributes: {
             class: markdownStyles.unorderedList(),
@@ -170,6 +171,7 @@ export function AgentBuilderInstructionsEditor({
           class: "text-blue-600 hover:underline hover:text-blue-800",
         },
         autolink: false,
+        openOnClick: false,
       }),
     ];
 

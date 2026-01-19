@@ -256,6 +256,7 @@ export const buildEditorExtensions = ({
         class: "text-blue-600 hover:underline hover:text-blue-800",
       },
       autolink: false,
+      openOnClick: false,
     }),
     MentionExtension.configure({
       owner,

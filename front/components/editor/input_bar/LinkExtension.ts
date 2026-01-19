@@ -45,7 +45,7 @@ export const LinkExtension = Link.extend({
               view.dom.classList.remove("link-clickable");
               return false;
             },
-            mousedown(view, event) {
+            mousedown(_view, event) {
               const link = (event.target as HTMLElement)?.closest("a");
               if (!link) {
                 return false;
@@ -53,7 +53,6 @@ export const LinkExtension = Link.extend({
 
               // Cmd+click: open link and focus the new tab
               if (event.ctrlKey || event.metaKey) {
-                event.preventDefault();
                 const href = link.getAttribute("href");
                 if (href) {
                   const newWindow = window.open(href, "_blank");
@@ -62,8 +61,6 @@ export const LinkExtension = Link.extend({
                 return true;
               }
 
-              // Block regular clicks from navigating
-              event.preventDefault();
               return false;
             },
           },
