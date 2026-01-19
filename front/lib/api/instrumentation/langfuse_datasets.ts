@@ -15,6 +15,23 @@ function getLangfuseClient(): LangfuseClient | null {
   return langfuseClient;
 }
 
+function hasProperty<K extends string>(
+  value: unknown,
+  key: K
+): value is Record<K, unknown> {
+  return typeof value === "object" && value !== null && key in value;
+}
+
+function isLangfuseNotFoundError(
+  error: unknown
+): error is { statusCode: 404 } {
+  if (!hasProperty(error, "statusCode")) {
+    return false;
+  }
+
+  return error.statusCode === 404;
+}
+
 /**
  * Ensures a Langfuse dataset exists, creating it if necessary.
  */
@@ -25,11 +42,7 @@ async function ensureLangfuseDatasetExists(
   try {
     await client.api.datasets.get(datasetName);
   } catch (error) {
-    const isNotFound =
-      error instanceof Error &&
-      "statusCode" in error &&
-      error.statusCode === 404;
-    if (!isNotFound) {
+    if (!isLangfuseNotFoundError(error)) {
       throw error;
     }
     // Dataset doesn't exist, create it
