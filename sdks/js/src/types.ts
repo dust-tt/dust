@@ -684,6 +684,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesloft_tool"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
+  | "sidebar_v2"
   | "skills_similar_display"
   | "skills"
   | "slab_mcp"
