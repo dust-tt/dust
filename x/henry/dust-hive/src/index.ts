@@ -254,13 +254,13 @@ cli.command("url [name]", "Print front URL").action(async (name: string | undefi
 });
 
 cli
-  .command("setup", "Check and install prerequisites (run this first!)")
-  .option("-y, --non-interactive", "Run in non-interactive mode (same as doctor)")
+  .command("setup", "Check prerequisites and guide initial setup (run this first!)")
+  .option("-y, --non-interactive", "Run without prompts (CI-friendly)")
   .action(async (options: { nonInteractive?: boolean }) => {
     await prepareAndRun(setupCommand({ nonInteractive: Boolean(options.nonInteractive) }));
   });
 
-cli.command("doctor", "Check prerequisites (alias for setup)").action(async () => {
+cli.command("doctor", "Check prerequisites (non-interactive)").action(async () => {
   await prepareAndRun(doctorCommand());
 });
 
@@ -295,7 +295,7 @@ cli
 
 // Temporal subcommands
 cli
-  .command("temporal [subcommand]", "Manage Temporal server (start|stop|restart|status)")
+  .command("temporal [subcommand]", "Manage Temporal server (start|stop|restart|status|logs)")
   .action(async (subcommand: string | undefined) => {
     await prepareAndRun(temporalCommand(subcommand));
   });

@@ -35,6 +35,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Store agent tool outputs (e.g., retrieved documents) in Elasticsearch for analytics",
     stage: "dust_only",
   },
+  agent_builder_copilot: {
+    description: "Enable Copilot in Agent Builder",
+    stage: "dust_only",
+  },
   ashby_tool: {
     description: "Ashby tool for ATS integration",
     stage: "on_demand",

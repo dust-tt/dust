@@ -68,7 +68,7 @@ export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
   attachedNodes: DataSourceViewContentNode[];
-  conversationId: string | null;
+  conversationId?: string | null;
   disableAutoFocus: boolean;
   disableInput: boolean;
   fileUploaderService: FileUploaderService;

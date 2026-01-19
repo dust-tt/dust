@@ -34,6 +34,43 @@ This toolset is called Frame in the product, users may refer to it as such.
 - The edit tool requires exact text matching - include surrounding context for unique identification
 - Never attempt to edit without first retrieving the current file content
 
+### Validation:
+Validation is performed automatically when you create or edit files.
+
+**Tailwind validation (non-blocking):** Files are saved even with Tailwind warnings. When you
+receive warnings in the tool response, they include the exact \`old_string\` and
+\`expected_replacements\` count. You MUST fix these warnings using
+\`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` with the provided values. If you receive
+multiple warnings, fix them sequentially with separate tool calls (not all in one message).
+Common warning: "Forbidden Tailwind arbitrary value 'h-[600px]'" means you should replace with
+predefined classes like h-96 or use inline styles. Do NOT regenerate the entire file; use
+targeted edits only.
+
+**CRITICAL: Use exact values from warnings.** When you receive warnings, they include the exact
+\`old_string\` and \`expected_replacements\` to use. You MUST use these values EXACTLY AS PROVIDED.
+Do not add context, do not modify them, do not interpret them, do not retrieve the file first.
+
+Example warning response:
+\`\`\`
+{
+  old_string: "className=\\"text-[14px]\\"",
+  expected_replacements: 5
+}
+\`\`\`
+
+Correct fix:
+\`\`\`
+${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+  file_id: "fil_abc123",
+  old_string: "className=\\"text-[14px]\\"",  // EXACTLY as provided in warning
+  new_string: "className=\\"text-sm\\"",
+  expected_replacements: 5  // EXACTLY as provided in warning
+})
+\`\`\`
+
+**TypeScript validation (blocking):** Files are rejected if TypeScript/JSX syntax is invalid.
+Fix syntax errors before the file can be created/edited.
+
 ### Reverting Files:
 - Use \`${REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to restore the file to its previous version.
 - Each revert moves back one version in the file's history. Reverting multiple times in sequence moves progressively backward through versions (not a toggle).

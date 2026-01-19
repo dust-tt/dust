@@ -56,7 +56,7 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
         const statusParts = [];
         statusParts.push(`ID: ${config.id.toString()}`);
         statusParts.push(`User: ${user?.email ?? "Unknown"}`);
-        statusParts.push(config.isActive ? "Active" : "Inactive");
+        statusParts.push(config.status === "active" ? "Active" : "Inactive");
         statusParts.push(datasourceInfo);
         if (hasHistory) {
           statusParts.push(

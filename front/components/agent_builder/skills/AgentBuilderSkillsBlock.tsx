@@ -261,10 +261,10 @@ export function AgentBuilderSkillsBlock() {
 
   return (
     <AgentBuilderSectionContainer
-      title="Knowledge and capabilities"
+      title="Capabilities and knowledge"
       description={
         <>
-          Add knowledge, tools and skills to enhance your agent's abilities.
+          Add skills, tools, and knowledge to enhance your agent's abilities.
           Need help? Check our{" "}
           <Hoverable
             variant="primary"

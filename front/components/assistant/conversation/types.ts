@@ -8,6 +8,7 @@ import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types"
 import type { DustError } from "@app/lib/error";
 import type {
   ContentFragmentsType,
+  ConversationWithoutContentType,
   LightAgentConfigurationType,
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
@@ -68,7 +69,7 @@ export type VirtuosoMessageListContext = {
     mentions: RichMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
-  conversationId: string;
+  conversation: ConversationWithoutContentType | null;
   enableReactions: boolean;
   agentBuilderContext?: {
     draftAgent?: LightAgentConfigurationType;

@@ -124,22 +124,6 @@ export async function stopTestRedis(): Promise<{ success: boolean; wasRunning: b
   return { success: proc.exitCode === 0, wasRunning: true };
 }
 
-// Remove the shared test Redis container
-export async function removeTestRedis(): Promise<{ success: boolean }> {
-  // Stop first if running
-  await stopTestRedis();
-
-  // Remove container
-  const proc = Bun.spawn(["docker", "rm", "-v", TEST_REDIS_CONTAINER_NAME], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  await proc.exited;
-
-  // Success even if container didn't exist
-  return { success: true };
-}
-
 // Get the connection URI for the test Redis
 export function getTestRedisUri(): string {
   return `redis://localhost:${TEST_REDIS_PORT}`;

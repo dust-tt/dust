@@ -320,6 +320,3 @@ export class TmuxAdapter implements MultiplexerAdapter {
     return getPlatformInstallInstructions("tmux");
   }
 }
-
-// Export singleton instance
-export const tmuxAdapter = new TmuxAdapter();

@@ -43,9 +43,10 @@ async function handler(
         ? Array.isArray(kind)
           ? kind
           : [kind]
-        : ["global", "regular"];
+        : ["global", "regular", "space_editors"];
 
       let groups: GroupResource[];
+
       if (spaceId) {
         // Fetch groups associated with the specific space
         groups = await GroupResource.listForSpaceById(auth, spaceId, {

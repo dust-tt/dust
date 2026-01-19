@@ -55,17 +55,19 @@ export const AgentInputBar = ({
   }
 
   const { mutateConversation } = useConversation({
-    conversationId: context.conversationId,
+    conversationId: context.conversation?.sId,
     workspaceId: context.owner.sId,
     options: { disabled: true }, // We just want to get the mutation function
   });
   const cancelMessage = useCancelMessage({
     owner: context.owner,
-    conversationId: context.conversationId,
+    conversationId: context.conversation?.sId,
   });
 
   const generatingMessages =
-    generationContext.getConversationGeneratingMessages(context.conversationId);
+    generationContext.getConversationGeneratingMessages(
+      context.conversation?.sId ?? ""
+    );
 
   const isMobile = useIsMobile();
   const methods = useVirtuosoMethods<VirtuosoMessage>();
@@ -214,13 +216,13 @@ export const AgentInputBar = ({
   };
 
   const handleStopGeneration = async () => {
-    if (!context.conversationId) {
+    if (!context.conversation) {
       return;
     }
     setIsStopping(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
     await cancelMessage(
       generationContext.generatingMessages
-        .filter((m) => m.conversationId === context.conversationId)
+        .filter((m) => m.conversationId === context.conversation?.sId)
         .map((m) => m.messageId)
     );
     void mutateConversation();
@@ -230,16 +232,12 @@ export const AgentInputBar = ({
     if (
       isStopping &&
       !generationContext.generatingMessages.some(
-        (m) => m.conversationId === context.conversationId
+        (m) => m.conversationId === context.conversation?.sId
       )
     ) {
       setIsStopping(false);
     }
-  }, [
-    isStopping,
-    generationContext.generatingMessages,
-    context.conversationId,
-  ]);
+  }, [isStopping, generationContext.generatingMessages, context.conversation]);
 
   return (
     <div
@@ -345,7 +343,7 @@ export const AgentInputBar = ({
         user={context.user}
         onSubmit={context.handleSubmit}
         stickyMentions={autoMentions}
-        conversationId={context.conversationId}
+        conversation={context.conversation}
         disableAutoFocus={isMobile}
         actions={context.agentBuilderContext?.actionsToShow}
         isSubmitting={context.agentBuilderContext?.isSavingDraftAgent === true}

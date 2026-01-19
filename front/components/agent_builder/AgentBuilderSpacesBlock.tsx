@@ -92,15 +92,15 @@ export function AgentBuilderSpacesBlock() {
         ?.requestedSpaceIds.includes(space.sId)
     );
 
-    // Only show confirmation dialog if there are resources to remove
+    // Only show the confirmation dialog if there are resources to remove.
     if (actionsToRemove.length > 0 || skillsToRemove.length > 0) {
-      const confirmed = await confirmRemoveSpace(
+      const confirmed = await confirmRemoveSpace({
         space,
-        actionsToRemove,
-        allSkills.filter((skill) =>
+        actions: actionsToRemove,
+        skills: allSkills.filter((skill) =>
           skillsToRemove.some((s) => s.sId === skill.sId)
-        )
-      );
+        ),
+      });
 
       if (!confirmed) {
         return;

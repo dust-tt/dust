@@ -86,12 +86,6 @@ async function writeForwarderState(state: ForwarderState): Promise<void> {
   await Bun.write(FORWARDER_STATE_PATH, JSON.stringify(state, null, 2));
 }
 
-// Check if forwarder is running
-export async function isForwarderRunning(): Promise<boolean> {
-  const pid = await readForwarderPid();
-  return pid !== null;
-}
-
 // Stop forwarder if running
 export async function stopForwarder(): Promise<boolean> {
   const pid = await readForwarderPid();

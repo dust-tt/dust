@@ -12,12 +12,6 @@ export const DUST_HIVE_ENVS = join(DUST_HIVE_HOME, "envs");
 export const DUST_HIVE_SCRIPTS = join(DUST_HIVE_HOME, "scripts");
 export const DUST_HIVE_WORKTREES = join(homedir(), "dust-hive");
 
-/**
- * @deprecated Use multiplexer adapter's getLayoutDirectory() instead
- * Kept for backward compatibility during migration
- */
-export const DUST_HIVE_ZELLIJ = join(DUST_HIVE_HOME, "zellij");
-
 // Global config
 export const CONFIG_ENV_PATH = join(DUST_HIVE_HOME, "config.env");
 export const SETTINGS_PATH = join(DUST_HIVE_HOME, "settings.json");
@@ -45,12 +39,6 @@ export const TEST_POSTGRES_PASSWORD = "test";
 // Shared test Redis paths (global, not per-env)
 export const TEST_REDIS_CONTAINER_NAME = "dust-hive-test-redis";
 export const TEST_REDIS_PORT = 6479;
-
-/**
- * @deprecated Import MAIN_SESSION_NAME from "./multiplexer" instead
- * Kept for backward compatibility during migration
- */
-export const MAIN_SESSION_NAME = "dust-hive-main";
 
 // Seed user configuration
 export const SEED_USER_PATH = join(DUST_HIVE_HOME, "seed-user.json");
@@ -96,19 +84,7 @@ export function getLogPath(name: string, service: string): string {
   return join(getEnvDir(name), `${service}.log`);
 }
 
-/**
- * @deprecated Use multiplexer adapter's getLayoutPath() instead
- * Kept for backward compatibility during migration
- */
-export function getZellijLayoutPath(): string {
-  return join(DUST_HIVE_ZELLIJ, "layout.kdl");
-}
-
 // Scripts
-export function getWatchScriptPath(): string {
-  return join(DUST_HIVE_SCRIPTS, "watch-logs.sh");
-}
-
 export function getServiceLogsTuiPath(): string {
   return join(DUST_HIVE_SCRIPTS, "service-logs-tui.sh");
 }

@@ -56,7 +56,7 @@ async function getScheduleOptions(
     memo: {
       transcriptsConfigurationId: transcriptsConfiguration.id,
       transcriptsConfigurationSid: transcriptsConfiguration.sId,
-      IsProcessingTranscripts: transcriptsConfiguration.isActive,
+      IsProcessingTranscripts: transcriptsConfiguration.isActive(),
       IsStoringTranscripts: transcriptsConfiguration.dataSourceViewId !== null,
     },
   };
@@ -127,14 +127,14 @@ export async function stopRetrieveTranscriptsWorkflow(
     childLogger.info("Deleted transcripts schedule successfully.");
 
     if (setIsActiveToFalse) {
-      await transcriptsConfiguration.setIsActive(false);
+      await transcriptsConfiguration.setStatus("disabled");
     }
     return new Ok(undefined);
   } catch (err) {
     if (err instanceof ScheduleNotFoundError) {
       childLogger.warn("Schedule not found, nothing to delete.");
       if (setIsActiveToFalse) {
-        await transcriptsConfiguration.setIsActive(false);
+        await transcriptsConfiguration.setStatus("disabled");
       }
       return new Ok(undefined);
     }

@@ -441,48 +441,65 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async listAllBeforeDate(
     auth: Authenticator,
+    cutoffDate: Date,
     options?: FetchConversationOptions & {
       batchSize?: number;
-      cutoffDate: Date;
     }
   ): Promise<ConversationResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const { batchSize = 1000, cutoffDate } = options ?? {};
+    const { batchSize = 1000 } = options ?? {};
 
-    const inactiveConversations = await MessageModel.findAll({
-      attributes: [
-        "conversationId",
-        [fn("MAX", col("createdAt")), "lastMessageDate"],
-      ],
-      where: {
-        workspaceId,
-      },
-      group: ["conversationId"],
-      having: where(fn("MAX", col("createdAt")), "<", cutoffDate),
-      order: [[fn("MAX", col("createdAt")), "DESC"]],
-    });
+    // Step 1: Retrieve conversation IDs started before the cutoff date.
+    // This pre-filters conversations so we don't scan all messages in the workspace.
+    const conversationsStartedBeforeCutoff =
+      await this.baseFetchWithAuthorization(auth, options, {
+        where: {
+          workspaceId,
+          createdAt: { [Op.lt]: cutoffDate },
+        },
+      });
 
-    // We batch to avoid a big where in clause.
-    const results: ConversationResource[] = [];
-    for (let i = 0; i < inactiveConversations.length; i += batchSize) {
-      const batch = inactiveConversations.slice(i, i + batchSize);
-      const conversations = await this.baseFetchWithAuthorization(
-        auth,
-        options,
-        {
-          where: {
-            id: {
-              [Op.in]: batch.map((m) => m.conversationId),
-            },
-          },
-        }
-      );
-
-      results.push(...conversations);
+    if (conversationsStartedBeforeCutoff.length === 0) {
+      return [];
     }
 
-    return results;
+    const candidateConversationIds = conversationsStartedBeforeCutoff.map(
+      (c) => c.id
+    );
+
+    // Step 2: Query messages in batches to find inactive conversations
+    // (those with no messages after the cutoff date).
+    const inactiveConversationIds: Set<number> = new Set();
+
+    for (let i = 0; i < candidateConversationIds.length; i += batchSize) {
+      const batchIds = candidateConversationIds.slice(i, i + batchSize);
+
+      const inactiveInBatch = await MessageModel.findAll({
+        attributes: [
+          "conversationId",
+          [fn("MAX", col("createdAt")), "lastMessageDate"],
+        ],
+        where: {
+          workspaceId,
+          conversationId: { [Op.in]: batchIds },
+        },
+        group: ["conversationId"],
+        having: where(fn("MAX", col("createdAt")), "<", cutoffDate),
+      });
+
+      inactiveInBatch.forEach((m) =>
+        inactiveConversationIds.add(m.conversationId)
+      );
+    }
+
+    if (inactiveConversationIds.size === 0) {
+      return [];
+    }
+
+    return conversationsStartedBeforeCutoff.filter((c) =>
+      inactiveConversationIds.has(c.id)
+    );
   }
 
   static async listConversationWithAgentCreatedBeforeDate(

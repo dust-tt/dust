@@ -94,6 +94,7 @@ async function findAgentsLocalFiles(srcDir: string): Promise<string[]> {
   const proc = Bun.spawn(
     [
       "find",
+      "-L", // Follow symlinks so -type f matches symlinked files
       srcDir,
       // Prune large directories (skips traversal entirely, much faster than -not -path)
       "-type",

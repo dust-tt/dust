@@ -13,7 +13,7 @@ import type {
   MultiplexerAdapter,
   MultiplexerType,
 } from "./types";
-import { MAIN_SESSION_NAME, SESSION_PREFIX, TAB_NAMES } from "./types";
+import { SESSION_PREFIX, TAB_NAMES } from "./types";
 
 /**
  * Base directory for zellij layouts
@@ -347,9 +347,3 @@ ${tabTemplate}
     return getPlatformInstallInstructions("zellij");
   }
 }
-
-// Export singleton instance
-export const zellijAdapter = new ZellijAdapter();
-
-// Export the main session name for convenience
-export { MAIN_SESSION_NAME };

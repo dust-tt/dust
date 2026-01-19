@@ -35,7 +35,7 @@ export function useConversationDrafts({
 }: {
   workspaceId: string;
   userId: string | null;
-  conversationId: string | null;
+  conversationId?: string | null;
   shouldUseDraft?: boolean;
 }) {
   const internalConversationId = conversationId ?? "new";

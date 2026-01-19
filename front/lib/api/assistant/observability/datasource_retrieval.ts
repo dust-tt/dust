@@ -10,6 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { ConnectorProvider } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -22,6 +23,7 @@ export type DatasourceRetrievalData = {
     dataSourceId: string;
     displayName: string;
     count: number;
+    connectorProvider?: ConnectorProvider;
   }[];
 };
 
@@ -175,6 +177,7 @@ export async function fetchDatasourceRetrievalMetrics(
               ? getDisplayNameForDataSource(dataSource.toJSON())
               : dsBucket.key,
             count: dsBucket.doc_count,
+            connectorProvider: dataSource?.connectorProvider ?? undefined,
           };
         }),
       };

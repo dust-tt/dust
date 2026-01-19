@@ -1,26 +1,23 @@
 import {
   BookOpenIcon,
-  ChatBubbleBottomCenterTextIcon,
-  ContentMessage,
-  InformationCircleIcon,
+  ChatBubbleLeftRightIcon,
+  Cog6ToothIcon,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import React from "react";
-import { useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import { ConversationLayout } from "@app/components/assistant/conversation/ConversationLayout";
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
+import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
 import { SpaceContextTab } from "@app/components/assistant/conversation/space/SpaceContextTab";
-import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/SpaceConversationsTab";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
@@ -117,7 +114,7 @@ export const getServerSideProps =
     };
   });
 
-type SpaceTab = "conversations" | "context" | "tools" | "about";
+type SpaceTab = "conversations" | "context" | "settings";
 
 export default function SpaceConversations({
   owner,
@@ -161,12 +158,7 @@ export default function SpaceConversations({
   // Parse and validate the current tab from URL hash
   const getCurrentTabFromHash = useCallback((): SpaceTab => {
     const hash = window.location.hash.slice(1); // Remove the # prefix
-    if (
-      hash === "context" ||
-      hash === "tools" ||
-      hash === "about" ||
-      hash === "conversations"
-    ) {
+    if (hash === "context" || hash === "settings" || hash === "conversations") {
       return hash;
     }
     return "conversations";
@@ -302,49 +294,24 @@ export default function SpaceConversations({
   }
 
   return (
-    <div className="flex w-full items-center justify-center overflow-auto">
-      <div className="flex max-h-dvh w-full flex-col gap-8 pb-2 pt-4 sm:w-full sm:max-w-3xl sm:pb-4">
-        <div>
-          <ContentMessage title="Experimental feature" variant="info" size="lg">
-            <p>
-              This feature is currently in alpha, and only available in the Dust
-              workspace ("projects" feature flag). The goal is to get feedback
-              from internal usage and quickly iterate. Share your feedback in
-              the{" "}
-              <Link
-                href="https://dust4ai.slack.com/archives/C09T7N4S6GG"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-500 hover:text-blue-600"
-              >
-                initiative slack channel
-              </Link>
-              .
-            </p>
-          </ContentMessage>
-        </div>
+    <div className="flex h-full w-full flex-col">
+      <Tabs
+        value={currentTab}
+        onValueChange={(value) => handleTabChange(value as SpaceTab)}
+        className="flex min-h-0 flex-1 flex-col pt-3"
+      >
+        <TabsList className="px-6">
+          <TabsTrigger
+            value="conversations"
+            label="Conversations"
+            icon={ChatBubbleLeftRightIcon}
+          />
+          <TabsTrigger value="context" label="Context" icon={BookOpenIcon} />
+          <TabsTrigger value="settings" label="Settings" icon={Cog6ToothIcon} />
+        </TabsList>
 
-        <div className="heading-xl text-xl">{spaceInfo?.name ?? "..."}</div>
-
-        <Tabs
-          value={currentTab}
-          onValueChange={(value) => handleTabChange(value as SpaceTab)}
-        >
-          <TabsList>
-            <TabsTrigger
-              value="conversations"
-              label="Conversations"
-              icon={ChatBubbleBottomCenterTextIcon}
-            />
-            <TabsTrigger value="context" label="Context" icon={BookOpenIcon} />
-            <TabsTrigger
-              value="about"
-              label="About this project"
-              icon={InformationCircleIcon}
-            />
-          </TabsList>
-
-          <TabsContent value="conversations">
+        <TabsContent value="conversations">
+          {spaceInfo && (
             <SpaceConversationsTab
               owner={owner}
               user={user}
@@ -353,46 +320,46 @@ export default function SpaceConversations({
               spaceInfo={spaceInfo}
               onSubmit={handleConversationCreation}
             />
-          </TabsContent>
+          )}
+        </TabsContent>
 
-          <TabsContent value="context">
-            {spaceInfo && (
-              <SpaceContextTab
-                owner={owner}
-                space={spaceInfo}
-                systemSpace={systemSpace}
-                plan={plan}
-                isAdmin={isAdmin}
-                canReadInSpace={canReadInSpace}
-                canWriteInSpace={canWriteInSpace}
-              />
-            )}
-          </TabsContent>
+        <TabsContent value="context">
+          {spaceInfo && (
+            <SpaceContextTab
+              owner={owner}
+              space={spaceInfo}
+              systemSpace={systemSpace}
+              plan={plan}
+              isAdmin={isAdmin}
+              canReadInSpace={canReadInSpace}
+              canWriteInSpace={canWriteInSpace}
+            />
+          )}
+        </TabsContent>
 
-          <TabsContent value="about">
-            {spaceInfo && (
-              <SpaceAboutTab
-                owner={owner}
-                space={spaceInfo}
-                initialMembers={spaceInfo.members}
-                planAllowsSCIM={planAllowsSCIM}
-                initialGroups={
-                  planAllowsSCIM &&
-                  spaceInfo.groupIds &&
-                  spaceInfo.groupIds.length > 0 &&
-                  groups
-                    ? groups.filter((group) =>
-                        spaceInfo.groupIds.includes(group.sId)
-                      )
-                    : []
-                }
-                initialManagementMode={spaceInfo.managementMode}
-                initialIsRestricted={spaceInfo.isRestricted}
-              />
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
+        <TabsContent value="settings">
+          {spaceInfo && (
+            <SpaceAboutTab
+              owner={owner}
+              space={spaceInfo}
+              initialMembers={spaceInfo.members}
+              planAllowsSCIM={planAllowsSCIM}
+              initialGroups={
+                planAllowsSCIM &&
+                spaceInfo.groupIds &&
+                spaceInfo.groupIds.length > 0 &&
+                groups
+                  ? groups.filter((group) =>
+                      spaceInfo.groupIds.includes(group.sId)
+                    )
+                  : []
+              }
+              initialManagementMode={spaceInfo.managementMode}
+              initialIsRestricted={spaceInfo.isRestricted}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

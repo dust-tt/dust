@@ -4,15 +4,12 @@ import { type InitBinary, binaryExists, getBinaryPath, getCacheSource } from "./
 import { buildPostgresUri, loadEnvVars } from "./env-utils";
 import type { Environment } from "./environment";
 import { logger } from "./logger";
-import { SEED_USER_PATH, getEnvFilePath, getWorktreeDir } from "./paths";
+import { getEnvFilePath, getWorktreeDir } from "./paths";
 import { runSqlSeed } from "./seed";
 import { buildShell } from "./shell";
 import { SEARCH_ATTRIBUTES, TEMPORAL_NAMESPACE_CONFIG, getTemporalNamespaces } from "./temporal";
 
 export { getTemporalNamespaces } from "./temporal";
-
-// Re-export from paths.ts for backwards compatibility
-export { SEED_USER_PATH } from "./paths";
 
 // Run a binary directly or fall back to cargo run
 async function runBinary(
@@ -529,11 +526,6 @@ export async function createTemporalNamespaces(env: Environment): Promise<void> 
   }
 
   logger.success("Temporal search attributes created");
-}
-
-export async function hasSeedConfig(): Promise<boolean> {
-  const file = Bun.file(SEED_USER_PATH);
-  return file.exists();
 }
 
 export async function runSeedScript(env: Environment): Promise<boolean> {
