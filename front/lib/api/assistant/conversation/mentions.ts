@@ -969,7 +969,12 @@ export async function validateUserMention(
       });
     }
 
-    const addResult = await space.addMembers(auth, { userIds: [userId] });
+    // Use an internal admin auth for addMembers since it requires canAdministrate permission.
+    // The editor check above already verified the calling user has permission to add members.
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      auth.getNonNullableWorkspace().sId
+    );
+    const addResult = await space.addMembers(adminAuth, { userIds: [userId] });
     if (addResult.isErr()) {
       const error = addResult.error;
       return new Err({

@@ -3593,13 +3593,12 @@ describe("validateUserMention", () => {
       });
 
       // Verify the mentioned user is NOT a member of the project space before
-      const isMemberBefore = await refreshedProjectSpace!.isMember(
-        mentionedUser
-      );
+      const isMemberBefore =
+        await refreshedProjectSpace!.isMember(mentionedUser);
       expect(isMemberBefore).toBe(false);
 
-      // Approve the mention and add to project
-      const result = await validateUserMention(adminAuth, {
+      // Approve the mention and add to project (use userAuth - the user who is an editor of the project)
+      const result = await validateUserMention(userAuth, {
         conversationId: projectConversation.sId,
         userId: mentionedUser.sId,
         messageId: userMessage.sId,
