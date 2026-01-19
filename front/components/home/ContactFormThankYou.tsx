@@ -83,6 +83,13 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
         window.dataLayer = window.dataLayer ?? [];
         window.dataLayer.push({
           event: "contact_form_qualified_lead",
+          user_email: email,
+          user_phone: phone,
+          user_first_name: firstName,
+          user_last_name: lastName,
+          user_language: language,
+          user_headquarters_region: headquartersRegion,
+          user_company_headcount: companyHeadcount,
         });
       }
     }

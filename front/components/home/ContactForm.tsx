@@ -99,12 +99,19 @@ function useContactFormSubmit() {
         action: "submit_success",
       });
 
-      // Push GTM event with actual qualification status
+      // Push GTM event with actual qualification status and form details
       if (typeof window !== "undefined") {
         window.dataLayer = window.dataLayer ?? [];
         window.dataLayer.push({
           event: "contact_form_submitted",
           is_qualified: result.isQualified,
+          user_email: data.email,
+          user_phone: data.mobilephone,
+          user_first_name: data.firstname,
+          user_last_name: data.lastname,
+          user_language: data.language,
+          user_headquarters_region: data.headquarters_region,
+          user_company_headcount: data.company_headcount_form,
         });
       }
 
