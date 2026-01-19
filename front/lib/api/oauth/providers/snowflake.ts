@@ -23,6 +23,7 @@ import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup"
 import type { Result } from "@app/types";
 import { Err, OAuthAPI, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import { isValidSnowflakeRole } from "@app/types/oauth/lib";
 import { isString } from "@app/types/shared/utils/general";
 
 /**
@@ -122,8 +123,7 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
     if (useCase === "personal_actions" || useCase === "platform_actions") {
-      // If we have an mcp_server_id it means the admin already setup the connection and we have
-      // everything we need (role can be overridden via snowflake_role in extraConfig).
+      // If we have an mcp_server_id it means the admin already setup the connection.
       if (extraConfig.mcp_server_id) {
         return true;
       }
@@ -221,11 +221,7 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
       // we have client_secret (initial admin setup).
-      const {
-        mcp_server_id,
-        snowflake_role: userRole,
-        ...restConfig
-      } = extraConfig;
+      const { mcp_server_id, snowflake_role: userRole } = extraConfig;
 
       if (mcp_server_id && isString(mcp_server_id)) {
         const connection = await getWorkspaceConnectionForMCPServer(
@@ -233,15 +229,43 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
           mcp_server_id
         );
 
-        // Use user-provided role if specified, otherwise use the default role from workspace connection
-        const role = userRole || connection.metadata.snowflake_role;
+        const {
+          client_id: wsClientId,
+          snowflake_account: wsAccount,
+          snowflake_role: wsRole,
+          snowflake_warehouse: wsWarehouse,
+        } = connection.metadata;
+
+        if (
+          !isString(wsClientId) ||
+          !isString(wsAccount) ||
+          !isString(wsRole) ||
+          !isString(wsWarehouse)
+        ) {
+          throw new Error(
+            "Workspace connection is missing required Snowflake configuration. " +
+              "Please ask an admin to reconfigure the MCP server connection."
+          );
+        }
+
+        // Use user-provided role if specified, otherwise use the default from workspace connection.
+        let role = wsRole;
+        const trimmedUserRole = isString(userRole) ? userRole.trim() : "";
+        if (trimmedUserRole) {
+          if (!isValidSnowflakeRole(trimmedUserRole)) {
+            throw new Error(
+              `Invalid Snowflake role format: "${trimmedUserRole}". ` +
+                "Role must start with a letter or underscore and contain only alphanumeric characters and underscores."
+            );
+          }
+          role = trimmedUserRole;
+        }
 
         return {
-          client_id: connection.metadata.client_id,
-          snowflake_account: connection.metadata.snowflake_account,
+          client_id: wsClientId,
+          snowflake_account: wsAccount,
           snowflake_role: role,
-          snowflake_warehouse: connection.metadata.snowflake_warehouse,
-          ...restConfig,
+          snowflake_warehouse: wsWarehouse,
         };
       }
     }

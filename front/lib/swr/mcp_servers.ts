@@ -65,6 +65,7 @@ import {
   Err,
   isAdmin,
   isAPIErrorResponse,
+  isSupportedOAuthCredential,
   Ok,
   removeNulls,
   setupOAuthConnection,
@@ -858,12 +859,14 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     provider,
     useCase,
     scope,
+    overriddenCredentials,
   }: {
     mcpServerId: string;
     mcpServerDisplayName: string;
     provider: OAuthProvider;
     useCase: OAuthUseCase;
     scope?: string;
+    overriddenCredentials?: Record<string, string>;
   }): Promise<boolean> => {
     try {
       const extraConfig: Record<string, string> = {
@@ -872,6 +875,15 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
 
       if (scope) {
         extraConfig.scope = scope;
+      }
+
+      if (overriddenCredentials) {
+        for (const [key, value] of Object.entries(overriddenCredentials)) {
+          const trimmedValue = value.trim();
+          if (trimmedValue && isSupportedOAuthCredential(key)) {
+            extraConfig[key] = trimmedValue;
+          }
+        }
       }
 
       const cRes = await setupOAuthConnection({

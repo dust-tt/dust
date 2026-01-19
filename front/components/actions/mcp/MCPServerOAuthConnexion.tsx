@@ -96,27 +96,23 @@ export function MCPServerOAuthConnexion({
       return;
     }
 
-    // Fetch credential inputs for the selected provider/use case.
-    const fetchCredentialInputs = async () => {
-      const credentialInputs = await getProviderRequiredOAuthCredentialInputs({
-        provider: authorization.provider,
-        useCase: effectiveUseCase,
-      });
-      setInputs(credentialInputs);
+    // Get credential inputs for the selected provider/use case.
+    const credentialInputs = getProviderRequiredOAuthCredentialInputs({
+      provider: authorization.provider,
+      useCase: effectiveUseCase,
+    });
+    setInputs(credentialInputs);
 
-      // Pre-populate credentials with default values from the provider.
-      if (credentialInputs) {
-        const nextCredentials: OAuthCredentials = {};
-        for (const [key, inputData] of Object.entries(credentialInputs)) {
-          if (isSupportedOAuthCredential(key)) {
-            nextCredentials[key] = inputData.value ?? "";
-          }
+    // Pre-populate credentials with default values from the provider.
+    if (credentialInputs) {
+      const nextCredentials: OAuthCredentials = {};
+      for (const [key, inputData] of Object.entries(credentialInputs)) {
+        if (isSupportedOAuthCredential(key)) {
+          nextCredentials[key] = inputData.value ?? "";
         }
-        credentialsField.onChange(nextCredentials);
       }
-    };
-
-    void fetchCredentialInputs();
+      credentialsField.onChange(nextCredentials);
+    }
   }, [authorization, useCaseField, credentialsField, useCase]);
 
   // Validate credentials based on dynamic requirements.

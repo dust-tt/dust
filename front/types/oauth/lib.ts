@@ -116,7 +116,14 @@ export type OAuthCredentialInput = {
   value: string | undefined;
   helpMessage?: string;
   validator?: (value: string) => boolean;
-};
+} & (
+  | {
+      overridableAtPersonalAuth: true;
+      personalAuthLabel: string;
+      personalAuthHelpMessage: string;
+    }
+  | { overridableAtPersonalAuth?: false }
+);
 
 export type OAuthCredentialInputs = Partial<
   Record<SupportedOAuthCredentials, OAuthCredentialInput>
@@ -126,13 +133,36 @@ export type OAuthCredentials = Partial<
   Record<SupportedOAuthCredentials, string>
 >;
 
-export const getProviderRequiredOAuthCredentialInputs = async ({
+export function getOverridablePersonalAuthInputs({
+  provider,
+}: {
+  provider: OAuthProvider;
+}): OAuthCredentialInputs | null {
+  const allInputs = getProviderRequiredOAuthCredentialInputs({
+    provider,
+    useCase: "personal_actions",
+  });
+  if (!allInputs) {
+    return null;
+  }
+
+  const filtered: OAuthCredentialInputs = {};
+  for (const [key, input] of Object.entries(allInputs)) {
+    if (input.overridableAtPersonalAuth && isSupportedOAuthCredential(key)) {
+      filtered[key] = input;
+    }
+  }
+
+  return Object.keys(filtered).length > 0 ? filtered : null;
+}
+
+export function getProviderRequiredOAuthCredentialInputs({
   provider,
   useCase,
 }: {
   provider: OAuthProvider;
   useCase: OAuthUseCase;
-}): Promise<OAuthCredentialInputs | null> => {
+}): OAuthCredentialInputs | null {
   switch (provider) {
     case "salesforce":
       if (useCase === "personal_actions" || useCase === "platform_actions") {
@@ -344,6 +374,10 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
             helpMessage:
               "The default role for users (e.g., ANALYST). Users can override this during their personal authentication.",
             validator: isValidSnowflakeRole,
+            overridableAtPersonalAuth: true,
+            personalAuthLabel: "Snowflake Role",
+            personalAuthHelpMessage:
+              "Enter a role to override the default, or leave empty to use the workspace default.",
           },
           snowflake_warehouse: {
             label: "Snowflake Warehouse",
@@ -358,7 +392,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     default:
       assertNever(provider);
   }
-};
+}
 
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 
