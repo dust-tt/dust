@@ -3524,21 +3524,30 @@ describe("validateUserMention", () => {
 
   describe("approved_and_add_to_project action", () => {
     it("should add user to project space AND as participant when approving with add_to_project", async () => {
-      // Create a project space
-      const projectSpace = await SpaceFactory.project(workspace);
-      const adminAuth = await Authenticator.internalAdminForWorkspace(
+      // Create an admin user for this test (needs canAdministrate for addMembers)
+      const adminUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, adminUser, {
+        role: "admin",
+      });
+      const projectAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
         workspace.sId
       );
 
-      // Add the current user to the project space (they need to be a member/editor)
-      const currentUser = auth.getNonNullableUser();
-      await projectSpace.addMembers(adminAuth, {
-        userIds: [currentUser.sId],
+      // Create a project space
+      const projectSpace = await SpaceFactory.project(workspace);
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      // Add the admin user to the project space (they need to be a member/editor)
+      await projectSpace.addMembers(internalAdminAuth, {
+        userIds: [adminUser.sId],
       });
 
       // Create a fresh authenticator after adding user to space
       const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        currentUser.sId,
+        adminUser.sId,
         workspace.sId
       );
 
@@ -3562,7 +3571,7 @@ describe("validateUserMention", () => {
       });
 
       // Create a user message that mentions the user
-      const userJson = currentUser.toJSON();
+      const userJson = adminUser.toJSON();
       const userMessage = await withTransaction(async (transaction) => {
         return createUserMessage(userAuth, {
           conversation: projectConversation,
@@ -3597,8 +3606,8 @@ describe("validateUserMention", () => {
         await refreshedProjectSpace!.isMember(mentionedUser);
       expect(isMemberBefore).toBe(false);
 
-      // Approve the mention and add to project (use auth which has both user and admin permissions)
-      const result = await validateUserMention(auth, {
+      // Approve the mention and add to project (userAuth has admin role and is a project member)
+      const result = await validateUserMention(userAuth, {
         conversationId: projectConversation.sId,
         userId: mentionedUser.sId,
         messageId: userMessage.sId,
@@ -3609,7 +3618,7 @@ describe("validateUserMention", () => {
 
       // Verify the mentioned user is now a member of the project space
       const updatedProjectSpace = await SpaceResource.fetchById(
-        adminAuth,
+        userAuth,
         projectSpace.sId
       );
       const isMemberAfter = await updatedProjectSpace!.isMember(mentionedUser);
