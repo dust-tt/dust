@@ -28,14 +28,13 @@ const ProjectListItem = memo(
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
 
     const spacePath = getSpaceConversationsRoute(owner.sId, space.sId);
-    const spaceLabel = `${space.name}${unreadCount > 0 ? ` (${unreadCount})` : ""}`;
 
     return (
       <NavigationListItem
         icon={getSpaceIcon(space)}
         selected={router.asPath.startsWith(spacePath)}
-        status={unreadCount > 0 ? "unread" : "idle"}
-        label={spaceLabel}
+        label={space.name}
+        count={unreadCount > 0 ? unreadCount : undefined}
         onClick={async () => {
           // Side bar is the floating sidebar that appears when the screen is small.
           if (sidebarOpen) {
