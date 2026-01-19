@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 
+import { TemplatesListPage } from "@app/components/poke/pages/TemplatesListPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { TemplatesDataTable } from "@app/components/poke/templates/TemplatesDataTable";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
@@ -13,11 +13,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
 );
 
 export default function ListTemplates() {
-  return (
-    <div className="mx-auto h-full w-full max-w-7xl flex-grow flex-col items-center justify-center p-8 pt-8">
-      <TemplatesDataTable />
-    </div>
-  );
+  return <TemplatesListPage />;
 }
 
 ListTemplates.getLayout = (page: ReactElement) => {

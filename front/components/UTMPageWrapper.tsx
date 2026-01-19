@@ -14,7 +14,7 @@ const UTMPageWrapper = ({ children }: Props) => {
 
   const utmParams = (() => {
     const paramsObj: { [key: string]: string | string[] | undefined } = {};
-    searchParams.forEach((value, key) => {
+    searchParams?.forEach((value, key) => {
       paramsObj[key] = value;
     });
     return extractUTMParams(paramsObj);
