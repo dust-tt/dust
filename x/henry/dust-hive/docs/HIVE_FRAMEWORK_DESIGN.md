@@ -392,6 +392,9 @@ interface HiveConfig {
   /** Temporal integration (optional) */
   temporal?: TemporalConfig;
 
+  /** Sync/cache management (optional) */
+  sync?: SyncConfig;
+
   /** Managed services config (optional) */
   managedServices?: ManagedServicesConfig;
 
@@ -749,6 +752,123 @@ interface TemporalNamespace {
 }
 ```
 
+### SyncConfig
+
+Main repository synchronization and cache management.
+
+The `sync` command keeps the main repository up-to-date and rebuilds cached artifacts. This is essential for monorepos where worktrees depend on pre-built binaries, shared node_modules, or other cached assets from the main repo.
+
+```typescript
+interface SyncConfig {
+  /** Enable sync command. Default: true */
+  enabled: boolean;
+
+  /** Git sync settings */
+  git?: {
+    /** Use git-spice for repo sync if available */
+    useGitSpice?: boolean;
+    /** Pull strategy: "rebase" (default) or "merge" */
+    pullStrategy?: "rebase" | "merge";
+  };
+
+  /** Artifacts to track and rebuild */
+  artifacts: SyncArtifact[];
+
+  /** State file location for change detection */
+  stateFile?: string;
+}
+
+interface SyncArtifact {
+  /** Unique artifact identifier */
+  id: string;
+
+  /** Human-readable description */
+  description?: string;
+
+  /** Change detection strategy */
+  detect: ArtifactDetection;
+
+  /** Rebuild/update action when changes detected */
+  update: ArtifactUpdate;
+}
+
+type ArtifactDetection =
+  /** Hash a lock file to detect dependency changes */
+  | { type: "lockfileHash"; path: TemplateString }
+  /** Check if files changed between git commits */
+  | { type: "gitDiff"; paths: TemplateString[] }
+  /** Check if output files exist */
+  | { type: "outputExists"; paths: TemplateString[] }
+  /** Always rebuild */
+  | { type: "always" };
+
+type ArtifactUpdate =
+  /** Run a shell command */
+  | { type: "shell"; cwd: TemplateString; command: TemplateString }
+  /** Run npm/pnpm/yarn install */
+  | { type: "npmInstall"; cwd: TemplateString }
+  /** Run bun install */
+  | { type: "bunInstall"; cwd: TemplateString }
+  /** Build cargo binaries */
+  | { type: "cargoBuild"; cwd: TemplateString; binaries: string[] }
+  /** Custom handler function */
+  | { type: "custom"; handler: (ctx: SyncContext) => Promise<void> };
+```
+
+**Example: Dust's sync artifacts**
+
+```typescript
+sync: {
+  enabled: true,
+  git: { useGitSpice: true, pullStrategy: "rebase" },
+  artifacts: [
+    // Node dependencies (only if lock file changed)
+    {
+      id: "front-deps",
+      description: "Front node_modules",
+      detect: { type: "lockfileHash", path: "{{mainRepo}}/front/package-lock.json" },
+      update: { type: "npmInstall", cwd: "{{mainRepo}}/front" },
+    },
+    {
+      id: "connectors-deps",
+      description: "Connectors node_modules",
+      detect: { type: "lockfileHash", path: "{{mainRepo}}/connectors/package-lock.json" },
+      update: { type: "npmInstall", cwd: "{{mainRepo}}/connectors" },
+    },
+    {
+      id: "sdk-deps",
+      description: "SDK node_modules",
+      detect: { type: "lockfileHash", path: "{{mainRepo}}/sdks/js/package-lock.json" },
+      update: { type: "npmInstall", cwd: "{{mainRepo}}/sdks/js" },
+    },
+    // Rust binaries (only if core/ changed)
+    {
+      id: "rust-binaries",
+      description: "Core Rust binaries for init",
+      detect: { type: "gitDiff", paths: ["core/"] },
+      update: { type: "cargoBuild", cwd: "{{mainRepo}}/core", binaries: ["init_db", "qdrant_create_collection", "elasticsearch_create_index"] },
+    },
+    // dust-hive itself
+    {
+      id: "dust-hive",
+      description: "dust-hive CLI",
+      detect: { type: "lockfileHash", path: "{{mainRepo}}/x/henry/dust-hive/bun.lockb" },
+      update: { type: "bunInstall", cwd: "{{mainRepo}}/x/henry/dust-hive" },
+    },
+  ],
+}
+```
+
+**Why is sync important?**
+
+In monorepos with worktrees:
+- Worktrees symlink to main repo's `node_modules` and `target/` directories
+- If main repo's dependencies are outdated, all worktrees break
+- Binary caching (Rust) speeds up environment initialization
+- `sync` is the single command to bring everything up-to-date
+
+For simpler projects without caching needs, `sync` can be disabled entirely.
+
 ### HiveHooks
 
 Lifecycle hooks for custom behavior.
@@ -928,6 +1048,32 @@ Abstraction over terminal multiplexers.
 - Sessions are view-only (logs + shell)
 - Closing session does NOT stop services
 - Layout generation from service registry
+
+### Sync Manager
+
+Keeps the main repository up-to-date and manages cached artifacts.
+
+- Runs on main repo only (not worktrees)
+- Detects changes via lock file hashing and git diff
+- Selective rebuilds: only update what changed
+- Persists state between runs to avoid unnecessary work
+- Integrates with git-spice for advanced git workflows
+
+**The sync flow:**
+
+1. **Pull latest** - `git pull --rebase` (or git-spice repo sync)
+2. **Detect changes** - Compare lock file hashes and git diffs against saved state
+3. **Update artifacts** - Run npm install, cargo build, etc. only for changed artifacts
+4. **Save state** - Record current hashes/commits for next run
+
+**Why this matters for worktrees:**
+
+Worktrees share cached assets with the main repo:
+- `node_modules/` is symlinked from main repo
+- `target/` (Rust) is symlinked from main repo
+- Init binaries come from main repo's build cache
+
+If the main repo is outdated, all worktrees break. `sync` is the single command to fix this.
 
 ---
 
