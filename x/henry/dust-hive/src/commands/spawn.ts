@@ -21,6 +21,7 @@ import { installAllDependencies } from "../lib/setup";
 import { createTestDatabase, isTestPostgresRunning } from "../lib/test-postgres";
 import { cleanupPartialEnvironment, createWorktree, getMainRepoPath } from "../lib/worktree";
 import { openCommand } from "./open";
+import { syncCommand } from "./sync";
 import { warmCommand } from "./warm";
 
 interface SpawnOptions {
@@ -33,6 +34,7 @@ interface SpawnOptions {
   command?: string;
   compact?: boolean;
   unifiedLogs?: boolean;
+  sync?: boolean;
 }
 
 async function promptForName(): Promise<string> {
@@ -213,6 +215,17 @@ async function startSdk(
 }
 
 export async function spawnCommand(options: SpawnOptions): Promise<Result<void>> {
+  // Run sync first if requested
+  if (options.sync) {
+    logger.info("Running sync before spawn...");
+    console.log();
+    const syncResult = await syncCommand({});
+    if (!syncResult.ok) {
+      return syncResult;
+    }
+    console.log();
+  }
+
   // Find repo root (could be main repo or worktree)
   const currentRepoRoot = await findRepoRoot();
   if (!currentRepoRoot) {
