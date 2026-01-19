@@ -114,6 +114,11 @@ export async function getConversationDataSourceViews(
       conversationDataSourceView
     );
   }
+  const files = await FileResource.fetchByIds(
+    auth,
+    attachments.filter(isFileAttachmentType).map((f) => f.fileId)
+  );
+  const filesById = new Map(files.map((f) => [f.sId, f]));
 
   const fileIdToDataSourceViewMap = new Map<string, DataSourceViewResource>();
 
@@ -122,13 +127,9 @@ export async function getConversationDataSourceViews(
     if (isFileAttachmentType(attachment)) {
       try {
         // Get the file resource to access its metadata
-        const fileResource = await FileResource.fetchById(
-          auth,
-          attachment.fileId
-        );
-        if (fileResource && fileResource.useCaseMetadata?.conversationId) {
-          const fileConversationId =
-            fileResource.useCaseMetadata.conversationId;
+        const file = filesById.get(attachment.fileId);
+        if (file && file.useCaseMetadata?.conversationId) {
+          const fileConversationId = file.useCaseMetadata.conversationId;
 
           // First look in already fetched conversations
           const cachedChildDataSourceView =

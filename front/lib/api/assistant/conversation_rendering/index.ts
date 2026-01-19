@@ -27,7 +27,7 @@ import {
   prunePreviousInteractions,
 } from "./pruning";
 
-// When previous iteractions pruning is enabled, we'll attempt to fully preserve this number of interactions.
+// When previous interactions pruning is enabled, we'll attempt to fully preserve this number of interactions.
 const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;
 
 // Fixed number of tokens assumed for image contents

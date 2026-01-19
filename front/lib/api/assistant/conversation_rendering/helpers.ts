@@ -104,7 +104,7 @@ export function renderActionForMultiActionsModel(
 /**
  * Processes agent message steps
  */
-export async function getSteps(
+export function getSteps(
   auth: Authenticator,
   {
     model,
@@ -119,7 +119,7 @@ export async function getSteps(
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
   }
-): Promise<Step[]> {
+): Step[] {
   const supportedModel = getSupportedModelConfig(model);
   const actions = removeNulls(message.actions);
 
