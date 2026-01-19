@@ -23,6 +23,7 @@ import {
   renameClientExecutableFile,
   revertClientExecutableFileChanges,
 } from "@app/lib/api/files/client_executable";
+import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_validation";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { InteractiveContentFileContentType } from "@app/types";
@@ -79,7 +80,9 @@ function createServer(
   server.tool(
     CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     "Create a new Interactive Content file that users can execute or interact with. Use this for " +
-      "content that provides functionality beyond static viewing.",
+      "content that provides functionality beyond static viewing. Validation (Tailwind, TypeScript) " +
+      "is non-blocking: the file is saved even with warnings, which you should fix immediately using " +
+      "targeted edits.",
     {
       file_name: z
         .string()
@@ -151,11 +154,13 @@ function createServer(
           );
         }
 
-        const { value: fileResource } = result;
+        const { fileResource, warnings } = result.value;
 
-        const responseText = description
+        let responseText = description
           ? `File '${fileResource.sId}' created successfully. ${description}`
           : `File '${fileResource.sId}' created successfully.`;
+
+        responseText += formatValidationWarningsForLLM(warnings);
 
         if (_meta?.progressToken) {
           const notification: MCPProgressNotificationType =
@@ -194,14 +199,15 @@ function createServer(
       "Performs single substitution by default, or multiple substitutions when " +
       "`expected_replacements` is defined. This function demands comprehensive contextual " +
       "information surrounding the target modification to ensure accurate targeting. " +
-      `Use the ${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME} tool to review the file's ` +
+      `Use the ${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME} tool to review the file's ` +
       "existing content prior to executing any text substitution. Requirements: " +
       "1. `old_string` MUST contain the precise literal content for substitution " +
       "(preserving all spacing, formatting, line breaks). " +
       "2. `new_string` MUST contain the exact replacement content maintaining proper syntax. " +
       "3. Include minimum 3 lines of surrounding context BEFORE and AFTER the target " +
       "content for unique identification. " +
-      "**Critical:** Multiple matches or inexact matches will cause failure.",
+      "**Critical:** Multiple matches or inexact matches will cause failure. " +
+      "Validation (Tailwind, TypeScript) is non-blocking: warnings are returned but the edit succeeds.",
     {
       file_id: z
         .string()
@@ -260,12 +266,14 @@ function createServer(
           );
         }
 
-        const { fileResource, replacementCount } = result.value;
+        const { fileResource, replacementCount, warnings } = result.value;
 
         const pluralS = replacementCount === 1 ? "" : "s";
-        const responseText =
+        let responseText =
           `File '${fileResource.sId}' updated successfully. Made ` +
           `${replacementCount} replacement${pluralS}`;
+
+        responseText += formatValidationWarningsForLLM(warnings);
 
         if (_meta?.progressToken) {
           const notification: MCPProgressNotificationType =

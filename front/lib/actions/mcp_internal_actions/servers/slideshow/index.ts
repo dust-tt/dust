@@ -17,6 +17,7 @@ import {
   editClientExecutableFile,
   getClientExecutableFileContent,
 } from "@app/lib/api/files/client_executable";
+import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_validation";
 import type { Authenticator } from "@app/lib/auth";
 import type { InteractiveContentFileContentType } from "@app/types";
 import {
@@ -114,11 +115,13 @@ function createServer(
           );
         }
 
-        const { value: fileResource } = result;
+        const { fileResource, warnings } = result.value;
 
-        const responseText = description
+        let responseText = description
           ? `Slideshow '${fileResource.sId}' created successfully. ${description}`
           : `Slideshow '${fileResource.sId}' created successfully.`;
+
+        responseText += formatValidationWarningsForLLM(warnings);
 
         if (_meta?.progressToken) {
           const notification: MCPProgressNotificationType = {
@@ -231,12 +234,14 @@ function createServer(
           );
         }
 
-        const { fileResource, replacementCount } = result.value;
+        const { fileResource, replacementCount, warnings } = result.value;
 
         const pluralS = replacementCount === 1 ? "" : "s";
-        const responseText =
+        let responseText =
           `Slideshow '${fileResource.sId}' updated successfully. Made ` +
           `${replacementCount} replacement${pluralS}`;
+
+        responseText += formatValidationWarningsForLLM(warnings);
 
         if (_meta?.progressToken) {
           const notification: MCPProgressNotificationType = {
