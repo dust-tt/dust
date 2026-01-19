@@ -294,7 +294,7 @@ export default function SpaceConversations({
   }
 
   return (
-    <div className="flex h-full w-full flex-col bg-background">
+    <div className="flex h-full w-full flex-col">
       <Tabs
         value={currentTab}
         onValueChange={(value) => handleTabChange(value as SpaceTab)}

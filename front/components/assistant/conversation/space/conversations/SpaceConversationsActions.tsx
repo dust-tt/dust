@@ -42,7 +42,7 @@ export function SpaceConversationsActions() {
             className="cursor-pointer"
           >
             <div className="flex w-full flex-col gap-2 text-sm">
-              <div className="flex w-full items-center gap-2 font-semibold text-foreground">
+              <div className="flex w-full items-center gap-2 font-semibold text-foreground dark:text-foreground-night">
                 <Icon visual={suggestion.icon} size="sm" />
                 <div className="w-full">{suggestion.label}</div>
               </div>
