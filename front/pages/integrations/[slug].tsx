@@ -42,9 +42,9 @@ export const getStaticProps: GetStaticProps<IntegrationPageProps> = async ({
     return { notFound: true };
   }
 
-  // Get enrichment if available
-  const enrichment: IntegrationEnrichment | undefined =
-    integrationEnrichments[slug];
+  // Get enrichment if available (use null instead of undefined for JSON serialization)
+  const enrichment: IntegrationEnrichment | null =
+    integrationEnrichments[slug] ?? null;
 
   // Get related integrations
   const related = getRelatedIntegrations(integration, 4);
