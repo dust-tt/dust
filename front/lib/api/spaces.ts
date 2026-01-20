@@ -427,9 +427,9 @@ export async function createSpaceAndGroup(
       t
     );
 
-    if (spaceKind === "project" && globalGroupRes?.isOk()) {
+    if (space.isProject() && globalGroupRes?.isOk()) {
       // Set the global group as viewer for project spaces
-      GroupSpaceModel.update(
+      await GroupSpaceModel.update(
         {
           kind: "project_viewer",
         },
@@ -451,7 +451,7 @@ export async function createSpaceAndGroup(
         // Create editor group
         editorGroup = await GroupResource.makeNew(
           {
-            name: `Editors for ${spaceKind === "project" ? "project" : "space"} ${name}`,
+            name: `Editors for ${space.isProject() ? "project" : "space"} ${name}`,
             workspaceId: owner.id,
             kind: "space_editors",
           },
@@ -460,9 +460,11 @@ export async function createSpaceAndGroup(
 
         // Add editor group to space with kind="project_editor"
         await space.linkGroup(auth, editorGroup, "project_editor", t);
+        const creator = auth.getNonNullableUser();
 
+        // Add the project creator as editor by default
         const editorUsers = (
-          await UserResource.fetchByIds(params.editorIds)
+          await UserResource.fetchByIds([...params.editorIds, creator.sId])
         ).map((user) => user.toJSON());
 
         // Add users to the newly created group. For the specific purpose of
@@ -487,7 +489,7 @@ export async function createSpaceAndGroup(
 
       const groupsResult = await membersGroup.addMembers(
         auth,
-        // Space creators can add members to the space
+        // Space creators can add members to the space (they are in the editor group if any)
         {
           users,
           requestedPermissions: editorGroup
