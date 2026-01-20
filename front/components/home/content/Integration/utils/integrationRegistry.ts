@@ -116,7 +116,7 @@ const CONNECTOR_CATEGORY_MAP: Record<ConnectorProvider, IntegrationCategory> = {
   intercom: "support",
   microsoft: "storage",
   microsoft_bot: "communication",
-  webcrawler: "data",
+  webcrawler: "storage",
   snowflake: "data",
   zendesk: "support",
   bigquery: "data",
