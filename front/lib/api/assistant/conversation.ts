@@ -1374,7 +1374,6 @@ export async function postNewContentFragment(
     return { contentFragment, messageRow };
   });
 
-  // Use batch method even for single message to ensure optimized file fetching.
   const render = await contentFragment.renderFromMessage(auth, {
     conversationId: conversation.sId,
     message: messageRow,
