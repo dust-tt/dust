@@ -1,6 +1,6 @@
-import { AGENT_CONFIGURATION_ID_KEY } from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/metadata";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { AGENT_CONFIGURATION_ID_KEY } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 
 export function getAgentConfigurationIdFromContext(
   agentLoopContext?: AgentLoopContextType

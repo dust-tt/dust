@@ -54,12 +54,6 @@ export function createToolsRecord<
   ) as { [K in keyof T]: T[K] & { name: K } };
 }
 
-export function defineTool<TName extends string, TSchema extends ZodRawShape>(
-  def: ToolDefinition<TName, TSchema>
-): ToolDefinition<TName, TSchema> {
-  return def;
-}
-
 export interface ServerMetadata {
   serverInfo: InternalMCPServerDefinitionType;
   tools: MCPToolType[];
