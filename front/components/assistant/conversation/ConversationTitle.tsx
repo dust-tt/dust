@@ -47,7 +47,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
         <div className="flex min-w-0">
           {conversation?.spaceId && (
             <IconButton
-              size="icon-xs"
+              size="xs"
               variant="outline"
               icon={ArrowLeftIcon}
               aria-label={`Back to ${spaceInfo?.name}`}

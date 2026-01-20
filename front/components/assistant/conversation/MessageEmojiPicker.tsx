@@ -32,7 +32,7 @@ export function MessageEmojiPicker({
           key="emoji-picker-button"
           tooltip="Add reaction"
           variant="outline"
-          size="icon-xs"
+          size="xmini"
           icon={EmotionLaughIcon}
           isSelect
           className={cn("text-muted-foreground", className)}

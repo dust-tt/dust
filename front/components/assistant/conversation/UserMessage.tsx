@@ -475,7 +475,7 @@ function ActionMenu({
             {actions.map((action, index) => (
               <DropdownMenuItem
                 key={index}
-                icon={action.icon} 
+                icon={action.icon}
                 label={action.label}
                 onClick={action.onClick}
               />
