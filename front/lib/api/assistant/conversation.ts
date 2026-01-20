@@ -1374,12 +1374,11 @@ export async function postNewContentFragment(
     return { contentFragment, messageRow };
   });
 
-  // Use batch method even for single message to ensure optimized file fetching
-  const [render] = await ContentFragmentResource.batchRenderFromMessages(
-    auth,
-    conversation.sId,
-    [messageRow]
-  );
+  // Use batch method even for single message to ensure optimized file fetching.
+  const [render] = await ContentFragmentResource.batchRenderFromMessages(auth, {
+    conversationId: conversation.sId,
+    messages: [messageRow],
+  });
 
   return new Ok(render);
 }

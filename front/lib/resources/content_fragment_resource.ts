@@ -206,8 +206,13 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
    */
   static async batchRenderFromMessages(
     auth: Authenticator,
-    conversationId: string,
-    messages: MessageModel[]
+    {
+      conversationId,
+      messages,
+    }: {
+      conversationId: string;
+      messages: MessageModel[];
+    }
   ): Promise<ContentFragmentType[]> {
     const messagesWithContentFragment = messages.filter(
       (m) => !!m.contentFragment
@@ -300,9 +305,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   /**
    * Internal method to render a content fragment from a message.
    * Use batchRenderFromMessages instead to avoid N+1 queries.
-   * @private
    */
-  async _renderFromMessage({
+  private async _renderFromMessage({
     auth,
     conversationId,
     message,

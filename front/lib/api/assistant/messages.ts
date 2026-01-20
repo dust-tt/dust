@@ -670,11 +670,10 @@ async function batchRenderContentFragment(
   conversationId: string,
   messages: MessageModel[]
 ): Promise<ContentFragmentType[]> {
-  return ContentFragmentResource.batchRenderFromMessages(
-    auth,
+  return ContentFragmentResource.batchRenderFromMessages(auth, {
     conversationId,
-    messages
-  );
+    messages,
+  });
 }
 
 type RenderMessageVariant = "legacy-light" | "full" | "light";
