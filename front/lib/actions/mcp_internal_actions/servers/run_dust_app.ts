@@ -26,7 +26,7 @@ import type {
 } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
-  isServerSideMCPServerConfiguration,
+  isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import config from "@app/lib/api/config";
@@ -351,9 +351,8 @@ export default async function createServer(
   if (agentLoopContext?.listToolsContext) {
     const { agentActionConfiguration } = agentLoopContext.listToolsContext;
     if (
-      !isServerSideMCPServerConfiguration(agentActionConfiguration) ||
-      !matchesInternalMCPServerName(
-        agentActionConfiguration.internalMCPServerId,
+      !isServerSideMCPServerConfigurationWithName(
+        agentActionConfiguration,
         "run_dust_app"
       )
     ) {

@@ -16,6 +16,7 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import {
   isMCPServerConfiguration,
   isServerSideMCPServerConfiguration,
+  isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
@@ -182,10 +183,8 @@ function useAvailableToolsets({
 }) {
   const toolsetsAction = useMemo(
     () =>
-      agentConfiguration.actions.find(
-        (action) =>
-          isServerSideMCPServerConfiguration(action) &&
-          matchesInternalMCPServerName(action.internalMCPServerId, "toolsets")
+      agentConfiguration.actions.find((action) =>
+        isServerSideMCPServerConfigurationWithName(action, "toolsets")
       ),
     [agentConfiguration.actions]
   );

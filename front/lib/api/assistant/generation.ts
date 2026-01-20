@@ -9,19 +9,17 @@ import {
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
-import type {
-  MCPServerConfigurationType,
-  ServerSideMCPServerConfigurationType,
-} from "@app/lib/actions/mcp";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import {
   INTERNAL_SERVERS_WITH_WEBSEARCH,
-  matchesInternalMCPServerName,
   SKILL_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import {
+  areDataSourcesConfigured,
+  isServerSideMCPServerConfigurationWithName,
+} from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -321,16 +319,6 @@ function constructPastedContentSection(): string {
   );
 }
 
-function areDataSourcesConfigured(
-  arg: MCPServerConfigurationType
-): arg is ServerSideMCPServerConfigurationType {
-  return (
-    isServerSideMCPServerConfiguration(arg) &&
-    !!arg.dataSources &&
-    arg.dataSources.length > 0
-  );
-}
-
 export function constructGuidelinesSection({
   agentConfiguration,
   userMessage,
@@ -343,22 +331,16 @@ export function constructGuidelinesSection({
   const canRetrieveDocuments = agentConfiguration.actions.some(
     (action) =>
       areDataSourcesConfigured(action) ||
-      (isServerSideMCPServerConfiguration(action) &&
-        (INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
-          matchesInternalMCPServerName(action.internalMCPServerId, n)
-        ) ||
-          matchesInternalMCPServerName(
-            action.internalMCPServerId,
-            "run_agent"
-          ) ||
-          matchesInternalMCPServerName(action.internalMCPServerId, "slack") ||
-          matchesInternalMCPServerName(action.internalMCPServerId, "notion")))
+      INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+        isServerSideMCPServerConfigurationWithName(action, n)
+      ) ||
+      isServerSideMCPServerConfigurationWithName(action, "run_agent") ||
+      isServerSideMCPServerConfigurationWithName(action, "slack") ||
+      isServerSideMCPServerConfigurationWithName(action, "notion")
   );
 
-  const isUsingRunAgent = agentConfiguration.actions.some(
-    (action) =>
-      isServerSideMCPServerConfiguration(action) &&
-      matchesInternalMCPServerName(action.internalMCPServerId, "run_agent")
+  const isUsingRunAgent = agentConfiguration.actions.some((action) =>
+    isServerSideMCPServerConfigurationWithName(action, "run_agent")
   );
 
   if (canRetrieveDocuments) {
