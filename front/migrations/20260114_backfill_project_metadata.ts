@@ -86,7 +86,6 @@ async function backfillProjectMetadata(
           spaceId: space.id,
           description: null,
           urls: [],
-          tags: [],
         });
       }
     },
