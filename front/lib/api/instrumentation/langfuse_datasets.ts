@@ -61,6 +61,8 @@ interface AddTraceToDatasetParams {
   dustTraceId: string;
   feedbackId: number;
   workspaceId: string;
+  feedbackContent: string | null;
+  thumbDirection: "up" | "down";
 }
 
 type LangfuseTraceSummary = {
@@ -122,7 +124,14 @@ async function fetchTraceByDustTraceId(
 export async function addTraceToLangfuseDataset(
   params: AddTraceToDatasetParams
 ): Promise<boolean> {
-  const { datasetName, dustTraceId, feedbackId, workspaceId } = params;
+  const {
+    datasetName,
+    dustTraceId,
+    feedbackId,
+    workspaceId,
+    feedbackContent,
+    thumbDirection,
+  } = params;
 
   const client = getLangfuseClient();
   if (!client) {
@@ -190,6 +199,8 @@ export async function addTraceToLangfuseDataset(
         feedbackId,
         dustTraceId,
         workspaceId,
+        feedbackContent,
+        thumbDirection,
         timestamp: new Date().toISOString(),
       },
     });
