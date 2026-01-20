@@ -277,9 +277,14 @@ export async function fetchOrCreateWorkOSUserWithEmail({
   let email = workOSUser.email;
   if (!email) {
     email =
-      workOSUser.emails.find(
-        (e): e is { address: string; primary: true } =>
-          e.primary === true && "address" in e && isString(e.address)
+      workOSUser.rawAttributes.emails.find(
+        (e: unknown): e is { address: string; primary: true } =>
+          typeof e === "object" &&
+          e !== null &&
+          "primary" in e &&
+          e.primary === true &&
+          "address" in e &&
+          isString(e.address)
       )?.address ?? null;
     if (!email) {
       return new Err(new Error("Missing email"));
