@@ -66,7 +66,7 @@ export const NavigationSidebar = React.forwardRef<
     return "";
   }, [router.isReady, router.route]);
 
-  const { featureFlags, hasFeature } = useFeatureFlags({
+  const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
@@ -205,18 +205,9 @@ export const NavigationSidebar = React.forwardRef<
             "text-foreground dark:text-foreground-night"
           )}
         >
-          <UserMenu
-            user={user}
-            owner={owner}
-            subscription={subscription}
-            showHelp={hasFeature("sidebar_v2")}
-          />
-          {!hasFeature("sidebar_v2") && (
-            <>
-              <div className="flex-1" />
-              <HelpDropdown owner={owner} user={user} />
-            </>
-          )}
+          <UserMenu user={user} owner={owner} subscription={subscription} />
+          <div className="flex-1" />
+          <HelpDropdown owner={owner} user={user} />
         </div>
       )}
     </div>

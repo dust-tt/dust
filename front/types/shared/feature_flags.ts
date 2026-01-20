@@ -234,10 +234,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Phone verification during trial sign-up",
     stage: "dust_only",
   },
-  sidebar_v2: {
-    description: "New sidebar layout with help menu in user menu",
-    stage: "dust_only",
-  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
