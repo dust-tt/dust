@@ -670,26 +670,10 @@ async function batchRenderContentFragment(
   conversationId: string,
   messages: MessageModel[]
 ): Promise<ContentFragmentType[]> {
-  const messagesWithContentFragment = messages.filter(
-    (m) => !!m.contentFragment
-  );
-  if (messagesWithContentFragment.find((m) => !m.contentFragment)) {
-    throw new Error(
-      "Unreachable: batchRenderContentFragment must be called with only content fragments"
-    );
-  }
-
-  return Promise.all(
-    messagesWithContentFragment.map(async (message: MessageModel) => {
-      const contentFragment = ContentFragmentResource.fromMessage(message);
-      const render = await contentFragment.renderFromMessage({
-        auth,
-        conversationId,
-        message,
-      });
-
-      return render;
-    })
+  return ContentFragmentResource.batchRenderFromMessages(
+    auth,
+    conversationId,
+    messages
   );
 }
 

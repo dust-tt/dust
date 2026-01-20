@@ -1373,11 +1373,13 @@ export async function postNewContentFragment(
 
     return { contentFragment, messageRow };
   });
-  const render = await contentFragment.renderFromMessage({
+
+  // Use batch method even for single message to ensure optimized file fetching
+  const [render] = await ContentFragmentResource.batchRenderFromMessages(
     auth,
-    conversationId: conversation.sId,
-    message: messageRow,
-  });
+    conversation.sId,
+    [messageRow]
+  );
 
   return new Ok(render);
 }

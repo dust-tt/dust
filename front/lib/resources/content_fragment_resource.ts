@@ -52,6 +52,7 @@ import {
   isSupportedImageContentType,
   normalizeError,
   Ok,
+  removeNulls,
 } from "@app/types";
 
 export const CONTENT_OUTDATED_MSG =
@@ -198,6 +199,50 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   /**
+   * Batch render content fragments from messages with optimized file fetching.
+   * This method fetches all files in a single query to avoid N+1 queries.
+   *
+   * This is the recommended way to render content fragments.
+   */
+  static async batchRenderFromMessages(
+    auth: Authenticator,
+    conversationId: string,
+    messages: MessageModel[]
+  ): Promise<ContentFragmentType[]> {
+    const messagesWithContentFragment = messages.filter(
+      (m) => !!m.contentFragment
+    );
+
+    if (messagesWithContentFragment.length === 0) {
+      return [];
+    }
+
+    // Batch fetch all files to avoid N+1 queries.
+    const fileIds = removeNulls(
+      messagesWithContentFragment.map((m) => m.contentFragment?.fileId)
+    );
+    const files = await FileResource.fetchByModelIdsWithAuth(auth, fileIds);
+    const filesByModelId = new Map(files.map((f) => [f.id, f]));
+
+    // Render all content fragments with pre-fetched files.
+    return Promise.all(
+      messagesWithContentFragment.map(async (message: MessageModel) => {
+        const contentFragment = ContentFragmentResource.fromMessage(message);
+        const file = contentFragment.fileId
+          ? filesByModelId.get(contentFragment.fileId)
+          : undefined;
+
+        return contentFragment._renderFromMessage({
+          auth,
+          conversationId,
+          message,
+          file,
+        });
+      })
+    );
+  }
+
+  /**
    * Temporary workaround until we can call this method from the MessageResource.
    * @deprecated use the destroy method.
    */
@@ -252,14 +297,21 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     return this.update({ sourceUrl });
   }
 
-  async renderFromMessage({
+  /**
+   * Internal method to render a content fragment from a message.
+   * Use batchRenderFromMessages instead to avoid N+1 queries.
+   * @private
+   */
+  async _renderFromMessage({
     auth,
     conversationId,
     message,
+    file,
   }: {
     auth: Authenticator;
     conversationId: string;
     message: MessageModel;
+    file?: FileResource;
   }): Promise<ContentFragmentType> {
     const owner = auth.workspace();
     if (!owner) {
@@ -333,18 +385,20 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       let generatedTables: string[] = [];
       let sourceProvider: string | null = null;
       let sourceIcon: string | null = null;
-      let file: FileResource | null = null;
-      if (this.fileId) {
-        file = await FileResource.fetchByModelIdWithAuth(auth, this.fileId);
-      }
-      // TODO(durable_agents): make fileId not optional for file content fragments
 
-      if (file) {
-        fileStringId = file.sId;
-        snippet = file.snippet;
-        generatedTables = file.useCaseMetadata?.generatedTables ?? [];
-        sourceProvider = file.useCaseMetadata?.sourceProvider ?? null;
-        sourceIcon = file.useCaseMetadata?.sourceIcon ?? null;
+      // Use pre-fetched file if provided, otherwise fetch it (for backward compatibility)
+      const fileResource =
+        file ??
+        (this.fileId
+          ? await FileResource.fetchByModelIdWithAuth(auth, this.fileId)
+          : null);
+
+      if (fileResource) {
+        fileStringId = fileResource.sId;
+        snippet = fileResource.snippet;
+        generatedTables = fileResource.useCaseMetadata?.generatedTables ?? [];
+        sourceProvider = fileResource.useCaseMetadata?.sourceProvider ?? null;
+        sourceIcon = fileResource.useCaseMetadata?.sourceIcon ?? null;
       }
 
       return {
