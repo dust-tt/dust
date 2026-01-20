@@ -47,7 +47,7 @@ export function IntegrationHeroSection({
 
             <H1
               mono
-              className="mb-4 text-center text-4xl font-medium leading-tight text-foreground md:text-5xl"
+              className="mb-2 text-center text-4xl font-medium leading-tight text-foreground md:text-5xl"
             >
               {seoTitle}
             </H1>
