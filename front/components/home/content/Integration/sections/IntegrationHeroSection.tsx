@@ -68,7 +68,7 @@ export function IntegrationHeroSection({
 
             {/* CTAs */}
             <div className="flex flex-col gap-4 sm:flex-row">
-              <Link href="/home" shallow>
+              <Link href="/home/contact" shallow>
                 <Button
                   variant="highlight"
                   size="md"

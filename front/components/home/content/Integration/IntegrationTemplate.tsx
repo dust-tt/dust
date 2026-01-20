@@ -86,7 +86,7 @@ export default function IntegrationTemplate({
     subtitle: `Connect ${integration.name} to Dust and let AI agents handle your workflows.`,
     primaryCTA: {
       label: "Start free trial",
-      href: "/home",
+      href: "/api/workos/login?screenHint=sign-up",
     },
     secondaryCTA: {
       label: "Talk to sales",
