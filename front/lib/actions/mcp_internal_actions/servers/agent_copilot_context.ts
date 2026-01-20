@@ -57,7 +57,6 @@ function createServer(
 ): McpServer {
   const server = makeInternalMCPServer("agent_copilot_context");
 
-  // Tool: get_available_models
   server.tool(
     "get_available_models",
     "Get the list of available models. Can optionally filter by provider.",
@@ -123,7 +122,6 @@ function createServer(
     )
   );
 
-  // Tool: get_available_skills
   server.tool(
     "get_available_skills",
     "Get the list of available skills that can be added to agents. Returns skills accessible to the current user across all spaces they have access to.",
@@ -163,7 +161,6 @@ function createServer(
     )
   );
 
-  // Tool: get_available_tools
   server.tool(
     "get_available_tools",
     "Get the list of available tools (MCP servers) that can be added to agents. Returns tools accessible to the current user.",
@@ -216,7 +213,6 @@ function createServer(
     )
   );
 
-  // Tool: get_agent_feedback
   server.tool(
     "get_agent_feedback",
     "Get user feedback for the agent. This tool is agent-specific and requires the agent ID to be configured.",
@@ -348,7 +344,6 @@ function createServer(
     )
   );
 
-  // Tool: get_agent_insights
   server.tool(
     "get_agent_insights",
     "Get insight and analytics data for the agent. This tool is agent-specific and requires the agent ID to be configured.",
