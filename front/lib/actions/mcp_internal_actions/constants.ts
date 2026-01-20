@@ -1836,16 +1836,6 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "agent_copilot_context",
-      version: "1.0.0",
-      description:
-        "Retrieve context about available models, skills, tools, and agent-specific feedback and insights.",
-      icon: "ActionRobotIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
   },
   databricks: {
     id: 45,
