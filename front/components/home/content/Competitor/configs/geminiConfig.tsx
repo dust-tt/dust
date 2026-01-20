@@ -6,8 +6,7 @@ export const geminiConfig: CompetitorPageConfig = {
   competitorLogo: "/static/landing/compare/gemini.svg",
 
   seo: {
-    title:
-      "Best Gemini Enterprise Alternative for Multi-Model AI Agents | Dust",
+    title: "Gemini Enterprise Alternative for Multi-Model AI Agents | Dust",
     description:
       "Compare Dust to Gemini Enterprise. Deploy AI agents accessible from Slack, Teams, Chrome with 20+ integrations, multi-model flexibility, and no-code automation. Trusted by Clay, Vanta, Qonto.",
   },
@@ -50,12 +49,13 @@ export const geminiConfig: CompetitorPageConfig = {
       {
         label: "Model flexibility",
         dust: "OpenAI, Anthropic, Gemini, Mistral—your choice",
-        competitor: "Locked to Gemini models only",
+        competitor: "No code agents locked to Gemini models only",
       },
       {
         label: "Data connections",
         dust: "20+ integrations: GitHub, Notion, HubSpot, Zendesk, Snowflake",
-        competitor: "Google Suite + M365 only, missing critical tools",
+        competitor:
+          "No code agents can mainly access Google Suite + M365 + Atlassian, missing critical tools",
       },
       {
         label: "Automation",

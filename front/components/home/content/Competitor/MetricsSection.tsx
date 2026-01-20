@@ -1,10 +1,6 @@
 import { Grid, H2 } from "@app/components/home/ContentComponents";
 
-interface Metric {
-  value: string;
-  label: string;
-  description: string;
-}
+import type { Metric } from "./types";
 
 interface MetricsSectionProps {
   title?: string;

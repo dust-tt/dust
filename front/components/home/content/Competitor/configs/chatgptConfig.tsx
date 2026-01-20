@@ -6,7 +6,7 @@ export const chatgptConfig: CompetitorPageConfig = {
   competitorLogo: "/static/landing/compare/chatgpt.svg",
 
   seo: {
-    title: "Best ChatGPT Enterprise Alternative for AI Agents at Work | Dust",
+    title: "ChatGPT Enterprise Alternative for AI Agents at Work | Dust",
     description:
       "Compare Dust to ChatGPT Enterprise. Multi-model platform with agent orchestration, 200+ actions, SOC 2 security, and true collaboration. Trusted by Clay, Vanta, Qonto.",
   },
@@ -24,8 +24,7 @@ export const chatgptConfig: CompetitorPageConfig = {
   },
 
   hero: {
-    title:
-      "The Best ChatGPT Enterprise Alternative for Teams That Need AI Agents Everywhere",
+    title: "The Best ChatGPT Enterprise Alternative for AI Agents at Work",
     subtitle:
       "Deploy AI agents that orchestrate workflows, take actions, and collaborate—across Slack, your CRM, support tools, and everywhere your team works",
     primaryCTA: {
@@ -69,7 +68,7 @@ export const chatgptConfig: CompetitorPageConfig = {
     title: "How Dust Compares to ChatGPT Enterprise",
     rows: [
       {
-        feature: "Deploy agents everywhere",
+        feature: "Deploy agents everywhere without code",
         description:
           "Agents accessible in Slack, Teams, Chrome, Zendesk, Google Workspace",
         dust: "yes",
@@ -167,12 +166,6 @@ export const chatgptConfig: CompetitorPageConfig = {
         description:
           "ChatGPT Enterprise limits deep research to 25/month and agent mode to 40/month per user. Dust has no per-feature rate limits—usage scales with your team.",
       },
-      {
-        icon: "chat",
-        title: "EU data residency available",
-        description:
-          "ChatGPT Enterprise synced connectors are US-only. Dust offers data residency options (US/EU) with all integrations available.",
-      },
     ],
   },
 
@@ -185,7 +178,7 @@ export const chatgptConfig: CompetitorPageConfig = {
         description: "Via MCP servers",
       },
       {
-        value: "4",
+        value: "4+",
         label: "AI model providers",
         description: "OpenAI, Anthropic, Gemini, Mistral",
       },
@@ -228,12 +221,6 @@ export const chatgptConfig: CompetitorPageConfig = {
           "What are the monthly limits for Deep Research and Agent Mode in ChatGPT Enterprise?",
         answer:
           "25 requests/month for Deep Research, 40 requests/month for Agent Mode per user. For teams running scaled workflows, these limits can be restrictive. Dust has no per-feature rate limits.",
-      },
-      {
-        question:
-          "Can EU customers use ChatGPT Enterprise's synced connectors?",
-        answer:
-          "No—synced connectors for Google Drive and SharePoint are US-only. EU customers with data residency requirements lose access to synced connectors. Dust offers data residency options (US/EU) with all integrations available.",
       },
       {
         question: "How does pricing compare?",

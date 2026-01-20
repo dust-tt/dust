@@ -6,7 +6,7 @@ export const gleanConfig: CompetitorPageConfig = {
   competitorLogo: "/static/landing/compare/glean.svg",
 
   seo: {
-    title: "Best Glean Alternative for AI Agent Workflows | Dust",
+    title: "Glean Alternative for AI Agent Workflows | Dust",
     description:
       "Compare Dust to Glean for enterprise AI. Agent-first platform with 70-90% adoption, transparent pricing from $29/user, multi-agent orchestration, and proven ROI. Trusted by Clay, Vanta, Qonto.",
   },
@@ -89,7 +89,7 @@ export const gleanConfig: CompetitorPageConfig = {
         feature: "20+ AI models",
         description: "GPT-4, Claude, Gemini, Mistral—choose per task",
         dust: "yes",
-        competitor: "yes",
+        competitor: "partial",
       },
       {
         feature: "Transparent pricing",
@@ -153,9 +153,9 @@ export const gleanConfig: CompetitorPageConfig = {
       },
       {
         icon: "sparkles",
-        title: "20+ AI models",
+        title: "Model agnostic from day one",
         description:
-          "Switch between GPT-4, Claude, Gemini, and Mistral as better models launch. Choose the best model for each task.",
+          "Switch between GPT-4, Claude, Gemini, and Mistral as better models launch. Glean only added multi-LLM support in December 2024 with cloud provider lock-in focus.",
       },
       {
         icon: "chart",
