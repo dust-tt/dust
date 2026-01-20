@@ -1,14 +1,13 @@
 import { cn, markdownStyles } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
-import { CharacterCount } from "@tiptap/extensions";
-import { Placeholder } from "@tiptap/extensions";
+import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
-import React, { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -27,6 +26,7 @@ import { ListItemExtension } from "@app/components/editor/extensions/ListItemExt
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
+import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import type { LightAgentConfigurationType } from "@app/types";
 
@@ -90,6 +90,7 @@ export function AgentBuilderInstructionsEditor({
         hardBreak: false, // we use custom EmptyLineParagraphExtension instead
         orderedList: false, // we use custom OrderedListExtension instead
         listItem: false, // we use custom ListItemExtension instead
+        link: false, // we use custom LinkExtension instead
         bulletList: {
           HTMLAttributes: {
             class: markdownStyles.unorderedList(),
@@ -165,6 +166,13 @@ export function AgentBuilderInstructionsEditor({
         },
       }),
       EmojiExtension,
+      LinkExtension.configure({
+        HTMLAttributes: {
+          class: "text-blue-600 hover:underline hover:text-blue-800",
+        },
+        autolink: false,
+        openOnClick: false,
+      }),
     ];
 
     extensions.push(
