@@ -1,13 +1,7 @@
-import { DustAPI } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -17,19 +11,22 @@ import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistan
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
-import apiConfig from "@app/lib/api/config";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import logger from "@app/logger/logger";
 import {
   Err,
-  getHeaderFromGroupIds,
   isModelProviderId,
   Ok,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
+
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "../../mcp_helper";
 
 // Key used to store the agent configuration ID in additionalConfiguration.
 const AGENT_CONFIGURATION_ID_KEY = "agentConfigurationId";
@@ -175,46 +172,26 @@ function createServer(
       auth,
       { toolNameForMonitoring: "get_available_tools", agentLoopContext },
       async () => {
-        const owner = auth.getNonNullableWorkspace();
-        const requestedGroupIds = auth.groups().map((g) => g.sId);
-        const prodCredentials = await prodAPICredentialsForOwner(owner, {
-          useLocalInDev: true,
-        });
-        const config = apiConfig.getDustAPIConfig();
-        const api = new DustAPI(
-          config,
-          {
-            ...prodCredentials,
-            extraHeaders: {
-              ...getHeaderFromGroupIds(requestedGroupIds),
-            },
-          },
-          logger,
-          config.nodeEnv === "development" ? "http://localhost:3000" : null
+        // Get all spaces the user has access to.
+        const userSpaces =
+          await SpaceResource.listWorkspaceSpacesAsMember(auth);
+
+        // Fetch all MCP server views from those spaces.
+        const mcpServerViews = await MCPServerViewResource.listBySpaces(
+          auth,
+          userSpaces
         );
 
-        const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-        const r = await api.getMCPServerViews(globalSpace.sId, true);
-        if (r.isErr()) {
-          return new Err(
-            new MCPError(`Failed to fetch tools: ${r.error.message}`, {
-              tracked: false,
-            })
-          );
-        }
-
-        // Filter tools that have no requirements and are not hidden in builder.
-        const mcpServerViews = r.value
+        const flattenedServerViews = mcpServerViews
+          .map((v) => v.toJSON())
+          .filter((v): v is MCPServerViewType => v !== null)
           .filter(
-            (mcpServerView) =>
-              getMCPServerRequirements(mcpServerView).noRequirement
-          )
-          .filter(
-            (mcpServerView) =>
-              mcpServerView.server.availability !== "auto_hidden_builder"
+            (v) =>
+              v.server.availability == "manual" ||
+              v.server.availability == "auto"
           );
 
-        const toolList = mcpServerViews.map((mcpServerView) => ({
+        const toolList = flattenedServerViews.map((mcpServerView) => ({
           sId: mcpServerView.sId,
           name: getMcpServerViewDisplayName(mcpServerView),
           description: getMcpServerViewDescription(mcpServerView),
