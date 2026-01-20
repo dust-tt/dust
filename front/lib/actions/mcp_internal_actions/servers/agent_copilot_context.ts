@@ -283,8 +283,9 @@ function createServer(
           );
         }
 
-        let feedbacks =
-          feedbacksRes.value as AgentMessageFeedbackWithMetadataType[];
+        let feedbacks = feedbacksRes.value.filter(
+          (f): f is AgentMessageFeedbackWithMetadataType => true
+        );
 
         // Apply additional filters.
         if (agentVersion !== undefined) {
@@ -387,14 +388,17 @@ function createServer(
           );
         }
 
-        const daysValue = days ?? 30;
+        const numberOfDays = days ?? 30;
         const baseQuery = buildAgentAnalyticsBaseQuery({
           workspaceId: owner.sId,
           agentId: agentConfigurationId,
-          days: daysValue,
+          days: numberOfDays,
         });
 
-        const overviewResult = await fetchAgentOverview(baseQuery, daysValue);
+        const overviewResult = await fetchAgentOverview(
+          baseQuery,
+          numberOfDays
+        );
 
         if (overviewResult.isErr()) {
           return new Err(
@@ -411,7 +415,7 @@ function createServer(
           agentConfigurationId,
           agentName: agentConfiguration.name,
           period: {
-            days: daysValue,
+            days: numberOfDays,
           },
           overview: {
             activeUsers: overview.activeUsers,
