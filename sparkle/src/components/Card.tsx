@@ -225,15 +225,20 @@ const CardActions = React.forwardRef<
 
 CardActions.displayName = "CardActions";
 
+export type CardActionButtonProps = Omit<MiniButtonProps, "size"> & {
+  size?: "icon" | "icon-xs";
+};
+
 export const CardActionButton = React.forwardRef<
   HTMLButtonElement,
-  MiniButtonProps
->(({ className, variant = "outline", icon = XMarkIcon, ...props }, ref) => {
+  CardActionButtonProps
+>(({ className, variant = "outline", icon = XMarkIcon, size = "icon", ...props }, ref) => {
   return (
     <Button
       ref={ref}
       variant={variant}
       icon={icon}
+      size={size}
       className={className}
       {...props}
     />
