@@ -437,28 +437,26 @@ export async function createOrUpgradeAgentConfiguration({
       // the previous version back to `active` status so the agent remains
       // available.
       if (agentConfigurationId) {
-        try {
-          const restored = await restoreAgentConfiguration(
-            auth,
-            agentConfigurationRes.value.sId
-          );
-          if (!restored) {
-            logger.error(
-              {
-                workspaceId: auth.getNonNullableWorkspace().sId,
-                agentConfigurationId: agentConfigurationRes.value.sId,
-              },
-              "Failed to restore previous agent version after action creation error"
-            );
-          }
-        } catch (e) {
+        const restoredResult = await restoreAgentConfiguration(
+          auth,
+          agentConfigurationRes.value.sId
+        );
+        if (restoredResult.isErr()) {
           logger.error(
             {
-              error: e,
+              error: restoredResult.error,
               workspaceId: auth.getNonNullableWorkspace().sId,
               agentConfigurationId: agentConfigurationRes.value.sId,
             },
             "Error while restoring previous agent version after rollback"
+          );
+        } else if (!restoredResult.value.restored) {
+          logger.error(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              agentConfigurationId: agentConfigurationRes.value.sId,
+            },
+            "Failed to restore previous agent version after action creation error"
           );
         }
       }

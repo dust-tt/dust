@@ -1032,11 +1032,9 @@ export async function archiveAgentConfiguration(
 export async function restoreAgentConfiguration(
   auth: Authenticator,
   agentConfigurationId: string
-): Promise<boolean> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+): Promise<Result<{ restored: boolean }, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
   const latestConfig = await AgentConfigurationModel.findOne({
     where: {
       sId: agentConfigurationId,
@@ -1046,13 +1044,16 @@ export async function restoreAgentConfiguration(
     limit: 1,
   });
   if (!latestConfig) {
-    throw new Error("Could not find agent configuration");
+    return new Err(new Error("Could not find agent configuration"));
   }
   if (latestConfig.status !== "archived") {
-    throw new Error("Agent configuration is not archived");
+    return new Err(new Error("Agent configuration is not archived"));
   }
+
   const updated = await AgentConfigurationModel.update(
-    { status: "active" },
+    {
+      status: "active",
+    },
     {
       where: {
         id: latestConfig.id,
@@ -1099,8 +1100,7 @@ export async function restoreAgentConfiguration(
     }
   }
 
-  const affectedCount = updated[0];
-  return affectedCount > 0;
+  return new Ok({ restored: updated[0] > 0 });
 }
 
 // Should only be called when we need to clean up the agent configuration
