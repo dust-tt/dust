@@ -24,7 +24,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
-import { Err, Ok, sha256 } from "@app/types";
+import { Err, isString, Ok, sha256 } from "@app/types";
 import { isDevelopment } from "@app/types/shared/env";
 
 export type SessionCookie = {
@@ -276,7 +276,11 @@ export async function fetchOrCreateWorkOSUserWithEmail({
 
   let email = workOSUser.email;
   if (!email) {
-    email = workOSUser.emails.find((e) => e.primary)?.value ?? null;
+    email =
+      workOSUser.emails.find(
+        (e): e is { address: string; primary: true } =>
+          e.primary === true && "address" in e && isString(e.address)
+      )?.address ?? null;
     if (!email) {
       return new Err(new Error("Missing email"));
     }
