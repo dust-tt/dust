@@ -506,6 +506,13 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/rfrenoy/",
     github: "https://github.com/rfrenoy",
   },
+  matteo: {
+    name: "Matteo Trabattoni",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/31540320?v=4",
+    github: "https://github.com/matteotrab",
+    linkedIn: "https://linkedin.com/in/matteo-trabattoni",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
