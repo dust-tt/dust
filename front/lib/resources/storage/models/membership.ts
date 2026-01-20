@@ -56,6 +56,12 @@ MembershipModel.init(
       { fields: ["startAt"] },
       { fields: ["endAt"] },
       { fields: ["workspaceId", "userId", "startAt", "endAt"] },
+      // Prevent duplicate active memberships for same user/workspace.
+      {
+        fields: ["userId", "workspaceId"],
+        unique: true,
+        where: { endAt: null },
+      },
     ],
   }
 );
