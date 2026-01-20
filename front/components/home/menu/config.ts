@@ -426,10 +426,6 @@ export const menuConfig: DocsConfig = {
           href: "/compare/glean",
         },
         {
-          title: "Dust vs Langdock",
-          href: "/compare/langdock",
-        },
-        {
           title: "Dust vs n8n",
           href: "/compare/n8n",
         },
