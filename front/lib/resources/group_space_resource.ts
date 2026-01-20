@@ -1,7 +1,7 @@
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
+import type { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -36,146 +36,13 @@ export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
   }
 
   /**
-   * Create a new group-space relationship and return the appropriate resource type.
-   */
-  static async makeNew(
-    auth: Authenticator,
-    {
-      group,
-      space,
-      kind,
-      transaction,
-    }: {
-      group: GroupResource;
-      space: SpaceResource;
-      kind: "member" | "project_editor" | "project_viewer";
-      transaction?: Transaction;
-    }
-  ): Promise<
-    | GroupSpaceMemberResource
-    | GroupSpaceEditorResource
-    | GroupSpaceViewerResource
-  > {
-    const groupSpace = await GroupSpaceModel.create(
-      {
-        groupId: group.id,
-        vaultId: space.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        kind,
-      },
-      { transaction }
-    );
-
-    switch (kind) {
-      case "member":
-        return new GroupSpaceMemberResource(
-          GroupSpaceModel,
-          groupSpace.get(),
-          space,
-          group
-        );
-      case "project_editor":
-        return new GroupSpaceEditorResource(
-          GroupSpaceModel,
-          groupSpace.get(),
-          space,
-          group
-        );
-      case "project_viewer":
-        return new GroupSpaceViewerResource(
-          GroupSpaceModel,
-          groupSpace.get(),
-          space,
-          group
-        );
-    }
-  }
-
-  static async fetchByGroupAndSpace(
-    auth: Authenticator,
-    {
-      groupId,
-      spaceId,
-      transaction,
-    }: {
-      groupId: ModelId;
-      spaceId: ModelId;
-      transaction?: Transaction;
-    }
-  ): Promise<
-    | GroupSpaceMemberResource
-    | GroupSpaceEditorResource
-    | GroupSpaceViewerResource
-    | null
-  > {
-    const groupSpace = await GroupSpaceModel.findOne({
-      where: {
-        groupId,
-        vaultId: spaceId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      include: [
-        {
-          model: SpaceModel,
-          as: "space",
-          include: [
-            {
-              model: GroupModel,
-            },
-          ],
-        },
-        {
-          model: GroupModel,
-          as: "group",
-        },
-      ],
-      transaction,
-    });
-
-    if (!groupSpace) {
-      return null;
-    }
-
-    const space = SpaceResource.fromModel(
-      groupSpace.get("space") as SpaceModel
-    );
-    const group = new GroupResource(
-      GroupModel,
-      (groupSpace.get("group") as GroupModel).get()
-    );
-
-    switch (groupSpace.kind) {
-      case "member":
-        return new GroupSpaceMemberResource(
-          GroupSpaceModel,
-          groupSpace.get(),
-          space,
-          group
-        );
-      case "project_editor":
-        return new GroupSpaceEditorResource(
-          GroupSpaceModel,
-          groupSpace.get(),
-          space,
-          group
-        );
-      case "project_viewer":
-        return new GroupSpaceViewerResource(
-          GroupSpaceModel,
-          groupSpace.get(),
-          space,
-          group
-        );
-    }
-  }
-
-  /**
    * Helper method to find the editor group for a space.
    * Returns the group with kind "project_editor" if it exists.
    */
-  protected getEditorGroup(): GroupResource | undefined {
-    return this.space.groups.find(
-      (g) => g.group_vaults?.kind === "project_editor"
+  async getEditorGroup(): Promise<GroupSpaceEditorResource | null> {
+    return GroupSpaceEditorResource.fetchBySpace(
+      this.space.workspaceId,
+      this.space.id
     );
   }
 
@@ -183,7 +50,7 @@ export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
    * Placeholder for requestedPermissions to be defined in subclasses.
    * Each subclass will implement its own permission logic.
    */
-  requestedPermissions(): CombinedResourcePermissions[] {
+  async requestedPermissions(): Promise<CombinedResourcePermissions[]> {
     throw new Error("requestedPermissions must be implemented in subclass");
   }
 
@@ -214,7 +81,7 @@ export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
     // Get the permissions for this specific group-space relationship.
     // We use the first permission set since our permission model returns an array
     // but each group-space relationship has a single permission configuration.
-    const permissions = this.requestedPermissions();
+    const permissions = await this.requestedPermissions();
     const requestedPermissions =
       permissions.length > 0 ? permissions[0] : undefined;
 
@@ -281,7 +148,7 @@ export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
     // Get the permissions for this specific group-space relationship.
     // We use the first permission set since our permission model returns an array
     // but each group-space relationship has a single permission configuration.
-    const permissions = this.requestedPermissions();
+    const permissions = await this.requestedPermissions();
     const requestedPermissions =
       permissions.length > 0 ? permissions[0] : undefined;
 
@@ -350,7 +217,7 @@ export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
     // Get the permissions for this specific group-space relationship.
     // We use the first permission set since our permission model returns an array
     // but each group-space relationship has a single permission configuration.
-    const permissions = this.requestedPermissions();
+    const permissions = await this.requestedPermissions();
     const requestedPermissions =
       permissions.length > 0 ? permissions[0] : undefined;
 
@@ -400,9 +267,99 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
     super(model, blob, space, group);
   }
 
-  requestedPermissions(): CombinedResourcePermissions[] {
+  static async makeNew(
+    auth: Authenticator,
+    {
+      group,
+      space,
+      transaction,
+    }: {
+      group: GroupResource;
+      space: SpaceResource;
+      transaction?: Transaction;
+    }
+  ): Promise<GroupSpaceMemberResource> {
+    const groupSpace = await GroupSpaceModel.create(
+      {
+        groupId: group.id,
+        vaultId: space.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        kind: "member",
+      },
+      { transaction }
+    );
+
+    return new GroupSpaceMemberResource(
+      GroupSpaceModel,
+      groupSpace.get(),
+      space,
+      group
+    );
+  }
+
+  static async fetchBySpace(
+    auth: Authenticator,
+    {
+      spaceId,
+      transaction,
+    }: {
+      spaceId: ModelId;
+      transaction?: Transaction;
+    }
+  ): Promise<GroupSpaceMemberResource | null> {
+    const groupSpace = await GroupSpaceModel.findOne({
+      where: {
+        kind: "member",
+        vaultId: spaceId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+    });
+
+    if (!groupSpace) {
+      return null;
+    }
+
+    // Fetch the space and group separately to ensure they have all necessary associations loaded
+    const spaceModel = await SpaceModel.findOne({
+      where: {
+        id: groupSpace.vaultId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      include: [
+        {
+          model: GroupModel,
+        },
+      ],
+      transaction,
+    });
+
+    const groupModel = await GroupModel.findOne({
+      where: {
+        id: groupSpace.groupId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+    });
+
+    if (!spaceModel || !groupModel) {
+      return null;
+    }
+
+    const space = SpaceResource.fromModel(spaceModel);
+    const group = new GroupResource(GroupModel, groupModel.get());
+
+    return new GroupSpaceMemberResource(
+      GroupSpaceModel,
+      groupSpace.get(),
+      space,
+      group
+    );
+  }
+
+  async requestedPermissions(): Promise<CombinedResourcePermissions[]> {
     if (this.space.isProject()) {
-      const editorGroup = this.getEditorGroup();
+      const editorGroup = await this.getEditorGroup();
       return [
         {
           groups: [
@@ -463,9 +420,93 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
     super(model, blob, space, group);
   }
 
-  requestedPermissions(): CombinedResourcePermissions[] {
+  static async makeNew(
+    auth: Authenticator,
+    {
+      group,
+      space,
+      transaction,
+    }: {
+      group: GroupResource;
+      space: SpaceResource;
+      transaction?: Transaction;
+    }
+  ): Promise<GroupSpaceEditorResource> {
+    const groupSpace = await GroupSpaceModel.create(
+      {
+        groupId: group.id,
+        vaultId: space.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        kind: "project_editor",
+      },
+      { transaction }
+    );
+
+    return new GroupSpaceEditorResource(
+      GroupSpaceModel,
+      groupSpace.get(),
+      space,
+      group
+    );
+  }
+
+  static async fetchBySpace(
+    workspaceId: ModelId,
+    spaceId: ModelId,
+    transaction?: Transaction
+  ): Promise<GroupSpaceEditorResource | null> {
+    const groupSpace = await GroupSpaceModel.findOne({
+      where: {
+        kind: "project_editor",
+        vaultId: spaceId,
+        workspaceId,
+      },
+    });
+
+    if (!groupSpace) {
+      return null;
+    }
+
+    // Fetch the space and group separately to ensure they have all necessary associations loaded
+    const spaceModel = await SpaceModel.findOne({
+      where: {
+        id: groupSpace.vaultId,
+        workspaceId,
+      },
+      include: [
+        {
+          model: GroupModel,
+        },
+      ],
+      transaction,
+    });
+
+    const groupModel = await GroupModel.findOne({
+      where: {
+        id: groupSpace.groupId,
+        workspaceId,
+      },
+      transaction,
+    });
+
+    if (!spaceModel || !groupModel) {
+      return null;
+    }
+
+    const space = SpaceResource.fromModel(spaceModel);
+    const group = new GroupResource(GroupModel, groupModel.get());
+
+    return new GroupSpaceEditorResource(
+      GroupSpaceModel,
+      groupSpace.get(),
+      space,
+      group
+    );
+  }
+
+  async requestedPermissions(): Promise<CombinedResourcePermissions[]> {
     if (this.space.isProject()) {
-      const editorGroup = this.getEditorGroup();
+      const editorGroup = await this.getEditorGroup();
       return [
         {
           groups: editorGroup
@@ -499,9 +540,99 @@ export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
     super(model, blob, space, group);
   }
 
-  requestedPermissions(): CombinedResourcePermissions[] {
+  static async makeNew(
+    auth: Authenticator,
+    {
+      group,
+      space,
+      transaction,
+    }: {
+      group: GroupResource;
+      space: SpaceResource;
+      transaction?: Transaction;
+    }
+  ): Promise<GroupSpaceViewerResource> {
+    const groupSpace = await GroupSpaceModel.create(
+      {
+        groupId: group.id,
+        vaultId: space.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        kind: "project_viewer",
+      },
+      { transaction }
+    );
+
+    return new GroupSpaceViewerResource(
+      GroupSpaceModel,
+      groupSpace.get(),
+      space,
+      group
+    );
+  }
+
+  static async fetchBySpace(
+    auth: Authenticator,
+    {
+      spaceId,
+      transaction,
+    }: {
+      spaceId: ModelId;
+      transaction?: Transaction;
+    }
+  ): Promise<GroupSpaceViewerResource | null> {
+    const groupSpace = await GroupSpaceModel.findOne({
+      where: {
+        kind: "project_viewer",
+        vaultId: spaceId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+    });
+
+    if (!groupSpace) {
+      return null;
+    }
+
+    // Fetch the space and group separately to ensure they have all necessary associations loaded
+    const spaceModel = await SpaceModel.findOne({
+      where: {
+        id: groupSpace.vaultId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      include: [
+        {
+          model: GroupModel,
+        },
+      ],
+      transaction,
+    });
+
+    const groupModel = await GroupModel.findOne({
+      where: {
+        id: groupSpace.groupId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+    });
+
+    if (!spaceModel || !groupModel) {
+      return null;
+    }
+
+    const space = SpaceResource.fromModel(spaceModel);
+    const group = new GroupResource(GroupModel, groupModel.get());
+
+    return new GroupSpaceViewerResource(
+      GroupSpaceModel,
+      groupSpace.get(),
+      space,
+      group
+    );
+  }
+
+  async requestedPermissions(): Promise<CombinedResourcePermissions[]> {
     if (this.space.isProject()) {
-      const editorGroup = this.getEditorGroup();
+      const editorGroup = await this.getEditorGroup();
       return [
         {
           groups: [

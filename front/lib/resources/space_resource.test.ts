@@ -482,7 +482,7 @@ describe("SpaceResource", () => {
 
       it("should remove global group when changing from open to restricted", async () => {
         // First add global group to make it open
-        regularSpace.linkGroup(adminAuth, globalGroup, "member");
+        await regularSpace.linkGroup(adminAuth, globalGroup, "member");
 
         // Reload space to get updated groups
         const spaceWithGlobalGroup = await SpaceResource.fetchById(
@@ -676,7 +676,7 @@ describe("SpaceResource", () => {
           );
 
           // Link the editor group to the project space with kind="project_editor"
-          projectSpace.linkGroup(
+          await projectSpace.linkGroup(
             adminAuth,
             projectEditorGroup,
             "project_editor"
@@ -815,7 +815,7 @@ describe("SpaceResource", () => {
           );
 
           // Link the editor group to the project space with kind="project_editor"
-          projectSpace.linkGroup(
+          await projectSpace.linkGroup(
             adminAuth,
             provisionedEditorGroup,
             "project_editor"

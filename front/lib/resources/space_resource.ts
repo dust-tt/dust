@@ -13,7 +13,6 @@ import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import {
-  GroupSpaceBaseResource,
   GroupSpaceEditorResource,
   GroupSpaceMemberResource,
   GroupSpaceViewerResource,
@@ -564,7 +563,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const { isRestricted } = params;
 
-    const memberGroup = this.getSpaceManualMemberGroup();
     let editorGroup = this.getSpaceManualEditorGroup();
 
     const wasRestricted = this.groups.every((g) => !g.isGlobal());
@@ -620,12 +618,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         const users = await UserResource.fetchByIds(memberIds);
 
         // Get the GroupSpaceMemberResource for the member group
-        const memberGroupSpace =
-          await GroupSpaceMemberResource.fetchByGroupAndSpace(auth, {
-            groupId: memberGroup.id,
+        const memberGroupSpace = await GroupSpaceMemberResource.fetchBySpace(
+          auth,
+          {
             spaceId: this.id,
             transaction: t,
-          });
+          }
+        );
 
         if (!memberGroupSpace) {
           return new Err(
@@ -662,20 +661,18 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             );
 
             // Link the editor group to the space using GroupSpaceBaseResource.makeNew
-            editorGroupSpace = (await GroupSpaceBaseResource.makeNew(auth, {
+            editorGroupSpace = await GroupSpaceEditorResource.makeNew(auth, {
               group: editorGroup,
               space: this,
-              kind: "project_editor",
               transaction: t,
-            })) as GroupSpaceEditorResource;
+            });
           } else {
             // Fetch existing editor group-space relationship
-            editorGroupSpace =
-              (await GroupSpaceEditorResource.fetchByGroupAndSpace(auth, {
-                groupId: editorGroup.id,
-                spaceId: this.id,
-                transaction: t,
-              })) as GroupSpaceEditorResource;
+            editorGroupSpace = await GroupSpaceEditorResource.fetchBySpace(
+              this.workspaceId,
+              this.id,
+              t
+            );
 
             if (!editorGroupSpace) {
               return new Err(
@@ -697,12 +694,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           }
         } else if (editorGroup) {
           // No editors specified, clear the editor group
-          const editorGroupSpace =
-            await GroupSpaceEditorResource.fetchByGroupAndSpace(auth, {
-              groupId: editorGroup.id,
-              spaceId: this.id,
-              transaction: t,
-            });
+          const editorGroupSpace = await GroupSpaceEditorResource.fetchBySpace(
+            this.workspaceId,
+            this.id,
+            t
+          );
 
           if (editorGroupSpace) {
             const setEditorsRes = await editorGroupSpace.setMembers(auth, {
@@ -769,18 +765,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     group: GroupResource,
     transaction?: Transaction
   ) {
-    const groupSpace = await GroupSpaceBaseResource.fetchByGroupAndSpace(auth, {
-      groupId: group.id,
-      spaceId: this.id,
+    await GroupSpaceModel.destroy({
+      where: {
+        groupId: group.id,
+        vaultId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
       transaction,
     });
-
-    if (!groupSpace) {
-      return;
-    }
-
-    // Remove all members associated with this group-space before deletion
-    await groupSpace?.delete(auth, { transaction });
   }
 
   async addMembers(
@@ -812,7 +804,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       );
     }
 
-    const defaultSpaceGroup = this.getSpaceManualMemberGroup();
     const users = await UserResource.fetchByIds(userIds);
 
     if (!users) {
@@ -820,11 +811,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     // Get the GroupSpaceMemberResource for the member group
-    const memberGroupSpace =
-      await GroupSpaceMemberResource.fetchByGroupAndSpace(auth, {
-        groupId: defaultSpaceGroup.id,
-        spaceId: this.id,
-      });
+    const memberGroupSpace = await GroupSpaceMemberResource.fetchBySpace(auth, {
+      spaceId: this.id,
+    });
 
     if (!memberGroupSpace) {
       return new Err(
@@ -874,7 +863,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       );
     }
 
-    const defaultSpaceGroup = this.getSpaceManualMemberGroup();
     const users = await UserResource.fetchByIds(userIds);
 
     if (!users) {
@@ -882,11 +870,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     // Get the GroupSpaceMemberResource for the member group
-    const memberGroupSpace =
-      await GroupSpaceMemberResource.fetchByGroupAndSpace(auth, {
-        groupId: defaultSpaceGroup.id,
-        spaceId: this.id,
-      });
+    const memberGroupSpace = await GroupSpaceMemberResource.fetchBySpace(auth, {
+      spaceId: this.id,
+    });
 
     if (!memberGroupSpace) {
       return new Err(
@@ -943,12 +929,28 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     | GroupSpaceEditorResource
     | GroupSpaceViewerResource
   > {
-    return await GroupSpaceBaseResource.makeNew(auth, {
-      group,
-      space: this,
-      kind,
-      transaction: t,
-    });
+    switch (kind) {
+      case "member":
+        return GroupSpaceMemberResource.makeNew(auth, {
+          group,
+          space: this,
+          transaction: t,
+        });
+      case "project_editor":
+        return GroupSpaceEditorResource.makeNew(auth, {
+          group,
+          space: this,
+          transaction: t,
+        });
+      case "project_viewer":
+        return GroupSpaceViewerResource.makeNew(auth, {
+          group,
+          space: this,
+          transaction: t,
+        });
+      default:
+        assertNever(kind);
+    }
   }
 
   /**
