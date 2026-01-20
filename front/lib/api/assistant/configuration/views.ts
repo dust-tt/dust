@@ -283,14 +283,14 @@ async function fetchWorkspaceAgentConfigurationsForView(
 ) {
   const user = auth.user();
 
-  const agentIdsForGroups = user
-    ? await GroupResource.findAgentIdsForGroups(auth, [
-        ...auth
-          .groups()
-          .filter((g) => g.kind === "agent_editors")
-          .map((g) => g.id),
-      ])
-    : [];
+  const editorGroups = user ? await auth.editorGroups() : [];
+  const agentIdsForGroups =
+    editorGroups.length > 0
+      ? await GroupResource.findAgentIdsForGroups(
+          auth,
+          editorGroups.map((g) => g.id)
+        )
+      : [];
 
   const agentIdsForUserAsEditor = agentIdsForGroups.map(
     (g) => g.agentConfigurationId

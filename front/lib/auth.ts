@@ -93,6 +93,7 @@ export class Authenticator {
   _subscription: SubscriptionResource | null;
   _user: UserResource | null;
   _groups: GroupResource[];
+  _editorGroups: GroupResource[] | null;
   _workspace: WorkspaceResource | null;
   _authMethod: AuthMethodType;
 
@@ -102,6 +103,7 @@ export class Authenticator {
     user,
     role,
     groups,
+    editorGroups,
     authMethod,
     subscription,
     key,
@@ -110,6 +112,7 @@ export class Authenticator {
     user?: UserResource | null;
     role: RoleType;
     groups: GroupResource[];
+    editorGroups?: GroupResource[] | null;
     authMethod: AuthMethodType;
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
@@ -119,6 +122,7 @@ export class Authenticator {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._user = user || null;
     this._groups = groups;
+    this._editorGroups = editorGroups ?? null;
     this._role = role;
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._subscription = subscription || null;
@@ -209,6 +213,13 @@ export class Authenticator {
           GroupResource.listUserGroupsInWorkspace({
             user,
             workspace: renderLightWorkspaceType({ workspace }),
+            groupKinds: [
+              "global",
+              "regular",
+              "provisioned",
+              "skill_editors",
+              "space_editors",
+            ],
           }),
           SubscriptionResource.fetchActiveByWorkspace(
             renderLightWorkspaceType({ workspace })
@@ -232,8 +243,17 @@ export class Authenticator {
       this._groups = await GroupResource.listUserGroupsInWorkspace({
         user: this._user,
         workspace: renderLightWorkspaceType({ workspace: this._workspace }),
+        groupKinds: [
+          "global",
+          "regular",
+          "provisioned",
+          "skill_editors",
+          "space_editors",
+        ],
         transaction,
       });
+      // Reset editor groups cache so they will be reloaded if needed.
+      this._editorGroups = null;
     } else {
       return;
     }
@@ -312,6 +332,13 @@ export class Authenticator {
         GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
+          groupKinds: [
+            "global",
+            "regular",
+            "provisioned",
+            "skill_editors",
+            "space_editors",
+          ],
         }),
         SubscriptionResource.fetchActiveByWorkspace(
           renderLightWorkspaceType({ workspace })
@@ -363,6 +390,13 @@ export class Authenticator {
       GroupResource.listUserGroupsInWorkspace({
         user,
         workspace: renderLightWorkspaceType({ workspace }),
+        groupKinds: [
+          "global",
+          "regular",
+          "provisioned",
+          "skill_editors",
+          "space_editors",
+        ],
       }),
       SubscriptionResource.fetchActiveByWorkspace(
         renderLightWorkspaceType({ workspace })
@@ -662,6 +696,13 @@ export class Authenticator {
     const groups = await GroupResource.listUserGroupsInWorkspace({
       user,
       workspace: renderLightWorkspaceType({ workspace: owner }),
+      groupKinds: [
+        "global",
+        "regular",
+        "provisioned",
+        "skill_editors",
+        "space_editors",
+      ],
     });
 
     return new Authenticator({
@@ -682,6 +723,7 @@ export class Authenticator {
       key,
       role: this._role,
       groups: this._groups,
+      editorGroups: this._editorGroups,
       user: this._user,
       subscription: this._subscription,
       workspace: this._workspace,
@@ -829,6 +871,27 @@ export class Authenticator {
       isDevelopment() || DUST_INTERNAL_EMAIL_REGEXP.test(email);
 
     return isDustInternal && isDustSuperUser;
+  }
+
+  /**
+   * Lazily loads and caches the user's agent_editors groups.
+   * These groups are not loaded by default to optimize performance.
+   */
+  async editorGroups(): Promise<GroupType[]> {
+    if (this._editorGroups === null) {
+      if (!this._user || !this._workspace) {
+        this._editorGroups = [];
+        return [];
+      }
+
+      this._editorGroups = await GroupResource.listUserGroupsInWorkspace({
+        user: this._user,
+        workspace: renderLightWorkspaceType({ workspace: this._workspace }),
+        groupKinds: ["agent_editors"],
+      });
+    }
+
+    return this._editorGroups.map((g) => g.toJSON());
   }
 
   groups(): GroupType[] {

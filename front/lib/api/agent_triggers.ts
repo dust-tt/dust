@@ -24,16 +24,15 @@ async function getAccessibleAgentsInfoBySId({
     return new Map();
   }
 
-  const getAgentsForUser = async () =>
-    (
+  const getAgentsForUser = async () => {
+    const editorGroups = await auth.editorGroups();
+    return (
       await GroupResource.findAgentIdsForGroups(
         auth,
-        auth
-          .groups()
-          .filter((g) => g.kind === "agent_editors")
-          .map((g) => g.id)
+        editorGroups.map((g) => g.id)
       )
     ).map((g) => g.agentConfigurationId);
+  };
 
   const agentWhereClause = auth.isAdmin()
     ? {

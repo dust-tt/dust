@@ -113,14 +113,14 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   // Compute editor permissions if not provided
   let editorIds = agentIdsForUserAsEditor;
   if (!editorIds) {
-    const agentIdsForGroups = user
-      ? await GroupResource.findAgentIdsForGroups(auth, [
-          ...auth
-            .groups()
-            .filter((g) => g.kind === "agent_editors")
-            .map((g) => g.id),
-        ])
-      : [];
+    const editorGroups = user ? await auth.editorGroups() : [];
+    const agentIdsForGroups =
+      editorGroups.length > 0
+        ? await GroupResource.findAgentIdsForGroups(
+            auth,
+            editorGroups.map((g) => g.id)
+          )
+        : [];
 
     editorIds = agentIdsForGroups.map((g) => g.agentConfigurationId);
   }
