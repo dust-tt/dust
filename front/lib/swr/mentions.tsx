@@ -190,7 +190,7 @@ export function useMentionValidation({
             sendNotification({
               type: "success",
               title: "Success",
-              description: `${mention.label} has been added to the project.`,
+              description: `${mention.label} has been added to the project, and added to the conversation`,
             });
             return true;
           }
