@@ -2,7 +2,7 @@ import uniq from "lodash/uniq";
 
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
-import { isUnsavedServerSideMCPServerConfigurationType } from "@app/lib/actions/types/agent";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -22,7 +22,7 @@ export function getDataSourceViewIdsFromActions(
   const relevantActions = actions.filter(
     (action): action is ServerSideMCPServerConfigurationType =>
       action.type === "mcp_server_configuration" &&
-      isUnsavedServerSideMCPServerConfigurationType(action)
+      isServerSideMCPServerConfiguration(action)
   );
 
   return removeNulls(
@@ -83,14 +83,14 @@ export async function getAgentConfigurationRequirementsFromCapabilities(
     await MCPServerViewResource.listSpaceRequirementsByIds(
       auth,
       actions
-        .filter(isUnsavedServerSideMCPServerConfigurationType)
+        .filter(isServerSideMCPServerConfiguration)
         .map((action) => action.mcpServerViewId)
     );
 
   // Collect Dust App permissions by space.
   const dustAppIds = removeNulls(
     actions
-      .filter(isUnsavedServerSideMCPServerConfigurationType)
+      .filter(isServerSideMCPServerConfiguration)
       .map((action) => action.dustAppConfiguration?.appId)
   );
   let dustAppRequirements: ModelId[] = [];
