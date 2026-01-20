@@ -140,8 +140,7 @@ function createServer(
           userFacingDescription: skill.userFacingDescription,
           agentFacingDescription: skill.agentFacingDescription,
           icon: skill.icon,
-          isExtendable: skill.isExtendable,
-          toolCount: skill.mcpServerViews.length,
+          toolSIds: skill.mcpServerViews.map((v) => v.sId),
         }));
 
         return new Ok([
