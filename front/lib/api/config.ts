@@ -355,6 +355,11 @@ const config = {
   getLangfuseUiBaseUrl: () => {
     return EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_UI_BASE_URL");
   },
+  getTemporalConnectorsNamespace: () => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "TEMPORAL_CONNECTORS_NAMESPACE"
+    );
+  },
 };
 
 export default config;

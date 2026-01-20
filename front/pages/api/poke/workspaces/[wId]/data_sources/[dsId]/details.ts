@@ -23,9 +23,6 @@ import {
   safeParseJSON,
 } from "@app/types";
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
-
-const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
-
 export type FeaturesType = {
   slackBotEnabled: boolean;
   googleDrivePdfEnabled: boolean;
@@ -322,14 +319,14 @@ async function handler(
             break;
         }
       }
-
+      const temporalWorkspace = config.getTemporalConnectorsNamespace() ?? "";
       return res.status(200).json({
         dataSource: dataSource.toJSON(),
         dataSourceViews: dataSourceViews.map((view) => view.toJSON()),
         coreDataSource: coreDataSourceRes.value.data_source,
         connector,
         features,
-        temporalWorkspace: TEMPORAL_CONNECTORS_NAMESPACE,
+        temporalWorkspace,
         temporalRunningWorkflows: workflowInfos,
       });
 

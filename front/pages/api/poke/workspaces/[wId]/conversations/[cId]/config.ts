@@ -9,8 +9,6 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
-const { TEMPORAL_AGENT_NAMESPACE = "" } = process.env;
-
 export type PokeGetConversationConfig = {
   conversationDataSourceId: string | null;
   langfuseUiBaseUrl: string | null;
@@ -65,10 +63,11 @@ async function handler(
       const conversationDataSource =
         await DataSourceResource.fetchByConversation(auth, cRes.value);
 
+      const temporalWorkspace = config.getTemporalConnectorsNamespace() ?? "";
       return res.status(200).json({
         conversationDataSourceId: conversationDataSource?.sId ?? null,
         langfuseUiBaseUrl: config.getLangfuseUiBaseUrl() ?? null,
-        temporalWorkspace: TEMPORAL_AGENT_NAMESPACE,
+        temporalWorkspace,
       });
 
     default:
