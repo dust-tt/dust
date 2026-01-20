@@ -45,13 +45,14 @@ export function MentionValidationRequired({
 }: MentionValidationRequiredProps) {
   const { user } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isProjectConv = isProjectConversation(conversation);
+
   const { validateMention } = useMentionValidation({
     workspaceId: owner.sId,
     conversationId: conversation.sId,
     messageId: message.sId,
+    isProjectConversation: isProjectConv,
   });
-
-  const isProjectConv = isProjectConversation(conversation);
 
   const isTriggeredByCurrentUser = useMemo(
     () => !triggeringUser || triggeringUser.sId === user?.sId,
@@ -71,15 +72,6 @@ export function MentionValidationRequired({
     setIsSubmitting(true);
     try {
       await validateMention(mention, "approved");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleApproveAndAddToProject = async () => {
-    setIsSubmitting(true);
-    try {
-      await validateMention(mention, "approved_and_add_to_project");
     } finally {
       setIsSubmitting(false);
     }
@@ -135,25 +127,14 @@ export function MentionValidationRequired({
             disabled={isSubmitting}
             onClick={handleReject}
           />
-          {isProjectConv ? (
-            <Button
-              label="Add to project"
-              variant="highlight"
-              size="xs"
-              icon={PlusIcon}
-              disabled={isSubmitting}
-              onClick={handleApproveAndAddToProject}
-            />
-          ) : (
-            <Button
-              label="Yes"
-              variant="highlight"
-              size="xs"
-              icon={CheckIcon}
-              disabled={isSubmitting}
-              onClick={handleApprove}
-            />
-          )}
+          <Button
+            label={isProjectConv ? "Add to project" : "Yes"}
+            variant="highlight"
+            size="xs"
+            icon={isProjectConv ? PlusIcon : CheckIcon}
+            disabled={isSubmitting}
+            onClick={handleApprove}
+          />
         </div>
       </div>
     </ContentMessage>

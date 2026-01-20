@@ -21,7 +21,6 @@ const PostMentionActionRequestBodySchema = t.type({
     t.literal("approved"),
     t.literal("rejected"),
     t.literal("dismissed"),
-    t.literal("approved_and_add_to_project"),
   ]),
 });
 

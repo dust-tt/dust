@@ -3522,8 +3522,8 @@ describe("validateUserMention", () => {
     expect(participant).toBeNull();
   });
 
-  describe("approved_and_add_to_project action", () => {
-    it("should add user to project space AND as participant when approving with add_to_project", async () => {
+  describe("project conversation approval", () => {
+    it("should add user to project space AND as participant when approving in project conversation", async () => {
       // Create an admin user for this test (needs canAdministrate for addMembers)
       const adminUser = await UserFactory.basic();
       await MembershipFactory.associate(workspace, adminUser, {
@@ -3602,12 +3602,13 @@ describe("validateUserMention", () => {
         await refreshedProjectSpace!.isMember(mentionedUser);
       expect(isMemberBefore).toBe(false);
 
-      // Approve the mention and add to project (userAuth has admin role and is a project member)
+      // Approve the mention (userAuth has admin role and is a project member)
+      // Since this is a project conversation, approval automatically adds user to project space
       const result = await validateUserMention(userAuth, {
         conversationId: projectConversation.sId,
         userId: mentionedUser.sId,
         messageId: userMessage.sId,
-        approvalState: "approved_and_add_to_project",
+        approvalState: "approved",
       });
 
       expect(result.isOk()).toBe(true);
@@ -3640,60 +3641,6 @@ describe("validateUserMention", () => {
         },
       });
       expect(mention?.status).toBe("approved");
-    });
-
-    it("should return error when using approved_and_add_to_project on non-project conversation", async () => {
-      // Create a second user who will be mentioned
-      const mentionedUser = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, mentionedUser, {
-        role: "user",
-      });
-
-      // Create a user message (conversation has no spaceId)
-      const userJson = auth.getNonNullableUser().toJSON();
-      const userMessage = await withTransaction(async (transaction) => {
-        return createUserMessage(auth, {
-          conversation,
-          content: `Hello @${mentionedUser.sId}`,
-          metadata: {
-            type: "create",
-            user: userJson,
-            rank: 0,
-            context: {
-              username: userJson.username,
-              timezone: "UTC",
-              fullName: userJson.fullName,
-              email: userJson.email,
-              profilePictureUrl: userJson.image,
-              origin: "web",
-            },
-          },
-          transaction,
-        });
-      });
-
-      // Create the mention with status "pending"
-      await MentionModel.create({
-        messageId: userMessage.id,
-        userId: mentionedUser.id,
-        workspaceId: workspace.id,
-        status: "pending",
-      });
-
-      // Try to approve with add_to_project on a non-project conversation
-      const result = await validateUserMention(auth, {
-        conversationId: conversation.sId,
-        userId: mentionedUser.sId,
-        messageId: userMessage.sId,
-        approvalState: "approved_and_add_to_project",
-      });
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.api_error.message).toBe(
-          "Conversation is not in a project"
-        );
-      }
     });
   });
 });

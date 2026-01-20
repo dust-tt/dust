@@ -140,17 +140,19 @@ export function useMentionValidation({
   workspaceId,
   conversationId,
   messageId,
+  isProjectConversation,
 }: {
   workspaceId: string;
   conversationId: string;
   messageId: string;
+  isProjectConversation: boolean;
 }) {
   const sendNotification = useSendNotification();
 
   const validateMention = useCallback(
     async (
       mention: RichMentionWithStatus,
-      action: "approved" | "rejected" | "approved_and_add_to_project"
+      action: "approved" | "rejected"
     ): Promise<boolean> => {
       try {
         const url = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/mentions`;
@@ -169,12 +171,7 @@ export function useMentionValidation({
 
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
-          const actionLabel =
-            action === "approved_and_add_to_project"
-              ? "adding to project"
-              : action === "approved"
-                ? "approving"
-                : "rejecting";
+          const actionLabel = action === "approved" ? "approving" : "rejecting";
           sendNotification({
             type: "error",
             title: `Error ${actionLabel} mention`,
@@ -185,33 +182,19 @@ export function useMentionValidation({
 
         const result: PostMentionActionResponseBody = await res.json();
 
-        if (result.success) {
-          if (action === "approved_and_add_to_project") {
-            sendNotification({
-              type: "success",
-              title: "Success",
-              description: `${mention.label} has been added to the project, and added to the conversation`,
-            });
-            return true;
-          }
-          if (action === "approved") {
-            sendNotification({
-              type: "success",
-              title: "Success",
-              description: `${mention.label} has been invited to the conversation.`,
-            });
-            return true;
-          }
+        if (result.success && action === "approved") {
+          sendNotification({
+            type: "success",
+            title: "Success",
+            description: isProjectConversation
+              ? `${mention.label} has been added to the project, and added to the conversation`
+              : `${mention.label} has been invited to the conversation.`,
+          });
         }
 
         return result.success;
       } catch (error) {
-        const actionLabel =
-          action === "approved_and_add_to_project"
-            ? "adding to project"
-            : action === "approved"
-              ? "approving"
-              : "rejecting";
+        const actionLabel = action === "approved" ? "approving" : "rejecting";
         sendNotification({
           type: "error",
           title: `Error ${actionLabel} mention`,
@@ -221,7 +204,13 @@ export function useMentionValidation({
         return false;
       }
     },
-    [workspaceId, conversationId, messageId, sendNotification]
+    [
+      workspaceId,
+      conversationId,
+      messageId,
+      isProjectConversation,
+      sendNotification,
+    ]
   );
 
   return { validateMention };

@@ -907,7 +907,7 @@ export async function validateUserMention(
     conversationId: string;
     userId: string;
     messageId: string;
-    approvalState: "approved" | "rejected" | "approved_and_add_to_project";
+    approvalState: "approved" | "rejected";
   }
 ): Promise<Result<void, APIErrorWithStatusCode>> {
   const conversationRes = await getConversation(auth, conversationId);
@@ -922,19 +922,10 @@ export async function validateUserMention(
   }
 
   const conversation = conversationRes.value;
+  const isApproval = approvalState === "approved";
 
-  // Handle add-to-project action: add user to project space first, then proceed as approved.
-  if (approvalState === "approved_and_add_to_project") {
-    if (!conversation.spaceId) {
-      return new Err({
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Conversation is not in a project",
-        },
-      });
-    }
-
+  // For project conversations, add user to project space first when approving.
+  if (conversation.spaceId && isApproval) {
     const space = await SpaceResource.fetchById(auth, conversation.spaceId);
     if (!space) {
       return new Err({
@@ -982,13 +973,7 @@ export async function validateUserMention(
     }
   }
 
-  const isApproval =
-    approvalState === "approved" ||
-    approvalState === "approved_and_add_to_project";
-  // The mention status stored in DB is "approved" or "rejected", not "approved_and_add_to_project".
-  const mentionStatus: "approved" | "rejected" = isApproval
-    ? "approved"
-    : approvalState;
+  const mentionStatus: "approved" | "rejected" = approvalState;
 
   // Verify the message exists
   const message = conversation.content.flat().find((m) => m.sId === messageId);
@@ -1003,10 +988,9 @@ export async function validateUserMention(
     });
   }
   if (isApproval) {
-    const auditMessage =
-      approvalState === "approved_and_add_to_project"
-        ? "User approved a mention and added user to project"
-        : "User approved a mention";
+    const auditMessage = conversation.spaceId
+      ? "User approved a mention and added user to project"
+      : "User approved a mention";
     auditLog(
       {
         author: auth.getNonNullableUser().toJSON(),
