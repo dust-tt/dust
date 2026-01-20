@@ -13,7 +13,7 @@ import type {
   SpecificationType,
   WithAPIErrorResponse,
 } from "@app/types";
-import { CoreAPI } from "@app/types";
+import { CoreAPI, isString } from "@app/types";
 
 export type PokeGetAppDetails = {
   app: AppType;
@@ -27,7 +27,7 @@ async function handler(
   session: SessionWithUser
 ): Promise<void> {
   const { wId, aId, hash } = req.query;
-  if (typeof wId !== "string" || typeof aId !== "string") {
+  if (!isString(wId) || !isString(aId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -37,7 +37,7 @@ async function handler(
     });
   }
 
-  if (hash && typeof hash !== "string") {
+  if (!isString(hash)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

@@ -13,6 +13,7 @@ import type {
   UserType,
   WithAPIErrorResponse,
 } from "@app/types";
+import { isString } from "@app/types";
 
 export type PokeGetAgentDetails = {
   agentConfigurations: AgentConfigurationType[];
@@ -27,7 +28,7 @@ async function handler(
   session: SessionWithUser
 ): Promise<void> {
   const { wId, aId } = req.query;
-  if (typeof wId !== "string" || typeof aId !== "string") {
+  if (!isString(wId) || !isString(aId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

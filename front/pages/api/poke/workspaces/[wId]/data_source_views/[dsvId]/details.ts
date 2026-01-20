@@ -7,6 +7,7 @@ import { dataSourceViewToPokeJSON } from "@app/lib/poke/utils";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { PokeDataSourceViewType, WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 export type PokeGetDataSourceViewDetails = {
   dataSourceView: PokeDataSourceViewType;
@@ -18,7 +19,7 @@ async function handler(
   session: SessionWithUser
 ): Promise<void> {
   const { wId, dsvId } = req.query;
-  if (typeof wId !== "string" || typeof dsvId !== "string") {
+  if (!isString(wId) || !isString(dsvId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

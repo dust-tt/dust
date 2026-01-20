@@ -7,6 +7,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 import { ConnectorsAPI } from "@app/types";
 
 interface GetConnectorRedirectResponse {
@@ -31,7 +32,7 @@ async function handler(
   }
 
   const { connectorId } = req.query;
-  if (!connectorId || typeof connectorId !== "string") {
+  if (!isString(connectorId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

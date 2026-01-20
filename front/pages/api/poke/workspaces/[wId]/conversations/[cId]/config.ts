@@ -8,6 +8,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 export type PokeGetConversationConfig = {
   conversationDataSourceId: string | null;
@@ -21,7 +22,7 @@ async function handler(
   session: SessionWithUser
 ): Promise<void> {
   const { wId, cId } = req.query;
-  if (typeof wId !== "string" || typeof cId !== "string") {
+  if (!isString(wId) || !isString(cId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

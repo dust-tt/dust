@@ -1,5 +1,4 @@
 import { format } from "date-fns/format";
-import keyBy from "lodash/keyBy";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type Stripe from "stripe";
 
@@ -8,11 +7,10 @@ import config from "@app/lib/api/config";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
-import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -70,25 +68,9 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const subscriptionModels = await SubscriptionModel.findAll({
-        where: { workspaceId: owner.id },
-      });
-
-      const plans = keyBy(
-        await PlanModel.findAll({
-          where: {
-            id: subscriptionModels.map((s) => s.planId),
-          },
-        }),
-        "id"
-      );
-
-      const subscriptions = subscriptionModels.map((s) =>
-        renderSubscriptionFromModels({
-          plan: plans[s.planId],
-          activeSubscription: s,
-        })
-      );
+      const subscriptionResources =
+        await SubscriptionResource.fetchByAuthenticator(auth);
+      const subscriptions = subscriptionResources.map((s) => s.toJSON());
 
       const workspaceResource = await WorkspaceResource.fetchById(owner.sId);
       if (!workspaceResource) {
