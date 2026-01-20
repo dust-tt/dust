@@ -1,7 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
-
-import { BUTTON_SIZES } from "@sparkle/components/Button";
 import type {
   VoicePickerProps,
   VoicePickerStatus,
@@ -24,7 +22,7 @@ const meta = {
     buttonProps: { control: false },
     size: {
       control: { type: "select" },
-      options: BUTTON_SIZES,
+      options: ["xs", "sm", "md"],
     },
     disabled: {
       control: "boolean",
@@ -48,13 +46,25 @@ type VoicePickerDemoProps = Pick<
 
 export const Interactive: Story = {
   args: {
+    status: "idle",
+    level: 0,
+    elapsedSeconds: 0,
+    onRecordStart: async () => {},
+    onRecordStop: async () => {},
     size: "xs",
     disabled: false,
     showStopLabel: true,
     pressDelayMs: 150,
   },
-  render: function Render(args: VoicePickerDemoProps): React.ReactElement {
-    return <VoicePickerDemo {...args} />;
+  render: function Render(args: VoicePickerProps): React.ReactElement {
+    return (
+      <VoicePickerDemo
+        size={args.size}
+        disabled={args.disabled}
+        showStopLabel={args.showStopLabel}
+        pressDelayMs={args.pressDelayMs}
+      />
+    );
   },
 };
 
