@@ -581,7 +581,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
       // If the space should not be restricted and was restricted before, add the global group.
       if (wasRestricted && !isRestricted) {
-        await this.linkGroup(auth, globalGroup, "member", t);
+        await this.linkGroup(
+          auth,
+          globalGroup,
+          this.isProject() ? "project_viewer" : "member", // Global group gets viewer permissions in projects
+          t
+        );
       }
 
       const previousManagementMode = this.managementMode;
@@ -608,26 +613,29 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         // Handle member-based management
         const users = await UserResource.fetchByIds(memberIds);
 
+        const editorsPermissions = editorGroup
+          ? ({
+              groups: [
+                {
+                  id: editorGroup.id,
+                  permissions: ["admin", "write", "read"],
+                },
+              ],
+              roles: [
+                {
+                  role: "admin",
+                  permissions: ["read", "write", "admin"],
+                },
+              ],
+              workspaceId: this.workspaceId,
+            } as CombinedResourcePermissions)
+          : undefined;
+
         const setMembersRes = await memberGroup.setMembers(auth, {
           users: users.map((u) => u.toJSON()),
-          // Editors and admins can add members to the space
-          requestedPermissions: editorGroup
-            ? {
-                groups: [
-                  {
-                    id: editorGroup.id,
-                    permissions: ["admin", "write", "read"],
-                  },
-                ],
-                roles: [
-                  {
-                    role: "admin",
-                    permissions: ["read", "write", "admin"],
-                  },
-                ],
-                workspaceId: this.workspaceId,
-              }
-            : undefined,
+          // If there are editors, they can set members.
+          // Otherwise, default permissions apply.
+          requestedPermissions: editorsPermissions,
           transaction: t,
         });
         if (setMembersRes.isErr()) {
@@ -649,13 +657,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               { transaction: t }
             );
 
-            // Link the editor group to the space with kind="project_editor"
+            // Link the editor group to the space
             await this.linkGroup(auth, editorGroup, "project_editor", t);
           }
 
           // Set members of the editor group
           const setEditorsRes = await editorGroup.setMembers(auth, {
             users: editorUsers.map((u) => u.toJSON()),
+            requestedPermissions: editorsPermissions,
             transaction: t,
           });
           if (setEditorsRes.isErr()) {
@@ -665,6 +674,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           // No editors specified, clear the editor group
           const setEditorsRes = await editorGroup.setMembers(auth, {
             users: [],
+            requestedPermissions: editorsPermissions,
             transaction: t,
           });
           if (setEditorsRes.isErr()) {
@@ -693,7 +703,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           return selectedGroupsResult;
         }
         const selectedGroups = selectedGroupsResult.value;
-
         for (const selectedGroup of selectedGroups) {
           await this.linkGroup(auth, selectedGroup, "member", t);
         }
@@ -1042,13 +1051,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             if (groupFilter(group)) {
               const groupKind = group.group_vaults?.kind;
               if (groupKind === "project_editor") {
-                // Editor groups get admin permissions in restricted projects
+                // Project editors get admin permissions
                 acc.push({
                   id: group.id,
                   permissions: ["admin", "read", "write"],
                 });
               } else {
-                // Member groups get read permissions in restricted projects
+                // Members get read permissions in restricted projects
                 acc.push({
                   id: group.id,
                   permissions: ["read"],
@@ -1061,7 +1070,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ];
     }
 
-    // Restricted space.
+    // Restricted regular space.
     return [
       {
         workspaceId: this.workspaceId,
@@ -1233,7 +1242,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   toJSON(): SpaceType {
     return {
       createdAt: this.createdAt.getTime(),
-      groupIds: this.groups.map((group) => group.sId),
+      groupIds: this.groups
+        .filter((group) => group.group_vaults?.kind === "member")
+        .map((group) => group.sId),
       editorGroupIds: this.groups
         .filter((group) => group.group_vaults?.kind === "project_editor")
         .map((group) => group.sId),

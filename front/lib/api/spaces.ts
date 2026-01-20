@@ -426,6 +426,16 @@ export async function createSpaceAndGroup(
       t
     );
 
+    if (globalGroupRes?.isOk()) {
+      space.linkGroup(
+        auth,
+        globalGroupRes.value,
+        // add the global group as viewer for project spaces (member otherwise)
+        spaceKind === "project" ? "project_viewer" : "member",
+        t
+      );
+    }
+
     // Handle member-based space creation
     if (params.managementMode === "manual") {
       let editorGroup: GroupResource | undefined;
@@ -448,7 +458,7 @@ export async function createSpaceAndGroup(
           await UserResource.fetchByIds(params.editorIds)
         ).map((user) => user.toJSON());
 
-        // Add user to the newly created group. For the specific purpose of
+        // Add users to the newly created group. For the specific purpose of
         // space_editors group creation, we don't use addMembers, since only admins
         // can add/remove members this way. We create the relation directly.
         await GroupMembershipModel.create(
@@ -539,7 +549,7 @@ export async function createSpaceAndGroup(
             {
               error: selectedEditorGroupsResult.error,
             },
-            "The space cannot be created - failed to fetch groups"
+            "The space cannot be created - failed to fetch editor groups"
           );
           return new Err(
             new DustError("internal_error", "The space cannot be created.")
