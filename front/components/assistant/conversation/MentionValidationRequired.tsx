@@ -51,7 +51,7 @@ export function MentionValidationRequired({
     messageId: message.sId,
   });
 
-  const isProject = isProjectConversation(conversation);
+  const isProjectConv = isProjectConversation(conversation);
 
   const isTriggeredByCurrentUser = useMemo(
     () => !triggeringUser || triggeringUser.sId === user?.sId,
@@ -100,7 +100,7 @@ export function MentionValidationRequired({
                 @{message.configuration.name}
               </span>{" "}
               mentioned <span className="font-semibold">{mention.label}</span>.
-              {isProject ? (
+              {isProjectConv ? (
                 <> Do you want to add them to this project?</>
               ) : (
                 <>
@@ -112,7 +112,7 @@ export function MentionValidationRequired({
             </>
           ) : (
             <>
-              {isProject ? (
+              {isProjectConv ? (
                 <>
                   Add <b>{mention.label}</b> to this project? They'll have
                   access to all project conversations.
@@ -135,7 +135,7 @@ export function MentionValidationRequired({
             disabled={isSubmitting}
             onClick={handleReject}
           />
-          {isProject ? (
+          {isProjectConv ? (
             <Button
               label="Add to project"
               variant="highlight"
