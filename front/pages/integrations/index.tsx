@@ -10,6 +10,7 @@ import type {
   IntegrationBase,
   IntegrationCategory,
 } from "@app/components/home/content/Integration/types";
+import { getIntegrationTypeLabel } from "@app/components/home/content/Integration/types";
 import {
   buildIntegrationRegistry,
   getAllCategories,
@@ -308,14 +309,13 @@ export default function IntegrationsPage({
   );
 }
 
-function IntegrationCard({ integration }: { integration: IntegrationBase }) {
+interface IntegrationCardProps {
+  integration: IntegrationBase;
+}
+
+function IntegrationCard({ integration }: IntegrationCardProps) {
   const IconComponent = getIcon(integration.icon);
-  const typeLabel =
-    integration.type === "both"
-      ? "Tools & Data"
-      : integration.type === "mcp_server"
-        ? "Tools"
-        : "Data";
+  const typeLabel = getIntegrationTypeLabel(integration.type, true);
 
   return (
     <Link

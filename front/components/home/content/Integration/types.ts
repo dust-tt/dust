@@ -75,9 +75,17 @@ export interface IntegrationDetailPageProps {
   relatedIntegrations: IntegrationBase[];
 }
 
-// SEO config
-export interface IntegrationSEOConfig {
-  title: string;
-  description: string;
-  canonicalUrl: string;
+// Helper to get human-readable type label
+export function getIntegrationTypeLabel(
+  type: IntegrationType,
+  compact: boolean = false
+): string {
+  switch (type) {
+    case "both":
+      return compact ? "Tools & Data" : "Tools & Data Connection";
+    case "mcp_server":
+      return "Tools";
+    case "connector":
+      return compact ? "Data" : "Data Connection";
+  }
 }
