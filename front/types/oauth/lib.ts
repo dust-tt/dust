@@ -91,6 +91,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "code_verifier",
   "code_challenge",
   "scope",
+  "resource",
   "token_endpoint",
   "authorization_endpoint",
   "freshservice_domain",

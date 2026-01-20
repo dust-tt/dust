@@ -25,6 +25,7 @@ pub struct MCPConnectionMetadata {
     pub code_verifier: String,
     pub code_challenge: String,
     pub scope: Option<String>,
+    pub resource: Option<String>,
 }
 
 pub struct MCPConnectionProvider {}
