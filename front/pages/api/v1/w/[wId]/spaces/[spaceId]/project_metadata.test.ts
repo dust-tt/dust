@@ -183,7 +183,6 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     await ProjectMetadataResource.makeNew(adminAuth, space, {
       description: "Test project description",
       urls: ["https://example.com"],
-      tags: ["test", "project"],
     });
 
     req.query.spaceId = space.sId;
@@ -197,7 +196,6 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       description: "Test project description",
       sId: expect.anything(),
       spaceId: space.sId,
-      tags: ["test", "project"],
       updatedAt: expect.anything(),
       urls: ["https://example.com"],
     });

@@ -33,7 +33,6 @@ describe("ProjectMetadataResource", () => {
       await ProjectMetadataResource.makeNew(auth, projectSpace, {
         description: "Test",
         urls: ["https://example.com"],
-        tags: ["tag1"],
       });
 
       const metadata = await ProjectMetadataResource.fetchBySpace(
@@ -53,7 +52,6 @@ describe("ProjectMetadataResource", () => {
         {
           description: "Full metadata",
           urls: ["https://github.com"],
-          tags: ["frontend"],
         }
       );
 
@@ -71,13 +69,12 @@ describe("ProjectMetadataResource", () => {
         {
           description: "Initial",
           urls: [],
-          tags: [],
         }
       );
 
       await metadata.updateMetadata({
         description: "Updated",
-        tags: ["new-tag"],
+        urls: ["https://updated.com"],
       });
 
       const updated = await ProjectMetadataResource.fetchBySpace(
@@ -85,7 +82,7 @@ describe("ProjectMetadataResource", () => {
         projectSpace
       );
       expect(updated!.description).toBe("Updated");
-      expect(updated!.tags).toContain("new-tag");
+      expect(updated!.urls).toContain("https://updated.com");
     });
   });
 
@@ -97,7 +94,6 @@ describe("ProjectMetadataResource", () => {
         {
           description: "To delete",
           urls: [],
-          tags: [],
         }
       );
 
@@ -119,7 +115,6 @@ describe("ProjectMetadataResource", () => {
         {
           description: "JSON test",
           urls: ["https://test.com"],
-          tags: ["test"],
         }
       );
 

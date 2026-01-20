@@ -5,5 +5,4 @@ export interface ProjectMetadataType {
   spaceId: string;
   description: string | null;
   urls: string[];
-  tags: string[];
 }
