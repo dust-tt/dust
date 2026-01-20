@@ -69,7 +69,7 @@ export function ToolSetupCard({
     owner,
   });
 
-  // Find the macthing MCP server for the tool we want to activate.
+  // Find the matching MCP server for the tool we want to activate.
   const matchingMCPServer = useMemo(() => {
     const installedServer = mcpServers.find((s) =>
       matchesInternalMCPServerName(s.sId, toolId)
