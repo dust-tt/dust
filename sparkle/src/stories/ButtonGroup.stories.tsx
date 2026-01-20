@@ -52,7 +52,7 @@ const meta = {
     size: {
       description: "Size applied to every button",
       control: { type: "select" },
-      options: BUTTON_SIZES.filter((size) => size !== "mini"),
+      options: BUTTON_SIZES.filter((size) => size !== "icon" && size !== "icon-xs"),
     },
     orientation: {
       description: "Stack buttons horizontally or vertically",

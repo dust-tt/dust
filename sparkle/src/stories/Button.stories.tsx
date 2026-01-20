@@ -22,22 +22,19 @@ const meta = {
       control: { type: "select" },
     },
     size: {
-      description:
-        "The size of the button (Note: 'mini' size requires an icon and cannot have a label)",
+      description: `The size of the button. Use "icon" or "icon-xs" for icon-only buttons`,
       options: BUTTON_SIZES,
       control: { type: "select" },
     },
     icon: {
-      description: "Icon to display in the button (Required for mini size)",
+      description: "Icon to display in the button",
       options: Object.keys(ICONS),
       mapping: ICONS,
       control: { type: "select" },
-      if: { arg: "size", neq: "mini" },
     },
     label: {
-      description: "Button label (Not available for mini size)",
+      description: "Button label",
       control: { type: "text" },
-      if: { arg: "size", neq: "mini" },
     },
     disabled: {
       description: "Whether the button should be disabled",
@@ -100,14 +97,26 @@ export const ExampleButton: Story = {
   },
 };
 
-export const MiniButton: Story = {
-  render: () => <Button size="mini" icon={PlusIcon} />,
+export const IconOnlyButtons: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: `Use "icon" or "icon-xs" for icon-only buttons. Labels are automatically hidden for these sizes.`,
+      },
+    },
+  },
+  render: () => (
+    <div className="s-flex s-items-center s-gap-4">
+      <Button size="icon-xs" icon={PlusIcon} />
+      <Button size="icon" icon={PlusIcon} />
+    </div>
+  ),
 };
 
 const ButtonBySize = ({
   size,
 }: {
-  size: Exclude<React.ComponentProps<typeof Button>["size"], "mini">;
+  size: React.ComponentProps<typeof Button>["size"];
 }) => (
   <>
     <Separator />
@@ -140,6 +149,7 @@ const ButtonBySize = ({
 export const Gallery: Story = {
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">
+      <ButtonBySize size="mini" />
       <ButtonBySize size="xs" />
       <ButtonBySize size="sm" />
       <ButtonBySize size="md" />

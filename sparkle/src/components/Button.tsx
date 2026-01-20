@@ -34,8 +34,14 @@ export const BUTTON_VARIANTS = [
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
-export const BUTTON_SIZES = ["xmini", "mini", "xs", "sm", "md"] as const;
+export const BUTTON_SIZES = ["icon-xs", "icon", "xmini", "mini", "xs", "sm", "md"] as const;
 export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
+
+// Icon-only button sizes (fixed width, labels hidden)
+export const ICON_ONLY_SIZES = ["icon-xs", "icon"] as const;
+
+// Small button sizes that use xs spinner size
+export const SMALL_BUTTON_SIZES = ["icon-xs", "icon", "xmini", "mini"] as const;
 
 // Define button styling with cva
 const buttonVariants = cva(
@@ -141,13 +147,17 @@ const buttonVariants = cva(
         ),
       },
       size: {
-        xmini: "s-h-6 s-w-6 s-label-xs s-gap-1 s-shrink-0",
-        mini: "s-h-7 s-w-7 s-label-xs s-gap-1.5 s-shrink-0",
+        "icon-xs": "s-h-6 s-w-6 s-label-xs s-gap-1 s-shrink-0",
+        icon: "s-h-7 s-w-7 s-label-xs s-gap-1.5 s-shrink-0",
+        xmini: "s-h-6 s-px-1.5 s-label-xs s-gap-1 s-shrink-0",
+        mini: "s-h-7 s-px-2 s-label-xs s-gap-1.5 s-shrink-0",
         xs: "s-h-7 s-px-2.5 s-label-xs s-gap-1.5 s-shrink-0",
         sm: "s-h-9 s-px-3 s-label-sm s-gap-2 s-shrink-0",
         md: "s-h-12 s-px-4 s-py-2 s-label-base s-gap-2.5 s-shrink-0",
       },
       rounded: {
+        "icon-xs": "s-rounded-lg",
+        icon: "s-rounded-lg",
         xmini: "s-rounded-lg",
         mini: "s-rounded-lg",
         xs: "s-rounded-lg",
@@ -167,8 +177,10 @@ const buttonVariants = cva(
 const labelVariants = cva("", {
   variants: {
     size: {
-      xmini: "s-label-xs s-hidden",
-      mini: "s-label-xs s-hidden",
+      "icon-xs": "s-label-xs s-hidden",
+      icon: "s-label-xs s-hidden",
+      xmini: "s-label-xs",
+      mini: "s-label-xs",
       xs: "s-label-xs",
       sm: "s-label-sm",
       md: "s-label-base",
@@ -246,6 +258,8 @@ type IconSizeType = "xs" | "sm" | "md";
 type CounterSizeType = "xs" | "sm" | "md";
 
 export const ICON_SIZE_MAP: Record<ButtonSizeType, IconSizeType> = {
+  "icon-xs": "xs",
+  icon: "sm",
   xmini: "xs",
   mini: "sm",
   xs: "xs",
@@ -254,6 +268,8 @@ export const ICON_SIZE_MAP: Record<ButtonSizeType, IconSizeType> = {
 };
 
 const COUNTER_SIZE_MAP: Record<ButtonSizeType, CounterSizeType> = {
+  "icon-xs": "xs",
+  icon: "xs",
   xmini: "xs",
   mini: "xs",
   xs: "xs",
@@ -273,19 +289,19 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isRounded?: boolean;
   };
 
+export type ButtonProps = CommonButtonProps & {
+  size?: ButtonSizeType;
+  icon?: React.ComponentType;
+  label?: string;
+};
+
 export type MiniButtonProps = CommonButtonProps & {
   size: "mini";
   icon: React.ComponentType;
   label?: never;
 };
 
-export type RegularButtonProps = CommonButtonProps & {
-  size?: Exclude<ButtonSizeType, "mini">;
-  icon?: React.ComponentType;
-  label?: string;
-};
-
-export type ButtonProps = MiniButtonProps | RegularButtonProps;
+export type RegularButtonProps = ButtonProps;
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
@@ -352,12 +368,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           <div
             className={cn(
               "-s-mx-0.5",
-              size === "mini" && "s-w-5 s-px-0.5",
-              size === "xmini" && "s-w-5 s-px-0.5"
+              SMALL_BUTTON_SIZES.includes(size as typeof SMALL_BUTTON_SIZES[number]) && "s-w-5 s-px-0.5"
             )}
           >
             <Spinner
-              size={size === "mini" || size === "xmini" ? "xs" : iconSize}
+              size={SMALL_BUTTON_SIZES.includes(size as typeof SMALL_BUTTON_SIZES[number]) ? "xs" : iconSize}
               variant={(variant && spinnerVariantsMap[variant]) || "gray400"}
             />
           </div>
