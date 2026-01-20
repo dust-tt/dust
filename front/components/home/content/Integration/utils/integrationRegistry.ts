@@ -167,14 +167,20 @@ function formatToolName(name: string): string {
 
 function extractToolsFromServer(
   serverKey: string
-): { tools: IntegrationTool[]; icon: InternalAllowedIconType } {
+): { tools: IntegrationTool[]; icon: InternalAllowedIconType } | null {
   // Use type assertion since we know the structure of INTERNAL_MCP_SERVERS
   const server = INTERNAL_MCP_SERVERS[
     serverKey as keyof typeof INTERNAL_MCP_SERVERS
-  ] as {
-    tools_stakes?: Record<string, string>;
-    serverInfo: { icon: string; description: string };
-  };
+  ] as
+    | {
+        tools_stakes?: Record<string, string>;
+        serverInfo: { icon: string; description: string };
+      }
+    | undefined;
+
+  if (!server?.serverInfo) {
+    return null;
+  }
 
   const stakes = server.tools_stakes ?? {};
 
@@ -230,14 +236,24 @@ export function buildIntegrationRegistry(): IntegrationBase[] {
 
     // Type assertion for serverInfo access
     const server = serverRaw as {
-      serverInfo: {
+      serverInfo?: {
         description: string;
         documentationUrl: string | null;
         authorization: unknown;
       };
     };
 
-    const { tools, icon } = extractToolsFromServer(name);
+    // Skip servers without serverInfo
+    if (!server.serverInfo) {
+      continue;
+    }
+
+    const extracted = extractToolsFromServer(name);
+    if (!extracted) {
+      continue;
+    }
+
+    const { tools, icon } = extracted;
     const displayName = MCP_DISPLAY_NAMES[name] ?? formatToolName(name);
 
     integrationMap.set(name, {
