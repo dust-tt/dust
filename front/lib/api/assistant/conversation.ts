@@ -1380,8 +1380,6 @@ export async function postNewContentFragment(
     message: messageRow,
   });
 
-  console.log(">> render:", render);
-
   return new Ok(render);
 }
 
