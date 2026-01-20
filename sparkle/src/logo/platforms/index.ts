@@ -59,6 +59,7 @@ export { default as SnowflakeLogo } from "./Snowflake";
 export { default as StripeLogo } from "./Stripe";
 export { default as SupabaseLogo } from "./Supabase";
 export { default as TogetheraiLogo } from "./Togetherai";
+export { default as UkgLogo } from "./Ukg";
 export { default as ValTownLogo } from "./ValTown";
 export { default as VantaLogo } from "./Vanta";
 export { default as ZapierLogo } from "./Zapier";
