@@ -1118,12 +1118,14 @@ export async function executeReadThreadMessages({
   const formattedOutput = {
     parent_message: {
       text: parentMessage?.text ?? "",
+      blocks: parentMessage?.blocks,
       user: parentMessage?.user ?? "",
       ts: parentMessage?.ts ?? "",
       reply_count: parentMessage?.reply_count ?? 0,
     },
     thread_replies: threadReplies.map((msg) => ({
       text: msg.text ?? "",
+      blocks: msg.blocks,
       user: msg.user ?? "",
       ts: msg.ts ?? "",
     })),
