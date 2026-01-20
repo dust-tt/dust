@@ -46,16 +46,16 @@ export function isMCPToolConfiguration(
   );
 }
 
-export function isServerSideMCPToolConfiguration(
-  arg: MCPToolConfigurationType
-): arg is ServerSideMCPToolConfigurationType {
-  return isMCPToolConfiguration(arg) && "mcpServerViewId" in arg;
-}
-
 export function isClientSideMCPToolConfiguration(
   arg: MCPToolConfigurationType
 ): arg is ClientSideMCPToolConfigurationType {
   return isMCPToolConfiguration(arg) && "clientSideMcpServerId" in arg;
+}
+
+export function isServerSideMCPToolConfiguration(
+  arg: MCPToolConfigurationType
+): arg is ServerSideMCPToolConfigurationType {
+  return isMCPToolConfiguration(arg) && "mcpServerViewId" in arg;
 }
 
 // Light tool configuration.
@@ -88,6 +88,7 @@ export function isLightMCPToolConfiguration(
     isLightClientSideMCPToolConfiguration(arg)
   );
 }
+
 // Internal (server-side) MCP server checked by name.
 
 export function isServerSideMCPServerConfigurationWithName(
