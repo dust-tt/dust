@@ -352,6 +352,17 @@ const config = {
 
     return isEnabled;
   },
+  getLangfuseClientConfig: (): {
+    publicKey: string;
+    secretKey: string;
+    baseUrl: string | undefined;
+  } => {
+    return {
+      publicKey: EnvironmentConfig.getEnvVariable("LANGFUSE_PUBLIC_KEY"),
+      secretKey: EnvironmentConfig.getEnvVariable("LANGFUSE_SECRET_KEY"),
+      baseUrl: EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_BASE_URL"),
+    };
+  },
   getLangfuseUiBaseUrl: () => {
     return EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_UI_BASE_URL");
   },

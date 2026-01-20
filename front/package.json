@@ -49,6 +49,7 @@
     "@heroicons/react": "^2.0.11",
     "@hookform/resolvers": "^3.3.4",
     "@hubspot/api-client": "^12.0.1",
+    "@langfuse/client": "^4.5.1",
     "@langfuse/otel": "^4.4.2",
     "@langfuse/tracing": "^4.4.2",
     "@mendable/firecrawl-js": "^1.29.1",
