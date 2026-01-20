@@ -2957,6 +2957,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SnowflakeLogo"
   | "StripeLogo"
   | "SupabaseLogo"
+  | "UkgLogo"
   | "ValTownLogo"
   | "VantaLogo"
   | "ZendeskLogo"
