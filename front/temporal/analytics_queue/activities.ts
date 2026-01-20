@@ -723,6 +723,8 @@ async function appendNegativeFeedbackTracesToLangfuseDataset({
       dustTraceId: latestTraceId,
       feedbackId: feedback.id,
       workspaceId,
+      feedbackContent: feedback.content,
+      thumbDirection: feedback.thumbDirection,
     });
   }
 }
