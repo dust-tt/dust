@@ -59,7 +59,7 @@ export const TableTagSelector = ({
           <Button
             variant="ghost"
             icon={ChevronDownIcon}
-            size="xmini"
+            size="icon-xs"
             className="invisible text-muted-foreground group-hover:visible dark:text-muted-foreground-night"
           />
         )}

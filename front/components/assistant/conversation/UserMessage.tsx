@@ -437,7 +437,7 @@ function ActionMenu({
     : [];
 
   return (
-    <div className="absolute -bottom-3.5 left-2.5 flex flex-wrap items-center gap-1">
+    <div className="absolute top-[80%] left-2.5 flex flex-wrap items-center gap-1">
       {!isDeleted && reactionsEnabled && (
         <>
           <MessageReactions
@@ -462,7 +462,7 @@ function ActionMenu({
           <DropdownMenuTrigger asChild>
             <Button
               icon={MoreIcon}
-              size="xs"
+              size="icon-xs"
               variant="outline"
               aria-label="Message actions"
               className={cn(
@@ -475,7 +475,7 @@ function ActionMenu({
             {actions.map((action, index) => (
               <DropdownMenuItem
                 key={index}
-                icon={action.icon}
+                icon={action.icon} 
                 label={action.label}
                 onClick={action.onClick}
               />

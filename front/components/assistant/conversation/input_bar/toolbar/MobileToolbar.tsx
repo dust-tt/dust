@@ -22,7 +22,7 @@ export function MobileToolbar({ editor, className, onClose }: ToolbarProps) {
       )}
     >
       <Button
-        size="mini"
+        size="icon"
         variant="outline"
         icon={XMarkIcon}
         onClick={onClose}
