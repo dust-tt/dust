@@ -133,12 +133,13 @@ const getAvailableToolsTool = defineTool({
     const userSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
 
     // Fetch all MCP server views from those spaces.
+    // Similar to the logic in pages/api/w/[wId]/mcp/views/index.ts
     const mcpServerViews = await MCPServerViewResource.listBySpaces(
       auth,
       userSpaces
     );
 
-    const flattenedServerViews = mcpServerViews
+    const serverViews = mcpServerViews
       .map((v) => v.toJSON())
       .filter((v): v is MCPServerViewType => v !== null)
       .filter(
@@ -146,7 +147,7 @@ const getAvailableToolsTool = defineTool({
           v.server.availability === "manual" || v.server.availability === "auto"
       );
 
-    const toolList = flattenedServerViews.map((mcpServerView) => ({
+    const toolList = serverViews.map((mcpServerView) => ({
       sId: mcpServerView.sId,
       name: getMcpServerViewDisplayName(mcpServerView),
       description: getMcpServerViewDescription(mcpServerView),
