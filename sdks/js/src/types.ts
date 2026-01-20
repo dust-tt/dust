@@ -792,7 +792,9 @@ const GlobalAgentStatusSchema = FlexibleEnumSchema<
   | "disabled_free_workspace"
 >();
 
-const AgentStatusSchema = FlexibleEnumSchema<"active" | "archived" | "draft">();
+const AgentStatusSchema = FlexibleEnumSchema<
+  "active" | "archived" | "draft" | "pending"
+>();
 
 const AgentConfigurationStatusSchema = z.union([
   AgentStatusSchema,
