@@ -7,7 +7,7 @@ import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_de
 
 export const GITHUB_TOOL_NAME = "github" as const;
 
-export const GITHUB_TOOLS = createToolsRecord({
+export const GITHUB_TOOLS_METADATA = createToolsRecord({
   create_issue: {
     description: "Create a new issue on a specified GitHub repository.",
     schema: {
@@ -272,12 +272,12 @@ export const GITHUB_SERVER = {
     documentationUrl: null,
     instructions: null,
   },
-  tools: Object.values(GITHUB_TOOLS).map((t) => ({
+  tools: Object.values(GITHUB_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
   })),
   tools_stakes: Object.fromEntries(
-    Object.values(GITHUB_TOOLS).map((t) => [t.name, t.stake])
+    Object.values(GITHUB_TOOLS_METADATA).map((t) => [t.name, t.stake])
   ),
 } as const satisfies ServerMetadata;
