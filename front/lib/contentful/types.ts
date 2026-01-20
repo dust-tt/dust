@@ -16,6 +16,7 @@ export interface BlogPageFields {
   image?: Asset;
   publishedAt?: string;
   authors?: Entry<AuthorSkeleton>[];
+  isSeoArticle?: boolean;
 }
 
 export type BlogPageSkeleton = EntrySkeletonType<BlogPageFields, "blogPage">;
@@ -43,6 +44,7 @@ export interface BlogPost {
   authors: BlogAuthor[];
   createdAt: string;
   updatedAt: string;
+  isSeoArticle: boolean;
 }
 
 export interface BlogPostSummary {
@@ -53,6 +55,7 @@ export interface BlogPostSummary {
   tags: string[];
   image: BlogImage | null;
   createdAt: string;
+  isSeoArticle: boolean;
 }
 
 export interface BlogListingPageProps {

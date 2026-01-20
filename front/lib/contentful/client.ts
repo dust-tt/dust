@@ -308,6 +308,9 @@ function contentfulEntryToBlogPost(
         .map(contentfulEntryToAuthor)
         .filter(isNonNull)
     : [];
+  const isSeoArticleField = fields.isSeoArticle;
+  const isSeoArticle =
+    typeof isSeoArticleField === "boolean" && isSeoArticleField;
 
   return {
     id: sys.id,
@@ -320,6 +323,7 @@ function contentfulEntryToBlogPost(
     authors,
     createdAt: publishedAt,
     updatedAt: sys.updatedAt,
+    isSeoArticle,
   };
 }
 
@@ -332,6 +336,7 @@ function contentfulEntryToBlogPostSummary(post: BlogPost): BlogPostSummary {
     tags: post.tags,
     image: post.image,
     createdAt: post.createdAt,
+    isSeoArticle: post.isSeoArticle,
   };
 }
 
@@ -349,10 +354,16 @@ export async function getAllBlogPosts(
 
     const posts = response.items
       .map((entry) => contentfulEntryToBlogPost(entry, tagNameMap))
-      .sort(
-        (a, b) =>
+      .sort((a, b) => {
+        // SEO articles go to the end.
+        if (a.isSeoArticle !== b.isSeoArticle) {
+          return a.isSeoArticle ? 1 : -1;
+        }
+        // Within each group, sort by date (newest first).
+        return (
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
+        );
+      })
       .map(contentfulEntryToBlogPostSummary);
 
     return new Ok(posts);
