@@ -2,74 +2,57 @@ import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
   ChatBubbleBottomCenterPlusIcon,
-  ChatBubbleBottomCenterTextIcon,
-  ChatBubbleLeftRightIcon,
   ChevronDownIcon,
   ChromeLogo,
   cn,
-  DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
-  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   EyeIcon,
   EyeSlashIcon,
-  HeartIcon,
   Icon,
   LightbulbIcon,
   LogoutIcon,
   ShapesIcon,
-  SlackLogo,
   StarIcon,
   TestTubeIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useCallback, useContext, useMemo } from "react";
+import { useMemo } from "react";
 
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
-import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
-import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   forceUserRole,
   sendOnboardingConversation,
   showDebugTools,
 } from "@app/lib/development";
-import { serializeMention } from "@app/lib/mentions/format";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { getConversationRoute } from "@app/lib/utils/router";
-import type { MentionType } from "@app/types";
 import type {
   SubscriptionType,
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
-import { GLOBAL_AGENTS_SID, isAgentMention } from "@app/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
-
-interface UserMenuProps {
-  user: UserTypeWithWorkspaces;
-  owner: WorkspaceType;
-  subscription: SubscriptionType | null;
-  showHelp?: boolean;
-}
 
 export function UserMenu({
   user,
   owner,
   subscription,
-  showHelp = false,
-}: UserMenuProps) {
+}: {
+  user: UserTypeWithWorkspaces;
+  owner: WorkspaceType;
+  subscription: SubscriptionType | null;
+}) {
   const router = useRouter();
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -135,79 +118,6 @@ export function UserMenu({
   const hasMultipleWorkspaces = useMemo(() => {
     return user.organizations && user.organizations.length > 1;
   }, [user]);
-
-  const createConversationWithMessage = useCreateConversationWithMessage({
-    owner,
-    user,
-  });
-
-  const { setSelectedAgent } = useContext(InputBarContext);
-
-  const handleAskHelp = useCallback(() => {
-    if (router.pathname === "/w/[wId]/conversation/[cId]") {
-      setSelectedAgent({
-        type: "agent",
-        id: GLOBAL_AGENTS_SID.HELPER,
-        label: "Help",
-        pictureUrl:
-          "https://dust.tt/static/systemavatar/helper_avatar_full.png",
-        description: "Help on how to use Dust",
-      });
-    } else {
-      void router.push(
-        getConversationRoute(
-          owner.sId,
-          "new",
-          `agent=${GLOBAL_AGENTS_SID.HELPER}`
-        )
-      );
-    }
-  }, [router, owner.sId, setSelectedAgent]);
-
-  const { submit: handleHelpSubmit } = useSubmitFunction(
-    useCallback(
-      async (input: string, mentions: MentionType[]) => {
-        const inputWithHelp = input.includes("@help")
-          ? input
-          : `@help ${input.trimStart()}`;
-        const mentionsWithHelp = mentions.some(
-          (mention) =>
-            isAgentMention(mention) &&
-            mention.configurationId === GLOBAL_AGENTS_SID.HELPER
-        )
-          ? mentions
-          : [
-              ...mentions,
-              { type: "agent", configurationId: GLOBAL_AGENTS_SID.HELPER },
-            ];
-        const conversationRes = await createConversationWithMessage({
-          messageData: {
-            input: inputWithHelp.replace(
-              "@help",
-              serializeMention({ name: "help", sId: GLOBAL_AGENTS_SID.HELPER })
-            ),
-            mentions: mentionsWithHelp,
-            contentFragments: {
-              uploaded: [],
-              contentNodes: [],
-            },
-          },
-        });
-        if (conversationRes.isErr()) {
-          sendNotification({
-            title: conversationRes.error.title,
-            description: conversationRes.error.message,
-            type: "error",
-          });
-        } else {
-          void router.push(
-            getConversationRoute(owner.sId, conversationRes.value.sId)
-          );
-        }
-      },
-      [createConversationWithMessage, owner.sId, router, sendNotification]
-    )
-  );
 
   return (
     <DropdownMenu>
@@ -281,78 +191,6 @@ export function UserMenu({
             icon={UserIcon}
             href={`/w/${owner.sId}/me`}
           />
-        )}
-
-        {showHelp && (
-          <>
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger icon={HeartIcon} label="Help & Support" />
-              <DropdownMenuPortal>
-                <DropdownMenuSubContent>
-                  <DropdownMenuLabel label="Learn about Dust" />
-                  <DropdownMenuItem
-                    label="Quickstart Guide"
-                    icon={LightbulbIcon}
-                    onClick={() =>
-                      router.push(
-                        {
-                          pathname: router.pathname,
-                          query: { ...router.query, quickGuide: "true" },
-                        },
-                        undefined,
-                        { shallow: true }
-                      )
-                    }
-                  />
-                  <DropdownMenuItem
-                    label="Guides & Documentation"
-                    icon={DocumentIcon}
-                    href="https://docs.dust.tt"
-                    target="_blank"
-                  />
-                  <DropdownMenuItem
-                    label="Join the Slack Community"
-                    icon={SlackLogo}
-                    href="https://dust-community.tightknit.community/join"
-                    target="_blank"
-                  />
-                  <DropdownMenuLabel label="Ask questions" />
-                  <DropdownMenuItem
-                    label="Ask @help"
-                    description="Ask anything about Dust"
-                    icon={ChatBubbleLeftRightIcon}
-                    onClick={() => void handleAskHelp()}
-                  />
-                  <DropdownMenuItem
-                    label="How to invite new users?"
-                    icon={ChatBubbleBottomCenterTextIcon}
-                    onClick={() =>
-                      void handleHelpSubmit("How to invite new users?", [])
-                    }
-                  />
-                  <DropdownMenuItem
-                    label="How to use agents in Slack workflow?"
-                    icon={ChatBubbleBottomCenterTextIcon}
-                    onClick={() =>
-                      void handleHelpSubmit(
-                        "How to use agents in Slack workflow?",
-                        []
-                      )
-                    }
-                  />
-                  <DropdownMenuItem
-                    label="How to manage billing?"
-                    icon={ChatBubbleBottomCenterTextIcon}
-                    onClick={() =>
-                      void handleHelpSubmit("How to manage billing?", [])
-                    }
-                  />
-                </DropdownMenuSubContent>
-              </DropdownMenuPortal>
-            </DropdownMenuSub>
-
-            <DropdownMenuSeparator />
-          </>
         )}
 
         <DropdownMenuItem
