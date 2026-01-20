@@ -16,6 +16,7 @@ const SEO_TITLE_PATTERNS: Record<IntegrationCategory, (name: string) => string> 
     security: (name) => `AI Security Assistant for ${name}`,
     ai: (name) => `${name} AI Integration`,
     transcripts: (name) => `AI Meeting Assistant for ${name}`,
+    recruiting: (name) => `AI Recruiting Assistant for ${name}`,
   };
 
 // SEO-optimized subtitle patterns by category
@@ -47,6 +48,8 @@ const SEO_SUBTITLE_PATTERNS: Record<
     `Combine ${name} with Dust AI agents for powerful automation workflows.`,
   transcripts: (name) =>
     `Turn ${name} recordings into actionable insights with AI. Summarize calls, extract action items, and never miss follow-ups.`,
+  recruiting: (name) =>
+    `Streamline your ${name} hiring workflows with AI. Screen candidates, summarize interviews, and accelerate recruiting.`,
 };
 
 // Meta description patterns for SEO
@@ -76,6 +79,8 @@ const SEO_META_PATTERNS: Record<IntegrationCategory, (name: string) => string> =
       `Combine ${name} with Dust for powerful AI automation. Build custom workflows and agents. Start your 14-day free trial.`,
     transcripts: (name) =>
       `AI meeting assistant for ${name}. Automatically summarize calls, extract action items, and sync insights to your tools. Try free.`,
+    recruiting: (name) =>
+      `AI recruiting assistant for ${name}. Screen candidates, summarize interviews, and accelerate your hiring process. Try Dust free.`,
   };
 
 export function getDefaultSEOTitle(

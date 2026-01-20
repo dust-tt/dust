@@ -63,6 +63,7 @@ const CATEGORY_LABELS: Record<IntegrationCategory, string> = {
   security: "Security",
   ai: "AI & ML",
   transcripts: "Meeting Transcripts",
+  recruiting: "Recruiting & HR",
 };
 
 export const getStaticProps: GetStaticProps<IntegrationsPageProps> = async () => {
@@ -312,7 +313,7 @@ function IntegrationCard({ integration }: IntegrationCardProps) {
     >
       <div className="mb-4 flex items-start justify-between">
         <ResourceAvatar icon={IconComponent} size="md" />
-        <Chip size="xs" color="slate">
+        <Chip size="xs" color="white">
           {typeLabel}
         </Chip>
       </div>

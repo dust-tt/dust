@@ -239,6 +239,38 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
     relatedIntegrations: ["notion", "confluence"],
   },
 
+  productboard: {
+    tagline:
+      "Connect Productboard to enhance product management with AI insights",
+    useCases: [
+      {
+        title: "Feature Prioritization",
+        description:
+          "Get AI-generated insights on feature requests and user feedback to prioritize your roadmap.",
+        icon: "ActionLightbulbIcon",
+      },
+      {
+        title: "Feedback Analysis",
+        description:
+          "Automatically analyze and categorize customer feedback from multiple sources.",
+        icon: "ActionMagnifyingGlassIcon",
+      },
+    ],
+    faq: [
+      {
+        question: "What is Productboard?",
+        answer:
+          "Productboard is a product management platform that helps teams understand user needs, prioritize features, and align everyone on the roadmap.",
+      },
+      {
+        question: "Can Dust help with product decisions?",
+        answer:
+          "Yes, Dust can analyze feedback and feature requests in Productboard to help inform product decisions.",
+      },
+    ],
+    relatedIntegrations: ["jira", "slack", "notion"],
+  },
+
   // ===== DEVELOPMENT =====
   github: {
     tagline:
@@ -442,13 +474,25 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
   },
 
   ashby: {
-    tagline: "Connect Ashby to streamline recruiting workflows",
+    tagline: "Connect Ashby ATS to streamline your hiring workflows with AI",
     useCases: [
       {
         title: "Candidate Insights",
         description:
           "Get AI-generated summaries of candidate applications and interview feedback.",
         icon: "ActionDocumentTextIcon",
+      },
+      {
+        title: "Interview Preparation",
+        description:
+          "Generate interview questions and preparation materials based on job requirements and candidate profiles.",
+        icon: "ActionLightbulbIcon",
+      },
+      {
+        title: "Hiring Pipeline Updates",
+        description:
+          "Get automated status updates on your hiring pipeline and candidate progress.",
+        icon: "ActionMegaphoneIcon",
       },
     ],
     faq: [
@@ -457,8 +501,13 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
         answer:
           "Yes, Dust can analyze candidate data in Ashby and help with initial screening based on job requirements.",
       },
+      {
+        question: "What is Ashby?",
+        answer:
+          "Ashby is an all-in-one recruiting platform (ATS) that helps companies manage their hiring process from sourcing to offer.",
+      },
     ],
-    relatedIntegrations: ["slack", "gmail"],
+    relatedIntegrations: ["slack", "gmail", "google_calendar"],
   },
 
   salesloft: {
