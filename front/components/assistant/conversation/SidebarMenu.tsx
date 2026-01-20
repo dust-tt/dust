@@ -1,8 +1,11 @@
 import {
   Avatar,
+  BoltIcon,
+  BoltOffIcon,
   BracesIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
+  ChatBubbleLeftRightIcon,
   Checkbox,
   CheckDoubleIcon,
   DocumentIcon,
@@ -171,6 +174,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const { hideTriggeredConversations } = useHideTriggeredConversations();
 
   const hasSkills = hasFeature("skills");
+  const hasSidebarV2 = hasFeature("sidebar_v2");
 
   const isRestrictedFromAgentCreation =
     hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
@@ -385,6 +389,10 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         owner={owner}
         projectsSection={projectsSection}
         hasTriggeredConversations={hasTriggeredConversations}
+        hasSidebarV2={hasSidebarV2}
+        handleNewClick={handleNewClick}
+        toggleMultiSelect={toggleMultiSelect}
+        setShowDeleteDialog={setShowDeleteDialog}
       />
     );
   }, [
@@ -399,6 +407,10 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     owner,
     projectsSection,
     hasTriggeredConversations,
+    hasSidebarV2,
+    handleNewClick,
+    toggleMultiSelect,
+    setShowDeleteDialog,
   ]);
 
   return (
@@ -827,6 +839,10 @@ interface NavigationListWithInboxProps {
   owner: WorkspaceType;
   projectsSection?: React.ReactNode;
   hasTriggeredConversations: boolean;
+  hasSidebarV2: boolean;
+  handleNewClick: () => void;
+  toggleMultiSelect: () => void;
+  setShowDeleteDialog: (value: "all" | "selection" | null) => void;
 }
 
 const NavigationListWithInbox = forwardRef<
@@ -845,6 +861,10 @@ const NavigationListWithInbox = forwardRef<
       owner,
       projectsSection,
       hasTriggeredConversations,
+      hasSidebarV2,
+      handleNewClick,
+      toggleMultiSelect,
+      setShowDeleteDialog,
     },
     ref
   ) => {
@@ -923,21 +943,83 @@ const NavigationListWithInbox = forwardRef<
             label="Conversations"
             defaultOpen
             action={
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <Button size="xs" icon={MoreIcon} variant="ghost" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuCheckboxItem
-                    label="Hide triggered conversations"
-                    checked={hideTriggeredConversations}
-                    onCheckedChange={setHideTriggeredConversations}
-                    disabled={
-                      isHideTriggeredLoading || !hasTriggeredConversations
-                    }
+              hasSidebarV2 ? (
+                <>
+                  <Button
+                    size="xs"
+                    icon={ChatBubbleLeftRightIcon}
+                    variant="ghost"
+                    aria-label="New Conversation"
+                    tooltip="New Conversation"
+                    href={getConversationRoute(owner.sId)}
+                    onClick={handleNewClick}
                   />
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="xs"
+                        icon={MoreIcon}
+                        variant="ghost"
+                        aria-label="Conversations options"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuLabel label="Conversations" />
+                      <DropdownMenuItem
+                        label={
+                          hideTriggeredConversations
+                            ? "Show triggered"
+                            : "Hide triggered"
+                        }
+                        icon={
+                          hideTriggeredConversations ? BoltIcon : BoltOffIcon
+                        }
+                        disabled={
+                          isHideTriggeredLoading || !hasTriggeredConversations
+                        }
+                        onClick={() =>
+                          setHideTriggeredConversations(
+                            !hideTriggeredConversations
+                          )
+                        }
+                      />
+                      <DropdownMenuItem
+                        label="Edit history"
+                        icon={ListCheckIcon}
+                        onClick={toggleMultiSelect}
+                        disabled={conversations.length === 0}
+                      />
+                      <DropdownMenuItem
+                        label="Clear history"
+                        variant="warning"
+                        icon={TrashIcon}
+                        onClick={() => setShowDeleteDialog("all")}
+                        disabled={conversations.length === 0}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              ) : (
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="xs" icon={MoreIcon} variant="ghost" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuCheckboxItem
+                      label="Hide triggered conversations"
+                      checked={hideTriggeredConversations}
+                      onCheckedChange={setHideTriggeredConversations}
+                      disabled={
+                        isHideTriggeredLoading || !hasTriggeredConversations
+                      }
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )
             }
           >
             {conversationsContent}
