@@ -111,6 +111,10 @@ export const isMessageTemporayState = (
 export const getMessageDate = (msg: VirtuosoMessage): Date =>
   new Date(msg.created);
 
+export const isProjectConversation = (
+  conversation: ConversationWithoutContentType
+): boolean => !!conversation.spaceId;
+
 export const makeInitialMessageStreamState = (
   message: LightAgentMessageType | LightAgentMessageWithActionsType
 ): MessageTemporaryState => {

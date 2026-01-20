@@ -10,10 +10,14 @@ import {
 import { useMemo, useState } from "react";
 
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
-import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
+import {
+  isMessageTemporayState,
+  isProjectConversation,
+} from "@app/components/assistant/conversation/types";
 import { useMentionValidation } from "@app/lib/swr/mentions";
 import { useUser } from "@app/lib/swr/user";
 import type {
+  ConversationWithoutContentType,
   LightWorkspaceType,
   RichMentionWithStatus,
   UserType,
@@ -28,26 +32,26 @@ interface MentionValidationRequiredProps {
       status: "pending";
     }
   >;
-  conversationId: string;
+  conversation: ConversationWithoutContentType;
   message: VirtuosoMessage;
-  isProjectConversation: boolean;
 }
 
 export function MentionValidationRequired({
   triggeringUser,
   owner,
   mention,
-  conversationId,
+  conversation,
   message,
-  isProjectConversation,
 }: MentionValidationRequiredProps) {
   const { user } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { validateMention } = useMentionValidation({
     workspaceId: owner.sId,
-    conversationId,
+    conversationId: conversation.sId,
     messageId: message.sId,
   });
+
+  const isProject = isProjectConversation(conversation);
 
   const isTriggeredByCurrentUser = useMemo(
     () => !triggeringUser || triggeringUser.sId === user?.sId,
@@ -96,7 +100,7 @@ export function MentionValidationRequired({
                 @{message.configuration.name}
               </span>{" "}
               mentioned <span className="font-semibold">{mention.label}</span>.
-              {isProjectConversation ? (
+              {isProject ? (
                 <> Do you want to add them to this project?</>
               ) : (
                 <>
@@ -108,7 +112,7 @@ export function MentionValidationRequired({
             </>
           ) : (
             <>
-              {isProjectConversation ? (
+              {isProject ? (
                 <>
                   Add <b>{mention.label}</b> to this project? They'll have
                   access to all project conversations.
@@ -131,7 +135,7 @@ export function MentionValidationRequired({
             disabled={isSubmitting}
             onClick={handleReject}
           />
-          {isProjectConversation ? (
+          {isProject ? (
             <Button
               label="Add to project"
               variant="highlight"
