@@ -1829,7 +1829,9 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: undefined,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("agent_builder_copilot");
+    },
     metadata: AGENT_COPILOT_CONTEXT_SERVER,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
