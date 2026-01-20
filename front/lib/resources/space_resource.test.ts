@@ -12,6 +12,10 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import {
+  GroupSpaceEditorResource,
+  GroupSpaceMemberResource,
+} from "@app/lib/resources/group_space_resource";
 
 describe("SpaceResource", () => {
   describe("updatePermissions", () => {
@@ -482,7 +486,10 @@ describe("SpaceResource", () => {
 
       it("should remove global group when changing from open to restricted", async () => {
         // First add global group to make it open
-        await regularSpace.linkGroup(adminAuth, globalGroup, "member");
+        await GroupSpaceMemberResource.makeNew(adminAuth, {
+          group: globalGroup,
+          space: regularSpace,
+        });
 
         // Reload space to get updated groups
         const spaceWithGlobalGroup = await SpaceResource.fetchById(
@@ -676,11 +683,10 @@ describe("SpaceResource", () => {
           );
 
           // Link the editor group to the project space with kind="project_editor"
-          await projectSpace.linkGroup(
-            adminAuth,
-            projectEditorGroup,
-            "project_editor"
-          );
+          await GroupSpaceEditorResource.makeNew(adminAuth, {
+            group: projectEditorGroup,
+            space: projectSpace,
+          });
         });
 
         it("should not allow simple members to update space permissions", async () => {
@@ -815,11 +821,10 @@ describe("SpaceResource", () => {
           );
 
           // Link the editor group to the project space with kind="project_editor"
-          await projectSpace.linkGroup(
-            adminAuth,
-            provisionedEditorGroup,
-            "project_editor"
-          );
+          await GroupSpaceEditorResource.makeNew(adminAuth, {
+            group: provisionedEditorGroup,
+            space: projectSpace,
+          });
         });
 
         it("should not allow simple members to update space permissions", async () => {

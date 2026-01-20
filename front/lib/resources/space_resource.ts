@@ -44,6 +44,7 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import { Group } from "lucide-react";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -585,12 +586,20 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
       // If the space should not be restricted and was restricted before, add the global group.
       if (wasRestricted && !isRestricted) {
-        await this.linkGroup(
-          auth,
-          globalGroup,
-          this.isProject() ? "project_viewer" : "member", // Global group gets viewer permissions in projects
-          t
-        );
+        if (this.isProject()) {
+          // Global group gets viewer permissions in projects
+          await GroupSpaceViewerResource.makeNew(auth, {
+            group: globalGroup,
+            space: this,
+            transaction: t,
+          });
+        } else {
+          await GroupSpaceMemberResource.makeNew(auth, {
+            group: globalGroup,
+            space: this,
+            transaction: t,
+          });
+        }
       }
 
       const previousManagementMode = this.managementMode;
@@ -733,7 +742,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         }
         const selectedGroups = selectedGroupsResult.value;
         for (const selectedGroup of selectedGroups) {
-          await this.linkGroup(auth, selectedGroup, "member", t);
+          await GroupSpaceMemberResource.makeNew(auth, {
+            group: selectedGroup,
+            space: this,
+            transaction: t,
+          });
         }
 
         if (editorGroupIds.length > 0) {
@@ -746,12 +759,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           }
           const selectedEditorGroups = editorGroupsResult.value;
           for (const selectedEditorGroup of selectedEditorGroups) {
-            await this.linkGroup(
-              auth,
-              selectedEditorGroup,
-              "project_editor",
-              t
-            );
+            await GroupSpaceEditorResource.makeNew(auth, {
+              group: selectedEditorGroup,
+              space: this,
+              transaction: t,
+            });
           }
         }
       }
@@ -917,40 +929,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       `Expected at most one space editors group for the space, but found ${editorGroups.length}.`
     );
     return editorGroups[0];
-  }
-
-  async linkGroup(
-    auth: Authenticator,
-    group: GroupResource,
-    kind: "member" | "project_editor" | "project_viewer" = "member",
-    t?: Transaction
-  ): Promise<
-    | GroupSpaceMemberResource
-    | GroupSpaceEditorResource
-    | GroupSpaceViewerResource
-  > {
-    switch (kind) {
-      case "member":
-        return GroupSpaceMemberResource.makeNew(auth, {
-          group,
-          space: this,
-          transaction: t,
-        });
-      case "project_editor":
-        return GroupSpaceEditorResource.makeNew(auth, {
-          group,
-          space: this,
-          transaction: t,
-        });
-      case "project_viewer":
-        return GroupSpaceViewerResource.makeNew(auth, {
-          group,
-          space: this,
-          transaction: t,
-        });
-      default:
-        assertNever(kind);
-    }
   }
 
   /**

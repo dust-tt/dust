@@ -38,6 +38,7 @@ import {
   removeNulls,
   SPACE_GROUP_PREFIX,
 } from "@app/types";
+import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_resource";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -347,9 +348,25 @@ export async function createSpaceAndGroup(
 ): Promise<
   Result<
     SpaceResource,
-    DustError<"limit_reached" | "space_already_exists" | "internal_error">
+    DustError<
+      | "limit_reached"
+      | "space_already_exists"
+      | "internal_error"
+      | "unauthorized"
+    >
   >
 > {
+  // Check permissions based on space kind
+  // Projects can be created by any workspace member
+  // Regular spaces require admin permissions
+  if (params.spaceKind !== "project" && !auth.isAdmin()) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        "Only users that are `admins` can create regular spaces."
+      )
+    );
+  }
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
 
@@ -459,7 +476,11 @@ export async function createSpaceAndGroup(
         );
 
         // Add editor group to space with kind="project_editor"
-        await space.linkGroup(auth, editorGroup, "project_editor", t);
+        await GroupSpaceEditorResource.makeNew(auth, {
+          group: editorGroup,
+          space,
+          transaction: t,
+        });
         const creator = auth.getNonNullableUser();
 
         // Add the project creator as editor by default
@@ -524,7 +545,11 @@ export async function createSpaceAndGroup(
 
         const selectedGroups = selectedGroupsResult.value;
         for (const selectedGroup of selectedGroups) {
-          await space.linkGroup(auth, selectedGroup, "member", t);
+          await GroupSpaceMemberResource.makeNew(auth, {
+            group: selectedGroup,
+            space,
+            transaction: t,
+          });
         }
       }
     }

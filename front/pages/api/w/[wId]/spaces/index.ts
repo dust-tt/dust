@@ -113,19 +113,6 @@ async function handler(
 
       const requestBody = bodyValidation.right;
 
-      // Check permissions based on space kind
-      // Projects can be created by any workspace member
-      // Regular spaces require admin permissions
-      if (requestBody.spaceKind !== "project" && !auth.isAdmin()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "Only users that are `admins` can create regular spaces.",
-          },
-        });
-      }
-
       const spaceRes = await createSpaceAndGroup(auth, requestBody);
       if (spaceRes.isErr()) {
         switch (spaceRes.error.code) {
@@ -152,6 +139,15 @@ async function handler(
               api_error: {
                 type: "internal_server_error",
                 message: spaceRes.error.message,
+              },
+            });
+          case "unauthorized":
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message:
+                  "Only users that are `admins` can create regular spaces.",
               },
             });
           default:
