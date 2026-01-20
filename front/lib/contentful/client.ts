@@ -308,6 +308,9 @@ function contentfulEntryToBlogPost(
         .map(contentfulEntryToAuthor)
         .filter(isNonNull)
     : [];
+  const isSeoArticleField = fields.isSeoArticle;
+  const isSeoArticle =
+    typeof isSeoArticleField === "boolean" && isSeoArticleField;
 
   return {
     id: sys.id,
@@ -320,6 +323,7 @@ function contentfulEntryToBlogPost(
     authors,
     createdAt: publishedAt,
     updatedAt: sys.updatedAt,
+    isSeoArticle,
   };
 }
 
@@ -332,6 +336,7 @@ function contentfulEntryToBlogPostSummary(post: BlogPost): BlogPostSummary {
     tags: post.tags,
     image: post.image,
     createdAt: post.createdAt,
+    isSeoArticle: post.isSeoArticle,
   };
 }
 
