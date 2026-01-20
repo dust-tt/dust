@@ -64,6 +64,11 @@ export async function getSkillServers(
         filter: view.toViewFilter(),
       }));
 
+  return skills.flatMap((skill) =>
+    [
+      ...skill.mcpServerViews,
+      ...(skill.extendedSkill?.mcpServerViews ?? []),
+    ].map((mcpServerView) => {
       return buildServerSideMCPServerConfiguration({
         mcpServerView,
         dataSources,

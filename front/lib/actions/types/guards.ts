@@ -8,7 +8,6 @@ import type {
   ServerSideMCPServerConfigurationType,
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import type {
   AgentConfigurationType,
   TemplateAgentConfigurationType,
@@ -17,10 +16,7 @@ import type {
 // Server vs. tool configuration.
 
 export function isMCPServerConfiguration(
-  config:
-    | MCPServerConfigurationType
-    | MCPToolConfigurationType
-    | UnsavedMCPServerConfigurationType
+  config: MCPServerConfigurationType | MCPToolConfigurationType
 ): config is MCPServerConfigurationType {
   return (
     !!config &&
@@ -47,7 +43,7 @@ export function isMCPToolConfiguration(
 // For an MCP server configuration: server-side or client-side.
 
 export function isServerSideMCPServerConfiguration(
-  arg: MCPServerConfigurationType | UnsavedMCPServerConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return isMCPServerConfiguration(arg) && "mcpServerViewId" in arg;
 }
