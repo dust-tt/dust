@@ -95,6 +95,7 @@ describe("SpaceResource", () => {
           isRestricted: false,
           managementMode: "manual",
           memberIds: [user1.sId],
+          editorIds: [],
         });
 
         expect(result.isErr()).toBe(true);
@@ -113,6 +114,7 @@ describe("SpaceResource", () => {
           isRestricted: false,
           managementMode: "manual",
           memberIds: [user1.sId],
+          editorIds: [],
         });
 
         expect(result.isErr()).toBe(true);
@@ -130,6 +132,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId, user2.sId],
+          editorIds: [],
         });
 
         expect(result.isOk()).toBe(true);
@@ -159,6 +162,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup.sId],
+          editorGroupIds: [],
         });
         expect(groupResult.isOk()).toBe(true);
 
@@ -175,6 +179,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId],
+          editorIds: [],
         });
 
         expect(result.isOk()).toBe(true);
@@ -205,6 +210,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup.sId],
+          editorGroupIds: [],
         });
         expect(groupResult.isOk()).toBe(true);
 
@@ -234,6 +240,7 @@ describe("SpaceResource", () => {
             isRestricted: true,
             managementMode: "manual",
             memberIds: [user1.sId, user2.sId],
+            editorIds: [],
           }
         );
         expect(manualResult.isOk()).toBe(true);
@@ -269,6 +276,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup1.sId, provisionedGroup2.sId],
+          editorGroupIds: [],
         });
 
         expect(result.isOk()).toBe(true);
@@ -309,6 +317,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup1.sId],
+          editorGroupIds: [],
         });
         expect(firstResult.isOk()).toBe(true);
 
@@ -326,6 +335,7 @@ describe("SpaceResource", () => {
             isRestricted: true,
             managementMode: "group",
             groupIds: [provisionedGroup2.sId],
+            editorGroupIds: [],
           }
         );
 
@@ -351,6 +361,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId],
+          editorIds: [],
         });
         expect(manualResult.isOk()).toBe(true);
 
@@ -373,6 +384,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup.sId],
+          editorGroupIds: [],
         });
 
         expect(result.isOk()).toBe(true);
@@ -397,6 +409,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId, user2.sId],
+          editorIds: [],
         });
 
         // Verify members are active
@@ -427,6 +440,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup.sId],
+          editorGroupIds: [],
         });
         expect(result.isOk()).toBe(true);
 
@@ -450,6 +464,7 @@ describe("SpaceResource", () => {
           isRestricted: false,
           managementMode: "manual",
           memberIds: [user1.sId],
+          editorIds: [],
         });
 
         expect(result.isOk()).toBe(true);
@@ -467,12 +482,7 @@ describe("SpaceResource", () => {
 
       it("should remove global group when changing from open to restricted", async () => {
         // First add global group to make it open
-        await GroupSpaceModel.create({
-          groupId: globalGroup.id,
-          vaultId: regularSpace.id,
-          workspaceId: workspace.id,
-          kind: "member",
-        });
+        regularSpace.linkGroup(adminAuth, globalGroup, "member");
 
         // Reload space to get updated groups
         const spaceWithGlobalGroup = await SpaceResource.fetchById(
@@ -488,6 +498,7 @@ describe("SpaceResource", () => {
             isRestricted: true,
             managementMode: "manual",
             memberIds: [user1.sId],
+            editorIds: [],
           }
         );
 
@@ -511,6 +522,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId],
+          editorIds: [],
         });
 
         const groupSpacesBefore = await GroupSpaceModel.findAll({
@@ -529,6 +541,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user2.sId],
+          editorIds: [],
         });
 
         const groupSpacesAfter = await GroupSpaceModel.findAll({
@@ -552,6 +565,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: ["invalid-group-id"],
+          editorGroupIds: [],
         });
 
         expect(result.isErr()).toBe(true);
@@ -568,6 +582,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: ["invalid-user-id"],
+          editorIds: [],
         });
 
         // The method should handle this gracefully
@@ -583,6 +598,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: [],
+          editorGroupIds: [],
         });
         expect(groupResult.isOk()).toBe(true);
 
@@ -597,6 +613,7 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId],
+          editorIds: [],
         });
         expect(manualResult.isOk()).toBe(true);
 
@@ -659,12 +676,11 @@ describe("SpaceResource", () => {
           );
 
           // Link the editor group to the project space with kind="project_editor"
-          await GroupSpaceModel.create({
-            groupId: projectEditorGroup.id,
-            vaultId: projectSpace.id,
-            workspaceId: workspace.id,
-            kind: "project_editor",
-          });
+          projectSpace.linkGroup(
+            adminAuth,
+            projectEditorGroup,
+            "project_editor"
+          );
         });
 
         it("should not allow simple members to update space permissions", async () => {
@@ -691,6 +707,7 @@ describe("SpaceResource", () => {
             isRestricted: true,
             managementMode: "manual",
             memberIds: [user1.sId],
+            editorIds: [],
           });
 
           expect(result.isErr()).toBe(true);
@@ -718,6 +735,7 @@ describe("SpaceResource", () => {
             isRestricted: true,
             managementMode: "manual",
             memberIds: [user1.sId],
+            editorIds: [],
           });
 
           expect(result.isErr()).toBe(true);
@@ -797,12 +815,11 @@ describe("SpaceResource", () => {
           );
 
           // Link the editor group to the project space with kind="project_editor"
-          await GroupSpaceModel.create({
-            groupId: provisionedEditorGroup.id,
-            vaultId: projectSpace.id,
-            workspaceId: workspace.id,
-            kind: "project_editor",
-          });
+          projectSpace.linkGroup(
+            adminAuth,
+            provisionedEditorGroup,
+            "project_editor"
+          );
         });
 
         it("should not allow simple members to update space permissions", async () => {
@@ -829,6 +846,7 @@ describe("SpaceResource", () => {
             isRestricted: true,
             managementMode: "group",
             groupIds: [provisionedMemberGroup.sId],
+            editorGroupIds: [],
           });
 
           expect(result.isErr()).toBe(true);
@@ -856,6 +874,7 @@ describe("SpaceResource", () => {
             isRestricted: true,
             managementMode: "group",
             groupIds: [provisionedMemberGroup.sId],
+            editorGroupIds: [],
           });
 
           expect(result.isErr()).toBe(true);

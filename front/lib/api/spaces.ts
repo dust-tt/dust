@@ -51,10 +51,10 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
   if (space.isProject()) {
     assert(
       space.canAdministrate(auth),
-      "Only project admins can delete project spaces."
+      "Only project editors or workspace admins can delete project spaces."
     );
   } else {
-    assert(auth.isAdmin(), "Only super admins can delete regular spaces.");
+    assert(auth.isAdmin(), "Only workspace admins can delete regular spaces.");
   }
 
   const usages: AgentsUsageType[] = [];
@@ -428,7 +428,7 @@ export async function createSpaceAndGroup(
     );
 
     if (space.isProject() && globalGroupRes?.isOk()) {
-      // Set the global group as viewer for project spaces
+      // Set the global group as viewer for non-restricted project spaces
       await GroupSpaceModel.update(
         {
           kind: "project_viewer",
@@ -470,53 +470,34 @@ export async function createSpaceAndGroup(
         // Add users to the newly created group. For the specific purpose of
         // space_editors group creation, we don't use addMembers, since only admins
         // can add/remove members this way. We create the relation directly.
-        await GroupMembershipModel.create(
-          {
-            groupId: editorGroup.id,
-            userId: editorUsers[0].id,
-            workspaceId: owner.id,
-            startAt: new Date(),
-            status: "active" as const,
-          },
-          { transaction: t }
-        );
+        for (const editorUser of editorUsers) {
+          await GroupMembershipModel.create(
+            {
+              groupId: editorGroup.id,
+              userId: editorUser.id,
+              workspaceId: owner.id,
+              startAt: new Date(),
+              status: "active" as const,
+            },
+            { transaction: t }
+          );
+        }
       }
 
       // Add members to the member group
       const users = (await UserResource.fetchByIds(params.memberIds)).map(
         (user) => user.toJSON()
       );
-
-      const groupsResult = await membersGroup.addMembers(
-        auth,
-        // Space creators can add members to the space (they are in the editor group if any)
-        {
-          users,
-          requestedPermissions: editorGroup
-            ? {
-                roles: [],
-                groups: [
-                  {
-                    id: editorGroup.id,
-                    permissions: ["admin", "read", "write"],
-                  },
-                ],
-                workspaceId: owner.id,
-              }
-            : undefined,
-          transaction: t,
-        }
-      );
-      if (groupsResult.isErr()) {
-        logger.error(
+      for (const user of users) {
+        await GroupMembershipModel.create(
           {
-            error: groupsResult.error,
+            groupId: membersGroup.id,
+            userId: user.id,
+            workspaceId: owner.id,
+            startAt: new Date(),
+            status: "active" as const,
           },
-          "The space cannot be created - group members could not be added"
-        );
-
-        return new Err(
-          new DustError("internal_error", "The space cannot be created.")
+          { transaction: t }
         );
       }
     }
@@ -544,30 +525,6 @@ export async function createSpaceAndGroup(
         const selectedGroups = selectedGroupsResult.value;
         for (const selectedGroup of selectedGroups) {
           await space.linkGroup(auth, selectedGroup, "member", t);
-        }
-      }
-
-      if (params.editorGroupIds && params.editorGroupIds.length > 0) {
-        // This section is not used for the moment, since we can't add editor groups on creation yet from the front-end
-        const selectedEditorGroupsResult = await GroupResource.fetchByIds(
-          auth,
-          params.editorGroupIds
-        );
-        if (selectedEditorGroupsResult.isErr()) {
-          logger.error(
-            {
-              error: selectedEditorGroupsResult.error,
-            },
-            "The space cannot be created - failed to fetch editor groups"
-          );
-          return new Err(
-            new DustError("internal_error", "The space cannot be created.")
-          );
-        }
-
-        const selectedEditorGroups = selectedEditorGroupsResult.value;
-        for (const selectedGroup of selectedEditorGroups) {
-          await space.linkGroup(auth, selectedGroup, "project_editor", t);
         }
       }
     }
