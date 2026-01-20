@@ -3529,10 +3529,6 @@ describe("validateUserMention", () => {
       await MembershipFactory.associate(workspace, adminUser, {
         role: "admin",
       });
-      const projectAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        adminUser.sId,
-        workspace.sId
-      );
 
       // Create a project space
       const projectSpace = await SpaceFactory.project(workspace);
