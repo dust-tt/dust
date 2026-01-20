@@ -269,7 +269,7 @@ export default function IntegrationsPage({
                     </P>
 
                     <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-                      <Link href="/home" shallow>
+                      <Link href="/api/workos/login?screenHint=sign-up">
                         <Button
                           variant="highlight"
                           size="md"
