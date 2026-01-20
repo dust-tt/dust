@@ -1,6 +1,7 @@
 import type {
   ClientSideMCPToolConfigurationType,
   LightClientSideMCPToolConfigurationType,
+  LightMCPToolConfigurationType,
   LightServerSideMCPToolConfigurationType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
@@ -79,6 +80,14 @@ export function isLightClientSideMCPToolConfiguration(
   );
 }
 
+export function isLightMCPToolConfiguration(
+  arg: unknown
+): arg is LightMCPToolConfigurationType {
+  return (
+    isLightServerSideMCPToolConfiguration(arg) ||
+    isLightClientSideMCPToolConfiguration(arg)
+  );
+}
 // Internal (server-side) MCP server checked by name.
 
 export function isServerSideMCPServerConfigurationWithName(
