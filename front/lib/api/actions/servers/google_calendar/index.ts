@@ -14,13 +14,9 @@ function createServer(
   const server = makeInternalMCPServer("google_calendar");
 
   for (const tool of TOOLS) {
-    registerTool(
-      auth,
-      server,
-      agentLoopContext,
-      GOOGLE_CALENDAR_TOOL_NAME,
-      tool
-    );
+    registerTool(auth, agentLoopContext, server, tool, {
+      monitoringName: GOOGLE_CALENDAR_TOOL_NAME,
+    });
   }
 
   return server;

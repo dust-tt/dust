@@ -14,7 +14,9 @@ function createServer(
   const server = makeInternalMCPServer("snowflake");
 
   for (const tool of TOOLS) {
-    registerTool(auth, server, agentLoopContext, SNOWFLAKE_TOOL_NAME, tool);
+    registerTool(auth, agentLoopContext, server, tool, {
+      monitoringName: SNOWFLAKE_TOOL_NAME,
+    });
   }
 
   return server;

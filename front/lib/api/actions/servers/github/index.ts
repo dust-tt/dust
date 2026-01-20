@@ -15,7 +15,9 @@ function createServer(
 
   const tools = createGithubTools(auth);
   for (const tool of tools) {
-    registerTool(auth, server, agentLoopContext, GITHUB_TOOL_NAME, tool);
+    registerTool(auth, agentLoopContext, server, tool, {
+      monitoringName: GITHUB_TOOL_NAME,
+    });
   }
 
   return server;

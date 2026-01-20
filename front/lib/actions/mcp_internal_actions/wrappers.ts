@@ -17,10 +17,10 @@ import { errorToString } from "@app/types";
 
 export function registerTool(
   auth: Authenticator,
-  server: McpServer,
   agentLoopContext: AgentLoopContextType | undefined,
-  monitoringName: string,
-  tool: ToolDefinition
+  server: McpServer,
+  tool: ToolDefinition,
+  { monitoringName }: { monitoringName: string }
 ): void {
   server.tool(
     tool.name,
