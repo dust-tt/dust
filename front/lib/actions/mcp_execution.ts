@@ -183,12 +183,17 @@ export async function processToolResults(
             ? block.name
             : `generated-image-${Date.now()}.${extensionsForContentType(block.mimeType as any)[0]}`;
 
+          const imageFileUseCase: FileUseCase =
+            toolConfiguration.mcpServerName === "image_generation"
+              ? "tool_output"
+              : fileUseCase;
+
           return handleBase64Upload(auth, {
             base64Data: block.data,
             mimeType: block.mimeType,
             fileName,
             block,
-            fileUseCase,
+            fileUseCase: imageFileUseCase,
             fileUseCaseMetadata,
           });
         }
