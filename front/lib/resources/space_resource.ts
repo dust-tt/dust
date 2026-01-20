@@ -1242,12 +1242,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   toJSON(): SpaceType {
     return {
       createdAt: this.createdAt.getTime(),
-      groupIds: this.groups
-        .filter((group) => group.group_vaults?.kind === "member")
-        .map((group) => group.sId),
-      editorGroupIds: this.groups
-        .filter((group) => group.group_vaults?.kind === "project_editor")
-        .map((group) => group.sId),
+      groupIds: this.groups.map((group) => group.sId),
       isRestricted:
         this.isRegularAndRestricted() || this.isProjectAndRestricted(),
 
