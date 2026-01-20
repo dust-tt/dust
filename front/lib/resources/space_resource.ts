@@ -654,23 +654,19 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           }
 
           // Set members of the editor group
-          const setEditorsRes = await editorGroup.setMembers(
-            auth,
-            { users: editorUsers.map((u) => u.toJSON()) },
-            { transaction: t }
-          );
+          const setEditorsRes = await editorGroup.setMembers(auth, {
+            users: editorUsers.map((u) => u.toJSON()),
+            transaction: t,
+          });
           if (setEditorsRes.isErr()) {
             return setEditorsRes;
           }
         } else if (editorGroup) {
           // No editors specified, clear the editor group
-          const setEditorsRes = await editorGroup.setMembers(
-            auth,
-            { users: [] },
-            {
-              transaction: t,
-            }
-          );
+          const setEditorsRes = await editorGroup.setMembers(auth, {
+            users: [],
+            transaction: t,
+          });
           if (setEditorsRes.isErr()) {
             return setEditorsRes;
           }
