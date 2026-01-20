@@ -437,7 +437,7 @@ function ActionMenu({
     : [];
 
   return (
-    <div className="absolute top-[80%] left-2.5 flex flex-wrap items-center gap-1">
+    <div className="absolute left-2.5 top-[80%] flex flex-wrap items-center gap-1">
       {!isDeleted && reactionsEnabled && (
         <>
           <MessageReactions
