@@ -18,13 +18,13 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function WorkspacePageWrapper({
+export default function WorkspacePageNextJS({
   owner,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return <WorkspacePage owner={owner} />;
 }
 
-WorkspacePageWrapper.getLayout = (
+WorkspacePageNextJS.getLayout = (
   page: ReactElement,
   { owner }: { owner: WorkspaceType }
 ) => {

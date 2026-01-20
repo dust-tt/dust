@@ -28,14 +28,14 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function MCPServerViewPageWrapper({
+export default function MCPServerViewPageNextJS({
   owner,
   svId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return <MCPServerViewPage owner={owner} svId={svId} />;
 }
 
-MCPServerViewPageWrapper.getLayout = (
+MCPServerViewPageNextJS.getLayout = (
   page: ReactElement,
   { owner }: { owner: LightWorkspaceType }
 ) => {

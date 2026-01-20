@@ -12,10 +12,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
   }
 );
 
-export default function ListTemplates() {
+export default function TemplatesListPageNextJS() {
   return <TemplatesListPage />;
 }
 
-ListTemplates.getLayout = (page: ReactElement) => {
+TemplatesListPageNextJS.getLayout = (page: ReactElement) => {
   return <PokeLayout title="Templates">{page}</PokeLayout>;
 };

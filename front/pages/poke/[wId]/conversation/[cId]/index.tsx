@@ -28,14 +28,14 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function ConversationPageWrapper({
+export default function ConversationPageNextJS({
   owner,
   conversationId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return <ConversationPage owner={owner} conversationId={conversationId} />;
 }
 
-ConversationPageWrapper.getLayout = (
+ConversationPageNextJS.getLayout = (
   page: ReactElement,
   { owner }: { owner: LightWorkspaceType }
 ) => {

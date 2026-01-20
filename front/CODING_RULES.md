@@ -500,6 +500,9 @@ export function useCreateFolder({
 };
 ```
 
+In NextJS pages, getServerSideProps should not fetch data and return more that what's
+available in authenticator. Rather rely on API endpoint and SWR calls.
+
 ### [REACT3] Any async network operation should have a visual loading state
 
 Any load/async has a visible visual state (spinner, busy state, disabled button, etc), even if the

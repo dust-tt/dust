@@ -8,10 +8,10 @@ export const getServerSideProps = withSuperUserAuthRequirements(async () => {
   return { props: {} };
 });
 
-export default function Pokefy() {
+export default function PokefyPageNextJS() {
   return <PokefyPage />;
 }
 
-Pokefy.getLayout = (page: ReactElement) => {
+PokefyPageNextJS.getLayout = (page: ReactElement) => {
   return <PokeLayout title="Pokefy">{page}</PokeLayout>;
 };

@@ -29,14 +29,14 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function LLMTracePageWrapper({
+export default function LLMTracePageNextJS({
   owner,
   runId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return <LLMTracePage owner={owner} runId={runId} />;
 }
 
-LLMTracePageWrapper.getLayout = (
+LLMTracePageNextJS.getLayout = (
   page: ReactElement,
   { owner }: { owner: LightWorkspaceType }
 ) => {

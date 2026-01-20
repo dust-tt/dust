@@ -28,14 +28,14 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function NotionRequestsPageWrapper({
+export default function NotionRequestsPageNextJS({
   owner,
   dsId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return <NotionRequestsPage owner={owner} dsId={dsId} />;
 }
 
-NotionRequestsPageWrapper.getLayout = (
+NotionRequestsPageNextJS.getLayout = (
   page: ReactElement,
   { owner }: { owner: LightWorkspaceType }
 ) => {

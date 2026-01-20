@@ -28,14 +28,14 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function SpacePageWrapper({
+export default function SpacePageNextJS({
   owner,
   spaceId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return <SpacePage owner={owner} spaceId={spaceId} />;
 }
 
-SpacePageWrapper.getLayout = (
+SpacePageNextJS.getLayout = (
   page: ReactElement,
   { owner }: { owner: LightWorkspaceType }
 ) => {

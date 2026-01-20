@@ -23,12 +23,12 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function TemplatesPageWrapper({
+export default function TemplateDetailPageNextJS({
   templateId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return <TemplateDetailPage templateId={templateId} />;
 }
 
-TemplatesPageWrapper.getLayout = (page: ReactElement) => {
+TemplateDetailPageNextJS.getLayout = (page: ReactElement) => {
   return <PokeLayout title="Template">{page}</PokeLayout>;
 };

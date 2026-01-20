@@ -12,10 +12,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
   }
 );
 
-export default function Dashboard() {
+export default function DashboardPageNextJS() {
   return <DashboardPage />;
 }
 
-Dashboard.getLayout = (page: ReactElement) => {
+DashboardPageNextJS.getLayout = (page: ReactElement) => {
   return <PokeLayout title="Home">{page}</PokeLayout>;
 };

@@ -12,10 +12,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
   }
 );
 
-export default function Plans() {
+export default function PlansPageNextJS() {
   return <PlansPage />;
 }
 
-Plans.getLayout = (page: ReactElement) => {
+PlansPageNextJS.getLayout = (page: ReactElement) => {
   return <PokeLayout title="Plans">{page}</PokeLayout>;
 };

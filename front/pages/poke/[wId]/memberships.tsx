@@ -18,13 +18,13 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function MembershipsPageWrapper({
+export default function MembershipsPageNextJS({
   owner,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return <MembershipsPage owner={owner} />;
 }
 
-MembershipsPageWrapper.getLayout = (
+MembershipsPageNextJS.getLayout = (
   page: ReactElement,
   { owner }: { owner: WorkspaceType }
 ) => {

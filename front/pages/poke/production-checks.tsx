@@ -12,10 +12,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
   }
 );
 
-export default function ProductionChecks() {
+export default function ProductionChecksPageNextJS() {
   return <ProductionChecksPage />;
 }
 
-ProductionChecks.getLayout = (page: ReactElement) => {
+ProductionChecksPageNextJS.getLayout = (page: ReactElement) => {
   return <PokeLayout title="Production Checks">{page}</PokeLayout>;
 };

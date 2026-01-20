@@ -26,14 +26,14 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function SkillDetailsPageWrapper({
+export default function SkillDetailsPageNextJS({
   owner,
   sId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return <SkillDetailsPage owner={owner} sId={sId} />;
 }
 
-SkillDetailsPageWrapper.getLayout = (
+SkillDetailsPageNextJS.getLayout = (
   page: ReactElement,
   { owner }: { owner: WorkspaceType }
 ) => {

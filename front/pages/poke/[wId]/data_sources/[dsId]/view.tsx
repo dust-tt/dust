@@ -29,7 +29,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function DataSourceViewPageWrapper({
+export default function DataSourceViewPageNextJS({
   owner,
   dsId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -41,7 +41,7 @@ export default function DataSourceViewPageWrapper({
   );
 }
 
-DataSourceViewPageWrapper.getLayout = (
+DataSourceViewPageNextJS.getLayout = (
   page: ReactElement,
   { owner }: { owner: LightWorkspaceType }
 ) => {

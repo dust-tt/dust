@@ -28,14 +28,14 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function TriggerDetailsPageWrapper({
+export default function TriggerDetailsPageNextJS({
   owner,
   triggerId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return <TriggerDetailsPage owner={owner} triggerId={triggerId} />;
 }
 
-TriggerDetailsPageWrapper.getLayout = (
+TriggerDetailsPageNextJS.getLayout = (
   page: ReactElement,
   { owner }: { owner: WorkspaceType }
 ) => {

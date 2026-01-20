@@ -12,10 +12,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
   }
 );
 
-export default function EmailTemplatesPreview() {
+export default function EmailTemplatesPageNextJS() {
   return <EmailTemplatesPage />;
 }
 
-EmailTemplatesPreview.getLayout = (page: ReactElement) => {
+EmailTemplatesPageNextJS.getLayout = (page: ReactElement) => {
   return <PokeLayout title="Email Templates">{page}</PokeLayout>;
 };

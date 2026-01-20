@@ -12,10 +12,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
   }
 );
 
-export default function ListPokePlugins() {
+export default function PluginsPageNextJS() {
   return <PluginsPage />;
 }
 
-ListPokePlugins.getLayout = (page: ReactElement) => {
+PluginsPageNextJS.getLayout = (page: ReactElement) => {
   return <PokeLayout title="Plugins">{page}</PokeLayout>;
 };

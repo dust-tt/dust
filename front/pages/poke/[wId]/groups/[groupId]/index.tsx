@@ -28,14 +28,14 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function GroupPageWrapper({
+export default function GroupPageNextJS({
   owner,
   groupId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return <GroupPage owner={owner} groupId={groupId} />;
 }
 
-GroupPageWrapper.getLayout = (
+GroupPageNextJS.getLayout = (
   page: ReactElement,
   { owner }: { owner: LightWorkspaceType }
 ) => {

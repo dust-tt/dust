@@ -28,14 +28,14 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function DataSourcePageWrapper({
+export default function DataSourcePageNextJS({
   owner,
   dsId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return <DataSourcePage owner={owner} dsId={dsId} />;
 }
 
-DataSourcePageWrapper.getLayout = (
+DataSourcePageNextJS.getLayout = (
   page: ReactElement,
   { owner }: { owner: WorkspaceType }
 ) => {

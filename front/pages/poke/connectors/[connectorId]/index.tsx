@@ -27,7 +27,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function ConnectorRedirectWrapper({
+// eslint-disable-next-line dust/nextjs-page-component-naming -- Special redirect page, no Page component
+export default function ConnectorRedirectNextJS({
   connectorId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -58,6 +59,6 @@ export default function ConnectorRedirectWrapper({
   );
 }
 
-ConnectorRedirectWrapper.getLayout = (page: ReactElement) => {
+ConnectorRedirectNextJS.getLayout = (page: ReactElement) => {
   return <PokeLayout title="Connector Redirect">{page}</PokeLayout>;
 };

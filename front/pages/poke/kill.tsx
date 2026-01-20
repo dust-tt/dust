@@ -12,10 +12,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
   }
 );
 
-export default function Kill() {
+export default function KillPageNextJS() {
   return <KillPage />;
 }
 
-Kill.getLayout = (page: ReactElement) => {
+KillPageNextJS.getLayout = (page: ReactElement) => {
   return <PokeLayout title="Kill Switches">{page}</PokeLayout>;
 };

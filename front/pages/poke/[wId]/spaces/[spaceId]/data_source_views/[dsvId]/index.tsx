@@ -28,14 +28,14 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function SpaceDataSourceViewPageWrapper({
+export default function SpaceDataSourceViewPageNextJS({
   owner,
   dsvId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return <SpaceDataSourceViewPage owner={owner} dsvId={dsvId} />;
 }
 
-SpaceDataSourceViewPageWrapper.getLayout = (
+SpaceDataSourceViewPageNextJS.getLayout = (
   page: ReactElement,
   { owner }: { owner: LightWorkspaceType }
 ) => {

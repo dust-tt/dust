@@ -29,7 +29,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function AppPageWrapper({
+export default function AppPageNextJS({
   owner,
   appId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -39,7 +39,7 @@ export default function AppPageWrapper({
   return <AppPage owner={owner} appId={appId} hash={hash} />;
 }
 
-AppPageWrapper.getLayout = (
+AppPageNextJS.getLayout = (
   page: ReactElement,
   { owner }: { owner: LightWorkspaceType }
 ) => {
