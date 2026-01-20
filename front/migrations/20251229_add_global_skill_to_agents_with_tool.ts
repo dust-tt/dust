@@ -41,9 +41,11 @@ async function migrateToolToSkill(
   {
     execute,
     mcpServerName,
+    deleteRelations,
   }: {
     execute: boolean;
     mcpServerName: AutoInternalMCPServerNameType;
+    deleteRelations: boolean;
   }
 ): Promise<string> {
   const globalSkillId = TOOL_TO_SKILL_MAP[mcpServerName];
@@ -159,125 +161,172 @@ async function migrateToolToSkill(
       // Capture tool configs before transaction for revert SQL.
       const toolConfigsData = migrateChunk.map((a) => a.get({ plain: true }));
 
-      // Capture linked configs for revert SQL (all models with FK to AgentMCPServerConfigurationModel).
-      const whereClause = {
-        workspaceId: workspace.id,
-        mcpServerConfigurationId: { [Op.in]: mcpServerConfigIds },
-      };
-
-      const linkedDataSourceConfigs =
-        await AgentDataSourceConfigurationModel.findAll({ where: whereClause });
-      const linkedTablesConfigs =
-        await AgentTablesQueryConfigurationTableModel.findAll({
-          where: whereClause,
-        });
-      const linkedChildAgentConfigs =
-        await AgentChildAgentConfigurationModel.findAll({ where: whereClause });
-
-      const dataSourceConfigsData = linkedDataSourceConfigs.map((d) =>
-        d.get({ plain: true })
-      );
-      const tablesConfigsData = linkedTablesConfigs.map((t) =>
-        t.get({ plain: true })
-      );
-      const childAgentConfigsData = linkedChildAgentConfigs.map((c) =>
-        c.get({ plain: true })
-      );
-
-      const totalLinked =
-        linkedDataSourceConfigs.length +
-        linkedTablesConfigs.length +
-        linkedChildAgentConfigs.length;
-
-      if (totalLinked > 0) {
+      if (deleteRelations) {
         logger.info(
-          {
-            workspaceId: workspace.id,
-            linkedDataSourceConfigs: linkedDataSourceConfigs.length,
-            linkedTablesConfigs: linkedTablesConfigs.length,
-            linkedChildAgentConfigs: linkedChildAgentConfigs.length,
-            chunkSize: migrateChunk.length,
-          },
-          `Found linked configs to delete`
+          `Deleting relations of ${migrateChunk.length} agent MCP configs and migrating to skill`
         );
-      }
+        // Flag is on, delete all relations of agent MCP configurations
 
-      const createdSkills = await withTransaction(async (transaction) => {
-        // Add skill to agents.
-        const skills = await AgentSkillModel.bulkCreate(
-          migrateChunk.map((a) => ({
-            workspaceId: workspace.id,
-            agentConfigurationId: a.agentConfigurationId,
-            globalSkillId,
-            customSkillId: null,
-          })),
-          { transaction }
+        // Capture linked configs for revert SQL (all models with FK to AgentMCPServerConfigurationModel).
+        const whereClause = {
+          workspaceId: workspace.id,
+          mcpServerConfigurationId: { [Op.in]: mcpServerConfigIds },
+        };
+
+        const linkedDataSourceConfigs =
+          await AgentDataSourceConfigurationModel.findAll({
+            where: whereClause,
+          });
+        const linkedTablesConfigs =
+          await AgentTablesQueryConfigurationTableModel.findAll({
+            where: whereClause,
+          });
+        const linkedChildAgentConfigs =
+          await AgentChildAgentConfigurationModel.findAll({
+            where: whereClause,
+          });
+
+        const dataSourceConfigsData = linkedDataSourceConfigs.map((d) =>
+          d.get({ plain: true })
+        );
+        const tablesConfigsData = linkedTablesConfigs.map((t) =>
+          t.get({ plain: true })
+        );
+        const childAgentConfigsData = linkedChildAgentConfigs.map((c) =>
+          c.get({ plain: true })
         );
 
-        // Remove linked configs first (FK constraints).
-        if (linkedDataSourceConfigs.length > 0) {
-          await AgentDataSourceConfigurationModel.destroy({
-            where: {
+        const totalLinked =
+          linkedDataSourceConfigs.length +
+          linkedTablesConfigs.length +
+          linkedChildAgentConfigs.length;
+
+        if (totalLinked > 0) {
+          logger.info(
+            {
               workspaceId: workspace.id,
-              id: { [Op.in]: linkedDataSourceConfigs.map((d) => d.id) },
+              linkedDataSourceConfigs: linkedDataSourceConfigs.length,
+              linkedTablesConfigs: linkedTablesConfigs.length,
+              linkedChildAgentConfigs: linkedChildAgentConfigs.length,
+              chunkSize: migrateChunk.length,
             },
-            transaction,
-          });
-        }
-        if (linkedTablesConfigs.length > 0) {
-          await AgentTablesQueryConfigurationTableModel.destroy({
-            where: {
-              workspaceId: workspace.id,
-              id: { [Op.in]: linkedTablesConfigs.map((t) => t.id) },
-            },
-            transaction,
-          });
-        }
-        if (linkedChildAgentConfigs.length > 0) {
-          await AgentChildAgentConfigurationModel.destroy({
-            where: {
-              workspaceId: workspace.id,
-              id: { [Op.in]: linkedChildAgentConfigs.map((c) => c.id) },
-            },
-            transaction,
-          });
+            `Found linked configs to delete`
+          );
         }
 
-        // Remove tool from agents.
-        await AgentMCPServerConfigurationModel.destroy({
-          where: {
-            workspaceId: workspace.id,
-            id: { [Op.in]: mcpServerConfigIds },
-          },
-          transaction,
+        const createdSkills = await withTransaction(async (transaction) => {
+          // Add skill to agents.
+          const skills = await AgentSkillModel.bulkCreate(
+            migrateChunk.map((a) => ({
+              workspaceId: workspace.id,
+              agentConfigurationId: a.agentConfigurationId,
+              globalSkillId,
+              customSkillId: null,
+            })),
+            { transaction }
+          );
+
+          // Remove linked configs first (FK constraints).
+          if (linkedDataSourceConfigs.length > 0) {
+            await AgentDataSourceConfigurationModel.destroy({
+              where: {
+                workspaceId: workspace.id,
+                id: { [Op.in]: linkedDataSourceConfigs.map((d) => d.id) },
+              },
+              transaction,
+            });
+          }
+          if (linkedTablesConfigs.length > 0) {
+            await AgentTablesQueryConfigurationTableModel.destroy({
+              where: {
+                workspaceId: workspace.id,
+                id: { [Op.in]: linkedTablesConfigs.map((t) => t.id) },
+              },
+              transaction,
+            });
+          }
+          if (linkedChildAgentConfigs.length > 0) {
+            await AgentChildAgentConfigurationModel.destroy({
+              where: {
+                workspaceId: workspace.id,
+                id: { [Op.in]: linkedChildAgentConfigs.map((c) => c.id) },
+              },
+              transaction,
+            });
+          }
+
+          // Remove tool from agents.
+          await AgentMCPServerConfigurationModel.destroy({
+            where: {
+              workspaceId: workspace.id,
+              id: { [Op.in]: mcpServerConfigIds },
+            },
+            transaction,
+          });
+
+          return skills;
         });
 
-        return skills;
-      });
+        // Generate revert SQL after successful transaction.
+        // Insert parent records first, then child records.
+        for (const toolConfig of toolConfigsData) {
+          revertSql +=
+            getInsertSQL(AgentMCPServerConfigurationModel, toolConfig) + "\n";
+        }
+        for (const dataSourceConfig of dataSourceConfigsData) {
+          revertSql +=
+            getInsertSQL(AgentDataSourceConfigurationModel, dataSourceConfig) +
+            "\n";
+        }
+        for (const tablesConfig of tablesConfigsData) {
+          revertSql +=
+            getInsertSQL(
+              AgentTablesQueryConfigurationTableModel,
+              tablesConfig
+            ) + "\n";
+        }
+        for (const childAgentConfig of childAgentConfigsData) {
+          revertSql +=
+            getInsertSQL(AgentChildAgentConfigurationModel, childAgentConfig) +
+            "\n";
+        }
+        for (const skill of createdSkills) {
+          revertSql += `DELETE FROM "agent_skills" WHERE "id" = ${skill.id};\n`;
+        }
+      } else {
+        logger.info(
+          `Migrating ${migrateChunk.length} agent MCP configs to skill`
+        );
+        // Simple migration, only delete mcp server configs
+        const createdSkills = await withTransaction(async (transaction) => {
+          const skills = await AgentSkillModel.bulkCreate(
+            migrateChunk.map((a) => ({
+              workspaceId: workspace.id,
+              agentConfigurationId: a.agentConfigurationId,
+              globalSkillId,
+              customSkillId: null,
+            })),
+            { transaction }
+          );
 
-      // Generate revert SQL after successful transaction.
-      // Insert parent records first, then child records.
-      for (const toolConfig of toolConfigsData) {
-        revertSql +=
-          getInsertSQL(AgentMCPServerConfigurationModel, toolConfig) + "\n";
-      }
-      for (const dataSourceConfig of dataSourceConfigsData) {
-        revertSql +=
-          getInsertSQL(AgentDataSourceConfigurationModel, dataSourceConfig) +
-          "\n";
-      }
-      for (const tablesConfig of tablesConfigsData) {
-        revertSql +=
-          getInsertSQL(AgentTablesQueryConfigurationTableModel, tablesConfig) +
-          "\n";
-      }
-      for (const childAgentConfig of childAgentConfigsData) {
-        revertSql +=
-          getInsertSQL(AgentChildAgentConfigurationModel, childAgentConfig) +
-          "\n";
-      }
-      for (const skill of createdSkills) {
-        revertSql += `DELETE FROM "agent_skills" WHERE "id" = ${skill.id};\n`;
+          await AgentMCPServerConfigurationModel.destroy({
+            where: {
+              workspaceId: workspace.id,
+              id: { [Op.in]: mcpServerConfigIds },
+            },
+            transaction,
+          });
+
+          return skills;
+        });
+
+        for (const toolConfig of toolConfigsData) {
+          revertSql +=
+            getInsertSQL(AgentMCPServerConfigurationModel, toolConfig) + "\n";
+        }
+        for (const skill of createdSkills) {
+          revertSql += `DELETE FROM "agent_skills" WHERE "id" = ${skill.id};\n`;
+        }
       }
     }
   }
@@ -296,8 +345,13 @@ makeScript(
       required: true,
       description: "MCP server name (interactive_content or deep_dive)",
     },
+    deleteRelations: {
+      type: "boolean",
+      describe: "Whether to delete agent configurations relations",
+      default: false,
+    },
   },
-  async ({ execute, workspaceId, mcpServerName }, logger) => {
+  async ({ execute, workspaceId, mcpServerName, deleteRelations }, logger) => {
     if (
       !(
         isInternalMCPServerName(mcpServerName) &&
@@ -308,7 +362,7 @@ makeScript(
     }
 
     const now = new Date().toISOString().slice(0, 16).replace(/[-:]/g, "");
-    const opts = { execute, mcpServerName };
+    const opts = { execute, mcpServerName, deleteRelations };
     let allRevertSql = "";
 
     const processWorkspace = async (workspace: LightWorkspaceType) => {
