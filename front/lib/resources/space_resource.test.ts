@@ -923,7 +923,7 @@ describe("SpaceResource", () => {
             where: {
               vaultId: projectSpace.id,
               workspaceId: workspace.id,
-              kind: "editor",
+              kind: "project_editor",
             },
           });
           const editorGroupIds = editorGroupSpaces.map((gs) => gs.groupId);
