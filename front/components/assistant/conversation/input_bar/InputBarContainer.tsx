@@ -1,4 +1,11 @@
-import { ArrowUpIcon, Button, Chip, cn, TextIcon } from "@dust-tt/sparkle";
+import {
+  ArrowUpIcon,
+  Button,
+  Chip,
+  cn,
+  TextIcon,
+  VoicePicker,
+} from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
@@ -21,7 +28,6 @@ import {
 import { MobileToolbar } from "@app/components/assistant/conversation/input_bar/toolbar/MobileToolbar";
 import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
 import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
-import { VoicePicker } from "@app/components/assistant/VoicePicker";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
@@ -751,9 +757,14 @@ const InputBarContainer = ({
                 {owner.metadata?.allowVoiceTranscription !== false &&
                   actions.includes("voice") && (
                     <VoicePicker
-                      voiceTranscriberService={voiceTranscriberService}
+                      status={voiceTranscriberService.status}
+                      level={voiceTranscriberService.level}
+                      elapsedSeconds={voiceTranscriberService.elapsedSeconds}
+                      onRecordStart={voiceTranscriberService.startRecording}
+                      onRecordStop={voiceTranscriberService.stopRecording}
                       disabled={disableTextInput}
-                      buttonSize={buttonSize}
+                      size={buttonSize}
+                      showStopLabel={!isMobile}
                     />
                   )}
                 <Button
