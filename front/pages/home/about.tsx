@@ -511,8 +511,8 @@ const PEOPLE: Record<
     title: "Software Engineer",
     image: "https://avatars.githubusercontent.com/u/31540320?v=4",
     github: "https://github.com/matteotrab",
-    linkedIn: "https://linkedin.com/in/matteo-trabattoni"
-  }
+    linkedIn: "https://linkedin.com/in/matteo-trabattoni",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
