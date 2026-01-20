@@ -3,7 +3,7 @@ import type { Transaction } from "sequelize";
 
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
-import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { isUnsavedServerSideMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import { WEB_SEARCH_BROWSE_SERVER_NAME } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import type {
   DataSourceConfiguration,
@@ -34,7 +34,7 @@ export async function createAgentActionConfiguration(
 ): Promise<Result<MCPServerConfigurationType, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  assert(isServerSideMCPServerConfiguration(action));
+  assert(isUnsavedServerSideMCPServerConfigurationType(action));
 
   const mcpServerView = await MCPServerViewResource.fetchById(
     auth,
@@ -102,7 +102,7 @@ export async function createAgentActionConfiguration(
       name: action.name,
       description: action.description,
       mcpServerViewId: action.mcpServerViewId,
-      internalMCPServerId: action.internalMCPServerId,
+      internalMCPServerId: mcpConfig.internalMCPServerId,
       dataSources: action.dataSources,
       tables: action.tables,
       childAgentId: action.childAgentId,
