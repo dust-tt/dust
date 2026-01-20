@@ -74,10 +74,10 @@ async function handler(
         auth,
         latestAgentConfiguration.requestedSpaceIds
       );
-
+      const authors = await getAuthors(agentConfigurations);
       return res.status(200).json({
         agentConfigurations,
-        authors: await getAuthors(agentConfigurations),
+        authors,
         lastVersionEditors,
         spaces: spaces.map((s) => s.toJSON()),
       });

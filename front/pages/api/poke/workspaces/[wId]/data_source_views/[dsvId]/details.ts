@@ -61,8 +61,9 @@ async function handler(
         });
       }
 
+      const dataSourceViewJSON = await dataSourceViewToPokeJSON(dataSourceView);
       return res.status(200).json({
-        dataSourceView: await dataSourceViewToPokeJSON(dataSourceView),
+        dataSourceView: dataSourceViewJSON,
       });
 
     default:

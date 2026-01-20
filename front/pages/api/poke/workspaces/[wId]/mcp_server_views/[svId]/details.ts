@@ -54,9 +54,12 @@ async function handler(
           },
         });
       }
-
+      const mcpServerViewJSON = await mcpServerViewToPokeJSON(
+        mcpServerView,
+        auth
+      );
       return res.status(200).json({
-        mcpServerView: await mcpServerViewToPokeJSON(mcpServerView, auth),
+        mcpServerView: mcpServerViewJSON,
       });
 
     default:
