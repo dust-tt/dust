@@ -31,7 +31,7 @@ export function ToolsSection({ tools, integrationName }: ToolsSectionProps) {
               {readTools.length > 0 && (
                 <div className="rounded-2xl border border-border bg-white p-6">
                   <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
                       <BookOpenIcon className="h-5 w-5" />
                     </div>
                     <h3 className="text-lg font-semibold text-foreground">
@@ -44,7 +44,7 @@ export function ToolsSection({ tools, integrationName }: ToolsSectionProps) {
                         key={tool.name}
                         className="flex items-start gap-2 text-sm text-muted-foreground"
                       >
-                        <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-400" />
+                        <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-400" />
                         <span>{tool.displayName}</span>
                       </li>
                     ))}

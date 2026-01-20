@@ -1,4 +1,4 @@
-import { Button, MagnifyingGlassIcon, RocketIcon } from "@dust-tt/sparkle";
+import { Button, Chip, RocketIcon, SearchInput } from "@dust-tt/sparkle";
 import type { GetStaticProps } from "next";
 import Head from "next/head";
 import Link from "next/link";
@@ -144,7 +144,7 @@ export default function IntegrationsPage({
               >
                 <H1
                   mono
-                  className="mb-4 text-center text-4xl font-medium leading-tight text-foreground md:text-5xl"
+                  className="mb-2 text-center text-4xl font-medium leading-tight text-foreground md:text-5xl"
                 >
                   Integrations
                 </H1>
@@ -155,44 +155,32 @@ export default function IntegrationsPage({
 
                 {/* Search */}
                 <div className="mb-8 w-full max-w-md">
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      type="text"
-                      placeholder="Search integrations..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-white py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20"
-                    />
-                  </div>
+                  <SearchInput
+                    name="search"
+                    placeholder="Search integrations..."
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                  />
                 </div>
 
                 {/* Category filters */}
                 <div className="flex flex-wrap justify-center gap-2">
-                  <button
+                  <Button
+                    label="All"
+                    variant={selectedCategory === null ? "primary" : "outline"}
+                    size="sm"
                     onClick={() => setSelectedCategory(null)}
-                    className={cn(
-                      "rounded-full px-4 py-2 text-sm font-medium transition-all",
-                      selectedCategory === null
-                        ? "bg-green-600 text-white"
-                        : "bg-white text-muted-foreground hover:bg-gray-100"
-                    )}
-                  >
-                    All
-                  </button>
+                  />
                   {categories.map((category) => (
-                    <button
+                    <Button
                       key={category}
+                      label={CATEGORY_LABELS[category]}
+                      variant={
+                        selectedCategory === category ? "primary" : "outline"
+                      }
+                      size="sm"
                       onClick={() => setSelectedCategory(category)}
-                      className={cn(
-                        "rounded-full px-4 py-2 text-sm font-medium transition-all",
-                        selectedCategory === category
-                          ? "bg-green-600 text-white"
-                          : "bg-white text-muted-foreground hover:bg-gray-100"
-                      )}
-                    >
-                      {CATEGORY_LABELS[category]}
-                    </button>
+                    />
                   ))}
                 </div>
 
@@ -324,9 +312,9 @@ function IntegrationCard({ integration }: IntegrationCardProps) {
     >
       <div className="mb-4 flex items-start justify-between">
         <ResourceAvatar icon={IconComponent} size="md" />
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+        <Chip size="xs" color="slate">
           {typeLabel}
-        </span>
+        </Chip>
       </div>
       <h3 className="text-base font-semibold text-foreground">
         {integration.name}
