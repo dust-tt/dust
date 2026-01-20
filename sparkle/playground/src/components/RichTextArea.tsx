@@ -92,7 +92,9 @@ const SuggestionList = forwardRef<SuggestionListHandle, SuggestionProps>(
     }));
 
     return (
-      <div className={cn(menuStyleClasses.container, "s-w-72 s-p-0 s-shadow-lg")}>
+      <div
+        className={cn(menuStyleClasses.container, "s-w-72 s-p-0 s-shadow-lg")}
+      >
         {items.length === 0 ? (
           <div className="s-px-3 s-py-3 s-text-sm s-text-muted-foreground">
             No matches
@@ -123,7 +125,7 @@ const SuggestionList = forwardRef<SuggestionListHandle, SuggestionProps>(
                 isRounded={item.type === "user"}
               />
               <div className="s-flex s-min-w-0 s-flex-1 s-items-center">
-                <div className="s-truncate s-heading-sm s-text-foreground">
+                <div className="s-heading-sm s-truncate s-text-foreground">
                   {item.label}
                 </div>
               </div>
@@ -150,8 +152,7 @@ const SuggestionAdd = Mark.create({
       "span",
       mergeAttributes(HTMLAttributes, {
         "data-suggestion-add": "",
-        class:
-          "s-rounded s-px-0.5",
+        class: "s-rounded s-px-0.5",
       }),
       0,
     ];
@@ -168,8 +169,7 @@ const SuggestionRemove = Mark.create({
       "span",
       mergeAttributes(HTMLAttributes, {
         "data-suggestion-remove": "",
-        class:
-          "s-rounded s-px-0.5 s-line-through",
+        class: "s-rounded s-px-0.5 s-line-through",
       }),
       0,
     ];
@@ -311,42 +311,43 @@ const getSuggestionBlockRange = (
 const suggestionSelectionVariants = cva(
   "s-transition-colors s-duration-200 s-ease-in-out",
   {
-  variants: {
-    kind: {
-      add: "",
-      remove: "",
+    variants: {
+      kind: {
+        add: "",
+        remove: "",
+      },
+      state: {
+        selected: "",
+        unselected: "",
+      },
     },
-    state: {
-      selected: "",
-      unselected: "",
-    },
-  },
-  compoundVariants: [
-    {
-      kind: "add",
-      state: "selected",
-      className:
-        "s-bg-highlight-100 dark:s-bg-highlight-100 s-text-highlight-800 dark:s-text-highlight-800-night",
-    },
-    {
-      kind: "add",
-      state: "unselected",
-      className:
-        "s-bg-highlight-50 dark:s-bg-highlight-50-night s-text-muted-foreground dark:s-text-muted-foreground-night",
-    },
-    {
-      kind: "remove",
-      state: "selected",
-      className: "s-bg-warning-100 s-text-warning-800 dark:s-text-warning-800-night",
-    },
-    {
-      kind: "remove",
-      state: "unselected",
-      className:
-        "s-bg-warning-50 dark:s-bg-muted-background-night s-text-muted-foreground dark:s-text-muted-foreground-night",
-    },
-  ],
-}
+    compoundVariants: [
+      {
+        kind: "add",
+        state: "selected",
+        className:
+          "s-bg-highlight-100 dark:s-bg-highlight-100 s-text-highlight-800 dark:s-text-highlight-800-night",
+      },
+      {
+        kind: "add",
+        state: "unselected",
+        className:
+          "s-bg-highlight-50 dark:s-bg-highlight-50-night s-text-muted-foreground dark:s-text-muted-foreground-night",
+      },
+      {
+        kind: "remove",
+        state: "selected",
+        className:
+          "s-bg-warning-100 s-text-warning-800 dark:s-text-warning-800-night",
+      },
+      {
+        kind: "remove",
+        state: "unselected",
+        className:
+          "s-bg-warning-50 dark:s-bg-muted-background-night s-text-muted-foreground dark:s-text-muted-foreground-night",
+      },
+    ],
+  }
 );
 
 const SuggestionSelectionHighlight = Extension.create({
@@ -397,7 +398,6 @@ const SuggestionSelectionHighlight = Extension.create({
     ];
   },
 });
-
 
 const getMentionItems = (query: string): MentionItem[] => {
   const normalized = query.trim().toLowerCase();
@@ -587,8 +587,11 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
           return;
         }
 
-        const content: Array<{ type: string; text?: string; marks?: unknown[] }> =
-          [];
+        const content: Array<{
+          type: string;
+          text?: string;
+          marks?: unknown[];
+        }> = [];
 
         if (options.removedText) {
           content.push({
@@ -662,7 +665,10 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
           if (shouldReplace) {
             const start = Math.floor(Math.random() * Math.max(docSize - 1, 1));
             const maxLength = Math.min(24, docSize - start);
-            const length = Math.max(1, Math.floor(Math.random() * maxLength) + 1);
+            const length = Math.max(
+              1,
+              Math.floor(Math.random() * maxLength) + 1
+            );
             const from = start;
             const to = Math.min(docSize, start + length);
             const removedText = editor.state.doc.textBetween(
@@ -988,7 +994,11 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                   icon={SparklesIcon}
                   onClick={() => {
                     const { from, to } = editor.state.selection;
-                    const selectedText = editor.state.doc.textBetween(from, to, "\n");
+                    const selectedText = editor.state.doc.textBetween(
+                      from,
+                      to,
+                      "\n"
+                    );
                     onAskCopilot?.(selectedText);
                   }}
                 />
@@ -998,7 +1008,11 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                   variant="ghost"
                   onClick={() => {
                     const { from, to } = editor.state.selection;
-                    const selectedText = editor.state.doc.textBetween(from, to, "\n");
+                    const selectedText = editor.state.doc.textBetween(
+                      from,
+                      to,
+                      "\n"
+                    );
                     onAskCopilot?.(selectedText);
                   }}
                 />
@@ -1008,7 +1022,11 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                   variant="ghost"
                   onClick={() => {
                     const { from, to } = editor.state.selection;
-                    const selectedText = editor.state.doc.textBetween(from, to, "\n");
+                    const selectedText = editor.state.doc.textBetween(
+                      from,
+                      to,
+                      "\n"
+                    );
                     onAskCopilot?.(selectedText);
                   }}
                 />

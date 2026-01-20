@@ -63,8 +63,7 @@ const normalizeKey = (rawKey: string) => {
     : trimmed;
 };
 
-export interface KeyboardShortcutProps
-  extends React.HTMLAttributes<HTMLSpanElement> {
+export interface KeyboardShortcutProps extends React.HTMLAttributes<HTMLSpanElement> {
   shortcut: string;
 }
 
@@ -73,10 +72,7 @@ export const KeyboardShortcut = ({
   className,
   ...props
 }: KeyboardShortcutProps) => {
-  const keys = shortcut
-    .split("+")
-    .map(normalizeKey)
-    .filter(Boolean);
+  const keys = shortcut.split("+").map(normalizeKey).filter(Boolean);
   const hasSeparator = shortcut.includes("+") && keys.length > 1;
 
   return (

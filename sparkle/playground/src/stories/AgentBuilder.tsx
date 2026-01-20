@@ -108,7 +108,9 @@ export default function AgentBuilder() {
     "unpublished"
   );
   const richTextAreaRef = useRef<RichTextAreaHandle | null>(null);
-  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(null);
+  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
+    null
+  );
   const [hasSuggestionsState, setHasSuggestionsState] = useState(false);
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<Set<string>>(() => {
     const defaultSpace = mockSpaces[0];
@@ -152,40 +154,47 @@ export default function AgentBuilder() {
 
   // Generate diff content for version history preview
   const versionDiffContent = useMemo(() => {
-    const baseInstruction = mockInstructionCases[Math.floor(Math.random() * mockInstructionCases.length)];
+    const baseInstruction =
+      mockInstructionCases[
+        Math.floor(Math.random() * mockInstructionCases.length)
+      ];
     const lines = baseInstruction.split("\n");
-    
+
     // Diff styles: success for additions, warning for removals
-    const additionStyle = "s-rounded s-bg-success-100 dark:s-bg-success-100-night s-px-0.5 s-text-success-600 dark:s-text-success-600-night";
-    const removalStyle = "s-rounded s-bg-warning-100 dark:s-bg-warning-100-night s-px-0.5 s-text-warning-600 dark:s-text-warning-600-night s-line-through";
-    
+    const additionStyle =
+      "s-rounded s-bg-success-100 dark:s-bg-success-100-night s-px-0.5 s-text-success-600 dark:s-text-success-600-night";
+    const removalStyle =
+      "s-rounded s-bg-warning-100 dark:s-bg-warning-100-night s-px-0.5 s-text-warning-600 dark:s-text-warning-600-night s-line-through";
+
     // Apply some fake diff changes
     const modifiedLines = lines.map((line, index) => {
       // Skip empty lines
       if (!line.trim()) return line;
-      
+
       // Add some additions (green/success)
       if (index === 3) {
         return `${line} <span data-diff-add class="${additionStyle}">Include response time targets.</span>`;
       }
-      
+
       // Add some removals (strikethrough/warning)
       if (index === 7 && line.length > 20) {
         const midPoint = Math.floor(line.length / 2);
         const removedPart = line.substring(midPoint - 10, midPoint + 10);
-        return line.substring(0, midPoint - 10) + 
+        return (
+          line.substring(0, midPoint - 10) +
           `<span data-diff-remove class="${removalStyle}">${removedPart}</span>` +
-          line.substring(midPoint + 10);
+          line.substring(midPoint + 10)
+        );
       }
-      
+
       // Add a replaced section
       if (index === 12) {
         return `<span data-diff-remove class="${removalStyle}">Old requirement removed.</span> <span data-diff-add class="${additionStyle}">New requirement: prioritize clarity.</span>`;
       }
-      
+
       return line;
     });
-    
+
     return `<p>${modifiedLines.join("<br>")}</p>`;
   }, []);
 
@@ -308,33 +317,82 @@ export default function AgentBuilder() {
                     <SectionHeader
                       title="Instructions"
                       description="Command or guideline you provide to your agent to direct its responses."
-                      action={<DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            label="Advanced"
-                            isSelect
-                          />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem label="No advanced options" />
-                        </DropdownMenuContent>
-                      </DropdownMenu>}
+                      action={
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              label="Advanced"
+                              isSelect
+                            />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem label="No advanced options" />
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      }
                     />
                     <div className="s-flex s-flex-1 s-items-center s-justify-center s-gap-2">
-                      <Button icon={HeadingIcon} size="mini" variant="ghost-secondary" tooltip="Heading" />
-                      <Button icon={BoldIcon} size="mini" variant="ghost-secondary" tooltip="Bold" tooltipShortcut="Cmd+B" />
-                      <Button icon={ItalicIcon} size="mini" variant="ghost-secondary" tooltip="Italic" tooltipShortcut="Cmd+I" />
-                      <Separator orientation="vertical"  />
-                      <Button icon={LinkIcon} size="mini" variant="ghost-secondary" tooltip="Insert a link" />
-                      <Button icon={ListCheckIcon} size="mini" variant="ghost-secondary" tooltip="Bulleted list" />
-                      <Button icon={ListOrdered2Icon} size="mini" variant="ghost-secondary" tooltip="Ordered list" />
+                      <Button
+                        icon={HeadingIcon}
+                        size="mini"
+                        variant="ghost-secondary"
+                        tooltip="Heading"
+                      />
+                      <Button
+                        icon={BoldIcon}
+                        size="mini"
+                        variant="ghost-secondary"
+                        tooltip="Bold"
+                        tooltipShortcut="Cmd+B"
+                      />
+                      <Button
+                        icon={ItalicIcon}
+                        size="mini"
+                        variant="ghost-secondary"
+                        tooltip="Italic"
+                        tooltipShortcut="Cmd+I"
+                      />
                       <Separator orientation="vertical" />
-                      <Button icon={QuoteTextIcon} size="mini" variant="ghost-secondary" tooltip="Quotation block" />
-                      <Button icon={CodeBlockIcon} size="mini" variant="ghost-secondary" tooltip="Code Block" />
+                      <Button
+                        icon={LinkIcon}
+                        size="mini"
+                        variant="ghost-secondary"
+                        tooltip="Insert a link"
+                      />
+                      <Button
+                        icon={ListCheckIcon}
+                        size="mini"
+                        variant="ghost-secondary"
+                        tooltip="Bulleted list"
+                      />
+                      <Button
+                        icon={ListOrdered2Icon}
+                        size="mini"
+                        variant="ghost-secondary"
+                        tooltip="Ordered list"
+                      />
                       <Separator orientation="vertical" />
-                      <Button icon={TagBlockIcon} size="mini" variant="ghost-secondary" tooltip="XML tag" />
+                      <Button
+                        icon={QuoteTextIcon}
+                        size="mini"
+                        variant="ghost-secondary"
+                        tooltip="Quotation block"
+                      />
+                      <Button
+                        icon={CodeBlockIcon}
+                        size="mini"
+                        variant="ghost-secondary"
+                        tooltip="Code Block"
+                      />
+                      <Separator orientation="vertical" />
+                      <Button
+                        icon={TagBlockIcon}
+                        size="mini"
+                        variant="ghost-secondary"
+                        tooltip="XML tag"
+                      />
                       <Separator orientation="vertical" />
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -364,7 +422,9 @@ export default function AgentBuilder() {
                       <div className="s-flex-1" />
                       {hasSuggestionsState && (
                         <>
-                        <div className="s-heading-xs s-text-muted-foreground">Suggestions:</div>
+                          <div className="s-heading-xs s-text-muted-foreground">
+                            Suggestions:
+                          </div>
                           <Button
                             size="xs"
                             variant="outline"
@@ -387,15 +447,15 @@ export default function AgentBuilder() {
                           />
                         </>
                       )}
-                      </div>
-                      <RichTextArea
-                        ref={richTextAreaRef}
-                        className="s-min-h-[512px]"
-                        placeholder="Write instructions for your agent..."
-                        onAskCopilot={handleAskCopilot}
-                        onSuggestionsChange={setHasSuggestionsState}
-                        scrollContainer={scrollContainer}
-                      />
+                    </div>
+                    <RichTextArea
+                      ref={richTextAreaRef}
+                      className="s-min-h-[512px]"
+                      placeholder="Write instructions for your agent..."
+                      onAskCopilot={handleAskCopilot}
+                      onSuggestionsChange={setHasSuggestionsState}
+                      scrollContainer={scrollContainer}
+                    />
                   </div>
                   <Separator />
                   <div className="s-flex s-flex-col s-gap-2">
@@ -405,14 +465,13 @@ export default function AgentBuilder() {
                     />
                     {selectedSpaces.length > 0 ? (
                       <div className="s-flex s-flex-wrap s-gap-2">
-
-<Button
-                            size="sm"
-                            variant="outline"
-                            label="Select"
-                            icon={SpacesIcon}
-                            onClick={() => setIsSpacesSheetOpen(true)}
-                          />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          label="Select"
+                          icon={SpacesIcon}
+                          onClick={() => setIsSpacesSheetOpen(true)}
+                        />
                         {[...selectedSpaces]
                           .sort(
                             (a, b) =>
@@ -441,30 +500,28 @@ export default function AgentBuilder() {
                       </div>
                     )}
                   </div>
-<Separator />
+                  <Separator />
                   <div className="s-flex s-flex-col s-gap-2">
                     <SectionHeader
                       title="Knowledge and capabilities"
                       description="Add knowledge, tools and skills to enhance your agent's
                     abilities."
-                      action={
-                        <>
-                        </>
-                      }
+                      action={<></>}
                     />
-<div className="s-flex s-flex-wrap s-gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            label="Capabilities"
-                            icon={ToolsIcon}
-                          />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            label="Knowledge"
-                            icon={BookOpenIcon}
-                          /></div>
+                    <div className="s-flex s-flex-wrap s-gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        label="Capabilities"
+                        icon={ToolsIcon}
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        label="Knowledge"
+                        icon={BookOpenIcon}
+                      />
+                    </div>
                   </div>
                   <Separator />
                   <div className="s-flex s-flex-col s-gap-2">
@@ -474,13 +531,14 @@ export default function AgentBuilder() {
                     abilities."
                     />
 
-<div className="s-flex s-flex-wrap s-gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            label="Triggers"
-                            icon={BoltIcon}
-                          /></div>
+                    <div className="s-flex s-flex-wrap s-gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        label="Triggers"
+                        icon={BoltIcon}
+                      />
+                    </div>
                   </div>
                   <Separator />
                   <div className="s-flex s-flex-col">
@@ -513,9 +571,7 @@ export default function AgentBuilder() {
                       <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
                         Description
                       </div>
-                      <Input
-                        containerClassName="s-flex-1"
-                      />
+                      <Input containerClassName="s-flex-1" />
                     </div>
                     <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-3">
                       <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
@@ -532,7 +588,9 @@ export default function AgentBuilder() {
                                 : "Unpublished"
                             }
                             icon={
-                              accessStatus === "published" ? EyeIcon : EyeSlashIcon
+                              accessStatus === "published"
+                                ? EyeIcon
+                                : EyeSlashIcon
                             }
                             isSelect
                           />
@@ -552,7 +610,8 @@ export default function AgentBuilder() {
                       </DropdownMenu>
                       {accessStatus === "published" && (
                         <div className="s-text-sm s-text-muted-foreground">
-                          Since {publishedMetadata.dateLabel}{", "}
+                          Since {publishedMetadata.dateLabel}
+                          {", "}
                           {publishedMetadata.usersLabel} users last 30 days
                         </div>
                       )}
@@ -840,16 +899,16 @@ export default function AgentBuilder() {
         </SheetContent>
       </Sheet>
 
-      <Sheet 
-        open={selectedVersion !== null} 
+      <Sheet
+        open={selectedVersion !== null}
         onOpenChange={(open) => {
           if (!open) {
             setSelectedVersion(null);
           }
         }}
       >
-        <SheetContent 
-          size="xl" 
+        <SheetContent
+          size="xl"
           side="right"
           onCloseAutoFocus={(e) => {
             e.preventDefault();
@@ -859,32 +918,33 @@ export default function AgentBuilder() {
           <SheetHeader>
             <SheetTitle>{selectedVersion?.date ?? "Version"}</SheetTitle>
             <SheetDescription>
-              By: <span className="s-heading-ws">{selectedVersion?.author ?? "Unknown"}</span>
+              By:{" "}
+              <span className="s-heading-ws">
+                {selectedVersion?.author ?? "Unknown"}
+              </span>
             </SheetDescription>
           </SheetHeader>
           <SheetContainer>
-          <div className="s-flex s-flex-1 s-flex-col s-overflow-auto s-gap-3 s-tiems-end">
-            <div className="s-flex s-w-full s-justify-end">
-              <Button
-                label="Restore this version"
-                icon={HistoryIcon}
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedVersion(null)}
+            <div className="s-tiems-end s-flex s-flex-1 s-flex-col s-gap-3 s-overflow-auto">
+              <div className="s-flex s-w-full s-justify-end">
+                <Button
+                  label="Restore this version"
+                  icon={HistoryIcon}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedVersion(null)}
+                />
+              </div>
+
+              <RichTextArea
+                readOnly
+                defaultValue={versionDiffContent}
+                className="s-min-h-[400px]"
               />
             </div>
-          
-            <RichTextArea
-              readOnly
-              defaultValue={versionDiffContent}
-              className="s-min-h-[400px]"
-            />
-          </div>
           </SheetContainer>
         </SheetContent>
       </Sheet>
-
-
     </div>
   );
 }
