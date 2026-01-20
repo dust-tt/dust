@@ -54,7 +54,8 @@ export const geminiConfig: CompetitorPageConfig = {
       {
         label: "Data connections",
         dust: "20+ integrations: GitHub, Notion, HubSpot, Zendesk, Snowflake",
-        competitor: "No code agents can mainly access Google Suite + M365 + Atlassian, missing critical tools",
+        competitor:
+          "No code agents can mainly access Google Suite + M365 + Atlassian, missing critical tools",
       },
       {
         label: "Automation",
