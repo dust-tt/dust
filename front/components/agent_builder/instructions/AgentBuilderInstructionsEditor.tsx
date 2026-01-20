@@ -26,6 +26,7 @@ import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/in
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
+import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import type { LightAgentConfigurationType } from "@app/types";
 
@@ -214,6 +215,13 @@ export function AgentBuilderInstructionsEditor({
         window.dispatchEvent(new CustomEvent(BLUR_EVENT_NAME));
         return false;
       },
+      editorProps: {
+        // Cleans up incoming HTML to remove Chrome-specific wrapper tags (e.g., <b style="font-weight:normal">)
+        // that interfere with instruction block parsing
+        transformPastedHTML(html: string) {
+          return cleanupPastedHTML(html);
+        },
+      },
       immediatelyRender: false,
     },
     [extensions]
@@ -277,6 +285,10 @@ export function AgentBuilderInstructionsEditor({
       editorProps: {
         attributes: {
           class: editorVariants({ error: displayError }),
+        },
+        // Preserve the transformPastedHTML handler when updating editorProps
+        transformPastedHTML(html: string) {
+          return cleanupPastedHTML(html);
         },
       },
     });
