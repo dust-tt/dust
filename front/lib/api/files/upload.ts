@@ -471,6 +471,8 @@ const getProcessingFunction = ({
       );
     } else if (useCase === "avatar") {
       return resizeAndUploadToPublicBucket;
+    } else if (useCase === "tool_output") {
+      return undefined;
     }
     return undefined;
   }
