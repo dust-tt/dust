@@ -187,7 +187,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                     message={data}
                     owner={context.owner}
                     triggeringUser={triggeringUser}
-                    conversationId={context.conversation.sId}
+                    conversation={context.conversation}
                   />
                 );
               } else if (

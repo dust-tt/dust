@@ -762,19 +762,31 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   /**
    * Check if a user is a member of this space.
-   * Returns true if the user belongs to any group linked to this space.
-   * If there's a global group, will always return true. If there's a system
-   * group along with other groups, the system group will have no impact
-   * on membership (since isMember will return false for the system group).
+   * Returns true if the user belongs to any non-global group linked to this space.
+   * Global groups are excluded from this check because membership in a global group
+   * doesn't indicate explicit space membership. System groups also have no impact
+   * on membership (since isMember will return false for system groups).
    */
+  // TODO(projects): update this method to check groups whose group_vaults relationship is
+  // space_member or space_editor (not space_viewer) when the PR adding the relationship is live.
+  // At that point, we can reinstate global groups in the check if their relation is member or editor.
   async isMember(user: UserResource): Promise<boolean> {
     for (const group of this.groups) {
+      if (group.isGlobal()) {
+        continue;
+      }
       if (await group.isMember(user)) {
         return true;
       }
     }
 
     return false;
+  }
+
+  // TODO(projects): update this method to check groups whose group_vaults relationship is
+  // space_editor (not space_viewer or space_member) when the PR adding the relationship is live.
+  async isEditor(user: UserResource): Promise<boolean> {
+    return this.isMember(user);
   }
 
   /**
