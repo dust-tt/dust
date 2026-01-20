@@ -274,18 +274,22 @@ export async function fetchOrCreateWorkOSUserWithEmail({
     workspaceId: workspace.sId,
   });
 
-  if (workOSUser.email == null) {
-    return new Err(new Error("Missing email"));
+  let email = workOSUser.email;
+  if (!email) {
+    email = workOSUser.emails.find((e) => e.primary)?.value ?? null;
+    if (!email) {
+      return new Err(new Error("Missing email"));
+    }
   }
 
   const workOSUserResponse = await getWorkOS().userManagement.listUsers({
-    email: workOSUser.email,
+    email,
   });
 
   const [existingUser] = workOSUserResponse.data;
   if (!existingUser) {
     const createdUser = await getWorkOS().userManagement.createUser({
-      email: workOSUser.email,
+      email,
       firstName: workOSUser.firstName ?? undefined,
       lastName: workOSUser.lastName ?? undefined,
       metadata: {
