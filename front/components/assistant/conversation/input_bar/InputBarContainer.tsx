@@ -94,7 +94,6 @@ const InputBarContainer = ({
   onEnterKeyDown,
   owner,
   conversationId,
-
   selectedAgent,
   stickyMentions,
   actions,
@@ -102,6 +101,7 @@ const InputBarContainer = ({
   isSubmitting,
   disableInput,
   fileUploaderService,
+  getDraft,
   onNodeSelect,
   onNodeUnselect,
   attachedNodes,
@@ -514,17 +514,17 @@ const InputBarContainer = ({
   }, [animate, editorService]);
 
   // Restore draft when switching conversations (including new conversations).
-  // useEffect(() => {
-  //   if (!editor) {
-  //     return;
-  //   }
-  //
-  //   const draft = getDraft();
-  //   // Only restore draft if editor is empty to avoid overwriting existing content or sticky mentions.
-  //   if (draft && editorService.isEmpty()) {
-  //     editorService.setContent(draft.text);
-  //   }
-  // }, [conversationId, editor, editorService, getDraft]);
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    const draft = getDraft();
+    // Only restore draft if editor is empty to avoid overwriting existing content or sticky mentions.
+    if (draft && editorService.isEmpty()) {
+      editorService.setContent(draft.text);
+    }
+  }, [conversationId, disableTextInput, editor, editorService, getDraft]);
 
   useHandleMentions(
     editorService,
