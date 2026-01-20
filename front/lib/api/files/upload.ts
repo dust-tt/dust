@@ -46,6 +46,8 @@ const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 const CONVERSATION_IMG_MAX_SIZE_PIXELS = "1538";
 const AVATAR_IMG_MAX_SIZE_PIXELS = "256";
 
+const noOpProcessing: ProcessingFunction = async () => new Ok(undefined);
+
 // Images processing functions.
 const resizeAndUploadToPublicBucket: ProcessingFunction = async (
   auth: Authenticator,
@@ -472,7 +474,7 @@ const getProcessingFunction = ({
     } else if (useCase === "avatar") {
       return resizeAndUploadToPublicBucket;
     } else if (useCase === "tool_output") {
-      return undefined;
+      return noOpProcessing;
     }
     return undefined;
   }
