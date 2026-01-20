@@ -92,6 +92,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Names should reflect the purpose of the server but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
+  "agent_copilot_context",
   "agent_management",
   AGENT_MEMORY_SERVER_NAME,
   "agent_router",
@@ -1820,6 +1821,33 @@ export const INTERNAL_MCP_SERVERS = {
         "Only text-based files are supported for adding/updating. " +
         "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
         "Requires write permissions on the project space.",
+    },
+  },
+  agent_copilot_context: {
+    id: 1022,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_stakes: {
+      get_available_models: "never_ask",
+      get_available_skills: "never_ask",
+      get_available_tools: "never_ask",
+      get_agent_feedback: "never_ask",
+      get_agent_insights: "never_ask",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "agent_copilot_context",
+      version: "1.0.0",
+      description:
+        "Retrieve context about available models, skills, tools, and agent-specific feedback and insights.",
+      icon: "ActionRobotIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
     },
   },
   databricks: {
