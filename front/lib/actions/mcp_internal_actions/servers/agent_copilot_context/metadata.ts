@@ -80,7 +80,8 @@ export const getAgentFeedbackMeta = {
 export const getAgentInsightsMeta = {
   name: "get_agent_insights" as const,
   description:
-    "Get insight and analytics data for the agent. This tool is agent-specific and requires the agent ID to be configured.",
+    "Get insight and analytics data for the agent, including the number of active users, " +
+    "the conversation and message counts, and the feedback statistics.",
   schema: {
     days: z
       .number()
