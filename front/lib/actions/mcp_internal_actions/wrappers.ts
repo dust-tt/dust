@@ -1,3 +1,4 @@
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type {
   CallToolResult,
@@ -6,12 +7,32 @@ import type {
 } from "@modelcontextprotocol/sdk/types.js";
 
 import type { MCPError } from "@app/lib/actions/mcp_errors";
+import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { Result } from "@app/types";
 import { errorToString } from "@app/types";
+
+export function registerTool(
+  auth: Authenticator,
+  agentLoopContext: AgentLoopContextType | undefined,
+  server: McpServer,
+  tool: ToolDefinition,
+  { monitoringName }: { monitoringName: string }
+): void {
+  server.tool(
+    tool.name,
+    tool.description,
+    tool.schema,
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: monitoringName, agentLoopContext },
+      (params, extra) => tool.handler(params, { ...extra, agentLoopContext })
+    )
+  );
+}
 
 /**
  * Wraps a tool callback with logging and monitoring.
