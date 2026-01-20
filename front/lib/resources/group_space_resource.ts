@@ -78,13 +78,7 @@ export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
       >
     >
   > {
-    // Get the permissions for this specific group-space relationship.
-    // We use the first permission set since our permission model returns an array
-    // but each group-space relationship has a single permission configuration.
-    const permissions = await this.requestedPermissions();
-    const requestedPermissions =
-      permissions.length > 0 ? permissions[0] : undefined;
-
+    const requestedPermissions = await this.requestedPermissions();
     return this.group.addMembers(auth, {
       users,
       requestedPermissions,
@@ -145,13 +139,7 @@ export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
       >
     >
   > {
-    // Get the permissions for this specific group-space relationship.
-    // We use the first permission set since our permission model returns an array
-    // but each group-space relationship has a single permission configuration.
-    const permissions = await this.requestedPermissions();
-    const requestedPermissions =
-      permissions.length > 0 ? permissions[0] : undefined;
-
+    const requestedPermissions = await this.requestedPermissions();
     return this.group.removeMembers(auth, {
       users,
       requestedPermissions,
@@ -214,13 +202,7 @@ export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
       >
     >
   > {
-    // Get the permissions for this specific group-space relationship.
-    // We use the first permission set since our permission model returns an array
-    // but each group-space relationship has a single permission configuration.
-    const permissions = await this.requestedPermissions();
-    const requestedPermissions =
-      permissions.length > 0 ? permissions[0] : undefined;
-
+    const requestedPermissions = await this.requestedPermissions();
     return this.group.setMembers(auth, {
       users,
       requestedPermissions,
