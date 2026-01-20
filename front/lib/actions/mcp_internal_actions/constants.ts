@@ -13,6 +13,7 @@ import {
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
+import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/metadata";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
@@ -92,6 +93,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Names should reflect the purpose of the server but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
+  "agent_copilot_context",
   "agent_management",
   AGENT_MEMORY_SERVER_NAME,
   "agent_router",
@@ -1821,6 +1823,19 @@ export const INTERNAL_MCP_SERVERS = {
         "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
         "Requires write permissions on the project space.",
     },
+  },
+  agent_copilot_context: {
+    id: 1022,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("agent_builder_copilot");
+    },
+    metadata: AGENT_COPILOT_CONTEXT_SERVER,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
   },
   databricks: {
     id: 45,
