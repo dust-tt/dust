@@ -2410,6 +2410,22 @@ export type GetSpaceConversationIdsResponseType = z.infer<
   typeof GetSpaceConversationIdsResponseSchema
 >;
 
+export const ProjectMetadataSchema = z.object({
+  sId: z.string(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  spaceId: z.string(),
+  description: z.string().nullable(),
+});
+export type ProjectMetadataType = z.infer<typeof ProjectMetadataSchema>;
+
+export const GetSpaceMetadataResponseSchema = z.object({
+  metadata: ProjectMetadataSchema.nullable(),
+});
+export type GetSpaceMetadataResponseType = z.infer<
+  typeof GetSpaceMetadataResponseSchema
+>;
+
 const GetDocumentsResponseSchema = z.object({
   documents: z.array(CoreAPIDocumentSchema),
   total: z.number(),

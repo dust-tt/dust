@@ -76,7 +76,6 @@ export async function syncConversation({
   dataSourceConfig,
   projectId,
   conversation,
-
   syncType,
 }: {
   connectorId: ModelId;
