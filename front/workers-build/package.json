@@ -7,8 +7,8 @@
     "start": "node ./dist/start_worker.js"
   },
   "dependencies": {
-    "@temporalio/common": "^1.12.1",
-    "@temporalio/worker": "^1.12.1",
+    "@temporalio/common": "1.12.1",
+    "@temporalio/worker": "1.12.1",
     "blake3": "^2.1.7",
     "dd-trace": "^5.52.0",
     "isomorphic-dompurify": "^2.32.0",
