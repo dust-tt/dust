@@ -23,6 +23,7 @@ const EXCLUDED_MCP_SERVERS = new Set([
   "skill_management",
   "schedules_management",
   "common_utilities",
+  "project_context_management",
   // Debug/dev only
   "primitive_types_debugger",
   "jit_testing",
@@ -43,6 +44,10 @@ const EXCLUDED_MCP_SERVERS = new Set([
   "sound_studio",
   // Web search is internal
   "web_search_&_browse",
+  // Feature-flagged/preview (not generally available)
+  "slack_bot",
+  "openai_usage",
+  "http_client",
 ]);
 
 // Connectors to exclude (hidden or bot-only or internal)
