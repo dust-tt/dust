@@ -172,9 +172,6 @@ export async function firecrawlCrawlCompletedWorkflow(
         err.name === "WorkflowExecutionAlreadyStartedError"
       ) {
         // Garbage collector already running from a previous webhook, skip.
-        console.info(
-          `Garbage collector workflow ${workflowId} already running, skipping.`
-        );
         return;
       }
       throw err;
