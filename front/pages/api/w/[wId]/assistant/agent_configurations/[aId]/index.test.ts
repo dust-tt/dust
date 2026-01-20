@@ -2,7 +2,6 @@ import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it, vi } from "vitest";
 
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -49,12 +48,8 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - Skills with 
     await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });
     const skill = await SkillFactory.create(authenticator, {
       name: "Skill with restricted space",
+      requestedSpaceIds: [restrictedSpace.id],
     });
-
-    await SkillConfigurationModel.update(
-      { requestedSpaceIds: [restrictedSpace.id] },
-      { where: { id: skill.id } }
-    );
 
     req.query = { ...req.query, wId: workspace.sId, aId: agent.sId };
     req.body = {

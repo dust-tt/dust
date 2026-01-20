@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -244,12 +243,8 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - Skills with restric
 
     const skill = await SkillFactory.create(authenticator, {
       name: "Skill with restricted space",
+      requestedSpaceIds: [restrictedSpace.id],
     });
-    await SkillConfigurationModel.update(
-      { requestedSpaceIds: [restrictedSpace.id] },
-      { where: { id: skill.id } }
-    );
-
     const skillResource = await SkillResource.fetchByModelIdWithAuth(
       authenticator,
       skill.id
