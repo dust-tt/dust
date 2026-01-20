@@ -32,6 +32,7 @@ pub enum CredentialProvider {
     Notion,
     Freshservice,
     Databricks,
+    UkgReady,
     Vanta,
 }
 
@@ -49,6 +50,7 @@ impl From<ConnectionProvider> for CredentialProvider {
             ConnectionProvider::Freshservice => CredentialProvider::Freshservice,
             ConnectionProvider::Databricks => CredentialProvider::Databricks,
             ConnectionProvider::Snowflake => CredentialProvider::Snowflake,
+            ConnectionProvider::UkgReady => CredentialProvider::UkgReady,
             ConnectionProvider::Vanta => CredentialProvider::Vanta,
             _ => panic!("Unsupported provider: {:?}", provider),
         }
@@ -250,6 +252,10 @@ impl Credential {
             }
             CredentialProvider::Databricks => {
                 vec!["client_id", "client_secret"]
+            }
+            CredentialProvider::UkgReady => {
+                // PKCE flow doesn't require client_secret
+                vec!["client_id"]
             }
             CredentialProvider::Vanta => {
                 vec!["client_id", "client_secret"]
