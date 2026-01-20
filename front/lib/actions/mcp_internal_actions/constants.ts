@@ -143,6 +143,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "sound_studio",
   "speech_generator",
   "toolsets",
+  "ukg_ready",
   "val_town",
   "vanta",
   "front",
@@ -1927,6 +1928,35 @@ export const INTERNAL_MCP_SERVERS = {
       },
       icon: "SnowflakeLogo",
       documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
+      instructions: null,
+    },
+  },
+  ukg_ready: {
+    id: 48,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("ukg_ready_mcp");
+    },
+    isPreview: false,
+    tools_stakes: {
+      get_my_info: "never_ask",
+      get_my_pto_requests: "never_ask",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "ukg_ready",
+      version: "1.0.0",
+      description:
+        "Manage employee time-off requests, schedules, and accrual balances in UKG Ready.",
+      authorization: {
+        provider: "ukg_ready" as const,
+        supported_use_cases: ["personal_actions"] as const,
+      },
+      icon: "UkgLogo",
+      documentationUrl: "https://docs.dust.tt/docs/ukg-ready",
       instructions: null,
     },
   },
