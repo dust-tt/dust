@@ -24,9 +24,7 @@ function hasProperty<K extends string>(
   return typeof value === "object" && value !== null && key in value;
 }
 
-function isLangfuseNotFoundError(
-  error: unknown
-): error is { statusCode: 404 } {
+function isLangfuseNotFoundError(error: unknown): error is { statusCode: 404 } {
   return hasProperty(error, "statusCode") && error.statusCode === 404;
 }
 
