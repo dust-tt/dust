@@ -1130,7 +1130,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   isProjectAndRestricted() {
-    return this.isProject() && !this.groups.some((group) => group.isGlobal());
+    return this.isProject() && !this.isOpen();
   }
 
   isRegularAndOpen() {

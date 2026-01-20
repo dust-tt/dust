@@ -37,6 +37,7 @@ import {
   removeNulls,
   SPACE_GROUP_PREFIX,
 } from "@app/types";
+import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -426,13 +427,19 @@ export async function createSpaceAndGroup(
       t
     );
 
-    if (globalGroupRes?.isOk()) {
-      space.linkGroup(
-        auth,
-        globalGroupRes.value,
-        // add the global group as viewer for project spaces (member otherwise)
-        spaceKind === "project" ? "project_viewer" : "member",
-        t
+    if (spaceKind === "project" && globalGroupRes?.isOk()) {
+      // Set the global group as viewer for project spaces
+      GroupSpaceModel.update(
+        {
+          kind: "project_viewer",
+        },
+        {
+          where: {
+            groupId: globalGroupRes.value.id,
+            vaultId: space.id,
+          },
+          transaction: t,
+        }
       );
     }
 
