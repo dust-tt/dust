@@ -27,7 +27,7 @@ export const AssistantCardMore = React.forwardRef<
   HTMLButtonElement,
   AssistantCardMore
 >(({ ...props }, ref) => {
-  return <CardActionButton size="mini" ref={ref} icon={MoreIcon} {...props} />;
+  return <CardActionButton ref={ref} icon={MoreIcon} {...props} />;
 });
 AssistantCardMore.displayName = "AssistantCardMore";
 
