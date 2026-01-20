@@ -73,7 +73,7 @@ jobs:
 
       - name: Publish
         working-directory: sparkle
-        run: npm ci && npm run build && npm publish --provenance --access public
+        run: npm ci && npx tsc --noEmit && npm run build && npm publish --provenance --access public
 
   publish-rc:
     if: github.event.inputs.release_type == 'rc'
@@ -119,6 +119,6 @@ jobs:
       - name: Publish RC
         working-directory: sparkle
         run: |
-          npm ci && npm run build && npm publish --tag rc --provenance --access public
+          npm ci && npx tsc --noEmit && npm run build && npm publish --tag rc --provenance --access public
           RC_VERSION=$(node -p "require('./package.json').version")
           echo "Successfully published Sparkle RC: $RC_VERSION"
