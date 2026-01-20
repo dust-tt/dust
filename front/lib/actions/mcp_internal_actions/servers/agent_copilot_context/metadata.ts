@@ -44,23 +44,8 @@ export const getAvailableToolsMeta = {
 
 export const getAgentFeedbackMeta = {
   name: "get_agent_feedback" as const,
-  description:
-    "Get user feedback for the agent. This tool is agent-specific and requires the agent ID to be configured.",
+  description: "Get user feedback for the agent.",
   schema: {
-    agentVersion: z
-      .number()
-      .optional()
-      .describe("Optional filter by specific agent version"),
-    thumbDirection: z
-      .enum(["up", "down"])
-      .optional()
-      .describe("Optional filter by feedback rating ('up' or 'down')"),
-    daysOld: z
-      .number()
-      .optional()
-      .describe(
-        "Optional filter to only include feedback from the last N days"
-      ),
     limit: z
       .number()
       .optional()

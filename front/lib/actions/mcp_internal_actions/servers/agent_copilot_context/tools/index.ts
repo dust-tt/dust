@@ -172,10 +172,7 @@ const getAvailableToolsTool = defineTool({
 
 const getAgentFeedbackTool = defineTool({
   ...getAgentFeedbackMeta,
-  handler: async (
-    { agentVersion, thumbDirection, daysOld, limit, filter },
-    extra
-  ) => {
+  handler: async ({ limit, filter }, extra) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
@@ -208,32 +205,18 @@ const getAgentFeedbackTool = defineTool({
 
     if (feedbacksRes.isErr()) {
       return new Err(
-        new MCPError(`Failed to fetch feedback: ${feedbacksRes.error.message}`, {
-          tracked: false,
-        })
+        new MCPError(
+          `Failed to fetch feedback: ${feedbacksRes.error.message}`,
+          {
+            tracked: false,
+          }
+        )
       );
     }
 
-    let feedbacks = feedbacksRes.value.filter(
+    const feedbacks = feedbacksRes.value.filter(
       (f): f is AgentMessageFeedbackWithMetadataType => true
     );
-
-    // Apply additional filters.
-    if (agentVersion !== undefined) {
-      feedbacks = feedbacks.filter(
-        (f) => f.agentConfigurationVersion === agentVersion
-      );
-    }
-
-    if (thumbDirection) {
-      feedbacks = feedbacks.filter((f) => f.thumbDirection === thumbDirection);
-    }
-
-    if (daysOld !== undefined) {
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - daysOld);
-      feedbacks = feedbacks.filter((f) => new Date(f.createdAt) >= cutoffDate);
-    }
 
     const feedbackList = feedbacks.map((f) => ({
       sId: f.sId,
