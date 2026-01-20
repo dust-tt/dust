@@ -147,7 +147,7 @@ export class FileResource extends BaseResource<FileModel> {
   ): Promise<FileResource | null> {
     const [file] = await this.fetchByModelIdsWithAuth(auth, [id], transaction);
 
-    return file || null;
+    return file ?? null;
   }
 
   static async fetchByShareTokenWithContent(token: string): Promise<{
