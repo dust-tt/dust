@@ -756,7 +756,7 @@ impl ElasticsearchSearchStore {
         {
             let nodes_query = Query::bool()
                 .filter(Query::term("_index", DATA_SOURCE_NODE_INDEX_NAME))
-                .filter(self.build_nodes_content_query(&query, &filter, options, &mut counter)?);
+                .must(self.build_nodes_content_query(&query, &filter, options, &mut counter)?);
 
             should_queries.push(nodes_query);
             indices_to_query.push(DATA_SOURCE_NODE_INDEX_NAME);
