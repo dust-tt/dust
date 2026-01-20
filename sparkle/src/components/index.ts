@@ -133,6 +133,7 @@ export type { ImageZoomDialogProps } from "./ImageZoomDialog";
 export { downloadFile, ImageZoomDialog } from "./ImageZoomDialog";
 export { Input } from "./Input";
 export { InteractiveImageGrid } from "./InteractiveImageGrid";
+export { KeyboardShortcut } from "./KeyboardShortcut";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";

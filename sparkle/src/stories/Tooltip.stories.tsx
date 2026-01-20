@@ -29,6 +29,18 @@ export const TooltipExample = () => (
   />
 );
 
+export const TooltipWithShortcut = () => (
+  <Tooltip
+    trigger={
+      <div className="s-text-foreground dark:s-text-foreground-night">
+        Hover for shortcut
+      </div>
+    }
+    label="Add to library"
+    shortcut="Cmd+K"
+  />
+);
+
 export const TooltipWithManual = () => (
   <TooltipProvider delayDuration={800} skipDelayDuration={500}>
     <TooltipRoot

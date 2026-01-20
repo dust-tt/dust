@@ -12,6 +12,7 @@ import { cva } from "class-variance-authority";
 import tippy, { type Instance as TippyInstance } from "tippy.js";
 import React, {
   forwardRef,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useState,
@@ -513,13 +514,25 @@ type RichTextAreaProps = {
   className?: string;
   placeholder?: string;
   onAskCopilot?: (selectedText: string) => void;
+  onSuggestionsChange?: (hasSuggestions: boolean) => void;
   scrollContainer?: HTMLElement | null;
   readOnly?: boolean;
   defaultValue?: string;
 };
 
 export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
-  ({ className, placeholder, onAskCopilot, scrollContainer, readOnly, defaultValue }, ref) => {
+  (
+    {
+      className,
+      placeholder,
+      onAskCopilot,
+      onSuggestionsChange,
+      scrollContainer,
+      readOnly,
+      defaultValue,
+    },
+    ref
+  ) => {
     const editor = useEditor({
       extensions: [
         StarterKit,
@@ -714,6 +727,16 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         return found;
       };
     }, [editor]);
+
+    useEffect(() => {
+      if (!editor || !onSuggestionsChange) return;
+      const emit = () => onSuggestionsChange(hasSuggestions());
+      emit();
+      editor.on("update", emit);
+      return () => {
+        editor.off("update", emit);
+      };
+    }, [editor, hasSuggestions, onSuggestionsChange]);
 
     const acceptAllSuggestions = useMemo(() => {
       return () => {
@@ -926,6 +949,8 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                   size="xs"
                   variant="ghost"
                   tooltip="Reject"
+                  tooltipShortcut="Esc"
+                  label="Reject"
                   onClick={handleRejectSuggestion}
                 />
                 <HoveringBar.Separator />
@@ -934,6 +959,8 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                   size="xs"
                   variant="highlight"
                   tooltip="Accept"
+                  tooltipShortcut="Enter"
+                  label="Accept"
                   onClick={handleAcceptSuggestion}
                 />
               </HoveringBar>
@@ -953,10 +980,10 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                 scrollTarget: scrollContainer,
               }}
             >
-              <HoveringBar size="sm">
+              <HoveringBar size="xs">
                 <Button
                   label="Ask Copilot"
-                  size="sm"
+                  size="xs"
                   variant="ghost"
                   icon={SparklesIcon}
                   onClick={() => {
@@ -966,10 +993,19 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                   }}
                 />
                 <Button
-                  label="Correct"
-                  size="sm"
+                  label="Check spelling"
+                  size="xs"
                   variant="ghost"
-                  icon={SparklesIcon}
+                  onClick={() => {
+                    const { from, to } = editor.state.selection;
+                    const selectedText = editor.state.doc.textBetween(from, to, "\n");
+                    onAskCopilot?.(selectedText);
+                  }}
+                />
+                <Button
+                  label="Simplify"
+                  size="xs"
+                  variant="ghost"
                   onClick={() => {
                     const { from, to } = editor.state.selection;
                     const selectedText = editor.state.doc.textBetween(from, to, "\n");

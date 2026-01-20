@@ -324,8 +324,8 @@ export default function AgentBuilder() {
                     />
                     <div className="s-flex s-flex-1 s-items-center s-justify-center s-gap-2">
                       <Button icon={HeadingIcon} size="mini" variant="ghost-secondary" tooltip="Heading" />
-                      <Button icon={BoldIcon} size="mini" variant="ghost-secondary" tooltip="Bold" />
-                      <Button icon={ItalicIcon} size="mini" variant="ghost-secondary" tooltip="Italic" />
+                      <Button icon={BoldIcon} size="mini" variant="ghost-secondary" tooltip="Bold" tooltipShortcut="Cmd+B" />
+                      <Button icon={ItalicIcon} size="mini" variant="ghost-secondary" tooltip="Italic" tooltipShortcut="Cmd+I" />
                       <Separator orientation="vertical"  />
                       <Button icon={LinkIcon} size="mini" variant="ghost-secondary" tooltip="Insert a link" />
                       <Button icon={ListCheckIcon} size="mini" variant="ghost-secondary" tooltip="Bulleted list" />
@@ -393,6 +393,7 @@ export default function AgentBuilder() {
                         className="s-min-h-[512px]"
                         placeholder="Write instructions for your agent..."
                         onAskCopilot={handleAskCopilot}
+                        onSuggestionsChange={setHasSuggestionsState}
                         scrollContainer={scrollContainer}
                       />
                   </div>

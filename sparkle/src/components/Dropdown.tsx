@@ -7,6 +7,7 @@ import { useRef } from "react";
 import { Button } from "@sparkle/components/Button";
 import { Chip } from "@sparkle/components/Chip";
 import { Icon } from "@sparkle/components/Icon";
+import { KeyboardShortcut } from "@sparkle/components/KeyboardShortcut";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
 import { SearchInput, SearchInputProps } from "@sparkle/components/SearchInput";
@@ -80,10 +81,7 @@ export const menuStyleClasses = {
     "-s-mx-1 s-my-1 s-h-px",
     "s-bg-separator dark:s-bg-separator-night"
   ),
-  shortcut: cn(
-    "s-ml-auto s-text-xs s-tracking-widest",
-    "s-text-primary-400 dark:s-text-primary-400-night"
-  ),
+  shortcut: "s-ml-auto",
 };
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
@@ -592,12 +590,40 @@ const DropdownMenuSeparator = React.forwardRef<
 ));
 DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
 
+type DropdownMenuShortcutProps = React.HTMLAttributes<HTMLSpanElement> & {
+  shortcut?: string;
+};
+
 const DropdownMenuShortcut = ({
   className,
+  shortcut,
+  children,
   ...props
-}: React.HTMLAttributes<HTMLSpanElement>) => {
+}: DropdownMenuShortcutProps) => {
+  const resolvedShortcut =
+    shortcut ?? (typeof children === "string" ? children : "");
+
+  if (!resolvedShortcut && children) {
+    return (
+      <span
+        className={cn(
+          menuStyleClasses.shortcut,
+          "s-text-xs s-text-faint",
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </span>
+    );
+  }
+
   return (
-    <span className={cn(menuStyleClasses.shortcut, className)} {...props} />
+    <KeyboardShortcut
+      shortcut={resolvedShortcut}
+      className={cn(menuStyleClasses.shortcut, className)}
+      {...props}
+    />
   );
 };
 DropdownMenuShortcut.displayName = "DropdownMenuShortcut";
