@@ -55,7 +55,7 @@
     "@mendable/firecrawl-js": "^1.29.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@mistralai/mistralai": "^1.10.0",
-    "@modelcontextprotocol/sdk": "git://github.com:dust-tt/typescript-sdk.git#4a3d6b942e3982c818acd529de9b574c92776a2e",
+    "@modelcontextprotocol/sdk": "git://github.com:dust-tt/typescript-sdk.git#fa01501390e682e4951ac84a40d6bfcbc77b6f84",
     "@notionhq/client": "^2.3.0",
     "@novu/framework": "^2.7.1",
     "@novu/js": "^3.11.0",
