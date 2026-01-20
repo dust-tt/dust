@@ -44,11 +44,12 @@ const EXCLUDED_MCP_SERVERS = new Set([
   "web_search_&_browse",
 ]);
 
-// Connectors to exclude (hidden or bot-only)
+// Connectors to exclude (hidden or bot-only or internal)
 const EXCLUDED_CONNECTORS = new Set<ConnectorProvider>([
   "slack_bot",
   "discord_bot",
   "microsoft_bot",
+  "dust_project", // Internal connector for Dust projects
 ]);
 
 // Category mapping for MCP servers
@@ -113,6 +114,7 @@ const CONNECTOR_CATEGORY_MAP: Record<ConnectorProvider, IntegrationCategory> = {
   bigquery: "data",
   salesforce: "crm",
   gong: "transcripts",
+  dust_project: "development", // Internal connector
 };
 
 // Display names for MCP servers (snake_case to Title Case)
@@ -166,7 +168,14 @@ function formatToolName(name: string): string {
 function extractToolsFromServer(
   serverKey: string
 ): { tools: IntegrationTool[]; icon: InternalAllowedIconType } {
-  const server = INTERNAL_MCP_SERVERS[serverKey as keyof typeof INTERNAL_MCP_SERVERS];
+  // Use type assertion since we know the structure of INTERNAL_MCP_SERVERS
+  const server = INTERNAL_MCP_SERVERS[
+    serverKey as keyof typeof INTERNAL_MCP_SERVERS
+  ] as {
+    tools_stakes?: Record<string, string>;
+    serverInfo: { icon: string; description: string };
+  };
+
   const stakes = server.tools_stakes ?? {};
 
   const tools: IntegrationTool[] = Object.entries(stakes).map(
@@ -214,10 +223,19 @@ export function buildIntegrationRegistry(): IntegrationBase[] {
   // Add MCP servers
   // Note: For marketing/SEO pages, we include servers that are behind feature flags
   // (isRestricted) or in preview since they are still valid integrations to advertise.
-  for (const [name, server] of Object.entries(INTERNAL_MCP_SERVERS)) {
+  for (const [name, serverRaw] of Object.entries(INTERNAL_MCP_SERVERS)) {
     if (EXCLUDED_MCP_SERVERS.has(name)) {
       continue;
     }
+
+    // Type assertion for serverInfo access
+    const server = serverRaw as {
+      serverInfo: {
+        description: string;
+        documentationUrl: string | null;
+        authorization: unknown;
+      };
+    };
 
     const { tools, icon } = extractToolsFromServer(name);
     const displayName = MCP_DISPLAY_NAMES[name] ?? formatToolName(name);
