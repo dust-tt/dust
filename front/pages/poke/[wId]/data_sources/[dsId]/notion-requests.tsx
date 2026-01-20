@@ -1,5 +1,6 @@
 import { Button, Input, Spinner, TextArea } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
+import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 import { useState } from "react";
 
@@ -7,34 +8,18 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { DataSourceType, WorkspaceType } from "@app/types";
+import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
+import type { LightWorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  owner: WorkspaceType;
-  dataSource: DataSourceType;
+  owner: LightWorkspaceType;
+  params: { wId: string; dsId: string };
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const { dsId } = context.params || {};
-  if (typeof dsId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const dataSource = await DataSourceResource.fetchById(auth, dsId, {
-    includeEditedBy: true,
-  });
-  if (!dataSource) {
-    return {
-      notFound: true,
-    };
-  }
-
-  // Only allow for Notion datasources
-  if (dataSource.connectorProvider !== "notion") {
+  const { wId, dsId } = context.params ?? {};
+  if (!isString(wId) || !isString(dsId)) {
     return {
       notFound: true,
     };
@@ -43,22 +28,18 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      dataSource: dataSource.toJSON(),
+      params: { wId, dsId },
     },
   };
 });
 
 type HttpMethod = "GET" | "POST";
 
-interface NotionRequestsPageProps {
-  owner: WorkspaceType;
-  dataSource: DataSourceType;
-}
-
 export default function NotionRequestsPage({
   owner,
-  dataSource,
-}: NotionRequestsPageProps) {
+  params,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { dsId } = params;
   const { isDark } = useTheme();
   const [url, setUrl] = useState("");
   const [method, setMethod] = useState<HttpMethod>("GET");
@@ -69,6 +50,43 @@ export default function NotionRequestsPage({
     status: number;
     data: unknown;
   } | null>(null);
+
+  const {
+    data: dataSourceDetails,
+    isLoading,
+    isError,
+  } = usePokeDataSourceDetails({
+    owner,
+    dsId,
+    disabled: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError || !dataSourceDetails) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading data source details.</p>
+      </div>
+    );
+  }
+
+  const { dataSource } = dataSourceDetails;
+
+  // Only allow for Notion datasources
+  if (dataSource.connectorProvider !== "notion") {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>This page is only available for Notion data sources.</p>
+      </div>
+    );
+  }
 
   const handleExecuteRequest = async () => {
     if (!url.trim()) {
@@ -259,11 +277,9 @@ export default function NotionRequestsPage({
 
 NotionRequestsPage.getLayout = (
   page: ReactElement,
-  { owner, dataSource }: { owner: WorkspaceType; dataSource: DataSourceType }
+  { owner }: { owner: LightWorkspaceType }
 ) => {
   return (
-    <PokeLayout title={`${owner.name} - Notion Requests - ${dataSource.name}`}>
-      {page}
-    </PokeLayout>
+    <PokeLayout title={`${owner.name} - Notion Requests`}>{page}</PokeLayout>
   );
 };

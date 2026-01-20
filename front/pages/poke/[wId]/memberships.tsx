@@ -1,60 +1,56 @@
+import { Spinner } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import { InvitationsDataTable } from "@app/components/poke/invitations/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { getMembershipInvitationUrl } from "@app/lib/api/invitation";
-import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import type {
-  MembershipInvitationTypeWithLink,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@app/types";
+import { usePokeMemberships } from "@app/poke/swr/memberships";
+import type { WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  members: UserTypeWithWorkspaces[];
-  pendingInvitations: MembershipInvitationTypeWithLink[];
   owner: WorkspaceType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const user = auth.user();
-
-  if (!owner || !user) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const [{ members }, pendingInvitations] = await Promise.all([
-    getMembers(auth),
-    MembershipInvitationResource.getPendingInvitations(auth, {
-      includeExpired: true,
-    }),
-  ]);
+}>(async (_context, auth) => {
+  const owner = auth.getNonNullableWorkspace();
 
   return {
     props: {
-      members,
-      pendingInvitations: pendingInvitations.map((invite) => {
-        const i = invite.toJSON();
-        return {
-          ...i,
-          inviteLink: getMembershipInvitationUrl(owner, i),
-        };
-      }),
       owner,
     },
   };
 });
 
 const MembershipsPage = ({
-  members,
-  pendingInvitations,
   owner,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
+  const {
+    data: membershipsData,
+    isLoading,
+    isError,
+  } = usePokeMemberships({
+    owner,
+    disabled: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError || !membershipsData) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading memberships.</p>
+      </div>
+    );
+  }
+
+  const { members, pendingInvitations } = membershipsData;
+
   return (
     <>
       <h3 className="text-xl font-bold">

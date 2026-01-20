@@ -84,13 +84,12 @@ export function makeColumnsForTemplates() {
   ];
 }
 
-export function TemplatesDataTable({
-  dustRegionSyncEnabled,
-}: {
-  dustRegionSyncEnabled: boolean;
-}) {
-  const { assistantTemplates, isAssistantTemplatesLoading } =
-    usePokeAssistantTemplates();
+export function TemplatesDataTable() {
+  const {
+    assistantTemplates,
+    dustRegionSyncEnabled,
+    isAssistantTemplatesLoading,
+  } = usePokeAssistantTemplates();
   const { doPull, isPulling } = usePokePullTemplates();
   const [templateSearch, setTemplateSearch] = useState<string>("");
 
