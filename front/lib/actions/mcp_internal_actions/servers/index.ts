@@ -59,6 +59,7 @@ import { default as soundStudio } from "@app/lib/actions/mcp_internal_actions/se
 import { default as speechGenerator } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
+import { default as ukgReadyServer } from "@app/lib/actions/mcp_internal_actions/servers/ukg_ready";
 import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
 import { default as vantaServer } from "@app/lib/actions/mcp_internal_actions/servers/vanta";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
@@ -232,6 +233,8 @@ export async function getInternalMCPServer(
       return productboardServer(auth, agentLoopContext);
     case "project_context_management":
       return projectContextManagementServer(auth, agentLoopContext);
+    case "ukg_ready":
+      return ukgReadyServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }
