@@ -4,14 +4,27 @@ import type {
   RequestInit as UndiciRequestInit,
 } from "undici";
 import { fetch as undiciFetch, ProxyAgent } from "undici";
+import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { defineTool } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ToolDefinition,
+  ToolHandlerExtra,
+  ToolHandlerResult,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { GITHUB_TOOLS_METADATA } from "@app/lib/api/actions/servers/github/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
+
+type GithubToolKey = keyof typeof GITHUB_TOOLS_METADATA;
+
+type GithubToolHandlers = {
+  [K in GithubToolKey]: (
+    params: z.infer<z.ZodObject<(typeof GITHUB_TOOLS_METADATA)[K]["schema"]>>,
+    extra: ToolHandlerExtra
+  ) => Promise<ToolHandlerResult>;
+};
 
 const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
 
@@ -45,9 +58,8 @@ export const createOctokit = async (
 };
 
 export function createGithubTools(auth: Authenticator): ToolDefinition[] {
-  const createIssueTool = defineTool({
-    ...GITHUB_TOOLS_METADATA.create_issue,
-    handler: async (
+  const handlers: GithubToolHandlers = {
+    create_issue: async (
       { owner, repo, title, body, assignees, labels },
       { authInfo }
     ) => {
@@ -79,11 +91,8 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         );
       }
     },
-  });
 
-  const getPullRequestTool = defineTool({
-    ...GITHUB_TOOLS_METADATA.get_pull_request,
-    handler: async ({ owner, repo, pullNumber }, { authInfo }) => {
+    get_pull_request: async ({ owner, repo, pullNumber }, { authInfo }) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
       });
@@ -345,11 +354,8 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         );
       }
     },
-  });
 
-  const createPullRequestReviewTool = defineTool({
-    ...GITHUB_TOOLS_METADATA.create_pull_request_review,
-    handler: async (
+    create_pull_request_review: async (
       { owner, repo, pullNumber, body, event, comments = [] },
       { authInfo }
     ) => {
@@ -384,11 +390,8 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         );
       }
     },
-  });
 
-  const listOrganizationProjectsTool = defineTool({
-    ...GITHUB_TOOLS_METADATA.list_organization_projects,
-    handler: async ({ owner }, { authInfo }) => {
+    list_organization_projects: async ({ owner }, { authInfo }) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
       });
@@ -491,11 +494,8 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         );
       }
     },
-  });
 
-  const addIssueToProjectTool = defineTool({
-    ...GITHUB_TOOLS_METADATA.add_issue_to_project,
-    handler: async (
+    add_issue_to_project: async (
       { owner, repo, issueNumber, projectId, field },
       { authInfo }
     ) => {
@@ -587,11 +587,11 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         );
       }
     },
-  });
 
-  const commentOnIssueTool = defineTool({
-    ...GITHUB_TOOLS_METADATA.comment_on_issue,
-    handler: async ({ owner, repo, issueNumber, body }, { authInfo }) => {
+    comment_on_issue: async (
+      { owner, repo, issueNumber, body },
+      { authInfo }
+    ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
       });
@@ -621,11 +621,8 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         );
       }
     },
-  });
 
-  const getIssueTool = defineTool({
-    ...GITHUB_TOOLS_METADATA.get_issue,
-    handler: async ({ owner, repo, issueNumber }, { authInfo }) => {
+    get_issue: async ({ owner, repo, issueNumber }, { authInfo }) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
       });
@@ -743,11 +740,8 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         );
       }
     },
-  });
 
-  const listIssuesTool = defineTool({
-    ...GITHUB_TOOLS_METADATA.list_issues,
-    handler: async (
+    list_issues: async (
       {
         owner,
         repo,
@@ -893,11 +887,11 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         );
       }
     },
-  });
 
-  const searchAdvancedTool = defineTool({
-    ...GITHUB_TOOLS_METADATA.search_advanced,
-    handler: async ({ query, first = 30, after, before }, { authInfo }) => {
+    search_advanced: async (
+      { query, first = 30, after, before },
+      { authInfo }
+    ) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
       });
@@ -1183,11 +1177,8 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         );
       }
     },
-  });
 
-  const listPullRequestsTool = defineTool({
-    ...GITHUB_TOOLS_METADATA.list_pull_requests,
-    handler: async (
+    list_pull_requests: async (
       {
         owner,
         repo,
@@ -1390,18 +1381,13 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
         );
       }
     },
-  });
+  };
 
-  return [
-    createIssueTool,
-    getPullRequestTool,
-    createPullRequestReviewTool,
-    listOrganizationProjectsTool,
-    addIssueToProjectTool,
-    commentOnIssueTool,
-    getIssueTool,
-    listIssuesTool,
-    searchAdvancedTool,
-    listPullRequestsTool,
-  ] as unknown as ToolDefinition[];
+  return (Object.keys(GITHUB_TOOLS_METADATA) as GithubToolKey[]).map(
+    (key) =>
+      ({
+        ...GITHUB_TOOLS_METADATA[key],
+        handler: handlers[key],
+      }) as unknown as ToolDefinition
+  );
 }
