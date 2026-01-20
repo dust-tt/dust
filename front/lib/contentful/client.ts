@@ -354,16 +354,10 @@ export async function getAllBlogPosts(
 
     const posts = response.items
       .map((entry) => contentfulEntryToBlogPost(entry, tagNameMap))
-      .sort((a, b) => {
-        // SEO articles go to the end.
-        if (a.isSeoArticle !== b.isSeoArticle) {
-          return a.isSeoArticle ? 1 : -1;
-        }
-        // Within each group, sort by date (newest first).
-        return (
+      .sort(
+        (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      })
+      )
       .map(contentfulEntryToBlogPostSummary);
 
     return new Ok(posts);
