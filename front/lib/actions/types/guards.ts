@@ -1,6 +1,7 @@
 import type {
   ClientSideMCPToolConfigurationType,
   LightClientSideMCPToolConfigurationType,
+  LightMCPToolConfigurationType,
   LightServerSideMCPToolConfigurationType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
@@ -9,86 +10,67 @@ import type {
 } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import type {
   AgentConfigurationType,
   TemplateAgentConfigurationType,
 } from "@app/types";
 
+// Server vs. tool configuration.
+
 export function isMCPServerConfiguration(
-  arg: unknown
-): arg is MCPServerConfigurationType {
+  config: MCPServerConfigurationType | MCPToolConfigurationType
+): config is MCPServerConfigurationType {
   return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "mcp_server_configuration"
+    !!config &&
+    typeof config === "object" &&
+    "type" in config &&
+    config.type === "mcp_server_configuration"
   );
 }
-
-export function isServerSideMCPServerConfiguration(
-  arg: MCPServerConfigurationType | UnsavedMCPServerConfigurationType
-): arg is ServerSideMCPServerConfigurationType {
-  return isMCPServerConfiguration(arg) && "mcpServerViewId" in arg;
-}
-
-// MCP Tools
 
 export function isMCPToolConfiguration(
-  arg: unknown
-): arg is MCPToolConfigurationType {
+  config:
+    | MCPServerConfigurationType
+    | MCPToolConfigurationType
+    | LightMCPToolConfigurationType
+): config is MCPToolConfigurationType {
   return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "mcp_configuration"
+    !!config &&
+    typeof config === "object" &&
+    "type" in config &&
+    config.type === "mcp_configuration"
   );
+}
+
+// For an MCP server configuration: server-side or client-side.
+
+export function isServerSideMCPServerConfiguration(
+  config: MCPServerConfigurationType
+): config is ServerSideMCPServerConfigurationType {
+  return isMCPServerConfiguration(config) && "mcpServerViewId" in config;
+}
+
+export function isClientSideMCPServerConfiguration(
+  config: MCPServerConfigurationType
+): config is ServerSideMCPServerConfigurationType {
+  return isMCPServerConfiguration(config) && "clientSideMcpServerId" in config;
+}
+
+// For an MCP tool configuration: server-side or client-side.
+
+export function isServerSideMCPToolConfiguration(
+  config: MCPToolConfigurationType
+): config is ServerSideMCPToolConfigurationType {
+  return isMCPToolConfiguration(config) && "mcpServerViewId" in config;
 }
 
 export function isClientSideMCPToolConfiguration(
-  arg: MCPToolConfigurationType
-): arg is ClientSideMCPToolConfigurationType {
-  return isMCPToolConfiguration(arg) && "clientSideMcpServerId" in arg;
+  config: MCPToolConfigurationType
+): config is ClientSideMCPToolConfigurationType {
+  return isMCPToolConfiguration(config) && "clientSideMcpServerId" in config;
 }
 
-export function isServerSideMCPToolConfiguration(
-  arg: MCPToolConfigurationType
-): arg is ServerSideMCPToolConfigurationType {
-  return isMCPToolConfiguration(arg) && "mcpServerViewId" in arg;
-}
-
-// Light tool configuration.
-
-export function isLightServerSideMCPToolConfiguration(
-  arg: unknown
-): arg is LightServerSideMCPToolConfigurationType {
-  return (
-    isMCPToolConfiguration(arg) &&
-    "mcpServerViewId" in arg &&
-    !("inputSchema" in arg)
-  );
-}
-
-export function isLightClientSideMCPToolConfiguration(
-  arg: unknown
-): arg is LightClientSideMCPToolConfigurationType {
-  return (
-    isMCPToolConfiguration(arg) &&
-    "clientSideMcpServerId" in arg &&
-    !("inputSchema" in arg)
-  );
-}
-
-export function isLightMCPToolConfiguration(
-  arg: unknown
-): arg is LightMCPToolConfigurationType {
-  return (
-    isLightServerSideMCPToolConfiguration(arg) ||
-    isLightClientSideMCPToolConfiguration(arg)
-  );
-}
-
-// Internal (server-side) MCP server checked by name.
+// Internal MCP server checked by name.
 
 export function isServerSideMCPServerConfigurationWithName(
   config: MCPServerConfigurationType,
@@ -99,7 +81,6 @@ export function isServerSideMCPServerConfigurationWithName(
     matchesInternalMCPServerName(config.internalMCPServerId, name)
   );
 }
-
 export function isServerSideMCPToolConfigurationWithName(
   config: MCPToolConfigurationType,
   name: InternalMCPServerNameType
@@ -110,6 +91,27 @@ export function isServerSideMCPToolConfigurationWithName(
   );
 }
 
+// For a light tool configuration: server-side or client-side.
+
+export function isLightServerSideMCPToolConfiguration(
+  config: LightMCPToolConfigurationType
+): config is LightServerSideMCPToolConfigurationType {
+  return (
+    isMCPToolConfiguration(config) &&
+    "mcpServerViewId" in config &&
+    !("inputSchema" in config)
+  );
+}
+
+export function isLightClientSideMCPToolConfiguration(
+  config: LightMCPToolConfigurationType
+): config is LightClientSideMCPToolConfigurationType {
+  return (
+    isMCPToolConfiguration(config) &&
+    "clientSideMcpServerId" in config &&
+    !("inputSchema" in config)
+  );
+}
 export function areDataSourcesConfigured(
   arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
