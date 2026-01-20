@@ -11,7 +11,7 @@ import React, { useMemo, useState } from "react";
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
+import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   useAddMCPServerToSpace,
   useAvailableMCPServers,
@@ -72,13 +72,13 @@ export function ToolSetupCard({
   // Find the macthing MCP server for the tool we want to activate.
   const matchingMCPServer = useMemo(() => {
     const installedServer = mcpServers.find((s) =>
-      isInternalMCPServerOfName(s.sId, toolId)
+      matchesInternalMCPServerName(s.sId, toolId)
     );
     if (installedServer) {
       return installedServer;
     }
     return availableMCPServers.find((server) =>
-      isInternalMCPServerOfName(server.sId, toolId)
+      matchesInternalMCPServerName(server.sId, toolId)
     );
   }, [mcpServers, availableMCPServers, toolId]);
 

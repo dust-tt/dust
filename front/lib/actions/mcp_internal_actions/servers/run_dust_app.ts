@@ -16,7 +16,7 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
+import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -352,7 +352,7 @@ export default async function createServer(
     const { agentActionConfiguration } = agentLoopContext.listToolsContext;
     if (
       !isServerSideMCPServerConfiguration(agentActionConfiguration) ||
-      !isInternalMCPServerOfName(
+      !matchesInternalMCPServerName(
         agentActionConfiguration.internalMCPServerId,
         "run_dust_app"
       )
@@ -390,7 +390,7 @@ export default async function createServer(
     const { toolConfiguration } = agentLoopContext.runContext;
     if (
       !isLightServerSideMCPToolConfiguration(toolConfiguration) ||
-      !isInternalMCPServerOfName(
+      !matchesInternalMCPServerName(
         toolConfiguration.internalMCPServerId,
         "run_dust_app"
       )

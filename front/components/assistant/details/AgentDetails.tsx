@@ -35,7 +35,7 @@ import { AgentTriggersTab } from "@app/components/assistant/details/tabs/AgentTr
 import { RestoreAgentDialog } from "@app/components/assistant/RestoreAgentDialog";
 import {
   AGENT_MEMORY_SERVER_NAME,
-  isInternalMCPServerOfName,
+  matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
@@ -123,7 +123,7 @@ export function AgentDetails({
   const showAgentMemory = !!agentConfiguration?.actions.find(
     (arg) =>
       isServerSideMCPServerConfiguration(arg) &&
-      isInternalMCPServerOfName(
+      matchesInternalMCPServerName(
         arg.internalMCPServerId,
         AGENT_MEMORY_SERVER_NAME
       )

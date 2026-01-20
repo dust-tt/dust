@@ -18,7 +18,7 @@ import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_acti
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import {
   INTERNAL_SERVERS_WITH_WEBSEARCH,
-  isInternalMCPServerOfName,
+  matchesInternalMCPServerName,
   SKILL_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
@@ -345,17 +345,20 @@ export function constructGuidelinesSection({
       areDataSourcesConfigured(action) ||
       (isServerSideMCPServerConfiguration(action) &&
         (INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
-          isInternalMCPServerOfName(action.internalMCPServerId, n)
+          matchesInternalMCPServerName(action.internalMCPServerId, n)
         ) ||
-          isInternalMCPServerOfName(action.internalMCPServerId, "run_agent") ||
-          isInternalMCPServerOfName(action.internalMCPServerId, "slack") ||
-          isInternalMCPServerOfName(action.internalMCPServerId, "notion")))
+          matchesInternalMCPServerName(
+            action.internalMCPServerId,
+            "run_agent"
+          ) ||
+          matchesInternalMCPServerName(action.internalMCPServerId, "slack") ||
+          matchesInternalMCPServerName(action.internalMCPServerId, "notion")))
   );
 
   const isUsingRunAgent = agentConfiguration.actions.some(
     (action) =>
       isServerSideMCPServerConfiguration(action) &&
-      isInternalMCPServerOfName(action.internalMCPServerId, "run_agent")
+      matchesInternalMCPServerName(action.internalMCPServerId, "run_agent")
   );
 
   if (canRetrieveDocuments) {

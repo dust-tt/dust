@@ -1,4 +1,4 @@
-import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
+import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
@@ -53,7 +53,7 @@ async function shouldCreateIndividualConversations(
       // Check the chain of agents
       if (
         isServerSideMCPServerConfiguration(action) &&
-        isInternalMCPServerOfName(action.internalMCPServerId, "run_agent") &&
+        matchesInternalMCPServerName(action.internalMCPServerId, "run_agent") &&
         action.childAgentId &&
         // Avoid infinite loop
         !checkedAgentConfigurationIds.includes(action.childAgentId)

@@ -2203,7 +2203,7 @@ export function isValidInternalMCPServerId(
   return false;
 }
 
-export function isInternalMCPServerOfName(
+export function matchesInternalMCPServerName(
   sId: string | null,
   name: InternalMCPServerNameType
 ): boolean {

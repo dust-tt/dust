@@ -4,7 +4,7 @@ import type { ActionSpecification } from "@app/components/agent_builder/types";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import {
   INTERNAL_SERVERS_WITH_WEBSEARCH,
-  isInternalMCPServerOfName,
+  matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { StepContext } from "@app/lib/actions/types";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
@@ -44,17 +44,17 @@ export function getRetrievalTopK({
   const searchActions = stepActions.filter(
     (tool) =>
       isServerSideMCPToolConfiguration(tool) &&
-      isInternalMCPServerOfName(tool.internalMCPServerId, "search")
+      matchesInternalMCPServerName(tool.internalMCPServerId, "search")
   );
   const includeActions = stepActions.filter(
     (tool) =>
       isServerSideMCPToolConfiguration(tool) &&
-      isInternalMCPServerOfName(tool.internalMCPServerId, "include_data")
+      matchesInternalMCPServerName(tool.internalMCPServerId, "include_data")
   );
   const dsFsActions = stepActions.filter(
     (tool) =>
       isServerSideMCPToolConfiguration(tool) &&
-      isInternalMCPServerOfName(
+      matchesInternalMCPServerName(
         tool.internalMCPServerId,
         "data_sources_file_system"
       )
@@ -93,7 +93,7 @@ export function getWebsearchNumResults({
     (tool) =>
       isServerSideMCPToolConfiguration(tool) &&
       INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
-        isInternalMCPServerOfName(tool.internalMCPServerId, n)
+        matchesInternalMCPServerName(tool.internalMCPServerId, n)
       )
   );
   const totalActions = websearchActions.length;
@@ -128,7 +128,7 @@ export function getCitationsCount({
   if (isServerSideMCPToolConfiguration(action)) {
     if (
       INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
-        isInternalMCPServerOfName(action.internalMCPServerId, n)
+        matchesInternalMCPServerName(action.internalMCPServerId, n)
       )
     ) {
       return getWebsearchNumResults({
@@ -136,20 +136,20 @@ export function getCitationsCount({
       });
     }
 
-    if (isInternalMCPServerOfName(action.internalMCPServerId, "slack")) {
+    if (matchesInternalMCPServerName(action.internalMCPServerId, "slack")) {
       return SLACK_SEARCH_ACTION_NUM_RESULTS;
     }
 
-    if (isInternalMCPServerOfName(action.internalMCPServerId, "notion")) {
+    if (matchesInternalMCPServerName(action.internalMCPServerId, "notion")) {
       return NOTION_SEARCH_ACTION_NUM_RESULTS;
     }
 
-    if (isInternalMCPServerOfName(action.internalMCPServerId, "run_agent")) {
+    if (matchesInternalMCPServerName(action.internalMCPServerId, "run_agent")) {
       return RUN_AGENT_ACTION_NUM_RESULTS;
     }
 
     if (
-      isInternalMCPServerOfName(
+      matchesInternalMCPServerName(
         action.internalMCPServerId,
         "data_sources_file_system"
       ) &&
