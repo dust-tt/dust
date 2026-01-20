@@ -44,15 +44,13 @@ import type {
 } from "@app/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
 
-export function UserMenu({
-  user,
-  owner,
-  subscription,
-}: {
+interface UserMenuProps {
   user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
   subscription: SubscriptionType | null;
-}) {
+}
+
+export function UserMenu({ user, owner, subscription }: UserMenuProps) {
   const router = useRouter();
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
