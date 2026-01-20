@@ -432,11 +432,11 @@ async function runConnectorsDbInit(env: Environment): Promise<boolean> {
   const stderr = await new Response(proc.stderr).text();
   await proc.exited;
 
-  // Treat "already exists" or "relation already exists" as success (idempotent)
+  // Treat "already exists" or "No migrations" as success (idempotent)
+  // Note: Postgres outputs "relation X already exists" which is caught by "already exists"
   const alreadyExists =
     stderr.includes("already exists") ||
     stdout.includes("already exists") ||
-    stderr.includes("relation") ||
     stdout.includes("No migrations");
 
   if (proc.exitCode !== 0 && !alreadyExists) {

@@ -432,15 +432,18 @@ export function GenericActionDetails({
           {action.generatedFiles.filter((f) => !f.hidden).length > 0 && (
             <>
               <span className="heading-base">Generated Files</span>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap gap-2">
                 {action.generatedFiles
                   .filter((file) => !file.hidden)
                   .map((file) => {
                     if (isSupportedImageContentType(file.contentType)) {
                       return (
-                        <div key={file.fileId} className="mr-5">
+                        <div
+                          key={file.fileId}
+                          className="h-24 w-24 flex-shrink-0"
+                        >
                           <img
-                            className="rounded-xl"
+                            className="h-full w-full rounded-xl object-cover"
                             src={`/api/w/${owner.sId}/files/${file.fileId}`}
                             alt={`${file.title}`}
                           />

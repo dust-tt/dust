@@ -8,6 +8,7 @@ import {
   getUpdatedContentAndOccurrences,
 } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { executeWithLock } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -173,71 +174,85 @@ export async function editClientExecutableFile(
     { tracked: boolean; message: string }
   >
 > {
-  // Fetch the existing file.
-  const fileContentResult = await getClientExecutableFileContent(auth, fileId);
-  if (fileContentResult.isErr()) {
-    return new Err({
-      message: fileContentResult.error.message,
-      tracked: fileContentResult.error.tracked,
-    });
-  }
-  const { fileResource, content: currentContent } = fileContentResult.value;
+  // Acquire edit lock to prevent concurrent modifications.
+  // TODO(YJS): Replace with YJS-based concurrent editing for proper multi-agent support.
+  try {
+    return await executeWithLock(`file:edit:${fileId}`, async () => {
+      // Fetch the existing file.
+      const fileContentResult = await getClientExecutableFileContent(
+        auth,
+        fileId
+      );
+      if (fileContentResult.isErr()) {
+        return new Err({
+          message: fileContentResult.error.message,
+          tracked: fileContentResult.error.tracked,
+        });
+      }
+      const { fileResource, content: currentContent } = fileContentResult.value;
 
-  const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
-    oldString,
-    newString,
-    currentContent,
-  });
-
-  if (occurrences === 0) {
-    return new Err({
-      message: `String not found in file: "${oldString}"`,
-      tracked: false,
-    });
-  }
-
-  if (occurrences !== expectedReplacements) {
-    return new Err({
-      message: `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`,
-      tracked: false,
-    });
-  }
-
-  // Update metadata to track the editing agent
-  if (editedByAgentConfigurationId) {
-    const needsMetadataUpdate =
-      fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
-      editedByAgentConfigurationId;
-
-    if (needsMetadataUpdate) {
-      await fileResource.setUseCaseMetadata({
-        ...fileResource.useCaseMetadata,
-        lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
+      const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
+        oldString,
+        newString,
+        currentContent,
       });
-    }
-  }
 
-  // TODO(2026-01-16 flav): Implement warning logic.
-  // Validate TypeScript/JSX syntax (blocking). File creation fails if invalid.
-  const syntaxValidation = validateTypeScriptSyntax(updatedContent);
-  if (syntaxValidation.isErr()) {
+      if (occurrences === 0) {
+        return new Err({
+          message: `String not found in file: "${oldString}"`,
+          tracked: false,
+        });
+      }
+
+      if (occurrences !== expectedReplacements) {
+        return new Err({
+          message: `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`,
+          tracked: false,
+        });
+      }
+
+      // Update metadata to track the editing agent
+      if (editedByAgentConfigurationId) {
+        const needsMetadataUpdate =
+          fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
+          editedByAgentConfigurationId;
+
+        if (needsMetadataUpdate) {
+          await fileResource.setUseCaseMetadata({
+            ...fileResource.useCaseMetadata,
+            lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
+          });
+        }
+      }
+
+      // TODO(2026-01-16 flav): Implement warning logic.
+      // Validate TypeScript/JSX syntax (blocking). File creation fails if invalid.
+      const syntaxValidation = validateTypeScriptSyntax(updatedContent);
+      if (syntaxValidation.isErr()) {
+        return new Err({
+          message: syntaxValidation.error.message,
+          tracked: false,
+        });
+      }
+
+      // Collect Tailwind validation warnings (non-blocking).
+      const warnings: ValidationWarning[] = [];
+      const tailwindValidation = validateTailwindCode(updatedContent);
+      if (tailwindValidation.isErr()) {
+        warnings.push(...tailwindValidation.error);
+      }
+
+      // Upload the updated content (version is incremented inside uploadContent).
+      await fileResource.uploadContent(auth, updatedContent);
+
+      return new Ok({ fileResource, replacementCount: occurrences, warnings });
+    });
+  } catch (error) {
     return new Err({
-      message: syntaxValidation.error.message,
+      message: `File is currently being edited: ${normalizeError(error)}`,
       tracked: false,
     });
   }
-
-  // Collect Tailwind validation warnings (non-blocking).
-  const warnings: ValidationWarning[] = [];
-  const tailwindValidation = validateTailwindCode(updatedContent);
-  if (tailwindValidation.isErr()) {
-    warnings.push(...tailwindValidation.error);
-  }
-
-  // Upload the updated content (version is incremented inside uploadContent).
-  await fileResource.uploadContent(auth, updatedContent);
-
-  return new Ok({ fileResource, replacementCount: occurrences, warnings });
 }
 
 export async function renameClientExecutableFile(

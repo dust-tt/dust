@@ -1,14 +1,13 @@
 import { cn, markdownStyles } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
-import { CharacterCount } from "@tiptap/extensions";
-import { Placeholder } from "@tiptap/extensions";
+import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
-import React, { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -26,6 +25,7 @@ import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/in
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
+import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import type { LightAgentConfigurationType } from "@app/types";
@@ -223,6 +223,13 @@ export function AgentBuilderInstructionsEditor({
         window.dispatchEvent(new CustomEvent(BLUR_EVENT_NAME));
         return false;
       },
+      editorProps: {
+        // Cleans up incoming HTML to remove Chrome-specific wrapper tags (e.g., <b style="font-weight:normal">)
+        // that interfere with instruction block parsing
+        transformPastedHTML(html: string) {
+          return cleanupPastedHTML(html);
+        },
+      },
       immediatelyRender: false,
     },
     [extensions]
@@ -286,6 +293,10 @@ export function AgentBuilderInstructionsEditor({
       editorProps: {
         attributes: {
           class: editorVariants({ error: displayError }),
+        },
+        // Preserve the transformPastedHTML handler when updating editorProps
+        transformPastedHTML(html: string) {
+          return cleanupPastedHTML(html);
         },
       },
     });

@@ -77,6 +77,7 @@ import {
   GetMentionSuggestionsResponseBodySchema,
   GetSpaceConversationIdsResponseSchema,
   GetSpaceConversationsForDataSourceResponseSchema,
+  GetSpaceMetadataResponseSchema,
   GetSpacesResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
@@ -1267,6 +1268,15 @@ export class DustAPI {
     });
 
     return this._resultFromResponse(GetSpaceConversationIdsResponseSchema, res);
+  }
+
+  async getSpaceMetadata({ spaceId }: { spaceId: string }) {
+    const res = await this.request({
+      method: "GET",
+      path: `spaces/${spaceId}/project_metadata`,
+    });
+
+    return this._resultFromResponse(GetSpaceMetadataResponseSchema, res);
   }
 
   async postFeedback(

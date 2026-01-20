@@ -46,6 +46,7 @@ interface InputBarProps {
     selectedSkillIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   conversation: ConversationWithoutContentType | null;
+  draftKey: string;
   stickyMentions?: RichMention[];
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
@@ -61,6 +62,7 @@ export const InputBar = React.memo(function InputBar({
   user,
   onSubmit,
   conversation,
+  draftKey,
   stickyMentions,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
@@ -95,7 +97,7 @@ export const InputBar = React.memo(function InputBar({
   const { saveDraft, getDraft, clearDraft } = useConversationDrafts({
     workspaceId: owner.sId,
     userId: user?.sId ?? null,
-    conversationId: conversation?.sId,
+    draftKey,
     shouldUseDraft,
   });
 
@@ -256,10 +258,6 @@ export const InputBar = React.memo(function InputBar({
       setLoading(true);
       setIsLocalSubmitting(true);
 
-      // Clear draft immediately before async operation to prevent it from persisting
-      // if the component unmounts during the await (e.g., due to navigation).
-      clearDraft();
-
       const r = await onSubmit(
         markdown,
         mentions,
@@ -284,6 +282,7 @@ export const InputBar = React.memo(function InputBar({
       setLoading(false);
       setIsLocalSubmitting(false);
       if (r.isOk()) {
+        clearDraft();
         resetEditorText();
         fileUploaderService.resetUpload();
       }

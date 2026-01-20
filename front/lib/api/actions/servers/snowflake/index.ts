@@ -1,16 +1,21 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import { registerTool } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { SNOWFLAKE_TOOL_NAME } from "@app/lib/api/actions/servers/snowflake/metadata";
+import { TOOLS } from "@app/lib/api/actions/servers/snowflake/tools";
 import type { Authenticator } from "@app/lib/auth";
 
 function createServer(
-  _auth: Authenticator,
-  _agentLoopContext?: AgentLoopContextType
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
 ): McpServer {
   const server = makeInternalMCPServer("snowflake");
 
-  // Tools will be implemented in a follow-up PR
+  for (const tool of TOOLS) {
+    registerTool(auth, server, agentLoopContext, SNOWFLAKE_TOOL_NAME, tool);
+  }
 
   return server;
 }

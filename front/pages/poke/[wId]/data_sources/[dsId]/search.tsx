@@ -1,4 +1,4 @@
-import { Input } from "@dust-tt/sparkle";
+import { Input, Spinner } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
@@ -7,28 +7,19 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import type { DataSourceType, DocumentType, WorkspaceType } from "@app/types";
+import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
+import type { DocumentType, LightWorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  owner: WorkspaceType;
-  dataSource: DataSourceType;
+  owner: LightWorkspaceType;
+  params: { wId: string; dsId: string };
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const { dsId } = context.params || {};
-  if (typeof dsId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const dataSource = await DataSourceResource.fetchById(auth, dsId, {
-    includeEditedBy: true,
-  });
-  if (!dataSource) {
+  const { wId, dsId } = context.params ?? {};
+  if (!isString(wId) || !isString(dsId)) {
     return {
       notFound: true,
     };
@@ -37,25 +28,36 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      dataSource: dataSource.toJSON(),
+      params: { wId, dsId },
     },
   };
 });
 
-export default function DataSourceView({
+export default function DataSourceSearchPage({
   owner,
-  dataSource,
+  params,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { dsId } = params;
   const [searchQuery, setSearchQuery] = useState("");
   const [tagsIn, setTagsIn] = useState("");
   const [tagsNotIn, setTagsNotIn] = useState("");
   const [documents, setDocuments] = useState<DocumentType[]>([]);
   const [expandedChunkId, setExpandedChunkId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<boolean>(false);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [searchError, setSearchError] = useState<boolean>(false);
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
     Record<string, string>
   >({});
+
+  const {
+    data: dataSourceDetails,
+    isLoading,
+    isError,
+  } = usePokeDataSourceDetails({
+    owner,
+    dsId,
+    disabled: false,
+  });
 
   useEffect(
     () =>
@@ -72,7 +74,13 @@ export default function DataSourceView({
   );
 
   useEffect(() => {
-    setError(false);
+    if (!dataSourceDetails) {
+      return;
+    }
+
+    const { dataSource } = dataSourceDetails;
+
+    setSearchError(false);
     let isCancelled = false;
     void (async () => {
       if (
@@ -84,7 +92,7 @@ export default function DataSourceView({
 
         return;
       }
-      setIsLoading(true);
+      setIsSearching(true);
       const searchParams = new URLSearchParams();
       if (searchQuery.trim().length > 0) {
         searchParams.append("query", searchQuery);
@@ -108,17 +116,17 @@ export default function DataSourceView({
           },
         }
       );
-      setIsLoading(false);
+      setIsSearching(false);
       if (isCancelled) {
         return;
       }
 
       if (searchRes.ok) {
-        setError(false);
-        const documents = await searchRes.json();
-        setDocuments(documents.documents);
+        setSearchError(false);
+        const documentsResult = await searchRes.json();
+        setDocuments(documentsResult.documents);
       } else {
-        setError(true);
+        setSearchError(true);
         setDocuments([]);
       }
     })();
@@ -126,7 +134,25 @@ export default function DataSourceView({
     return () => {
       isCancelled = true;
     };
-  }, [dataSource.sId, owner.sId, searchQuery, tagsIn, tagsNotIn]);
+  }, [dataSourceDetails, owner.sId, searchQuery, tagsIn, tagsNotIn]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError || !dataSourceDetails) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading data source details.</p>
+      </div>
+    );
+  }
+
+  const { dataSource } = dataSourceDetails;
 
   const onDisplayDocumentSource = (documentId: string) => {
     if (
@@ -196,7 +222,7 @@ export default function DataSourceView({
         </div>
         <div className="mt-8 overflow-hidden">
           <ul role="list" className="space-y-4">
-            {!isLoading &&
+            {!isSearching &&
               documents.map((d: DocumentType) => (
                 <li
                   key={d.document_id}
@@ -276,18 +302,18 @@ export default function DataSourceView({
               ))}
             <div className="mt-4 flex flex-col items-center justify-center text-sm text-gray-500">
               {(() => {
-                if (error) {
+                if (searchError) {
                   return (
                     <p className="copy-sm font-semibold text-warning">
                       Something went wrong...
                     </p>
                   );
                 }
-                if (isLoading) {
+                if (isSearching) {
                   return <p>Searching...</p>;
                 }
                 if (
-                  !isLoading &&
+                  !isSearching &&
                   searchQuery.length == 0 &&
                   tagsIn.length == 0 &&
                   tagsNotIn.length == 0 &&
@@ -296,7 +322,7 @@ export default function DataSourceView({
                   return null;
                 }
                 if (
-                  !isLoading &&
+                  !isSearching &&
                   (searchQuery.length > 0 ||
                     tagsIn.length > 0 ||
                     tagsNotIn.length > 0) &&
@@ -315,13 +341,9 @@ export default function DataSourceView({
   );
 }
 
-DataSourceView.getLayout = (
+DataSourceSearchPage.getLayout = (
   page: ReactElement,
-  { owner, dataSource }: { owner: WorkspaceType; dataSource: DataSourceType }
+  { owner }: { owner: LightWorkspaceType }
 ) => {
-  return (
-    <PokeLayout title={`${owner.name} - Search ${dataSource.name}`}>
-      {page}
-    </PokeLayout>
-  );
+  return <PokeLayout title={`${owner.name} - Search`}>{page}</PokeLayout>;
 };

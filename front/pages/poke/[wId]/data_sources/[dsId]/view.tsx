@@ -1,44 +1,23 @@
-import { Input, Page, TextArea } from "@dust-tt/sparkle";
+import { Input, Page, Spinner, TextArea } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
+import { useSearchParams } from "next/navigation";
 import type { ReactElement } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
-import config from "@app/lib/api/config";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { classNames } from "@app/lib/utils";
-import logger from "@app/logger/logger";
-import type { CoreAPIDocument } from "@app/types";
-import { CoreAPI } from "@app/types";
+import { usePokeDocument } from "@app/poke/swr/document";
+import type { LightWorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  document: CoreAPIDocument;
+  owner: LightWorkspaceType;
+  params: { wId: string; dsId: string };
 }>(async (context, auth) => {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const { dsId } = context.params || {};
-  if (typeof dsId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
+  const owner = auth.getNonNullableWorkspace();
 
-  const dataSource = await DataSourceResource.fetchById(auth, dsId, {
-    includeEditedBy: true,
-  });
-  if (!dataSource) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const document = await coreAPI.getDataSourceDocument({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-    documentId: context.query.documentId as string,
-  });
-
-  if (document.isErr()) {
+  const { wId, dsId } = context.params ?? {};
+  if (!isString(wId) || !isString(dsId)) {
     return {
       notFound: true,
     };
@@ -46,14 +25,57 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
   return {
     props: {
-      document: document.value.document,
+      owner,
+      params: { wId, dsId },
     },
   };
 });
 
 export default function DataSourceDocumentView({
-  document,
+  owner,
+  params,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { dsId } = params;
+  const searchParams = useSearchParams();
+  const documentId = searchParams?.get("documentId") ?? null;
+
+  const {
+    data: documentData,
+    isLoading,
+    isError,
+  } = usePokeDocument({
+    owner,
+    dsId,
+    documentId,
+    disabled: false,
+  });
+
+  if (!documentId) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>No document ID provided.</p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError || !documentData) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading document.</p>
+      </div>
+    );
+  }
+
+  const { document } = documentData;
+
   return (
     <div className="max-w-4xl">
       <div className="pt-6">
@@ -141,6 +163,11 @@ export default function DataSourceDocumentView({
   );
 }
 
-DataSourceDocumentView.getLayout = (page: ReactElement) => {
-  return <PokeLayout title="View Document">{page}</PokeLayout>;
+DataSourceDocumentView.getLayout = (
+  page: ReactElement,
+  { owner }: { owner: LightWorkspaceType }
+) => {
+  return (
+    <PokeLayout title={`${owner.name} - View Document`}>{page}</PokeLayout>
+  );
 };

@@ -141,6 +141,7 @@ export function SpaceConversationsTab({
               user={user}
               onSubmit={onSubmit}
               conversation={null}
+              draftKey={`space-${spaceInfo.name}-new-conversation`}
               disableAutoFocus={false}
             />
           </div>

@@ -4,6 +4,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
@@ -15,91 +16,75 @@ import { ViewAppTable } from "@app/components/poke/apps/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import config from "@app/lib/api/config";
-import { cleanSpecificationFromCore, getSpecification } from "@app/lib/api/run";
 import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { AppResource } from "@app/lib/resources/app_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { decodeSqids } from "@app/lib/utils";
-import logger from "@app/logger/logger";
+import { usePokeAppDetails } from "@app/poke/swr/app_details";
 import type {
   AppType,
   LightWorkspaceType,
   SpecificationType,
-  WorkspaceType,
 } from "@app/types";
-import { CoreAPI } from "@app/types";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  app: AppType;
-  specification: SpecificationType;
-  specificationHashes: string[] | null;
   owner: LightWorkspaceType;
+  params: { wId: string; spaceId: string; appId: string };
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const { appId, spaceId } = context.params || {};
-  if (typeof spaceId !== "string") {
+  const { wId, spaceId, appId } = context.params ?? {};
+  if (!isString(wId) || !isString(spaceId) || !isString(appId)) {
     return {
       notFound: true,
     };
-  }
-
-  const { hash } = context.query;
-  if (hash && typeof hash !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const app = await AppResource.fetchById(auth, appId);
-  if (!app) {
-    return {
-      notFound: true,
-    };
-  }
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-  const specificationHashes = await coreAPI.getSpecificationHashes({
-    projectId: app.dustAPIProjectId,
-  });
-
-  let specification = JSON.parse(app.savedSpecification ?? "{}");
-  if (hash && hash.length > 0) {
-    const specificationFromCore = await getSpecification(app.toJSON(), hash);
-    if (specificationFromCore) {
-      cleanSpecificationFromCore(specificationFromCore);
-      specification = specificationFromCore;
-    }
   }
 
   return {
     props: {
-      app: app.toJSON(),
-      specification,
-      specificationHashes: specificationHashes.isOk()
-        ? specificationHashes.value.hashes.reverse()
-        : null,
       owner,
+      params: { wId, spaceId, appId },
     },
   };
 });
 
 export default function AppPage({
-  app,
-  specification,
-  specificationHashes,
   owner,
+  params,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { appId } = params;
+  const searchParams = useSearchParams();
+  const hash = searchParams?.get("hash") ?? null;
+
+  const {
+    data: appDetails,
+    isLoading,
+    isError,
+  } = usePokeAppDetails({
+    owner,
+    appId,
+    hash,
+    disabled: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError || !appDetails) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading app details.</p>
+      </div>
+    );
+  }
+
+  const { app, specification, specificationHashes } = appDetails;
+
   return (
     <div className="flex flex-row gap-x-6">
       <ViewAppTable app={app} owner={owner} />
@@ -136,8 +121,8 @@ function AppSpecification({
   const { isDark } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
-  const params = useSearchParams();
-  const hash = params.get("hash");
+  const searchParamsInner = useSearchParams();
+  const hash = searchParamsInner?.get("hash") ?? null;
 
   const submit = async () => {
     try {
@@ -230,7 +215,7 @@ function AppSpecification({
 
 AppPage.getLayout = (
   page: ReactElement,
-  { owner, app }: { owner: WorkspaceType; app: AppType }
+  { owner }: { owner: LightWorkspaceType }
 ) => {
-  return <PokeLayout title={`${owner.name} - ${app.name}`}>{page}</PokeLayout>;
+  return <PokeLayout title={`${owner.name} - App`}>{page}</PokeLayout>;
 };

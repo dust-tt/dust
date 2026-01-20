@@ -100,85 +100,69 @@ export async function getConversationDataSourceViews(
   conversation: ConversationWithoutContentType,
   attachments: ConversationAttachmentType[]
 ): Promise<Map<string, DataSourceViewResource>> {
-  const conversationIdToDataSourceViewMap = new Map<
+  const fileIdToDataSourceViewMap = new Map<string, DataSourceViewResource>();
+
+  // Filter to get only file attachments.
+  const fileAttachments = attachments.filter(isFileAttachmentType);
+  if (fileAttachments.length === 0) {
+    return fileIdToDataSourceViewMap;
+  }
+
+  const fileIds = fileAttachments.map((a) => a.fileId);
+  const fileResources = await FileResource.fetchByIds(auth, fileIds);
+  const fileResourceById = new Map(fileResources.map((f) => [f.sId, f]));
+
+  const conversationIds = new Set<string>();
+  // Add the current conversation.
+  conversationIds.add(conversation.sId);
+  // Add conversations from files.
+  for (const file of fileResources) {
+    if (file.useCaseMetadata?.conversationId) {
+      conversationIds.add(file.useCaseMetadata.conversationId);
+    }
+  }
+
+  const conversations = await ConversationResource.fetchByIds(auth, [
+    ...conversationIds,
+  ]);
+
+  const conversationModelIdToSId = new Map(
+    conversations.map((c) => [c.id, c.sId])
+  );
+
+  const dataSourceViews =
+    await DataSourceViewResource.fetchByConversationModelIds(
+      auth,
+      conversations.map((c) => c.id)
+    );
+
+  const conversationIdToDataSourceView = new Map<
     string,
     DataSourceViewResource
   >();
-
-  // Get the datasource view for the conversation.
-  const conversationDataSourceView =
-    await DataSourceViewResource.fetchByConversation(auth, conversation);
-  if (conversationDataSourceView) {
-    conversationIdToDataSourceViewMap.set(
-      conversation.sId,
-      conversationDataSourceView
-    );
-  }
-  const files = await FileResource.fetchByIds(
-    auth,
-    attachments.filter(isFileAttachmentType).map((f) => f.fileId)
-  );
-  const filesById = new Map(files.map((f) => [f.sId, f]));
-
-  const fileIdToDataSourceViewMap = new Map<string, DataSourceViewResource>();
-
-  // Check file attachments for their conversation metadata
-  for (const attachment of attachments) {
-    if (isFileAttachmentType(attachment)) {
-      try {
-        // Get the file resource to access its metadata
-        const file = filesById.get(attachment.fileId);
-        if (file && file.useCaseMetadata?.conversationId) {
-          const fileConversationId = file.useCaseMetadata.conversationId;
-
-          // First look in already fetched conversations
-          const cachedChildDataSourceView =
-            conversationIdToDataSourceViewMap.get(fileConversationId);
-          if (cachedChildDataSourceView) {
-            fileIdToDataSourceViewMap.set(
-              attachment.fileId,
-              cachedChildDataSourceView
-            );
-            continue;
-          }
-
-          // Fetch the datasource view for this conversation
-          const childConversation =
-            await ConversationResource.fetchConversationWithoutContent(
-              auth,
-              fileConversationId
-            );
-
-          if (childConversation.isErr()) {
-            logger.warn(
-              `Could not find child conversation with sId: ${fileConversationId}`
-            );
-            continue;
-          }
-
-          const childDataSourceView =
-            await DataSourceViewResource.fetchByConversation(
-              auth,
-              childConversation.value
-            );
-
-          if (childDataSourceView) {
-            conversationIdToDataSourceViewMap.set(
-              childConversation.value.sId,
-              childDataSourceView
-            );
-            // Map this file to its datasource view
-            fileIdToDataSourceViewMap.set(
-              attachment.fileId,
-              childDataSourceView
-            );
-          }
-        }
-      } catch (error) {
-        logger.warn(
-          `Failed to get file metadata for file ${attachment.fileId}: ${error instanceof Error ? error.message : String(error)}`
-        );
+  for (const dsv of dataSourceViews) {
+    const conversationModelId = dsv.dataSource.conversationId;
+    if (conversationModelId) {
+      const sId = conversationModelIdToSId.get(conversationModelId);
+      if (sId) {
+        conversationIdToDataSourceView.set(sId, dsv);
       }
+    }
+  }
+
+  // Build the result map from file ID to DataSourceView.
+  // Only add files that have a conversationId in their metadata.
+  for (const attachment of fileAttachments) {
+    const fileResource = fileResourceById.get(attachment.fileId);
+    if (!fileResource?.useCaseMetadata?.conversationId) {
+      continue;
+    }
+
+    const dsv = conversationIdToDataSourceView.get(
+      fileResource.useCaseMetadata.conversationId
+    );
+    if (dsv) {
+      fileIdToDataSourceViewMap.set(attachment.fileId, dsv);
     }
   }
 

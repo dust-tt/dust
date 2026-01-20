@@ -6,28 +6,19 @@ import { useState } from "react";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { usePokeTables } from "@app/poke/swr";
-import type { DataSourceType, WorkspaceType } from "@app/types";
+import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
+import type { DataSourceType, LightWorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  owner: WorkspaceType;
-  dataSource: DataSourceType;
+  owner: LightWorkspaceType;
+  params: { wId: string; dsId: string };
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const { dsId } = context.params || {};
-  if (typeof dsId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const dataSource = await DataSourceResource.fetchById(auth, dsId, {
-    includeEditedBy: true,
-  });
-  if (!dataSource) {
+  const { wId, dsId } = context.params ?? {};
+  if (!isString(wId) || !isString(dsId)) {
     return {
       notFound: true,
     };
@@ -36,7 +27,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      dataSource: dataSource.toJSON(),
+      params: { wId, dsId },
     },
   };
 });
@@ -49,10 +40,12 @@ type QueryResult = {
   results: Array<Record<string, string | number | boolean | null | undefined>>;
 };
 
-export default function DataSourceQueryPage({
-  owner,
-  dataSource,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+interface QueryContentProps {
+  owner: LightWorkspaceType;
+  dataSource: DataSourceType;
+}
+
+function QueryContent({ owner, dataSource }: QueryContentProps) {
   const [query, setQuery] = useState("");
   const [selectedTables, setSelectedTables] = useState<Set<string>>(new Set());
   const [isExecuting, setIsExecuting] = useState(false);
@@ -269,13 +262,46 @@ export default function DataSourceQueryPage({
   );
 }
 
+export default function DataSourceQueryPage({
+  owner,
+  params,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { dsId } = params;
+
+  const {
+    data: dataSourceDetails,
+    isLoading,
+    isError,
+  } = usePokeDataSourceDetails({
+    owner,
+    dsId,
+    disabled: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError || !dataSourceDetails) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading data source details.</p>
+      </div>
+    );
+  }
+
+  return (
+    <QueryContent owner={owner} dataSource={dataSourceDetails.dataSource} />
+  );
+}
+
 DataSourceQueryPage.getLayout = (
   page: ReactElement,
-  { owner, dataSource }: { owner: WorkspaceType; dataSource: DataSourceType }
+  { owner }: { owner: LightWorkspaceType }
 ) => {
-  return (
-    <PokeLayout title={`${owner.name} - Query ${dataSource.name}`}>
-      {page}
-    </PokeLayout>
-  );
+  return <PokeLayout title={`${owner.name} - Query`}>{page}</PokeLayout>;
 };

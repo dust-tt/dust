@@ -1,3 +1,4 @@
+import { Spinner } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
@@ -6,45 +7,65 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { mcpServerViewToPokeJSON } from "@app/lib/poke/utils";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { PokeMCPServerViewType, WorkspaceType } from "@app/types";
+import { usePokeMCPServerViewDetails } from "@app/poke/swr/mcp_server_view_details";
+import type { LightWorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  mcpServerView: PokeMCPServerViewType;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
+  params: { wId: string; spaceId: string; svId: string };
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const { svId } = context.params || {};
-  if (typeof svId !== "string") {
+  const { wId, spaceId, svId } = context.params ?? {};
+  if (!isString(wId) || !isString(spaceId) || !isString(svId)) {
     return {
       notFound: true,
     };
   }
-
-  const mcpServerView = await MCPServerViewResource.fetchById(auth, svId);
-  if (!mcpServerView) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const pokeMCPServerView = await mcpServerViewToPokeJSON(mcpServerView, auth);
 
   return {
     props: {
-      mcpServerView: pokeMCPServerView,
       owner,
+      params: { wId, spaceId, svId },
     },
   };
 });
 
 export default function MCPServerViewPage({
-  mcpServerView,
   owner,
+  params,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { svId } = params;
+
+  const {
+    data: mcpServerViewDetails,
+    isLoading,
+    isError,
+  } = usePokeMCPServerViewDetails({
+    owner,
+    mcpServerViewId: svId,
+    disabled: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isError || !mcpServerViewDetails) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p>Error loading MCP server view details.</p>
+      </div>
+    );
+  }
+
+  const { mcpServerView } = mcpServerViewDetails;
+
   return (
     <>
       <h3 className="text-xl font-bold">
@@ -78,18 +99,9 @@ export default function MCPServerViewPage({
 
 MCPServerViewPage.getLayout = (
   page: ReactElement,
-  {
-    owner,
-    mcpServerView,
-  }: { owner: WorkspaceType; mcpServerView: PokeMCPServerViewType }
+  { owner }: { owner: LightWorkspaceType }
 ) => {
   return (
-    <PokeLayout
-      title={`${owner.name} - ${getMcpServerViewDisplayName(mcpServerView)} in ${
-        mcpServerView.space?.name || mcpServerView.spaceId
-      }`}
-    >
-      {page}
-    </PokeLayout>
+    <PokeLayout title={`${owner.name} - MCP Server View`}>{page}</PokeLayout>
   );
 };

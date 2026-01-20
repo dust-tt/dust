@@ -21,7 +21,7 @@ import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { MessageModel } from "@app/lib/models/agent/conversation";
+import type { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -40,7 +40,6 @@ import type {
   ContentFragmentVersion,
   ContentNodeContentFragmentType,
   ContentNodeType,
-  ConversationType,
   FileContentFragmentType,
   ModelConfigurationType,
   ModelId,
@@ -181,22 +180,6 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       ContentFragmentResource.model,
       contentFragment.get()
     );
-  }
-
-  static async fromMessageId(auth: Authenticator, id: ModelId) {
-    const message = await MessageModel.findOne({
-      where: {
-        id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      include: [{ model: ContentFragmentModel, as: "contentFragment" }],
-    });
-    if (!message) {
-      throw new Error(
-        "No message found for the given id when trying to create a ContentFragmentResource"
-      );
-    }
-    return ContentFragmentResource.fromMessage(message);
   }
 
   static async fetchManyByModelIds(auth: Authenticator, ids: Array<ModelId>) {
@@ -670,7 +653,6 @@ export async function getContentFragmentFromAttachmentFile(
 export async function renderLightContentFragmentForModel(
   auth: Authenticator,
   message: ContentFragmentType,
-  conversation: ConversationType,
   model: ModelConfigurationType,
   {
     excludeImages,
@@ -678,24 +660,16 @@ export async function renderLightContentFragmentForModel(
     excludeImages: boolean;
   }
 ): Promise<ContentFragmentMessageTypeModel | null> {
-  const { contentType, sId } = message;
+  const { contentType } = message;
 
-  const contentFragment = await ContentFragmentResource.fromMessageId(
-    auth,
-    message.id
-  );
-  if (!contentFragment) {
-    throw new Error(`Content fragment not found for message ${sId}`);
-  }
-
-  if (contentFragment.expiredReason) {
+  if (message.expiredReason) {
     return {
       role: "content_fragment",
       name: `attach_${contentType}`,
       content: [
         {
           type: "text",
-          text: `The content of this file is no longer available. Reason: ${contentFragment.expiredReason}`,
+          text: `The content of this file is no longer available. Reason: ${message.expiredReason}`,
         },
       ],
     };
@@ -706,14 +680,9 @@ export async function renderLightContentFragmentForModel(
     return null;
   }
 
-  const { fileId: fileModelId } = contentFragment;
-
-  const fileStringId = fileModelId
-    ? FileResource.modelIdToSId({
-        id: fileModelId,
-        workspaceId: conversation.owner.id,
-      })
-    : null;
+  // Get fileId directly from the message based on content fragment type.
+  const fileStringId =
+    message.contentFragmentType === "file" ? message.fileId : null;
 
   // Check if this is pasted content - render with simplified format
   if (fileStringId && isPastedFile(contentType)) {

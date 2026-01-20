@@ -15,6 +15,7 @@ import { getTemporalClient, terminateWorkflow } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import { isDevelopment } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
 
 export async function launchDustProjectFullSyncWorkflow(
@@ -75,7 +76,9 @@ export async function launchDustProjectIncrementalSyncWorkflow(
   // minuteOffset ensures jobs are distributed across the 10-minute intervals based on connector ID
   // Run incremental sync every 10 minutes
   const minuteOffset = connector.id % 10;
-  const cronSchedule = `${minuteOffset},${minuteOffset + 10},${minuteOffset + 20},${minuteOffset + 30},${minuteOffset + 40},${minuteOffset + 50} * * * *`;
+  const cronSchedule = isDevelopment()
+    ? `* * * * *`
+    : `${minuteOffset},${minuteOffset + 10},${minuteOffset + 20},${minuteOffset + 30},${minuteOffset + 40},${minuteOffset + 50} * * * *`;
 
   try {
     // Check if workflow already exists

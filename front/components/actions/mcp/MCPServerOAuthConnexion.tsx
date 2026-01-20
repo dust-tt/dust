@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useFormContext } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
@@ -56,11 +56,21 @@ export function MCPServerOAuthConnexion({
   authorization,
   documentationUrl,
 }: MCPServerOAuthConnexionProps) {
-  const { setError, clearErrors, setValue, watch } =
+  const { setError, clearErrors, setValue, control } =
     useFormContext<MCPServerOAuthFormValues>();
 
-  const useCase = watch("useCase");
-  const authCredentials = watch("authCredentials");
+  const { field: useCaseField } = useController({
+    name: "useCase",
+    control,
+  });
+
+  const { field: authCredentialsField } = useController({
+    name: "authCredentials",
+    control,
+  });
+
+  const useCase = useCaseField.value;
+  const authCredentials = authCredentialsField.value;
 
   // Dynamically fetched credential inputs based on provider and use case.
   const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
@@ -164,11 +174,11 @@ export function MCPServerOAuthConnexion({
     if (!isSupportedOAuthCredential(key)) {
       return;
     }
-    setValue("authCredentials", { ...(authCredentials ?? {}), [key]: value });
+    authCredentialsField.onChange({ ...(authCredentials ?? {}), [key]: value });
   };
 
   const handleUseCaseSelect = (selectedUseCase: MCPOAuthUseCase) => {
-    setValue("useCase", selectedUseCase);
+    useCaseField.onChange(selectedUseCase);
   };
 
   const supportsPersonalActions =
