@@ -1936,7 +1936,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "manual",
     allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("dev_mcp_actions");
+      return !featureFlags.includes("ukg_ready_mcp");
     },
     isPreview: false,
     tools_stakes: {

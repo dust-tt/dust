@@ -692,6 +692,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_message_splitting"
   | "slideshow"
   | "snowflake_tool"
+  | "ukg_ready_mcp"
   | "usage_data_api"
   | "xai_feature"
 >();

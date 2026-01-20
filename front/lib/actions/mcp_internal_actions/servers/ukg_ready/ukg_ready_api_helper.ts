@@ -53,20 +53,11 @@ async function ukgReadyApiCall<T extends z.ZodTypeAny>(
     }
 
     const responseText = await response.text();
-
-    logger.info(
-      { endpoint, responseText },
-      "[UKG Ready MCP Server] API raw response"
-    );
     if (!responseText) {
       return new Ok(undefined as z.infer<T>);
     }
 
     const rawData = JSON.parse(responseText);
-    logger.info(
-      { endpoint, rawData: JSON.stringify(rawData).slice(0, 2000) },
-      "[UKG Ready MCP Server] API response"
-    );
     const parseResult = schema.safeParse(rawData);
 
     if (!parseResult.success) {

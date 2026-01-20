@@ -234,6 +234,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Phone verification during trial sign-up",
     stage: "dust_only",
   },
+  ukg_ready_mcp: {
+    description: "UKG Ready MCP tool for workforce management",
+    stage: "dust_only",
+  }
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
