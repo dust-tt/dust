@@ -237,8 +237,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           ? filesByModelId.get(contentFragment.fileId)
           : undefined;
 
-        return contentFragment._renderFromMessage({
-          auth,
+        return contentFragment.renderFromMessage(auth, {
           conversationId,
           message,
           file,
@@ -303,20 +302,20 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   /**
-   * Internal method to render a content fragment from a message.
    * Use batchRenderFromMessages instead to avoid N+1 queries.
    */
-  private async _renderFromMessage({
-    auth,
-    conversationId,
-    message,
-    file,
-  }: {
-    auth: Authenticator;
-    conversationId: string;
-    message: MessageModel;
-    file?: FileResource;
-  }): Promise<ContentFragmentType> {
+  async renderFromMessage(
+    auth: Authenticator,
+    {
+      conversationId,
+      message,
+      file,
+    }: {
+      conversationId: string;
+      message: MessageModel;
+      file?: FileResource;
+    }
+  ): Promise<ContentFragmentType> {
     const owner = auth.workspace();
     if (!owner) {
       throw new Error(

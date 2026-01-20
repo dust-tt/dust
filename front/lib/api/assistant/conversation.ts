@@ -1316,7 +1316,7 @@ export async function postNewContentFragment(
     }
   }
 
-  const { messageRow } = await withTransaction(async (t) => {
+  const { contentFragment, messageRow } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
     const fullBlob = {
@@ -1371,14 +1371,16 @@ export async function postNewContentFragment(
 
     await ConversationResource.markAsUpdated(auth, { conversation, t });
 
-    return { messageRow };
+    return { contentFragment, messageRow };
   });
 
   // Use batch method even for single message to ensure optimized file fetching.
-  const [render] = await ContentFragmentResource.batchRenderFromMessages(auth, {
+  const render = await contentFragment.renderFromMessage(auth, {
     conversationId: conversation.sId,
-    messages: [messageRow],
+    message: messageRow,
   });
+
+  console.log(">> render:", render);
 
   return new Ok(render);
 }
