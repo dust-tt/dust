@@ -1,30 +1,42 @@
 import "@dust-tt/sparkle/styles/allotment.css";
 
 import {
-  ArrowCircleIcon,
+  HistoryIcon,
   Avatar,
   Bar,
   BarChartIcon,
+  BoldIcon,
   BoltIcon,
   BookOpenIcon,
   Button,
   Checkbox,
+  CheckIcon,
   Chip,
+  CodeBlockIcon,
+  TagBlockIcon,
   ConversationContainer,
   ConversationMessage,
   CopilotIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   EmptyCTA,
   EyeIcon,
   EyeSlashIcon,
+  HeadingIcon,
   Icon,
   Input,
+  ItalicIcon,
+  LinkIcon,
+  ListCheckIcon,
   ListGroup,
   ListItem,
   ListItemSection,
+  ListOrdered2Icon,
+  QuoteTextIcon,
+  Separator,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -45,6 +57,7 @@ import {
   TestTubeIcon,
   ToolsIcon,
   UserGroupIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { Allotment } from "allotment";
 import { type MouseEvent, useMemo, useRef, useState } from "react";
@@ -58,23 +71,45 @@ import {
 } from "../components/RichTextArea";
 import {
   getRandomAgents,
-  getRandomConversations,
+  mockCopilotConversationItems,
+  mockInstructionCases,
   mockSpaces,
+  mockSuggestionChanges,
   mockUsers,
 } from "../data";
 
 export default function AgentBuilder() {
   const agent = useMemo(() => getRandomAgents(1)[0], []);
-  const historyItems = useMemo(() => getRandomConversations(5), []);
+  const versionHistoryItems = useMemo(() => {
+    const dates = [
+      "Jan 20, 2026 at 2:34 PM",
+      "Jan 19, 2026 at 11:15 AM",
+      "Jan 17, 2026 at 4:52 PM",
+      "Jan 15, 2026 at 9:08 AM",
+      "Jan 12, 2026 at 3:21 PM",
+    ];
+    return dates.map((date, index) => ({
+      id: `version-${index}`,
+      date,
+      author: mockUsers[index].fullName,
+    }));
+  }, []);
   const tagItems = useMemo(() => mockSpaces.slice(0, 6), []);
   const selectableSpaces = useMemo(() => mockSpaces.slice(0, 12), []);
   const [isSpacesSheetOpen, setIsSpacesSheetOpen] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState<{
+    id: string;
+    date: string;
+    author: string;
+  } | null>(null);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const [activeRightPanelTab, setActiveRightPanelTab] = useState("copilot");
   const [accessStatus, setAccessStatus] = useState<"published" | "unpublished">(
     "unpublished"
   );
   const richTextAreaRef = useRef<RichTextAreaHandle | null>(null);
+  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(null);
+  const [hasSuggestionsState, setHasSuggestionsState] = useState(false);
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<Set<string>>(() => {
     const defaultSpace = mockSpaces[0];
     return defaultSpace ? new Set([defaultSpace.id]) : new Set();
@@ -114,35 +149,45 @@ export default function AgentBuilder() {
     () => selectableSpaces.filter((space) => isRestrictedSpace(space.id)),
     [selectableSpaces]
   );
-  const copilotConversationItems = useMemo(
-    () => [
-      {
-        id: "intro-agent",
-        type: "agent" as const,
-        name: "Copilot",
-        timestamp: "Just now",
-        content:
-          "I can help you shape this agent. Share the role, audience, and any tools it should use.",
-      },
-      {
-        id: "intro-user",
-        type: "user" as const,
-        name: "You",
-        timestamp: "Just now",
-        content:
-          "I need an agent that drafts onboarding emails and keeps tone friendly but concise.",
-      },
-      {
-        id: "agent-clarify",
-        type: "agent" as const,
-        name: "Copilot",
-        timestamp: "Just now",
-        content:
-          "Got it. Should it personalize by role and include links to docs? Also, any brand voice guidelines?",
-      },
-    ],
-    []
-  );
+
+  // Generate diff content for version history preview
+  const versionDiffContent = useMemo(() => {
+    const baseInstruction = mockInstructionCases[Math.floor(Math.random() * mockInstructionCases.length)];
+    const lines = baseInstruction.split("\n");
+    
+    // Diff styles: success for additions, warning for removals
+    const additionStyle = "s-rounded s-bg-success-100 dark:s-bg-success-100-night s-px-0.5 s-text-success-600 dark:s-text-success-600-night";
+    const removalStyle = "s-rounded s-bg-warning-100 dark:s-bg-warning-100-night s-px-0.5 s-text-warning-600 dark:s-text-warning-600-night s-line-through";
+    
+    // Apply some fake diff changes
+    const modifiedLines = lines.map((line, index) => {
+      // Skip empty lines
+      if (!line.trim()) return line;
+      
+      // Add some additions (green/success)
+      if (index === 3) {
+        return `${line} <span data-diff-add class="${additionStyle}">Include response time targets.</span>`;
+      }
+      
+      // Add some removals (strikethrough/warning)
+      if (index === 7 && line.length > 20) {
+        const midPoint = Math.floor(line.length / 2);
+        const removedPart = line.substring(midPoint - 10, midPoint + 10);
+        return line.substring(0, midPoint - 10) + 
+          `<span data-diff-remove class="${removalStyle}">${removedPart}</span>` +
+          line.substring(midPoint + 10);
+      }
+      
+      // Add a replaced section
+      if (index === 12) {
+        return `<span data-diff-remove class="${removalStyle}">Old requirement removed.</span> <span data-diff-add class="${additionStyle}">New requirement: prioritize clarity.</span>`;
+      }
+      
+      return line;
+    });
+    
+    return `<p>${modifiedLines.join("<br>")}</p>`;
+  }, []);
 
   const toggleSpace = (spaceId: string) => {
     setSelectedSpaceIds((prev) => {
@@ -162,6 +207,17 @@ export default function AgentBuilder() {
       next.delete(spaceId);
       return next;
     });
+  };
+
+  const handleAskCopilot = (selectedText: string) => {
+    setIsRightPanelOpen(true);
+    setActiveRightPanelTab("copilot");
+    // The selected text can be used to pre-fill the copilot input or as context
+    console.log("Ask Copilot with selected text:", selectedText);
+  };
+
+  const checkForSuggestions = () => {
+    setHasSuggestionsState(richTextAreaRef.current?.hasSuggestions() ?? false);
   };
 
   const SectionHeader = ({
@@ -243,73 +299,119 @@ export default function AgentBuilder() {
                   </div>
                 }
               />
-              <div className="s-flex s-w-full s-flex-1 s-flex-col s-overflow-auto s-px-6">
+              <div
+                ref={setScrollContainer}
+                className="s-flex s-w-full s-flex-1 s-flex-col s-overflow-auto s-px-6"
+              >
                 <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-8 s-py-6">
                   <div className="s-flex s-flex-1 s-flex-col s-gap-3">
                     <SectionHeader
                       title="Instructions"
                       description="Command or guideline you provide to your agent to direct its responses."
-                      action={
+                      action={<DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            label="Advanced"
+                            isSelect
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem label="No advanced options" />
+                        </DropdownMenuContent>
+                      </DropdownMenu>}
+                    />
+                    <div className="s-flex s-flex-1 s-items-center s-justify-center s-gap-2">
+                      <Button icon={HeadingIcon} size="mini" variant="ghost-secondary" tooltip="Heading" />
+                      <Button icon={BoldIcon} size="mini" variant="ghost-secondary" tooltip="Bold" />
+                      <Button icon={ItalicIcon} size="mini" variant="ghost-secondary" tooltip="Italic" />
+                      <Separator orientation="vertical"  />
+                      <Button icon={LinkIcon} size="mini" variant="ghost-secondary" tooltip="Insert a link" />
+                      <Button icon={ListCheckIcon} size="mini" variant="ghost-secondary" tooltip="Bulleted list" />
+                      <Button icon={ListOrdered2Icon} size="mini" variant="ghost-secondary" tooltip="Ordered list" />
+                      <Separator orientation="vertical" />
+                      <Button icon={QuoteTextIcon} size="mini" variant="ghost-secondary" tooltip="Quotation block" />
+                      <Button icon={CodeBlockIcon} size="mini" variant="ghost-secondary" tooltip="Code Block" />
+                      <Separator orientation="vertical" />
+                      <Button icon={TagBlockIcon} size="mini" variant="ghost-secondary" tooltip="XML tag" />
+                      <Separator orientation="vertical" />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="mini"
+                            variant="ghost-secondary"
+                            icon={HistoryIcon}
+                            isSelect
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuLabel label="Version history" />
+                          {versionHistoryItems.map((item) => (
+                            <DropdownMenuItem
+                              key={item.id}
+                              label={item.date}
+                              description={item.author}
+                              onSelect={() => {
+                                window.setTimeout(() => {
+                                  setSelectedVersion(item);
+                                }, 0);
+                              }}
+                            />
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <div className="s-flex-1" />
+                      {hasSuggestionsState && (
                         <>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                label="Advanced"
-                                isSelect
-                              />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem label="No advanced options" />
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                icon={ArrowCircleIcon}
-                                isSelect
-                              />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              {historyItems.map((item) => (
-                                <DropdownMenuItem
-                                  key={item.id}
-                                  label={item.title}
-                                />
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                        <div className="s-heading-xs s-text-muted-foreground">Suggestions:</div>
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            icon={XMarkIcon}
+                            label="Reject"
+                            onClick={() => {
+                              richTextAreaRef.current?.rejectAllSuggestions();
+                              checkForSuggestions();
+                            }}
+                          />
+                          <Button
+                            size="xs"
+                            icon={CheckIcon}
+                            variant="highlight-secondary"
+                            label="Accept"
+                            onClick={() => {
+                              richTextAreaRef.current?.acceptAllSuggestions();
+                              checkForSuggestions();
+                            }}
+                          />
                         </>
-                      }
-                    />
-                    <RichTextArea
-                      ref={richTextAreaRef}
-                      className="s-min-h-[512px]"
-                      placeholder="Write instructions for your agent..."
-                    />
+                      )}
+                      </div>
+                      <RichTextArea
+                        ref={richTextAreaRef}
+                        className="s-min-h-[512px]"
+                        placeholder="Write instructions for your agent..."
+                        onAskCopilot={handleAskCopilot}
+                        scrollContainer={scrollContainer}
+                      />
                   </div>
-
+                  <Separator />
                   <div className="s-flex s-flex-col s-gap-2">
                     <SectionHeader
                       title="Spaces"
                       description="Set what knowledge and capabilities the agent can access."
-                      action={
-                        <>
-                          <Button
+                    />
+                    {selectedSpaces.length > 0 ? (
+                      <div className="s-flex s-flex-wrap s-gap-2">
+
+<Button
                             size="sm"
                             variant="outline"
                             label="Select"
                             icon={SpacesIcon}
                             onClick={() => setIsSpacesSheetOpen(true)}
                           />
-                        </>
-                      }
-                    />
-                    {selectedSpaces.length > 0 ? (
-                      <div className="s-flex s-flex-wrap s-gap-2">
                         {[...selectedSpaces]
                           .sort(
                             (a, b) =>
@@ -324,8 +426,8 @@ export default function AgentBuilder() {
                                 icon={
                                   isRestricted ? SpaceCloseIcon : SpaceOpenIcon
                                 }
-                                size="xs"
-                                color={isRestricted ? "rose" : "golden"}
+                                size="sm"
+                                color={isRestricted ? "rose" : ""}
                                 label={space.name}
                                 onRemove={() => removeSpace(space.id)}
                               />
@@ -338,7 +440,7 @@ export default function AgentBuilder() {
                       </div>
                     )}
                   </div>
-
+<Separator />
                   <div className="s-flex s-flex-col s-gap-2">
                     <SectionHeader
                       title="Knowledge and capabilities"
@@ -346,25 +448,10 @@ export default function AgentBuilder() {
                     abilities."
                       action={
                         <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            label="Capabilities"
-                            icon={ToolsIcon}
-                          />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            label="knowledge"
-                            icon={BookOpenIcon}
-                          />
                         </>
                       }
                     />
-
-                    <EmptyCTA
-                      action={
-                        <div className="s-flex s-gap-2">
+<div className="s-flex s-flex-wrap s-gap-2">
                           <Button
                             size="sm"
                             variant="outline"
@@ -374,52 +461,34 @@ export default function AgentBuilder() {
                           <Button
                             size="sm"
                             variant="outline"
-                            label="knowledge"
+                            label="Knowledge"
                             icon={BookOpenIcon}
-                          />
-                        </div>
-                      }
-                    />
+                          /></div>
                   </div>
-
+                  <Separator />
                   <div className="s-flex s-flex-col s-gap-2">
                     <SectionHeader
                       title="Triggers"
                       description="Add knowledge, tools and skills to enhance your agent's
                     abilities."
-                      action={
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            label="Triggers"
-                            icon={BoltIcon}
-                          />
-                        </>
-                      }
                     />
 
-                    <EmptyCTA
-                      action={
-                        <div className="s-flex s-gap-2">
+<div className="s-flex s-flex-wrap s-gap-2">
                           <Button
                             size="sm"
                             variant="outline"
                             label="Triggers"
                             icon={BoltIcon}
-                          />
-                        </div>
-                      }
-                    />
+                          /></div>
                   </div>
-
+                  <Separator />
                   <div className="s-flex s-flex-col">
-                    <div className="s-flex s-w-full s-min-w-0 s-flex-1 s-items-end s-gap-2">
+                    <div className="s-flex s-w-full s-min-w-0 s-flex-1 s-items-end s-gap-3">
                       <div className="s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-3">
                         <div className="s-heading-xl s-text-foreground">
                           Settings
                         </div>
-                        <div className="s-flex s-flex-1 s-items-center s-gap-2 s-py-2">
+                        <div className="s-flex s-flex-1 s-items-center s-gap-2 s-py-3">
                           <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
                             Handle
                           </div>
@@ -436,19 +505,18 @@ export default function AgentBuilder() {
                         emoji={agent?.emoji}
                         backgroundColor={agent?.backgroundColor}
                         isRounded={false}
-                        className="s-mb-2"
+                        className="s-mb-3"
                       />
                     </div>
-                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-2">
+                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-3">
                       <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
                         Description
                       </div>
                       <Input
-                        placeholder="Description"
                         containerClassName="s-flex-1"
                       />
                     </div>
-                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-2">
+                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-3">
                       <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
                         Access
                       </div>
@@ -456,7 +524,7 @@ export default function AgentBuilder() {
                         <DropdownMenuTrigger asChild>
                           <Button
                             size="sm"
-                            variant="outline"
+                            variant="ghost"
                             label={
                               accessStatus === "published"
                                 ? "Published"
@@ -488,13 +556,13 @@ export default function AgentBuilder() {
                         </div>
                       )}
                     </div>
-                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-2">
+                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-3">
                       <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
                         Edition
                       </div>
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="ghost"
                         label="Editors"
                         icon={UserGroupIcon}
                       />
@@ -502,7 +570,7 @@ export default function AgentBuilder() {
                         {editorNames.join(", ")}
                       </div>
                     </div>
-                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-2">
+                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-3">
                       <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
                         Tags
                       </div>
@@ -510,7 +578,7 @@ export default function AgentBuilder() {
                         <DropdownMenuTrigger asChild>
                           <Button
                             size="sm"
-                            variant="outline"
+                            variant="ghost"
                             label="Select tags"
                             icon={TagIcon}
                           />
@@ -562,7 +630,7 @@ export default function AgentBuilder() {
                 >
                   <div className="s-flex s-min-h-0 s-flex-1 s-overflow-y-auto s-p-3">
                     <ConversationContainer>
-                      {copilotConversationItems.map((item) => (
+                      {mockCopilotConversationItems.map((item) => (
                         <ConversationMessage
                           key={item.id}
                           type={item.type}
@@ -576,18 +644,35 @@ export default function AgentBuilder() {
                   </div>
                   <div className="s-p-4">
                     <div className="s-flex s-flex-col s-items-center s-gap-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        label="Suggest"
-                        onClick={() =>
-                          richTextAreaRef.current?.insertSuggestion({
-                            removedText: "Keep responses friendly but concise.",
-                            addedText:
-                              "Keep responses friendly, concise, and focused on next steps.",
-                          })
-                        }
-                      />
+                      <div className="s-flex s-flex-wrap s-items-center s-gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          label="Suggest"
+                          onClick={() => {
+                            richTextAreaRef.current?.applyRandomSuggestions(
+                              mockSuggestionChanges
+                            );
+                            setTimeout(checkForSuggestions, 100);
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          label="Add fake"
+                          onClick={() => {
+                            if (!mockInstructionCases.length) {
+                              return;
+                            }
+                            const index = Math.floor(
+                              Math.random() * mockInstructionCases.length
+                            );
+                            richTextAreaRef.current?.setContent(
+                              mockInstructionCases[index]
+                            );
+                          }}
+                        />
+                      </div>
                       <InputBar placeholder="Ask Copilot to help build your agent" />
                     </div>
                   </div>
@@ -753,6 +838,52 @@ export default function AgentBuilder() {
           />
         </SheetContent>
       </Sheet>
+
+      <Sheet 
+        open={selectedVersion !== null} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedVersion(null);
+          }
+        }}
+      >
+        <SheetContent 
+          size="xl" 
+          side="right"
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            (document.activeElement as HTMLElement)?.blur();
+          }}
+        >
+          <SheetHeader>
+            <SheetTitle>{selectedVersion?.date ?? "Version"}</SheetTitle>
+            <SheetDescription>
+              By: <span className="s-heading-ws">{selectedVersion?.author ?? "Unknown"}</span>
+            </SheetDescription>
+          </SheetHeader>
+          <SheetContainer>
+          <div className="s-flex s-flex-1 s-flex-col s-overflow-auto s-gap-3 s-tiems-end">
+            <div className="s-flex s-w-full s-justify-end">
+              <Button
+                label="Restore this version"
+                icon={HistoryIcon}
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedVersion(null)}
+              />
+            </div>
+          
+            <RichTextArea
+              readOnly
+              defaultValue={versionDiffContent}
+              className="s-min-h-[400px]"
+            />
+          </div>
+          </SheetContainer>
+        </SheetContent>
+      </Sheet>
+
+
     </div>
   );
 }

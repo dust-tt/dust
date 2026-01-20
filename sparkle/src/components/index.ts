@@ -116,6 +116,7 @@ export { FaviconIcon } from "./FaviconIcon";
 export { FilterChips } from "./FilterChips";
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
+export { HoveringBar } from "./HoveringBar";
 export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
 export type {
