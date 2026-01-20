@@ -297,9 +297,8 @@ describe("agent_copilot_context tools", () => {
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
       // Mock the helper to return null (no agent config ID).
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
       const tool = getToolByName("get_agent_feedback");
@@ -321,17 +320,15 @@ describe("agent_copilot_context tools", () => {
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
       // Mock the helper to return a valid agent config ID.
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "test-agent-id"
       );
 
       // Set up the mock to return an empty array of feedbacks.
-      const { getAgentFeedbacks } = await import(
-        "@app/lib/api/assistant/feedback"
-      );
+      const { getAgentFeedbacks } =
+        await import("@app/lib/api/assistant/feedback");
       const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
       mockedGetAgentFeedbacks.mockResolvedValueOnce({
         isOk: () => true,
@@ -367,16 +364,14 @@ describe("agent_copilot_context tools", () => {
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
       // Mock the helper to return a valid agent config ID.
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "test-agent-id"
       );
 
-      const { getAgentFeedbacks } = await import(
-        "@app/lib/api/assistant/feedback"
-      );
+      const { getAgentFeedbacks } =
+        await import("@app/lib/api/assistant/feedback");
       const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
       mockedGetAgentFeedbacks.mockResolvedValueOnce({
         isOk: () => true,
@@ -406,16 +401,14 @@ describe("agent_copilot_context tools", () => {
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
       // Mock the helper to return a valid agent config ID.
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "test-agent-id"
       );
 
-      const { getAgentFeedbacks } = await import(
-        "@app/lib/api/assistant/feedback"
-      );
+      const { getAgentFeedbacks } =
+        await import("@app/lib/api/assistant/feedback");
       const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
       mockedGetAgentFeedbacks.mockResolvedValueOnce({
         isOk: () => true,
@@ -442,16 +435,14 @@ describe("agent_copilot_context tools", () => {
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
       // Mock the helper to return a valid agent config ID.
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "test-agent-id"
       );
 
-      const { getAgentFeedbacks } = await import(
-        "@app/lib/api/assistant/feedback"
-      );
+      const { getAgentFeedbacks } =
+        await import("@app/lib/api/assistant/feedback");
       const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
       mockedGetAgentFeedbacks.mockResolvedValueOnce({
         isOk: () => true,
