@@ -14,6 +14,7 @@ import type {
 const EXCLUDED_MCP_SERVERS = new Set([
   // Hidden/auto servers (not user-facing)
   "agent_router",
+  "agent_management",
   "missing_action_catcher",
   "conversation_files",
   "data_sources_file_system",
