@@ -601,6 +601,65 @@ describe("createSpaceAndGroup", () => {
         expect(space.managementMode).toBe("manual");
       }
     });
+
+    it("should set global group kind to 'member' for unrestricted regular spaces", async () => {
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Unrestricted Regular Space",
+        isRestricted: false,
+        spaceKind: "regular",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const space = result.value;
+        expect(space.isRegularAndRestricted()).toBe(false);
+
+        // Verify global group was added with kind "member"
+        const groupSpace = await GroupSpaceModel.findOne({
+          where: {
+            vaultId: space.id,
+            workspaceId: workspace.id,
+            groupId: globalGroup.id,
+          },
+        });
+        expect(groupSpace).toBeDefined();
+        expect(groupSpace?.kind).toBe("member");
+      }
+    });
+
+    it("should set global group kind to 'project_viewer' for unrestricted project spaces", async () => {
+      vi.spyOn(
+        await import("@app/lib/api/projects"),
+        "createDataSourceAndConnectorForProject"
+      ).mockResolvedValue(new Ok(undefined));
+
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Unrestricted Project Space",
+        isRestricted: false,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const space = result.value;
+        expect(space.kind).toBe("project");
+
+        // Verify global group was added with kind "project_viewer"
+        const groupSpace = await GroupSpaceModel.findOne({
+          where: {
+            vaultId: space.id,
+            workspaceId: workspace.id,
+            groupId: globalGroup.id,
+          },
+        });
+        expect(groupSpace).toBeDefined();
+        expect(groupSpace?.kind).toBe("project_viewer");
+      }
+    });
   });
 
   describe("project metadata lifecycle", () => {
