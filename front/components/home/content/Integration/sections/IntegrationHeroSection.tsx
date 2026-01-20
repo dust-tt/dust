@@ -10,6 +10,7 @@ import {
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 
 import type { IntegrationBase } from "../types";
+import { getIntegrationTypeLabel } from "../types";
 
 interface IntegrationHeroSectionProps {
   integration: IntegrationBase;
@@ -23,12 +24,7 @@ export function IntegrationHeroSection({
   seoSubtitle,
 }: IntegrationHeroSectionProps) {
   const IconComponent = getIcon(integration.icon);
-  const typeLabel =
-    integration.type === "both"
-      ? "Tools & Data Connection"
-      : integration.type === "mcp_server"
-        ? "Tools"
-        : "Data Connection";
+  const typeLabel = getIntegrationTypeLabel(integration.type);
 
   return (
     <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-white">

@@ -214,14 +214,14 @@ function getConnectorIcon(provider: ConnectorProvider): InternalAllowedIconType 
     slack: "SlackLogo",
     slack_bot: "SlackLogo",
     github: "GithubLogo",
-    intercom: "IntercomLogo",
+    intercom: "ActionMegaphoneIcon", // No IntercomLogo available
     microsoft: "MicrosoftLogo",
     microsoft_bot: "MicrosoftLogo",
     snowflake: "SnowflakeLogo",
     zendesk: "ZendeskLogo",
-    bigquery: "BigQueryLogo",
+    bigquery: "ActionTableIcon", // No BigQueryLogo available
     salesforce: "SalesforceLogo",
-    gong: "GongLogo",
+    gong: "ActionMegaphoneIcon", // No GongLogo available
     webcrawler: "ActionGlobeAltIcon",
     discord_bot: "ActionMegaphoneIcon",
   };
@@ -381,22 +381,15 @@ export function getRelatedIntegrations(
 ): IntegrationBase[] {
   const registry = buildIntegrationRegistry();
 
-  // Find integrations in the same category, excluding the current one
-  const sameCategory = registry.filter(
-    (i) => i.category === integration.category && i.slug !== integration.slug
-  );
+  // Filter out the current integration, then prioritize same category
+  const candidates = registry.filter((i) => i.slug !== integration.slug);
 
-  // If not enough, add from other categories
-  if (sameCategory.length >= limit) {
-    return sameCategory.slice(0, limit);
-  }
-
-  const others = registry.filter(
-    (i) =>
-      i.category !== integration.category &&
-      i.slug !== integration.slug &&
-      !sameCategory.includes(i)
-  );
-
-  return [...sameCategory, ...others].slice(0, limit);
+  // Sort by category match (same category first), then take limit
+  return candidates
+    .sort((a, b) => {
+      const aMatch = a.category === integration.category ? 0 : 1;
+      const bMatch = b.category === integration.category ? 0 : 1;
+      return aMatch - bMatch;
+    })
+    .slice(0, limit);
 }
