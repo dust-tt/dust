@@ -13,6 +13,7 @@ import {
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
+import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/metadata";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
@@ -1829,13 +1830,7 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
-    tools_stakes: {
-      get_available_models: "never_ask",
-      get_available_skills: "never_ask",
-      get_available_tools: "never_ask",
-      get_agent_feedback: "never_ask",
-      get_agent_insights: "never_ask",
-    },
+    metadata: AGENT_COPILOT_CONTEXT_SERVER,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
