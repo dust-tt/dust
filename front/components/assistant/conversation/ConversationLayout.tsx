@@ -180,7 +180,7 @@ const ConversationLayoutContent = ({
 
 interface ConversationInnerLayoutProps {
   children: React.ReactNode;
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   owner: LightWorkspaceType;
   conversationError: ConversationError | null;
   activeConversationId: string | null;

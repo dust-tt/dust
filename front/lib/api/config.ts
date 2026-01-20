@@ -14,9 +14,12 @@ const config = {
     if (override) {
       return override;
     }
-    return EnvironmentConfig.getEnvVariable(
-      "NEXT_PUBLIC_DUST_CLIENT_FACING_URL"
-    );
+
+    // Using process.env here to make sure the function is usable on the client side.
+    if (!process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL) {
+      throw new Error("NEXT_PUBLIC_DUST_CLIENT_FACING_URL is not set");
+    }
+    return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   },
   // For OAuth/WorkOS redirects. Allows overriding the redirect base URL separately
   // from NEXT_PUBLIC_DUST_CLIENT_FACING_URL. Falls back to getClientFacingUrl() when not set.

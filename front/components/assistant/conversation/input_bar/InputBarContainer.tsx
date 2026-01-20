@@ -39,10 +39,12 @@ import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import type {
+  ConversationWithoutContentType,
   DataSourceViewContentNode,
   LightAgentConfigurationType,
   RichAgentMention,
   RichMention,
+  SpaceType,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -68,7 +70,8 @@ export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
   attachedNodes: DataSourceViewContentNode[];
-  conversationId?: string | null;
+  conversation?: ConversationWithoutContentType;
+  space?: SpaceType;
   disableAutoFocus: boolean;
   disableInput: boolean;
   fileUploaderService: FileUploaderService;
@@ -93,7 +96,8 @@ const InputBarContainer = ({
   allAgents,
   onEnterKeyDown,
   owner,
-  conversationId,
+  conversation,
+  space,
   selectedAgent,
   stickyMentions,
   actions,
@@ -281,7 +285,7 @@ const InputBarContainer = ({
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
     owner,
-    conversationId,
+    conversationId: conversation?.sId,
     onInlineText: handleInlineText,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
@@ -420,6 +424,18 @@ const InputBarContainer = ({
     disabled: !nodeOrUrlCandidate,
   });
 
+  const spaceIds = useMemo(() => {
+    // We are having a conversation within a specific space, so we only allow datasources/tools from that space and the global space.
+    // This is a project v1 limitation.
+    if (space) {
+      return spaces
+        .filter((s) => s.sId === space.sId || s.kind === "global")
+        .map((s) => s.sId);
+    } else {
+      return spaces.map((s) => s.sId);
+    }
+  }, [spaces, space]);
+
   const spacesMap = useMemo(
     () => Object.fromEntries(spaces?.map((space) => [space.sId, space]) || []),
     [spaces]
@@ -434,7 +450,7 @@ const InputBarContainer = ({
           owner,
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,
-          spaceIds: spaces.map((s) => s.sId),
+          spaceIds,
           prioritizeSpaceAccess: true,
         }
       : {
@@ -445,7 +461,7 @@ const InputBarContainer = ({
           owner,
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,
-          spaceIds: spaces.map((s) => s.sId),
+          spaceIds,
           prioritizeSpaceAccess: true,
         }
   );
@@ -524,7 +540,7 @@ const InputBarContainer = ({
     if (draft && editorService.isEmpty()) {
       editorService.setContent(draft.text);
     }
-  }, [conversationId, disableTextInput, editor, editorService, getDraft]);
+  }, [conversation, editor, editorService, getDraft]);
 
   useHandleMentions(
     editorService,
@@ -694,7 +710,8 @@ const InputBarContainer = ({
                         attachedNodes={attachedNodes}
                         disabled={disableTextInput}
                         buttonSize={buttonSize}
-                        conversationId={conversationId}
+                        conversation={conversation}
+                        space={space}
                       />
                     </>
                   )}
