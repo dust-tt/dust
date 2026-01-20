@@ -14,7 +14,8 @@ export type IntegrationCategory =
   | "support"
   | "security"
   | "ai"
-  | "transcripts";
+  | "transcripts"
+  | "recruiting";
 
 export interface IntegrationTool {
   name: string;

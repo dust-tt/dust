@@ -70,17 +70,19 @@ const MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   confluence: "development",
   val_town: "development",
   http_client: "development",
-  // CRM
+  // CRM & Sales
   salesforce: "crm",
   hubspot: "crm",
-  ashby: "crm",
   salesloft: "crm",
+  // Recruiting
+  ashby: "recruiting",
   // Productivity
   notion: "productivity",
   monday: "productivity",
   google_sheets: "productivity",
   microsoft_excel: "productivity",
   slab: "productivity",
+  productboard: "productivity",
   // Email
   gmail: "email",
   outlook: "email",
@@ -154,6 +156,7 @@ const MCP_DISPLAY_NAMES: Record<string, string> = {
   val_town: "Val Town",
   front: "Front",
   databricks: "Databricks",
+  productboard: "Productboard",
 };
 
 // Connector display names override
