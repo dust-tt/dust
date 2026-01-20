@@ -47,7 +47,6 @@ export function WebhookSourceGithubDetails({
             `https://github.com/${repo.fullName}/settings/hooks`,
           ]),
         ].map(([item, link]) => (
-          // @ts-expect-error TODO: ?
           <Chip
             key={item}
             label={item}
