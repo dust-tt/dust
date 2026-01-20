@@ -667,7 +667,7 @@ const InboxConversationList = ({
   return (
     <NavigationListCollapsibleSection
       label={dateLabel}
-      className="border-b border-t border-border bg-background/50 px-2 pb-2 dark:bg-background-night/50"
+      className="border-b border-t border-border bg-background/50 px-2 pb-2 dark:border-border-night dark:bg-background-night/50"
       defaultOpen
       actionOnHover={false}
       action={
