@@ -47,7 +47,9 @@ Skills are NOT similar if they only share:
 # Instructions
 Return skill IDs that would cause confusion about which skill to use.
 Prefer precision over recall; only return truly overlapping skills.
-An empty array is the correct answer when no duplicates exist.
+
+IMPORTANT: Returning an empty array is the expected outcome in most cases.
+Only return skill IDs when you are confident there is a genuine duplicate. When in doubt, return an empty array.
 
 # Examples
 ## Example 1 - Clear duplicates
