@@ -429,7 +429,6 @@ export async function runModelActivity(
     const { isRetryable, message, type } = errorInfo;
 
     if (!isRetryable || autoRetryCount >= MAX_AUTO_RETRY) {
-      console.log("✅✅✅✅✅ errorInfo", errorInfo);
       await publishAgentError(
         {
           code: "multi_actions_error",
