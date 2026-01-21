@@ -12,6 +12,7 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@app/types";
+import { isString } from "@app/types";
 
 interface ProjectsListProps {
   owner: WorkspaceType;
@@ -35,9 +36,9 @@ const ProjectListItem = memo(
 
     const spacePath = getSpaceConversationsRoute(owner.sId, space.sId);
 
-    const currentConversationId =
-const { cId } = router.query;
-const currentConversationId = isString(cId) ? cId : undefined;
+    const { cId } = router.query;
+
+    const currentConversationId = isString(cId) ? cId : undefined;
 
     const conversationIds = new Set(
       conversations.map((conversation) => conversation.sId)
