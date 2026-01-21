@@ -82,7 +82,7 @@ RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
     FRONT_DATABASE_URI="sqlite:foo.sqlite" \
     NODE_OPTIONS="--max-old-space-size=8192" \
     npm run build -- --no-lint && \
-    if [ -n "$DATADOG_API_KEY" ]; then \
+    if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then \
         export DATADOG_SITE=datadoghq.eu DATADOG_API_KEY=$DATADOG_API_KEY; \
         npx --yes @datadog/datadog-ci sourcemaps upload ./.next/static \
         --minified-path-prefix=/_next/static/ \
