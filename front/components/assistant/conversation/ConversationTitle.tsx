@@ -27,6 +27,12 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   });
   const router = useAppRouter();
 
+  const title = conversation?.title
+    ? spaceInfo?.name
+      ? `${spaceInfo.name} - ${conversation.title}`
+      : conversation.title
+    : "";
+
   const {
     isMenuOpen,
     menuTriggerPosition,
@@ -65,8 +71,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
         </div>
         <div className="flex min-w-0 flex-row items-center gap-4 text-primary dark:text-primary-night">
           <div className="dd-privacy-mask min-w-0 overflow-hidden truncate text-base font-normal text-muted-foreground">
-            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-            {conversation?.title || ""}
+            {title}
           </div>
         </div>
         <div className="flex items-center gap-2">

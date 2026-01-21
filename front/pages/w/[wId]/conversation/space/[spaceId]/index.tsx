@@ -27,7 +27,10 @@ import config from "@app/lib/api/config";
 import type { DustError } from "@app/lib/error";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { useSpaceConversations } from "@app/lib/swr/conversations";
+import {
+  useSpaceConversations,
+  useSpaceConversationsSummary,
+} from "@app/lib/swr/conversations";
 import { useGroups } from "@app/lib/swr/groups";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -144,6 +147,10 @@ export default function SpaceConversations({
       workspaceId: owner.sId,
       spaceId: spaceId,
     });
+
+  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    workspaceId: owner.sId,
+  });
 
   const planAllowsSCIM = subscription.plan.limits.users.isSCIMAllowed;
   const { groups } = useGroups({
@@ -268,6 +275,29 @@ export default function SpaceConversations({
           { revalidate: false }
         );
 
+        await mutateSpaceSummary(
+          (currentData) => {
+            const newSpaceSummary = currentData?.summary.map((spaceSummary) => {
+              if (spaceSummary.space.sId === spaceId) {
+                return {
+                  ...spaceSummary,
+                  conversations: [
+                    ...spaceSummary.conversations,
+                    conversationRes.value,
+                  ],
+                };
+              }
+              return spaceSummary;
+            });
+            return newSpaceSummary
+              ? { ...currentData, summary: newSpaceSummary }
+              : currentData;
+          },
+          {
+            revalidate: false,
+          }
+        );
+
         return new Ok(undefined);
       }
     },
@@ -280,6 +310,7 @@ export default function SpaceConversations({
       router,
       mutateConversations,
       createConversationWithMessage,
+      mutateSpaceSummary,
     ]
   );
 

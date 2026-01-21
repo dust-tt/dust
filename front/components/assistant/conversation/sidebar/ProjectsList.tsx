@@ -7,7 +7,11 @@ import { getSpaceIcon } from "@app/lib/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getSpaceConversationsRoute } from "@app/lib/utils/router";
 import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
-import type { SpaceType, WorkspaceType } from "@app/types";
+import type {
+  ConversationWithoutContentType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
 
 interface ProjectsListProps {
   owner: WorkspaceType;
@@ -17,10 +21,12 @@ interface ProjectsListProps {
 const ProjectListItem = memo(
   ({
     space,
+    conversations,
     unreadCount,
     owner,
   }: {
     space: SpaceType;
+    conversations: ConversationWithoutContentType[];
     unreadCount: number;
     owner: WorkspaceType;
   }) => {
@@ -29,10 +35,22 @@ const ProjectListItem = memo(
 
     const spacePath = getSpaceConversationsRoute(owner.sId, space.sId);
 
+    const currentConversationId =
+      typeof router.query.cId === "string" ? router.query.cId : undefined;
+
+    const conversationIds = new Set(
+      conversations.map((conversation) => conversation.sId)
+    );
+
+    const isSpaceSelected =
+      router.asPath.startsWith(spacePath) ||
+      (currentConversationId !== undefined &&
+        conversationIds.has(currentConversationId));
+
     return (
       <NavigationListItem
         icon={getSpaceIcon(space)}
-        selected={router.asPath.startsWith(spacePath)}
+        selected={isSpaceSelected}
         label={space.name}
         count={unreadCount > 0 ? unreadCount : undefined}
         onClick={async () => {
@@ -68,11 +86,12 @@ export function ProjectsList({ owner, summary }: ProjectsListProps) {
 
   return (
     <>
-      {summary.map(({ space, unreadConversations }) => (
+      {summary.map(({ space, unreadConversations, conversations }) => (
         <ProjectListItem
           key={space.sId}
           space={space}
           unreadCount={unreadConversations.length}
+          conversations={conversations}
           owner={owner}
         />
       ))}
