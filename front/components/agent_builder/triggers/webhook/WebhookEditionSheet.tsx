@@ -10,11 +10,11 @@ import {
   ExclamationCircleIcon,
   Input,
   Label,
+  LinkWrapper,
   Separator,
   SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
 import React, { useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -119,14 +119,14 @@ function WebhookEditionExecutionLimit({
         {executionMode === "fair_use" ? "fair use" : "programmatic usage"}{" "}
         quota.
         <br /> (
-        <Link
+        <LinkWrapper
           href="https://docs.dust.tt/update/docs/rate-limiting#/"
           target="_blank"
           rel="noreferrer"
           className="underline"
         >
           Learn more
-        </Link>
+        </LinkWrapper>
         )
       </ContentMessage>
     </div>
