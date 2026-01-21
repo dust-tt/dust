@@ -262,6 +262,15 @@ export default function AgentBuilder() {
   const allotmentRef = useRef<React.ComponentRef<typeof Allotment>>(null);
   const wasRightPanelOpen = useRef(isRightPanelOpen);
 
+  const initialInstruction = useMemo(() => {
+    if (!mockInstructionCases.length) {
+      return "";
+    }
+    return mockInstructionCases[
+      Math.floor(Math.random() * mockInstructionCases.length)
+    ];
+  }, []);
+
   const handleInstructionTextChange = useCallback(() => {
     if (!hasInstructionChangeRef.current) {
       hasInstructionChangeRef.current = true;
@@ -287,6 +296,15 @@ export default function AgentBuilder() {
       allotmentRef.current?.resize([100 - rightPercent, rightPercent]);
     });
   }, [isRightPanelOpen, rightPanelRatio]);
+
+  useEffect(() => {
+    if (!initialInstruction) {
+      return;
+    }
+    hasInstructionChangeRef.current = false;
+    setIsInstructionDirty(false);
+    richTextAreaRef.current?.setContent(initialInstruction);
+  }, [initialInstruction]);
 
   // Generate diff content for version history preview
   const versionDiffContent = useMemo(() => {
