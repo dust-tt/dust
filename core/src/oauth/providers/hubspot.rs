@@ -60,19 +60,46 @@ impl Provider for HubspotConnectionProvider {
             .as_u64()
             .ok_or_else(|| anyhow!("Missing expires_in in response"))?;
 
+        let access_token = result["access_token"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing access_token in response"))?;
+
+        // Get the hub_id and hub_domain by making a request to the access token info endpoint
+        let info_req = self
+            .reqwest_client()
+            .get(&format!("https://api.hubapi.com/oauth/v1/access-tokens/{}", access_token));
+
+        let info_result = execute_request(ConnectionProvider::Hubspot, info_req)
+            .await
+            .map_err(|e| self.handle_provider_request_error(e))?;
+
+        let hub_id = info_result["hub_id"]
+            .as_u64()
+            .ok_or_else(|| anyhow!("Missing hub_id in access token info response"))?;
+
+        let hub_domain = info_result["hub_domain"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing hub_domain in access token info response"))?;
+
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             code: code.to_string(),
-            access_token: result["access_token"]
-                .as_str()
-                .ok_or_else(|| anyhow!("Missing access_token in response"))?
-                .to_string(),
+            access_token: access_token.to_string(),
             access_token_expiry: Some(
                 crate::utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
             ),
             refresh_token: result["refresh_token"].as_str().map(|s| s.to_string()),
             raw_json: result,
-            extra_metadata: None,
+            extra_metadata: Some(serde_json::Map::from_iter([
+                (
+                    "hub_id".to_string(),
+                    serde_json::Value::Number(serde_json::Number::from(hub_id)),
+                ),
+                (
+                    "hub_domain".to_string(),
+                    serde_json::Value::String(hub_domain.to_string()),
+                ),
+            ])),
         })
     }
 
