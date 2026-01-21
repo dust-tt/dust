@@ -7,6 +7,7 @@ export const UkgReadyEmployeeSchema = z
     username: z.string().optional(),
     first_name: z.string(),
     last_name: z.string(),
+    email: z.string().optional(),
   })
   .passthrough();
 

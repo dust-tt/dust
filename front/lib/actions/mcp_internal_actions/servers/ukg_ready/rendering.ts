@@ -9,16 +9,13 @@ import type {
 
 export function renderCurrentEmployee(employee: UkgReadyEmployee): string {
   const name = `${employee.first_name} ${employee.last_name}`;
-  const employeeWithEmail = employee as UkgReadyEmployee & {
-    email?: string;
-  };
   const details = [
     `**Your Employee Information:**`,
     ``,
     `- **Name:** ${name}`,
     `- **Employee ID:** ${employee.employee_id}`,
     employee.username ? `- **Username:** ${employee.username}` : "",
-    employeeWithEmail.email ? `- **Email:** ${employeeWithEmail.email}` : "",
+    employee.email ? `- **Email:** ${employee.email}` : "",
   ].filter(Boolean);
 
   return details.join("\n");
