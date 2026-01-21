@@ -623,7 +623,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         const memberGroupSpace = await GroupSpaceMemberResource.fetchBySpace(
           auth,
           {
-            spaceId: this.id,
+            space: this,
             transaction: t,
           }
         );
@@ -672,7 +672,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             // Fetch existing editor group-space relationship
             editorGroupSpace = await GroupSpaceEditorResource.fetchBySpace(
               this.workspaceId,
-              this.id,
+              this,
               t
             );
 
@@ -698,7 +698,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           // No editors specified, clear the editor group
           const editorGroupSpace = await GroupSpaceEditorResource.fetchBySpace(
             this.workspaceId,
-            this.id,
+            this,
             t
           );
 
@@ -817,7 +817,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     // Get the GroupSpaceMemberResource for the member group
     const memberGroupSpace = await GroupSpaceMemberResource.fetchBySpace(auth, {
-      spaceId: this.id,
+      space: this,
     });
 
     if (!memberGroupSpace) {
@@ -876,7 +876,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     // Get the GroupSpaceMemberResource for the member group
     const memberGroupSpace = await GroupSpaceMemberResource.fetchBySpace(auth, {
-      spaceId: this.id,
+      space: this,
     });
 
     if (!memberGroupSpace) {

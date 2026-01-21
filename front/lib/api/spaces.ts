@@ -466,7 +466,7 @@ export async function createSpaceAndGroup(
     // Handle member-based space creation
     if (params.managementMode === "manual") {
       let editorGroup: GroupResource | undefined;
-      // Handle editor group if editorIds are provided
+      // Handle editor group if editorIds are provided (for project spaces only)
       if (
         space.isProject() &&
         params.editorIds &&
