@@ -137,35 +137,25 @@ function createServer(
         { file_name, mime_type, mode, source, description },
         { sendNotification, _meta }
       ) => {
-        const { conversation, agentConfiguration } =
-          agentLoopContext?.runContext ?? {};
+        const { runContext } = agentLoopContext ?? {};
 
-        if (!conversation) {
+        if (!runContext) {
           return new Err(
             new MCPError(
-              "Conversation ID is required to create a client executable file."
+              "Agent loop context is required to use template nodes.",
+              { tracked: false }
             )
           );
         }
 
+        const { conversation, agentConfiguration } = runContext;
+
         let fileContent: string;
 
-        // Fetch template content if mode is 'template'
         if (mode === "template") {
-          if (!agentLoopContext?.runContext) {
-            return new Err(
-              new MCPError(
-                "Agent loop context is required to use template nodes.",
-                { tracked: false }
-              )
-            );
-          }
-
-          const templateResult = await fetchTemplateContent(
-            auth,
-            agentLoopContext.runContext,
-            { templateNodeId: source }
-          );
+          const templateResult = await fetchTemplateContent(auth, runContext, {
+            templateNodeId: source,
+          });
 
           if (templateResult.isErr()) {
             return templateResult;
@@ -173,7 +163,6 @@ function createServer(
 
           fileContent = templateResult.value;
         } else {
-          // Inline content path (mode === 'inline')
           fileContent = source;
         }
 
