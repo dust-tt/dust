@@ -121,12 +121,13 @@ export function AgentDetails({
   );
 
   const showPerformanceTabs =
-    (agentConfiguration?.canEdit ?? isAdmin(owner)) &&
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    (agentConfiguration?.canEdit || isAdmin(owner)) &&
     agentId != null &&
     !isGlobalAgent;
 
   const showInsightsTabs =
-    agentId != null && (isBuilder(owner) ?? agentConfiguration?.canEdit);
+    agentId != null && (isBuilder(owner) || agentConfiguration?.canEdit);
 
   const DescriptionSection = () => {
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];
@@ -240,7 +241,8 @@ export function AgentDetails({
               {showEditorsTabs ||
               showPerformanceTabs ||
               showAgentMemory ||
-              showInsightsTabs ? (
+              showInsightsTabs ||
+              showTriggersTabs ? (
                 <Tabs value={selectedTab}>
                   <TabsList border={false}>
                     <TabsTrigger

@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   editUserMessage,
+  postNewContentFragment,
   postUserMessage,
   retryAgentMessage,
   softDeleteAgentMessage,
 } from "@app/lib/api/assistant/conversation";
+import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/events";
 import { Authenticator } from "@app/lib/auth";
@@ -15,12 +17,15 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
   AgentMention,
   AgentMessageType,
+  ContentFragmentInputWithContentNode,
   ConversationType,
   LightAgentConfigurationType,
   MentionType,
@@ -28,9 +33,11 @@ import type {
 } from "@app/types";
 import {
   ConversationError,
+  isContentFragmentInputWithContentNode,
   isRichAgentMention,
   isRichUserMention,
   isUserMessageType,
+  Ok,
 } from "@app/types";
 
 // Mock the dependencies
@@ -41,6 +48,10 @@ vi.mock("@app/temporal/agent_loop/client", () => ({
 vi.mock("@app/lib/api/assistant/streaming/events", () => ({
   publishAgentMessagesEvents: vi.fn(),
   publishMessageEventsOnMessagePostOrEdit: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
+  getContentFragmentBlob: vi.fn(),
 }));
 
 // Mock rateLimiter from the utils module
@@ -1149,5 +1160,363 @@ describe("editUserMessage", () => {
         expect(userMention.id).toBe(mentionedUser.sId);
       }
     }
+  });
+});
+
+describe("postNewContentFragment", () => {
+  let auth: Authenticator;
+  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let conversation: ConversationType;
+  let agentConfig: LightAgentConfigurationType;
+  let globalSpace: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["globalSpace"];
+  let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
+  let anotherProjectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
+  let dsViewInProjectSpace: Awaited<
+    ReturnType<typeof DataSourceViewFactory.folder>
+  >;
+  let dsViewInGlobalSpace: Awaited<
+    ReturnType<typeof DataSourceViewFactory.folder>
+  >;
+  let dsViewInAnotherProjectSpace: Awaited<
+    ReturnType<typeof DataSourceViewFactory.folder>
+  >;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    auth = setup.authenticator;
+    workspace = setup.workspace;
+    globalSpace = setup.globalSpace;
+
+    // Create agent configuration
+    agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+
+    // Create project spaces
+    projectSpace = await SpaceFactory.project(workspace);
+    anotherProjectSpace = await SpaceFactory.project(workspace);
+
+    // Add user to the groups associated with the project spaces so they can access them
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    // SpaceFactory.project creates a group and associates it with the space
+    // We need to add the user to those groups
+    // The groups are available on space.groups
+    const projectSpaceGroup = projectSpace.groups.find(
+      (g) => g.kind === "regular"
+    );
+    const anotherProjectSpaceGroup = anotherProjectSpace.groups.find(
+      (g) => g.kind === "regular"
+    );
+
+    if (projectSpaceGroup) {
+      const addRes = await projectSpaceGroup.addMember(internalAdminAuth, {
+        user: userJson,
+      });
+      if (addRes.isErr()) {
+        throw new Error(
+          `Failed to add user to project space group: ${addRes.error.message}`
+        );
+      }
+    }
+
+    if (anotherProjectSpaceGroup) {
+      const addRes = await anotherProjectSpaceGroup.addMember(
+        internalAdminAuth,
+        {
+          user: userJson,
+        }
+      );
+      if (addRes.isErr()) {
+        throw new Error(
+          `Failed to add user to another project space group: ${addRes.error.message}`
+        );
+      }
+    }
+
+    // Refresh the auth object to update the groups list after adding the user to groups
+    // This ensures that when createConversation checks permissions, it sees the updated groups
+    await auth.refresh();
+
+    // Create data source views in different spaces
+    dsViewInProjectSpace = await DataSourceViewFactory.folder(
+      workspace,
+      projectSpace,
+      auth.user() ?? null
+    );
+    dsViewInGlobalSpace = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      auth.user() ?? null
+    );
+    dsViewInAnotherProjectSpace = await DataSourceViewFactory.folder(
+      workspace,
+      anotherProjectSpace,
+      auth.user() ?? null
+    );
+
+    vi.clearAllMocks();
+  });
+
+  describe("space restrictions for content fragments with content nodes", () => {
+    beforeEach(async () => {
+      // Mock getContentFragmentBlob to return a successful result for content nodes
+      // The title will be taken from the content fragment input
+      vi.mocked(getContentFragmentBlob).mockImplementation(async (auth, cf) => {
+        const nodeDataSourceViewId = isContentFragmentInputWithContentNode(cf)
+          ? (dsViewInProjectSpace?.id ?? 1)
+          : 1;
+        return new Ok({
+          contentType: "text/plain",
+          fileId: null,
+          nodeId: "test-node-id",
+          nodeDataSourceViewId,
+          nodeType: "document",
+          sourceUrl: null,
+          textBytes: null,
+          title: cf.title,
+        });
+      });
+    });
+
+    it("should allow content fragment from the same space as the conversation", async () => {
+      // Create a conversation in a project space
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentConfig.sId,
+          messagesCreatedAt: [],
+          spaceId: projectSpace.id,
+        }
+      );
+
+      const fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      conversation = fetchedConversationResult.value;
+
+      // Create a content fragment with a node from the same space
+      const contentFragment: ContentFragmentInputWithContentNode = {
+        title: "Test Content Fragment",
+        nodeId: "test-node-id",
+        nodeDataSourceViewId: dsViewInProjectSpace.sId,
+      };
+
+      const result = await postNewContentFragment(
+        auth,
+        conversation,
+        contentFragment,
+        {
+          username: auth.getNonNullableUser().username,
+          fullName: auth.getNonNullableUser().fullName(),
+          email: auth.getNonNullableUser().email,
+          profilePictureUrl: null,
+        }
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.title).toBe("Test Content Fragment");
+      }
+    });
+
+    it("should allow content fragment from the global space in a project conversation", async () => {
+      // Create a conversation in a project space
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentConfig.sId,
+          messagesCreatedAt: [],
+          spaceId: projectSpace.id,
+        }
+      );
+
+      const fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      conversation = fetchedConversationResult.value;
+
+      // Create a content fragment with a node from the global space
+      const contentFragment: ContentFragmentInputWithContentNode = {
+        title: "Test Content Fragment from Global Space",
+        nodeId: "test-node-id",
+        nodeDataSourceViewId: dsViewInGlobalSpace.sId,
+      };
+
+      const result = await postNewContentFragment(
+        auth,
+        conversation,
+        contentFragment,
+        {
+          username: auth.getNonNullableUser().username,
+          fullName: auth.getNonNullableUser().fullName(),
+          email: auth.getNonNullableUser().email,
+          profilePictureUrl: null,
+        }
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.title).toBe(
+          "Test Content Fragment from Global Space"
+        );
+      }
+    });
+
+    it("should reject content fragment from a different project space", async () => {
+      // Create a conversation in a project space
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentConfig.sId,
+          messagesCreatedAt: [],
+          spaceId: projectSpace.id,
+        }
+      );
+
+      const fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      conversation = fetchedConversationResult.value;
+
+      // Try to create a content fragment with a node from a different project space
+      const contentFragment: ContentFragmentInputWithContentNode = {
+        title: "Test Content Fragment from Another Space",
+        nodeId: "test-node-id",
+        nodeDataSourceViewId: dsViewInAnotherProjectSpace.sId,
+      };
+
+      const result = await postNewContentFragment(
+        auth,
+        conversation,
+        contentFragment,
+        {
+          username: auth.getNonNullableUser().username,
+          fullName: auth.getNonNullableUser().fullName(),
+          email: auth.getNonNullableUser().email,
+          profilePictureUrl: null,
+        }
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe(
+          "Only content fragments from the project space or the global space are allowed in a project conversation"
+        );
+      }
+      // Verify getContentFragmentBlob was not called since the space check failed first
+      expect(getContentFragmentBlob).not.toHaveBeenCalled();
+    });
+
+    it("should allow content fragment from any space when conversation has no spaceId", async () => {
+      // Create a conversation without a spaceId
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentConfig.sId,
+          messagesCreatedAt: [],
+          spaceId: undefined,
+        }
+      );
+
+      const fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      conversation = fetchedConversationResult.value;
+
+      // Create a content fragment with a node from any space (should be allowed)
+      const contentFragment: ContentFragmentInputWithContentNode = {
+        title: "Test Content Fragment",
+        nodeId: "test-node-id",
+        nodeDataSourceViewId: dsViewInAnotherProjectSpace.sId,
+      };
+
+      const result = await postNewContentFragment(
+        auth,
+        conversation,
+        contentFragment,
+        {
+          username: auth.getNonNullableUser().username,
+          fullName: auth.getNonNullableUser().fullName(),
+          email: auth.getNonNullableUser().email,
+          profilePictureUrl: null,
+        }
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.title).toBe("Test Content Fragment");
+      }
+    });
+
+    it("should return error when data source view is not found", async () => {
+      // Create a conversation in a project space
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentConfig.sId,
+          messagesCreatedAt: [],
+          spaceId: projectSpace.id,
+        }
+      );
+
+      const fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      conversation = fetchedConversationResult.value;
+
+      // Try to create a content fragment with a non-existent data source view
+      const contentFragment: ContentFragmentInputWithContentNode = {
+        title: "Test Content Fragment",
+        nodeId: "test-node-id",
+        nodeDataSourceViewId: "non-existent-ds-view-id",
+      };
+
+      const result = await postNewContentFragment(
+        auth,
+        conversation,
+        contentFragment,
+        {
+          username: auth.getNonNullableUser().username,
+          fullName: auth.getNonNullableUser().fullName(),
+          email: auth.getNonNullableUser().email,
+          profilePictureUrl: null,
+        }
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe("Data source view not found");
+      }
+      // Verify getContentFragmentBlob was not called since the data source view check failed first
+      expect(getContentFragmentBlob).not.toHaveBeenCalled();
+    });
   });
 });

@@ -1,6 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import set from "lodash/set";
-import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -42,6 +41,7 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
+import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useEditors } from "@app/lib/swr/agent_editors";
 import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
@@ -94,7 +94,7 @@ export default function AgentBuilder({
   const { mcpServerViews } = useMCPServerViewsContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
-  const router = useRouter();
+  const router = useAppRouter();
   const sendNotification = useSendNotification(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);

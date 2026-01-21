@@ -89,7 +89,7 @@ export const gleanConfig: CompetitorPageConfig = {
         feature: "20+ AI models",
         description: "GPT-4, Claude, Gemini, Mistral—choose per task",
         dust: "yes",
-        competitor: "yes",
+        competitor: "partial",
       },
       {
         feature: "Transparent pricing",
@@ -153,9 +153,9 @@ export const gleanConfig: CompetitorPageConfig = {
       },
       {
         icon: "sparkles",
-        title: "20+ AI models",
+        title: "Model agnostic from day one",
         description:
-          "Switch between GPT-4, Claude, Gemini, and Mistral as better models launch. Choose the best model for each task.",
+          "Switch between GPT-4, Claude, Gemini, and Mistral as better models launch. Glean only added multi-LLM support in December 2024 with cloud provider lock-in focus.",
       },
       {
         icon: "chart",

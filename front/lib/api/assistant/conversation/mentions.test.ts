@@ -3521,4 +3521,126 @@ describe("validateUserMention", () => {
 
     expect(participant).toBeNull();
   });
+
+  describe("project conversation approval", () => {
+    it("should add user to project space AND as participant when approving in project conversation", async () => {
+      // Create an admin user for this test (needs canAdministrate for addMembers)
+      const adminUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, adminUser, {
+        role: "admin",
+      });
+
+      // Create a project space
+      const projectSpace = await SpaceFactory.project(workspace);
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      // Add the admin user to the project space (they need to be a member/editor)
+      await projectSpace.addMembers(internalAdminAuth, {
+        userIds: [adminUser.sId],
+      });
+
+      // Create a fresh authenticator after adding user to space
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        workspace.sId
+      );
+
+      const refreshedProjectSpace = await SpaceResource.fetchById(
+        userAuth,
+        projectSpace.sId
+      );
+      expect(refreshedProjectSpace).not.toBeNull();
+
+      // Create a conversation in the project space
+      const projectConversation = await createConversation(userAuth, {
+        title: "Project Conversation",
+        visibility: "unlisted",
+        spaceId: refreshedProjectSpace!.id,
+      });
+
+      // Create a user who will be mentioned but is NOT a member of the project space
+      const mentionedUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, mentionedUser, {
+        role: "user",
+      });
+
+      // Create a user message that mentions the user
+      const userJson = adminUser.toJSON();
+      const userMessage = await withTransaction(async (transaction) => {
+        return createUserMessage(userAuth, {
+          conversation: projectConversation,
+          content: `Hello @${mentionedUser.sId}`,
+          metadata: {
+            type: "create",
+            user: userJson,
+            rank: 0,
+            context: {
+              username: userJson.username,
+              timezone: "UTC",
+              fullName: userJson.fullName,
+              email: userJson.email,
+              profilePictureUrl: userJson.image,
+              origin: "web",
+            },
+          },
+          transaction,
+        });
+      });
+
+      // Create the mention with status "pending"
+      await MentionModel.create({
+        messageId: userMessage.id,
+        userId: mentionedUser.id,
+        workspaceId: workspace.id,
+        status: "pending",
+      });
+
+      // Verify the mentioned user is NOT a member of the project space before
+      const isMemberBefore =
+        await refreshedProjectSpace!.isMember(mentionedUser);
+      expect(isMemberBefore).toBe(false);
+
+      // Approve the mention (userAuth has admin role and is a project member)
+      // Since this is a project conversation, approval automatically adds user to project space
+      const result = await validateUserMention(userAuth, {
+        conversationId: projectConversation.sId,
+        userId: mentionedUser.sId,
+        messageId: userMessage.sId,
+        approvalState: "approved",
+      });
+
+      expect(result.isOk()).toBe(true);
+
+      // Verify the mentioned user is now a member of the project space
+      const updatedProjectSpace = await SpaceResource.fetchById(
+        userAuth,
+        projectSpace.sId
+      );
+      const isMemberAfter = await updatedProjectSpace!.isMember(mentionedUser);
+      expect(isMemberAfter).toBe(true);
+
+      // Verify the mentioned user is now a participant
+      const participant = await ConversationParticipantModel.findOne({
+        where: {
+          workspaceId: workspace.id,
+          conversationId: projectConversation.id,
+          userId: mentionedUser.id,
+        },
+      });
+      expect(participant).not.toBeNull();
+      expect(participant?.action).toBe("subscribed");
+
+      // Verify the mention status is updated to "approved"
+      const mention = await MentionModel.findOne({
+        where: {
+          messageId: userMessage.id,
+          userId: mentionedUser.id,
+          workspaceId: workspace.id,
+        },
+      });
+      expect(mention?.status).toBe("approved");
+    });
+  });
 });

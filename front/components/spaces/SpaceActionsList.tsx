@@ -1,6 +1,5 @@
 import { DataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useRouter } from "next/router";
 import type { ParsedUrlQuery } from "querystring";
 import * as React from "react";
 
@@ -14,6 +13,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useAddMCPServerToSpace,
   useMCPServerViews,
@@ -51,7 +51,7 @@ export const SpaceActionsList = ({
   isAdmin,
   space,
 }: SpaceActionsListProps) => {
-  const router = useRouter();
+  const router = useAppRouter();
   const { q: searchParam } = useQueryParams(["q"]);
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const searchTerm = searchParam.value || "";

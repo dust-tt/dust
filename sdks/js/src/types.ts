@@ -684,7 +684,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesloft_tool"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
-  | "sidebar_v2"
   | "skills_similar_display"
   | "skills"
   | "slab_mcp"
@@ -693,6 +692,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_message_splitting"
   | "slideshow"
   | "snowflake_tool"
+  | "ukg_ready_mcp"
   | "usage_data_api"
   | "xai_feature"
 >();
@@ -2410,6 +2410,24 @@ export type GetSpaceConversationIdsResponseType = z.infer<
   typeof GetSpaceConversationIdsResponseSchema
 >;
 
+export const ProjectMetadataSchema = z.object({
+  sId: z.string(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  spaceId: z.string(),
+  description: z.string().nullable(),
+  urls: z.array(z.string()),
+  members: z.array(z.string()),
+});
+export type ProjectMetadataType = z.infer<typeof ProjectMetadataSchema>;
+
+export const GetSpaceMetadataResponseSchema = z.object({
+  metadata: ProjectMetadataSchema.nullable(),
+});
+export type GetSpaceMetadataResponseType = z.infer<
+  typeof GetSpaceMetadataResponseSchema
+>;
+
 const GetDocumentsResponseSchema = z.object({
   documents: z.array(CoreAPIDocumentSchema),
   total: z.number(),
@@ -2942,6 +2960,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SnowflakeLogo"
   | "StripeLogo"
   | "SupabaseLogo"
+  | "UkgLogo"
   | "ValTownLogo"
   | "VantaLogo"
   | "ZendeskLogo"

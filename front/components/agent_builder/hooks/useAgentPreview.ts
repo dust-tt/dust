@@ -113,9 +113,9 @@ export function useDraftConversation({
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
   const sendNotification = useSendNotification();
-  const [conversation, setConversation] = useState<ConversationType | null>(
-    null
-  );
+  const [conversation, setConversation] = useState<
+    ConversationType | undefined
+  >();
 
   const createConversationWithMessage = useCreateConversationWithMessage({
     owner,
@@ -193,7 +193,7 @@ export function useDraftConversation({
   );
 
   const resetConversation = useCallback(() => {
-    setConversation(null);
+    setConversation(undefined);
   }, [setConversation]);
 
   return {

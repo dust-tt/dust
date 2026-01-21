@@ -41,7 +41,7 @@ Validation is performed automatically when you create or edit files.
 receive warnings in the tool response, they include the exact \`old_string\` and
 \`expected_replacements\` count. You MUST fix these warnings using
 \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` with the provided values. If you receive
-multiple warnings, fix them sequentially with separate tool calls (not all in one message).
+multiple warnings, fix all of them in a single response using multiple edit tool calls.
 Common warning: "Forbidden Tailwind arbitrary value 'h-[600px]'" means you should replace with
 predefined classes like h-96 or use inline styles. Do NOT regenerate the entire file; use
 targeted edits only.

@@ -61,6 +61,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "skill_management", id: 1019 },
       { name: "schedules_management", id: 1020 },
       { name: "project_context_management", id: 1021 },
+      { name: "agent_copilot_context", id: 1022 },
     ];
     expect(
       autoInternalTools,

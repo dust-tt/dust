@@ -87,7 +87,13 @@ export function useSkillsWithRelations({
 
 export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
   const getSimilarSkills = useCallback(
-    async (naturalDescription: string, signal?: AbortSignal) => {
+    async (
+      naturalDescription: string,
+      options: {
+        excludeSkillId: string | null;
+        signal?: AbortSignal;
+      }
+    ) => {
       const response: GetSimilarSkillsResponseBody = await fetcher(
         `/api/w/${owner.sId}/skills/similar`,
         {
@@ -95,8 +101,11 @@ export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ naturalDescription }),
-          signal,
+          body: JSON.stringify({
+            naturalDescription,
+            excludeSkillId: options?.excludeSkillId ?? undefined,
+          }),
+          signal: options?.signal,
         }
       );
       return new Ok(response.similar_skills);

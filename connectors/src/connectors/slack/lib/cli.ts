@@ -490,9 +490,10 @@ export const slack = async ({
       if (!args.channelId) {
         throw new Error("Missing --channelId argument");
       }
-      const connector = await ConnectorModel.findOne({
-        where: { workspaceId: `${args.wId}`, type: "slack" },
-      });
+      const connector = await ConnectorResource.findByWorkspaceIdAndType(
+        args.wId,
+        "slack"
+      );
       if (!connector) {
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }

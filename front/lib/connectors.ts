@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import type { ConnectorProvider, ContentNodesViewType } from "@app/types";
 
@@ -278,6 +279,17 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
         ? url.pathname.slice(0, -1)
         : url.pathname;
       return { url: `${url.origin}${path}`, provider: "intercom" };
+    },
+  },
+  dust_project: {
+    matcher: (url: URL): boolean => {
+      return url.toString().startsWith(config.getClientFacingUrl());
+    },
+    urlNormalizer: (url: URL): UrlCandidate => {
+      const path = url.pathname.endsWith("/")
+        ? url.pathname.slice(0, -1)
+        : url.pathname;
+      return { url: `${url.origin}${path}`, provider: "dust_project" };
     },
   },
 };

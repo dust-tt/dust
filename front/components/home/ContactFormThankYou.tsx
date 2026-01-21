@@ -88,9 +88,9 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
     }
   }, [isQualified]);
 
-  // Load Default.com SDK and submit form data for qualified leads
+  // Load Default.com SDK and submit form data for all leads
   useEffect(() => {
-    if (!isQualified || defaultTriggeredRef.current) {
+    if (defaultTriggeredRef.current) {
       return;
     }
     defaultTriggeredRef.current = true;
@@ -157,7 +157,6 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
       }
     };
   }, [
-    isQualified,
     email,
     firstName,
     lastName,
@@ -180,9 +179,7 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
       </div>
 
       <p className="text-lg text-muted-foreground">
-        {isQualified
-          ? "We're excited to show you Dust. Book a time with our team below."
-          : "We've received your request. Our team will be in touch soon."}
+        We're excited to show you Dust. Book a time with our team below.
       </p>
     </div>
   );

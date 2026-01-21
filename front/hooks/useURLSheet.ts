@@ -1,8 +1,9 @@
-import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 
+import { useAppRouter } from "@app/lib/platform";
+
 export function useURLSheet(paramName: string) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {

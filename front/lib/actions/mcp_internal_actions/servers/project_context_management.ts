@@ -16,6 +16,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { FileUseCase, SupportedFileContentType } from "@app/types";
+import { normalizeError } from "@app/types";
 import {
   Err,
   isAllSupportedFileContentType,
@@ -107,9 +108,9 @@ function createServer(
           ]);
         } catch (error) {
           return new Err(
-            new MCPError(
-              `Failed to list project files: ${error instanceof Error ? error.message : String(error)}`
-            )
+            new MCPError("Failed to list project files", {
+              cause: normalizeError(error),
+            })
           );
         }
       }
@@ -282,9 +283,9 @@ function createServer(
           ]);
         } catch (error) {
           return new Err(
-            new MCPError(
-              `Failed to add file: ${error instanceof Error ? error.message : String(error)}`
-            )
+            new MCPError("Failed to add file", {
+              cause: normalizeError(error),
+            })
           );
         }
       }
@@ -441,9 +442,9 @@ function createServer(
           ]);
         } catch (error) {
           return new Err(
-            new MCPError(
-              `Failed to update file: ${error instanceof Error ? error.message : String(error)}`
-            )
+            new MCPError("Failed to update file", {
+              cause: normalizeError(error),
+            })
           );
         }
       }

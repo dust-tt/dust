@@ -80,12 +80,12 @@ Leverage react-hook-form's uncontrolled approach for native inputs:
 // (e.g., shadcn Select, custom date pickers, rich text editors)
 ```
 
-### 4. Use field.onChange, NOT setValue
+### 4. Use field.onChange for User Interactions, setValue for Programmatic Updates
 
-When working with `useController`, always use `field.onChange` from the render prop:
+When working with `useController`, use `field.onChange` for user interactions:
 
 ```typescript
-// Good: field.onChange
+// Good: field.onChange for user interactions
 const { field } = useController({ name: "status", control });
 
 <Select onValueChange={field.onChange} value={field.value}>
@@ -96,11 +96,57 @@ const { field } = useController({ name: "status", control });
   ))}
 </Select>
 
-// Bad: setValue (breaks controller lifecycle)
+// Bad: setValue for user interactions (breaks controller lifecycle)
 <Select onValueChange={(v) => setValue("status", v)} value={watch("status")}>
 ```
 
-Only use `setValue` for programmatic updates outside user interactions (e.g., setting values on mount, resetting based on external data).
+Use `setValue` (from `useFormContext`) for programmatic updates in effects:
+
+```typescript
+// Good: setValue for programmatic initialization
+const { setValue } = useFormContext();
+const { field } = useController({ name: "status" });
+
+useEffect(() => {
+  if (externalData) {
+    setValue("status", externalData.defaultStatus); // ✓ programmatic
+  }
+}, [externalData, setValue]);
+
+const handleUserSelect = (value: string) => {
+  field.onChange(value); // ✓ user interaction
+};
+```
+
+**CRITICAL: Never use field.onChange inside useEffect dependencies**
+
+`useController` returns new field objects on every render. Including them in `useEffect` dependencies while also calling `field.onChange()` inside the effect causes infinite loops:
+
+```typescript
+// BAD: Infinite loop - field objects change every render
+const { field } = useController({ name: "status" });
+
+useEffect(() => {
+  field.onChange(defaultValue); // Triggers re-render
+}, [field, defaultValue]); // field changes → effect runs → onChange → re-render → repeat
+
+// GOOD: Use setValue (stable) for programmatic updates in effects
+const { setValue } = useFormContext();
+const { field } = useController({ name: "status" });
+
+useEffect(() => {
+  setValue("status", defaultValue); // setValue is stable
+}, [defaultValue, setValue]);
+
+// User interactions still use field.onChange
+const handleSelect = (value: string) => {
+  field.onChange(value);
+};
+```
+
+**Summary:**
+- `field.onChange` → user interaction handlers (onClick, onSelect, etc.)
+- `setValue` → programmatic updates in useEffect or callbacks based on external data
 
 ### 5. Always Provide Default Values
 

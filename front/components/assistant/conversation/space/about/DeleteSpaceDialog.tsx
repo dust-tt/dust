@@ -10,9 +10,9 @@ import {
   Spinner,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import React, { useCallback, useState } from "react";
 
+import { useAppRouter } from "@app/lib/platform";
 import { getSpaceName } from "@app/lib/spaces";
 import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import { useDeleteSpace } from "@app/lib/swr/spaces";
@@ -25,7 +25,7 @@ interface DeleteSpaceDialogProps {
 }
 
 export function DeleteSpaceDialog({ owner, space }: DeleteSpaceDialogProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const doDelete = useDeleteSpace({ owner, force: true });
   const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({

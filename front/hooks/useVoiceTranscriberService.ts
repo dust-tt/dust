@@ -14,6 +14,12 @@ import { normalizeError } from "@app/types";
 // 60 seconds * 48000bps / 8 => 360 000 bit, round up to 400kB
 const MAXIMUM_FILE_SIZE_FOR_INPUT_BAR_IN_BYTES = 400 * 1024;
 
+type VoiceTranscriberStatus =
+  | "idle"
+  | "authorizing_microphone"
+  | "recording"
+  | "transcribing";
+
 interface UseVoiceTranscriberServiceParams {
   owner: LightWorkspaceType;
   onTranscribeDelta?: (delta: string) => void;
@@ -22,16 +28,22 @@ interface UseVoiceTranscriberServiceParams {
   fileUploaderService: FileUploaderService;
 }
 
+export interface VoiceTranscriberService {
+  status: VoiceTranscriberStatus;
+  level: number;
+  elapsedSeconds: number;
+  startRecording: () => Promise<void>;
+  stopRecording: () => Promise<void>;
+}
+
 export function useVoiceTranscriberService({
   owner,
   onTranscribeDelta,
   onTranscribeComplete,
   onError,
   fileUploaderService,
-}: UseVoiceTranscriberServiceParams) {
-  const [status, setStatus] = useState<
-    "idle" | "authorizing_microphone" | "recording" | "transcribing"
-  >("idle");
+}: UseVoiceTranscriberServiceParams): VoiceTranscriberService {
+  const [status, setStatus] = useState<VoiceTranscriberStatus>("idle");
   const [level, setLevel] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -295,13 +307,9 @@ export function useVoiceTranscriberService({
     : quackingVoiceTranscriptService;
 }
 
-export type VoiceTranscriberService = ReturnType<
-  typeof useVoiceTranscriberService
->;
-
 // Helpers ---------------------------------------------------------------------
 
-const quackingVoiceTranscriptService = {
+const quackingVoiceTranscriptService: VoiceTranscriberService = {
   status: "idle",
   level: 0,
   elapsedSeconds: 0,

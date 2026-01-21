@@ -1,5 +1,4 @@
-import { Chip } from "@dust-tt/sparkle";
-import Link from "next/link";
+import { Chip, LinkWrapper } from "@dust-tt/sparkle";
 
 import {
   PokeTable,
@@ -88,26 +87,26 @@ export function WorkspaceInfoTable({
             <PokeTableRow>
               <PokeTableCell>Workspace Health</PokeTableCell>
               <PokeTableCell>
-                <Link
+                <LinkWrapper
                   href={`https://metabase.dust.tt/dashboard/34-snowflake-workspace-health?end_date=2030-12-31&start_date=2024-01-01&tab=30-executive-summary&workspace_size_difference_margin=0.2&workspacesid=${owner.sId}`}
                   target="_blank"
                   className="text-xs text-highlight-400"
                 >
                   Metabase
-                </Link>
+                </LinkWrapper>
               </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>WorkOS dashboard</PokeTableCell>
               <PokeTableCell>
                 {owner.workOSOrganizationId && (
-                  <Link
+                  <LinkWrapper
                     href={`https://dashboard.workos.com/${workosEnvironmentId}/organizations/${owner.workOSOrganizationId}`}
                     target="_blank"
                     className="text-xs text-highlight-400"
                   >
                     {owner.workOSOrganizationId}
-                  </Link>
+                  </LinkWrapper>
                 )}
               </PokeTableCell>
             </PokeTableRow>

@@ -7,9 +7,9 @@ import {
   DropdownMenuTrigger,
   Label,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
+import { useAppRouter } from "@app/lib/platform";
 import type { LightWorkspaceType, UserTypeWithWorkspaces } from "@app/types";
 
 interface WorkspacePickerRadioGroupProps {
@@ -22,7 +22,7 @@ export const WorkspacePickerRadioGroup = ({
   workspace,
 }: WorkspacePickerRadioGroupProps) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
 
   return (
     <DropdownMenuRadioGroup value={workspace.sId}>

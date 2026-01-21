@@ -14,7 +14,6 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
 
   declare description: string | null;
   declare urls: string[];
-  declare tags: string[];
 }
 
 ProjectMetadataModel.init(
@@ -34,11 +33,6 @@ ProjectMetadataModel.init(
       allowNull: true,
     },
     urls: {
-      type: DataTypes.JSONB,
-      allowNull: false,
-      defaultValue: [],
-    },
-    tags: {
       type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: [],

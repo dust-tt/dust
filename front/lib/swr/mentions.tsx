@@ -117,7 +117,7 @@ export function useDismissMention({
           sendNotification({
             type: "error",
             title: `Error dismissing mention`,
-            description: errorData.message || "An error occurred",
+            description: errorData.message ?? "An error occurred",
           });
           return false;
         }
@@ -140,10 +140,12 @@ export function useMentionValidation({
   workspaceId,
   conversationId,
   messageId,
+  isProjectConversation,
 }: {
   workspaceId: string;
   conversationId: string;
   messageId: string;
+  isProjectConversation: boolean;
 }) {
   const sendNotification = useSendNotification();
 
@@ -169,10 +171,11 @@ export function useMentionValidation({
 
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
+          const actionLabel = action === "approved" ? "approving" : "rejecting";
           sendNotification({
             type: "error",
-            title: `Error ${action === "approved" ? "approving" : "rejecting"} mention`,
-            description: errorData.message || "An error occurred",
+            title: `Error ${actionLabel} mention`,
+            description: errorData.message ?? "An error occurred",
           });
           return false;
         }
@@ -183,23 +186,31 @@ export function useMentionValidation({
           sendNotification({
             type: "success",
             title: "Success",
-            description: `${mention.label} has been invited to the conversation.`,
+            description: isProjectConversation
+              ? `${mention.label} has been added to the project, and added to the conversation`
+              : `${mention.label} has been invited to the conversation.`,
           });
-          return true;
         }
 
-        return false;
+        return result.success;
       } catch (error) {
+        const actionLabel = action === "approved" ? "approving" : "rejecting";
         sendNotification({
           type: "error",
-          title: `Error ${action === "approved" ? "approving" : "rejecting"} mention`,
+          title: `Error ${actionLabel} mention`,
           description:
             error instanceof Error ? error.message : "An error occurred",
         });
         return false;
       }
     },
-    [workspaceId, conversationId, messageId, sendNotification]
+    [
+      workspaceId,
+      conversationId,
+      messageId,
+      isProjectConversation,
+      sendNotification,
+    ]
   );
 
   return { validateMention };

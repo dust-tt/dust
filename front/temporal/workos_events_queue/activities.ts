@@ -588,7 +588,7 @@ async function handleUserAddedToGroup(
 
   const isMember = await group.isMember(user);
   if (!isMember) {
-    const res = await group.addMember(auth, user.toJSON());
+    const res = await group.addMember(auth, { user: user.toJSON() });
     if (res.isErr()) {
       throw new Error(res.error.message);
     }
@@ -681,7 +681,7 @@ async function handleUserRemovedFromGroup(
     return;
   }
 
-  const res = await group.removeMember(auth, user.toJSON());
+  const res = await group.removeMember(auth, { user: user.toJSON() });
   if (res.isErr() && res.error.code !== "user_not_member") {
     throw new Error(res.error.message);
   }
@@ -824,7 +824,9 @@ async function handleDeleteWorkOSUser(
   });
 
   for (const group of groups) {
-    const removeResult = await group.removeMember(auth, user.toJSON());
+    const removeResult = await group.removeMember(auth, {
+      user: user.toJSON(),
+    });
     if (removeResult.isErr()) {
       logger.warn(
         {

@@ -18,6 +18,7 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
 import type { Result } from "@app/types";
@@ -353,7 +354,7 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       try {
         await new Promise<void>((resolve, reject) => {
           connection.execute({
-            sqlText: `USE WAREHOUSE "${warehouse}"`,
+            sqlText: `USE WAREHOUSE "${escapeSnowflakeIdentifier(warehouse)}"`,
             complete: (err: SnowflakeError | undefined) => {
               if (err) {
                 reject(err);

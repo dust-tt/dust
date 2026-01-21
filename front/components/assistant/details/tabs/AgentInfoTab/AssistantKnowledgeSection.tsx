@@ -15,7 +15,6 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import _ from "lodash";
-import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
@@ -34,6 +33,7 @@ import {
   getDisplayNameForDataSource,
   isRemoteDatabase,
 } from "@app/lib/data_sources";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
@@ -337,7 +337,7 @@ function DataSourceViewsSection({
   viewType,
   isLoading,
 }: DataSourceViewsSectionProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const { isDark } = useTheme();
   const [dataSourceViewToDisplay, setDataSourceViewToDisplay] =
     useState<DataSourceViewType | null>(null);

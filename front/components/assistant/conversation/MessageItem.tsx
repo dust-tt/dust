@@ -142,10 +142,10 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     const messageFeedbackWithSubmit: FeedbackSelectorBaseProps = {
       feedback: messageFeedback
         ? {
-            thumb: messageFeedback.thumbDirection,
-            feedbackContent: messageFeedback.content,
-            isConversationShared: messageFeedback.isConversationShared,
-          }
+          thumb: messageFeedback.thumbDirection,
+          feedbackContent: messageFeedback.content,
+          isConversationShared: messageFeedback.isConversationShared,
+        }
         : null,
       onSubmitThumb,
       isSubmittingThumb,
@@ -154,24 +154,24 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     const citations =
       isUserMessage(data) && data.contentFragments.length > 0
         ? data.contentFragments.map((contentFragment, index) => {
-            const attachmentCitation =
-              contentFragmentToAttachmentCitation(contentFragment);
+          const attachmentCitation =
+            contentFragmentToAttachmentCitation(contentFragment);
 
-            return (
-              <AttachmentCitation
-                owner={context.owner}
-                key={index}
-                attachmentCitation={attachmentCitation}
-                conversationId={context.conversation?.sId}
-              />
-            );
-          })
+          return (
+            <AttachmentCitation
+              owner={context.owner}
+              key={index}
+              attachmentCitation={attachmentCitation}
+              conversationId={context.conversation?.sId}
+            />
+          );
+        })
         : undefined;
 
     const areSameDate =
       prevData &&
       getMessageDate(prevData).toDateString() ===
-        getMessageDate(data).toDateString();
+      getMessageDate(data).toDateString();
 
     const triggeringUser = useMemo((): UserType | null => {
       if (isMessageTemporayState(data)) {
@@ -209,6 +209,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             <UserMessage
               citations={citations}
               conversationId={context.conversation.sId}
+              enableExtendedActions={context.enableExtendedActions}
               currentUserId={context.user.sId}
               isLastMessage={!nextData}
               message={data}
@@ -236,6 +237,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
               handleSubmit={context.handleSubmit}
+              enableExtendedActions={context.enableExtendedActions}
             />
           )}
           {data.visibility !== "deleted" &&
@@ -253,7 +255,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                     message={data}
                     owner={context.owner}
                     triggeringUser={triggeringUser}
-                    conversationId={context.conversation.sId}
+                    conversation={context.conversation}
                   />
                 );
               } else if (

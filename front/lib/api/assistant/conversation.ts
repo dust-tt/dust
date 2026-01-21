@@ -44,6 +44,7 @@ import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -1283,6 +1284,27 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
+  // Project conversations only allow content fragments from the project space or the global space.
+  if (conversation.spaceId && isContentFragmentInputWithContentNode(cf)) {
+    const dsView = await DataSourceViewResource.fetchById(
+      auth,
+      cf.nodeDataSourceViewId
+    );
+    if (!dsView) {
+      return new Err(new Error("Data source view not found"));
+    }
+    if (
+      dsView.space.sId !== conversation.spaceId &&
+      dsView.space.kind !== "global"
+    ) {
+      return new Err(
+        new Error(
+          "Only content fragments from the project space or the global space are allowed in a project conversation"
+        )
+      );
+    }
+  }
+
   const upsertAttachmentRes = await maybeUpsertFileAttachment(auth, {
     contentFragments: [cf],
     conversation,
@@ -1373,8 +1395,8 @@ export async function postNewContentFragment(
 
     return { contentFragment, messageRow };
   });
-  const render = await contentFragment.renderFromMessage({
-    auth,
+
+  const render = await contentFragment.renderFromMessage(auth, {
     conversationId: conversation.sId,
     message: messageRow,
   });

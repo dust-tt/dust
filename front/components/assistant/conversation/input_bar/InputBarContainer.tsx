@@ -1,4 +1,11 @@
-import { ArrowUpIcon, Button, Chip, cn, TextIcon } from "@dust-tt/sparkle";
+import {
+  ArrowUpIcon,
+  Button,
+  Chip,
+  cn,
+  TextIcon,
+  VoicePicker,
+} from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
@@ -21,7 +28,6 @@ import {
 import { MobileToolbar } from "@app/components/assistant/conversation/input_bar/toolbar/MobileToolbar";
 import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
 import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
-import { VoicePicker } from "@app/components/assistant/VoicePicker";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
@@ -39,10 +45,12 @@ import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import type {
+  ConversationWithoutContentType,
   DataSourceViewContentNode,
   LightAgentConfigurationType,
   RichAgentMention,
   RichMention,
+  SpaceType,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -68,7 +76,8 @@ export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
   attachedNodes: DataSourceViewContentNode[];
-  conversationId?: string | null;
+  conversation?: ConversationWithoutContentType;
+  space?: SpaceType;
   disableAutoFocus: boolean;
   disableInput: boolean;
   fileUploaderService: FileUploaderService;
@@ -93,7 +102,8 @@ const InputBarContainer = ({
   allAgents,
   onEnterKeyDown,
   owner,
-  conversationId,
+  conversation,
+  space,
   selectedAgent,
   stickyMentions,
   actions,
@@ -101,6 +111,7 @@ const InputBarContainer = ({
   isSubmitting,
   disableInput,
   fileUploaderService,
+  getDraft,
   onNodeSelect,
   onNodeUnselect,
   attachedNodes,
@@ -111,7 +122,6 @@ const InputBarContainer = ({
   onSkillDeselect,
   selectedSkills,
   saveDraft,
-  getDraft,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
@@ -281,7 +291,7 @@ const InputBarContainer = ({
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
     owner,
-    conversationId,
+    conversationId: conversation?.sId,
     onInlineText: handleInlineText,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
@@ -420,6 +430,18 @@ const InputBarContainer = ({
     disabled: !nodeOrUrlCandidate,
   });
 
+  const spaceIds = useMemo(() => {
+    // We are having a conversation within a specific space, so we only allow datasources/tools from that space and the global space.
+    // This is a project v1 limitation.
+    if (space) {
+      return spaces
+        .filter((s) => s.sId === space.sId || s.kind === "global")
+        .map((s) => s.sId);
+    } else {
+      return spaces.map((s) => s.sId);
+    }
+  }, [spaces, space]);
+
   const spacesMap = useMemo(
     () => Object.fromEntries(spaces?.map((space) => [space.sId, space]) || []),
     [spaces]
@@ -434,7 +456,7 @@ const InputBarContainer = ({
           owner,
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,
-          spaceIds: spaces.map((s) => s.sId),
+          spaceIds,
           prioritizeSpaceAccess: true,
         }
       : {
@@ -445,7 +467,7 @@ const InputBarContainer = ({
           owner,
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,
-          spaceIds: spaces.map((s) => s.sId),
+          spaceIds,
           prioritizeSpaceAccess: true,
         }
   );
@@ -515,7 +537,12 @@ const InputBarContainer = ({
 
   // Restore draft when switching conversations (including new conversations).
   useEffect(() => {
-    if (!editor) {
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !editor.isInitialized
+    ) {
       return;
     }
 
@@ -524,7 +551,7 @@ const InputBarContainer = ({
     if (draft && editorService.isEmpty()) {
       editorService.setContent(draft.text);
     }
-  }, [conversationId, editor, editorService, getDraft]);
+  }, [conversation, editor, editorService, getDraft]);
 
   useHandleMentions(
     editorService,
@@ -694,7 +721,8 @@ const InputBarContainer = ({
                         attachedNodes={attachedNodes}
                         disabled={disableTextInput}
                         buttonSize={buttonSize}
-                        conversationId={conversationId}
+                        conversation={conversation}
+                        space={space}
                       />
                     </>
                   )}
@@ -734,9 +762,14 @@ const InputBarContainer = ({
                 {owner.metadata?.allowVoiceTranscription !== false &&
                   actions.includes("voice") && (
                     <VoicePicker
-                      voiceTranscriberService={voiceTranscriberService}
+                      status={voiceTranscriberService.status}
+                      level={voiceTranscriberService.level}
+                      elapsedSeconds={voiceTranscriberService.elapsedSeconds}
+                      onRecordStart={voiceTranscriberService.startRecording}
+                      onRecordStop={voiceTranscriberService.stopRecording}
                       disabled={disableTextInput}
-                      buttonSize={buttonSize}
+                      size={buttonSize}
+                      showStopLabel={!isMobile}
                     />
                   )}
                 <Button

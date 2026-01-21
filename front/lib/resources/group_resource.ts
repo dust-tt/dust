@@ -29,6 +29,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
+  CombinedResourcePermissions,
   GroupKind,
   GroupType,
   LightAgentConfigurationType,
@@ -36,7 +37,6 @@ import type {
   ModelId,
   ResourcePermission,
   Result,
-  RolePermission,
   UserType,
 } from "@app/types";
 import {
@@ -1034,8 +1034,15 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMembers(
     auth: Authenticator,
-    users: UserType[],
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      users,
+      requestedPermissions,
+      transaction,
+    }: {
+      users: UserType[];
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
   ): Promise<
     Result<
       undefined,
@@ -1048,7 +1055,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth)) {
+    if (
+      !auth.canWrite(
+        requestedPermissions
+          ? [requestedPermissions]
+          : this.requestedPermissions()
+      )
+    ) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1159,8 +1172,15 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMember(
     auth: Authenticator,
-    user: UserType,
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      user,
+      requestedPermissions,
+      transaction,
+    }: {
+      user: UserType;
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
   ): Promise<
     Result<
       undefined,
@@ -1173,13 +1193,24 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.addMembers(auth, [user], { transaction });
+    return this.addMembers(auth, {
+      users: [user],
+      requestedPermissions,
+      transaction,
+    });
   }
 
   async removeMembers(
     auth: Authenticator,
-    users: UserType[],
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      users,
+      requestedPermissions,
+      transaction,
+    }: {
+      users: UserType[];
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
   ): Promise<
     Result<
       undefined,
@@ -1191,7 +1222,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth)) {
+    if (
+      !auth.canWrite(
+        requestedPermissions
+          ? [requestedPermissions]
+          : this.requestedPermissions()
+      )
+    ) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1285,8 +1322,15 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async removeMember(
     auth: Authenticator,
-    user: UserType,
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      user,
+      requestedPermissions,
+      transaction,
+    }: {
+      user: UserType;
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
   ): Promise<
     Result<
       undefined,
@@ -1298,13 +1342,24 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.removeMembers(auth, [user], { transaction });
+    return this.removeMembers(auth, {
+      users: [user],
+      requestedPermissions,
+      transaction,
+    });
   }
 
   async setMembers(
     auth: Authenticator,
-    users: UserType[],
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      users,
+      requestedPermissions,
+      transaction,
+    }: {
+      users: UserType[];
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
   ): Promise<
     Result<
       undefined,
@@ -1318,7 +1373,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth)) {
+    if (
+      !auth.canWrite(
+        requestedPermissions
+          ? [requestedPermissions]
+          : this.requestedPermissions()
+      )
+    ) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1336,7 +1397,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       (user) => !currentMemberIds.includes(user.sId)
     );
     if (usersToAdd.length > 0) {
-      const addResult = await this.addMembers(auth, usersToAdd, {
+      const addResult = await this.addMembers(auth, {
+        users: usersToAdd,
+        requestedPermissions,
         transaction,
       });
       if (addResult.isErr()) {
@@ -1349,7 +1412,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       .filter((currentMember) => !userIds.includes(currentMember.sId))
       .map((m) => m.toJSON());
     if (usersToRemove.length > 0) {
-      const removeResult = await this.removeMembers(auth, usersToRemove, {
+      const removeResult = await this.removeMembers(auth, {
+        users: usersToRemove,
+        requestedPermissions,
         transaction,
       });
       if (removeResult.isErr()) {
@@ -1450,32 +1515,55 @@ export class GroupResource extends BaseResource<GroupModel> {
    * configuration
    */
   requestedPermissions(): ResourcePermission[] {
-    const userReadPermissions: RolePermission[] = [
-      {
-        role: "user",
-        permissions: ["read"],
-      },
-      {
-        role: "builder",
-        permissions: ["read"],
-      },
-    ];
+    if (this.kind === "agent_editors" || this.kind === "skill_editors") {
+      return [
+        {
+          groups: [
+            {
+              id: this.id,
+              permissions: ["read", "write"],
+            },
+          ],
+          roles: [
+            { role: "admin", permissions: ["read", "write", "admin"] },
+            {
+              role: "user",
+              permissions: ["read"],
+            },
+            {
+              role: "builder",
+              permissions: ["read"],
+            },
+          ],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
 
-    const isEditorGroup =
-      this.kind === "agent_editors" || this.kind === "skill_editors";
+    if (this.kind === "space_editors") {
+      return [
+        {
+          groups: [
+            {
+              id: this.id,
+              permissions: ["admin", "read", "write"],
+            },
+          ],
+          roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
 
     return [
       {
         groups: [
           {
             id: this.id,
-            permissions: isEditorGroup ? ["read", "write"] : ["read"],
+            permissions: ["read"],
           },
         ],
-        roles: [
-          { role: "admin", permissions: ["read", "write", "admin"] },
-          ...(isEditorGroup ? userReadPermissions : []),
-        ],
+        roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
         workspaceId: this.workspaceId,
       },
     ];

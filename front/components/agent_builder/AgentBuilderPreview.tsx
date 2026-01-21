@@ -8,6 +8,7 @@ import {
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
+import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -16,7 +17,9 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { DustError } from "@app/lib/error";
+import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
+import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import type {
   ContentFragmentsType,
   ConversationWithoutContentType,
@@ -63,7 +66,7 @@ function LoadingState({ message }: LoadingStateProps) {
 }
 
 interface PreviewContentProps {
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   user: UserType | null;
   owner: WorkspaceType;
   currentPanel: ConversationSidePanelType;
@@ -75,6 +78,8 @@ interface PreviewContentProps {
   ) => Promise<Result<undefined, DustError>>;
   draftAgent: LightAgentConfigurationType | null;
   isSavingDraftAgent: boolean;
+  isTrialPlan: boolean;
+  isAdmin: boolean;
 }
 
 function PreviewContent({
@@ -86,11 +91,18 @@ function PreviewContent({
   createConversation,
   draftAgent,
   isSavingDraftAgent,
+  isTrialPlan,
+  isAdmin,
 }: PreviewContentProps) {
   return (
     <>
       <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
         <div className="flex-1 overflow-y-auto">
+          {isTrialPlan && (
+            <div className="px-4 pt-4">
+              <TrialMessageUsage isAdmin={isAdmin} workspaceId={owner.sId} />
+            </div>
+          )}
           {conversation && user && (
             <ConversationViewer
               owner={owner}
@@ -124,7 +136,7 @@ function PreviewContent({
               stickyMentions={
                 draftAgent ? [toRichAgentMentionType(draftAgent)] : []
               }
-              conversation={null}
+              draftKey={`agent-${draftAgent?.name}-builder-preview`}
               actions={["attachment"]}
               disableAutoFocus
               isFloating={false}
@@ -146,8 +158,11 @@ function PreviewContent({
 }
 
 export function AgentBuilderPreview() {
-  const { owner } = useAgentBuilderContext();
+  const { owner, isAdmin } = useAgentBuilderContext();
   const { user } = useUser();
+  const { activeSubscription } = useWorkspaceActiveSubscription({ owner });
+  const isTrialPlan =
+    activeSubscription && isFreeTrialPhonePlan(activeSubscription.plan.code);
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
   const { isPreviewPanelOpen } = usePreviewPanelContext();
 
@@ -282,6 +297,8 @@ export function AgentBuilderPreview() {
         createConversation={createConversation}
         draftAgent={draftAgent}
         isSavingDraftAgent={isSavingDraftAgent}
+        isTrialPlan={!!isTrialPlan}
+        isAdmin={isAdmin}
       />
     );
   };

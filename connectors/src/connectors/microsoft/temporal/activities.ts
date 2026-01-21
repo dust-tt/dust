@@ -709,7 +709,10 @@ export async function syncDeltaForRootNodesInDrive({
   );
 
   if (containsWholeDrive) {
-    sortedChangedItems.push(...sortForIncrementalUpdate(uniqueChangedItems));
+    // Use for...of instead of push(...) to avoid stack overflow with large arrays
+    for (const item of sortForIncrementalUpdate(uniqueChangedItems)) {
+      sortedChangedItems.push(item);
+    }
   } else {
     const microsoftNodes = await concurrentExecutor(
       rootNodeIds,
@@ -1053,7 +1056,10 @@ export async function fetchDeltaForRootNodesInDrive({
   );
 
   if (containsWholeDrive) {
-    sortedChangedItems.push(...sortForIncrementalUpdate(uniqueChangedItems));
+    // Use for...of instead of push(...) to avoid stack overflow with large arrays
+    for (const item of sortForIncrementalUpdate(uniqueChangedItems)) {
+      sortedChangedItems.push(item);
+    }
   } else {
     const microsoftNodes = await concurrentExecutor(
       rootNodeIds,
@@ -1295,12 +1301,11 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
       return sortedItemList;
     }
 
-    sortedItemList.push(...nextLevel);
-
-    // Mark nodes as seen for the next iterations.
-    nextLevel.forEach((item) => {
+    // Use for...of instead of push(...) to avoid stack overflow with large arrays
+    for (const item of nextLevel) {
+      sortedItemList.push(item);
       sortedItemSet.add(getDriveItemInternalId(item));
-    });
+    }
   }
 }
 

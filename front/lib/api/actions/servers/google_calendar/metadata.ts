@@ -262,7 +262,7 @@ export const GOOGLE_CALENDAR_SERVER_INFO = {
   icon: "GcalLogo" as const,
   documentationUrl: "https://docs.dust.tt/docs/google-calendar",
   instructions:
-    "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool (3) use get_user_timezones to check attendee timezones for better scheduling.",
+    "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool (3) use get_user_timezones to check attendee timezones for better scheduling. Always call get_current_time when users reference relative dates or days of the week (e.g., 'monday', 'tomorrow', 'next week') to accurately resolve the date before creating or scheduling events.",
 };
 
 export const GOOGLE_CALENDAR_SERVER = {

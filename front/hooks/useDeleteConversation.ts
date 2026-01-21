@@ -18,7 +18,7 @@ export function useDeleteConversation(owner: LightWorkspaceType) {
 
   return useCallback(
     async (
-      conversation: ConversationWithoutContentType | null,
+      conversation?: ConversationWithoutContentType,
       forceDelete: boolean = false
     ): Promise<boolean> => {
       if (!conversation) {

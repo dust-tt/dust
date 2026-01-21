@@ -151,19 +151,34 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       const agentIds = uniq(
         usages.flatMap((u) => u.agents).map((agent) => agent.sId)
       );
+      const agentConfigurations = await getAgentConfigurations(auth, {
+        agentIds,
+        variant: "full",
+      });
+      const agentConfigurationsById = new Map(
+        agentConfigurations.map((config) => [config.sId, config])
+      );
+
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+
       await concurrentExecutor(
         agentIds,
         async (agentId) => {
-          const agentConfigs = await getAgentConfigurations(auth, {
-            agentIds: [agentId],
-            variant: "full",
-          });
-          const [agentConfig] = agentConfigs;
+          const agentConfig = agentConfigurationsById.get(agentId);
+          if (!agentConfig) {
+            logger.error(
+              {
+                agentId,
+                workspaceId: auth.getNonNullableWorkspace().sId,
+              },
+              "Agent configuration not found for space soft delete"
+            );
+            return;
+          }
 
           let skills: SkillResource[] = [];
-          const featureFlags = await getFeatureFlags(
-            auth.getNonNullableWorkspace()
-          );
           if (featureFlags.includes("skills")) {
             skills = await SkillResource.listByAgentConfiguration(
               auth,
@@ -388,7 +403,8 @@ export async function createSpaceAndGroup(
       const users = (await UserResource.fetchByIds(params.memberIds)).map(
         (user) => user.toJSON()
       );
-      const groupsResult = await group.addMembers(auth, users, {
+      const groupsResult = await group.addMembers(auth, {
+        users,
         transaction: t,
       });
       if (groupsResult.isErr()) {
@@ -443,11 +459,7 @@ export async function createSpaceAndGroup(
       await ProjectMetadataResource.makeNew(
         auth,
         space,
-        {
-          description: null,
-          urls: [],
-          tags: [],
-        },
+        { description: null, urls: [] },
         t
       );
     }

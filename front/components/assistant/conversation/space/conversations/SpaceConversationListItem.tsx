@@ -47,7 +47,7 @@ export function SpaceConversationListItem({
         });
       }
     }
-    return uniqBy(avatars, "visual");
+    return uniqBy(avatars, "visual").reverse();
   }, [conversation.content]);
 
   // TODO(conversations-groups) Are we sure we want to require a user message?

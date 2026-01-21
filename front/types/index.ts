@@ -97,6 +97,7 @@ export * from "./shared/utils/time_frame";
 export * from "./shared/utils/url_utils";
 export * from "./sheets";
 export * from "./space";
+export * from "./suggestions/agent_suggestion";
 export * from "./tokenizer";
 export * from "./user";
 export * from "./website";

@@ -152,7 +152,7 @@ async function handler(
         }
       }
 
-      const addRes = await editorGroup.addMembers(auth, usersToAdd);
+      const addRes = await editorGroup.addMembers(auth, { users: usersToAdd });
       if (addRes.isErr()) {
         switch (addRes.error.code) {
           case "unauthorized":
@@ -203,7 +203,9 @@ async function handler(
         }
       }
 
-      const removeRes = await editorGroup.removeMembers(auth, usersToRemove);
+      const removeRes = await editorGroup.removeMembers(auth, {
+        users: usersToRemove,
+      });
       if (removeRes.isErr()) {
         switch (removeRes.error.code) {
           case "unauthorized":

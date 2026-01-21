@@ -922,6 +922,58 @@ export async function validateUserMention(
   }
 
   const conversation = conversationRes.value;
+  const isApproval = approvalState === "approved";
+
+  // For project conversations, add user to project space first when approving.
+  if (conversation.spaceId && isApproval) {
+    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (!space) {
+      return new Err({
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "Project space not found",
+        },
+      });
+    }
+
+    const currentUser = auth.user();
+    if (!currentUser) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "not_authenticated",
+          message: "User not authenticated",
+        },
+      });
+    }
+
+    // TODO(projects): isEditor will check editor permissions once project roles PR is merged.
+    const canEdit = await space.isEditor(currentUser);
+    if (!canEdit) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Only project editors can add members to the project",
+        },
+      });
+    }
+
+    const addResult = await space.addMembers(auth, { userIds: [userId] });
+    if (addResult.isErr()) {
+      const error = addResult.error;
+      return new Err({
+        status_code: error.code === "unauthorized" ? 403 : 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: error.message,
+        },
+      });
+    }
+  }
+
+  const mentionStatus: "approved" | "rejected" = approvalState;
 
   // Verify the message exists
   const message = conversation.content.flat().find((m) => m.sId === messageId);
@@ -935,7 +987,10 @@ export async function validateUserMention(
       },
     });
   }
-  if (approvalState === "approved") {
+  if (isApproval) {
+    const auditMessage = conversation.spaceId
+      ? "User approved a mention and added user to project"
+      : "User approved a mention";
     auditLog(
       {
         author: auth.getNonNullableUser().toJSON(),
@@ -945,7 +1000,7 @@ export async function validateUserMention(
         userId,
         approvalState,
       },
-      "User approved a mention"
+      auditMessage
     );
   }
 
@@ -1029,12 +1084,12 @@ export async function validateUserMention(
       if (!mentionModel) {
         continue;
       }
-      await mentionModel.update({ status: approvalState });
+      await mentionModel.update({ status: mentionStatus });
       const newRichMentions = latestMessage.richMentions.map((m) =>
         isRichUserMention(m) && m.id === userId
           ? {
               ...m,
-              status: approvalState,
+              status: mentionStatus,
             }
           : m
       );
@@ -1079,7 +1134,7 @@ export async function validateUserMention(
     }
   );
 
-  if (!isParticipant && approvalState === "approved") {
+  if (!isParticipant && isApproval) {
     const status = await ConversationResource.upsertParticipation(auth, {
       conversation,
       action: "subscribed",

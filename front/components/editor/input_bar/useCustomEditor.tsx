@@ -256,6 +256,7 @@ export const buildEditorExtensions = ({
         class: "text-blue-600 hover:underline hover:text-blue-800",
       },
       autolink: false,
+      openOnClick: false,
     }),
     MentionExtension.configure({
       owner,
@@ -304,39 +305,43 @@ const useCustomEditor = ({
   longTextPasteCharsThreshold,
   onInlineText,
 }: CustomEditorProps) => {
-  const editor = useEditor({
-    autofocus: disableAutoFocus ? false : "end",
-    extensions: buildEditorExtensions({
-      owner,
-      conversationId,
-      onInlineText,
-      onUrlDetected,
-    }),
-    shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
-    editorProps: {
-      attributes: {
-        class:
-          "border-0 outline-none overflow-y-auto h-full scrollbar-hide [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:my-2 [&_a]:cursor-text",
-      },
-      // cleans up incoming HTML to remove all style that could mess up with our theme
-      transformPastedHTML(html: string) {
-        return cleanupPastedHTML(html);
-      },
-      handlePaste: (view, event) => {
-        const text = event.clipboardData?.getData("text/plain") ?? "";
-        if (!text || !onLongTextPaste) {
+  const editor = useEditor(
+    {
+      autofocus: disableAutoFocus ? false : "end",
+      extensions: buildEditorExtensions({
+        owner,
+        conversationId,
+        onInlineText,
+        onUrlDetected,
+      }),
+      shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
+      editorProps: {
+        attributes: {
+          class:
+            "border-0 outline-none overflow-y-auto h-full scrollbar-hide [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:my-2 [&_a]:cursor-text",
+        },
+        // cleans up incoming HTML to remove all style that could mess up with our theme
+        transformPastedHTML(html: string) {
+          return cleanupPastedHTML(html);
+        },
+        handlePaste: (view, event) => {
+          const text = event.clipboardData?.getData("text/plain") ?? "";
+          if (!text || !onLongTextPaste) {
+            return false;
+          }
+          if (isLongTextPaste(text, longTextPasteCharsThreshold)) {
+            const { from, to } = view.state.selection;
+            onLongTextPaste({ text, from, to });
+            return true;
+          }
           return false;
-        }
-        if (isLongTextPaste(text, longTextPasteCharsThreshold)) {
-          const { from, to } = view.state.selection;
-          onLongTextPaste({ text, from, to });
-          return true;
-        }
-        return false;
+        },
       },
+      immediatelyRender: false,
     },
-    immediatelyRender: false,
-  });
+    // Important to watch for conversationId changes to reset the editor state when switching conversations.
+    [conversationId]
+  );
 
   const editorService = useEditorService(editor);
 

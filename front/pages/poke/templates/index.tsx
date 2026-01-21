@@ -1,33 +1,21 @@
 import type { ReactElement } from "react";
 
+import { TemplatesListPage } from "@app/components/poke/pages/TemplatesListPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { TemplatesDataTable } from "@app/components/poke/templates/TemplatesDataTable";
-import { config } from "@app/lib/api/regions/config";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
   async () => {
-    const dustRegionSyncEnabled = config.getDustRegionSyncEnabled();
     return {
-      props: {
-        dustRegionSyncEnabled,
-      },
+      props: {},
     };
   }
 );
 
-export default function ListTemplates({
-  dustRegionSyncEnabled,
-}: {
-  dustRegionSyncEnabled: boolean;
-}) {
-  return (
-    <div className="mx-auto h-full w-full max-w-7xl flex-grow flex-col items-center justify-center p-8 pt-8">
-      <TemplatesDataTable dustRegionSyncEnabled={dustRegionSyncEnabled} />
-    </div>
-  );
+export default function TemplatesListPageNextJS() {
+  return <TemplatesListPage />;
 }
 
-ListTemplates.getLayout = (page: ReactElement) => {
+TemplatesListPageNextJS.getLayout = (page: ReactElement) => {
   return <PokeLayout title="Templates">{page}</PokeLayout>;
 };

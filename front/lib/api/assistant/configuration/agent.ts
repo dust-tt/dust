@@ -537,7 +537,7 @@ export async function createAgentConfiguration(
             { transaction: t }
           );
           await auth.refresh({ transaction: t });
-          await group.setMembers(auth, editors, { transaction: t });
+          await group.setMembers(auth, { users: editors, transaction: t });
         } else {
           const group = await GroupResource.fetchByAgentConfiguration({
             auth,
@@ -563,7 +563,8 @@ export async function createAgentConfiguration(
             );
             throw result.error;
           }
-          const setMembersRes = await group.setMembers(auth, editors, {
+          const setMembersRes = await group.setMembers(auth, {
+            users: editors,
             transaction: t,
           });
           if (setMembersRes.isErr()) {
@@ -1031,11 +1032,9 @@ export async function archiveAgentConfiguration(
 export async function restoreAgentConfiguration(
   auth: Authenticator,
   agentConfigurationId: string
-): Promise<boolean> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+): Promise<Result<{ restored: boolean }, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
   const latestConfig = await AgentConfigurationModel.findOne({
     where: {
       sId: agentConfigurationId,
@@ -1045,13 +1044,16 @@ export async function restoreAgentConfiguration(
     limit: 1,
   });
   if (!latestConfig) {
-    throw new Error("Could not find agent configuration");
+    return new Err(new Error("Could not find agent configuration"));
   }
   if (latestConfig.status !== "archived") {
-    throw new Error("Agent configuration is not archived");
+    return new Err(new Error("Agent configuration is not archived"));
   }
+
   const updated = await AgentConfigurationModel.update(
-    { status: "active" },
+    {
+      status: "active",
+    },
     {
       where: {
         id: latestConfig.id,
@@ -1098,8 +1100,7 @@ export async function restoreAgentConfiguration(
     }
   }
 
-  const affectedCount = updated[0];
-  return affectedCount > 0;
+  return new Ok({ restored: updated[0] > 0 });
 }
 
 // Should only be called when we need to clean up the agent configuration
@@ -1233,7 +1234,8 @@ export async function updateAgentPermissions(
   try {
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
-        const addRes = await editorGroupRes.value.addMembers(auth, usersToAdd, {
+        const addRes = await editorGroupRes.value.addMembers(auth, {
+          users: usersToAdd,
           transaction: t,
         });
         if (addRes.isErr()) {
@@ -1242,13 +1244,10 @@ export async function updateAgentPermissions(
       }
 
       if (usersToRemove.length > 0) {
-        const removeRes = await editorGroupRes.value.removeMembers(
-          auth,
-          usersToRemove,
-          {
-            transaction: t,
-          }
-        );
+        const removeRes = await editorGroupRes.value.removeMembers(auth, {
+          users: usersToRemove,
+          transaction: t,
+        });
         if (removeRes.isErr()) {
           return removeRes;
         }

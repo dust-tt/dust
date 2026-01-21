@@ -18,7 +18,7 @@ export async function getSkillServers(
     skills,
   }: {
     agentConfiguration: LightAgentConfigurationType;
-    skills: SkillResource[];
+    skills: (SkillResource & { extendedSkill: SkillResource | null })[];
   }
 ): Promise<MCPServerConfigurationType[]> {
   const rawInheritedDataSourceViews = await concurrentExecutor(
@@ -38,7 +38,10 @@ export async function getSkillServers(
   );
 
   return skills.flatMap((skill) =>
-    skill.mcpServerViews.map((mcpServerView) => {
+    [
+      ...skill.mcpServerViews,
+      ...(skill.extendedSkill?.mcpServerViews ?? []),
+    ].map((mcpServerView) => {
       return buildServerSideMCPServerConfiguration({
         mcpServerView,
         dataSources,

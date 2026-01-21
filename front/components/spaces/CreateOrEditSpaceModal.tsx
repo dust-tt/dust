@@ -9,7 +9,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -17,6 +16,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
+import { useAppRouter } from "@app/lib/platform";
 import { useGroups } from "@app/lib/swr/groups";
 import {
   useCreateSpace,
@@ -82,7 +82,7 @@ export function CreateOrEditSpaceModal({
   const doUpdate = useUpdateSpace({ owner });
   const doDelete = useDeleteSpace({ owner, force: true });
 
-  const router = useRouter();
+  const router = useAppRouter();
 
   const { spaceInfo, mutateSpaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,

@@ -152,7 +152,10 @@ async function createServer(
           parts.push(`UNIX (ms): ${now.getTime()}`);
         }
         if (formats.has("locale")) {
-          parts.push(`Locale: ${now.toLocaleString()}`);
+          const dayOfWeek = now.toLocaleDateString("en-US", {
+            weekday: "long",
+          });
+          parts.push(`Locale: ${now.toLocaleString()} (${dayOfWeek})`);
         }
 
         return new Ok([

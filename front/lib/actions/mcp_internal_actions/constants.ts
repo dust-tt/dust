@@ -13,10 +13,12 @@ import {
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
+import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/metadata";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import {
   DEEP_DIVE_NAME,
@@ -92,6 +94,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Names should reflect the purpose of the server but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
+  "agent_copilot_context",
   "agent_management",
   AGENT_MEMORY_SERVER_NAME,
   "agent_router",
@@ -141,6 +144,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "sound_studio",
   "speech_generator",
   "toolsets",
+  "ukg_ready",
   "val_town",
   "vanta",
   "front",
@@ -178,32 +182,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      create_issue: "low",
-      comment_on_issue: "low",
-      add_issue_to_project: "low",
-      get_pull_request: "never_ask",
-      list_organization_projects: "never_ask",
-      list_issues: "never_ask",
-      list_pull_requests: "never_ask",
-      search_advanced: "never_ask",
-      get_issue: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "github",
-      version: "1.0.0",
-      description: "Manage issues and pull requests.",
-      authorization: {
-        provider: "github" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "GithubLogo",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: GITHUB_SERVER,
   },
   image_generation: {
     id: 2,
@@ -1822,6 +1804,19 @@ export const INTERNAL_MCP_SERVERS = {
         "Requires write permissions on the project space.",
     },
   },
+  agent_copilot_context: {
+    id: 1022,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("agent_builder_copilot");
+    },
+    metadata: AGENT_COPILOT_CONTEXT_SERVER,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+  },
   databricks: {
     id: 45,
     availability: "manual",
@@ -1912,6 +1907,35 @@ export const INTERNAL_MCP_SERVERS = {
       },
       icon: "SnowflakeLogo",
       documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
+      instructions: null,
+    },
+  },
+  ukg_ready: {
+    id: 48,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("ukg_ready_mcp");
+    },
+    isPreview: false,
+    tools_stakes: {
+      get_my_info: "never_ask",
+      get_my_pto_requests: "never_ask",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "ukg_ready",
+      version: "1.0.0",
+      description:
+        "Manage employee time-off requests, schedules, and accrual balances in UKG Ready.",
+      authorization: {
+        provider: "ukg_ready" as const,
+        supported_use_cases: ["personal_actions"] as const,
+      },
+      icon: "UkgLogo",
+      documentationUrl: "https://docs.dust.tt/docs/ukg-ready",
       instructions: null,
     },
   },

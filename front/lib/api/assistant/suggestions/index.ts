@@ -12,12 +12,7 @@ import type {
   Result,
   WorkspaceType,
 } from "@app/types";
-import {
-  assertNever,
-  Err,
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-} from "@app/types";
+import { assertNever, Err, getSmallWhitelistedModel } from "@app/types";
 
 function getModelForSuggestionType(
   owner: WorkspaceType,
@@ -25,8 +20,6 @@ function getModelForSuggestionType(
 ): ModelConfigurationType | null {
   switch (type) {
     case "instructions":
-      return getLargeWhitelistedModel(owner);
-
     case "name":
     case "description":
     case "emoji":

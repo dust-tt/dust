@@ -1,18 +1,13 @@
 import {
   ChatBubbleBottomCenterTextIcon,
-  ClipboardCheckIcon,
-  ClipboardIcon,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  useCopyToClipboard,
 } from "@dust-tt/sparkle";
-import { useEffect } from "react";
 
-import { useSendNotification } from "@app/hooks/useNotification";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
@@ -31,18 +26,6 @@ export function AgentCreatedDialog({
   agentId,
   owner,
 }: AgentCreatedDialogProps) {
-  const [isCopied, copyToClipboard] = useCopyToClipboard();
-  const sendNotification = useSendNotification(true);
-
-  useEffect(() => {
-    if (isCopied) {
-      sendNotification({
-        type: "success",
-        title: "Link copied to clipboard",
-      });
-    }
-  }, [isCopied, sendNotification]);
-
   const agentHandle = `@${agentName}`;
   const conversationQuery = `agent=${agentId}`;
 
@@ -51,12 +34,6 @@ export function AgentCreatedDialog({
     "new",
     conversationQuery
   );
-  const shareLink = getConversationRoute(
-    owner.sId,
-    "new",
-    conversationQuery,
-    process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -64,17 +41,16 @@ export function AgentCreatedDialog({
         <DialogHeader>
           <DialogTitle>Agent {agentHandle} has been created!</DialogTitle>
           <DialogDescription>
-            You can now use {agentHandle} in conversations. Start a chat or
-            share the link with your team.
+            You can now use {agentHandle} in conversations. Start a chat or keep
+            editing this agent.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter
           leftButtonProps={{
-            label: isCopied ? "Link copied" : "Share",
+            label: "Keep editing",
             variant: "outline",
-            icon: isCopied ? ClipboardCheckIcon : ClipboardIcon,
             onClick: () => {
-              void copyToClipboard(shareLink);
+              onOpenChange(false);
             },
           }}
           rightButtonProps={{

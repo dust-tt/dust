@@ -34,11 +34,11 @@ export function getSupportedModelConfig(
   ) as (typeof SUPPORTED_MODEL_CONFIGS)[number];
 }
 
-export function canUseModel(
+// Returns true if the model is available to the workspace, regardless of whether it is whitelisted or not.
+export function isModelAvailable(
   m: ModelConfigurationType,
   featureFlags: WhitelistableFeature[],
-  plan: PlanType | null,
-  owner: WorkspaceType
+  plan: PlanType | null
 ) {
   if (m.featureFlag && !featureFlags.includes(m.featureFlag)) {
     return false;
@@ -52,6 +52,19 @@ export function canUseModel(
   }
 
   if (m.largeModel && !isUpgraded(plan)) {
+    return false;
+  }
+  return true;
+}
+
+// Returns true if the model is available to the workspace and is whitelisted.
+export function isModelAvailableAndWhitelisted(
+  m: ModelConfigurationType,
+  featureFlags: WhitelistableFeature[],
+  plan: PlanType | null,
+  owner: WorkspaceType
+) {
+  if (!isModelAvailable(m, featureFlags, plan)) {
     return false;
   }
 

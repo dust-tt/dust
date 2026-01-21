@@ -4,21 +4,26 @@ import {
   ContentMessage,
   Icon,
   InformationCircleIcon,
+  PlusIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
-import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
+import {
+  isMessageTemporayState,
+  isProjectConversation,
+} from "@app/components/assistant/conversation/types";
 import { useMentionValidation } from "@app/lib/swr/mentions";
 import { useUser } from "@app/lib/swr/user";
 import type {
+  ConversationWithoutContentType,
   LightWorkspaceType,
   RichMentionWithStatus,
   UserType,
 } from "@app/types";
 
-interface MentionValidationRequired {
+interface MentionValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
   mention: Extract<
@@ -27,7 +32,7 @@ interface MentionValidationRequired {
       status: "pending";
     }
   >;
-  conversationId: string;
+  conversation: ConversationWithoutContentType;
   message: VirtuosoMessage;
 }
 
@@ -35,15 +40,18 @@ export function MentionValidationRequired({
   triggeringUser,
   owner,
   mention,
-  conversationId,
+  conversation,
   message,
-}: MentionValidationRequired) {
+}: MentionValidationRequiredProps) {
   const { user } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isProjectConv = isProjectConversation(conversation);
+
   const { validateMention } = useMentionValidation({
     workspaceId: owner.sId,
-    conversationId,
+    conversationId: conversation.sId,
     messageId: message.sId,
+    isProjectConversation: isProjectConv,
   });
 
   const isTriggeredByCurrentUser = useMemo(
@@ -73,7 +81,6 @@ export function MentionValidationRequired({
     return null;
   }
 
-  // Original behavior for users who can access
   return (
     <ContentMessage variant="info" className="my-3 w-full max-w-full">
       <div className="flex flex-col items-center gap-2 sm:flex-row">
@@ -85,13 +92,29 @@ export function MentionValidationRequired({
                 @{message.configuration.name}
               </span>{" "}
               mentioned <span className="font-semibold">{mention.label}</span>.
-              Do you want to invite them? They'll see the full history and be
-              able to reply.
+              {isProjectConv ? (
+                <> Do you want to add them to this project?</>
+              ) : (
+                <>
+                  {" "}
+                  Do you want to invite them? They'll see the full history and
+                  be able to reply.
+                </>
+              )}
             </>
           ) : (
             <>
-              Invite <b>{mention.label}</b> to this conversation? They'll see
-              the full history and be able to reply.
+              {isProjectConv ? (
+                <>
+                  Add <b>{mention.label}</b> to this project? They'll have
+                  access to all project conversations.
+                </>
+              ) : (
+                <>
+                  Invite <b>{mention.label}</b> to this conversation? They'll
+                  see the full history and be able to reply.
+                </>
+              )}
             </>
           )}
         </div>
@@ -105,10 +128,10 @@ export function MentionValidationRequired({
             onClick={handleReject}
           />
           <Button
-            label="Yes"
+            label={isProjectConv ? "Add to project" : "Yes"}
             variant="highlight"
             size="xs"
-            icon={CheckIcon}
+            icon={isProjectConv ? PlusIcon : CheckIcon}
             disabled={isSubmitting}
             onClick={handleApprove}
           />

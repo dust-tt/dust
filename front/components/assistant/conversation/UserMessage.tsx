@@ -11,6 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
+  LinkIcon,
   MoreIcon,
   PencilSquareIcon,
   Tooltip,
@@ -38,6 +39,9 @@ import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdo
 import type { ConfirmDataType } from "@app/components/Confirm";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import { useHover } from "@app/hooks/useHover";
+import { useSendNotification } from "@app/hooks/useNotification";
+import config from "@app/lib/api/config";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   UserMessageType,
@@ -106,6 +110,7 @@ function UserMessageEditor({
 interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
+  enableExtendedActions: boolean;
   currentUserId: string;
   isLastMessage: boolean;
   message: UserMessageTypeWithContentFragments;
@@ -130,6 +135,7 @@ interface UserMessageProps {
 export function UserMessage({
   citations,
   conversationId,
+  enableExtendedActions,
   currentUserId,
   isLastMessage,
   message,
@@ -309,11 +315,13 @@ export function UserMessage({
             isUserMessageHovered={isUserMessageHovered}
             message={message}
             onReactionToggle={onReactionToggle}
-            reactionsEnabled={reactionsEnabled}
+            enableExtendedActions={enableExtendedActions}
             handleEditMessage={handleEditMessage}
             handleDeleteMessage={handleDeleteMessage}
             canDelete={canDelete}
             canEdit={canEdit}
+            conversationId={conversationId}
+            owner={owner}
           />
         </ConversationMessageContainer>
       )}
@@ -375,7 +383,7 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
 
 function ActionMenu({
   isDeleted,
-  reactionsEnabled,
+  enableExtendedActions,
   showActions,
   canEdit,
   canDelete,
@@ -384,9 +392,11 @@ function ActionMenu({
   message,
   onReactionToggle,
   isUserMessageHovered,
+  conversationId,
+  owner,
 }: {
   isDeleted: boolean;
-  reactionsEnabled: boolean;
+  enableExtendedActions: boolean;
   showActions: boolean;
   canEdit: boolean;
   canDelete: boolean;
@@ -395,35 +405,61 @@ function ActionMenu({
   message: UserMessageTypeWithContentFragments;
   onReactionToggle: (emoji: string) => void;
   isUserMessageHovered: boolean;
+  conversationId: string;
+  owner: WorkspaceType;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const sendNotification = useSendNotification();
+
+  const handleCopyMessageLink = () => {
+    const messageUrl = `${getConversationRoute(
+      owner.sId,
+      conversationId,
+      undefined,
+      config.getClientFacingUrl()
+    )}#${message.sId}`;
+    void navigator.clipboard.writeText(messageUrl);
+    sendNotification({
+      type: "success",
+      title: "Message link copied to clipboard",
+    });
+  };
 
   const actions = showActions
     ? [
-        ...(canEdit
-          ? [
-              {
-                icon: PencilSquareIcon,
-                label: "Edit message",
-                onClick: handleEditMessage,
-              },
-            ]
-          : []),
-        ...(canDelete
-          ? [
-              {
-                icon: TrashIcon,
-                label: "Delete message",
-                onClick: handleDeleteMessage,
-              },
-            ]
-          : []),
-      ]
+      ...(enableExtendedActions
+        ? [
+          {
+            icon: LinkIcon,
+            label: "Copy message link",
+            onClick: handleCopyMessageLink,
+          },
+        ]
+        : []),
+      ...(canEdit
+        ? [
+          {
+            icon: PencilSquareIcon,
+            label: "Edit message",
+            onClick: handleEditMessage,
+          },
+        ]
+        : []),
+      ...(canDelete
+        ? [
+          {
+            icon: TrashIcon,
+            label: "Delete message",
+            onClick: handleDeleteMessage,
+          },
+        ]
+        : []),
+    ]
     : [];
 
   return (
     <div className="absolute -bottom-3.5 left-2.5 flex flex-wrap items-center gap-1">
-      {!isDeleted && reactionsEnabled && (
+      {!isDeleted && enableExtendedActions && (
         <>
           <MessageReactions
             reactions={message.reactions ?? []}

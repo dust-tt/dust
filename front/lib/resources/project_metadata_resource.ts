@@ -102,7 +102,6 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     blob: Partial<{
       description: string | null;
       urls: string[];
-      tags: string[];
     }>,
     transaction?: Transaction
   ): Promise<Result<void, Error>> {
@@ -132,7 +131,6 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       spaceId: this.spaceSId,
       description: this.description,
       urls: this.urls,
-      tags: this.tags,
     };
   }
 }

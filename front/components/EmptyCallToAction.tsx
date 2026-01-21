@@ -1,5 +1,4 @@
-import { Button } from "@dust-tt/sparkle";
-import Link from "next/link";
+import { Button, LinkWrapper } from "@dust-tt/sparkle";
 import type { ComponentType, MouseEvent } from "react";
 import React from "react";
 
@@ -35,7 +34,7 @@ export function EmptyCallToAction({
         "bg-muted-background dark:bg-muted-background-night"
       )}
     >
-      {href ? <Link href={href}>{button}</Link> : button}
+      {href ? <LinkWrapper href={href}>{button}</LinkWrapper> : button}
     </div>
   );
 }

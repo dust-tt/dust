@@ -2,12 +2,12 @@ import {
   Button,
   cn,
   ContentMessage,
+  LinkWrapper,
   ListGroup,
   ListItemSection,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
 import React, { useMemo, useState } from "react";
 
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -21,6 +21,7 @@ import type {
   ConversationType,
   Result,
   RichMention,
+  SpaceType,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -38,9 +39,7 @@ interface SpaceConversationsTabProps {
   user: UserType;
   conversations: ConversationType[];
   isConversationsLoading: boolean;
-  spaceInfo: {
-    name: string;
-  };
+  spaceInfo: SpaceType;
   onSubmit: (
     input: string,
     mentions: RichMention[],
@@ -121,14 +120,14 @@ export function SpaceConversationsTab({
                   Dust workspace ("projects" feature flag). The goal is to get
                   feedback from internal usage and quickly iterate. Share your
                   feedback in the{" "}
-                  <Link
+                  <LinkWrapper
                     href="https://dust4ai.slack.com/archives/C09T7N4S6GG"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-500 hover:text-blue-600"
                   >
                     initiative slack channel
-                  </Link>
+                  </LinkWrapper>
                   .
                 </p>
               </ContentMessage>
@@ -140,7 +139,8 @@ export function SpaceConversationsTab({
               owner={owner}
               user={user}
               onSubmit={onSubmit}
-              conversation={null}
+              draftKey={`space-${spaceInfo.sId}-new-conversation`}
+              space={spaceInfo}
               disableAutoFocus={false}
             />
           </div>

@@ -1,5 +1,4 @@
 import { ArrowLeftIcon, Button, IconButton, MoreIcon } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 
 import { ConversationFilesPopover } from "@app/components/assistant/conversation/ConversationFilesPopover";
 import {
@@ -8,6 +7,7 @@ import {
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
+import { useAppRouter } from "@app/lib/platform";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
@@ -25,7 +25,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     workspaceId: owner.sId,
     spaceId: conversation?.spaceId ?? null,
   });
-  const router = useRouter();
+  const router = useAppRouter();
 
   const {
     isMenuOpen,
