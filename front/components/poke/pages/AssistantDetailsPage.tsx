@@ -5,6 +5,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  ExternalLinkIcon,
+  IconButton,
   LinkWrapper,
   Page,
   Spinner,
@@ -60,7 +62,7 @@ export function AssistantDetailsPage({
     );
   }
 
-  const { agentConfigurations, authors, lastVersionEditors, spaces } =
+  const { agentConfigurations, authors, lastVersionEditors, spaces, skills } =
     agentDetails;
 
   return (
@@ -189,6 +191,32 @@ export function AssistantDetailsPage({
                           <JsonViewer
                             theme={isDark ? "dark" : "light"}
                             value={decodeSqids(action)}
+                            rootName={false}
+                            defaultInspectDepth={0}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      <div className="font-bold">Skills:</div>
+                      {skills.map((skill) => (
+                        <div key={skill.sId}>
+                          <div className="flex items-center gap-1">
+                            {skill.name}
+                            <LinkWrapper
+                              href={`/poke/${owner.sId}/skills/${skill.sId}`}
+                              target="_blank"
+                            >
+                              <IconButton
+                                icon={ExternalLinkIcon}
+                                size="xs"
+                                variant="outline"
+                              />
+                            </LinkWrapper>
+                          </div>
+                          <JsonViewer
+                            theme={isDark ? "dark" : "light"}
+                            value={skill}
                             rootName={false}
                             defaultInspectDepth={0}
                           />
