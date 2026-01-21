@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import {
   GroupSpaceEditorResource,
   GroupSpaceMemberResource,
   GroupSpaceViewerResource,
 } from "@app/lib/resources/group_space_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -61,9 +61,6 @@ describe("GroupSpaceMemberResource", () => {
   describe("fetchBySpace", () => {
     it("should return null when no member GroupSpace exists for the space", async () => {
       // Create a space without any member groups
-      const { SpaceResource } = await import(
-        "@app/lib/resources/space_resource"
-      );
       const emptySpace = await SpaceResource.makeNew(
         {
           name: "Empty Space",
