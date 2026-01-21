@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import React, { createContext, useContext, useMemo, useState } from "react";
 
 import { DataSourceViewsProvider } from "@app/components/agent_builder/DataSourceViewsContext";
+import { ImprovePanelProvider } from "@app/components/agent_builder/ImprovePanelContext";
 import { PreviewPanelProvider } from "@app/components/agent_builder/PreviewPanelContext";
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
 import { SkillsProvider } from "@app/components/shared/skills/SkillsContext";
@@ -55,15 +56,17 @@ export function AgentBuilderProvider({
   return (
     <AgentBuilderContext.Provider value={value}>
       <PreviewPanelProvider>
-        <SpacesProvider owner={owner}>
-          <MCPServerViewsProvider owner={owner}>
-            <SkillsProvider owner={owner}>
-              <DataSourceViewsProvider owner={owner}>
-                {children}
-              </DataSourceViewsProvider>
-            </SkillsProvider>
-          </MCPServerViewsProvider>
-        </SpacesProvider>
+        <ImprovePanelProvider>
+          <SpacesProvider owner={owner}>
+            <MCPServerViewsProvider owner={owner}>
+              <SkillsProvider owner={owner}>
+                <DataSourceViewsProvider owner={owner}>
+                  {children}
+                </DataSourceViewsProvider>
+              </SkillsProvider>
+            </MCPServerViewsProvider>
+          </SpacesProvider>
+        </ImprovePanelProvider>
       </PreviewPanelProvider>
     </AgentBuilderContext.Provider>
   );

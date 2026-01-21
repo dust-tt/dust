@@ -354,7 +354,7 @@ export const AgentInputBar = ({
         draftKey={context.draftKey}
         disableAutoFocus={isMobile}
         actions={context.agentBuilderContext?.actionsToShow}
-        isSubmitting={context.agentBuilderContext?.isSavingDraftAgent === true}
+        isSubmitting={context.agentBuilderContext?.isSubmitting === true}
       />
     </div>
   );

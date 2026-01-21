@@ -74,7 +74,7 @@ export type VirtuosoMessageListContext = {
   conversation?: ConversationWithoutContentType;
   agentBuilderContext?: {
     draftAgent?: LightAgentConfigurationType;
-    isSavingDraftAgent: boolean;
+    isSubmitting: boolean;
     actionsToShow: InputBarContainerProps["actions"];
     resetConversation: () => void;
   };
@@ -92,7 +92,8 @@ export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
 export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
   return (
     (isUserMessage(message) &&
-      message.context.origin === "onboarding_conversation") ||
+      (message.context.origin === "onboarding_conversation" ||
+        message.context.origin === "agent_copilot")) ||
     isHandoverUserMessage(message)
   );
 };
