@@ -34,7 +34,7 @@ export class SpaceFactory {
         kind: "global",
         workspaceId: workspace.id,
       },
-      removeNulls([globalGroup]) // TODO: Add groups
+      { members: removeNulls([globalGroup]) } // TODO: Add groups
     );
   }
 
@@ -45,7 +45,7 @@ export class SpaceFactory {
         kind: "system",
         workspaceId: workspace.id,
       },
-      removeNulls([systemGroup]) // TODO: Add groups
+      { members: removeNulls([systemGroup]) } // TODO: Add groups
     );
   }
 
@@ -63,7 +63,7 @@ export class SpaceFactory {
         kind: "regular",
         workspaceId: workspace.id,
       },
-      [group]
+      { members: [group] }
     );
   }
 
@@ -74,7 +74,7 @@ export class SpaceFactory {
         kind: "conversations",
         workspaceId: workspace.id,
       },
-      []
+      { members: [] }
     );
   }
 
@@ -92,7 +92,7 @@ export class SpaceFactory {
         kind: "project",
         workspaceId: workspace.id,
       },
-      [group]
+      { members: [group] }
     );
   }
 }

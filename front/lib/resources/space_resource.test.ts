@@ -75,7 +75,7 @@ describe("SpaceResource", () => {
           workspaceId: workspace.id,
           managementMode: "manual",
         },
-        [regularGroup]
+        { members: [regularGroup] }
       );
 
       // Create test users
