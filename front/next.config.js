@@ -63,16 +63,17 @@ const config = {
     esmExternals: false,
     instrumentationHook: true,
     // Ensure dd-trace and other dependencies are included in standalone build.
+    // Paths are relative to front/ directory. With npm workspaces, deps are hoisted to root node_modules.
     outputFileTracingIncludes: {
       "/**": [
-        "./node_modules/dd-trace/**/*",
-        "./node_modules/@datadog/**/*",
+        "../node_modules/dd-trace/**/*",
+        "../node_modules/@datadog/**/*",
         // Include entire Redux ecosystem to avoid issues with partial inclusion.
-        "./node_modules/redux/**/*",
-        "./node_modules/@reduxjs/**/*",
-        "./node_modules/immer/**/*",
-        "./node_modules/reselect/**/*",
-        "./node_modules/redux-thunk/**/*",
+        "../node_modules/redux/**/*",
+        "../node_modules/@reduxjs/**/*",
+        "../node_modules/immer/**/*",
+        "../node_modules/reselect/**/*",
+        "../node_modules/redux-thunk/**/*",
       ],
     },
   },
@@ -516,7 +517,7 @@ const config = {
         test: /\.js$/,
         use: ["source-map-loader"],
         enforce: "pre",
-        include: [path.resolve(__dirname, "node_modules/@dust-tt/sparkle")],
+        include: [path.resolve(__dirname, "../node_modules/@dust-tt/sparkle")],
       });
     }
     return config;
