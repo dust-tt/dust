@@ -227,7 +227,10 @@ export function withPublicAPIAuthentication<T>(
   handler: (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
-    auth: Authenticator
+    auth: Authenticator,
+    // Null is passed for compatibility with withResourceFetchingFromRoute which uses
+    // the 4th parameter to determine legacy endpoint support (null = API route).
+    _sessionOrKeyAuth: null
   ) => Promise<void> | void,
   opts: {
     isStreaming?: boolean;
@@ -326,7 +329,7 @@ export function withPublicAPIAuthentication<T>(
             return apiError(req, res, getMaintenanceError(maintenance));
           }
 
-          return await handler(req, res, auth);
+          return await handler(req, res, auth, null);
         } catch (error) {
           logger.error({ error }, "Failed to verify token");
           return apiError(req, res, {
@@ -423,7 +426,7 @@ export function withPublicAPIAuthentication<T>(
           role: key.role,
         });
       }
-      return handler(req, res, workspaceAuth);
+      return handler(req, res, workspaceAuth, null);
     },
     isStreaming
   );
