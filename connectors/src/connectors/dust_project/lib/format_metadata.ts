@@ -16,8 +16,8 @@ export function formatProjectMetadata(metadata: ProjectMetadataType): string {
   if (metadata.urls && metadata.urls.length > 0) {
     sections.push("# URLs");
     sections.push("");
-    for (const url of metadata.urls) {
-      sections.push(`- ${url}`);
+    for (const urlItem of metadata.urls) {
+      sections.push(`- [${urlItem.name}](${urlItem.url})`);
     }
     sections.push("");
   }

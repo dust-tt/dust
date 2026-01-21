@@ -56,7 +56,8 @@ export function SpaceAboutTab({
 
   // Project metadata state
   const [description, setDescription] = useState("");
-  const [urls, setUrls] = useState<string[]>([]);
+  const [urls, setUrls] = useState<Array<{ name: string; url: string }>>([]);
+  const [newUrlName, setNewUrlName] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [isSavingMetadata, setIsSavingMetadata] = useState(false);
   const { projectMetadata, isProjectMetadataLoading } = useProjectMetadata({
@@ -128,23 +129,45 @@ export function SpaceAboutTab({
 
   const onSaveMetadata = useCallback(async () => {
     setIsSavingMetadata(true);
+
+    // Auto-add pending URL if both fields are filled
+    const urlsToSave =
+      newUrlName.trim() && newUrl.trim()
+        ? [...urls, { name: newUrlName.trim(), url: newUrl.trim() }]
+        : urls;
+
     await doUpdateMetadata({
       description: description || null,
-      urls,
+      urls: urlsToSave,
     });
-    setIsSavingMetadata(false);
-  }, [doUpdateMetadata, description, urls]);
 
-  const onAddUrl = useCallback(() => {
-    if (newUrl.trim()) {
-      setUrls([...urls, newUrl.trim()]);
+    // Clear the input fields after saving
+    if (newUrlName.trim() && newUrl.trim()) {
+      setNewUrlName("");
       setNewUrl("");
     }
-  }, [newUrl, urls]);
 
-  const onUpdateUrl = useCallback(
-    (index: number, value: string) => {
-      setUrls(urls.map((url, i) => (i === index ? value : url)));
+    setIsSavingMetadata(false);
+  }, [doUpdateMetadata, description, urls, newUrlName, newUrl]);
+
+  const onAddUrl = useCallback(() => {
+    if (newUrlName.trim() && newUrl.trim()) {
+      setUrls([...urls, { name: newUrlName.trim(), url: newUrl.trim() }]);
+      setNewUrlName("");
+      setNewUrl("");
+    }
+  }, [newUrlName, newUrl, urls]);
+
+  const onUpdateUrlName = useCallback(
+    (index: number, name: string) => {
+      setUrls(urls.map((u, i) => (i === index ? { ...u, name } : u)));
+    },
+    [urls]
+  );
+
+  const onUpdateUrlValue = useCallback(
+    (index: number, url: string) => {
+      setUrls(urls.map((u, i) => (i === index ? { ...u, url } : u)));
     },
     [urls]
   );
@@ -212,12 +235,20 @@ export function SpaceAboutTab({
           <Label>URLs</Label>
           {urls.length > 0 && (
             <div className="flex flex-col gap-y-2">
-              {urls.map((url, index) => (
+              {urls.map((urlItem, index) => (
                 <div key={index} className="flex items-center gap-2">
                   <Input
+                    placeholder="URL name"
+                    value={urlItem.name}
+                    onChange={(e) => onUpdateUrlName(index, e.target.value)}
+                    disabled={isProjectMetadataLoading}
+                    className="w-48"
+                  />
+                  <Input
                     type="url"
-                    value={url}
-                    onChange={(e) => onUpdateUrl(index, e.target.value)}
+                    placeholder="URL"
+                    value={urlItem.url}
+                    onChange={(e) => onUpdateUrlValue(index, e.target.value)}
                     disabled={isProjectMetadataLoading}
                     className="flex-1"
                   />
@@ -227,12 +258,14 @@ export function SpaceAboutTab({
                     size="sm"
                     onClick={() =>
                       window.open(
-                        url.startsWith("http") ? url : `https://${url}`,
+                        urlItem.url.startsWith("http")
+                          ? urlItem.url
+                          : `https://${urlItem.url}`,
                         "_blank",
                         "noopener noreferrer"
                       )
                     }
-                    disabled={isProjectMetadataLoading || !url.trim()}
+                    disabled={isProjectMetadataLoading || !urlItem.url.trim()}
                     tooltip="Open URL"
                   />
                   <IconButton
@@ -249,7 +282,17 @@ export function SpaceAboutTab({
           )}
           <div className="flex items-center gap-2">
             <Input
-              placeholder="Add a URL..."
+              placeholder="URL name (e.g. Documentation)"
+              value={newUrlName}
+              onChange={(e) => {
+                e.preventDefault();
+                setNewUrlName(e.target.value);
+              }}
+              disabled={isProjectMetadataLoading}
+              className="w-48"
+            />
+            <Input
+              placeholder="URL"
               value={newUrl}
               onChange={(e) => setNewUrl(e.target.value)}
               onKeyDown={(e) => {
@@ -266,7 +309,9 @@ export function SpaceAboutTab({
               size="sm"
               label="Add"
               onClick={onAddUrl}
-              disabled={!newUrl.trim() || isProjectMetadataLoading}
+              disabled={
+                !newUrlName.trim() || !newUrl.trim() || isProjectMetadataLoading
+              }
             />
           </div>
         </div>

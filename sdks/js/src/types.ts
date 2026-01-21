@@ -2416,7 +2416,7 @@ export const ProjectMetadataSchema = z.object({
   updatedAt: z.number(),
   spaceId: z.string(),
   description: z.string().nullable(),
-  urls: z.array(z.string()),
+  urls: z.array(z.object({ name: z.string(), url: z.string() })),
   members: z.array(z.string()),
 });
 export type ProjectMetadataType = z.infer<typeof ProjectMetadataSchema>;
