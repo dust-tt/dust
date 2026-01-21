@@ -51,15 +51,13 @@ export const getStaticProps: GetStaticProps<
 
 export default function AcademyListing({ courses }: CourseListingPageProps) {
   const router = useRouter();
-  const initialPage = useMemo(() => {
+  const page = useMemo(() => {
     const queryPage = isString(router.query.page)
       ? router.query.page
       : undefined;
     const parsed = parseInt(queryPage ?? "1", 10);
     return parsed > 0 ? parsed : 1;
   }, [router.query.page]);
-
-  const page = initialPage;
 
   const totalPages = Math.max(1, Math.ceil(courses.length / ACADEMY_PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);

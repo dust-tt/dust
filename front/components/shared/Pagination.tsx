@@ -49,8 +49,6 @@ function PaginationLink({
   isCurrent,
   buildPageUrl,
 }: PaginationLinkProps) {
-  const href = buildPageUrl(page);
-
   if (isCurrent) {
     return (
       <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary-100 text-xs font-medium text-primary-800">
@@ -61,7 +59,7 @@ function PaginationLink({
 
   return (
     <Link
-      href={href}
+      href={buildPageUrl(page)}
       className="flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground transition-colors hover:bg-gray-100 hover:text-foreground"
     >
       {page}

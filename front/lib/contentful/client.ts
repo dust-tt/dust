@@ -957,7 +957,7 @@ function contentfulEntryToCourseSummary(
     : null;
 
   return {
-    kind: "course" as const,
+    kind: "course",
     id: entry.sys.id,
     slug,
     title,
@@ -1057,7 +1057,7 @@ export async function getAllCourses(
     });
 
     const courses = response.items
-      .map((entry) => contentfulEntryToCourse(entry))
+      .map((entry) => contentfulEntryToCourseSummary(entry))
       .filter(isNonNull)
       .sort((a, b) => {
         // Sort by courseId if available, otherwise by dateOfAddition or createdAt
@@ -1077,19 +1077,7 @@ export async function getAllCourses(
           ? new Date(b.dateOfAddition).getTime()
           : new Date(b.createdAt).getTime();
         return bDate - aDate;
-      })
-      .map((course) => ({
-        kind: "course" as const,
-        id: course.id,
-        slug: course.slug,
-        title: course.title,
-        description: course.description,
-        courseId: course.courseId,
-        dateOfAddition: course.dateOfAddition,
-        estimatedDurationMinutes: course.estimatedDurationMinutes,
-        image: course.image,
-        createdAt: course.createdAt,
-      }));
+      });
 
     return new Ok(courses);
   } catch (error) {
@@ -1157,7 +1145,7 @@ function contentfulEntryToLessonSummary(
         : null;
 
     return {
-      kind: "lesson" as const,
+      kind: "lesson",
       id: entry.sys.id,
       slug,
       title,
