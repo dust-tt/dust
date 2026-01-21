@@ -28,7 +28,12 @@ import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_valid
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { InteractiveContentFileContentType } from "@app/types";
-import { Err, frameContentType, INTERACTIVE_CONTENT_FILE_FORMATS, Ok } from "@app/types";
+import {
+  Err,
+  frameContentType,
+  INTERACTIVE_CONTENT_FILE_FORMATS,
+  Ok,
+} from "@app/types";
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
