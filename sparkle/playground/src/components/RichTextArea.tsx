@@ -555,6 +555,7 @@ type RichTextAreaProps = {
     end: number;
   }) => void;
   onSuggestionsChange?: (hasSuggestions: boolean) => void;
+  onTextChange?: (value: string) => void;
   onFocus?: () => void;
   onBlur?: () => void;
   scrollContainer?: HTMLElement | null;
@@ -572,6 +573,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       placeholder,
       onAskCopilot,
       onSuggestionsChange,
+      onTextChange,
       onFocus,
       onBlur,
       scrollContainer,
@@ -833,6 +835,16 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         editor.off("update", emit);
       };
     }, [editor, hasSuggestions, onSuggestionsChange]);
+
+    useEffect(() => {
+      if (!editor || !onTextChange) return;
+      const emit = () => onTextChange(editor.getText());
+      emit();
+      editor.on("update", emit);
+      return () => {
+        editor.off("update", emit);
+      };
+    }, [editor, onTextChange]);
 
     const acceptAllSuggestions = useMemo(() => {
       return () => {

@@ -4,6 +4,7 @@ import { ArrowRightIcon } from "@sparkle/icons";
 
 import { cn } from "../lib/utils";
 import { Button } from "./Button";
+import { ContentBlockWrapper } from "./markdown/ContentBlockWrapper";
 
 const diffAddClasses =
   "s-rounded s-bg-highlight-100 dark:s-bg-highlight-100-night s-px-1 s-text-highlight-800 dark:s-text-highlight-800-night";
@@ -24,40 +25,50 @@ export function DiffBlock({
   const lines = content.split("\n");
 
   return (
-    <div
-      className={cn(
-        "s-w-full s-rounded-md s-border s-border-border dark:s-border-border-night",
-        "s-bg-muted/70 dark:s-bg-muted-night/70",
-        className
-      )}
-    >
-      <div className="s-flex s-items-center s-justify-end s-gap-2 s-border-b s-border-border s-px-2 s-py-1 dark:s-border-border-night">
+    <ContentBlockWrapper
+      className={cn("s-w-full", className)}
+      buttonDisplay="inside"
+      displayActions="always"
+      actions={
         <Button
           size="xs"
           variant="primary"
           label="Apply"
-          onClick={onApply ?? (() => {})}
           icon={ArrowRightIcon}
+          onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onApply?.();
+          }}
         />
-      </div>
-      <div className="s-space-y-1 s-p-2 s-font-mono s-text-sm s-text-foreground dark:s-text-foreground-night">
-        {lines.map((line, index) => {
-          const trimmed = line.trimStart();
-          const isAddition = trimmed.startsWith("+");
-          const isRemoval = trimmed.startsWith("-");
-          const lineClasses = isAddition
-            ? diffAddClasses
-            : isRemoval
-              ? diffRemoveClasses
-              : "s-text-foreground dark:s-text-foreground-night";
+      }
+    >
+      <div
+        className={cn(
+          "s-rounded-2xl s-border s-border-border dark:s-border-border-night",
+          "s-bg-muted-background s-p-2 dark:s-bg-muted-background-night",
+          "s-text-foreground dark:s-text-foreground-night"
+        )}
+      >
+        <div className="s-space-y-1 s-font-mono s-text-sm">
+          {lines.map((line, index) => {
+            const trimmed = line.trimStart();
+            const isAddition = trimmed.startsWith("+");
+            const isRemoval = trimmed.startsWith("-");
+            const lineClasses = isAddition
+              ? diffAddClasses
+              : isRemoval
+                ? diffRemoveClasses
+                : "s-text-foreground dark:s-text-foreground-night";
 
-          return (
-            <div key={`${index}-${line}`} className="s-whitespace-pre-wrap">
-              <span className={lineClasses}>{line}</span>
-            </div>
-          );
-        })}
+            return (
+              <div key={`${index}-${line}`} className="s-whitespace-pre-wrap">
+                <span className={lineClasses}>{line}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </ContentBlockWrapper>
   );
 }

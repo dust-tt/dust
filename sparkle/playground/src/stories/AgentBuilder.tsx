@@ -62,11 +62,17 @@ import {
   ToolsIcon,
   UserGroupIcon,
   XMarkIcon,
-  MagicIcon,
   SparklesIcon,
 } from "@dust-tt/sparkle";
 import { Allotment } from "allotment";
-import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { customColors } from "@sparkle/lib/colors";
 
@@ -179,6 +185,8 @@ export default function AgentBuilder() {
     null
   );
   const [hasSuggestionsState, setHasSuggestionsState] = useState(false);
+  const [isInstructionDirty, setIsInstructionDirty] = useState(false);
+  const hasInstructionChangeRef = useRef(false);
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<Set<string>>(() => {
     const defaultSpace = mockSpaces[0];
     return defaultSpace ? new Set([defaultSpace.id]) : new Set();
@@ -253,6 +261,18 @@ export default function AgentBuilder() {
 
   const allotmentRef = useRef<React.ComponentRef<typeof Allotment>>(null);
   const wasRightPanelOpen = useRef(isRightPanelOpen);
+
+  const handleInstructionTextChange = useCallback(() => {
+    if (!hasInstructionChangeRef.current) {
+      hasInstructionChangeRef.current = true;
+      return;
+    }
+    setIsInstructionDirty(true);
+  }, []);
+
+  const clearInstructionDirty = useCallback(() => {
+    setIsInstructionDirty(false);
+  }, []);
 
   useEffect(() => {
     if (wasRightPanelOpen.current === isRightPanelOpen) {
@@ -444,7 +464,24 @@ export default function AgentBuilder() {
                 }
                 rightActions={
                   <div className="s-flex s-items-center s-gap-2">
-                    <Bar.ButtonBar variant="close" />
+                    {isInstructionDirty ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          label="Cancel"
+                          onClick={clearInstructionDirty}
+                        />
+                        <Button
+                          size="sm"
+                          variant="highlight"
+                          label="Save"
+                          onClick={clearInstructionDirty}
+                        />
+                      </>
+                    ) : (
+                      <Bar.ButtonBar variant="close" />
+                    )}
                   </div>
                 }
               />
@@ -594,6 +631,7 @@ export default function AgentBuilder() {
                       placeholder="Write instructions for your agent..."
                       onAskCopilot={handleAskCopilot}
                       onSuggestionsChange={setHasSuggestionsState}
+                      onTextChange={handleInstructionTextChange}
                       scrollContainer={scrollContainer}
                     />
                   </div>
