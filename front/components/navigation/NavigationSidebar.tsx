@@ -95,7 +95,14 @@ export const NavigationSidebar = React.forwardRef<
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
-      <div className="flex flex-col gap-2 pt-3">
+      <div
+        className={cn(
+          "flex flex-col gap-2",
+          appStatus !== null && subscription.paymentFailingSince !== null
+            ? ""
+            : "pt-3"
+        )}
+      >
         {appStatus && <AppStatusBanner appStatus={appStatus} />}
         {subscription.paymentFailingSince && isAdmin(owner) && (
           <SubscriptionPastDueBanner />
@@ -267,6 +274,7 @@ function StatusBanner({
 interface AppStatusBannerProps {
   appStatus: AppStatus;
 }
+
 function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   const { providersStatus, dustStatus } = appStatus;
 
