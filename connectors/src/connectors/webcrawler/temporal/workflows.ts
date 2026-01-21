@@ -151,31 +151,18 @@ export async function firecrawlCrawlCompletedWorkflow(
     // and upserting a page) which may lead to dropping a few pages which is not catastrophic.
     await sleep(120_000);
 
-    const workflowId = garbageCollectWebsiteWorkflowId(
-      connectorId,
-      res.lastSyncStartTs
-    );
-
-    try {
-      await startChild(garbageCollectWebsiteWorkflow, {
-        workflowId,
-        searchAttributes: {
-          connectorId: [connectorId],
-        },
-        args: [connectorId, res.lastSyncStartTs],
-        parentClosePolicy: ParentClosePolicy.ABANDON,
-        memo: workflowInfo().memo,
-      });
-    } catch (err) {
-      if (
-        err instanceof Error &&
-        err.name === "WorkflowExecutionAlreadyStartedError"
-      ) {
-        // Garbage collector already running from a previous webhook, skip.
-        return;
-      }
-      throw err;
-    }
+    await startChild(garbageCollectWebsiteWorkflow, {
+      workflowId: garbageCollectWebsiteWorkflowId(
+        connectorId,
+        res.lastSyncStartTs
+      ),
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      args: [connectorId, res.lastSyncStartTs],
+      parentClosePolicy: ParentClosePolicy.ABANDON,
+      memo: workflowInfo().memo,
+    });
   }
 }
 
