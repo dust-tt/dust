@@ -67,7 +67,6 @@ export function createImageGenerationTools(
           auth,
           imageFileIds: referenceImages,
           agentLoopContext,
-          workspaceSId: workspace.sId,
           statsDClient,
         });
         if (processResult.isErr()) {

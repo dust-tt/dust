@@ -267,16 +267,15 @@ async function processSingleImageFile({
   imageFileId,
   conversationId,
   maxImageSize,
-  workspaceSId,
   statsDClient,
 }: {
   auth: Authenticator;
   imageFileId: string;
   conversationId: string;
   maxImageSize: number;
-  workspaceSId: string;
   statsDClient: ReturnType<typeof getStatsDClient>;
 }): Promise<Ok<InlineDataPart> | Err<MCPError>> {
+  const workspace = auth.getNonNullableWorkspace();
   const fileResource = await FileResource.fetchById(auth, imageFileId);
   if (!fileResource) {
     return new Err(
@@ -301,7 +300,7 @@ async function processSingleImageFile({
         fileId: fileResource.sId,
         fileSize: fileResource.fileSize,
         maxFileSize: maxImageSize,
-        workspaceId: workspaceSId,
+        workspaceId: workspace.sId,
       },
       "generate_image: File size exceeds maximum allowed size"
     );
@@ -361,13 +360,11 @@ export async function processImageFileIds({
   auth,
   imageFileIds,
   agentLoopContext,
-  workspaceSId,
   statsDClient,
 }: {
   auth: Authenticator;
   imageFileIds: string[];
   agentLoopContext: AgentLoopContextType | undefined;
-  workspaceSId: string;
   statsDClient: ReturnType<typeof getStatsDClient>;
 }): Promise<Ok<InlineDataPart[]> | Err<MCPError>> {
   if (!agentLoopContext?.runContext) {
@@ -389,7 +386,6 @@ export async function processImageFileIds({
         imageFileId,
         conversationId,
         maxImageSize,
-        workspaceSId,
         statsDClient,
       }),
     { concurrency: 8 }
