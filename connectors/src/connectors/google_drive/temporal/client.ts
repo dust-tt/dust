@@ -25,13 +25,11 @@ import {
   googleDriveFixParentsConsistencyWorkflowId,
   googleDriveFullSync,
   googleDriveFullSyncV2,
-  googleDriveFullSyncV2WorkflowId,
   googleDriveFullSyncWorkflowId,
   googleDriveGarbageCollectorWorkflow,
   googleDriveGarbageCollectorWorkflowId,
   googleDriveIncrementalSync,
   googleDriveIncrementalSyncV2,
-  googleDriveIncrementalSyncV2WorkflowId,
 } from "./workflows";
 
 /**
@@ -79,9 +77,9 @@ export async function launchGoogleDriveFullSyncWorkflow(
     })),
   ];
 
+  const workflowId = googleDriveFullSyncWorkflowId(connectorId);
   try {
     if (useParallelSync) {
-      const workflowId = googleDriveFullSyncV2WorkflowId(connectorId);
       if (addedFolderIds === null) {
         // Full resync (null): terminate any running workflow and start fresh
         await terminateWorkflow(workflowId);
@@ -154,7 +152,6 @@ export async function launchGoogleDriveFullSyncWorkflow(
       }
     } else {
       // Legacy workflow
-      const workflowId = googleDriveFullSyncWorkflowId(connectorId);
       if (addedFolderIds === null) {
         // Full resync (null): terminate any running workflow and start fresh
         await terminateWorkflow(workflowId);
@@ -231,9 +228,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
     localLogger.error(
       {
         workspaceId: dataSourceConfig.workspaceId,
-        workflowId: useParallelSync
-          ? googleDriveFullSyncV2WorkflowId(connectorId)
-          : googleDriveFullSyncWorkflowId(connectorId),
+        workflowId,
         error: e,
       },
       `Failed starting workflow.`
@@ -260,9 +255,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
   const client = await getTemporalClient();
 
   // Route to appropriate workflow based on feature flag
-  const workflowId = useParallelSync
-    ? googleDriveIncrementalSyncV2WorkflowId(connectorId)
-    : googleDriveIncrementalSyncWorkflowId(connectorId);
+  const workflowId = googleDriveIncrementalSyncWorkflowId(connectorId);
 
   const workflowFn = useParallelSync
     ? googleDriveIncrementalSyncV2
@@ -273,9 +266,6 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
 
   try {
     // Terminate both versions of the workflows in case we changed the flag
-    await terminateWorkflow(
-      googleDriveIncrementalSyncV2WorkflowId(connectorId)
-    );
     await terminateWorkflow(googleDriveIncrementalSyncWorkflowId(connectorId));
 
     await client.workflow.start(workflowFn, {
