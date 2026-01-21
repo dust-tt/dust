@@ -120,9 +120,13 @@ export function useDebounceWithAbort<T = string>(
         abortControllerRef.current = new AbortController();
         const signal = abortControllerRef.current.signal;
 
-        // Execute async function, ignoring AbortError since it's expected when requests are cancelled
+        // Execute async function, ignoring AbortError caused by our own abort signal.
         void asyncFn(value, signal).catch((err) => {
-          if (err instanceof DOMException && err.name === "AbortError") {
+          if (
+            err instanceof DOMException &&
+            err.name === "AbortError" &&
+            signal.aborted
+          ) {
             return;
           }
           throw err;
