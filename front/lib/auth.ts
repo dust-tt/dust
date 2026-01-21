@@ -58,6 +58,16 @@ const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
 
 const DustApiKeyNameHeader = "x-dust-api-key-name";
 
+// Group kinds loaded by default when creating an Authenticator.
+// agent_editors are loaded lazily via editorGroups() to optimize performance.
+const DEFAULT_GROUP_KINDS = [
+  "global",
+  "regular",
+  "provisioned",
+  "skill_editors",
+  "space_editors",
+] as const;
+
 export type AuthMethodType =
   | "system_api_key"
   | "api_key"
@@ -213,13 +223,7 @@ export class Authenticator {
           GroupResource.listUserGroupsInWorkspace({
             user,
             workspace: renderLightWorkspaceType({ workspace }),
-            groupKinds: [
-              "global",
-              "regular",
-              "provisioned",
-              "skill_editors",
-              "space_editors",
-            ],
+            groupKinds: [...DEFAULT_GROUP_KINDS],
           }),
           SubscriptionResource.fetchActiveByWorkspace(
             renderLightWorkspaceType({ workspace })
@@ -243,13 +247,7 @@ export class Authenticator {
       this._groups = await GroupResource.listUserGroupsInWorkspace({
         user: this._user,
         workspace: renderLightWorkspaceType({ workspace: this._workspace }),
-        groupKinds: [
-          "global",
-          "regular",
-          "provisioned",
-          "skill_editors",
-          "space_editors",
-        ],
+        groupKinds: [...DEFAULT_GROUP_KINDS],
         transaction,
       });
       // Reset editor groups cache so they will be reloaded if needed.
@@ -332,13 +330,7 @@ export class Authenticator {
         GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
-          groupKinds: [
-            "global",
-            "regular",
-            "provisioned",
-            "skill_editors",
-            "space_editors",
-          ],
+          groupKinds: [...DEFAULT_GROUP_KINDS],
         }),
         SubscriptionResource.fetchActiveByWorkspace(
           renderLightWorkspaceType({ workspace })
@@ -390,13 +382,7 @@ export class Authenticator {
       GroupResource.listUserGroupsInWorkspace({
         user,
         workspace: renderLightWorkspaceType({ workspace }),
-        groupKinds: [
-          "global",
-          "regular",
-          "provisioned",
-          "skill_editors",
-          "space_editors",
-        ],
+        groupKinds: [...DEFAULT_GROUP_KINDS],
       }),
       SubscriptionResource.fetchActiveByWorkspace(
         renderLightWorkspaceType({ workspace })
@@ -696,13 +682,7 @@ export class Authenticator {
     const groups = await GroupResource.listUserGroupsInWorkspace({
       user,
       workspace: renderLightWorkspaceType({ workspace: owner }),
-      groupKinds: [
-        "global",
-        "regular",
-        "provisioned",
-        "skill_editors",
-        "space_editors",
-      ],
+      groupKinds: [...DEFAULT_GROUP_KINDS],
     });
 
     return new Authenticator({
