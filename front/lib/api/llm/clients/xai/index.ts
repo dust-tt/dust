@@ -28,7 +28,8 @@ export class XaiLLM extends LLM {
       modelId: XaiWhitelistedModelId;
     }
   ) {
-    super(auth, overwriteLLMParameters(llmParameters));
+    const { clientId, ...params } = overwriteLLMParameters(llmParameters);
+    super(auth, clientId, params);
 
     const { XAI_API_KEY } = dustManagedCredentials();
     if (!XAI_API_KEY) {

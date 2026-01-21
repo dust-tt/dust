@@ -26,10 +26,7 @@ export class MistralLLM extends LLM {
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: MistralWhitelistedModelId }
   ) {
-    super(auth, {
-      ...llmParameters,
-      clientId: "mistral",
-    });
+    super(auth, "mistral", llmParameters);
     const { MISTRAL_API_KEY } = dustManagedCredentials();
     if (!MISTRAL_API_KEY) {
       throw new Error(

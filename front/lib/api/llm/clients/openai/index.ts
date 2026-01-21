@@ -38,7 +38,8 @@ export class OpenAIResponsesLLM extends LLM {
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: OpenAIWhitelistedModelId }
   ) {
-    super(auth, overwriteLLMParameters(llmParameters));
+    const { clientId, ...params } = overwriteLLMParameters(llmParameters);
+    super(auth, clientId, params);
     this.modelId = llmParameters.modelId;
 
     const { OPENAI_API_KEY, OPENAI_BASE_URL } = dustManagedCredentials();

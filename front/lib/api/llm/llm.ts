@@ -64,7 +64,7 @@ export abstract class LLM {
   protected reasoningEffort: ReasoningEffort | null;
   protected responseFormat: string | null;
   protected bypassFeatureFlag: boolean;
-  protected metadata: LLMClientMetadata;
+  protected metadata!: LLMClientMetadata;
 
   // Tracing fields.
   protected readonly authenticator: Authenticator;
@@ -75,28 +75,27 @@ export abstract class LLM {
 
   protected constructor(
     auth: Authenticator,
+    providerId: ModelProviderIdType,
     {
       bypassFeatureFlag = false,
       context,
-      clientId,
       getTraceInput,
       getTraceOutput,
       modelId,
       reasoningEffort = "none",
       responseFormat = null,
       temperature = AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced,
-    }: LLMParameters & { clientId: ModelProviderIdType }
+    }: LLMParameters
   ) {
     this.modelId = modelId;
     this.modelConfig = getSupportedModelConfig({
       modelId: this.modelId,
-      providerId: clientId,
+      providerId,
     });
     this.temperature = temperature;
     this.reasoningEffort = reasoningEffort;
     this.responseFormat = responseFormat;
     this.bypassFeatureFlag = bypassFeatureFlag;
-    this.metadata = { clientId, modelId };
 
     // Initialize tracing.
     this.authenticator = auth;

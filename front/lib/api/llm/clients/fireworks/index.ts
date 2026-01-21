@@ -30,7 +30,8 @@ export class FireworksLLM extends LLM {
       modelId: FireworksWhitelistedModelId;
     }
   ) {
-    super(auth, overwriteLLMParameters(llmParameters));
+    const { clientId, ...params } = overwriteLLMParameters(llmParameters);
+    super(auth, clientId, params);
 
     const { FIREWORKS_API_KEY } = dustManagedCredentials();
     if (!FIREWORKS_API_KEY) {

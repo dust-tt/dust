@@ -1,6 +1,9 @@
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
-import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import type {
+  ClientIdType,
+  LLMClientMetadata,
+} from "@app/lib/api/llm/types/options";
 import type { AgentErrorCategory } from "@app/types";
 import { normalizeError } from "@app/types";
 
@@ -227,15 +230,17 @@ export function categorizeLLMError(
   };
 }
 
-const USERFACING_CLIENT_ID: Record<string, string> = {
+const USERFACING_CLIENT_ID: Record<ClientIdType, string> = {
   anthropic: "Anthropic",
-  azure_openai: "Azure",
   openai: "OpenAI",
   mistral: "Mistral",
-  xai: "xAI",
-  google_ai_studio: "Google AI Studio",
+  togetherai: "TogetherAI",
   deepseek: "Deepseek",
   fireworks: "Fireworks",
+  openai_responses: "OpenAI",
+  xai: "xAI",
+  google_ai_studio: "Google AI Studio",
+  noop: "Noop",
 };
 
 /**
@@ -245,8 +250,8 @@ export const getUserFacingLLMErrorMessage = (
   type: LLMErrorType,
   lLMClientMetadata: LLMClientMetadata
 ): string => {
-  const userFacingProvider =
-    USERFACING_CLIENT_ID[lLMClientMetadata.clientId] || "The model provider";
+  const userFacingProvider: string =
+    USERFACING_CLIENT_ID[lLMClientMetadata.clientId];
   switch (type) {
     case "stop_error":
       return `${userFacingProvider} stopped the request unexpectedly. Please try again.`;

@@ -32,7 +32,8 @@ export class GoogleLLM extends LLM {
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId }
   ) {
-    super(auth, overwriteLLMParameters(llmParameters));
+    const { clientId, ...params } = overwriteLLMParameters(llmParameters);
+    super(auth, clientId, params);
     this.modelId = llmParameters.modelId;
     const { GOOGLE_AI_STUDIO_API_KEY } = dustManagedCredentials();
     if (!GOOGLE_AI_STUDIO_API_KEY) {

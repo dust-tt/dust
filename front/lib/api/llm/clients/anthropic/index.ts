@@ -30,7 +30,8 @@ export class AnthropicLLM extends LLM {
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: AnthropicWhitelistedModelId }
   ) {
-    super(auth, overwriteLLMParameters(llmParameters));
+    const { clientId, ...params } = overwriteLLMParameters(llmParameters);
+    super(auth, clientId, params);
     const { ANTHROPIC_API_KEY } = dustManagedCredentials();
     if (!ANTHROPIC_API_KEY) {
       throw new Error(
