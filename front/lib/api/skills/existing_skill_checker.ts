@@ -100,7 +100,10 @@ function truncateDescription(description: string): string {
 
 export async function getSimilarSkills(
   auth: Authenticator,
-  inputs: { naturalDescription: string }
+  inputs: {
+    naturalDescription: string;
+    excludeSkillId: string | null;
+  }
 ): Promise<Result<{ similar_skills: string[] }, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -112,16 +115,20 @@ export async function getSimilarSkills(
   }
 
   // Retrieve existing skills
-  const skills: SkillResource[] = await SkillResource.listByWorkspace(auth, {
+  const allSkills: SkillResource[] = await SkillResource.listByWorkspace(auth, {
     limit: MAX_SKILLS_SENT_TO_LLM,
     onlyCustom: true,
   });
-  if (skills.length === MAX_SKILLS_SENT_TO_LLM) {
+  if (allSkills.length === MAX_SKILLS_SENT_TO_LLM) {
     logger.warn(
       { workspaceId: owner.sId },
       "The number of skills fetched reached the limit. Some skills might not be considered in the similarity check."
     );
   }
+
+  const skills = inputs.excludeSkillId
+    ? allSkills.filter((s) => s.sId !== inputs.excludeSkillId)
+    : allSkills;
 
   const existingSkills = skills
     .map(

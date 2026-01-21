@@ -36,7 +36,10 @@ export function SkillBuilderAgentFacingDescriptionSection() {
         return;
       }
 
-      const result = await getSimilarSkills(description, signal);
+      const result = await getSimilarSkills(description, {
+        excludeSkillId: skillId, // Exclude the skill being edited.
+        signal,
+      });
 
       // Only update state if the request was not aborted
       if (!signal.aborted) {
@@ -44,9 +47,8 @@ export function SkillBuilderAgentFacingDescriptionSection() {
         if (result.isOk()) {
           const similarSkillIds = result.value;
           const similarSkillIdsSet = new Set(similarSkillIds);
-          const matchedSkills = skills.filter(
-            (skill) =>
-              similarSkillIdsSet.has(skill.sId) && skill.sId !== skillId
+          const matchedSkills = skills.filter((skill) =>
+            similarSkillIdsSet.has(skill.sId)
           );
           setSimilarSkills(matchedSkills);
         }
