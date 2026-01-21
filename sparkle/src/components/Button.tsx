@@ -289,19 +289,31 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isRounded?: boolean;
   };
 
-export type ButtonProps = CommonButtonProps & {
-  size?: ButtonSizeType;
-  icon?: React.ComponentType;
-  label?: string;
-};
-
-export type MiniButtonProps = CommonButtonProps & {
-  size: "mini";
+/**
+ * Icon-only button sizes (fixed width).
+ * When using these sizes, an icon is required and labels are not allowed.
+ */
+export type IconOnlyButtonProps = CommonButtonProps & {
+  size: "icon-xs" | "icon";
   icon: React.ComponentType;
   label?: never;
 };
 
-export type RegularButtonProps = ButtonProps;
+/**
+ * Default button props (all non-icon-only sizes).
+ */
+export type RegularButtonProps = CommonButtonProps & {
+  size?: Exclude<ButtonSizeType, "icon" | "icon-xs">;
+  icon?: React.ComponentType;
+  label?: string;
+};
+
+/**
+ * Main Button props.
+ * - If `size` is `"icon"` or `"icon-xs"`, `icon` is required and `label` is not allowed.
+ * - Otherwise, `icon` is optional and `label` is allowed.
+ */
+export type ButtonProps = IconOnlyButtonProps | RegularButtonProps;
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (

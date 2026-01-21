@@ -4,11 +4,12 @@ import {
   Avatar,
   Card,
   CardActionButton,
-  MiniButtonProps,
 } from "@sparkle/components/";
 import { CardVariantType } from "@sparkle/components/Card";
 import { MoreIcon } from "@sparkle/icons/app/";
 import { cn } from "@sparkle/lib/utils";
+
+import { IconOnlyButtonProps } from "./Button";
 
 interface BaseAssistantCardProps {
   description: string;
@@ -21,7 +22,7 @@ interface BaseAssistantCardProps {
   variant?: CardVariantType;
 }
 
-type AssistantCardMore = Omit<MiniButtonProps, "icon" | "size">;
+type AssistantCardMore = Omit<IconOnlyButtonProps, "icon">;
 
 export const AssistantCardMore = React.forwardRef<
   HTMLButtonElement,
