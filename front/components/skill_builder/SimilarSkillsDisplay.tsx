@@ -56,8 +56,8 @@ export function SimilarSkillsDisplay({
                   >
                     <IconButton
                       icon={ExternalLinkIcon}
-                      size="xs"
-                      variant="ghost"
+                      size="xmini"
+                      variant="outline"
                     />
                   </Link>
                 </div>
