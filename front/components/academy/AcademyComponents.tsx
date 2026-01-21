@@ -33,8 +33,8 @@ export function CourseCard({ course }: CourseCardProps) {
     >
       <div className="relative aspect-[2/1] w-full overflow-hidden">
         <Image
-          src={course.image!.url}
-          alt={course.image!.alt}
+          src={course.image?.url ?? ""}
+          alt={course.image?.alt ?? course.title}
           fill
           loader={contentfulImageLoader}
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -110,8 +110,8 @@ export function FeaturedCourse({ course }: FeaturedCourseProps) {
       >
         <div className="relative w-full overflow-hidden bg-gray-100 lg:w-1/2">
           <Image
-            src={course.image!.url}
-            alt={course.image!.alt}
+            src={course.image?.url ?? ""}
+            alt={course.image?.alt ?? course.title}
             width={800}
             height={600}
             loader={contentfulImageLoader}
