@@ -12,7 +12,6 @@ import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type { LLMEvent, TokenUsageEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import { assertNever } from "@app/types";
 
 function newId(): string {
   const uuid = crypto.randomUUID();
@@ -259,7 +258,42 @@ export async function* streamLLMEvents({
         break;
       }
       default: {
-        assertNever(candidate.finishReason);
+        yield* yieldEvents(events);
+        if (reasoningContentParts) {
+          yield* yieldEvents([
+            {
+              type: "reasoning_generated" as const,
+              content: { text: reasoningContentParts },
+              metadata: {
+                ...metadata,
+                encrypted_content: stateContainer.thinkingSignature,
+              },
+            },
+          ]);
+        }
+        reasoningContentParts = "";
+        if (textContentParts) {
+          yield* yieldEvents([
+            {
+              type: "text_generated" as const,
+              content: { text: textContentParts },
+              metadata,
+            },
+          ]);
+        }
+        textContentParts = "";
+        yield tokenUsage(generateContentResponse.usageMetadata, metadata);
+
+        yield new EventError(
+          {
+            type: "unknown_error",
+            isRetryable: false,
+            message: "Unknown error",
+            originalError: { candidate },
+          },
+          metadata
+        );
+        break;
       }
     }
   }
