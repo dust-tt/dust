@@ -652,11 +652,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
         // Handle editor group - create if needed and update members
         if (this.isProject()) {
-          assert(
-            editorIds.length > 0,
-            "Projects must have at least one editor."
-          );
-
           let editorGroupSpace = await GroupSpaceEditorResource.fetchBySpace(
             this.workspaceId,
             this,
@@ -684,6 +679,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
           // Set members of the editor group using the GroupSpaceEditorResource
           const editorUsers = await UserResource.fetchByIds(editorIds);
+          assert(
+            editorUsers.length > 0,
+            "Projects must have at least one editor."
+          );
           const setEditorsRes = await editorGroupSpace.setMembers(auth, {
             users: editorUsers.map((u) => u.toJSON()),
             transaction: t,
@@ -722,7 +721,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           });
         }
 
-        if (editorGroupIds.length > 0) {
+        if (this.isProject()) {
+          assert(
+            editorGroupIds.length > 0,
+            "Projects must have at least one editor group."
+          );
+          // Add the new editor groups
           const editorGroupsResult = await GroupResource.fetchByIds(
             auth,
             editorGroupIds
@@ -1082,7 +1086,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
                   permissions: ["admin", "read", "write"],
                 });
               } else {
-                // Members get read permissions in restricted projects
+                // Members get read permissions in restricted projects (the unrestricted case is handled by the roles above)
                 acc.push({
                   id: group.id,
                   permissions: ["read"],

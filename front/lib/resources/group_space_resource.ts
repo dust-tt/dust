@@ -262,6 +262,10 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
       transaction,
     });
     assert(groupModel, "Group must exist for member group space");
+    assert(
+      groupModel.kind === "regular",
+      "Group kind must be regular for member group space"
+    );
     const group = new GroupResource(GroupModel, groupModel.get());
 
     return new GroupSpaceMemberResource(
@@ -402,6 +406,8 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
     }
   ): Promise<GroupSpaceEditorResource> {
     assert(space.isProject(), "Editor groups only apply to project spaces");
+    assert(group.isSpaceEditor(), "space_editors groups can be editor groups");
+
     const groupSpace = await GroupSpaceModel.create(
       {
         groupId: group.id,
@@ -446,6 +452,10 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
       transaction,
     });
     assert(groupModel, "Group must exist for editor group space");
+    assert(
+      groupModel.kind === "space_editors",
+      "Group kind must be space_editors for editor group space"
+    );
     const group = new GroupResource(GroupModel, groupModel.get());
 
     return new GroupSpaceEditorResource(
@@ -505,6 +515,7 @@ export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
     }
   ): Promise<GroupSpaceViewerResource> {
     assert(space.isProject(), "Viewer groups only apply to project spaces");
+    assert(group.isGlobal(), "Only the global group can be a viewer group");
     const groupSpace = await GroupSpaceModel.create(
       {
         groupId: group.id,
@@ -555,6 +566,10 @@ export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
       transaction,
     });
     assert(groupModel, "Group must exist for viewer group space");
+    assert(
+      groupModel.kind === "global",
+      "Only the global group can be a viewer group"
+    );
 
     const group = new GroupResource(GroupModel, groupModel.get());
 

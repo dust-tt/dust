@@ -1609,6 +1609,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     return this.kind === "regular";
   }
 
+  isSpaceEditor(): boolean {
+    return this.kind === "space_editors";
+  }
+
   isProvisioned(): boolean {
     return this.kind === "provisioned";
   }

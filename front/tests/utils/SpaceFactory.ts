@@ -6,7 +6,12 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { WorkspaceType } from "@app/types";
-import { removeNulls, SPACE_GROUP_PREFIX } from "@app/types";
+import {
+  PROJECT_EDITOR_GROUP_PREFIX,
+  PROJECT_GROUP_PREFIX,
+  removeNulls,
+  SPACE_GROUP_PREFIX,
+} from "@app/types";
 
 export class SpaceFactory {
   static async defaults(auth: Authenticator) {
@@ -82,7 +87,7 @@ export class SpaceFactory {
   static async project(workspace: WorkspaceType, creatorId?: number) {
     const name = "project " + faker.string.alphanumeric(8);
     const group = await GroupResource.makeNew({
-      name: `Group for project ${name}`,
+      name: `${PROJECT_GROUP_PREFIX} ${name}`,
       workspaceId: workspace.id,
       kind: "regular",
     });
@@ -91,7 +96,7 @@ export class SpaceFactory {
     const defaultCreator = await UserFactory.basic();
     const editorGroup = await GroupResource.makeNew(
       {
-        name: `Editors for project ${name}`,
+        name: `${PROJECT_EDITOR_GROUP_PREFIX} ${name}`,
         workspaceId: workspace.id,
         kind: "space_editors",
       },
