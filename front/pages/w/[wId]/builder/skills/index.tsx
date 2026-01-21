@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import Head from "next/head";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
@@ -21,6 +21,7 @@ import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSe
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SKILL_ICON } from "@app/lib/skill";
@@ -119,6 +120,9 @@ export default function WorkspaceSkills({
   const [agentId, setAgentId] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
   const [skillSearch, setSkillSearch] = useState("");
+  const {
+    skillId: { value: skillIdParam, setParam: setSkillIdParam },
+  } = useQueryParams(["skillId"]);
 
   const activeTab = useMemo(() => {
     if (!isEmptyString(skillSearch)) {
@@ -181,6 +185,24 @@ export default function WorkspaceSkills({
 
   const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 
+  // Open skill from query param when skills are loaded.
+  useEffect(() => {
+    if (skillIdParam && !isActiveLoading && activeSkills.length > 0) {
+      const skillFromParam = activeSkills.find((s) => s.sId === skillIdParam);
+      if (skillFromParam && selectedSkill?.sId !== skillIdParam) {
+        setSelectedSkill(skillFromParam);
+      }
+    }
+  }, [skillIdParam, activeSkills, isActiveLoading, selectedSkill?.sId]);
+
+  const handleSkillSelect = useCallback(
+    (skill: SkillWithRelationsType | null) => {
+      setSelectedSkill(skill);
+      setSkillIdParam(skill?.sId);
+    },
+    [setSkillIdParam]
+  );
+
   const visibleTabs = useMemo(() => {
     return !isEmptyString(skillSearch)
       ? [SKILL_SEARCH_TAB]
@@ -216,7 +238,7 @@ export default function WorkspaceSkills({
     <>
       <SkillDetailsSheet
         skill={selectedSkill}
-        onClose={() => setSelectedSkill(null)}
+        onClose={() => handleSkillSelect(null)}
         user={user}
         owner={owner}
       />
@@ -285,7 +307,7 @@ export default function WorkspaceSkills({
                   {activeTab === "active" && suggestedSkills.length > 0 && (
                     <SuggestedSkillsSection
                       skills={sortSkillsByName(suggestedSkills)}
-                      onSkillClick={setSelectedSkill}
+                      onSkillClick={handleSkillSelect}
                       owner={owner}
                       user={user}
                     />
@@ -293,7 +315,7 @@ export default function WorkspaceSkills({
                   <SkillsTable
                     owner={owner}
                     skills={skillsByTab[activeTab]}
-                    onSkillClick={setSelectedSkill}
+                    onSkillClick={handleSkillSelect}
                     onAgentClick={setAgentId}
                   />
                 </>
