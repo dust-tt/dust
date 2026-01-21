@@ -1,11 +1,5 @@
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import React, {
-  useCallback,
-  useContext,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
@@ -26,15 +20,16 @@ import {
 } from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { ConfirmContext } from "@app/components/Confirm";
-import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
+import useCustomEditor, {
+  MarkdownAndMentions,
+} from "@app/components/editor/input_bar/useCustomEditor";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
-import type { RichMention, UserType } from "@app/types";
+import type { UserType } from "@app/types";
 
 interface MessageItemProps {
   data: VirtuosoMessage;
@@ -92,60 +87,55 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     const { deleteMessage, isDeleting } = useDeleteMessage({
       owner: context.owner,
-      conversationId: context.conversation?.sId || "",
+      conversationId: context.conversation?.sId ?? "",
     });
 
     const { editMessage, isEditing } = useEditUserMessage({
       owner: context.owner,
-      conversationId: context.conversation?.sId || "",
+      conversationId: context.conversation?.sId ?? "",
     });
-
-    const featureFlags = useFeatureFlags({ workspaceId: context.owner.sId });
-    const reactionsEnabled =
-      featureFlags.hasFeature("projects") && context.enableReactions;
 
     const confirm = useContext(ConfirmContext);
 
     const [shouldShowEditor, setShouldShowEditor] = useState(false);
 
-    const handleSaveRef = useRef<(() => Promise<void>) | null>(null);
-
     const { editor, editorService } = useCustomEditor({
       owner: context.owner,
-      conversationId: context.conversation?.sId || "",
-      onEnterKeyDown: () => {
-        handleSaveRef.current?.();
+      conversationId: context.conversation?.sId ?? "",
+      onEnterKeyDown: async (isEmpty, markdownAndMentions) => {
+        await handleSave(isEmpty, markdownAndMentions);
       },
       disableAutoFocus: false,
     });
 
-    const handleSave = useCallback(async () => {
-      if (!isUserMessage(data) || !context.conversation) {
-        return;
-      }
+    const handleSave = useCallback(
+      async (isEmpty: boolean, markdownAndMentions: MarkdownAndMentions) => {
+        if (isEmpty || !context.conversation) {
+          return;
+        }
 
-      const { markdown, mentions } = editorService.getMarkdownAndMentions();
+        const { markdown, mentions } = markdownAndMentions;
 
-      await editMessage({
-        messageId: data.sId,
-        content: markdown,
-        mentions,
-      });
+        await editMessage({
+          messageId: data.sId,
+          content: markdown,
+          mentions,
+        });
 
-      setShouldShowEditor(false);
-    }, [data, context.conversation, editMessage, editorService]);
-
-    handleSaveRef.current = handleSave;
+        setShouldShowEditor(false);
+      },
+      [data, context.conversation, editMessage]
+    );
 
     const messageFeedback = context.feedbacksByMessageId[sId];
 
     const messageFeedbackWithSubmit: FeedbackSelectorBaseProps = {
       feedback: messageFeedback
         ? {
-          thumb: messageFeedback.thumbDirection,
-          feedbackContent: messageFeedback.content,
-          isConversationShared: messageFeedback.isConversationShared,
-        }
+            thumb: messageFeedback.thumbDirection,
+            feedbackContent: messageFeedback.content,
+            isConversationShared: messageFeedback.isConversationShared,
+          }
         : null,
       onSubmitThumb,
       isSubmittingThumb,
@@ -154,24 +144,24 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     const citations =
       isUserMessage(data) && data.contentFragments.length > 0
         ? data.contentFragments.map((contentFragment, index) => {
-          const attachmentCitation =
-            contentFragmentToAttachmentCitation(contentFragment);
+            const attachmentCitation =
+              contentFragmentToAttachmentCitation(contentFragment);
 
-          return (
-            <AttachmentCitation
-              owner={context.owner}
-              key={index}
-              attachmentCitation={attachmentCitation}
-              conversationId={context.conversation?.sId}
-            />
-          );
-        })
+            return (
+              <AttachmentCitation
+                owner={context.owner}
+                key={index}
+                attachmentCitation={attachmentCitation}
+                conversationId={context.conversation?.sId}
+              />
+            );
+          })
         : undefined;
 
     const areSameDate =
       prevData &&
       getMessageDate(prevData).toDateString() ===
-      getMessageDate(data).toDateString();
+        getMessageDate(data).toDateString();
 
     const triggeringUser = useMemo((): UserType | null => {
       if (isMessageTemporayState(data)) {
@@ -215,10 +205,9 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               message={data}
               owner={context.owner}
               onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
-              isEditing={isEditing}
+              isSavingMessage={isEditing}
               deleteMessage={deleteMessage}
               isDeleting={isDeleting}
-              reactionsEnabled={reactionsEnabled}
               confirm={confirm}
               shouldShowEditor={shouldShowEditor}
               setShouldShowEditor={setShouldShowEditor}

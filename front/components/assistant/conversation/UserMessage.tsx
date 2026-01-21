@@ -116,11 +116,9 @@ interface UserMessageProps {
   message: UserMessageTypeWithContentFragments;
   owner: WorkspaceType;
   onReactionToggle: (emoji: string) => void;
-  // Data fetching and loading state props
-  isEditing: boolean;
+  isSavingMessage: boolean;
   deleteMessage: (messageId: string) => Promise<void>;
   isDeleting: boolean;
-  reactionsEnabled: boolean;
   confirm: (n: ConfirmDataType) => Promise<boolean>;
   shouldShowEditor: boolean;
   setShouldShowEditor: (shouldShowEditor: boolean) => void;
@@ -141,10 +139,9 @@ export function UserMessage({
   message,
   owner,
   onReactionToggle,
-  isEditing: isSaving,
+  isSavingMessage,
   deleteMessage,
   isDeleting,
-  reactionsEnabled,
   confirm,
   shouldShowEditor,
   setShouldShowEditor,
@@ -249,7 +246,7 @@ export function UserMessage({
           editorService={editorService}
           setShouldShowEditor={setShouldShowEditor}
           onSave={handleSave}
-          isSaving={isSaving}
+          isSaving={isSavingMessage}
         />
       ) : (
         <ConversationMessageContainer
@@ -427,34 +424,34 @@ function ActionMenu({
 
   const actions = showActions
     ? [
-      ...(enableExtendedActions
-        ? [
-          {
-            icon: LinkIcon,
-            label: "Copy message link",
-            onClick: handleCopyMessageLink,
-          },
-        ]
-        : []),
-      ...(canEdit
-        ? [
-          {
-            icon: PencilSquareIcon,
-            label: "Edit message",
-            onClick: handleEditMessage,
-          },
-        ]
-        : []),
-      ...(canDelete
-        ? [
-          {
-            icon: TrashIcon,
-            label: "Delete message",
-            onClick: handleDeleteMessage,
-          },
-        ]
-        : []),
-    ]
+        ...(enableExtendedActions
+          ? [
+              {
+                icon: LinkIcon,
+                label: "Copy message link",
+                onClick: handleCopyMessageLink,
+              },
+            ]
+          : []),
+        ...(canEdit
+          ? [
+              {
+                icon: PencilSquareIcon,
+                label: "Edit message",
+                onClick: handleEditMessage,
+              },
+            ]
+          : []),
+        ...(canDelete
+          ? [
+              {
+                icon: TrashIcon,
+                label: "Delete message",
+                onClick: handleDeleteMessage,
+              },
+            ]
+          : []),
+      ]
     : [];
 
   return (
