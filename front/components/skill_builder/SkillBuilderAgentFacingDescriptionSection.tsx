@@ -102,6 +102,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
           />
           {isSimilarSkillsEnabled && (
             <SimilarSkillsDisplay
+              owner={owner}
               similarSkills={similarSkills}
               isLoading={isLoading}
             />
