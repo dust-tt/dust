@@ -125,11 +125,13 @@ export function useDebounceWithAbort<T = string>(
         const signal = abortControllerRef.current.signal;
 
         // Execute async function, ignoring AbortError caused by our own abort signal.
-        void asyncFn(value, signal).catch((err) => {
+        asyncFn(value, signal).catch((err) => {
           if (signal.reason === USE_DEBOUNCE_WITH_ABORT_ABORT_REASON) {
+            // Silently ignore aborts caused by our own signal.
             return;
           }
-          throw err;
+          // For other errors, log them but don't re-throw in a void context.
+          console.error("Error in debounced async function:", err);
         });
       }, delayMs);
     },

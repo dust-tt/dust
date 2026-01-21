@@ -305,6 +305,7 @@ export const SpaceDataSourceViewContentList = ({
     dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource);
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular"],
     disabled: !showSpaceUsage,
   });
   const { dataSourceViews, mutateDataSourceViews } = useDataSourceViews(owner, {

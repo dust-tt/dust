@@ -612,10 +612,6 @@ export async function googleDriveFullSyncV2({
   }
 }
 
-export function googleDriveFullSyncV2WorkflowId(connectorId: ModelId): string {
-  return `googleDrive-fullSyncV2-${connectorId}`;
-}
-
 /**
  * Child workflow that handles incremental sync for a single drive.
  * Processes all changes for the drive with pagination, and launches folder sync for new folders.
@@ -784,10 +780,4 @@ export async function googleDriveIncrementalSyncV2(
   // Sleep and continue
   await sleep("5 minutes");
   await continueAsNew<typeof googleDriveIncrementalSyncV2>(connectorId);
-}
-
-export function googleDriveIncrementalSyncV2WorkflowId(
-  connectorId: ModelId
-): string {
-  return `googleDrive-incrementalSyncV2-${connectorId}`;
 }

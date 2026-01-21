@@ -24,7 +24,7 @@ import {
   TRACKING_AREAS,
 } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
-import { asDisplayToolName } from "@app/types";
+import { asDisplayToolName, GLOBAL_SPACE_NAME } from "@app/types";
 
 interface ToolSetupCardProps {
   toolName: string;
@@ -45,6 +45,7 @@ export function ToolSetupCard({
 
   const { spaces: spacesAsUser } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular"],
     disabled: isAdmin,
   });
   const { spaces: spacesAsAdmin } = useSpacesAsAdmin({
@@ -117,7 +118,7 @@ export function ToolSetupCard({
       return "Configured";
     }
     if (isToolActivatedInSystemSpace) {
-      return "Add to Company Data";
+      return `Add to ${GLOBAL_SPACE_NAME}`;
     }
     return "Configure";
   };

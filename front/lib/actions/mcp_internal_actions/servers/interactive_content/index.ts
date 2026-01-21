@@ -4,6 +4,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { fetchTemplateContent } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/template_utils";
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
@@ -82,7 +83,8 @@ function createServer(
     "Create a new Interactive Content file that users can execute or interact with. Use this for " +
       "content that provides functionality beyond static viewing. Validation (Tailwind, TypeScript) " +
       "is non-blocking: the file is saved even with warnings, which you should fix immediately using " +
-      "targeted edits.",
+      "targeted edits. Supports two creation modes: template-based (fetch content from existing node) " +
+      "or inline (provide content directly).",
     {
       file_name: z
         .string()
@@ -100,12 +102,20 @@ function createServer(
           "The MIME type for the Interactive Content file. Use " +
             `'${frameContentType}' for Frame components (React/JSX).`
         ),
-      content: z
+      mode: z
+        .enum(["template", "inline"])
+        .describe(
+          "Creation mode: 'template' to reference an existing content node from knowledge " +
+            "(content fetched server-side), or 'inline' to provide content directly."
+        ),
+      source: z
         .string()
         .max(MAX_FILE_SIZE_BYTES)
         .describe(
-          "The content for the Interactive Content file. Should be complete and ready for execution or " +
-            "interaction."
+          "When mode='template': the ID of an existing content node to use as a template " +
+            "(e.g., 'template_node_id'). The node's content will be fetched server-side without consuming tokens. " +
+            "When mode='inline': the actual content for the Interactive Content file. " +
+            "Should be complete and ready for execution or interaction."
         ),
       description: z
         .string()
@@ -124,22 +134,40 @@ function createServer(
         enableAlerting: true,
       },
       async (
-        { file_name, mime_type, content, description },
+        { file_name, mime_type, mode, source, description },
         { sendNotification, _meta }
       ) => {
-        const { conversation, agentConfiguration } =
-          agentLoopContext?.runContext ?? {};
+        const { runContext } = agentLoopContext ?? {};
 
-        if (!conversation) {
+        if (!runContext) {
           return new Err(
             new MCPError(
-              "Conversation ID is required to create a client executable file."
+              "Agent loop context is required to use template nodes.",
+              { tracked: false }
             )
           );
         }
 
+        const { conversation, agentConfiguration } = runContext;
+
+        let fileContent: string;
+
+        if (mode === "template") {
+          const templateResult = await fetchTemplateContent(auth, runContext, {
+            templateNodeId: source,
+          });
+
+          if (templateResult.isErr()) {
+            return templateResult;
+          }
+
+          fileContent = templateResult.value;
+        } else {
+          fileContent = source;
+        }
+
         const result = await createClientExecutableFile(auth, {
-          content,
+          content: fileContent,
           conversationId: conversation.sId,
           fileName: file_name,
           mimeType: mime_type,

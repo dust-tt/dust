@@ -92,7 +92,7 @@ describe("createDataSourceAndConnectorForProject", () => {
         kind: "project",
         workspaceId: workspace.id,
       },
-      [globalGroup]
+      { members: [globalGroup] }
     );
   });
 

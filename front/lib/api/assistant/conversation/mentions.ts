@@ -119,12 +119,16 @@ async function isUserMemberOfSpace(
     return false;
   }
 
-  const user = await UserResource.fetchById(userId);
-  if (!user) {
+  const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    userId,
+    auth.getNonNullableWorkspace().sId
+  );
+
+  if (!userAuth) {
     return false;
   }
 
-  return space.isMember(user);
+  return space.isMember(userAuth);
 }
 
 export const createUserMentions = async (
@@ -949,7 +953,7 @@ export async function validateUserMention(
     }
 
     // TODO(projects): isEditor will check editor permissions once project roles PR is merged.
-    const canEdit = await space.isEditor(currentUser);
+    const canEdit = space.isEditor(auth);
     if (!canEdit) {
       return new Err({
         status_code: 403,

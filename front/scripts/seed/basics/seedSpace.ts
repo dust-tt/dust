@@ -38,7 +38,7 @@ export async function seedSpace(
         kind: "regular",
         workspaceId: workspace.id,
       },
-      [group]
+      { members: [group] }
     );
 
     // Add the user to the group so they can access the space

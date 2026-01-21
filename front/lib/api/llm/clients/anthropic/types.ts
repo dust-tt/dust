@@ -62,13 +62,10 @@ export function overwriteLLMParameters(
   llmParameters: LLMParameters & {
     modelId: AnthropicWhitelistedModelId;
   }
-): LLMParameters & { modelId: AnthropicWhitelistedModelId } & {
-  clientId: typeof ANTHROPIC_PROVIDER_ID;
-} {
+): LLMParameters & { modelId: AnthropicWhitelistedModelId } {
   return {
     ...llmParameters,
     ...ANTHROPIC_MODEL_CONFIGS[llmParameters.modelId].overwrites,
-    clientId: ANTHROPIC_PROVIDER_ID,
   };
 }
 

@@ -192,9 +192,10 @@ function useAvailableToolsets({
 
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global"],
     disabled: !toolsetsAction,
   });
-  const globalSpace = spaces.find((s) => s.kind === "global");
+  const globalSpace = spaces[0] ?? undefined;
 
   const { serverViews: globalServerViews, isMCPServerViewsLoading } =
     useMCPServerViews({

@@ -2,6 +2,7 @@ import { Mistral } from "@mistralai/mistralai";
 import { MistralError } from "@mistralai/mistralai/models/errors/mistralerror";
 
 import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
+import { MISTRAL_PROVIDER_ID } from "@app/lib/api/llm/clients/mistral/types";
 import { toToolChoiceParam } from "@app/lib/api/llm/clients/mistral/utils";
 import {
   toMessage,
@@ -26,10 +27,8 @@ export class MistralLLM extends LLM {
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: MistralWhitelistedModelId }
   ) {
-    super(auth, {
-      ...llmParameters,
-      clientId: "mistral",
-    });
+    super(auth, MISTRAL_PROVIDER_ID, llmParameters);
+
     const { MISTRAL_API_KEY } = dustManagedCredentials();
     if (!MISTRAL_API_KEY) {
       throw new Error(

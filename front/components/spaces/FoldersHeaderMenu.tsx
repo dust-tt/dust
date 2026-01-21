@@ -21,6 +21,7 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
+import { GLOBAL_SPACE_NAME } from "@app/types";
 
 interface FoldersHeaderMenuProps {
   canWriteInSpace: boolean;
@@ -48,7 +49,7 @@ export const FoldersHeaderMenu = ({
         <Tooltip
           label={
             space.kind === "global"
-              ? `Only builders of the workspace can add data in the Company Data space.`
+              ? `Only builders of the workspace can add data in the ${GLOBAL_SPACE_NAME} space.`
               : `Only members of the space can add data.`
           }
           side="top"
@@ -71,7 +72,7 @@ export const FoldersHeaderMenu = ({
         <Tooltip
           label={
             space.kind === "global"
-              ? `Only builders of the workspace can edit a folder in the Company Data space.`
+              ? `Only builders of the workspace can edit a folder in the ${GLOBAL_SPACE_NAME} space.`
               : `Only members of the space can edit a folder.`
           }
           side="top"
