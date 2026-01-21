@@ -16,6 +16,10 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import {
+  GroupSpaceEditorResource,
+  GroupSpaceMemberResource,
+} from "@app/lib/resources/group_space_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -38,7 +42,6 @@ import {
   removeNulls,
   SPACE_GROUP_PREFIX,
 } from "@app/types";
-import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_resource";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -464,11 +467,15 @@ export async function createSpaceAndGroup(
     if (params.managementMode === "manual") {
       let editorGroup: GroupResource | undefined;
       // Handle editor group if editorIds are provided
-      if (params.editorIds && params.editorIds.length > 0) {
+      if (
+        space.isProject() &&
+        params.editorIds &&
+        params.editorIds.length > 0
+      ) {
         // Create editor group
         editorGroup = await GroupResource.makeNew(
           {
-            name: `Editors for ${space.isProject() ? "project" : "space"} ${name}`,
+            name: `Editors for project ${name}`,
             workspaceId: owner.id,
             kind: "space_editors",
           },

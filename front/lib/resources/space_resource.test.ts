@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import {
+  GroupSpaceEditorResource,
+  GroupSpaceMemberResource,
+} from "@app/lib/resources/group_space_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
@@ -12,10 +16,6 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import {
-  GroupSpaceEditorResource,
-  GroupSpaceMemberResource,
-} from "@app/lib/resources/group_space_resource";
 
 describe("SpaceResource", () => {
   describe("updatePermissions", () => {
