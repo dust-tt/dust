@@ -1,8 +1,4 @@
-import {
-  ContentMessage,
-  InformationCircleIcon,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -30,37 +26,32 @@ export function SimilarSkillsDisplay({
   }
 
   return (
-    <ContentMessage
-      variant="outline"
-      size="md"
-      title="Similar skills found"
-      icon={InformationCircleIcon}
-    >
-      <div className="mt-2 space-y-3">
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="heading-sm text-foreground dark:text-foreground-night">
+          Similar skills found
+        </span>
+        {isLoading && <Spinner size="xs" />}
+      </div>
+      <div className="space-y-3">
         {similarSkills.map((skill) => {
           const SkillAvatar = getSkillAvatarIcon(skill.icon);
 
           return (
-            <div key={skill.sId} className="flex items-start gap-2">
-              <SkillAvatar name={skill.name} size="xs" />
+            <div key={skill.sId} className="flex items-start gap-3">
+              <SkillAvatar name={skill.name} size="sm" />
               <div className="flex flex-col">
                 <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                   {skill.name}
                 </span>
-                <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                <span className="line-clamp-1 text-xs text-muted-foreground dark:text-muted-foreground-night">
                   {skill.agentFacingDescription}
                 </span>
               </div>
             </div>
           );
         })}
-        {isLoading && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-            <Spinner size="xs" />
-            <span>Checking for similar skills...</span>
-          </div>
-        )}
       </div>
-    </ContentMessage>
+    </div>
   );
 }
