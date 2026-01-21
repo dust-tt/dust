@@ -125,7 +125,7 @@ interface UserMessageProps {
 }
 
 /**
- * TODO (yuka: 2026-01-21): We will move this component to Sparkle so that we can reuse it in extension.
+ * TODO(yuka: 2026-01-21): We will move this component to Sparkle so that we can reuse it in extension.
  */
 export function UserMessage({
   citations,
