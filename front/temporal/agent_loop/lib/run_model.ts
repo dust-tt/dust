@@ -422,10 +422,10 @@ export async function runModelActivity(
 
   // Errors occurring during the multi-actions-agent dust app may be retryable.
   // Their implicit code should be "multi_actions_error".
-  async function handlePossiblyRetryableError(
+  const handlePossiblyRetryableError = async (
     errorInfo: LLMErrorInfo,
     dustRunId?: string
-  ) {
+  ) => {
     const { isRetryable, message, type } = errorInfo;
 
     if (!isRetryable || autoRetryCount >= MAX_AUTO_RETRY) {
@@ -464,7 +464,7 @@ export async function runModelActivity(
       functionCallStepContentIds,
       autoRetryCount: autoRetryCount + 1,
     });
-  }
+  };
 
   const modelInteractionStartDate = performance.now();
 
