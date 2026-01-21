@@ -77,15 +77,9 @@ export async function getDataSourceViewsUsageByCategory({
   }
 
   const getAgentsForUser = async () =>
-    (
-      await GroupResource.findAgentIdsForGroups(
-        auth,
-        auth
-          .groups()
-          .filter((g) => g.kind === "agent_editors")
-          .map((g) => g.id)
-      )
-    ).map((g) => g.agentConfigurationId);
+    (await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())).map(
+      (g) => g.agentConfigurationId
+    );
 
   const getAgentWhereClauseAdmin = () => ({
     status: "active",

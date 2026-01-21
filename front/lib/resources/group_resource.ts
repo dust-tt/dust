@@ -42,6 +42,7 @@ import type {
 import {
   AGENT_GROUP_PREFIX,
   Err,
+  GROUP_KINDS,
   normalizeError,
   Ok,
   removeNulls,
@@ -566,7 +567,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           workspaceId: auth.getNonNullableWorkspace().sId,
           unreadableGroupIds: unreadableGroups.map((g) => g.sId),
           authRole: auth.role(),
-          authGroupIds: auth.groups().map((g) => g.sId),
+          authGroupIds: auth.groupIds(),
         },
         "[GroupResource.fetchByIds] User cannot read some groups"
       );
@@ -808,24 +809,17 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.filter((group) => group.canRead(auth));
   }
 
-  static async listUserGroupsInWorkspace({
+  static async listUserGroupModelIdsInWorkspace({
     user,
     workspace,
-    groupKinds = [
-      "global",
-      "regular",
-      "space_editors",
-      "provisioned",
-      "agent_editors",
-      "skill_editors",
-    ],
+    groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
     transaction,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     groupKinds?: Omit<GroupKind, "system">[];
     transaction?: Transaction;
-  }): Promise<GroupResource[]> {
+  }): Promise<ModelId[]> {
     // First we need to check if the user is a member of the workspace.
     const workspaceMembership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({
@@ -839,9 +833,11 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     // If yes, we can fetch the groups the user is a member of.
     // First the global group which has no db entries and is always present.
-    let globalGroup = null;
+    let globalGroup: GroupModel | null = null;
+
     if (groupKinds.includes("global")) {
       globalGroup = await this.model.findOne({
+        attributes: ["id"],
         where: {
           workspaceId: workspace.id,
           kind: "global",
@@ -855,9 +851,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const userGroups = await GroupModel.findAll({
+      attributes: ["id"],
       include: [
         {
           model: GroupMembershipModel,
+          attributes: [],
           where: {
             userId: user.id,
             workspaceId: workspace.id,
@@ -880,6 +878,39 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     const groups = [...(globalGroup ? [globalGroup] : []), ...userGroups];
+
+    return groups.map((group) => group.id);
+  }
+
+  // Warning, this function can be very memory hungry if there are a lot of groups (such as a workspace with a lot of agents and editors groups).
+  // If you can, just use the listUserGroupModelIdsInWorkspace instead that returns only the ids of the groups.
+  static async listUserGroupsInWorkspace({
+    user,
+    workspace,
+    groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
+    transaction,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    groupKinds?: Omit<GroupKind, "system">[];
+    transaction?: Transaction;
+  }): Promise<GroupResource[]> {
+    const groupIds = await this.listUserGroupModelIdsInWorkspace({
+      user,
+      workspace,
+      groupKinds,
+      transaction,
+    });
+
+    const groups = await GroupModel.findAll({
+      where: {
+        id: {
+          [Op.in]: groupIds,
+        },
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
 
     return groups.map((group) => new this(GroupModel, group.get()));
   }
