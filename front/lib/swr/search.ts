@@ -183,7 +183,21 @@ export function useUnifiedSearch({
         eventSourceRef.current = null;
       }
     };
-  }, [loadPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    disabled,
+    includeDataSources,
+    includeTools,
+    owner.sId,
+    pageSize,
+    prioritizeSpaceAccess,
+    query,
+    searchSourceUrls,
+    // Serialize spaceIds to compare by value, not reference
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    spaceIds?.join(","),
+    viewType,
+  ]);
 
   const nextPage = useCallback(async () => {
     if (nextPageCursor && !isLoadingNextPage) {
