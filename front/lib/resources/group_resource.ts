@@ -9,7 +9,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -18,6 +18,7 @@ import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -850,34 +851,38 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
     }
 
-    const userGroups = await GroupModel.findAll({
-      attributes: ["id"],
-      include: [
-        {
-          model: GroupMembershipModel,
-          attributes: [],
-          where: {
-            userId: user.id,
-            workspaceId: workspace.id,
-            startAt: { [Op.lte]: new Date() },
-            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-            status: "active",
-          },
-          required: true,
+    // eslint-disable-next-line dust/no-raw-sql -- We are using a raw query to optimize memory usage as people may have a lot of groups.
+    const userGroupModelIds = await frontSequelize.query<{ id: ModelId }>(
+      `
+      SELECT id FROM groups
+      WHERE "workspaceId" = :workspaceId
+      AND kind IN (:kind)
+      AND id IN (
+        SELECT "groupId" FROM group_memberships
+        WHERE "userId" = :userId
+        AND "workspaceId" = :workspaceId
+        AND "startAt" <= :now
+        AND ("endAt" IS NULL OR "endAt" > :now)
+        AND status = 'active'
+      )
+    `,
+      {
+        replacements: {
+          workspaceId: workspace.id,
+          kind: groupKinds.filter((k) => k !== "global") as GroupKind[],
+          userId: user.id,
+          now: new Date(),
         },
-      ],
-      where: {
-        workspaceId: workspace.id,
-        kind: {
-          // The 'as' clause is tautological but required by TS who does not
-          // understand that groupKinds.filter() returns a GroupKind[]
-          [Op.in]: groupKinds.filter((k) => k !== "global") as GroupKind[],
-        },
-      },
-      transaction,
-    });
+        type: QueryTypes.SELECT,
+        transaction,
+        raw: true,
+      }
+    );
 
-    const groups = [...(globalGroup ? [globalGroup] : []), ...userGroups];
+    const groups = [
+      ...(globalGroup ? [globalGroup] : []),
+      ...userGroupModelIds,
+    ];
 
     return groups.map((group) => group.id);
   }
