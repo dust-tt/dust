@@ -39,7 +39,7 @@ export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
    * Helper method to find the editor group for a space.
    * Returns the group with kind "project_editor" if it exists.
    */
-  async getEditorGroup(): Promise<GroupSpaceEditorResource | null> {
+  async getEditorGroupSpace(): Promise<GroupSpaceEditorResource | null> {
     return GroupSpaceEditorResource.fetchBySpace(
       this.space.workspaceId,
       this.space.id
@@ -341,7 +341,7 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
 
   async requestedPermissions(): Promise<CombinedResourcePermissions[]> {
     if (this.space.isProject()) {
-      const editorGroup = await this.getEditorGroup();
+      const editorGroupSpace = await this.getEditorGroupSpace();
       return [
         {
           groups: [
@@ -349,10 +349,10 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
               id: this.group.id,
               permissions: ["read", "write"],
             },
-            ...((editorGroup
+            ...((editorGroupSpace
               ? [
                   {
-                    id: editorGroup.id,
+                    id: editorGroupSpace.groupId,
                     permissions: ["admin", "read", "write"],
                   },
                 ]
@@ -488,13 +488,13 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
 
   async requestedPermissions(): Promise<CombinedResourcePermissions[]> {
     if (this.space.isProject()) {
-      const editorGroup = await this.getEditorGroup();
+      const editorGroupSpace = await this.getEditorGroupSpace();
       return [
         {
-          groups: editorGroup
+          groups: editorGroupSpace
             ? [
                 {
-                  id: editorGroup.id,
+                  id: editorGroupSpace.groupId,
                   permissions: ["admin", "read", "write"],
                 },
               ]
@@ -614,7 +614,7 @@ export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
 
   async requestedPermissions(): Promise<CombinedResourcePermissions[]> {
     if (this.space.isProject()) {
-      const editorGroup = await this.getEditorGroup();
+      const editorGroupSpace = await this.getEditorGroupSpace();
       return [
         {
           groups: [
@@ -622,10 +622,10 @@ export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
               id: this.group.id,
               permissions: ["read"],
             },
-            ...((editorGroup
+            ...((editorGroupSpace
               ? [
                   {
-                    id: editorGroup.id,
+                    id: editorGroupSpace.groupId,
                     permissions: ["admin", "read", "write"],
                   },
                 ]

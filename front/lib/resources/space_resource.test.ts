@@ -774,7 +774,7 @@ describe("SpaceResource", () => {
             isRestricted: true,
             managementMode: "manual",
             memberIds: [user1.sId, user2.sId],
-            editorIds: [editorUser.sId], // Keep the editor
+            editorIds: [editorUser.sId],
           });
 
           expect(result.isOk()).toBe(true);
