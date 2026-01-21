@@ -49,12 +49,18 @@ export async function fetchTemplateContent(
 
   // Resolve DataSourceConfiguration[] to ResolvedDataSourceConfiguration[].
   const agentDataSourceConfigurations = [];
-  for (const config of dataSourceConfigurations) {
-    const dataSourceView = await DataSourceViewResource.fetchById(
-      auth,
-      config.dataSourceViewId
-    );
+  const dataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    dataSourceConfigurations.map((c) => c.dataSourceViewId)
+  );
 
+  const dataSourceViewMap = new Map<string, DataSourceViewResource>();
+  for (const view of dataSourceViews) {
+    dataSourceViewMap.set(view.sId, view);
+  }
+
+  for (const config of dataSourceConfigurations) {
+    const dataSourceView = dataSourceViewMap.get(config.dataSourceViewId);
     if (!dataSourceView) {
       return new Err(
         new MCPError(`Data source view not found: ${config.dataSourceViewId}`, {
