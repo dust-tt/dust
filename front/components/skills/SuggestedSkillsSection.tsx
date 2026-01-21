@@ -6,10 +6,10 @@ import {
   SparklesIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
+import { useAppRouter } from "@app/lib/platform";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUpdateSkillEditors } from "@app/lib/swr/skill_editors";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
@@ -29,7 +29,7 @@ function SuggestedSkillCard({
   owner,
   user,
 }: SuggestedSkillCardProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
   const [isAddingSkill, setIsAddingSkill] = useState(false);
   const SkillAvatar = getSkillAvatarIcon(skill.icon);

@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 import { ViewMCPServerViewTable } from "@app/components/poke/mcp_server_views/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
@@ -44,16 +44,16 @@ export function MCPServerViewPage({ owner, svId }: MCPServerViewPageProps) {
     <>
       <h3 className="text-xl font-bold">
         MCP Server View {getMcpServerViewDisplayName(mcpServerView)} in space{" "}
-        <a
+        <LinkWrapper
           href={`/poke/${owner.sId}/spaces/${mcpServerView.spaceId}`}
           className="text-highlight-500"
         >
           {mcpServerView.space?.name || mcpServerView.spaceId}
-        </a>{" "}
+        </LinkWrapper>{" "}
         within workspace{" "}
-        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+        <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
-        </a>
+        </LinkWrapper>
       </h3>
       <div className="flex flex-row gap-x-6">
         <ViewMCPServerViewTable mcpServerView={mcpServerView} owner={owner} />

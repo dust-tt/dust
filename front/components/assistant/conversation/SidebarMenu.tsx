@@ -37,8 +37,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import moment from "moment";
-import type { NextRouter } from "next/router";
-import { useRouter } from "next/router";
 import {
   forwardRef,
   memo,
@@ -72,6 +70,8 @@ import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversation
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
+import type { AppRouter } from "@app/lib/platform";
+import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
@@ -107,7 +107,7 @@ type GroupLabel =
 const CONVERSATIONS_PER_PAGE = 10;
 
 export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -626,7 +626,7 @@ interface InboxConversationListProps {
   onMarkAllAsRead: (conversations: ConversationWithoutContentType[]) => void;
   selectedConversations: ConversationWithoutContentType[];
   toggleConversationSelection: (c: ConversationWithoutContentType) => void;
-  router: NextRouter;
+  router: AppRouter;
   owner: WorkspaceType;
   titleFilter: string;
 }
@@ -701,7 +701,7 @@ const ConversationList = ({
   isMultiSelect: boolean;
   selectedConversations: ConversationWithoutContentType[];
   toggleConversationSelection: (c: ConversationWithoutContentType) => void;
-  router: NextRouter;
+  router: AppRouter;
   owner: WorkspaceType;
 }) => {
   if (!conversations.length) {
@@ -757,7 +757,7 @@ const ConversationListItem = memo(
     isMultiSelect: boolean;
     selectedConversations: ConversationWithoutContentType[];
     toggleConversationSelection: (c: ConversationWithoutContentType) => void;
-    router: NextRouter;
+    router: AppRouter;
     owner: WorkspaceType;
   }) => {
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
@@ -831,7 +831,7 @@ interface NavigationListWithInboxProps {
   toggleConversationSelection: (
     conversation: ConversationWithoutContentType
   ) => void;
-  router: NextRouter;
+  router: AppRouter;
   owner: WorkspaceType;
   projectsSection?: React.ReactNode;
   hasTriggeredConversations: boolean;

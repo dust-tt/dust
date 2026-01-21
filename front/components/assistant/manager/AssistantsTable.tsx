@@ -12,7 +12,6 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
-import { useRouter } from "next/router";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
@@ -22,6 +21,7 @@ import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgent
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
+import { useAppRouter } from "@app/lib/platform";
 import { useTags } from "@app/lib/swr/tags";
 import {
   classNames,
@@ -352,7 +352,7 @@ export function AssistantsTable({
     open: false,
     agentConfiguration: undefined,
   });
-  const router = useRouter();
+  const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
 
   const rows: RowData[] = useMemo(

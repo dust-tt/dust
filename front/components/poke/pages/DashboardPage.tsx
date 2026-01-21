@@ -1,7 +1,12 @@
-import { BookOpenIcon, Icon, Input, Spinner } from "@dust-tt/sparkle";
+import {
+  BookOpenIcon,
+  Icon,
+  Input,
+  LinkWrapper,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { UsersIcon } from "lucide-react";
 import moment from "moment";
-import Link from "next/link";
 import type { ChangeEvent } from "react";
 import React, { useState } from "react";
 
@@ -31,7 +36,7 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
     <ul className="flex flex-wrap gap-4">
       {workspaces.length === 0 && <p>No workspaces found.</p>}
       {workspaces.map((ws) => (
-        <Link href={`/poke/${ws.sId}`} key={ws.id}>
+        <LinkWrapper href={`/poke/${ws.sId}`} key={ws.id}>
           <li className="border-material-100 w-80 rounded-lg border p-4 transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-800">
             <h2 className="text-md flex-grow pb-2 font-bold">{ws.name}</h2>
             <PokeTable>
@@ -92,7 +97,7 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
               </PokeTableBody>
             </PokeTable>
           </li>
-        </Link>
+        </LinkWrapper>
       ))}
     </ul>
   </>

@@ -15,12 +15,12 @@ import {
   StarStrokeIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -164,7 +164,7 @@ export function AgentDetailsDropdownMenu({
   contextMenuPosition,
 }: AgentDetailsDropdownMenuProps) {
   const sendNotification = useSendNotification();
-  const router = useRouter();
+  const router = useAppRouter();
 
   const [showDeletionModal, setShowDeletionModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);

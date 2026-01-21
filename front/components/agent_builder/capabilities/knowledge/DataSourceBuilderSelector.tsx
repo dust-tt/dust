@@ -7,7 +7,6 @@ import {
   SearchInput,
   Separator,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -31,6 +30,7 @@ import {
   nodeCandidateFromUrl,
 } from "@app/lib/connectors";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { useAppRouter } from "@app/lib/platform";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpacesSearch, useSystemSpace } from "@app/lib/swr/spaces";
 import type { ContentNodesViewType } from "@app/types";
@@ -49,7 +49,7 @@ export const DataSourceBuilderSelector = ({
     useDataSourceViewsContext();
   const { navigationHistory, navigateTo, setSpaceEntry, setCategoryEntry } =
     useDataSourceBuilderContext();
-  const router = useRouter();
+  const router = useAppRouter();
   const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
   const currentNavigationEntry =
     navigationHistory[navigationHistory.length - 1];

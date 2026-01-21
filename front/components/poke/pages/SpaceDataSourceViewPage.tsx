@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 import { DataSourceViewSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { ViewDataSourceViewTable } from "@app/components/poke/data_source_views/view";
@@ -58,16 +58,16 @@ export function SpaceDataSourceViewPage({
     <>
       <h3 className="text-xl font-bold">
         {dataSourceView.name} in space{" "}
-        <a
+        <LinkWrapper
           href={`/poke/${owner.sId}/spaces/${dataSourceView.space.sId}`}
           className="text-highlight-500"
         >
           {dataSourceView.space.name}
-        </a>{" "}
+        </LinkWrapper>{" "}
         within workspace{" "}
-        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+        <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
-        </a>
+        </LinkWrapper>
       </h3>
       <p>
         The data displayed here is fetched from <b>core</b> (

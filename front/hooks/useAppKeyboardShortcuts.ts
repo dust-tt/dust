@@ -1,14 +1,14 @@
-import { useRouter } from "next/router";
 import { useEffect } from "react";
 
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
+import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types";
 
 export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
   const { toggleNavigationBar } = useDesktopNavigation();
 
-  const router = useRouter();
+  const router = useAppRouter();
 
   useEffect(() => {
     function handleKeyboardShortcuts(event: KeyboardEvent) {

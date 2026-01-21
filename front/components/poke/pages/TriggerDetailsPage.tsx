@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 import { ConversationDataTable } from "@app/components/poke/conversation/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
@@ -48,9 +48,9 @@ export function TriggerDetailsPage({
     <>
       <h3 className="text-xl font-bold">
         Trigger {trigger.name} on agent {agent.name}{" "}
-        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+        <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
-        </a>
+        </LinkWrapper>
       </h3>
       <div className="flex flex-row gap-x-6">
         <ViewTriggerTable

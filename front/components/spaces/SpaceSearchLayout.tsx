@@ -4,7 +4,6 @@ import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import type { MenuItem } from "@dust-tt/sparkle";
 import { cn, ScrollableDataTable, SearchInput } from "@dust-tt/sparkle";
 import type { SortingState } from "@tanstack/table-core";
-import { useRouter } from "next/router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
@@ -38,6 +37,7 @@ import {
 } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import type {
@@ -109,7 +109,7 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
   const [actionButtons, setActionButtons] =
     React.useState<React.ReactNode | null>(null);
 
-  const router = useRouter();
+  const router = useAppRouter();
 
   // Reset the search term when the URL changes.
   React.useEffect(() => {
@@ -575,7 +575,7 @@ function SearchResultsTable({
   onClearSearch,
   scrollableDataTableRef,
 }: SearchResultsTableProps) {
-  const router = useRouter();
+  const router = useAppRouter();
 
   const { spaces } = useSpaces({
     workspaceId: owner.sId,

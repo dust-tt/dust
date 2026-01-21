@@ -2,11 +2,11 @@ import {
   Button,
   Chip,
   DataTable,
+  LinkWrapper,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
-import Link from "next/link";
 import React, { useState } from "react";
 
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
@@ -42,12 +42,12 @@ export function makeColumnsForTemplates() {
       cell: (info: Info) => {
         const id: string = info.row.getValue("id");
         return (
-          <Link
+          <LinkWrapper
             className="font-bold hover:underline"
             href={`/poke/templates/${id}`}
           >
             {id}
-          </Link>
+          </LinkWrapper>
         );
       },
     },

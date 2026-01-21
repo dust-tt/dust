@@ -17,7 +17,6 @@ import {
 } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import _ from "lodash";
-import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Control } from "react-hook-form";
 import { useFieldArray, useForm } from "react-hook-form";
@@ -44,6 +43,7 @@ import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
 import type { CreateTemplateFormType, TemplateTagCodeType } from "@app/types";
 import {
@@ -427,7 +427,7 @@ function PreviewDialog({ form }: { form: any }) {
 
 export function TemplateDetailPage({ templateId }: TemplateDetailPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const router = useRouter();
+  const router = useAppRouter();
 
   const sendNotification = useSendNotification();
 

@@ -1,5 +1,4 @@
 import { ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
@@ -23,6 +22,7 @@ import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
+import { useAppRouter } from "@app/lib/platform";
 import { useConversation } from "@app/lib/swr/conversations";
 import type {
   ConversationError,
@@ -79,7 +79,7 @@ const ConversationLayoutContent = ({
   user,
   isAdmin,
 }: ConversationLayoutContentProps) => {
-  const router = useRouter();
+  const router = useAppRouter();
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
   const { onOpenChange: onOpenChangeUserModal } = useURLSheet("userDetails");
   const activeConversationId = useActiveConversationId();

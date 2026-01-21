@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
@@ -46,9 +46,9 @@ export function SpacePage({ owner, spaceId }: SpacePageProps) {
     <>
       <h3 className="text-xl font-bold">
         Space {space.name} ({space.kind}) within workspace{" "}
-        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+        <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
-        </a>
+        </LinkWrapper>
       </h3>
       <div className="flex flex-row gap-x-6">
         <ViewSpaceViewTable space={space} />
