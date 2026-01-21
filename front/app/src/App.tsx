@@ -5,10 +5,6 @@ import {
   RouterProvider,
 } from "react-router-dom";
 
-// Import client-safe page components
-import { ProfilePage } from "@app/components/pages/ProfilePage";
-
-import { AuthenticatedLayout } from "./layouts/AuthenticatedLayout";
 import { PokeLayout } from "./layouts/PokeLayout";
 import {
   PokeAppPageWrapper,
@@ -41,21 +37,6 @@ import {
 
 const router = createBrowserRouter(
   [
-    // Regular authenticated routes
-    {
-      path: "/w/:wId",
-      element: <AuthenticatedLayout />,
-      children: [
-        {
-          index: true,
-          element: <Navigate to="me" replace />,
-        },
-        {
-          path: "me",
-          element: <ProfilePage />,
-        },
-      ],
-    },
     // Poke routes (superuser only) - static routes first, then dynamic :wId
     {
       path: "/poke",
