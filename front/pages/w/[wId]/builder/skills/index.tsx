@@ -21,7 +21,6 @@ import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSe
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
-import { useQueryParams } from "@app/hooks/useQueryParams";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SKILL_ICON } from "@app/lib/skill";
@@ -120,9 +119,7 @@ export default function WorkspaceSkills({
   const [agentId, setAgentId] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
   const [skillSearch, setSkillSearch] = useState("");
-  const {
-    skillId: { value: skillIdParam, setParam: setSkillIdParam },
-  } = useQueryParams(["skillId"]);
+  const [skillIdParam, setSkillIdParam] = useHashParam("skillId");
 
   const activeTab = useMemo(() => {
     if (!isEmptyString(skillSearch)) {
@@ -185,7 +182,7 @@ export default function WorkspaceSkills({
 
   const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 
-  // Open skill from query param when skills are loaded.
+  // Open skill from hash param when skills are loaded.
   useEffect(() => {
     if (skillIdParam && !isActiveLoading && activeSkills.length > 0) {
       const skillFromParam = activeSkills.find((s) => s.sId === skillIdParam);
