@@ -12,6 +12,7 @@ import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type { LLMEvent, TokenUsageEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import { assertNever } from "@app/types";
 
 function newId(): string {
   const uuid = crypto.randomUUID();
@@ -188,7 +189,7 @@ export async function* streamLLMEvents({
         }
         textContentParts = "";
         yield tokenUsage(generateContentResponse.usageMetadata, metadata);
-        // emit success event after token usage
+
         yield {
           type: "success",
           aggregated: aggregate.aggregated,
@@ -199,24 +200,66 @@ export async function* streamLLMEvents({
         };
         break;
       }
-      default: {
-        // yield error event after all received events
-        yield* yieldEvents(events);
-        yield tokenUsage(generateContentResponse.usageMetadata, metadata);
-        reasoningContentParts = "";
-        textContentParts = "";
-        yield* yieldEvents([
-          new EventError(
-            {
-              type: "stop_error",
-              isRetryable: true,
-              message: "An error occurred during completion",
-              originalError: { finishReason: candidate.finishReason },
-            },
-            metadata
-          ),
-        ]);
+      case FinishReason.MAX_TOKENS: {
+        yield new EventError(
+          {
+            type: "stop_error",
+            isRetryable: true,
+            message: "The maximum response length was reached",
+            originalError: { candidate },
+          },
+          metadata
+        );
         break;
+      }
+      case FinishReason.SAFETY:
+      case FinishReason.RECITATION:
+      case FinishReason.PROHIBITED_CONTENT:
+      case FinishReason.SPII:
+      case FinishReason.IMAGE_PROHIBITED_CONTENT:
+      case FinishReason.BLOCKLIST:
+      case FinishReason.IMAGE_SAFETY:
+      case FinishReason.LANGUAGE: {
+        yield new EventError(
+          {
+            type: "refusal_error",
+            isRetryable: false,
+            message: "Google refused to generate a response for this request",
+            originalError: { candidate },
+          },
+          metadata
+        );
+        break;
+      }
+      case FinishReason.MALFORMED_FUNCTION_CALL:
+      case FinishReason.UNEXPECTED_TOOL_CALL: {
+        yield new EventError(
+          {
+            type: "server_error",
+            isRetryable: true,
+            message: "Error encountered related with tool call",
+            originalError: { candidate },
+          },
+          metadata
+        );
+        break;
+      }
+      case FinishReason.NO_IMAGE:
+      case FinishReason.OTHER:
+      case FinishReason.FINISH_REASON_UNSPECIFIED: {
+        yield new EventError(
+          {
+            type: "unknown_error",
+            isRetryable: false,
+            message: "Unknown error",
+            originalError: { candidate },
+          },
+          metadata
+        );
+        break;
+      }
+      default: {
+        assertNever(candidate.finishReason);
       }
     }
   }
