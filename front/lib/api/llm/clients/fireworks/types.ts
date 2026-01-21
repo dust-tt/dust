@@ -30,7 +30,7 @@ export function overwriteLLMParameters(
   llmParameters: LLMParameters & {
     modelId: FireworksWhitelistedModelId;
   }
-): LLMParameters & { modelId: FireworksWhitelistedModelId } & {} {
+): LLMParameters & { modelId: FireworksWhitelistedModelId } {
   return {
     ...llmParameters,
     ...FIREWORKS_MODEL_CONFIGS[llmParameters.modelId].overwrites,
