@@ -679,7 +679,7 @@ describe("SpaceResource", () => {
               workspaceId: workspace.id,
               managementMode: "manual",
             },
-            [projectMemberGroup]
+            { members: [projectMemberGroup] }
           );
 
           // Link the editor group to the project space with kind="project_editor"
@@ -817,7 +817,7 @@ describe("SpaceResource", () => {
               workspaceId: workspace.id,
               managementMode: "group",
             },
-            [projectMemberGroup, provisionedMemberGroup]
+            { members: [projectMemberGroup, provisionedMemberGroup] }
           );
 
           // Link the editor group to the project space with kind="project_editor"

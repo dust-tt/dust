@@ -1,11 +1,12 @@
 import { faker } from "@faker-js/faker";
 
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import type { WorkspaceType } from "@app/types";
 import { removeNulls } from "@app/types";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 
 export class SpaceFactory {
   static async defaults(auth: Authenticator) {
@@ -78,13 +79,26 @@ export class SpaceFactory {
     );
   }
 
-  static async project(workspace: WorkspaceType) {
+  static async project(workspace: WorkspaceType, creatorId?: number) {
     const name = "project " + faker.string.alphanumeric(8);
     const group = await GroupResource.makeNew({
-      name: `Group for space ${name}`,
+      name: `Group for project ${name}`,
       workspaceId: workspace.id,
       kind: "regular",
     });
+
+    // Create an editor group with the creator as a member if creatorId is provided
+    const defaultCreator = await UserFactory.basic();
+    const editorGroup = await GroupResource.makeNew(
+      {
+        name: `Editors for project ${name}`,
+        workspaceId: workspace.id,
+        kind: "space_editors",
+      },
+      {
+        memberIds: [creatorId ?? defaultCreator.id],
+      }
+    );
 
     return SpaceResource.makeNew(
       {
@@ -92,7 +106,7 @@ export class SpaceFactory {
         kind: "project",
         workspaceId: workspace.id,
       },
-      { members: [group] }
+      { members: [group], editors: [editorGroup] }
     );
   }
 }
