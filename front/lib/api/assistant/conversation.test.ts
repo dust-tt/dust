@@ -684,6 +684,9 @@ describe("postUserMessage", () => {
         .filter((id): id is string => id !== null);
       expect(agentConfigIdsInDb).toContain(agentConfig1.sId);
       expect(agentConfigIdsInDb).toContain(agentConfig2.sId);
+
+      // Verify launchAgentLoopWorkflow was called for agent mentions
+      expect(launchAgentLoopWorkflow).toHaveBeenCalled();
     }
   });
 
@@ -746,6 +749,9 @@ describe("postUserMessage", () => {
         },
       });
       expect(mentionInDb).not.toBeNull();
+
+      // Verify launchAgentLoopWorkflow was NOT called (no agent mentions)
+      expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
     }
   });
 
@@ -815,6 +821,9 @@ describe("postUserMessage", () => {
         },
       });
       expect(mentionsInDb.length).toBe(2);
+
+      // Verify launchAgentLoopWorkflow was called for agent mentions
+      expect(launchAgentLoopWorkflow).toHaveBeenCalled();
     }
   });
 
@@ -848,6 +857,9 @@ describe("postUserMessage", () => {
       // Verify userMessage has empty richMentions
       expect(userMessage.richMentions).toBeDefined();
       expect(userMessage.richMentions.length).toBe(0);
+
+      // Verify launchAgentLoopWorkflow was NOT called (no agent mentions)
+      expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
     }
   });
 });
@@ -973,6 +985,9 @@ describe("editUserMessage", () => {
         .filter((id): id is string => id !== null);
       expect(agentConfigIdsInDb).toContain(agentConfig1.sId);
       expect(agentConfigIdsInDb).toContain(agentConfig2.sId);
+
+      // Verify launchAgentLoopWorkflow was called for agent mentions
+      expect(launchAgentLoopWorkflow).toHaveBeenCalled();
     }
   });
 
@@ -1025,6 +1040,9 @@ describe("editUserMessage", () => {
         },
       });
       expect(mentionInDb).not.toBeNull();
+
+      // Verify launchAgentLoopWorkflow was NOT called (no agent mentions)
+      expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
     }
   });
 
@@ -1084,6 +1102,9 @@ describe("editUserMessage", () => {
         },
       });
       expect(mentionsInDb.length).toBe(2);
+
+      // Verify launchAgentLoopWorkflow was called for agent mentions
+      expect(launchAgentLoopWorkflow).toHaveBeenCalled();
     }
   });
 
@@ -1116,6 +1137,9 @@ describe("editUserMessage", () => {
         },
       });
       expect(mentionsInDb.length).toBe(0);
+
+      // Verify launchAgentLoopWorkflow was NOT called (no agent mentions)
+      expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
     }
   });
 
@@ -1159,6 +1183,9 @@ describe("editUserMessage", () => {
       if (isRichUserMention(userMention)) {
         expect(userMention.id).toBe(mentionedUser.sId);
       }
+
+      // Verify launchAgentLoopWorkflow was NOT called (no agent mentions)
+      expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
     }
   });
 });
