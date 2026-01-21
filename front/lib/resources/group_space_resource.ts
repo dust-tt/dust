@@ -78,11 +78,15 @@ export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
     >
   > {
     const requestedPermissions = await this.requestedPermissions();
-    return this.group.addMembers(auth, {
+    const addMembersRes = await this.group.addMembers(auth, {
       users,
       requestedPermissions,
       transaction,
     });
+    if (addMembersRes.isErr()) {
+      return new Err(addMembersRes.error);
+    }
+    return new Ok(addMembersRes.value);
   }
 
   /**
@@ -109,11 +113,15 @@ export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
     >
   > {
     const requestedPermissions = await this.requestedPermissions();
-    return this.group.removeMembers(auth, {
+    const removeMembersRes = await this.group.removeMembers(auth, {
       users,
       requestedPermissions,
       transaction,
     });
+    if (removeMembersRes.isErr()) {
+      return new Err(removeMembersRes.error);
+    }
+    return new Ok(removeMembersRes.value);
   }
 
   /**
@@ -143,11 +151,15 @@ export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
     >
   > {
     const requestedPermissions = await this.requestedPermissions();
-    return this.group.setMembers(auth, {
+    const setMembersRes = await this.group.setMembers(auth, {
       users,
       requestedPermissions,
       transaction,
     });
+    if (setMembersRes.isErr()) {
+      return new Err(setMembersRes.error);
+    }
+    return new Ok(setMembersRes.value);
   }
 
   /**
