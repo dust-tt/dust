@@ -64,9 +64,9 @@ import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
-import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import config from "@app/lib/api/config";
 import type { DustError } from "@app/lib/error";
+import { FILE_ID_PATTERN } from "@app/lib/files";
 import {
   useCancelMessage,
   usePostOnboardingFollowUp,
@@ -955,26 +955,37 @@ function AgentMessageContent({
     );
   }
 
-  // Get in-progress images.
-  const inProgressImages = Array.from(
-    agentMessage.streaming.actionProgress.entries()
-  )
-    .filter(([, progress]) =>
-      isImageProgressOutput(progress.progress?.data.output)
-    )
-    .map(([actionId, progress]) => ({
-      id: actionId,
-      isLoading: true,
-      progress: progress.progress?.progress,
-    }));
-
   // Extract file IDs already referenced inline (to avoid duplicate rendering).
-  const referencedFileIds = new Set(
-    (agentMessage.content ?? "").match(/\bfil_[A-Za-z0-9]{10,}\b/g) ?? []
+  // Match file IDs only in markdown IMAGE syntax: ![...](url containing fil_XXX)
+  // NOT plain text mentions or links, to avoid filtering out images from the grid.
+  const markdownImageRegex = new RegExp(
+    `!\\[.*?\\]\\([^)]*?(${FILE_ID_PATTERN})[^)]*?\\)`,
+    "g"
   );
+  const matches = (agentMessage.content ?? "").matchAll(markdownImageRegex);
+  const referencedFileIds = new Set([...matches].map((m) => m[1]));
 
   // Get completed images that are not already referenced in the Markdown content.
-  const completedImages = agentMessage.generatedFiles
+  // Combine from actions (updated during streaming) and generatedFiles (available on reload).
+  const filesFromActions = agentMessage.actions.flatMap(
+    (action) => action.generatedFiles
+  );
+  const filesFromMessage = agentMessage.generatedFiles;
+
+  // Combine both sources, preferring actions (more up-to-date during streaming).
+  // Dedupe by fileId.
+  const seenFileIds = new Set<string>();
+  const allGeneratedFiles = [...filesFromActions, ...filesFromMessage].filter(
+    (file) => {
+      if (seenFileIds.has(file.fileId)) {
+        return false;
+      }
+      seenFileIds.add(file.fileId);
+      return true;
+    }
+  );
+
+  const completedImages = allGeneratedFiles
     .filter((file) => isSupportedImageContentType(file.contentType))
     .filter((file) => !referencedFileIds.has(file.fileId));
 
@@ -995,22 +1006,15 @@ function AgentMessageContent({
         owner={owner}
       />
       <AgentMessageInteractiveContentGeneratedFiles files={interactiveFiles} />
-      {(inProgressImages.length > 0 || completedImages.length > 0) && (
+      {completedImages.length > 0 && (
         <InteractiveImageGrid
-          images={[
-            ...completedImages.map((image) => ({
-              imageUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=view`,
-              downloadUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=download`,
-              alt: `${image.title}`,
-              title: `${image.title}`,
-              isLoading: false,
-            })),
-            ...inProgressImages.map(() => ({
-              alt: "",
-              title: "",
-              isLoading: true,
-            })),
-          ]}
+          images={completedImages.map((image) => ({
+            imageUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
+            downloadUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=download`,
+            alt: image.title,
+            title: image.title,
+            isLoading: false,
+          }))}
         />
       )}
 
