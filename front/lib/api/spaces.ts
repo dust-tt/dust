@@ -20,6 +20,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -37,7 +38,6 @@ import {
   removeNulls,
   SPACE_GROUP_PREFIX,
 } from "@app/types";
-import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
