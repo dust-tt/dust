@@ -104,9 +104,7 @@ export function InviteUsersScreen({
 
   const selectedCount = selectedUsers.length;
   const inviteButtonLabel =
-    selectedCount > 0
-      ? `${actionLabel} (${selectedCount})`
-      : actionLabel;
+    selectedCount > 0 ? `${actionLabel} (${selectedCount})` : actionLabel;
   const inviteButtonTooltip =
     selectedCount > 0
       ? selectedUsers.map((user) => user.fullName).join(", ")

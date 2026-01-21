@@ -330,25 +330,25 @@ const suggestionSelectionVariants = cva(
         kind: "add",
         state: "selected",
         className:
-          "s-bg-highlight-100 dark:s-bg-highlight-100 s-text-highlight-800 dark:s-text-highlight-800-night",
+          "s-rounded s-bg-highlight-100 dark:s-bg-highlight-100 s-text-highlight-800 dark:s-text-highlight-800-night",
       },
       {
         kind: "add",
         state: "unselected",
         className:
-          "s-bg-highlight-50 dark:s-bg-highlight-50-night s-text-muted-foreground dark:s-text-muted-foreground-night",
+          "s-rounded s-bg-highlight-50 dark:s-bg-highlight-50-night s-text-muted-foreground dark:s-text-muted-foreground-night",
       },
       {
         kind: "remove",
         state: "selected",
         className:
-          "s-bg-warning-100 s-text-warning-800 dark:s-text-warning-800-night",
+          "s-rounded s-bg-warning-100 s-text-warning-800 dark:s-text-warning-800-night",
       },
       {
         kind: "remove",
         state: "unselected",
         className:
-          "s-bg-warning-50 dark:s-bg-muted-background-night s-text-muted-foreground dark:s-text-muted-foreground-night",
+          "s-rounded s-bg-warning-50 dark:s-bg-muted-background-night s-text-muted-foreground dark:s-text-muted-foreground-night",
       },
     ],
   }
@@ -701,7 +701,10 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
           .chain()
           .focus()
           .insertContent([
-            { type: "mention", attrs: { id: options.id, label: options.label } },
+            {
+              type: "mention",
+              attrs: { id: options.id, label: options.label },
+            },
             { type: "text", text: " " },
           ])
           .run();
@@ -1038,7 +1041,12 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         editor.chain().focus().unsetLink().run();
         return;
       }
-      editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+      editor
+        .chain()
+        .focus()
+        .extendMarkRange("link")
+        .setLink({ href: url })
+        .run();
     };
 
     const shouldShowSelectionMenu = () => {
@@ -1107,7 +1115,9 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                 <Button
                   icon={BoldIcon}
                   size="mini"
-                  variant={editor.isActive("bold") ? "primary" : "ghost-secondary"}
+                  variant={
+                    editor.isActive("bold") ? "primary" : "ghost-secondary"
+                  }
                   tooltip="Bold"
                   onClick={() => {
                     editor.chain().focus().toggleBold().run();
@@ -1128,7 +1138,9 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                 <Button
                   icon={LinkIcon}
                   size="mini"
-                  variant={editor.isActive("link") ? "primary" : "ghost-secondary"}
+                  variant={
+                    editor.isActive("link") ? "primary" : "ghost-secondary"
+                  }
                   tooltip="Link"
                   onClick={handleToggleLink}
                 />

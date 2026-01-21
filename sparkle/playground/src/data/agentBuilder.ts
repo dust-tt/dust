@@ -241,6 +241,6 @@ export const mockCopilotConversationItems: CopilotConversationItem[] = [
     name: "Copilot",
     timestamp: "Just now",
     content:
-      "Got it. Should it personalize by role and include links to docs? Also, any brand voice guidelines?",
+      "Got it. Should it personalize by role and include links to docs? Also, any brand voice guidelines?\n\n[[diff]]\n- Keep responses short and formal.\n+ Keep responses friendly and concise.\n+ Add a short welcome line for new hires.\n[[/diff]]",
   },
 ];

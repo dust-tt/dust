@@ -37,6 +37,8 @@ import {
   ListItem,
   ListItemSection,
   ListOrdered2Icon,
+  DiffBlock,
+  Markdown,
   QuoteTextIcon,
   Separator,
   Sheet,
@@ -105,11 +107,13 @@ function MetadataRow({
 
   return (
     <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-2">
-      <div className="s-text-sm s-w-[80px] s-text-muted-foreground">
+      <div className="s-w-[80px] s-text-sm s-text-muted-foreground">
         {label}
       </div>
       {action}
-      {description ? <div className={descriptionClasses}>{description}</div> : null}
+      {description ? (
+        <div className={descriptionClasses}>{description}</div>
+      ) : null}
     </div>
   );
 }
@@ -362,7 +366,9 @@ export default function AgentBuilder() {
       <div className="s-flex s-w-full s-items-end s-gap-2">
         <div className="s-flex s-flex-1 s-flex-col">
           <div className="s-heading-base s-text-foreground">{title}</div>
-          <div className="s-text-base s-text-muted-foreground">{description}</div>
+          <div className="s-text-base s-text-muted-foreground">
+            {description}
+          </div>
         </div>
         {action}
       </div>
@@ -656,7 +662,6 @@ export default function AgentBuilder() {
                     </div>
                   </div>
                   <div className="s-flex s-flex-col s-gap-2">
-
                     <SectionHeader
                       title="Triggers"
                       description="Add knowledge, tools and skills to enhance your agent's
@@ -679,7 +684,7 @@ export default function AgentBuilder() {
                           Settings
                         </div>
                         <div className="s-flex s-flex-1 s-items-center s-gap-2 s-py-2">
-                          <div className="s-text-sm s-w-[80px] s-text-muted-foreground">
+                          <div className="s-w-[80px] s-text-sm s-text-muted-foreground">
                             Handle
                           </div>
                           <DropdownMenu>
@@ -706,7 +711,9 @@ export default function AgentBuilder() {
                             placeholder="Agent name"
                             containerClassName="s-flex-1"
                             value={agentName}
-                            onChange={(event) => setAgentName(event.target.value)}
+                            onChange={(event) =>
+                              setAgentName(event.target.value)
+                            }
                           />
                         </div>
                       </div>
@@ -720,7 +727,7 @@ export default function AgentBuilder() {
                       />
                     </div>
                     <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-2">
-                      <div className="s-text-sm s-w-[80px] s-text-muted-foreground">
+                      <div className="s-w-[80px] s-text-sm s-text-muted-foreground">
                         Description
                       </div>
                       <DropdownMenu>
@@ -729,7 +736,7 @@ export default function AgentBuilder() {
                             size="sm"
                             variant={"ghost"}
                             icon={SparklesIcon}
-                                tooltip="Suggest"
+                            tooltip="Suggest"
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
@@ -916,16 +923,55 @@ export default function AgentBuilder() {
                 >
                   <div className="s-flex s-min-h-0 s-flex-1 s-overflow-y-auto s-p-3">
                     <ConversationContainer>
-                      {mockCopilotConversationItems.map((item) => (
-                        <ConversationMessage
-                          key={item.id}
-                          type={item.type}
-                          name={item.name}
-                          timestamp={item.timestamp}
-                        >
-                          {item.content}
-                        </ConversationMessage>
-                      ))}
+                      {mockCopilotConversationItems.map((item) => {
+                        const diffStart = "[[diff]]";
+                        const diffEnd = "[[/diff]]";
+                        const hasDiffBlock =
+                          item.type === "agent" &&
+                          item.content.includes(diffStart) &&
+                          item.content.includes(diffEnd);
+
+                        if (!hasDiffBlock) {
+                          return (
+                            <ConversationMessage
+                              key={item.id}
+                              type={item.type}
+                              name={item.name}
+                              timestamp={item.timestamp}
+                            >
+                              {item.type === "agent" ? (
+                                <Markdown content={item.content} />
+                              ) : (
+                                item.content
+                              )}
+                            </ConversationMessage>
+                          );
+                        }
+
+                        const [before, rest] = item.content.split(diffStart);
+                        const [diffContent, after = ""] = rest.split(diffEnd);
+                        const trimmedBefore = before.trim();
+                        const trimmedAfter = after.trim();
+
+                        return (
+                          <ConversationMessage
+                            key={item.id}
+                            type={item.type}
+                            name={item.name}
+                            timestamp={item.timestamp}
+                          >
+                            <div className="s-flex s-flex-col s-gap-3">
+                              {trimmedBefore ? (
+                                <Markdown content={trimmedBefore} />
+                              ) : null}
+                              <DiffBlock content={diffContent.trim()} />
+                              {trimmedAfter ? (
+                                <Markdown content={trimmedAfter} />
+                              ) : null}
+                            </div>
+                          </ConversationMessage>
+                        );
+                      })}
                     </ConversationContainer>
                   </div>
                   <div className="s-p-4">
