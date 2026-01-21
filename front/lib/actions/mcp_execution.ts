@@ -47,6 +47,7 @@ import {
   extensionsForContentType,
   isSupportedFileContentType,
   removeNulls,
+  sanitizeForJsonb,
   stripNullBytes,
   toWellFormed,
 } from "@app/types";
@@ -340,7 +341,7 @@ export async function processToolResults(
     cleanContent.map((c) => ({
       workspaceId: action.workspaceId,
       agentMCPActionId: action.id,
-      content: c.content,
+      content: sanitizeForJsonb(c.content),
       fileId: c.file?.id,
     }))
   );
