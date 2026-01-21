@@ -2,13 +2,16 @@ import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
   ActionPinDistanceIcon,
   Breadcrumbs,
+  Button,
   Citation,
   CitationIcons,
   CitationTitle,
+  cn,
   DocumentIcon,
   Icon,
   Markdown,
 } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
@@ -22,10 +25,16 @@ import {
 } from "@app/lib/content_nodes";
 import { formatDataSourceDisplayName } from "@app/types";
 
+// max-h-96 = 384px
+const MAX_COLLAPSED_HEIGHT_PX = 384;
+
 export function DataSourceNodeContentDetails({
   toolOutput,
   viewType,
 }: ToolExecutionDetailsProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [needsExpand, setNeedsExpand] = useState(false);
+
   const dataSourceNodeContent = toolOutput
     ?.filter(isDataSourceNodeContentType)
     .map((o) => o.resource)?.[0];
@@ -34,6 +43,12 @@ export function DataSourceNodeContentDetails({
   const { metadata, text } = dataSourceNodeContent || {};
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { sourceUrl } = metadata || {};
+
+  const handleContentRef = (node: HTMLDivElement | null) => {
+    if (node) {
+      setNeedsExpand(node.scrollHeight > MAX_COLLAPSED_HEIGHT_PX);
+    }
+  };
 
   return (
     <ActionDetailsWrapper
@@ -64,12 +79,32 @@ export function DataSourceNodeContentDetails({
         </div>
 
         {viewType === "sidebar" && sourceUrl && text && (
-          <Markdown
-            content={text}
-            isStreaming={false}
-            textColor="text-muted-foreground dark:text-muted-foreground-night"
-            forcedTextSize="text-sm"
-          />
+          <div className="relative">
+            <div
+              ref={handleContentRef}
+              className={cn("overflow-hidden", !isExpanded && "max-h-96")}
+            >
+              <Markdown
+                content={text}
+                isStreaming={false}
+                textColor="text-muted-foreground dark:text-muted-foreground-night"
+                forcedTextSize="text-sm"
+              />
+            </div>
+            {needsExpand && !isExpanded && (
+              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent dark:from-background-night" />
+            )}
+            {needsExpand && (
+              <div className="mt-2 flex justify-center">
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  label={isExpanded ? "Show less" : "Show more"}
+                  onClick={() => setIsExpanded(!isExpanded)}
+                />
+              </div>
+            )}
+          </div>
         )}
       </div>
     </ActionDetailsWrapper>
