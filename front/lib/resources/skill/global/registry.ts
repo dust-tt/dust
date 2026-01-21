@@ -4,6 +4,7 @@ import { discoverKnowledgeSkill } from "@app/lib/resources/skill/global/discover
 import { discoverToolsSkill } from "@app/lib/resources/skill/global/discover_tools";
 import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import { goDeepSkill } from "@app/lib/resources/skill/global/go_deep";
+import { projectsSkill } from "@app/lib/resources/skill/global/projects";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import type { ResourceSId } from "@app/lib/resources/string_ids";
 
@@ -70,6 +71,7 @@ const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   discoverToolsSkill,
   framesSkill,
   goDeepSkill,
+  projectsSkill,
 ] as const);
 
 // Build lookup map for direct access by sId.
