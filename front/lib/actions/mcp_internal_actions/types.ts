@@ -317,3 +317,19 @@ export function isGenerateImageInputType(
 ): input is GenerateImageInputType {
   return GenerateImageInputSchema.safeParse(input).success;
 }
+
+// Kept for backward compatibility with existing actions in conversations.
+const EditImageInputSchema = z.object({
+  imageFileId: z.string(),
+  editPrompt: z.string().max(4000),
+  outputName: z.string().max(64),
+  quality: z.enum(["auto", "low", "medium", "high"]).optional().default("auto"),
+  aspectRatio: z.enum(["1:1", "3:2", "2:3"]).optional(),
+});
+export type EditImageInputType = z.infer<typeof EditImageInputSchema>;
+
+export function isEditImageInputType(
+  input: Record<string, unknown>
+): input is EditImageInputType {
+  return EditImageInputSchema.safeParse(input).success;
+}
