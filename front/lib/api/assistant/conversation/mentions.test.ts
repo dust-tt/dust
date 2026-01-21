@@ -615,22 +615,20 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     // Call createAgentMessages
-    const { richMentions } = await withTransaction(
-      async (transaction) => {
-        return createAgentMessages(auth, {
-          conversation: testConversation,
-          metadata: {
-            type: "create",
-            mentions,
-            agentConfigurations: [agentConfigWithSpaces!],
-            skipToolsValidation: false,
-            nextMessageRank: 1,
-            userMessage,
-          },
-          transaction,
-        });
-      }
-    );
+    const { richMentions } = await withTransaction(async (transaction) => {
+      return createAgentMessages(auth, {
+        conversation: testConversation,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations: [agentConfigWithSpaces!],
+          skipToolsValidation: false,
+          nextMessageRank: 1,
+          userMessage,
+        },
+        transaction,
+      });
+    });
 
     // Verify richMentions are returned correctly
     expect(richMentions).toHaveLength(1);
@@ -744,22 +742,20 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     // Call createAgentMessages
-    const { richMentions } = await withTransaction(
-      async (transaction) => {
-        return createAgentMessages(auth, {
-          conversation: testConversation,
-          metadata: {
-            type: "create",
-            mentions,
-            agentConfigurations: [agentConfigWithSpaces!],
-            skipToolsValidation: false,
-            nextMessageRank: 1,
-            userMessage,
-          },
-          transaction,
-        });
-      }
-    );
+    const { richMentions } = await withTransaction(async (transaction) => {
+      return createAgentMessages(auth, {
+        conversation: testConversation,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations: [agentConfigWithSpaces!],
+          skipToolsValidation: false,
+          nextMessageRank: 1,
+          userMessage,
+        },
+        transaction,
+      });
+    });
 
     // Verify richMentions are returned correctly
     expect(richMentions).toHaveLength(1);
@@ -873,22 +869,20 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     // Call createAgentMessages
-    const { richMentions } = await withTransaction(
-      async (transaction) => {
-        return createAgentMessages(auth, {
-          conversation: testConversation,
-          metadata: {
-            type: "create",
-            mentions,
-            agentConfigurations: [agentConfigWithSpaces!],
-            skipToolsValidation: false,
-            nextMessageRank: 1,
-            userMessage,
-          },
-          transaction,
-        });
-      }
-    );
+    const { richMentions } = await withTransaction(async (transaction) => {
+      return createAgentMessages(auth, {
+        conversation: testConversation,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations: [agentConfigWithSpaces!],
+          skipToolsValidation: false,
+          nextMessageRank: 1,
+          userMessage,
+        },
+        transaction,
+      });
+    });
 
     // Verify richMentions are returned correctly
     expect(richMentions).toHaveLength(1);
