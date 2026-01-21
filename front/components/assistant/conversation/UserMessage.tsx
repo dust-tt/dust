@@ -400,25 +400,25 @@ function ActionMenu({
 
   const actions = showActions
     ? [
-      ...(canEdit
-        ? [
-          {
-            icon: PencilSquareIcon,
-            label: "Edit message",
-            onClick: handleEditMessage,
-          },
-        ]
-        : []),
-      ...(canDelete
-        ? [
-          {
-            icon: TrashIcon,
-            label: "Delete message",
-            onClick: handleDeleteMessage,
-          },
-        ]
-        : []),
-    ]
+        ...(canEdit
+          ? [
+              {
+                icon: PencilSquareIcon,
+                label: "Edit message",
+                onClick: handleEditMessage,
+              },
+            ]
+          : []),
+        ...(canDelete
+          ? [
+              {
+                icon: TrashIcon,
+                label: "Delete message",
+                onClick: handleDeleteMessage,
+              },
+            ]
+          : []),
+      ]
     : [];
 
   return (
