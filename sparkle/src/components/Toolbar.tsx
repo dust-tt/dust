@@ -77,7 +77,7 @@ export interface ToolbarProps {
   startSlot?: React.ReactNode;
 }
 
-const Toolbar = ({
+function Toolbar({
   variant = "inline",
   children,
   className,
@@ -87,7 +87,7 @@ const Toolbar = ({
   onClose,
   closeButtonProps,
   startSlot,
-}: ToolbarProps) => {
+}: ToolbarProps) {
   const isOverlay = variant === "overlay";
   const isScrollable = scroll ?? isOverlay;
   const {
@@ -97,39 +97,37 @@ const Toolbar = ({
   } = closeButtonProps ?? {};
   const closeButtonSize: ToolbarButtonSize = closeButtonSizeProp ?? "mini";
 
-  const rootClassName = cn(toolbarRootVariants({ variant, className }));
+  const rootClassName = toolbarRootVariants({ variant, className });
+  const contentBaseClassName = toolbarContentVariants({
+    variant,
+    scrollable: isScrollable,
+    className: contentClassName,
+  });
+  const scrollAreaClassNames = toolbarScrollAreaVariants({
+    variant,
+    className: scrollAreaClassName,
+  });
 
-  const contentBaseClassName = cn(
-    toolbarContentVariants({
-      variant,
-      scrollable: isScrollable,
-      className: contentClassName,
-    })
-  );
+  function renderCloseButton(): JSX.Element | null {
+    if (!onClose) {
+      return null;
+    }
 
-  const scrollAreaClassNames = cn(
-    toolbarScrollAreaVariants({ variant, className: scrollAreaClassName })
-  );
+    const buttonProps = {
+      variant: closeVariant,
+      icon: XMarkIcon,
+      onClick: onClose,
+      ...restCloseButtonProps,
+    };
 
-  const closeButton = onClose ? (
-    closeButtonSize === "mini" ? (
-      <Button
-        size="mini"
-        variant={closeVariant}
-        icon={XMarkIcon}
-        onClick={onClose}
-        {...restCloseButtonProps}
-      />
-    ) : (
-      <Button
-        size={closeButtonSize}
-        variant={closeVariant}
-        icon={XMarkIcon}
-        onClick={onClose}
-        {...restCloseButtonProps}
-      />
-    )
-  ) : null;
+    if (closeButtonSize === "mini") {
+      return <Button size="mini" {...buttonProps} />;
+    }
+
+    return <Button size={closeButtonSize} {...buttonProps} />;
+  }
+
+  const closeButton = renderCloseButton();
 
   const leadingContent = startSlot ?? closeButton;
   const content = <div className={contentBaseClassName}>{children}</div>;
@@ -150,7 +148,7 @@ const Toolbar = ({
       )}
     </div>
   );
-};
+}
 
 export interface ToolbarContentGroup {
   id: string;
@@ -162,24 +160,23 @@ export interface ToolbarContentProps {
   separatorClassName?: string;
 }
 
-const ToolbarContent = ({
-  groups,
-  separatorClassName,
-}: ToolbarContentProps) => (
-  <>
-    {groups.map((group, groupIndex) => (
-      <React.Fragment key={group.id}>
-        {group.items}
-        {groupIndex < groups.length - 1 && (
-          <Separator
-            orientation="vertical"
-            className={cn("s-my-1", separatorClassName)}
-          />
-        )}
-      </React.Fragment>
-    ))}
-  </>
-);
+function ToolbarContent({ groups, separatorClassName }: ToolbarContentProps) {
+  return (
+    <>
+      {groups.map((group, groupIndex) => (
+        <React.Fragment key={group.id}>
+          {group.items}
+          {groupIndex < groups.length - 1 && (
+            <Separator
+              orientation="vertical"
+              className={cn("s-my-1", separatorClassName)}
+            />
+          )}
+        </React.Fragment>
+      ))}
+    </>
+  );
+}
 
 export interface ToolbarIconProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -189,18 +186,18 @@ export interface ToolbarIconProps {
   tooltip?: string;
 }
 
-const ToolbarIcon = ({
+function ToolbarIcon({
   icon,
   onClick,
   size,
   active,
   tooltip,
-}: ToolbarIconProps) => {
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+}: ToolbarIconProps) {
+  function handleClick(event: React.MouseEvent<HTMLButtonElement>): void {
     event.preventDefault();
     event.stopPropagation();
     onClick();
-  };
+  }
 
   if (size === "mini") {
     return (
@@ -223,7 +220,7 @@ const ToolbarIcon = ({
       variant={active ? "ghost" : "ghost-secondary"}
     />
   );
-};
+}
 
 export interface ToolbarLinkProps {
   isOpen: boolean;
@@ -239,7 +236,7 @@ export interface ToolbarLinkProps {
   tooltip?: string;
 }
 
-const ToolbarLink = ({
+function ToolbarLink({
   isOpen,
   onOpenChange,
   onOpenDialog,
@@ -251,57 +248,63 @@ const ToolbarLink = ({
   size,
   active,
   tooltip,
-}: ToolbarLinkProps) => (
-  <Dialog open={isOpen} onOpenChange={onOpenChange}>
-    <ToolbarIcon
-      icon={LinkMIcon}
-      onClick={onOpenDialog}
-      active={active}
-      tooltip={tooltip}
-      size={size}
-    />
-    <DialogContent
-      onClick={(event: React.MouseEvent<HTMLDivElement>) =>
-        event.stopPropagation()
-      }
-    >
-      <DialogHeader>
-        <DialogTitle>Insert Link</DialogTitle>
-        <DialogDescription>
-          Add a link to your message with custom text.
-        </DialogDescription>
-      </DialogHeader>
-      <DialogContainer>
-        <Input
-          id="link-text"
-          label="Text"
-          placeholder="Text"
-          value={linkText}
-          onChange={(event) => onLinkTextChange(event.target.value)}
-        />
-        <Input
-          id="link-url"
-          label="Link"
-          placeholder="Link"
-          value={linkUrl}
-          autoFocus
-          onChange={(event) => onLinkUrlChange(event.target.value)}
-        />
-      </DialogContainer>
-      <DialogFooter
-        leftButtonProps={{
-          label: "Cancel",
-          variant: "outline",
-          onClick: () => onOpenChange(false),
-        }}
-        rightButtonProps={{
-          label: "Save",
-          variant: "highlight",
-          onClick: onSubmit,
-        }}
+}: ToolbarLinkProps) {
+  function handleDialogClick(event: React.MouseEvent<HTMLDivElement>): void {
+    event.stopPropagation();
+  }
+
+  function handleCancelClick(): void {
+    onOpenChange(false);
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <ToolbarIcon
+        icon={LinkMIcon}
+        onClick={onOpenDialog}
+        active={active}
+        tooltip={tooltip}
+        size={size}
       />
-    </DialogContent>
-  </Dialog>
-);
+      <DialogContent onClick={handleDialogClick}>
+        <DialogHeader>
+          <DialogTitle>Insert Link</DialogTitle>
+          <DialogDescription>
+            Add a link to your message with custom text.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogContainer>
+          <Input
+            id="link-text"
+            label="Text"
+            placeholder="Text"
+            value={linkText}
+            onChange={(event) => onLinkTextChange(event.target.value)}
+          />
+          <Input
+            id="link-url"
+            label="Link"
+            placeholder="Link"
+            value={linkUrl}
+            autoFocus
+            onChange={(event) => onLinkUrlChange(event.target.value)}
+          />
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: handleCancelClick,
+          }}
+          rightButtonProps={{
+            label: "Save",
+            variant: "highlight",
+            onClick: onSubmit,
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export { Toolbar, ToolbarContent, ToolbarIcon, ToolbarLink };
