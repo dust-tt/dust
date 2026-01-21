@@ -70,7 +70,6 @@ import {
   toMentionType,
 } from "@app/types";
 
-import { runAgentLoopWorkflow } from "./agent_loop";
 import { getConversation } from "./fetch";
 
 /**
@@ -829,17 +828,6 @@ export const createAgentMessages = async (
     conversation,
     t: transaction,
   });
-
-  if (metadata.type === "create") {
-    if (agentMessages.length > 0) {
-      await runAgentLoopWorkflow({
-        auth,
-        agentMessages,
-        conversation,
-        userMessage: metadata.userMessage,
-      });
-    }
-  }
 
   return { agentMessages, richMentions };
 };
