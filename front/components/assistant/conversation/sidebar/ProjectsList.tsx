@@ -36,7 +36,8 @@ const ProjectListItem = memo(
     const spacePath = getSpaceConversationsRoute(owner.sId, space.sId);
 
     const currentConversationId =
-      typeof router.query.cId === "string" ? router.query.cId : undefined;
+const { cId } = router.query;
+const currentConversationId = isString(cId) ? cId : undefined;
 
     const conversationIds = new Set(
       conversations.map((conversation) => conversation.sId)
