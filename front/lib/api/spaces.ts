@@ -389,7 +389,7 @@ export async function createSpaceAndGroup(
       ? null
       : await GroupResource.fetchWorkspaceGlobalGroup(auth);
 
-    const groups = removeNulls([
+    const memberGroups = removeNulls([
       membersGroup,
       globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
     ]);
@@ -397,30 +397,16 @@ export async function createSpaceAndGroup(
     // Create the editor group for projects and add the creator
     const editorGroups: GroupResource[] = [];
     if (spaceKind === "project") {
+      const creator = auth.getNonNullableUser();
       const editorGroup = await GroupResource.makeNew(
         {
           name: `${PROJECT_GROUP_PREFIX} ${name}`,
           workspaceId: owner.id,
           kind: "space_editors",
         },
-        { transaction: t }
+        { transaction: t, memberIds: [creator.id] }
       );
       editorGroups.push(editorGroup);
-
-      // Add the creator to the editor group
-      const creator = auth.getNonNullableUser();
-      // For the specific purpose of space_editors group creation, we don't use addMembers,
-      // since only admins can add/remove members this way. We create the relation directly.
-      await GroupMembershipModel.create(
-        {
-          groupId: editorGroup.id,
-          userId: creator.id,
-          workspaceId: owner.id,
-          startAt: new Date(),
-          status: "active" as const,
-        },
-        { transaction: t }
-      );
     }
 
     const space = await SpaceResource.makeNew(
@@ -430,7 +416,7 @@ export async function createSpaceAndGroup(
         managementMode,
         workspaceId: owner.id,
       },
-      { members: groups, editors: editorGroups },
+      { members: memberGroups, editors: editorGroups },
       t
     );
 

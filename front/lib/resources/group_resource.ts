@@ -67,9 +67,26 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async makeNew(
     blob: CreationAttributes<GroupModel>,
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      memberIds,
+      transaction,
+    }: { memberIds?: ModelId[]; transaction?: Transaction } = {}
   ) {
     const group = await GroupModel.create(blob, { transaction });
+
+    // If memberIds are provided, create memberships
+    if (memberIds && memberIds.length > 0) {
+      await GroupMembershipModel.bulkCreate(
+        memberIds.map((userId) => ({
+          groupId: group.id,
+          userId,
+          workspaceId: blob.workspaceId,
+          startAt: new Date(),
+          status: "active" as const,
+        })),
+        { transaction }
+      );
+    }
 
     return new this(GroupModel, group.get());
   }
@@ -100,22 +117,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         name: `${AGENT_GROUP_PREFIX} ${agent.name} (${agent.sId})`,
         kind: "agent_editors",
       },
-      { transaction }
-    );
-
-    // Add user to the newly created group. For the specific purpose of
-    // agent_editors group creation, we don't use addMembers, since admins or
-    // existing members of the group can add/remove members this way. We create
-    // the relation directly.
-    await GroupMembershipModel.create(
-      {
-        groupId: defaultGroup.id,
-        userId: user.id,
-        workspaceId: workspace.id,
-        startAt: new Date(),
-        status: "active" as const,
-      },
-      { transaction }
+      { transaction, memberIds: [user.id] }
     );
 
     // Associate the group with the agent configuration.
