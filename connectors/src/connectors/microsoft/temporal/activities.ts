@@ -31,7 +31,10 @@ import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
-import { isItemNotFoundError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
+import {
+  isAccessBlockedError,
+  isItemNotFoundError,
+} from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
   deleteFile,
   deleteFolder,
@@ -129,6 +132,17 @@ export async function getRootNodesToSyncFromResources(
             if (error instanceof GraphError && error.statusCode === 404) {
               return null;
             }
+            if (isAccessBlockedError(error)) {
+              logger.warn(
+                {
+                  connectorId,
+                  id: resource.internalId,
+                  error: error.message,
+                },
+                "Root resource access blocked by administrator, skipping"
+              );
+              return null;
+            }
             if (error instanceof ExternalOAuthTokenError) {
               // Do not throw immediately, the token may still be valid for other roots
               oauthTokenErrors.push(error);
@@ -183,6 +197,13 @@ export async function getRootNodesToSyncFromResources(
           } catch (error) {
             if (isItemNotFoundError(error)) {
               logger.warn({ sitePath }, "Site not found, skipping drives");
+              return { results: [] };
+            }
+            if (isAccessBlockedError(error)) {
+              logger.warn(
+                { sitePath, error: error.message },
+                "Site access blocked by administrator, skipping drives"
+              );
               return { results: [] };
             }
             throw error;
