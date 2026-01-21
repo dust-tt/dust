@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
 
-import type { ToolbarProps } from "@sparkle/index_with_tw_base";
+import type { ToolbarProps } from "../index_with_tw_base";
 import {
   BoldIcon,
   CodeBlockIcon,
@@ -15,21 +15,16 @@ import {
   ToolbarContent,
   ToolbarIcon,
   ToolbarLink,
-} from "@sparkle/index_with_tw_base";
+} from "../index_with_tw_base";
 
 const TOOLBAR_VARIANTS = ["inline", "overlay"] as const;
 
-interface ToolbarPreviewProps {
-  variant?: ToolbarProps["variant"];
-  scroll?: ToolbarProps["scroll"];
-  onClose?: ToolbarProps["onClose"];
-}
+interface ToolbarPreviewProps extends Pick<
+  ToolbarProps,
+  "variant" | "scroll" | "onClose"
+> {}
 
-function ToolbarPreview({
-  variant,
-  scroll,
-  onClose,
-}: ToolbarPreviewProps): JSX.Element {
+function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [linkText, setLinkText] = useState("Dust");
   const [linkUrl, setLinkUrl] = useState("dust.tt");
@@ -170,8 +165,8 @@ function ToolbarPreview({
   return toolbar;
 }
 
-function renderToolbarStory(args: ToolbarPreviewProps): JSX.Element {
-  return <ToolbarPreview {...args} />;
+function renderToolbarStory({ variant, scroll, onClose }: ToolbarProps) {
+  return <ToolbarPreview variant={variant} scroll={scroll} onClose={onClose} />;
 }
 
 function handleOverlayClose(
@@ -198,6 +193,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Playground: Story = {
   args: {
+    children: null,
     variant: "inline",
     scroll: false,
   },
@@ -206,6 +202,7 @@ export const Playground: Story = {
 
 export const Overlay: Story = {
   args: {
+    children: null,
     variant: "overlay",
     scroll: true,
     onClose: handleOverlayClose,
