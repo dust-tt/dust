@@ -69,12 +69,22 @@ import type { ModelId } from "@connectors/types";
 import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 import { isDevelopment } from "@connectors/types";
 
-// Delta data stored in GCS for Microsoft incremental sync batch processing
+// Delta data stored in GCS for Microsoft incremental sync batch processing.
+// Note: listItem is intentionally stripped from DriveItems before serialization
+// to avoid hitting JavaScript's string length limit. The processing code in
+// processDeltaBatchForRootNodesInDrive re-fetches listItem.fields when needed.
 interface DeltaDataInGCS {
   deltaLink: string;
   rootNodeIds: string[];
   sortedChangedItems: DriveItem[];
   totalItems: number;
+}
+
+// Strips listItem from DriveItems to reduce GCS file size.
+// listItem.fields can contain large SharePoint custom columns, causing
+// JSON.stringify to fail with "Invalid string length" for large deltas.
+function stripListItemFromDriveItems(items: DriveItem[]): DriveItem[] {
+  return items.map(({ listItem, ...rest }) => rest);
 }
 
 const FILES_SYNC_CONCURRENCY = 10;
@@ -1155,10 +1165,14 @@ export async function fetchDeltaForRootNodesInDrive({
     "Uploading to GCS delta file."
   );
 
+  // Strip listItem from items to avoid hitting JavaScript's string length limit.
+  // The listItem.fields can contain large SharePoint custom columns.
+  const strippedChangedItems = stripListItemFromDriveItems(sortedChangedItems);
+
   const deltaData: DeltaDataInGCS = {
     deltaLink,
     rootNodeIds,
-    sortedChangedItems,
+    sortedChangedItems: strippedChangedItems,
     totalItems: sortedChangedItems.length,
   };
 
