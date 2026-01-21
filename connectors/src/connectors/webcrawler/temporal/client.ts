@@ -324,9 +324,9 @@ export async function launchFirecrawlCrawlCompletedWorkflow(
     return new Ok(workflowId);
   } catch (e) {
     if (e instanceof WorkflowExecutionAlreadyStartedError) {
-      logger.info(
+      logger.warn(
         { workflowId, connectorId, crawlId },
-        "Firecrawl crawl completed workflow already started, skipping duplicate webhook."
+        "Workflow already started"
       );
       return new Ok(workflowId);
     }
