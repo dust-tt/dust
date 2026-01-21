@@ -33,6 +33,7 @@ import {
 } from "@connectors/connectors/microsoft/lib/utils";
 import {
   isAccessBlockedError,
+  isGeneralExceptionError,
   isItemNotFoundError,
 } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
@@ -140,6 +141,18 @@ export async function getRootNodesToSyncFromResources(
                   error: error.message,
                 },
                 "Root resource access blocked by administrator, skipping"
+              );
+              return null;
+            }
+            if (isGeneralExceptionError(error)) {
+              logger.warn(
+                {
+                  connectorId,
+                  internalId: resource.internalId,
+                  errorCode: error.code,
+                  errorMessage: error.message,
+                },
+                "Skipping root resource due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
               );
               return null;
             }
