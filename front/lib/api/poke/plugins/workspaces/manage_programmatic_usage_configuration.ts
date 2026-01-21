@@ -200,8 +200,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
   },
 
   execute: async (auth, _, args) => {
-    const parseResult =
-      ProgrammaticUsageConfigurationSchema.safeParse(args);
+    const parseResult = ProgrammaticUsageConfigurationSchema.safeParse(args);
 
     if (!parseResult.success) {
       return new Err(

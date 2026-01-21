@@ -25,15 +25,26 @@ import { clientFetch } from "@app/lib/egress/client";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
-import type { EnterpriseUpgradeFormType, WorkspaceType } from "@app/types";
+import type {
+  EnterpriseUpgradeFormType,
+  ProgrammaticUsageConfigurationType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 import { EnterpriseUpgradeFormSchema, removeNulls } from "@app/types";
+
+const MICRO_USD_PER_DOLLAR = 1_000_000;
 
 interface EnterpriseUpgradeDialogProps {
   owner: WorkspaceType;
+  subscription: SubscriptionType;
+  programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
 }
 
 export default function EnterpriseUpgradeDialog({
   owner,
+  subscription,
+  programmaticUsageConfig,
 }: EnterpriseUpgradeDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,16 +53,27 @@ export default function EnterpriseUpgradeDialog({
   const { plans } = usePokePlans();
   const router = useAppRouter();
 
+  const freeCreditMicroUsd =
+    programmaticUsageConfig?.freeCreditMicroUsd ?? null;
+  const paygCapMicroUsd = programmaticUsageConfig?.paygCapMicroUsd ?? null;
+
   const form = useForm<EnterpriseUpgradeFormType>({
     resolver: ioTsResolver(EnterpriseUpgradeFormSchema),
     defaultValues: {
-      stripeSubscriptionId: "",
-      planCode: "",
-      freeCreditsOverrideEnabled: false,
-      freeCreditsDollars: undefined,
-      defaultDiscountPercent: 0,
-      paygEnabled: false,
-      paygCapDollars: undefined,
+      stripeSubscriptionId: subscription.stripeSubscriptionId ?? "",
+      planCode: subscription.plan.code,
+      freeCreditsOverrideEnabled: freeCreditMicroUsd !== null,
+      freeCreditsDollars:
+        freeCreditMicroUsd !== null
+          ? freeCreditMicroUsd / MICRO_USD_PER_DOLLAR
+          : undefined,
+      defaultDiscountPercent:
+        programmaticUsageConfig?.defaultDiscountPercent ?? 0,
+      paygEnabled: paygCapMicroUsd !== null,
+      paygCapDollars:
+        paygCapMicroUsd !== null
+          ? paygCapMicroUsd / MICRO_USD_PER_DOLLAR
+          : undefined,
     },
   });
 
@@ -202,7 +224,9 @@ export default function EnterpriseUpgradeDialog({
                     <div className="mb-4 flex items-center gap-2">
                       <SliderToggle
                         selected={paygEnabled}
-                        onClick={() => form.setValue("paygEnabled", !paygEnabled)}
+                        onClick={() =>
+                          form.setValue("paygEnabled", !paygEnabled)
+                        }
                       />
                       <Label className="text-sm">Pay-as-you-go</Label>
                     </div>

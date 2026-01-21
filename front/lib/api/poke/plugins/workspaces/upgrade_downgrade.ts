@@ -8,7 +8,8 @@ export const upgradeEnterprisePlan = createPlugin({
   manifest: {
     id: "upgrade-enterprise-plan",
     name: "Upgrade Enterprise Plan",
-    description: "Upgrade enterprise plan with programmatic usage configuration",
+    description:
+      "Upgrade enterprise plan with programmatic usage configuration",
     resourceTypes: ["workspaces"],
     isHidden: true,
     args: {

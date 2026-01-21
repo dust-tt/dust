@@ -498,7 +498,11 @@ function UpgradeDowngradeModal({
               description="Go to the Enterprise billing form page to upgrade this workspace to a new Enterprise plan ."
             />
             <div>
-              <EnterpriseUpgradeDialog owner={owner} />
+              <EnterpriseUpgradeDialog
+                owner={owner}
+                subscription={subscription}
+                programmaticUsageConfig={programmaticUsageConfig}
+              />
             </div>
             {isProPlanPrefix(subscription.plan.code) && (
               <>
