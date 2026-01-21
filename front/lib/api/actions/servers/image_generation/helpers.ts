@@ -8,6 +8,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -259,6 +260,103 @@ export function createGeminiClient(): GoogleGenAI {
   });
 }
 
+type InlineDataPart = { inlineData: { data: string; mimeType: string } };
+
+async function processSingleImageFile({
+  auth,
+  imageFileId,
+  conversationId,
+  maxImageSize,
+  workspaceSId,
+  statsDClient,
+}: {
+  auth: Authenticator;
+  imageFileId: string;
+  conversationId: string;
+  maxImageSize: number;
+  workspaceSId: string;
+  statsDClient: ReturnType<typeof getStatsDClient>;
+}): Promise<Ok<InlineDataPart> | Err<MCPError>> {
+  const fileResource = await FileResource.fetchById(auth, imageFileId);
+  if (!fileResource) {
+    return new Err(
+      new MCPError(`File not found: ${imageFileId}`, {
+        tracked: false,
+      })
+    );
+  }
+
+  const belongsResult = fileResource.belongsToConversation(conversationId);
+  if (belongsResult.isErr() || !belongsResult.value) {
+    return new Err(
+      new MCPError(`File ${imageFileId} does not belong to this conversation`, {
+        tracked: false,
+      })
+    );
+  }
+
+  if (fileResource.fileSize > maxImageSize) {
+    logger.warn(
+      {
+        fileId: fileResource.sId,
+        fileSize: fileResource.fileSize,
+        maxFileSize: maxImageSize,
+        workspaceId: workspaceSId,
+      },
+      "generate_image: File size exceeds maximum allowed size"
+    );
+
+    statsDClient.increment(
+      "tools.image_generation.file_size_limit_exceeded",
+      1,
+      ["provider:gemini"]
+    );
+
+    return new Err(
+      new MCPError(
+        `Image file ${imageFileId} too large. Maximum allowed size is ${fileSizeToHumanReadable(maxImageSize, 0)}, but file is ${fileSizeToHumanReadable(fileResource.fileSize, 0)}.`,
+        {
+          tracked: false,
+        }
+      )
+    );
+  }
+
+  const readStream = fileResource.getReadStream({
+    auth,
+    version: "original",
+  });
+  const bufferResult = await streamToBuffer(readStream);
+  if (bufferResult.isErr()) {
+    return new Err(
+      new MCPError(
+        `Failed to read file ${imageFileId}: ${bufferResult.error}`,
+        {
+          tracked: false,
+        }
+      )
+    );
+  }
+
+  if (!isSupportedImageContentType(fileResource.contentType)) {
+    return new Err(
+      new MCPError(
+        `File ${imageFileId} is not a supported image type. Got: ${fileResource.contentType}. Supported types: PNG, JPEG, WebP, HEIC, HEIF.`,
+        {
+          tracked: false,
+        }
+      )
+    );
+  }
+
+  return new Ok({
+    inlineData: {
+      data: bufferResult.value.toString("base64"),
+      mimeType: fileResource.contentType,
+    },
+  });
+}
+
 export async function processImageFileIds({
   auth,
   imageFileIds,
@@ -271,9 +369,7 @@ export async function processImageFileIds({
   agentLoopContext: AgentLoopContextType | undefined;
   workspaceSId: string;
   statsDClient: ReturnType<typeof getStatsDClient>;
-}): Promise<
-  Ok<Array<{ inlineData: { data: string; mimeType: string } }>> | Err<MCPError>
-> {
+}): Promise<Ok<InlineDataPart[]> | Err<MCPError>> {
   if (!agentLoopContext?.runContext) {
     return new Err(
       new MCPError("No conversation context available for file access", {
@@ -284,93 +380,29 @@ export async function processImageFileIds({
 
   const conversationId = agentLoopContext.runContext.conversation.sId;
   const maxImageSize = MAX_FILE_SIZES.image;
-  const inlineDataParts: Array<{
-    inlineData: { data: string; mimeType: string };
-  }> = [];
 
-  for (const imageFileId of imageFileIds) {
-    const fileResource = await FileResource.fetchById(auth, imageFileId);
-    if (!fileResource) {
-      return new Err(
-        new MCPError(`File not found: ${imageFileId}`, {
-          tracked: false,
-        })
-      );
-    }
+  const results = await concurrentExecutor(
+    imageFileIds,
+    (imageFileId) =>
+      processSingleImageFile({
+        auth,
+        imageFileId,
+        conversationId,
+        maxImageSize,
+        workspaceSId,
+        statsDClient,
+      }),
+    { concurrency: 8 }
+  );
 
-    const belongsResult = fileResource.belongsToConversation(conversationId);
-    if (belongsResult.isErr() || !belongsResult.value) {
-      return new Err(
-        new MCPError(
-          `File ${imageFileId} does not belong to this conversation`,
-          {
-            tracked: false,
-          }
-        )
-      );
-    }
-
-    if (fileResource.fileSize > maxImageSize) {
-      logger.warn(
-        {
-          fileId: fileResource.sId,
-          fileSize: fileResource.fileSize,
-          maxFileSize: maxImageSize,
-          workspaceId: workspaceSId,
-        },
-        "generate_image: File size exceeds maximum allowed size"
-      );
-
-      statsDClient.increment(
-        "tools.image_generation.file_size_limit_exceeded",
-        1,
-        ["provider:gemini"]
-      );
-
-      return new Err(
-        new MCPError(
-          `Image file ${imageFileId} too large. Maximum allowed size is ${fileSizeToHumanReadable(maxImageSize, 0)}, but file is ${fileSizeToHumanReadable(fileResource.fileSize, 0)}.`,
-          {
-            tracked: false,
-          }
-        )
-      );
-    }
-
-    const readStream = fileResource.getReadStream({
-      auth,
-      version: "original",
-    });
-    const bufferResult = await streamToBuffer(readStream);
-    if (bufferResult.isErr()) {
-      return new Err(
-        new MCPError(
-          `Failed to read file ${imageFileId}: ${bufferResult.error}`,
-          {
-            tracked: false,
-          }
-        )
-      );
-    }
-
-    if (!isSupportedImageContentType(fileResource.contentType)) {
-      return new Err(
-        new MCPError(
-          `File ${imageFileId} is not a supported image type. Got: ${fileResource.contentType}. Supported types: PNG, JPEG, WebP, HEIC, HEIF.`,
-          {
-            tracked: false,
-          }
-        )
-      );
-    }
-
-    inlineDataParts.push({
-      inlineData: {
-        data: bufferResult.value.toString("base64"),
-        mimeType: fileResource.contentType,
-      },
-    });
+  const firstError = results.find((r) => r.isErr());
+  if (firstError?.isErr()) {
+    return firstError;
   }
+
+  const inlineDataParts = results
+    .filter((r): r is Ok<InlineDataPart> => r.isOk())
+    .map((r) => r.value);
 
   return new Ok(inlineDataParts);
 }
