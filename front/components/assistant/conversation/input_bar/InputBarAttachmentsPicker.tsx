@@ -218,6 +218,7 @@ export const InputBarAttachmentsPicker = ({
 
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular", "project"],
     disabled: !isOpen,
   });
 

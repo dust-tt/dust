@@ -30,6 +30,7 @@ interface SpacesProviderProps {
 export const SpacesProvider = ({ owner, children }: SpacesProviderProps) => {
   const sendNotification = useSendNotification();
   const { spaces, isSpacesLoading, isSpacesError } = useSpaces({
+    kinds: "all",
     workspaceId: owner.sId,
   });
 

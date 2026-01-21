@@ -160,6 +160,7 @@ function KnowledgeSearchComponent({
   // Get spaces for location display.
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular", "project"],
     disabled: false,
   });
 

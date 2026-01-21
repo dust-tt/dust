@@ -15,6 +15,7 @@ import { useSWRConfig } from "swr";
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { isAgentCreationResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { GLOBAL_SPACE_NAME } from "@app/types";
 
 export function MCPAgentManagementActionDetails({
   toolOutput,
@@ -107,7 +108,7 @@ export function MCPAgentManagementActionDetails({
             <ul className="list-inside list-disc text-sm text-muted-foreground dark:text-muted-foreground-night">
               <li>Web search and browse tools</li>
               <li>Search across workspace data sources</li>
-              <li>Query tools for data warehouses in Company Data</li>
+              <li>Query tools for data warehouses in {GLOBAL_SPACE_NAME}</li>
               {subAgent && <li>Run @{subAgent.name} sub-agent</li>}
             </ul>
           </div>

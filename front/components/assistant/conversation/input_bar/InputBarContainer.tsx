@@ -427,6 +427,7 @@ const InputBarContainer = ({
 
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular", "project"],
     disabled: !nodeOrUrlCandidate,
   });
 

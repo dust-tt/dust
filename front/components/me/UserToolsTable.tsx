@@ -39,7 +39,10 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
   const sendNotification = useSendNotification();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { spaces } = useSpaces({ workspaceId: owner.sId });
+  const { spaces } = useSpaces({
+    workspaceId: owner.sId,
+    kinds: ["global", "regular"],
+  });
   const { serverViews, isLoading: isMCPServerViewsLoading } =
     useManualMCPServerViewsFromSpaces(owner, spaces);
   const { connections, isConnectionsLoading } = useMCPServerConnections({

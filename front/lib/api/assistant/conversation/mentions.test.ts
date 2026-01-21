@@ -3547,17 +3547,11 @@ describe("validateUserMention", () => {
         workspace.sId
       );
 
-      const refreshedProjectSpace = await SpaceResource.fetchById(
-        userAuth,
-        projectSpace.sId
-      );
-      expect(refreshedProjectSpace).not.toBeNull();
-
       // Create a conversation in the project space
       const projectConversation = await createConversation(userAuth, {
         title: "Project Conversation",
         visibility: "unlisted",
-        spaceId: refreshedProjectSpace!.id,
+        spaceId: projectSpace!.id,
       });
 
       // Create a user who will be mentioned but is NOT a member of the project space
@@ -3597,9 +3591,13 @@ describe("validateUserMention", () => {
         status: "pending",
       });
 
+      const mentionedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        mentionedUser.sId,
+        workspace.sId
+      );
+
       // Verify the mentioned user is NOT a member of the project space before
-      const isMemberBefore =
-        await refreshedProjectSpace!.isMember(mentionedUser);
+      const isMemberBefore = projectSpace!.isMember(mentionedUserAuth);
       expect(isMemberBefore).toBe(false);
 
       // Approve the mention (userAuth has admin role and is a project member)
@@ -3614,11 +3612,9 @@ describe("validateUserMention", () => {
       expect(result.isOk()).toBe(true);
 
       // Verify the mentioned user is now a member of the project space
-      const updatedProjectSpace = await SpaceResource.fetchById(
-        userAuth,
-        projectSpace.sId
-      );
-      const isMemberAfter = await updatedProjectSpace!.isMember(mentionedUser);
+      // Need to refresh the authenticator to get the updated groups.
+      await mentionedUserAuth.refresh();
+      const isMemberAfter = projectSpace!.isMember(mentionedUserAuth);
       expect(isMemberAfter).toBe(true);
 
       // Verify the mentioned user is now a participant

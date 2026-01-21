@@ -129,7 +129,7 @@ const getAvailableToolsTool = defineTool({
       return new Err(new MCPError("Authentication required"));
     }
 
-    // Get all spaces the user has access to.
+    // Get all spaces the user is member of.
     const userSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
 
     // Fetch all MCP server views from those spaces.
