@@ -614,7 +614,7 @@ describe("createSpaceAndGroup", () => {
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         const space = result.value;
-        expect(space.isRegularAndRestricted()).toBe(false);
+        expect(space.isOpen()).toBe(true);
 
         // Verify global group was added with kind "member"
         const groupSpace = await GroupSpaceModel.findOne({
@@ -647,6 +647,7 @@ describe("createSpaceAndGroup", () => {
       if (result.isOk()) {
         const space = result.value;
         expect(space.kind).toBe("project");
+        expect(space.isOpen()).toBe(true);
 
         // Verify global group was added with kind "project_viewer"
         const groupSpace = await GroupSpaceModel.findOne({

@@ -466,26 +466,6 @@ export async function createSpaceAndGroup(
 
     // Handle member-based space creation
     if (params.managementMode === "manual") {
-      if (space.isProject()) {
-        // Create an editor group, add the project creator, and link it to the project
-        const creator = auth.getNonNullableUser();
-        const editorGroup = await GroupResource.makeNew(
-          {
-            name: `${PROJECT_EDITOR_GROUP_PREFIX} ${name}`,
-            workspaceId: owner.id,
-            kind: "space_editors",
-          },
-          { memberIds: [creator.id], transaction: t }
-        );
-
-        // Add editor group to space with kind="project_editor"
-        await GroupSpaceEditorResource.makeNew(auth, {
-          group: editorGroup,
-          space,
-          transaction: t,
-        });
-      }
-
       // Add members to the member group
       const users = (await UserResource.fetchByIds(params.memberIds)).map(
         (user) => user.toJSON()
