@@ -29,6 +29,17 @@ export function isItemNotFoundError(err: unknown): err is GraphError {
   );
 }
 
+// 423 Locked with code "notAllowed" indicates a SharePoint site has been blocked
+// by an administrator. This is an external permission restriction that cannot
+// be resolved in-product.
+export function isAccessBlockedError(err: unknown): err is GraphError {
+  return (
+    err instanceof GraphError &&
+    err.statusCode === 423 &&
+    err.code === "notAllowed"
+  );
+}
+
 export class MicrosoftCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
