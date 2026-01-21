@@ -5,7 +5,7 @@ import type {
   LLMClientMetadata,
 } from "@app/lib/api/llm/types/options";
 import type { AgentErrorCategory } from "@app/types";
-import { normalizeError } from "@app/types";
+import { assertNever, normalizeError } from "@app/types";
 
 export type LLMErrorType =
   // LLM errors
@@ -302,6 +302,9 @@ export const getUserFacingLLMErrorMessage = (
     }
     case "unknown_error": {
       return "An unexpected error occurred. Please try again or contact support if the issue persists.";
+    }
+    default: {
+      assertNever(type);
     }
   }
 };
