@@ -122,10 +122,6 @@ export function withSessionAuthenticationForPoke<T>(
  * This function is a wrapper for API routes that require session authentication for a workspace.
  * It must be used on all routes that require workspace authentication (prefix: /w/[wId]/).
  *
- * opts.allowUserOutsideCurrentWorkspace allows the handler to be called even if the user is not a
- * member of the workspace. This is useful for routes that share data across workspaces (eg apps
- * runs).
- *
  * @param handler
  * @param opts
  * @returns
@@ -139,7 +135,6 @@ export function withSessionAuthenticationForWorkspace<T>(
   ) => Promise<void> | void,
   opts: {
     isStreaming?: boolean;
-    allowUserOutsideCurrentWorkspace?: boolean;
     doesNotRequireCanUseProduct?: boolean;
   } = {}
 ) {
@@ -204,9 +199,7 @@ export function withSessionAuthenticationForWorkspace<T>(
       }
       req.addResourceToLog?.(user);
 
-      // If `allowUserOutsideCurrentWorkspace` is not set or false then we check that the user is a
-      // member of the workspace.
-      if (!auth.isUser() && !opts.allowUserOutsideCurrentWorkspace) {
+      if (!auth.isUser()) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -226,27 +219,21 @@ export function withSessionAuthenticationForWorkspace<T>(
  * This function is a wrapper for Public API routes that require authentication for a workspace.
  * It must be used on all routes that require workspace authentication (prefix: /v1/w/[wId]/).
  *
- * opts.allowUserOutsideCurrentWorkspace allows the handler to be called even if the key is not a
- * associated with the workspace. This is useful for routes that share data across workspaces (eg apps
- * runs).
- *
  * @param handler
  * @param opts
  * @returns
  */
-export function withPublicAPIAuthentication<T, U extends boolean>(
+export function withPublicAPIAuthentication<T>(
   handler: (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
-    auth: Authenticator,
-    keyAuth: U extends true ? Authenticator : null
+    auth: Authenticator
   ) => Promise<void> | void,
   opts: {
     isStreaming?: boolean;
-    allowUserOutsideCurrentWorkspace?: U;
   } = {}
 ) {
-  const { allowUserOutsideCurrentWorkspace, isStreaming } = opts;
+  const { isStreaming } = opts;
 
   return withLogging(
     async (
@@ -339,12 +326,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
             return apiError(req, res, getMaintenanceError(maintenance));
           }
 
-          return await handler(
-            req,
-            res,
-            auth,
-            null as U extends true ? Authenticator : null
-          );
+          return await handler(req, res, auth);
         } catch (error) {
           logger.error({ error }, "Failed to verify token");
           return apiError(req, res, {
@@ -370,7 +352,6 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
         getGroupIdsFromHeaders(req.headers),
         getRoleFromHeaders(req.headers)
       );
-      const { keyAuth } = keyAndWorkspaceAuth;
       let { workspaceAuth } = keyAndWorkspaceAuth;
 
       const owner = workspaceAuth.workspace();
@@ -401,9 +382,9 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
         return apiError(req, res, getMaintenanceError(maintenance));
       }
 
-      // Authenticator created from the a key has the builder role if the key is associated with
+      // Authenticator created from a key has the builder role if the key is associated with
       // the workspace.
-      if (!workspaceAuth.isBuilder() && !allowUserOutsideCurrentWorkspace) {
+      if (!workspaceAuth.isBuilder()) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -420,7 +401,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       // 1. The user associated with the email is a member of the current workspace.
       // 2. The system key is being used for authentication.
       const userEmailFromHeader = getUserEmailFromHeaders(req.headers);
-      if (userEmailFromHeader && !allowUserOutsideCurrentWorkspace) {
+      if (userEmailFromHeader) {
         workspaceAuth =
           (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
             workspaceAuth,
@@ -442,14 +423,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           role: key.role,
         });
       }
-      return handler(
-        req,
-        res,
-        workspaceAuth,
-        (opts.allowUserOutsideCurrentWorkspace
-          ? keyAuth
-          : null) as U extends true ? Authenticator : null
-      );
+      return handler(req, res, workspaceAuth);
     },
     isStreaming
   );
