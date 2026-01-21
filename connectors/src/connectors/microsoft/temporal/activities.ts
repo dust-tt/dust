@@ -186,10 +186,21 @@ export async function getRootNodesToSyncFromResources(
     );
 
   if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
-    const msSites = await getAllPaginatedEntities((nextLink) =>
-      getSites(logger, client, nextLink)
-    );
-    rootSitePaths.push(...msSites.map((site) => getSiteAPIPath(site)));
+    try {
+      const msSites = await getAllPaginatedEntities((nextLink) =>
+        getSites(logger, client, nextLink)
+      );
+      rootSitePaths.push(...msSites.map((site) => getSiteAPIPath(site)));
+    } catch (error) {
+      if (isGeneralExceptionError(error)) {
+        logger.warn(
+          { errorCode: error.code, errorMessage: error.message },
+          "Skipping sites-root due to 401 generalException - possible permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+        );
+      } else {
+        throw error;
+      }
+    }
   }
 
   const siteDriveNodes = (
@@ -216,6 +227,17 @@ export async function getRootNodesToSyncFromResources(
               logger.warn(
                 { sitePath, error: error.message },
                 "Site access blocked by administrator, skipping drives"
+              );
+              return { results: [] };
+            }
+            if (isGeneralExceptionError(error)) {
+              logger.warn(
+                {
+                  sitePath,
+                  errorCode: error.code,
+                  errorMessage: error.message,
+                },
+                "Skipping site drives due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
               );
               return { results: [] };
             }
