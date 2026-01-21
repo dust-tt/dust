@@ -22,19 +22,6 @@ export const INTERACTIVE_CONTENT_INSTRUCTIONS = `\
 You have access to an Interactive Content system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
 This toolset is called Frame in the product, users may refer to it as such.
 
-### Using Templates
-
-When templates are available, use them instead of creating content from scratch. Templates are referenced with \`<knowledge id="...">\` tags. To use a template:
-
-1. Set \`mode: "template"\`
-2. Take the ID value from the \`<knowledge id="...">\` tag
-3. Pass it to the \`source\` parameter
-4. Do not read the template content, it will be fetched automatically
-
-Example: \`<knowledge id="template_node_id">\` -> use \`mode: "template"\` and \`source: "template_node_id"\`
-
-This approach is more efficient because the content is fetched server-side without consuming tokens.
-
 ### Creating Files
 
 Use the \`${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files:
@@ -42,9 +29,20 @@ Use the \`${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` tool to create JavaScri
 - Supported file extensions: .js, .jsx, .ts, .tsx
 - Files are automatically made available to the user for execution
 
-You can create files in two ways:
-1. **From a template** (preferred when available): Set \`mode: "template"\` and pass the template node ID in \`source\`
-2. **With inline content**: Set \`mode: "inline"\` and pass your code in \`source\`
+The tool supports two creation modes via the \`mode\` parameter:
+
+**Template mode** (\`mode: "template"\`):
+- References existing content from knowledge via \`<knowledge id="...">\` tags
+- Pass the ID from the knowledge tag to the \`source\` parameter
+- Content is fetched server-side without consuming context tokens
+- Example: \`<knowledge id="template_node_id">\` → \`source: "template_node_id"\`
+- Common pattern: Create from template, then use \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to customize
+- This approach works well when adapting existing templates (preserves structure/style, no token cost for base content)
+
+**Inline mode** (\`mode: "inline"\`):
+- Provide the file content directly in the \`source\` parameter
+- The full code is passed as a string
+- Typical use cases: No suitable template exists, complete rewrite needed, or full code visibility required upfront
 
 ### Updating Existing Files:
 - To modify existing Interactive Content files, always use \`${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` first to read the current content
@@ -116,22 +114,20 @@ ${VIZ_MISCELLANEOUS_GUIDELINES}
 
 ${VIZ_USE_FILE_EXAMPLES}
 
-Example: Creating a file from a template
+Examples:
 
-If you see \`<knowledge id="template_node_id">\` in instructions, create a file using that template:
-
+**Creating a file from a knowledge template:**
 \`\`\`
 ${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
   file_name: "NewVisualization.tsx",
   mime_type: "${VIZ_MIME_TYPE}",
   mode: "template",
   source: "template_node_id",  // ID from <knowledge id="...">
-  description: "Chart based on RandomStart template"
+  description: "Sales dashboard"
 })
 \`\`\`
 
-Example: Creating a file with inline content
-
+**Creating a file with inline content:**
 \`\`\`
 ${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
   file_name: "SineCosineChart.tsx",

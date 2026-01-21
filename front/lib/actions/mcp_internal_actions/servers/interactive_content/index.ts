@@ -105,8 +105,8 @@ function createServer(
       mode: z
         .enum(["template", "inline"])
         .describe(
-          "Creation mode: 'template' to use an existing content node as a starting point " +
-            "(efficient, no tokens consumed), or 'inline' to provide content directly."
+          "Creation mode: 'template' to reference an existing content node from knowledge " +
+            "(content fetched server-side), or 'inline' to provide content directly."
         ),
       source: z
         .string()
