@@ -22,6 +22,7 @@ import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/block
 import {
   makeAssistantSelectionBlock,
   makeMessageUpdateBlocksAndText,
+  makeToolAuthenticationBlock,
   makeToolValidationBlock,
   MAX_SLACK_MESSAGE_LENGTH,
 } from "@connectors/connectors/slack/chat/blocks";
@@ -224,6 +225,23 @@ async function streamAgentAnswerToSlack(
           connector.workspaceId,
           conversation.sId
         );
+
+        // Send ephemeral notification to triggering user
+        if (slackUserId && !slackUserInfo.is_bot && conversationUrl) {
+          await slackClient.chat.postEphemeral({
+            channel: slackChannelId,
+            user: slackUserId,
+            text: "Authentication Required",
+            blocks: makeToolAuthenticationBlock({
+              agentName: event.metadata.agentName,
+              toolName: event.metadata.toolName,
+              conversationUrl,
+            }),
+            thread_ts: slackMessageTs,
+          });
+        }
+
+        // Update main message for thread visibility
         await throttledPostSlackMessageUpdate({
           messageUpdate: {
             text:
