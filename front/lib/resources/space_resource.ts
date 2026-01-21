@@ -60,25 +60,43 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   static async makeNew(
     blob: CreationAttributes<SpaceModel>,
-    groups: GroupResource[],
+    groups: { members: GroupResource[]; editors?: GroupResource[] },
     transaction?: Transaction
   ) {
     return withTransaction(async (t: Transaction) => {
       const space = await SpaceModel.create(blob, { transaction: t });
+      const { members, editors } = groups;
 
-      for (const group of groups) {
+      for (const memberGroup of members) {
         await GroupSpaceModel.create(
           {
-            groupId: group.id,
+            groupId: memberGroup.id,
             vaultId: space.id,
             workspaceId: space.workspaceId,
-            kind: "member", // Attached groups on space creation are member groups by default
+            kind: "member",
           },
           { transaction: t }
         );
       }
+      if (blob.kind === "project") {
+        assert(editors && editors.length > 0, "Projects must have editors.");
+        for (const editorGroup of editors) {
+          await GroupSpaceModel.create(
+            {
+              groupId: editorGroup.id,
+              vaultId: space.id,
+              workspaceId: space.workspaceId,
+              kind: "project_editor",
+            },
+            { transaction: t }
+          );
+        }
+      }
 
-      return new this(SpaceModel, space.get(), groups);
+      return new this(SpaceModel, space.get(), [
+        ...groups.members,
+        ...(groups.editors ?? []),
+      ]);
     }, transaction);
   }
 
@@ -107,7 +125,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           kind: "system",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        [systemGroup],
+        { members: [systemGroup] },
         transaction
       ));
 
@@ -120,7 +138,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           kind: "global",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        [globalGroup],
+        { members: [globalGroup] },
         transaction
       ));
 
@@ -133,7 +151,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           kind: "conversations",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        [globalGroup],
+        { members: [globalGroup] },
         transaction
       ));
 

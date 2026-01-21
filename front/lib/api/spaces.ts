@@ -30,7 +30,14 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { AgentsUsageType, Result } from "@app/types";
-import { Err, Ok, removeNulls, SPACE_GROUP_PREFIX } from "@app/types";
+import {
+  Err,
+  Ok,
+  PROJECT_GROUP_PREFIX,
+  removeNulls,
+  SPACE_GROUP_PREFIX,
+} from "@app/types";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -369,7 +376,7 @@ export async function createSpaceAndGroup(
       );
     }
 
-    const group = await GroupResource.makeNew(
+    const membersGroup = await GroupResource.makeNew(
       {
         name: `${SPACE_GROUP_PREFIX} ${name}`,
         workspaceId: owner.id,
@@ -383,9 +390,38 @@ export async function createSpaceAndGroup(
       : await GroupResource.fetchWorkspaceGlobalGroup(auth);
 
     const groups = removeNulls([
-      group,
+      membersGroup,
       globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
     ]);
+
+    // Create the editor group for projects and add the creator
+    const editorGroups: GroupResource[] = [];
+    if (spaceKind === "project") {
+      const editorGroup = await GroupResource.makeNew(
+        {
+          name: `${PROJECT_GROUP_PREFIX} ${name}`,
+          workspaceId: owner.id,
+          kind: "space_editors",
+        },
+        { transaction: t }
+      );
+      editorGroups.push(editorGroup);
+
+      // Add the creator to the editor group
+      const creator = auth.getNonNullableUser();
+      // For the specific purpose of space_editors group creation, we don't use addMembers,
+      // since only admins can add/remove members this way. We create the relation directly.
+      await GroupMembershipModel.create(
+        {
+          groupId: editorGroup.id,
+          userId: creator.id,
+          workspaceId: owner.id,
+          startAt: new Date(),
+          status: "active" as const,
+        },
+        { transaction: t }
+      );
+    }
 
     const space = await SpaceResource.makeNew(
       {
@@ -394,7 +430,7 @@ export async function createSpaceAndGroup(
         managementMode,
         workspaceId: owner.id,
       },
-      groups,
+      { members: groups, editors: editorGroups },
       t
     );
 
@@ -403,7 +439,7 @@ export async function createSpaceAndGroup(
       const users = (await UserResource.fetchByIds(params.memberIds)).map(
         (user) => user.toJSON()
       );
-      const groupsResult = await group.addMembers(auth, {
+      const groupsResult = await membersGroup.addMembers(auth, {
         users,
         transaction: t,
       });
