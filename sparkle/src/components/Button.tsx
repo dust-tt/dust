@@ -43,6 +43,12 @@ export const ICON_ONLY_SIZES = ["icon-xs", "icon"] as const;
 // Small button sizes that use xs spinner size
 export const SMALL_BUTTON_SIZES = ["icon-xs", "icon", "xmini", "mini"] as const;
 
+function isSmallButtonSize(
+  size: ButtonSizeType | undefined
+): size is typeof SMALL_BUTTON_SIZES[number] {
+  return size !== undefined && SMALL_BUTTON_SIZES.includes(size as typeof SMALL_BUTTON_SIZES[number]);
+}
+
 // Define button styling with cva
 const buttonVariants = cva(
   cn(
@@ -380,11 +386,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           <div
             className={cn(
               "-s-mx-0.5",
-              SMALL_BUTTON_SIZES.includes(size as typeof SMALL_BUTTON_SIZES[number]) && "s-w-5 s-px-0.5"
+              isSmallButtonSize(size) && "s-w-5 s-px-0.5"
             )}
           >
             <Spinner
-              size={SMALL_BUTTON_SIZES.includes(size as typeof SMALL_BUTTON_SIZES[number]) ? "xs" : iconSize}
+            size={isSmallButtonSize(size) ? "xs" : iconSize}
               variant={(variant && spinnerVariantsMap[variant]) || "gray400"}
             />
           </div>
