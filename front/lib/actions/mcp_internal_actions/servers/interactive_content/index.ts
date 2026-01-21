@@ -12,9 +12,12 @@ import {
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/types";
+import { makeCoreSearchNodesFilters } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { getSkillDataSourceConfigurations } from "@app/lib/api/assistant/skill_actions";
+import config from "@app/lib/api/config";
 import {
   createClientExecutableFile,
   editClientExecutableFile,
@@ -25,9 +28,13 @@ import {
 } from "@app/lib/api/files/client_executable";
 import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_validation";
 import type { Authenticator } from "@app/lib/auth";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import logger from "@app/logger/logger";
 import type { InteractiveContentFileContentType } from "@app/types";
 import {
+  CoreAPI,
   Err,
   frameContentType,
   INTERACTIVE_CONTENT_FILE_FORMATS,
@@ -82,7 +89,8 @@ function createServer(
     "Create a new Interactive Content file that users can execute or interact with. Use this for " +
       "content that provides functionality beyond static viewing. Validation (Tailwind, TypeScript) " +
       "is non-blocking: the file is saved even with warnings, which you should fix immediately using " +
-      "targeted edits.",
+      "targeted edits. Supports two creation modes: template-based (fetch content from existing node) " +
+      "or inline (provide content directly).",
     {
       file_name: z
         .string()
@@ -100,12 +108,20 @@ function createServer(
           "The MIME type for the Interactive Content file. Use " +
             `'${frameContentType}' for Frame components (React/JSX).`
         ),
-      content: z
+      mode: z
+        .enum(["template", "inline"])
+        .describe(
+          "Creation mode: 'template' to use an existing content node as a starting point " +
+            "(efficient, no tokens consumed), or 'inline' to provide content directly."
+        ),
+      source: z
         .string()
         .max(MAX_FILE_SIZE_BYTES)
         .describe(
-          "The content for the Interactive Content file. Should be complete and ready for execution or " +
-            "interaction."
+          "When mode='template': the ID of an existing content node to use as a template " +
+            "(e.g., 'template_node_id'). The node's content will be fetched server-side without consuming tokens. " +
+            "When mode='inline': the actual content for the Interactive Content file. " +
+            "Should be complete and ready for execution or interaction."
         ),
       description: z
         .string()
@@ -124,7 +140,7 @@ function createServer(
         enableAlerting: true,
       },
       async (
-        { file_name, mime_type, content, description },
+        { file_name, mime_type, mode, source, description },
         { sendNotification, _meta }
       ) => {
         const { conversation, agentConfiguration } =
@@ -138,8 +154,161 @@ function createServer(
           );
         }
 
+        let fileContent: string;
+
+        // Fetch template content if mode is 'template'
+        if (mode === "template") {
+          const templateNodeId = source;
+
+          if (!agentLoopContext?.runContext) {
+            return new Err(
+              new MCPError(
+                "Agent loop context is required to use template nodes.",
+                { tracked: false }
+              )
+            );
+          }
+
+          const { agentConfiguration, conversation } =
+            agentLoopContext.runContext;
+
+          // Fetch skills for this agent and conversation (same pattern as agent loop).
+          const { enabledSkills } = await SkillResource.listForAgentLoop(auth, {
+            agentConfiguration,
+            conversation,
+          });
+
+          // Get merged data source configurations from skills.
+          const dataSourceConfigurations =
+            await getSkillDataSourceConfigurations(auth, {
+              skills: enabledSkills,
+            });
+
+          if (dataSourceConfigurations.length === 0) {
+            return new Err(
+              new MCPError(
+                "No data sources found in skills configuration. " +
+                  "Template nodes can only be used when the agent has skills with attached knowledge.",
+                { tracked: false }
+              )
+            );
+          }
+
+          // Resolve DataSourceConfiguration[] to ResolvedDataSourceConfiguration[].
+          const agentDataSourceConfigurations = [];
+          for (const config of dataSourceConfigurations) {
+            const dataSourceView = await DataSourceViewResource.fetchById(
+              auth,
+              config.dataSourceViewId
+            );
+
+            if (!dataSourceView) {
+              return new Err(
+                new MCPError(
+                  `Data source view not found: ${config.dataSourceViewId}`,
+                  { tracked: false }
+                )
+              );
+            }
+
+            const dataSource = dataSourceView.dataSource;
+
+            agentDataSourceConfigurations.push({
+              ...config,
+              dataSource: {
+                dustAPIProjectId: dataSource.dustAPIProjectId,
+                dustAPIDataSourceId: dataSource.dustAPIDataSourceId,
+                connectorProvider: dataSource.connectorProvider,
+                name: dataSource.name,
+              },
+              dataSourceView,
+            });
+          }
+
+          // Search for the template node
+          const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+          const searchResult = await coreAPI.searchNodes({
+            filter: {
+              node_ids: [templateNodeId],
+              data_source_views: makeCoreSearchNodesFilters({
+                agentDataSourceConfigurations,
+              }),
+            },
+          });
+
+          if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
+            return new Err(
+              new MCPError(
+                `Could not find template node: ${templateNodeId}. ${
+                  searchResult.isErr()
+                    ? `Error: ${searchResult.error.message}`
+                    : "The node may not exist or may not be accessible through your skills configuration."
+                }`,
+                { tracked: false }
+              )
+            );
+          }
+
+          const node = searchResult.value.nodes[0];
+
+          if (node.node_type !== "document") {
+            return new Err(
+              new MCPError(
+                `Template node is of type ${node.node_type}, not a document. Only document nodes can be used as templates.`,
+                { tracked: false }
+              )
+            );
+          }
+
+          // Get dataSource from the data source configuration
+          const dataSource = agentDataSourceConfigurations.find(
+            (config) =>
+              config.dataSource.dustAPIDataSourceId === node.data_source_id
+          )?.dataSource;
+
+          if (!dataSource) {
+            return new Err(
+              new MCPError(
+                `Could not find data source for template node: ${templateNodeId}`,
+                { tracked: false }
+              )
+            );
+          }
+
+          // Read the template node content
+          const readResult = await coreAPI.getDataSourceDocumentText({
+            dataSourceId: node.data_source_id,
+            documentId: node.node_id,
+            projectId: dataSource.dustAPIProjectId,
+          });
+
+          if (readResult.isErr()) {
+            return new Err(
+              new MCPError(
+                `Could not read template node: ${templateNodeId}. Error: ${readResult.error.message}`,
+                { tracked: false }
+              )
+            );
+          }
+
+          fileContent = readResult.value.text;
+
+          // Validate template content size
+          if (fileContent.length > MAX_FILE_SIZE_BYTES) {
+            return new Err(
+              new MCPError(
+                `Template content is too large (${fileContent.length} bytes). Maximum size is ${MAX_FILE_SIZE_BYTES} bytes (1MB).`,
+                { tracked: false }
+              )
+            );
+          }
+        } else {
+          // Inline content path (mode === 'inline')
+          fileContent = source;
+        }
+
         const result = await createClientExecutableFile(auth, {
-          content,
+          content: fileContent,
           conversationId: conversation.sId,
           fileName: file_name,
           mimeType: mime_type,
