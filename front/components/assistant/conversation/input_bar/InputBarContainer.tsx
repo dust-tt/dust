@@ -531,7 +531,12 @@ const InputBarContainer = ({
 
   // Restore draft when switching conversations (including new conversations).
   useEffect(() => {
-    if (!editor) {
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !editor.isInitialized
+    ) {
       return;
     }
 
