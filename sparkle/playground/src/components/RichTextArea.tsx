@@ -1,6 +1,7 @@
 import "tippy.js/dist/tippy.css";
 
 import { Extension, mergeAttributes, Mark } from "@tiptap/core";
+import Link from "@tiptap/extension-link";
 import Mention from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
 import StarterKit from "@tiptap/starter-kit";
@@ -20,9 +21,12 @@ import React, {
 
 import {
   Avatar,
+  BoldIcon,
   Button,
   CheckIcon,
   HoveringBar,
+  ItalicIcon,
+  LinkIcon,
   SparklesIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -430,12 +434,23 @@ const getMentionItems = (query: string): MentionItem[] => {
     .slice(0, 8);
 };
 
-const mentionExtension = Mention.configure({
+const mentionExtension = Mention.extend({
+  draggable: true,
+}).configure({
   HTMLAttributes: {
-    class: "s-text-highlight-600 dark:s-text-highlight-600-night",
+    class: cn(
+      "s-rounded s-px-1 s-transition-colors",
+      "s-text-highlight-600 dark:s-text-highlight-600-night",
+      "hover:s-bg-highlight-100 dark:hover:s-bg-highlight-100-night",
+      "hover:s-text-highlight-800 dark:hover:s-text-highlight-800-night"
+    ),
   },
   renderLabel({ node }) {
-    return `@${node.attrs.label ?? node.attrs.id}`;
+    const label = node.attrs.label ?? node.attrs.id ?? "";
+    if (typeof label === "string" && label.startsWith("Instruction (")) {
+      return label;
+    }
+    return `@${label}`;
   },
   char: "@",
   suggestion: {
@@ -486,16 +501,36 @@ const mentionExtension = Mention.configure({
   },
 });
 
-const baseEditorClassName = cn(
-  "s-w-full s-px-3 s-py-2 s-text-base",
-  "s-text-foreground dark:s-text-foreground-night",
-  "s-bg-muted-background dark:s-bg-muted-background-night",
-  "s-border s-rounded-xl s-transition s-duration-100 focus-visible:s-outline-none",
-  "s-border-border dark:s-border-border-night",
-  "focus-visible:s-border-border-focus dark:focus-visible:s-border-border-focus-night",
-  "focus-visible:s-outline-none focus-visible:s-ring-2",
-  "focus-visible:s-ring-highlight/20 dark:focus-visible:s-ring-highlight/50",
-  "s-min-h-40 s-leading-6 s-outline-none s-whitespace-pre-wrap s-break-words"
+const richTextAreaVariants = cva(
+  cn(
+    "s-w-full s-text-base s-leading-6 s-outline-none s-whitespace-pre-wrap s-break-words",
+    "s-text-foreground dark:s-text-foreground-night"
+  ),
+  {
+    variants: {
+      variant: {
+        default: cn(
+          "s-px-3 s-py-2",
+          "s-bg-muted-background dark:s-bg-muted-background-night",
+          "s-border s-rounded-xl s-transition s-duration-100",
+          "s-border-border dark:s-border-border-night",
+          "focus-visible:s-border-border-focus dark:focus-visible:s-border-border-focus-night",
+          "focus-visible:s-outline-none focus-visible:s-ring-2",
+          "focus-visible:s-ring-highlight/20 dark:focus-visible:s-ring-highlight/50",
+          "s-min-h-40"
+        ),
+        compact: cn(
+          "s-p-5",
+          "s-bg-transparent s-border-0 s-rounded-none",
+          "focus-visible:s-ring-0 focus-visible:s-border-0",
+          "s-min-h-0"
+        ),
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
 );
 
 export type RichTextAreaHandle = {
@@ -503,6 +538,7 @@ export type RichTextAreaHandle = {
     addedText: string;
     removedText?: string;
   }) => void;
+  insertMention: (options: { id: string; label: string }) => void;
   setContent: (text: string) => void;
   applyRandomSuggestions: (changes: string[]) => void;
   hasSuggestions: () => boolean;
@@ -513,11 +549,20 @@ export type RichTextAreaHandle = {
 type RichTextAreaProps = {
   className?: string;
   placeholder?: string;
-  onAskCopilot?: (selectedText: string) => void;
+  onAskCopilot?: (payload: {
+    selectedText: string;
+    start: number;
+    end: number;
+  }) => void;
   onSuggestionsChange?: (hasSuggestions: boolean) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
   scrollContainer?: HTMLElement | null;
   readOnly?: boolean;
   defaultValue?: string;
+  variant?: "default" | "compact";
+  showFormattingMenu?: boolean;
+  showAskCopilotMenu?: boolean;
 };
 
 export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
@@ -527,15 +572,29 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       placeholder,
       onAskCopilot,
       onSuggestionsChange,
+      onFocus,
+      onBlur,
       scrollContainer,
       readOnly,
       defaultValue,
+      variant = "default",
+      showFormattingMenu = false,
+      showAskCopilotMenu = true,
     },
     ref
   ) => {
     const editor = useEditor({
       extensions: [
         StarterKit,
+        Link.configure({
+          openOnClick: false,
+          autolink: true,
+          linkOnPaste: true,
+          HTMLAttributes: {
+            class:
+              "s-text-highlight-600 dark:s-text-highlight-600-night s-underline",
+          },
+        }),
         mentionExtension,
         SuggestionAdd,
         SuggestionRemove,
@@ -549,7 +608,11 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       ],
       editorProps: {
         attributes: {
-          class: cn(baseEditorClassName, "sparkle-richtextarea", className),
+          class: cn(
+            richTextAreaVariants({ variant }),
+            "sparkle-richtextarea",
+            className
+          ),
         },
         handleDOMEvents: {
           click: (view, event) => {
@@ -573,6 +636,14 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
               return true;
             }
 
+            return false;
+          },
+          focus: () => {
+            onFocus?.();
+            return false;
+          },
+          blur: () => {
+            onBlur?.();
             return false;
           },
         },
@@ -617,6 +688,22 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
           .chain()
           .focus("end")
           .insertContent({ type: "paragraph", content })
+          .run();
+      };
+    }, [editor]);
+    const insertMention = useMemo(() => {
+      return (options: { id: string; label: string }) => {
+        if (!editor) {
+          return;
+        }
+
+        editor
+          .chain()
+          .focus()
+          .insertContent([
+            { type: "mention", attrs: { id: options.id, label: options.label } },
+            { type: "text", text: " " },
+          ])
           .run();
       };
     }, [editor]);
@@ -858,6 +945,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       ref,
       () => ({
         insertSuggestion,
+        insertMention,
         setContent,
         applyRandomSuggestions,
         hasSuggestions,
@@ -866,6 +954,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       }),
       [
         insertSuggestion,
+        insertMention,
         setContent,
         applyRandomSuggestions,
         hasSuggestions,
@@ -884,6 +973,14 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
     const findSuggestionBlockRange = () => {
       if (!editor) return null;
       return getSuggestionBlockRange(editor.state);
+    };
+    const getSelectionPayload = () => {
+      if (!editor) return null;
+      const { from, to } = editor.state.selection;
+      const selectedText = editor.state.doc.textBetween(from, to, "\n");
+      const start = editor.state.doc.textBetween(0, from, "\n").length;
+      const end = editor.state.doc.textBetween(0, to, "\n").length;
+      return { selectedText, start, end };
     };
 
     const handleAcceptSuggestion = () => {
@@ -932,59 +1029,119 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       return null;
     }
 
+    const handleToggleLink = () => {
+      if (!editor) return;
+      const previousUrl = editor.getAttributes("link").href as string | null;
+      const url = window.prompt("Enter a URL", previousUrl ?? "");
+      if (url === null) return;
+      if (url === "") {
+        editor.chain().focus().unsetLink().run();
+        return;
+      }
+      editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+    };
+
+    const shouldShowSelectionMenu = () => {
+      if (!editor || readOnly) return false;
+      if (isOnSuggestion()) return false;
+      const { from, to } = editor.state.selection;
+      return from !== to;
+    };
+
+    const bubbleMenuOptions = scrollContainer
+      ? {
+          placement: "top" as const,
+          offset: 8,
+          scrollTarget: scrollContainer,
+        }
+      : {
+          placement: "top" as const,
+          offset: 8,
+        };
+
+    const appendToTarget = () => scrollContainer ?? document.body;
+
     return (
       <>
         <style>{`.sparkle-richtextarea ::selection { background-color: #DFE0E2; }`}</style>
         <EditorContent editor={editor} />
-        {scrollContainer && (
-          <>
-            {/* Suggestion accept/reject BubbleMenu */}
+        <>
+          {/* Suggestion accept/reject BubbleMenu */}
+          <BubbleMenu
+            editor={editor}
+            shouldShow={() => isOnSuggestion()}
+            appendTo={appendToTarget}
+            options={bubbleMenuOptions}
+          >
+            <HoveringBar size="xs">
+              <Button
+                icon={XMarkIcon}
+                size="xs"
+                variant="ghost"
+                tooltip="Reject"
+                tooltipShortcut="Esc"
+                label="Reject"
+                onClick={handleRejectSuggestion}
+              />
+              <HoveringBar.Separator />
+              <Button
+                icon={CheckIcon}
+                size="xs"
+                variant="highlight"
+                tooltip="Accept"
+                tooltipShortcut="Enter"
+                label="Accept"
+                onClick={handleAcceptSuggestion}
+              />
+            </HoveringBar>
+          </BubbleMenu>
+          {/* Formatting BubbleMenu - only show when text is selected and not on suggestion */}
+          {showFormattingMenu && (
             <BubbleMenu
               editor={editor}
-              shouldShow={() => isOnSuggestion()}
-              appendTo={() => scrollContainer}
-              options={{
-                placement: "top",
-                offset: 8,
-                scrollTarget: scrollContainer,
-              }}
+              shouldShow={shouldShowSelectionMenu}
+              appendTo={appendToTarget}
+              options={bubbleMenuOptions}
             >
               <HoveringBar size="xs">
                 <Button
-                  icon={XMarkIcon}
-                  size="xs"
-                  variant="ghost"
-                  tooltip="Reject"
-                  tooltipShortcut="Esc"
-                  label="Reject"
-                  onClick={handleRejectSuggestion}
+                  icon={BoldIcon}
+                  size="mini"
+                  variant={editor.isActive("bold") ? "primary" : "ghost-secondary"}
+                  tooltip="Bold"
+                  onClick={() => {
+                    editor.chain().focus().toggleBold().run();
+                  }}
+                />
+                <Button
+                  icon={ItalicIcon}
+                  size="mini"
+                  variant={
+                    editor.isActive("italic") ? "primary" : "ghost-secondary"
+                  }
+                  tooltip="Italic"
+                  onClick={() => {
+                    editor.chain().focus().toggleItalic().run();
+                  }}
                 />
                 <HoveringBar.Separator />
                 <Button
-                  icon={CheckIcon}
-                  size="xs"
-                  variant="highlight"
-                  tooltip="Accept"
-                  tooltipShortcut="Enter"
-                  label="Accept"
-                  onClick={handleAcceptSuggestion}
+                  icon={LinkIcon}
+                  size="mini"
+                  variant={editor.isActive("link") ? "primary" : "ghost-secondary"}
+                  tooltip="Link"
+                  onClick={handleToggleLink}
                 />
               </HoveringBar>
             </BubbleMenu>
-            {/* Ask Copilot BubbleMenu - only show when text is selected and not on suggestion */}
+          )}
+          {/* Ask Copilot BubbleMenu - only show when text is selected and not on suggestion */}
+          {showAskCopilotMenu && onAskCopilot && (
             <BubbleMenu
               editor={editor}
-              shouldShow={() => {
-                const { from, to } = editor.state.selection;
-                const hasSelection = from !== to;
-                return hasSelection && !isOnSuggestion();
-              }}
-              appendTo={() => scrollContainer}
-              options={{
-                placement: "top",
-                offset: 8,
-                scrollTarget: scrollContainer,
-              }}
+              shouldShow={shouldShowSelectionMenu}
+              appendTo={appendToTarget}
+              options={bubbleMenuOptions}
             >
               <HoveringBar size="xs">
                 <Button
@@ -993,47 +1150,27 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                   variant="ghost"
                   icon={SparklesIcon}
                   onClick={() => {
-                    const { from, to } = editor.state.selection;
-                    const selectedText = editor.state.doc.textBetween(
-                      from,
-                      to,
-                      "\n"
-                    );
-                    onAskCopilot?.(selectedText);
+                    const payload = getSelectionPayload();
+                    if (payload) {
+                      onAskCopilot?.(payload);
+                    }
                   }}
                 />
                 <Button
-                  label="Check spelling"
+                  label="Rephrase"
                   size="xs"
                   variant="ghost"
                   onClick={() => {
-                    const { from, to } = editor.state.selection;
-                    const selectedText = editor.state.doc.textBetween(
-                      from,
-                      to,
-                      "\n"
-                    );
-                    onAskCopilot?.(selectedText);
-                  }}
-                />
-                <Button
-                  label="Simplify"
-                  size="xs"
-                  variant="ghost"
-                  onClick={() => {
-                    const { from, to } = editor.state.selection;
-                    const selectedText = editor.state.doc.textBetween(
-                      from,
-                      to,
-                      "\n"
-                    );
-                    onAskCopilot?.(selectedText);
+                    const payload = getSelectionPayload();
+                    if (payload) {
+                      onAskCopilot?.(payload);
+                    }
                   }}
                 />
               </HoveringBar>
             </BubbleMenu>
-          </>
-        )}
+          )}
+        </>
       </>
     );
   }

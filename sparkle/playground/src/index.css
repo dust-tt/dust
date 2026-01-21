@@ -21,7 +21,7 @@
     }
   }
   .sparkle-richtextarea p.is-editor-empty:first-child::before {
-    @apply s-text-muted-foreground;
+    @apply s-text-muted-foreground s-italic;
     content: attr(data-placeholder);
     float: left;
     height: 0;

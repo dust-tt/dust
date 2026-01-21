@@ -18,11 +18,13 @@ import {
   ConversationMessage,
   CopilotIcon,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
-  EmptyCTA,
   EyeIcon,
   EyeSlashIcon,
   HeadingIcon,
@@ -58,13 +60,16 @@ import {
   ToolsIcon,
   UserGroupIcon,
   XMarkIcon,
+  MagicIcon,
+  SparklesIcon,
 } from "@dust-tt/sparkle";
 import { Allotment } from "allotment";
-import { type MouseEvent, useMemo, useRef, useState } from "react";
+import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { customColors } from "@sparkle/lib/colors";
 
 import { InputBar } from "../components/InputBar";
+import { InviteUsersScreen } from "../components/InviteUsersScreen";
 import {
   RichTextArea,
   type RichTextAreaHandle,
@@ -78,8 +83,53 @@ import {
   mockUsers,
 } from "../data";
 
+type MetadataRowProps = {
+  label: string;
+  action: React.ReactNode;
+  description?: React.ReactNode;
+  descriptionClassName?: string;
+};
+
+function MetadataRow({
+  label,
+  action,
+  description,
+  descriptionClassName,
+}: MetadataRowProps) {
+  const descriptionClasses = [
+    "s-text-sm s-text-muted-foreground",
+    descriptionClassName,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-2">
+      <div className="s-text-sm s-w-[80px] s-text-muted-foreground">
+        {label}
+      </div>
+      {action}
+      {description ? <div className={descriptionClasses}>{description}</div> : null}
+    </div>
+  );
+}
+
 export default function AgentBuilder() {
   const agent = useMemo(() => getRandomAgents(1)[0], []);
+  const [agentName, setAgentName] = useState(agent?.name || "");
+  const [agentDescription, setAgentDescription] = useState(
+    agent?.description || ""
+  );
+  const nameSuggestions = useMemo(() => {
+    const count = Math.floor(Math.random() * 3) + 2;
+    return getRandomAgents(count).map((suggestedAgent) => suggestedAgent.name);
+  }, []);
+  const descriptionSuggestions = useMemo(() => {
+    const count = Math.floor(Math.random() * 3) + 2;
+    return getRandomAgents(count).map(
+      (suggestedAgent) => suggestedAgent.description
+    );
+  }, []);
   const versionHistoryItems = useMemo(() => {
     const dates = [
       "Jan 20, 2026 at 2:34 PM",
@@ -94,6 +144,10 @@ export default function AgentBuilder() {
       author: mockUsers[index].fullName,
     }));
   }, []);
+  const initialEditorIds = useMemo(() => {
+    const count = Math.floor(Math.random() * 5) + 1;
+    return mockUsers.slice(0, count).map((user) => user.id);
+  }, []);
   const tagItems = useMemo(() => mockSpaces.slice(0, 6), []);
   const selectableSpaces = useMemo(() => mockSpaces.slice(0, 12), []);
   const [isSpacesSheetOpen, setIsSpacesSheetOpen] = useState(false);
@@ -102,7 +156,16 @@ export default function AgentBuilder() {
     date: string;
     author: string;
   } | null>(null);
+  const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [tagSearch, setTagSearch] = useState("");
+  const [selectedEditorIds, setSelectedEditorIds] = useState<Set<string>>(
+    () => new Set(initialEditorIds)
+  );
+  const [isInviteEditorsOpen, setIsInviteEditorsOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+  const [rightPanelRatio, setRightPanelRatio] = useState(0.4);
   const [activeRightPanelTab, setActiveRightPanelTab] = useState("copilot");
   const [accessStatus, setAccessStatus] = useState<"published" | "unpublished">(
     "unpublished"
@@ -116,6 +179,10 @@ export default function AgentBuilder() {
     const defaultSpace = mockSpaces[0];
     return defaultSpace ? new Set([defaultSpace.id]) : new Set();
   });
+  const [instructionReference, setInstructionReference] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
   const publishedMetadata = useMemo(() => {
     const daysAgo = Math.floor(Math.random() * 21) + 1;
     const date = new Date();
@@ -132,17 +199,41 @@ export default function AgentBuilder() {
     };
   }, []);
   const editorNames = useMemo(() => {
-    const count = Math.floor(Math.random() * 5) + 1;
     return mockUsers
-      .slice(0, count)
+      .filter((user) => selectedEditorIds.has(user.id))
       .map((user) => user.fullName || `${user.firstName} ${user.lastName}`);
-  }, []);
+  }, [selectedEditorIds]);
   const isRestrictedSpace = (spaceId: string) =>
     spaceId.charCodeAt(spaceId.length - 1) % 2 === 0;
 
   const selectedSpaces = useMemo(() => {
     return selectableSpaces.filter((space) => selectedSpaceIds.has(space.id));
   }, [selectableSpaces, selectedSpaceIds]);
+  const selectedTagNames = useMemo(() => {
+    return tagItems
+      .filter((tag) => selectedTagIds.has(tag.id))
+      .map((tag) => tag.name);
+  }, [tagItems, selectedTagIds]);
+  const normalizedTagSearch = tagSearch.trim().toLowerCase();
+  const filteredTagItems = useMemo(
+    () =>
+      tagItems.filter((tag) =>
+        tag.name.toLowerCase().includes(normalizedTagSearch)
+      ),
+    [tagItems, normalizedTagSearch]
+  );
+  const recommendedTagItems = useMemo(
+    () => filteredTagItems.slice(0, 2),
+    [filteredTagItems]
+  );
+  const recommendedTagIds = useMemo(
+    () => new Set(recommendedTagItems.map((tag) => tag.id)),
+    [recommendedTagItems]
+  );
+  const remainingTagItems = useMemo(
+    () => filteredTagItems.filter((tag) => !recommendedTagIds.has(tag.id)),
+    [filteredTagItems, recommendedTagIds]
+  );
   const openSpaces = useMemo(
     () => selectableSpaces.filter((space) => !isRestrictedSpace(space.id)),
     [selectableSpaces]
@@ -151,6 +242,27 @@ export default function AgentBuilder() {
     () => selectableSpaces.filter((space) => isRestrictedSpace(space.id)),
     [selectableSpaces]
   );
+  const selectedEditorIdList = useMemo(
+    () => Array.from(selectedEditorIds),
+    [selectedEditorIds]
+  );
+
+  const allotmentRef = useRef<React.ComponentRef<typeof Allotment>>(null);
+  const wasRightPanelOpen = useRef(isRightPanelOpen);
+
+  useEffect(() => {
+    if (wasRightPanelOpen.current === isRightPanelOpen) {
+      return;
+    }
+    wasRightPanelOpen.current = isRightPanelOpen;
+    if (!isRightPanelOpen || !allotmentRef.current) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      const rightPercent = Math.min(Math.max(rightPanelRatio * 100, 20), 60);
+      allotmentRef.current?.resize([100 - rightPercent, rightPercent]);
+    });
+  }, [isRightPanelOpen, rightPanelRatio]);
 
   // Generate diff content for version history preview
   const versionDiffContent = useMemo(() => {
@@ -218,11 +330,19 @@ export default function AgentBuilder() {
     });
   };
 
-  const handleAskCopilot = (selectedText: string) => {
+  const handleAskCopilot = (payload: {
+    selectedText: string;
+    start: number;
+    end: number;
+  }) => {
     setIsRightPanelOpen(true);
     setActiveRightPanelTab("copilot");
+    setInstructionReference({
+      start: payload.start,
+      end: payload.end,
+    });
     // The selected text can be used to pre-fill the copilot input or as context
-    console.log("Ask Copilot with selected text:", selectedText);
+    console.log("Ask Copilot with selected text:", payload.selectedText);
   };
 
   const checkForSuggestions = () => {
@@ -241,8 +361,8 @@ export default function AgentBuilder() {
     return (
       <div className="s-flex s-w-full s-items-end s-gap-2">
         <div className="s-flex s-flex-1 s-flex-col">
-          <div className="s-heading-lg s-text-foreground">{title}</div>
-          <div className="s-text-sm s-text-muted-foreground">{description}</div>
+          <div className="s-heading-base s-text-foreground">{title}</div>
+          <div className="s-text-base s-text-muted-foreground">{description}</div>
         </div>
         {action}
       </div>
@@ -276,10 +396,24 @@ export default function AgentBuilder() {
       `}</style>
       <div className="s-flex s-h-full s-w-full">
         <Allotment
-          key={isRightPanelOpen ? "with-right-panel" : "left-only"}
+          ref={allotmentRef}
           vertical={false}
           proportionalLayout={true}
           defaultSizes={[60, 40]}
+          onChange={(sizes) => {
+            const rightSize = sizes[1];
+            if (typeof rightSize !== "number" || rightSize <= 0) {
+              return;
+            }
+            const total = sizes.reduce(
+              (sum, size) => sum + (typeof size === "number" ? size : 0),
+              0
+            );
+            if (total <= 0) {
+              return;
+            }
+            setRightPanelRatio(rightSize / total);
+          }}
           className="s-h-full s-w-full s-flex-1"
         >
           <Allotment.Pane
@@ -312,7 +446,7 @@ export default function AgentBuilder() {
                 ref={setScrollContainer}
                 className="s-flex s-w-full s-flex-1 s-flex-col s-overflow-auto s-px-6"
               >
-                <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-8 s-py-6">
+                <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-12 s-py-6">
                   <div className="s-flex s-flex-1 s-flex-col s-gap-3">
                     <SectionHeader
                       title="Instructions"
@@ -457,7 +591,6 @@ export default function AgentBuilder() {
                       scrollContainer={scrollContainer}
                     />
                   </div>
-                  <Separator />
                   <div className="s-flex s-flex-col s-gap-2">
                     <SectionHeader
                       title="Spaces"
@@ -468,7 +601,7 @@ export default function AgentBuilder() {
                         <Button
                           size="sm"
                           variant="outline"
-                          label="Select"
+                          label="Manage"
                           icon={SpacesIcon}
                           onClick={() => setIsSpacesSheetOpen(true)}
                         />
@@ -500,7 +633,6 @@ export default function AgentBuilder() {
                       </div>
                     )}
                   </div>
-                  <Separator />
                   <div className="s-flex s-flex-col s-gap-2">
                     <SectionHeader
                       title="Knowledge and capabilities"
@@ -523,8 +655,8 @@ export default function AgentBuilder() {
                       />
                     </div>
                   </div>
-                  <Separator />
                   <div className="s-flex s-flex-col s-gap-2">
+
                     <SectionHeader
                       title="Triggers"
                       description="Add knowledge, tools and skills to enhance your agent's
@@ -540,21 +672,41 @@ export default function AgentBuilder() {
                       />
                     </div>
                   </div>
-                  <Separator />
                   <div className="s-flex s-flex-col">
-                    <div className="s-flex s-w-full s-min-w-0 s-flex-1 s-items-end s-gap-3">
-                      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-3">
-                        <div className="s-heading-xl s-text-foreground">
+                    <div className="s-flex s-w-full s-min-w-0 s-flex-1 s-items-end s-gap-2">
+                      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-2">
+                        <div className="s-heading-base s-text-foreground">
                           Settings
                         </div>
-                        <div className="s-flex s-flex-1 s-items-center s-gap-2 s-py-3">
-                          <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
+                        <div className="s-flex s-flex-1 s-items-center s-gap-2 s-py-2">
+                          <div className="s-text-sm s-w-[80px] s-text-muted-foreground">
                             Handle
                           </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant={"ghost"}
+                                icon={SparklesIcon}
+                                tooltip="Suggest"
+                              />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuLabel label="Suggestion" />
+                              {nameSuggestions.map((suggestion) => (
+                                <DropdownMenuItem
+                                  key={suggestion}
+                                  label={suggestion}
+                                  onSelect={() => setAgentName(suggestion)}
+                                />
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                           <Input
                             placeholder="Agent name"
                             containerClassName="s-flex-1"
-                            defaultValue={agent?.name || ""}
+                            value={agentName}
+                            onChange={(event) => setAgentName(event.target.value)}
                           />
                         </div>
                       </div>
@@ -564,92 +716,166 @@ export default function AgentBuilder() {
                         emoji={agent?.emoji}
                         backgroundColor={agent?.backgroundColor}
                         isRounded={false}
-                        className="s-mb-3"
+                        className="s-mb-2"
                       />
                     </div>
-                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-3">
-                      <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
+                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-2">
+                      <div className="s-text-sm s-w-[80px] s-text-muted-foreground">
                         Description
                       </div>
-                      <Input containerClassName="s-flex-1" />
-                    </div>
-                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-3">
-                      <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
-                        Access
-                      </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             size="sm"
-                            variant="ghost"
-                            label={
-                              accessStatus === "published"
-                                ? "Published"
-                                : "Unpublished"
-                            }
-                            icon={
-                              accessStatus === "published"
-                                ? EyeIcon
-                                : EyeSlashIcon
-                            }
-                            isSelect
+                            variant={"ghost"}
+                            icon={SparklesIcon}
+                                tooltip="Suggest"
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuItem
-                            label="Unpublished"
-                            icon={EyeSlashIcon}
-                            onSelect={() => setAccessStatus("unpublished")}
-                          />
-                          <DropdownMenuItem
-                            label="Published"
-                            icon={EyeIcon}
-                            onSelect={() => setAccessStatus("published")}
-                          />
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      {accessStatus === "published" && (
-                        <div className="s-text-sm s-text-muted-foreground">
-                          Since {publishedMetadata.dateLabel}
-                          {", "}
-                          {publishedMetadata.usersLabel} users last 30 days
-                        </div>
-                      )}
-                    </div>
-                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-3">
-                      <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
-                        Edition
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        label="Editors"
-                        icon={UserGroupIcon}
-                      />
-                      <div className="s-text-sm s-text-muted-foreground">
-                        {editorNames.join(", ")}
-                      </div>
-                    </div>
-                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border s-py-3">
-                      <div className="s-heading-sm s-w-[90px] s-text-muted-foreground">
-                        Tags
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            label="Select tags"
-                            icon={TagIcon}
-                          />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          {tagItems.map((tag) => (
-                            <DropdownMenuItem key={tag.id} label={tag.name} />
+                          <DropdownMenuLabel label="Suggestion" />
+                          {descriptionSuggestions.map((suggestion) => (
+                            <DropdownMenuItem
+                              key={suggestion}
+                              label={suggestion}
+                              onSelect={() => setAgentDescription(suggestion)}
+                            />
                           ))}
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      <Input
+                        containerClassName="s-flex-1"
+                        placeholder="Short description"
+                        value={agentDescription}
+                        onChange={(event) =>
+                          setAgentDescription(event.target.value)
+                        }
+                      />
                     </div>
+                    <MetadataRow
+                      label="Access"
+                      action={
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              label={
+                                accessStatus === "published"
+                                  ? "Published"
+                                  : "Unpublished"
+                              }
+                              icon={
+                                accessStatus === "published"
+                                  ? EyeIcon
+                                  : EyeSlashIcon
+                              }
+                              isSelect
+                            />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem
+                              label="Unpublished"
+                              icon={EyeSlashIcon}
+                              onSelect={() => setAccessStatus("unpublished")}
+                            />
+                            <DropdownMenuItem
+                              label="Published"
+                              icon={EyeIcon}
+                              onSelect={() => setAccessStatus("published")}
+                            />
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      }
+                      description={
+                        accessStatus === "published" ? (
+                          <>
+                            Since {publishedMetadata.dateLabel}
+                            {", "}
+                            {publishedMetadata.usersLabel} users last 30 days
+                          </>
+                        ) : null
+                      }
+                    />
+                    <MetadataRow
+                      label="Edition"
+                      action={
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          label="Manage"
+                          icon={UserGroupIcon}
+                          onClick={() => setIsInviteEditorsOpen(true)}
+                        />
+                      }
+                      description={editorNames.join(", ")}
+                      descriptionClassName="s-flex-1 s-min-w-0 s-truncate"
+                    />
+                    <MetadataRow
+                      label="Tags"
+                      action={
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              label="Manage"
+                              icon={TagIcon}
+                            />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuSearchbar
+                              placeholder="Search tags"
+                              name="tag-search"
+                              value={tagSearch}
+                              onChange={(value) => setTagSearch(value)}
+                              autoFocus
+                            />
+                            <DropdownMenuLabel label="Recommended" />
+                            {recommendedTagItems.map((tag) => (
+                              <DropdownMenuCheckboxItem
+                                key={tag.id}
+                                label={tag.name}
+                                checked={selectedTagIds.has(tag.id)}
+                                onCheckedChange={() => {
+                                  setSelectedTagIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(tag.id)) {
+                                      next.delete(tag.id);
+                                    } else {
+                                      next.add(tag.id);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                              />
+                            ))}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel label="All tags" />
+                            {remainingTagItems.map((tag) => (
+                              <DropdownMenuCheckboxItem
+                                key={tag.id}
+                                label={tag.name}
+                                checked={selectedTagIds.has(tag.id)}
+                                onCheckedChange={() => {
+                                  setSelectedTagIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(tag.id)) {
+                                      next.delete(tag.id);
+                                    } else {
+                                      next.add(tag.id);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                              />
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      }
+                      description={selectedTagNames.join(", ")}
+                      descriptionClassName="s-flex-1 s-min-w-0 s-truncate"
+                    />
                   </div>
                 </div>
               </div>
@@ -733,7 +959,13 @@ export default function AgentBuilder() {
                           }}
                         />
                       </div>
-                      <InputBar placeholder="Ask Copilot to help build your agent" />
+                      <InputBar
+                        placeholder="Ask Copilot to help build your agent"
+                        instructionReference={instructionReference}
+                        onInstructionInserted={() =>
+                          setInstructionReference(null)
+                        }
+                      />
                     </div>
                   </div>
                 </TabsContent>
@@ -898,6 +1130,19 @@ export default function AgentBuilder() {
           />
         </SheetContent>
       </Sheet>
+
+      <InviteUsersScreen
+        isOpen={isInviteEditorsOpen}
+        spaceId={null}
+        title="Select editors"
+        actionLabel="Save"
+        initialSelectedUserIds={selectedEditorIdList}
+        onClose={() => setIsInviteEditorsOpen(false)}
+        onInvite={(selectedUserIds) => {
+          setSelectedEditorIds(new Set(selectedUserIds));
+          setIsInviteEditorsOpen(false);
+        }}
+      />
 
       <Sheet
         open={selectedVersion !== null}
