@@ -1,5 +1,3 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -9,7 +7,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { ProjectMetadataType, WithAPIErrorResponse } from "@app/types";
-import { PatchProjectMetadataBodySchema } from "@app/types";
+import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
 
 export type GetProjectMetadataResponseBody = {
   projectMetadata: ProjectMetadataType | null;
@@ -59,19 +57,21 @@ async function handler(
         });
       }
 
-      const bodyValidation = PatchProjectMetadataBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PatchProjectMetadataBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const errorMessage = bodyValidation.error.errors
+          .map((e) => `${e.path.join(".")}: ${e.message}`)
+          .join(", ");
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${errorMessage}`,
           },
         });
       }
 
-      const body = bodyValidation.right;
+      const body = bodyValidation.data;
 
       let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
 

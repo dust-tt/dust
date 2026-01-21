@@ -914,7 +914,7 @@ export function useUpdateProjectMetadata({
     disabled: true, // Needed just to mutate
   });
 
-  const doUpdate = async (
+  return async (
     updates: PatchProjectMetadataBodyType
   ): Promise<ProjectMetadataType | null> => {
     const url = `/api/w/${owner.sId}/spaces/${spaceId}/project_metadata`;
@@ -945,6 +945,4 @@ export function useUpdateProjectMetadata({
     const response: PatchProjectMetadataResponseBody = await res.json();
     return response.projectMetadata;
   };
-
-  return doUpdate;
 }
