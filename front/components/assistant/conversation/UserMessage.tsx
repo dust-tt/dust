@@ -38,12 +38,10 @@ import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdo
 import { ConfirmContext } from "@app/components/Confirm";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
-import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
-import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useHover } from "@app/hooks/useHover";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
+  RichMention,
   UserMessageType,
   UserMessageTypeWithContentFragments,
   WorkspaceType,
@@ -110,41 +108,42 @@ function UserMessageEditor({
 interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
-  enableReactions: boolean;
   currentUserId: string;
   isLastMessage: boolean;
   message: UserMessageTypeWithContentFragments;
   owner: WorkspaceType;
   onReactionToggle: (emoji: string) => void;
+  // Data fetching and loading state props
+  editMessage: (params: {
+    messageId: string;
+    content: string;
+    mentions: RichMention[];
+  }) => Promise<void>;
+  isEditing: boolean;
+  deleteMessage: (messageId: string) => Promise<void>;
+  isDeleting: boolean;
+  reactionsEnabled: boolean;
 }
 
 export function UserMessage({
   citations,
   conversationId,
-  enableReactions,
   currentUserId,
   isLastMessage,
   message,
   owner,
   onReactionToggle,
+  editMessage,
+  isEditing: isSaving,
+  deleteMessage,
+  isDeleting,
+  reactionsEnabled,
 }: UserMessageProps) {
   const [shouldShowEditor, setShouldShowEditor] = useState(false);
   const { ref: userMessageHoveredRef, isHovering: isUserMessageHovered } =
     useHover();
   const isAdmin = owner.role === "admin";
-  const { deleteMessage, isDeleting } = useDeleteMessage({
-    owner,
-    conversationId,
-  });
-  const { editMessage, isEditing: isSaving } = useEditUserMessage({
-    owner,
-    conversationId,
-  });
   const confirm = useContext(ConfirmContext);
-
-  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
-  const reactionsEnabled =
-    featureFlags.hasFeature("projects") && enableReactions;
 
   const handleSave = async () => {
     const { markdown, mentions } = editorService.getMarkdownAndMentions();
@@ -415,25 +414,25 @@ function ActionMenu({
 
   const actions = showActions
     ? [
-        ...(canEdit
-          ? [
-              {
-                icon: PencilSquareIcon,
-                label: "Edit message",
-                onClick: handleEditMessage,
-              },
-            ]
-          : []),
-        ...(canDelete
-          ? [
-              {
-                icon: TrashIcon,
-                label: "Delete message",
-                onClick: handleDeleteMessage,
-              },
-            ]
-          : []),
-      ]
+      ...(canEdit
+        ? [
+          {
+            icon: PencilSquareIcon,
+            label: "Edit message",
+            onClick: handleEditMessage,
+          },
+        ]
+        : []),
+      ...(canDelete
+        ? [
+          {
+            icon: TrashIcon,
+            label: "Delete message",
+            onClick: handleDeleteMessage,
+          },
+        ]
+        : []),
+    ]
     : [];
 
   return (

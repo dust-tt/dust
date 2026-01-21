@@ -19,8 +19,11 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
+import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
 import type { UserType } from "@app/types";
@@ -78,6 +81,20 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       conversationId: context.conversation?.sId,
       message: data,
     });
+
+    const { deleteMessage, isDeleting } = useDeleteMessage({
+      owner: context.owner,
+      conversationId: context.conversation?.sId || "",
+    });
+
+    const { editMessage, isEditing } = useEditUserMessage({
+      owner: context.owner,
+      conversationId: context.conversation?.sId || "",
+    });
+
+    const featureFlags = useFeatureFlags({ workspaceId: context.owner.sId });
+    const reactionsEnabled =
+      featureFlags.hasFeature("projects") && context.enableReactions;
 
     const messageFeedback = context.feedbacksByMessageId[sId];
 
@@ -151,12 +168,16 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             <UserMessage
               citations={citations}
               conversationId={context.conversation.sId}
-              enableReactions={context.enableReactions}
               currentUserId={context.user.sId}
               isLastMessage={!nextData}
               message={data}
               owner={context.owner}
               onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
+              editMessage={editMessage}
+              isEditing={isEditing}
+              deleteMessage={deleteMessage}
+              isDeleting={isDeleting}
+              reactionsEnabled={reactionsEnabled}
             />
           )}
           {isMessageTemporayState(data) && (
