@@ -36,13 +36,16 @@ const PROMPT = `# Role
 You identify existing skills in a workspace that duplicate or overlap with a new skill being created.
 
 # Similarity Criteria
-Skills are similar when they have BOTH:
-1. Same target platform/service (e.g., GitHub, Jira, Slack, Google Sheets)
-2. Overlapping functionality (e.g., both create issues, both send messages, both manage tickets)
+Skills are similar when they serve the same user need or solve the same problem.
+Ask yourself: "Would you be confused about which skill to use?"
 
-Skills are NOT similar if they only share:
-- The same platform but completely different actions (e.g., "read GitHub PRs" vs "create GitHub releases")
-- The same action type but different platforms (e.g., "create tickets on Jira" vs "create issues on GitHub")
+Examples of similar skills:
+- "Create GitHub issues for bugs" and "Open bug tickets on GitHub" (same outcome)
+- "Send weekly reports via email" and "Email team updates every week" (same purpose)
+
+Examples of skills that are NOT similar:
+- "Read GitHub PRs" and "Create GitHub issues" (different actions, even if same platform)
+- "Create Jira tickets" and "Create GitHub issues" (different tools, even if similar action)
 
 # Instructions
 Return skill IDs that would cause confusion about which skill to use.
