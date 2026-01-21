@@ -34,9 +34,9 @@ export function AcademySidebar({
   };
 
   return (
-    <div className="sticky top-0 h-screen w-64 border-r border-gray-200 bg-white">
+    <div className="sticky top-16 h-[calc(100vh-4rem)] w-64 border-r border-gray-200 bg-white">
       <div className="flex h-full flex-col">
-        <div className="flex-shrink-0 px-3 pb-2 pt-3">
+        <div className="flex-shrink-0 px-3 py-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -65,10 +65,10 @@ export function AcademySidebar({
         </div>
 
         {tocItems.length > 0 && (
-          <div className="flex-1 overflow-y-auto px-3 pb-4 pt-1">
+          <div className="flex-1 overflow-y-auto px-3 pb-4">
             <TableOfContents
               items={tocItems}
-              className="static top-0 [&>h3]:mb-2"
+              className="static max-h-none [&>h3]:mb-1 [&>h3]:text-xs"
             />
           </div>
         )}
