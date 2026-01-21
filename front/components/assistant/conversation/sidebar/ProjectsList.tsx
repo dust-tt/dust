@@ -2,17 +2,14 @@ import { NavigationListItem } from "@dust-tt/sparkle";
 import { memo, useContext } from "react";
 
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
+import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getSpaceConversationsRoute } from "@app/lib/utils/router";
 import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
-import type {
-  ConversationWithoutContentType,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
-import { isString } from "@app/types";
+import type { SpaceType, WorkspaceType } from "@app/types";
 
 interface ProjectsListProps {
   owner: WorkspaceType;
@@ -22,12 +19,10 @@ interface ProjectsListProps {
 const ProjectListItem = memo(
   ({
     space,
-    conversations,
     unreadCount,
     owner,
   }: {
     space: SpaceType;
-    conversations: ConversationWithoutContentType[];
     unreadCount: number;
     owner: WorkspaceType;
   }) => {
@@ -36,18 +31,15 @@ const ProjectListItem = memo(
 
     const spacePath = getSpaceConversationsRoute(owner.sId, space.sId);
 
-    const { cId } = router.query;
-
-    const currentConversationId = isString(cId) ? cId : undefined;
-
-    const conversationIds = new Set(
-      conversations.map((conversation) => conversation.sId)
-    );
+    const activeConversationId = useActiveConversationId();
+    const { conversation } = useConversation({
+      conversationId: activeConversationId,
+      workspaceId: owner.sId,
+    });
 
     const isSpaceSelected =
       router.asPath.startsWith(spacePath) ||
-      (currentConversationId !== undefined &&
-        conversationIds.has(currentConversationId));
+      conversation?.spaceId === space.sId;
 
     return (
       <NavigationListItem
@@ -88,12 +80,11 @@ export function ProjectsList({ owner, summary }: ProjectsListProps) {
 
   return (
     <>
-      {summary.map(({ space, unreadConversations, conversations }) => (
+      {summary.map(({ space, unreadConversations }) => (
         <ProjectListItem
           key={space.sId}
           space={space}
           unreadCount={unreadConversations.length}
-          conversations={conversations}
           owner={owner}
         />
       ))}

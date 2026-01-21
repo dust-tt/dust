@@ -14,7 +14,6 @@ import type {
 export type GetBySpacesSummaryResponseBody = {
   summary: Array<{
     space: SpaceType;
-    conversations: ConversationWithoutContentType[];
     unreadConversations: ConversationWithoutContentType[];
   }>;
 };
@@ -35,14 +34,12 @@ async function handler(
 
       const spaces = await SpaceResource.listForGroups(auth, allGroups);
 
-      // Fetch all conversations for the user in one query
-      const conversations = await ConversationResource.listConversationsForUser(
-        auth,
-        {
-          onlyUnread: false,
+      // Fetch all unread conversations for the user in one query
+      const unreadConversations =
+        await ConversationResource.listConversationsForUser(auth, {
+          onlyUnread: true,
           kind: "space",
-        }
-      );
+        });
 
       // Group conversations by space
       const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
@@ -52,7 +49,7 @@ async function handler(
         ConversationWithoutContentType[]
       >();
 
-      for (const conversation of conversations) {
+      for (const conversation of unreadConversations) {
         // Only match conversations to spaces via spaceId
         if (conversation.spaceId) {
           const spaceModelId = conversation.space?.id;
@@ -73,12 +70,9 @@ async function handler(
           )
           .map((space) => ({
             space: space.toJSON(),
-            conversations: (conversationsBySpace.get(space.id) ?? []).sort(
-              (a, b) => b.updated - a.updated
-            ),
-            unreadConversations: (conversationsBySpace.get(space.id) ?? [])
-              .filter((c) => c.unread)
-              .sort((a, b) => b.updated - a.updated), // Sort by updated time descending
+            unreadConversations: (
+              conversationsBySpace.get(space.id) ?? []
+            ).sort((a, b) => b.updated - a.updated), // Sort by updated time descending
           })),
       };
 
