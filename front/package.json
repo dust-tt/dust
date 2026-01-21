@@ -32,7 +32,7 @@
     "knip": "knip",
     "generate:hubspot-forms": "tsx scripts/generate-hubspot-forms.ts"
     "generate:contact-form": "tsx scripts/generate-contact-form-schema.ts",
-    "spa:dev": "vite --config vite.spa.config.ts",
+    "spa:dev": "VITE_DUST_CLIENT_FACING_URL="$DUST_CLIENT_FACING_URL" vite --config vite.spa.config.ts",
     "spa:build": "vite build --config vite.spa.config.ts",
     "spa:preview": "vite preview --config vite.spa.config.ts"
   },
