@@ -20,9 +20,8 @@ import {
 } from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { ConfirmContext } from "@app/components/Confirm";
-import useCustomEditor, {
-  MarkdownAndMentions,
-} from "@app/components/editor/input_bar/useCustomEditor";
+import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
+import type { MarkdownAndMentions } from "@app/components/editor/input_bar/useCustomEditor";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
