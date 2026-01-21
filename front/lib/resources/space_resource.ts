@@ -78,7 +78,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           { transaction: t }
         );
       }
-      if (blob.kind === "project") {
+      if (editors.length > 0) {
+        assert(
+          blob.kind === "project",
+          "Only projects can have editor groups."
+        );
         for (const editorGroup of editors) {
           await GroupSpaceModel.create(
             {
