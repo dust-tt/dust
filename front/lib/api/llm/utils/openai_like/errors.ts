@@ -89,6 +89,16 @@ function categorizeOpenAILikeError(
     };
   }
 
+  // Transient errors from Openai blocking requests
+  if (statusCode === 403 && !originalError.message) {
+    return {
+      type: "refusal_error",
+      message: `Request denied for ${metadata.clientId}. ${normalized.message}`,
+      isRetryable,
+      originalError,
+    };
+  }
+
   if (statusCode === 403) {
     return {
       type: "permission_error",

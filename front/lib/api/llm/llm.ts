@@ -343,6 +343,13 @@ export abstract class LLM {
     return this.traceId;
   }
 
+  /**
+   * Get the metadata for this LLM instance
+   */
+  getMetadata(): LLMClientMetadata {
+    return this.metadata;
+  }
+
   async *stream(
     streamParameters: LLMStreamParameters
   ): AsyncGenerator<LLMEvent> {

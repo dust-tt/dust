@@ -123,7 +123,7 @@ export async function* streamLLMEvents({
           new EventError(
             {
               type: "stop_error",
-              isRetryable: false,
+              isRetryable: true,
               message: "An error occurred during completion",
             },
             metadata
