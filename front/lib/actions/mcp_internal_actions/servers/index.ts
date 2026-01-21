@@ -5,6 +5,7 @@ import {
   ADVANCED_SEARCH_SWITCH,
   AGENT_MEMORY_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { default as agentCopilotAgentStateServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_agent_state";
 import { default as agentCopilotContextServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context";
 import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
@@ -203,6 +204,8 @@ export async function getInternalMCPServer(
       return outlookServer(auth, agentLoopContext);
     case "outlook_calendar":
       return outlookCalendarServer(auth, agentLoopContext);
+    case "agent_copilot_agent_state":
+      return agentCopilotAgentStateServer(auth, agentLoopContext);
     case "agent_copilot_context":
       return agentCopilotContextServer(auth, agentLoopContext);
     case "agent_management":
