@@ -560,19 +560,6 @@ The rendering serves two purposes: selecting the relevant fields and formatting 
 - Include pagination metadata, rate limit info, or API versioning details
 - Return the same data in multiple formats
 
-```typescript
-// Bad
-return new Ok([
-  { type: "text", text: JSON.stringify(rawApiResponse, null, 2) },
-]);
-
-// Good
-return new Ok([
-  { type: "text", text: `Found ${items.length} items` }, // Summary first
-  { type: "text", text: JSON.stringify({ items: formattedItems }, null, 2) },
-]);
-```
-
 ### 2. Error Handling
 
 Always return `Err` with meaningful messages. Don't expose raw API errors to users - translate them into actionable messages:
