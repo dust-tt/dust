@@ -221,3 +221,5 @@ export {
 export { Tree } from "./Tree";
 export { TypingAnimation } from "./TypingAnimation";
 export { ValueCard } from "./ValueCard";
+export type { VoicePickerProps, VoicePickerStatus } from "./VoicePicker";
+export { VoicePicker } from "./VoicePicker";

@@ -176,7 +176,10 @@ function generateFileName(
 }
 
 // Generate file type distribution: 30% PDF, 20% docx, 15% xlsx, 10% pptx, 10% txt, 10% md, 5% doc
-function getFileTypeForIndex(index: number, seed: string): DataSource["fileType"] {
+function getFileTypeForIndex(
+  index: number,
+  seed: string
+): DataSource["fileType"] {
   const random = seededRandom(seed, index * 2);
   const value = random * 100;
 
@@ -190,7 +193,10 @@ function getFileTypeForIndex(index: number, seed: string): DataSource["fileType"
 }
 
 // Generate dates within the last year
-function generateDates(index: number, seed: string): { createdAt: Date; updatedAt: Date } {
+function generateDates(
+  index: number,
+  seed: string
+): { createdAt: Date; updatedAt: Date } {
   const now = new Date();
   const random = seededRandom(seed, index * 3);
   const random2 = seededRandom(seed, index * 3 + 1);
@@ -242,7 +248,10 @@ function getIconForFileType(
 }
 
 // Generate data sources for a space
-function generateDataSourcesForSpace(spaceId: string, count: number): DataSource[] {
+function generateDataSourcesForSpace(
+  spaceId: string,
+  count: number
+): DataSource[] {
   const dataSources: DataSource[] = [];
 
   for (let i = 0; i < count; i++) {
@@ -279,7 +288,7 @@ export function getDataSourcesBySpaceId(spaceId: string): DataSource[] {
     // 20% chance of 0 files, 80% chance of 3-80 files
     const randomValue = seededRandom(spaceId, 0);
     let fileCount: number;
-    
+
     if (randomValue < 0.2) {
       // 20% probability: 0 files
       fileCount = 0;
@@ -288,8 +297,11 @@ export function getDataSourcesBySpaceId(spaceId: string): DataSource[] {
       const countRandom = seededRandom(spaceId, 1);
       fileCount = Math.floor(countRandom * 78) + 3; // 78 possible values (3 to 80)
     }
-    
-    dataSourceCache.set(spaceId, generateDataSourcesForSpace(spaceId, fileCount));
+
+    dataSourceCache.set(
+      spaceId,
+      generateDataSourcesForSpace(spaceId, fileCount)
+    );
   }
   return dataSourceCache.get(spaceId)!;
 }
