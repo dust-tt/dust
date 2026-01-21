@@ -323,6 +323,8 @@ async function processSingleImageFile({
 
   const readStream = fileResource.getReadStream({
     auth,
+    // we use orginal on purpose to avoid loosing information during multistep assets creation
+    // pipelines, at the expense of costs
     version: "original",
   });
   const bufferResult = await streamToBuffer(readStream);
