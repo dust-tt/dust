@@ -424,6 +424,7 @@ export function withPublicAPIAuthentication<T>(
           name: apiKeyNameFromHeader,
           isSystem: key.isSystem,
           role: key.role,
+          monthlyCapMicroUsd: key.monthlyCapMicroUsd,
         });
       }
       return handler(req, res, workspaceAuth, null);
