@@ -154,6 +154,7 @@ ${existingSkills}
       },
       prompt: PROMPT,
       specifications,
+      forceToolCall: SET_SIMILAR_SKILLS_FUNCTION_NAME,
     },
     {
       context: {
