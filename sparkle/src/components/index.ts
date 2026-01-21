@@ -189,15 +189,6 @@ export { ScrollArea, ScrollBar } from "./ScrollArea";
 export { SearchDropdownMenu } from "./SearchDropdownMenu";
 export { SearchInput, SearchInputWithPopover } from "./SearchInput";
 export { Separator } from "./Separator";
-export type {
-  ToolbarContentGroup,
-  ToolbarContentProps,
-  ToolbarIconProps,
-  ToolbarLinkProps,
-  ToolbarProps,
-  ToolbarVariant,
-} from "./Toolbar";
-export { Toolbar, ToolbarContent, ToolbarIcon, ToolbarLink } from "./Toolbar";
 export {
   Sheet,
   SheetClose,
@@ -219,6 +210,15 @@ export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
 export { Timeline, TimelineItem } from "./Timeline";
+export type {
+  ToolbarContentGroup,
+  ToolbarContentProps,
+  ToolbarIconProps,
+  ToolbarLinkProps,
+  ToolbarProps,
+  ToolbarVariant,
+} from "./Toolbar";
+export { Toolbar, ToolbarContent, ToolbarIcon, ToolbarLink } from "./Toolbar";
 export {
   Tooltip,
   TooltipContent,
