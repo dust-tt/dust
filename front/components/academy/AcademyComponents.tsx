@@ -11,7 +11,7 @@ export const ACADEMY_PAGE_SIZE = 8;
 
 export function AcademyHeader() {
   return (
-    <div className="col-span-12 flex flex-col items-start gap-3 pb-8 pt-8">
+    <div className="col-span-12 flex flex-col items-start gap-3 pt-4">
       <H2>Dust Academy</H2>
       <P>
         Check out our courses, tutorials, and videos to learn everything about
@@ -80,7 +80,7 @@ export function CourseGrid({ courses, emptyMessage }: CourseGridProps) {
   return (
     <div
       className={classNames(
-        "col-span-12 pt-8",
+        "col-span-12",
         "grid gap-6 sm:grid-cols-1 lg:grid-cols-2"
       )}
     >
