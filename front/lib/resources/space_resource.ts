@@ -65,7 +65,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   ) {
     return withTransaction(async (t: Transaction) => {
       const space = await SpaceModel.create(blob, { transaction: t });
-      const { members, editors } = groups;
+      const { members, editors = [] } = groups;
 
       for (const memberGroup of members) {
         await GroupSpaceModel.create(
@@ -79,7 +79,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         );
       }
       if (blob.kind === "project") {
-        assert(editors && editors.length > 0, "Projects must have editors.");
         for (const editorGroup of editors) {
           await GroupSpaceModel.create(
             {
