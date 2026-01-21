@@ -8,6 +8,9 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { ConversationWithoutContentType } from "@app/types";
 
 /**
+ * @deprecated This JIT-based approach is being migrated to a skill-based approach.
+ * See front/lib/projects/SKILL_MIGRATION.md and front/lib/resources/skill/global/projects.ts
+ *
  * Get the project_context_management MCP server for managing project files.
  * Only available with "projects" feature flag and if conversation is in a project.
  */
