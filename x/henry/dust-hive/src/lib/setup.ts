@@ -4,16 +4,13 @@
 // NOTE: cargo target is symlinked to share Rust compilation cache (including linked artifacts).
 
 import { mkdirSync, readdirSync, symlinkSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import { ALL_BINARIES, buildBinaries } from "./cache";
 import { directoryExists } from "./fs";
 import { logger } from "./logger";
-
-// User config directories to copy from main repo to worktree
-// These are personal/local files that aren't tracked in git
-const USER_CONFIG_DIRS = [".claude"];
+import { DUST_HIVE_ROOT } from "./paths";
+import { copyMergedSkills } from "./skills";
 
 // Configuration for how to install each dependency type
 export interface DependencyConfig {
@@ -141,7 +138,7 @@ async function findAgentsFiles(srcDir: string, filename: string): Promise<string
     .filter((line) => line.length > 0);
 }
 
-// Copy user config files (AGENTS.local.md, AGENTS.override.md files, .claude/) from main repo to worktree
+// Copy user config files (AGENTS.local.md, AGENTS.override.md, AI config skills) from main repo to worktree
 async function copyUserConfigFiles(srcDir: string, destDir: string): Promise<void> {
   // Find and copy all AGENTS.local.md and AGENTS.override.md files, preserving directory structure
   const filenames = ["AGENTS.local.md", "AGENTS.override.md"];
@@ -156,19 +153,9 @@ async function copyUserConfigFiles(srcDir: string, destDir: string): Promise<voi
     }
   }
 
-  // Copy directories recursively, merging with existing content
-  // Note: We use "cp -r srcPath/. destPath/" to copy CONTENTS rather than the directory itself.
-  // This is critical when destPath already exists (e.g., when git creates .claude/ with tracked skills).
-  // Without the "/." pattern, cp -r creates a nested srcPath inside destPath.
-  for (const dir of USER_CONFIG_DIRS) {
-    const srcPath = `${srcDir}/${dir}`;
-    const destPath = `${destDir}/${dir}`;
-    if (await directoryExists(srcPath)) {
-      await mkdir(destPath, { recursive: true });
-      await Bun.spawn(["cp", "-r", `${srcPath}/.`, destPath]).exited;
-      logger.success(`Copied ${dir}/`);
-    }
-  }
+  // Merge skills from .claude, .codex, .agents directories with priority:
+  // .claude > .codex > .agents, then write merged result to all three in worktree
+  await copyMergedSkills(srcDir, destDir, DUST_HIVE_ROOT);
 }
 
 // Run npm install in a directory
