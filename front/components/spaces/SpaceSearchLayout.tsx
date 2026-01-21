@@ -578,6 +578,7 @@ function SearchResultsTable({
   const router = useRouter();
 
   const { spaces } = useSpaces({
+    kinds: ["global", "regular"],
     workspaceId: owner.sId,
   });
 

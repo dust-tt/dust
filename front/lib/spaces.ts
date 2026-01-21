@@ -22,7 +22,7 @@ import type {
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, GLOBAL_SPACE_NAME } from "@app/types";
 
 const SPACE_SECTION_GROUP_ORDER = [
   "system",
@@ -56,7 +56,7 @@ export function getSpaceIcon(
 }
 
 export const getSpaceName = (space: SpaceType) => {
-  return space.kind === "global" ? "Company Space" : space.name;
+  return space.kind === "global" ? GLOBAL_SPACE_NAME : space.name;
 };
 
 export const dustAppsListUrl = (

@@ -9,6 +9,7 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
@@ -604,6 +605,578 @@ describe("SpaceResource", () => {
           regularSpace.sId
         );
         expect(updatedSpace2?.managementMode).toBe("manual");
+      });
+    });
+  });
+
+  describe("listWorkspaceSpaces", () => {
+    let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+    let adminAuth: Authenticator;
+    let globalGroup: GroupResource;
+    let systemGroup: GroupResource;
+
+    beforeEach(async () => {
+      workspace = await WorkspaceFactory.basic();
+      const adminUser = await UserFactory.basic();
+
+      // Set up default groups and spaces FIRST (before creating authenticators)
+      const { globalGroup: gGroup, systemGroup: sGroup } =
+        await GroupFactory.defaults(workspace);
+      globalGroup = gGroup;
+      systemGroup = sGroup;
+
+      await MembershipFactory.associate(workspace, adminUser, {
+        role: "admin",
+      });
+
+      // Create internal admin auth to set up default spaces
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceResource.makeDefaultsForWorkspace(internalAdminAuth, {
+        globalGroup,
+        systemGroup,
+      });
+
+      // Now create admin authenticator
+      adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        workspace.sId
+      );
+    });
+
+    it("should return default spaces (system, global, regular) by default", async () => {
+      const regularSpace = await SpaceFactory.regular(workspace);
+      const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth);
+
+      const spaceKinds = spaces.map((s) => s.kind).sort();
+      expect(spaceKinds).toContain("system");
+      expect(spaceKinds).toContain("global");
+      expect(spaceKinds).toContain("regular");
+      expect(spaces.some((s) => s.id === regularSpace.id)).toBe(true);
+    });
+
+    it("should include conversations space when includeConversationsSpace is true", async () => {
+      const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
+        includeConversationsSpace: true,
+      });
+
+      const spaceKinds = spaces.map((s) => s.kind);
+      expect(spaceKinds).toContain("conversations");
+    });
+
+    it("should not include conversations space when includeConversationsSpace is false", async () => {
+      const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
+        includeConversationsSpace: false,
+      });
+
+      const spaceKinds = spaces.map((s) => s.kind);
+      expect(spaceKinds).not.toContain("conversations");
+    });
+
+    it("should include project spaces when includeProjectSpaces is true", async () => {
+      const projectSpace = await SpaceFactory.project(workspace);
+      const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
+        includeProjectSpaces: true,
+      });
+
+      expect(spaces.some((s) => s.id === projectSpace.id)).toBe(true);
+    });
+
+    it("should not include project spaces when includeProjectSpaces is false", async () => {
+      const projectSpace = await SpaceFactory.project(workspace);
+      const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
+        includeProjectSpaces: false,
+      });
+
+      expect(spaces.some((s) => s.id === projectSpace.id)).toBe(false);
+    });
+
+    it("should include public spaces", async () => {
+      const publicSpace = await SpaceResource.makeNew(
+        {
+          name: "Public Space",
+          kind: "public",
+          workspaceId: workspace.id,
+        },
+        []
+      );
+
+      const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth);
+      expect(spaces.some((s) => s.id === publicSpace.id)).toBe(true);
+    });
+
+    it("should include deleted spaces when includeDeleted is true", async () => {
+      const regularSpace = await SpaceFactory.regular(workspace);
+      await regularSpace.delete(adminAuth, { hardDelete: false });
+
+      const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
+        includeDeleted: true,
+      });
+
+      expect(spaces.some((s) => s.id === regularSpace.id)).toBe(true);
+    });
+
+    it("should not include deleted spaces when includeDeleted is false", async () => {
+      const regularSpace = await SpaceFactory.regular(workspace);
+      await regularSpace.delete(adminAuth, { hardDelete: false });
+
+      const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
+        includeDeleted: false,
+      });
+
+      expect(spaces.some((s) => s.id === regularSpace.id)).toBe(false);
+    });
+
+    it("should include all space types when all options are true", async () => {
+      const regularSpace = await SpaceFactory.regular(workspace);
+      const projectSpace = await SpaceFactory.project(workspace);
+      const publicSpace = await SpaceResource.makeNew(
+        {
+          name: "Public Space",
+          kind: "public",
+          workspaceId: workspace.id,
+        },
+        []
+      );
+
+      const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
+        includeConversationsSpace: true,
+        includeProjectSpaces: true,
+      });
+
+      const spaceKinds = spaces.map((s) => s.kind);
+      expect(spaceKinds).toContain("system");
+      expect(spaceKinds).toContain("global");
+      expect(spaceKinds).toContain("conversations");
+      expect(spaceKinds).toContain("regular");
+      expect(spaceKinds).toContain("project");
+      expect(spaceKinds).toContain("public");
+      expect(spaces.some((s) => s.id === regularSpace.id)).toBe(true);
+      expect(spaces.some((s) => s.id === projectSpace.id)).toBe(true);
+      expect(spaces.some((s) => s.id === publicSpace.id)).toBe(true);
+    });
+  });
+
+  describe("listWorkspaceSpacesAsMember", () => {
+    let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+    let adminAuth: Authenticator;
+    let userAuth: Authenticator;
+    let globalGroup: GroupResource;
+    let systemGroup: GroupResource;
+    let regularGroup: GroupResource;
+    let restrictedGroup: GroupResource;
+    let user1: UserResource;
+
+    beforeEach(async () => {
+      workspace = await WorkspaceFactory.basic();
+      const adminUser = await UserFactory.basic();
+      const regularUser = await UserFactory.basic();
+
+      // Set up default groups and spaces FIRST (before creating authenticators)
+      const { globalGroup: gGroup, systemGroup: sGroup } =
+        await GroupFactory.defaults(workspace);
+      globalGroup = gGroup;
+      systemGroup = sGroup;
+
+      await MembershipFactory.associate(workspace, adminUser, {
+        role: "admin",
+      });
+      await MembershipFactory.associate(workspace, regularUser, {
+        role: "user",
+      });
+
+      // Create internal admin auth to set up default spaces
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceResource.makeDefaultsForWorkspace(internalAdminAuth, {
+        globalGroup,
+        systemGroup,
+      });
+
+      // Now create user authenticators
+      adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        workspace.sId
+      );
+      userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        regularUser.sId,
+        workspace.sId
+      );
+
+      // Create test user
+      user1 = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user1, { role: "user" });
+    });
+
+    it("should return global space for all workspace members", async () => {
+      const spaces = await SpaceResource.listWorkspaceSpacesAsMember(userAuth);
+
+      const globalSpaces = spaces.filter((s) => s.isGlobal());
+      expect(globalSpaces.length).toBeGreaterThan(0);
+    });
+
+    it("should not return system space for regular users", async () => {
+      const spaces = await SpaceResource.listWorkspaceSpacesAsMember(userAuth);
+
+      const systemSpaces = spaces.filter((s) => s.isSystem());
+      expect(systemSpaces.length).toBe(0);
+    });
+
+    it("should not return conversations space for regular users", async () => {
+      const spaces = await SpaceResource.listWorkspaceSpacesAsMember(userAuth);
+
+      const conversationsSpaces = spaces.filter((s) => s.isConversations());
+      expect(conversationsSpaces.length).toBe(0);
+    });
+
+    it("should return open regular spaces (with global group) for all workspace members", async () => {
+      regularGroup = await GroupResource.makeNew({
+        name: "Regular Group",
+        workspaceId: workspace.id,
+        kind: "regular",
+      });
+
+      const openSpace = await SpaceResource.makeNew(
+        {
+          name: "Open Space",
+          kind: "regular",
+          workspaceId: workspace.id,
+        },
+        [regularGroup, globalGroup]
+      );
+
+      const spaces = await SpaceResource.listWorkspaceSpacesAsMember(userAuth);
+      expect(spaces.some((s) => s.id === openSpace.id)).toBe(true);
+    });
+
+    it("should return restricted regular spaces only for members", async () => {
+      restrictedGroup = await GroupResource.makeNew({
+        name: "Restricted Group",
+        workspaceId: workspace.id,
+        kind: "regular",
+      });
+
+      const restrictedSpace = await SpaceResource.makeNew(
+        {
+          name: "Restricted Space",
+          kind: "regular",
+          workspaceId: workspace.id,
+        },
+        [restrictedGroup]
+      );
+
+      // User is not a member, should not see it
+      const userSpaces =
+        await SpaceResource.listWorkspaceSpacesAsMember(userAuth);
+      expect(userSpaces.some((s) => s.id === restrictedSpace.id)).toBe(false);
+
+      // Add user to the group
+      await restrictedGroup.addMembers(adminAuth, {
+        users: [user1.toJSON()],
+      });
+
+      // Reload auth to get updated groups
+      const user1Auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user1.sId,
+        workspace.sId
+      );
+
+      const user1Spaces =
+        await SpaceResource.listWorkspaceSpacesAsMember(user1Auth);
+      expect(user1Spaces.some((s) => s.id === restrictedSpace.id)).toBe(true);
+    });
+
+    it("should return project spaces only for members", async () => {
+      const projectSpace = await SpaceFactory.project(workspace);
+      const projectGroup = projectSpace.groups.find(
+        (g) => g.kind === "regular"
+      );
+
+      // User is not a member, should not see it
+      const userSpaces =
+        await SpaceResource.listWorkspaceSpacesAsMember(userAuth);
+      expect(userSpaces.some((s) => s.id === projectSpace.id)).toBe(false);
+
+      // Add user to the project group
+      if (projectGroup) {
+        await projectGroup.addMembers(adminAuth, {
+          users: [user1.toJSON()],
+        });
+
+        // Reload auth to get updated groups
+        const user1Auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user1.sId,
+          workspace.sId
+        );
+
+        const user1Spaces =
+          await SpaceResource.listWorkspaceSpacesAsMember(user1Auth);
+        expect(user1Spaces.some((s) => s.id === projectSpace.id)).toBe(true);
+      }
+    });
+
+    it("should return public spaces for all workspace members", async () => {
+      const publicSpace = await SpaceResource.makeNew(
+        {
+          name: "Public Space",
+          kind: "public",
+          workspaceId: workspace.id,
+        },
+        []
+      );
+
+      const spaces = await SpaceResource.listWorkspaceSpacesAsMember(userAuth);
+      expect(spaces.some((s) => s.id === publicSpace.id)).toBe(true);
+    });
+
+    it("should return admin's spaces correctly", async () => {
+      const spaces = await SpaceResource.listWorkspaceSpacesAsMember(adminAuth);
+
+      // Admin should see global space
+      const globalSpaces = spaces.filter((s) => s.isGlobal());
+      expect(globalSpaces.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("isMember", () => {
+    let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+    let adminAuth: Authenticator;
+    let userAuth: Authenticator;
+    let nonMemberAuth: Authenticator;
+    let globalGroup: GroupResource;
+    let systemGroup: GroupResource;
+    let regularGroup: GroupResource;
+    let restrictedGroup: GroupResource;
+    let user1: UserResource;
+    let user2: UserResource;
+
+    beforeEach(async () => {
+      workspace = await WorkspaceFactory.basic();
+      const adminUser = await UserFactory.basic();
+      const regularUser = await UserFactory.basic();
+
+      // Set up default groups and spaces FIRST (before creating authenticators)
+      const { globalGroup: gGroup, systemGroup: sGroup } =
+        await GroupFactory.defaults(workspace);
+      globalGroup = gGroup;
+      systemGroup = sGroup;
+
+      await MembershipFactory.associate(workspace, adminUser, {
+        role: "admin",
+      });
+      await MembershipFactory.associate(workspace, regularUser, {
+        role: "user",
+      });
+
+      // Create internal admin auth to set up default spaces
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceResource.makeDefaultsForWorkspace(internalAdminAuth, {
+        globalGroup,
+        systemGroup,
+      });
+
+      // Now create user authenticators
+      adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        workspace.sId
+      );
+      userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        regularUser.sId,
+        workspace.sId
+      );
+
+      // Create test users
+      user1 = await UserFactory.basic();
+      user2 = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user1, { role: "user" });
+      await MembershipFactory.associate(workspace, user2, { role: "user" });
+
+      // Create non-member auth (user2)
+      nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user2.sId,
+        workspace.sId
+      );
+    });
+
+    describe("global space", () => {
+      it("should return true for all workspace members", async () => {
+        const globalSpace =
+          await SpaceResource.fetchWorkspaceGlobalSpace(adminAuth);
+        expect(globalSpace.isMember(adminAuth)).toBe(true);
+        expect(globalSpace.isMember(userAuth)).toBe(true);
+        expect(globalSpace.isMember(nonMemberAuth)).toBe(true);
+      });
+    });
+
+    describe("system space", () => {
+      it("should return false for all users", async () => {
+        const systemSpace =
+          await SpaceResource.fetchWorkspaceSystemSpace(adminAuth);
+        expect(systemSpace.isMember(adminAuth)).toBe(false);
+        expect(systemSpace.isMember(userAuth)).toBe(false);
+        expect(systemSpace.isMember(nonMemberAuth)).toBe(false);
+      });
+    });
+
+    describe("conversations space", () => {
+      it("should return false for all users", async () => {
+        const conversationsSpace =
+          await SpaceResource.fetchWorkspaceConversationsSpace(adminAuth);
+        expect(conversationsSpace.isMember(adminAuth)).toBe(false);
+        expect(conversationsSpace.isMember(userAuth)).toBe(false);
+        expect(conversationsSpace.isMember(nonMemberAuth)).toBe(false);
+      });
+    });
+
+    describe("public space", () => {
+      it("should return true for all workspace members", async () => {
+        const publicSpace = await SpaceResource.makeNew(
+          {
+            name: "Public Space",
+            kind: "public",
+            workspaceId: workspace.id,
+          },
+          []
+        );
+
+        expect(publicSpace.isMember(adminAuth)).toBe(true);
+        expect(publicSpace.isMember(userAuth)).toBe(true);
+        expect(publicSpace.isMember(nonMemberAuth)).toBe(true);
+      });
+    });
+
+    describe("regular space - open (with global group)", () => {
+      it("should return true for all workspace members", async () => {
+        regularGroup = await GroupResource.makeNew({
+          name: "Regular Group",
+          workspaceId: workspace.id,
+          kind: "regular",
+        });
+
+        const openSpace = await SpaceResource.makeNew(
+          {
+            name: "Open Space",
+            kind: "regular",
+            workspaceId: workspace.id,
+          },
+          [regularGroup, globalGroup]
+        );
+
+        expect(openSpace.isMember(adminAuth)).toBe(true);
+        expect(openSpace.isMember(userAuth)).toBe(true);
+        expect(openSpace.isMember(nonMemberAuth)).toBe(true);
+      });
+    });
+
+    describe("regular space - restricted (without global group)", () => {
+      it("should return true only for group members", async () => {
+        restrictedGroup = await GroupResource.makeNew({
+          name: "Restricted Group",
+          workspaceId: workspace.id,
+          kind: "regular",
+        });
+
+        const restrictedSpace = await SpaceResource.makeNew(
+          {
+            name: "Restricted Space",
+            kind: "regular",
+            workspaceId: workspace.id,
+          },
+          [restrictedGroup]
+        );
+
+        // Non-member should not be a member
+        expect(restrictedSpace.isMember(nonMemberAuth)).toBe(false);
+
+        // Add user1 to the group
+        await restrictedGroup.addMembers(adminAuth, {
+          users: [user1.toJSON()],
+        });
+
+        // Reload auth to get updated groups
+        const user1Auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user1.sId,
+          workspace.sId
+        );
+
+        // Reload space to get updated groups
+        const updatedSpace = await SpaceResource.fetchById(
+          adminAuth,
+          restrictedSpace.sId
+        );
+
+        expect(updatedSpace?.isMember(user1Auth)).toBe(true);
+        expect(updatedSpace?.isMember(nonMemberAuth)).toBe(false);
+      });
+    });
+
+    describe("project space - open (with global group)", () => {
+      it("should return false even with global group (global group is ignored for projects)", async () => {
+        regularGroup = await GroupResource.makeNew({
+          name: "Project Group",
+          workspaceId: workspace.id,
+          kind: "regular",
+        });
+
+        const projectSpace = await SpaceResource.makeNew(
+          {
+            name: "Open Project",
+            kind: "project",
+            workspaceId: workspace.id,
+          },
+          [regularGroup, globalGroup]
+        );
+
+        // Even with global group, project spaces don't grant membership via global group
+        expect(projectSpace.isMember(adminAuth)).toBe(false);
+        expect(projectSpace.isMember(userAuth)).toBe(false);
+        expect(projectSpace.isMember(nonMemberAuth)).toBe(false);
+      });
+    });
+
+    describe("project space - restricted (without global group)", () => {
+      it("should return true only for group members", async () => {
+        restrictedGroup = await GroupResource.makeNew({
+          name: "Project Group",
+          workspaceId: workspace.id,
+          kind: "regular",
+        });
+
+        const projectSpace = await SpaceResource.makeNew(
+          {
+            name: "Restricted Project",
+            kind: "project",
+            workspaceId: workspace.id,
+          },
+          [restrictedGroup]
+        );
+
+        // Non-member should not be a member
+        expect(projectSpace.isMember(nonMemberAuth)).toBe(false);
+
+        // Add user1 to the group
+        await restrictedGroup.addMembers(adminAuth, {
+          users: [user1.toJSON()],
+        });
+
+        // Reload auth to get updated groups
+        const user1Auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user1.sId,
+          workspace.sId
+        );
+
+        // Reload space to get updated groups
+        const updatedSpace = await SpaceResource.fetchById(
+          adminAuth,
+          projectSpace.sId
+        );
+
+        expect(updatedSpace?.isMember(user1Auth)).toBe(true);
+        expect(updatedSpace?.isMember(nonMemberAuth)).toBe(false);
       });
     });
   });

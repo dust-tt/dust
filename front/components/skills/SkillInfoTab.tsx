@@ -35,6 +35,7 @@ export function SkillInfoTab({
   const shouldLoadSpaces = skill.requestedSpaceIds.length > 0;
   const { spaces: spacesFromHook, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular", "project"],
     disabled: !shouldLoadSpaces || !!spaces,
   });
 

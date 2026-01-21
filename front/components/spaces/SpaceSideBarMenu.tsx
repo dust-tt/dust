@@ -85,6 +85,7 @@ export default function SpaceSideBarMenu({
 
   const { spaces: spacesAsUser, isSpacesLoading: isSpacesAsUserLoading } =
     useSpaces({
+      kinds: ["global", "regular"],
       workspaceId: owner.sId,
     });
 

@@ -46,15 +46,18 @@ import type {
   PatchProjectMetadataBodyType,
   ProjectMetadataType,
   SearchWarningCode,
+  SpaceKind,
   SpaceType,
 } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 export function useSpaces({
   workspaceId,
+  kinds,
   disabled,
 }: {
   workspaceId: string;
+  kinds: SpaceKind[] | "all";
   disabled?: boolean;
 }) {
   const spacesFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
@@ -65,14 +68,23 @@ export function useSpaces({
     { disabled }
   );
 
+  const spaces = useMemo(() => {
+    return (
+      data?.spaces?.filter((s) => kinds === "all" || kinds.includes(s.kind)) ??
+      emptyArray<SpaceType>()
+    );
+  }, [data?.spaces, kinds]);
+
   return {
-    spaces: data?.spaces ?? emptyArray(),
+    spaces,
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
   };
 }
 
+// Note that this hook only returns spaces of kind "global", "regular" and "system" (backend enforced).
+// The other kinds are left aside as they are not relevant for the admins point of view.
 export function useSpacesAsAdmin({
   workspaceId,
   disabled,
@@ -392,6 +404,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: "all",
     disabled: true, // Needed just to mutate.
   });
   const { mutate: mutateSpacesAsAdmin } = useSpacesAsAdmin({
@@ -485,6 +498,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: "all",
     disabled: true, // Needed just to mutate
   });
   const { mutate: mutateSpacesAsAdmin } = useSpacesAsAdmin({
@@ -593,6 +607,7 @@ export function useDeleteSpace({
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: "all",
     disabled: true, // Needed just to mutate
   });
   const { mutate: mutateSpacesAsAdmin } = useSpacesAsAdmin({

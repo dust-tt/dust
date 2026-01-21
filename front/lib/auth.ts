@@ -31,6 +31,7 @@ import type {
   APIErrorWithStatusCode,
   GroupType,
   LightWorkspaceType,
+  ModelId,
   PermissionType,
   PlanType,
   ResourcePermission,
@@ -833,6 +834,14 @@ export class Authenticator {
 
   groups(): GroupType[] {
     return this._groups.map((g) => g.toJSON());
+  }
+
+  hasGroup(groupId: string): boolean {
+    return this._groups.some((g) => g.sId === groupId);
+  }
+
+  hasGroupByModelId(groupId: ModelId): boolean {
+    return this._groups.some((g) => g.id === groupId);
   }
 
   /**
