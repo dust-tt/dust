@@ -699,7 +699,7 @@ describe("SpaceResource", () => {
           kind: "public",
           workspaceId: workspace.id,
         },
-        []
+        { members: [] }
       );
 
       const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth);
@@ -737,7 +737,7 @@ describe("SpaceResource", () => {
           kind: "public",
           workspaceId: workspace.id,
         },
-        []
+        { members: [] }
       );
 
       const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
@@ -844,7 +844,7 @@ describe("SpaceResource", () => {
           kind: "regular",
           workspaceId: workspace.id,
         },
-        [regularGroup, globalGroup]
+        { members: [regularGroup, globalGroup] }
       );
 
       const spaces = await SpaceResource.listWorkspaceSpacesAsMember(userAuth);
@@ -864,7 +864,7 @@ describe("SpaceResource", () => {
           kind: "regular",
           workspaceId: workspace.id,
         },
-        [restrictedGroup]
+        { members: [restrictedGroup] }
       );
 
       // User is not a member, should not see it
@@ -924,7 +924,7 @@ describe("SpaceResource", () => {
           kind: "public",
           workspaceId: workspace.id,
         },
-        []
+        { members: [] }
       );
 
       const spaces = await SpaceResource.listWorkspaceSpacesAsMember(userAuth);
@@ -1040,7 +1040,7 @@ describe("SpaceResource", () => {
             kind: "public",
             workspaceId: workspace.id,
           },
-          []
+          { members: [] }
         );
 
         expect(publicSpace.isMember(adminAuth)).toBe(true);
@@ -1063,7 +1063,7 @@ describe("SpaceResource", () => {
             kind: "regular",
             workspaceId: workspace.id,
           },
-          [regularGroup, globalGroup]
+          { members: [regularGroup, globalGroup] }
         );
 
         expect(openSpace.isMember(adminAuth)).toBe(true);
@@ -1086,7 +1086,7 @@ describe("SpaceResource", () => {
             kind: "regular",
             workspaceId: workspace.id,
           },
-          [restrictedGroup]
+          { members: [restrictedGroup] }
         );
 
         // Non-member should not be a member
@@ -1128,7 +1128,7 @@ describe("SpaceResource", () => {
             kind: "project",
             workspaceId: workspace.id,
           },
-          [regularGroup, globalGroup]
+          { members: [regularGroup, globalGroup] }
         );
 
         // Even with global group, project spaces don't grant membership via global group
@@ -1152,7 +1152,7 @@ describe("SpaceResource", () => {
             kind: "project",
             workspaceId: workspace.id,
           },
-          [restrictedGroup]
+          { members: [restrictedGroup] }
         );
 
         // Non-member should not be a member
