@@ -39,8 +39,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     handleMenuOpenChange,
   } = useConversationMenu();
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const currentTitle = conversation?.title || "";
+  const currentTitle = conversation?.title ?? "";
 
   if (!activeConversationId) {
     return null;
