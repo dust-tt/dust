@@ -6,6 +6,8 @@ interface UseDebounceOptions {
   minLength?: number;
 }
 
+const USE_DEBOUNCE_WITH_ABORT_ABORT_REASON = "Aborted in useDebounceWithAbort";
+
 export function useDebounce(
   initialValue: string,
   options: UseDebounceOptions = {}
@@ -68,7 +70,7 @@ interface UseDebounceWithAbortOptions {
 
 /**
  * Hook that debounces an async function call with AbortController support.
- * Useful for API calls that should be cancelled when a new request is made.
+ * Useful for API calls that should be canceled when a new request is made.
  *
  * @param asyncFn - The async function to debounce. It receives the value and an AbortSignal.
  * @param options - Configuration options (delay)
@@ -113,7 +115,9 @@ export function useDebounceWithAbort<T = string>(
       debounceHandle.current = setTimeout(() => {
         // Cancel previous request
         if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
+          abortControllerRef.current.abort(
+            USE_DEBOUNCE_WITH_ABORT_ABORT_REASON
+          );
         }
 
         // Create a new abort controller.
@@ -122,11 +126,7 @@ export function useDebounceWithAbort<T = string>(
 
         // Execute async function, ignoring AbortError caused by our own abort signal.
         void asyncFn(value, signal).catch((err) => {
-          if (
-            err instanceof DOMException &&
-            err.name === "AbortError" &&
-            signal.aborted
-          ) {
+          if (signal.reason === USE_DEBOUNCE_WITH_ABORT_ABORT_REASON) {
             return;
           }
           throw err;
