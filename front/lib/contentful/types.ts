@@ -233,6 +233,7 @@ export interface Course {
 }
 
 export interface CourseSummary {
+  kind: "course";
   id: string;
   slug: string;
   title: string;
@@ -302,6 +303,7 @@ export interface Lesson {
 }
 
 export interface LessonSummary {
+  kind: "lesson";
   id: string;
   slug: string;
   title: string;
@@ -309,6 +311,18 @@ export interface LessonSummary {
   lessonId: string | null;
   estimatedDurationMinutes: number | null;
   createdAt: string;
+}
+
+export function isCourseSummary(
+  content: ContentSummary
+): content is CourseSummary {
+  return content.kind === "course";
+}
+
+export function isLessonSummary(
+  content: ContentSummary
+): content is LessonSummary {
+  return content.kind === "lesson";
 }
 
 export interface LessonPageProps {

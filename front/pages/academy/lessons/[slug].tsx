@@ -19,6 +19,7 @@ import type {
   ContentSummary,
   LessonPageProps,
 } from "@app/lib/contentful/types";
+import { isCourseSummary } from "@app/lib/contentful/types";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types";
@@ -76,17 +77,14 @@ export const getStaticProps: GetStaticProps<LessonPageProps> = async (
 const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
 
 function getContentUrl(content: ContentSummary): string {
-  // Check if it's a lesson by checking if it has the image field
-  // (courses have image, lessons don't in the summary)
-  if ("image" in content) {
+  if (isCourseSummary(content)) {
     return `/academy/${content.slug}`;
   }
   return `/academy/lessons/${content.slug}`;
 }
 
 function getContentTypeLabel(content: ContentSummary): string {
-  // Check if it's a course by checking if it has the image field
-  if ("image" in content) {
+  if (isCourseSummary(content)) {
     return "Course";
   }
   return "Lesson";

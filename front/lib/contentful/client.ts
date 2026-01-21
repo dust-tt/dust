@@ -164,86 +164,95 @@ const EMPTY_DOCUMENT: Document = {
   content: [],
 };
 
+interface EmbeddedEntryNode {
+  nodeType: typeof BLOCKS.EMBEDDED_ENTRY;
+  data: {
+    target: { sys?: unknown; fields?: Record<string, unknown> };
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+function isEmbeddedEntryNode(node: unknown): node is EmbeddedEntryNode {
+  return (
+    typeof node === "object" &&
+    node !== null &&
+    "nodeType" in node &&
+    node.nodeType === BLOCKS.EMBEDDED_ENTRY &&
+    "data" in node &&
+    typeof node.data === "object" &&
+    node.data !== null &&
+    "target" in node.data &&
+    typeof node.data.target === "object" &&
+    node.data.target !== null
+  );
+}
+
+interface NodeWithContent {
+  content: unknown[];
+  [key: string]: unknown;
+}
+
+function isNodeWithContent(node: unknown): node is NodeWithContent {
+  return (
+    typeof node === "object" &&
+    node !== null &&
+    "content" in node &&
+    Array.isArray(node.content)
+  );
+}
+
+function extractContentIdField(
+  fields: Record<string, unknown>
+): Record<string, unknown> {
+  if ("courseId" in fields) {
+    return { courseId: fields.courseId };
+  }
+  if ("lessonId" in fields) {
+    return { lessonId: fields.lessonId };
+  }
+  return {};
+}
+
 /**
  * Cleans embedded entries in a rich text document to prevent circular references.
  * Removes nested rich text content from embedded entries, keeping only basic fields.
  */
 function cleanDocumentEmbeddedEntries(document: Document): Document {
-  if (!document || !document.content) {
+  if (!document?.content) {
     return document;
   }
 
   const cleanNode = (node: unknown): unknown => {
-    if (
-      typeof node === "object" &&
-      node !== null &&
-      "nodeType" in node &&
-      node.nodeType === BLOCKS.EMBEDDED_ENTRY &&
-      "data" in node &&
-      node.data &&
-      typeof node.data === "object" &&
-      "target" in node.data &&
-      node.data.target &&
-      typeof node.data.target === "object"
-    ) {
-      if (!isContentfulEntryWithFields(node.data.target)) {
+    if (isEmbeddedEntryNode(node)) {
+      const entry = node.data.target;
+      if (!entry.fields || typeof entry.fields !== "object") {
         return node;
       }
 
-      const entry = node.data.target;
-
-      // Only clean if entry has fields, otherwise preserve as-is
-      if (entry.fields && typeof entry.fields === "object") {
-        // Keep only basic fields for embedded entries to prevent circular references
-        // node.data is already verified to be an object in the outer condition
-        // Use Object.assign to safely copy properties without type assertion
-        const nodeData =
-          typeof node.data === "object" && node.data !== null
-            ? Object.assign({}, node.data)
-            : {};
-
-        // Handle both course and lesson entries
-        const idField =
-          "courseId" in entry.fields
-            ? { courseId: entry.fields.courseId }
-            : "lessonId" in entry.fields
-              ? { lessonId: entry.fields.lessonId }
-              : {};
-
-        const complexityField =
-          "complexity" in entry.fields
-            ? { complexity: entry.fields.complexity }
-            : {};
-
-        return {
-          ...node,
-          data: {
-            ...nodeData,
-            target: {
-              sys: entry.sys,
-              fields: {
-                title: entry.fields.title,
-                slug: entry.fields.slug,
-                description: entry.fields.description,
-                ...idField,
-                estimatedDurationMinutes: entry.fields.estimatedDurationMinutes,
-                ...complexityField,
-              },
+      const fields = entry.fields;
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          target: {
+            sys: entry.sys,
+            fields: {
+              title: fields.title,
+              slug: fields.slug,
+              description: fields.description,
+              ...extractContentIdField(fields),
+              estimatedDurationMinutes: fields.estimatedDurationMinutes,
+              ...("complexity" in fields
+                ? { complexity: fields.complexity }
+                : {}),
             },
           },
-        };
-      }
-      // If entry structure is invalid, return node as-is
-      return node;
+        },
+      };
     }
 
-    // For embedded assets or other node types, preserve as-is
-    if (
-      typeof node === "object" &&
-      node !== null &&
-      "content" in node &&
-      Array.isArray(node.content)
-    ) {
+    if (isNodeWithContent(node)) {
       return {
         ...node,
         content: node.content.map(cleanNode),
@@ -253,13 +262,9 @@ function cleanDocumentEmbeddedEntries(document: Document): Document {
     return node;
   };
 
-  const cleanedContent = document.content
-    .map(cleanNode)
-    .filter(isDocumentContentNode);
-
   return {
     ...document,
-    content: cleanedContent,
+    content: document.content.map(cleanNode).filter(isDocumentContentNode),
   };
 }
 
@@ -360,16 +365,6 @@ function isTagLink(
     value.sys !== null &&
     "id" in value.sys &&
     typeof value.sys.id === "string"
-  );
-}
-
-function isContentfulEntryWithFields(
-  value: unknown
-): value is { sys?: unknown; fields?: Record<string, unknown> } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    ("sys" in value || "fields" in value)
   );
 }
 
@@ -962,6 +957,7 @@ function contentfulEntryToCourseSummary(
     : null;
 
   return {
+    kind: "course" as const,
     id: entry.sys.id,
     slug,
     title,
@@ -1083,6 +1079,7 @@ export async function getAllCourses(
         return bDate - aDate;
       })
       .map((course) => ({
+        kind: "course" as const,
         id: course.id,
         slug: course.slug,
         title: course.title,
@@ -1160,6 +1157,7 @@ function contentfulEntryToLessonSummary(
         : null;
 
     return {
+      kind: "lesson" as const,
       id: entry.sys.id,
       slug,
       title,

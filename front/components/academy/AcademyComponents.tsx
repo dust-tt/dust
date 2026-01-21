@@ -29,35 +29,42 @@ export function CourseCard({ course }: CourseCardProps) {
   return (
     <Link
       href={`/academy/${course.slug}`}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white transition-all hover:shadow-lg"
+      className="group flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition-shadow duration-200 hover:shadow-md"
     >
-      <div className="relative aspect-video w-full overflow-hidden">
+      <div className="relative aspect-[2/1] w-full overflow-hidden">
         <Image
           src={course.image!.url}
           alt={course.image!.alt}
-          width={640}
-          height={360}
+          fill
           loader={contentfulImageLoader}
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+          className="object-cover"
         />
       </div>
 
-      <div className="flex flex-1 flex-col gap-3 p-6">
-        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
-          {course.courseId && <span>Course {course.courseId}</span>}
-          {course.estimatedDurationMinutes && (
-            <>
-              {course.courseId && <span>•</span>}
-              <span>{course.estimatedDurationMinutes} min</span>
-            </>
-          )}
-        </div>
-        <h3 className="text-2xl font-bold text-gray-900">{course.title}</h3>
+      <div className="flex flex-1 flex-col p-4">
+        <h3 className="font-semibold text-gray-900 group-hover:text-primary">
+          {course.title}
+        </h3>
         {course.description && (
-          <p className="text-base leading-relaxed text-gray-600">
+          <p className="mt-1.5 line-clamp-2 text-sm leading-snug text-gray-500">
             {course.description}
           </p>
+        )}
+        {course.estimatedDurationMinutes && (
+          <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-400">
+            <svg
+              className="h-3.5 w-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 6v6l4 2" />
+            </svg>
+            <span>{course.estimatedDurationMinutes} min</span>
+          </div>
         )}
       </div>
     </Link>
@@ -99,9 +106,9 @@ export function FeaturedCourse({ course }: FeaturedCourseProps) {
     <div className="col-span-12 pt-8">
       <Link
         href={`/academy/${course.slug}`}
-        className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white transition-all hover:shadow-xl lg:flex-row"
+        className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white transition-all duration-200 hover:border-gray-300 hover:shadow-lg lg:flex-row"
       >
-        <div className="relative w-full overflow-hidden lg:w-1/2">
+        <div className="relative w-full overflow-hidden bg-gray-100 lg:w-1/2">
           <Image
             src={course.image!.url}
             alt={course.image!.alt}
@@ -109,7 +116,7 @@ export function FeaturedCourse({ course }: FeaturedCourseProps) {
             height={600}
             loader={contentfulImageLoader}
             sizes="(max-width: 1024px) 100vw, 50vw"
-            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+            className="h-full w-full object-cover transition-opacity duration-200 group-hover:opacity-90"
           />
         </div>
 
@@ -119,7 +126,7 @@ export function FeaturedCourse({ course }: FeaturedCourseProps) {
               Featured Course
             </span>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 md:text-4xl">
+          <h2 className="text-3xl font-semibold text-gray-900 transition-colors group-hover:text-primary md:text-4xl">
             {course.title}
           </h2>
           {course.description && (

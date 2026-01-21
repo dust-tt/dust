@@ -10,9 +10,9 @@ import {
   AcademyLayout,
   CourseGrid,
 } from "@app/components/academy/AcademyComponents";
-import { AcademyPagination } from "@app/components/academy/AcademyPagination";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { Pagination } from "@app/components/shared/Pagination";
 import {
   CONTENTFUL_REVALIDATE_SECONDS,
   getAllCourses,
@@ -99,11 +99,14 @@ export default function AcademyListing({ courses }: CourseListingPageProps) {
 
         {courses.length > ACADEMY_PAGE_SIZE && (
           <div className="col-span-12 mt-12 flex items-center justify-center pb-12">
-            <AcademyPagination
+            <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
               rowCount={courses.length}
               pageSize={ACADEMY_PAGE_SIZE}
+              buildPageUrl={(p) =>
+                p === 1 ? "/academy" : `/academy/page/${p}`
+              }
             />
           </div>
         )}
