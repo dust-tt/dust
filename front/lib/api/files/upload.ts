@@ -47,10 +47,26 @@ const CONVERSATION_IMG_MAX_SIZE_PIXELS = "1538";
 const AVATAR_IMG_MAX_SIZE_PIXELS = "256";
 
 const copyToProcessed: ProcessingFunction = async (auth, file) => {
-  const readStream = file.getReadStream({ auth, version: "original" });
-  const writeStream = file.getWriteStream({ auth, version: "processed" });
-  await pipeline(readStream, writeStream);
-  return new Ok(undefined);
+  try {
+    const readStream = file.getReadStream({ auth, version: "original" });
+    const writeStream = file.getWriteStream({ auth, version: "processed" });
+    await pipeline(readStream, writeStream);
+    return new Ok(undefined);
+  } catch (err) {
+    logger.error(
+      {
+        fileModelId: file.id,
+        workspaceId: auth.workspace()?.sId,
+        error: err,
+      },
+      "Failed to copy image."
+    );
+
+    const errorMessage =
+      err instanceof Error ? err.message : "Unexpected error";
+
+    return new Err(new Error(`Failed copying image. ${errorMessage}`));
+  }
 };
 
 // Images processing functions.
@@ -480,6 +496,7 @@ const getProcessingFunction = ({
       return resizeAndUploadToPublicBucket;
     } else if (useCase === "tool_output") {
       // We do this because processed is used to render markdown inline files
+
       return copyToProcessed;
     }
     return undefined;
