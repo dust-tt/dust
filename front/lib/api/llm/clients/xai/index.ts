@@ -1,7 +1,10 @@
 import OpenAI, { APIError } from "openai";
 
 import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
-import { overwriteLLMParameters } from "@app/lib/api/llm/clients/xai/types";
+import {
+  overwriteLLMParameters,
+  XAI_PROVIDER_ID,
+} from "@app/lib/api/llm/clients/xai/types";
 import { LLM } from "@app/lib/api/llm/llm";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -28,8 +31,8 @@ export class XaiLLM extends LLM {
       modelId: XaiWhitelistedModelId;
     }
   ) {
-    const { clientId, ...params } = overwriteLLMParameters(llmParameters);
-    super(auth, clientId, params);
+    const params = overwriteLLMParameters(llmParameters);
+    super(auth, XAI_PROVIDER_ID, params);
 
     const { XAI_API_KEY } = dustManagedCredentials();
     if (!XAI_API_KEY) {

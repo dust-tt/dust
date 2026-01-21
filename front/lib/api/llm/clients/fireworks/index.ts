@@ -1,7 +1,10 @@
 import { APIError, OpenAI } from "openai";
 
 import type { FireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
-import { overwriteLLMParameters } from "@app/lib/api/llm/clients/fireworks/types";
+import {
+  FIREWORKS_PROVIDER_ID,
+  overwriteLLMParameters,
+} from "@app/lib/api/llm/clients/fireworks/types";
 import { LLM } from "@app/lib/api/llm/llm";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -30,8 +33,8 @@ export class FireworksLLM extends LLM {
       modelId: FireworksWhitelistedModelId;
     }
   ) {
-    const { clientId, ...params } = overwriteLLMParameters(llmParameters);
-    super(auth, clientId, params);
+    const params = overwriteLLMParameters(llmParameters);
+    super(auth, FIREWORKS_PROVIDER_ID, params);
 
     const { FIREWORKS_API_KEY } = dustManagedCredentials();
     if (!FIREWORKS_API_KEY) {

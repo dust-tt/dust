@@ -1,10 +1,7 @@
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
-import type {
-  ClientIdType,
-  LLMClientMetadata,
-} from "@app/lib/api/llm/types/options";
-import type { AgentErrorCategory } from "@app/types";
+import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import type { AgentErrorCategory, ModelProviderIdType } from "@app/types";
 import { assertNever, normalizeError } from "@app/types";
 
 export type LLMErrorType =
@@ -230,14 +227,13 @@ export function categorizeLLMError(
   };
 }
 
-const USERFACING_CLIENT_ID: Record<ClientIdType, string> = {
+const USERFACING_CLIENT_ID: Record<ModelProviderIdType, string> = {
   anthropic: "Anthropic",
   openai: "OpenAI",
   mistral: "Mistral",
   togetherai: "TogetherAI",
   deepseek: "Deepseek",
   fireworks: "Fireworks",
-  openai_responses: "OpenAI",
   xai: "xAI",
   google_ai_studio: "Google AI Studio",
   noop: "Noop",

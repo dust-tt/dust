@@ -8,7 +8,6 @@ import {
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
-  LLMClientMetadata,
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
@@ -29,17 +28,13 @@ import { handleGenericError } from "../../types/errors";
 export class OpenAIResponsesLLM extends LLM {
   private client: OpenAI;
   protected modelId: OpenAIWhitelistedModelId;
-  protected metadata: LLMClientMetadata = {
-    clientId: "openai_responses",
-    modelId: this.modelId,
-  };
 
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: OpenAIWhitelistedModelId }
   ) {
-    const { clientId, ...params } = overwriteLLMParameters(llmParameters);
-    super(auth, clientId, params);
+    const params = overwriteLLMParameters(llmParameters);
+    super(auth, OPENAI_PROVIDER_ID, params);
     this.modelId = llmParameters.modelId;
 
     const { OPENAI_API_KEY, OPENAI_BASE_URL } = dustManagedCredentials();

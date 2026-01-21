@@ -6,6 +6,7 @@ import type {
 import type {
   ModelConversationTypeMultiActions,
   ModelIdType,
+  ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types";
 
@@ -18,23 +19,8 @@ export type LLMParameters = {
   temperature?: number | null;
 } & LLMTraceCustomization;
 
-export const CLIENT_IDS = [
-  "openai",
-  "openai_responses",
-  "anthropic",
-  "mistral",
-  "google_ai_studio",
-  "togetherai",
-  "deepseek",
-  "fireworks",
-  "xai",
-  "noop",
-] as const;
-
-export type ClientIdType = (typeof CLIENT_IDS)[number];
-
 export type LLMClientMetadata = {
-  clientId: ClientIdType;
+  clientId: ModelProviderIdType;
   modelId: ModelIdType;
 };
 
