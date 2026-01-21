@@ -98,7 +98,7 @@ export const NavigationSidebar = React.forwardRef<
       <div
         className={cn(
           "flex flex-col gap-2",
-          appStatus !== null && subscription.paymentFailingSince !== null
+          appStatus !== null || subscription.paymentFailingSince !== null
             ? ""
             : "pt-3"
         )}
