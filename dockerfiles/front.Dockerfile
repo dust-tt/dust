@@ -16,8 +16,7 @@ COPY sdks/js/package.json ./sdks/js/
 COPY sparkle/package.json ./sparkle/
 COPY front/package.json ./front/
 
-RUN --mount=type=cache,target=/root/.npm \
-  npm ci -w sdks/js -w sparkle -w front
+RUN npm ci -w sdks/js -w sparkle -w front
 
 # Build SDK
 WORKDIR /app/sdks/js
@@ -79,25 +78,25 @@ ENV CONTENTFUL_ACCESS_TOKEN=$CONTENTFUL_ACCESS_TOKEN
 # is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
 # DATADOG_API_KEY is used to conditionally enable source map generation and upload to Datadog
 RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
-    FRONT_DATABASE_URI="sqlite:foo.sqlite" \
-    NODE_OPTIONS="--max-old-space-size=8192" \
-    npm run build -- --no-lint && \
-    if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then \
-        export DATADOG_SITE=datadoghq.eu DATADOG_API_KEY=$DATADOG_API_KEY; \
-        npx --yes @datadog/datadog-ci sourcemaps upload ./.next/static \
-        --minified-path-prefix=/_next/static/ \
-        --repository-url=https://github.com/dust-tt/dust \
-        --project-path=front \
-        --release-version=$COMMIT_HASH \
-        --service=$NEXT_PUBLIC_DATADOG_SERVICE-browser && \
-        npx --yes @datadog/datadog-ci sourcemaps upload ./.next/server \
-        --minified-path-prefix=/app/front/.next/server/ \
-        --repository-url=https://github.com/dust-tt/dust \
-        --project-path=front \
-        --release-version=$COMMIT_HASH \
-        --service=$NEXT_PUBLIC_DATADOG_SERVICE && \
-        find .next -type f -name "*.map" -print -delete; \
-    fi
+  FRONT_DATABASE_URI="sqlite:foo.sqlite" \
+  NODE_OPTIONS="--max-old-space-size=8192" \
+  npm run build -- --no-lint && \
+  if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then \
+  export DATADOG_SITE=datadoghq.eu DATADOG_API_KEY=$DATADOG_API_KEY; \
+  npx --yes @datadog/datadog-ci sourcemaps upload ./.next/static \
+  --minified-path-prefix=/_next/static/ \
+  --repository-url=https://github.com/dust-tt/dust \
+  --project-path=front \
+  --release-version=$COMMIT_HASH \
+  --service=$NEXT_PUBLIC_DATADOG_SERVICE-browser && \
+  npx --yes @datadog/datadog-ci sourcemaps upload ./.next/server \
+  --minified-path-prefix=/app/front/.next/server/ \
+  --repository-url=https://github.com/dust-tt/dust \
+  --project-path=front \
+  --release-version=$COMMIT_HASH \
+  --service=$NEXT_PUBLIC_DATADOG_SERVICE && \
+  find .next -type f -name "*.map" -print -delete; \
+  fi
 
 RUN npm run sitemap
 
