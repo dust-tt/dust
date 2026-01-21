@@ -125,6 +125,15 @@ function categorizeAnthropicError(
     };
   }
 
+  if (statusCode === 503) {
+    return {
+      type: "overloaded_error",
+      message: `Provider ${metadata.clientId} is overloaded. ${normalized.message}`,
+      isRetryable,
+      originalError,
+    };
+  }
+
   if (statusCode >= 500 && statusCode < 600) {
     return {
       type: "server_error",

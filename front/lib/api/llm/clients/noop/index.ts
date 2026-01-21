@@ -45,10 +45,7 @@ export class NoopLLM extends LLM {
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: "noop" }
   ) {
-    super(auth, {
-      ...llmParameters,
-      clientId: "noop",
-    });
+    super(auth, "noop", llmParameters);
   }
 
   async *internalStream({
