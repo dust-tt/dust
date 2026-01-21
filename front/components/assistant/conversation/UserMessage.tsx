@@ -37,7 +37,10 @@ import {
 import { UserHandle } from "@app/components/assistant/conversation/UserHandle";
 import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdown";
 import type { ConfirmDataType } from "@app/components/Confirm";
-import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
+import type {
+  EditorService,
+  MarkdownAndMentions,
+} from "@app/components/editor/input_bar/useCustomEditor";
 import { useHover } from "@app/hooks/useHover";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
@@ -54,7 +57,7 @@ interface UserMessageEditorProps {
   editorService: EditorService;
   setShouldShowEditor: (shouldShowEditor: boolean) => void;
   isSaving: boolean;
-  onSave: () => void;
+  onSave: (isEmpty: boolean, markdownAndMentions: MarkdownAndMentions) => void;
 }
 
 function UserMessageEditor({
@@ -98,7 +101,11 @@ function UserMessageEditor({
         <Button
           variant="highlight"
           size="xs"
-          onClick={onSave}
+          onClick={() => {
+            const isEmpty = editorService.isEmpty();
+            const markdownAndMentions = editorService.getMarkdownAndMentions();
+            onSave(isEmpty, markdownAndMentions);
+          }}
           label="Save"
           isLoading={isSaving}
         />
@@ -122,7 +129,10 @@ interface UserMessageProps {
   confirm: (n: ConfirmDataType) => Promise<boolean>;
   shouldShowEditor: boolean;
   setShouldShowEditor: (shouldShowEditor: boolean) => void;
-  handleSave: () => Promise<void>;
+  handleSave: (
+    isEmpty: boolean,
+    markdownAndMentions: MarkdownAndMentions
+  ) => Promise<void>;
   editor: Editor | null;
   editorService: EditorService;
 }
