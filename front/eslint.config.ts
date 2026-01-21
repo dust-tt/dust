@@ -231,6 +231,15 @@ export default defineConfig(
     },
   },
 
+  // Shared code directories - no direct Next.js imports
+  {
+    files: ["components/**/*.{ts,tsx}", "hooks/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}"],
+    ignores: ["lib/platform/**"],
+    rules: {
+      "dust/no-next-imports": "error",
+    },
+  },
+
   // Public API endpoints - require Swagger docs
   {
     files: ["pages/api/v1/**/*.ts"],
