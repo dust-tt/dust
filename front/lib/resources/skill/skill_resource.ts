@@ -673,11 +673,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       limit,
       globalSpaceOnly,
       onlyCustom,
+      includeHiddenBuilder = false,
     }: {
       status?: SkillStatus | SkillStatus[];
       limit?: number;
       globalSpaceOnly?: boolean;
       onlyCustom?: boolean;
+      includeHiddenBuilder?: boolean;
     } = {}
   ): Promise<SkillResource[]> {
     const skills = await this.baseFetch(auth, {
@@ -686,14 +688,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyCustom,
     });
 
+    let filteredSkills = skills;
+
+    // Filter out global skills that should be hidden from builder UI.
+    if (!includeHiddenBuilder) {
+      filteredSkills = filteredSkills.filter((skill) => {
+        if (skill.globalSId) {
+          return !GlobalSkillsRegistry.isSkillHiddenBuilder(skill.sId);
+        }
+        return true;
+      });
+    }
+
     if (globalSpaceOnly) {
       const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-      return skills.filter((skill) =>
+      return filteredSkills.filter((skill) =>
         skill.requestedSpaceIds.every((id) => id === globalSpace.id)
       );
     }
 
-    return skills;
+    return filteredSkills;
   }
 
   /**

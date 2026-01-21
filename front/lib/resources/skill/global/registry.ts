@@ -17,6 +17,7 @@ interface BaseGlobalSkillDefinition {
   readonly internalMCPServerNames?: AutoInternalMCPServerNameType[];
   readonly inheritAgentConfigurationDataSources?: boolean;
   readonly isAutoEnabled?: boolean;
+  readonly isHiddenBuilder?: boolean;
 }
 
 type WithStaticInstructions<T extends BaseGlobalSkillDefinition> = T & {
@@ -114,6 +115,10 @@ export class GlobalSkillsRegistry {
 
   static isSkillAutoEnabled(sId: string): boolean {
     return this.getById(sId)?.isAutoEnabled ?? false;
+  }
+
+  static isSkillHiddenBuilder(sId: string): boolean {
+    return this.getById(sId)?.isHiddenBuilder ?? false;
   }
 
   static doesSkillInheritAgentConfigurationDataSources(sId: string): boolean {
