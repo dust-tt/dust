@@ -286,9 +286,9 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
 };
 
 const IMAGE_MODEL_PRICING: Record<string, PricingEntry> = {
-  "gemini-2.5-flash-image": {
+  "gemini-3-pro-image-preview": {
     input: 0.3,
-    output: 30.0,
+    output: 120.0,
   },
 };
 

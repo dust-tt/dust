@@ -3,13 +3,21 @@ import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { dustManagedCredentials, Err, Ok } from "@app/types";
-import { GEMINI_2_5_FLASH_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import {
+  fileSizeToHumanReadable,
+  isSupportedImageContentType,
+  MAX_FILE_SIZES,
+} from "@app/types/files";
 
 export const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
 export const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 week.
@@ -20,11 +28,10 @@ export const DEFAULT_IMAGE_MIME_TYPE = "image/png";
 // Token pricing is expressed as cost per million tokens (micro-USD per token)
 const MICRO_USD_PER_USD = 1_000_000;
 
-// Map tool size parameters to Gemini aspect ratios.
-export const SIZE_TO_ASPECT_RATIO: Record<string, string> = {
-  "1024x1024": "1:1",
-  "1536x1024": "3:2",
-  "1024x1536": "2:3",
+export const QUALITY_TO_IMAGE_SIZE: Record<string, string> = {
+  low: "1K",
+  medium: "2K",
+  high: "4K",
 };
 
 const GeminiInlineDataPartSchema = z.object({
@@ -36,17 +43,12 @@ const GeminiInlineDataPartSchema = z.object({
 
 export type GeminiInlineDataPart = z.infer<typeof GeminiInlineDataPartSchema>;
 
-// Type guard to validate Gemini inline data parts.
 export function isValidGeminiInlineDataPart(
   part: unknown
 ): part is GeminiInlineDataPart {
   return GeminiInlineDataPartSchema.safeParse(part).success;
 }
 
-/**
- * Computes cost details for Gemini image generation from usage metadata.
- * Returns structured cost information for Langfuse observation updates.
- */
 export function computeImageGenerationCostDetails(usageMetadata: {
   promptTokenCount?: number;
   candidatesTokenCount?: number;
@@ -66,17 +68,15 @@ export function computeImageGenerationCostDetails(usageMetadata: {
   const totalTokens = inputTokens + outputTokens;
 
   const totalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
-    modelId: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
+    modelId: GEMINI_3_PRO_IMAGE_MODEL_ID,
     promptTokens: inputTokens,
     completionTokens: outputTokens,
     cachedTokens: null,
     cacheCreationTokens: null,
   });
 
-  // Convert micro-USD to USD for Langfuse
   const costUsd = totalCostMicroUsd / MICRO_USD_PER_USD;
 
-  // Proportional cost breakdown for input/output
   const inputCostUsd =
     totalTokens > 0 ? (costUsd * inputTokens) / totalTokens : 0;
   const outputCostUsd =
@@ -174,7 +174,6 @@ export function validateGeminiImageResponse(
   operationType: "generation" | "editing",
   promptText: string
 ): Ok<GeminiInlineDataPart[]> | Err<MCPError> {
-  // Check for empty candidates.
   if (!response.candidates || response.candidates.length === 0) {
     if (response.promptFeedback?.blockReason) {
       logger.error(
@@ -194,13 +193,11 @@ export function validateGeminiImageResponse(
     return new Err(new MCPError("No image generated."));
   }
 
-  // Validate content structure.
   const content = response.candidates[0].content;
   if (!content || !content.parts) {
     return new Err(new MCPError("No image data in response"));
   }
 
-  // Extract valid image parts.
   const imageParts = content.parts.filter(isValidGeminiInlineDataPart);
   if (imageParts.length === 0) {
     return new Err(new MCPError("No image data in response."));
@@ -241,7 +238,9 @@ export function formatImageResponse(
     name: string;
   }>
 > {
-  const outputFileName = `${fileName}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`;
+  const outputFileName = fileName.toLowerCase().endsWith(".png")
+    ? fileName
+    : `${fileName}.png`;
 
   return new Ok(
     imageParts.map((part) => ({
@@ -258,4 +257,120 @@ export function createGeminiClient(): GoogleGenAI {
   return new GoogleGenAI({
     apiKey: credentials.GOOGLE_AI_STUDIO_API_KEY,
   });
+}
+
+export async function processImageFileIds({
+  auth,
+  imageFileIds,
+  agentLoopContext,
+  workspaceSId,
+  statsDClient,
+}: {
+  auth: Authenticator;
+  imageFileIds: string[];
+  agentLoopContext: AgentLoopContextType | undefined;
+  workspaceSId: string;
+  statsDClient: ReturnType<typeof getStatsDClient>;
+}): Promise<
+  Ok<Array<{ inlineData: { data: string; mimeType: string } }>> | Err<MCPError>
+> {
+  if (!agentLoopContext?.runContext) {
+    return new Err(
+      new MCPError("No conversation context available for file access", {
+        tracked: false,
+      })
+    );
+  }
+
+  const conversationId = agentLoopContext.runContext.conversation.sId;
+  const maxImageSize = MAX_FILE_SIZES.image;
+  const inlineDataParts: Array<{
+    inlineData: { data: string; mimeType: string };
+  }> = [];
+
+  for (const imageFileId of imageFileIds) {
+    const fileResource = await FileResource.fetchById(auth, imageFileId);
+    if (!fileResource) {
+      return new Err(
+        new MCPError(`File not found: ${imageFileId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const belongsResult = fileResource.belongsToConversation(conversationId);
+    if (belongsResult.isErr() || !belongsResult.value) {
+      return new Err(
+        new MCPError(
+          `File ${imageFileId} does not belong to this conversation`,
+          {
+            tracked: false,
+          }
+        )
+      );
+    }
+
+    if (fileResource.fileSize > maxImageSize) {
+      logger.warn(
+        {
+          fileId: fileResource.sId,
+          fileSize: fileResource.fileSize,
+          maxFileSize: maxImageSize,
+          workspaceId: workspaceSId,
+        },
+        "generate_image: File size exceeds maximum allowed size"
+      );
+
+      statsDClient.increment(
+        "tools.image_generation.file_size_limit_exceeded",
+        1,
+        ["provider:gemini"]
+      );
+
+      return new Err(
+        new MCPError(
+          `Image file ${imageFileId} too large. Maximum allowed size is ${fileSizeToHumanReadable(maxImageSize, 0)}, but file is ${fileSizeToHumanReadable(fileResource.fileSize, 0)}.`,
+          {
+            tracked: false,
+          }
+        )
+      );
+    }
+
+    const readStream = fileResource.getReadStream({
+      auth,
+      version: "original",
+    });
+    const bufferResult = await streamToBuffer(readStream);
+    if (bufferResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to read file ${imageFileId}: ${bufferResult.error}`,
+          {
+            tracked: false,
+          }
+        )
+      );
+    }
+
+    if (!isSupportedImageContentType(fileResource.contentType)) {
+      return new Err(
+        new MCPError(
+          `File ${imageFileId} is not a supported image type. Got: ${fileResource.contentType}. Supported types: PNG, JPEG, WebP, HEIC, HEIF.`,
+          {
+            tracked: false,
+          }
+        )
+      );
+    }
+
+    inlineDataParts.push({
+      inlineData: {
+        data: bufferResult.value.toString("base64"),
+        mimeType: fileResource.contentType,
+      },
+    });
+  }
+
+  return new Ok(inlineDataParts);
 }

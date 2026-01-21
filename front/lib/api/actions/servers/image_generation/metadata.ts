@@ -10,93 +10,88 @@ export const IMAGE_GENERATION_SERVER_NAME = "image_generation" as const;
 export const IMAGE_GENERATION_TOOLS_METADATA = createToolsRecord({
   generate_image: {
     description:
-      "Generate an image from text descriptions. The more detailed and specific your prompt is, the" +
-      " better the result will be. You can customize the output through various parameters to" +
-      " match your needs.",
+      "Generate or edit images from text descriptions and reference images.",
     schema: {
       prompt: z
         .string()
         .max(4000)
-        .describe(
-          "A text description of the desired image. The maximum length is 32000 characters."
-        ),
-      name: z
+        .describe("A text description of the desired image."),
+      outputName: z
         .string()
         .max(64)
         .describe(
           "The filename that will be used to save the generated image. Must be 64 characters or less."
         ),
-      quality: z
-        .enum(["auto", "low", "medium", "high"])
+      referenceImages: z
+        .array(z.string())
+        .max(14)
         .optional()
-        .default("auto")
         .describe(
-          "The quality of the generated image. Must be one of auto, low, medium, or high. Auto" +
-            " will automatically choose the best quality for the size."
-        ),
-      size: z
-        .enum(["1024x1024", "1536x1024", "1024x1536"])
-        .optional()
-        .default("1024x1024")
-        .describe(
-          "The size of the generated image. Must be one of 1024x1024, 1536x1024, or 1024x1536"
-        ),
-    },
-    stake: "low",
-  },
-  edit_image: {
-    description:
-      "Edit an existing image using text instructions. Provide the file ID of an image from Dust" +
-      " file storage and describe the changes you want to make. The tool preserves the original" +
-      " image's aspect ratio by default, but you can optionally change it.",
-    schema: {
-      imageFileId: z
-        .string()
-        .describe(
-          "The ID of the image file to edit (e.g. fil_abc1234) from conversation attachments. Must be a valid image file (PNG, JPEG, etc.)."
-        ),
-      editPrompt: z
-        .string()
-        .max(4000)
-        .describe(
-          "A text description of the desired edits. Be specific about what should change and what should remain unchanged. The maximum length is 4000 characters."
-        ),
-      outputName: z
-        .string()
-        .max(64)
-        .describe(
-          "The filename that will be used to save the edited image. Must be 64 characters or less."
-        ),
-      quality: z
-        .enum(["auto", "low", "medium", "high"])
-        .optional()
-        .default("auto")
-        .describe(
-          "The quality of the edited image. Must be one of auto, low, medium, or high. Auto" +
-            " will automatically choose the best quality."
+          "Optional file IDs of reference images from conversation attachments. Up to 14 reference images."
         ),
       aspectRatio: z
-        .enum(["1:1", "3:2", "2:3"])
+        .enum([
+          "1:1",
+          "3:2",
+          "2:3",
+          "3:4",
+          "4:3",
+          "4:5",
+          "5:4",
+          "9:16",
+          "16:9",
+          "21:9",
+        ])
         .optional()
+        .default("1:1")
         .describe(
-          "Optional aspect ratio override for the edited image. If not specified, preserves the" +
-            " original aspect ratio."
+          "The aspect ratio of the generated image. Must be one of 1:1, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, or 21:9."
+        ),
+      quality: z
+        .enum(["low", "medium", "high"])
+        .optional()
+        .default("low")
+        .describe(
+          "Output resolution: low (1K/1024px), medium (2K/2048px), or high (4K/4096px)."
         ),
     },
     stake: "low",
   },
 });
 
+const IMAGE_GENERATION_SERVER_INSTRUCTIONS =
+  "Use generate_image to create images from text or transform existing images.\n\n" +
+  "GENERATION FROM TEXT:\n" +
+  "- Provide a detailed prompt describing the desired image\n" +
+  "- Be specific about style, composition, colors, lighting, and mood\n\n" +
+  "REFERENCE IMAGES:\n" +
+  "- For object inclusion: up to 6 images to reproduce objects with high fidelity\n" +
+  "- For human consistency: up to 5 images to maintain character appearance\n" +
+  "- Maximum 14 total reference images can be combined\n" +
+  "- Supported formats: PNG, JPEG, WebP, HEIC, HEIF\n\n" +
+  "IMAGE EDITING:\n" +
+  "- Provide the source image as reference and describe the desired changes\n" +
+  "- Example: 'Remove the background and replace it with a sunset beach scene'\n\n" +
+  "COMPOSITION:\n" +
+  "- Combine multiple reference images into a new scene\n" +
+  "- Describe how elements should be arranged in the prompt\n\n" +
+  "TOOL CHAINING:\n" +
+  "- Images from previous tool calls can be used as reference for subsequent generations\n" +
+  "- Example: generate a character portrait, then use it as reference for different poses\n\n" +
+  "OUTPUT OPTIONS:\n" +
+  "- Quality: 'low' (1K), 'medium' (2K), or 'high' (4K)\n" +
+  "- Aspect ratios: 1:1, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9";
+
 export const IMAGE_GENERATION_SERVER = {
   serverInfo: {
     name: "image_generation",
     version: "1.0.0",
     description:
-      "Create or edit visual content from text descriptions and images.",
+      "Generate or edit images from text descriptions and reference images.",
     authorization: null,
     icon: "ActionImageIcon",
     documentationUrl: null,
-    instructions: null,
+    instructions: IMAGE_GENERATION_SERVER_INSTRUCTIONS,
   },
   tools: Object.values(IMAGE_GENERATION_TOOLS_METADATA).map((t) => ({
     name: t.name,
