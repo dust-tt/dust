@@ -4,15 +4,9 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  EDIT_IMAGE_TOOL_NAME,
-  GENERATE_IMAGE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import { GENERATE_IMAGE_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  EditImageInputSchema,
-  GenerateImageInputSchema,
-} from "@app/lib/actions/mcp_internal_actions/types";
+import { GenerateImageInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -24,7 +18,7 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { dustManagedCredentials, Err, normalizeError, Ok } from "@app/types";
-import { GEMINI_2_5_FLASH_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import {
   fileSizeToHumanReadable,
   isSupportedImageContentType,
@@ -33,8 +27,12 @@ import {
 
 const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
 const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 week.
+const QUALITY_TO_IMAGE_SIZE: Record<string, string> = {
+  low: "1K",
+  medium: "2K",
+  high: "4K",
+};
 
-const DEFAULT_IMAGE_OUTPUT_FORMAT = "png";
 const DEFAULT_IMAGE_MIME_TYPE = "image/png";
 
 // Token pricing is expressed as cost per million tokens (micro-USD per token)
@@ -63,17 +61,15 @@ function computeImageGenerationCostDetails(usageMetadata: {
   const totalTokens = inputTokens + outputTokens;
 
   const totalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
-    modelId: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
+    modelId: GEMINI_3_PRO_IMAGE_MODEL_ID,
     promptTokens: inputTokens,
     completionTokens: outputTokens,
     cachedTokens: null,
     cacheCreationTokens: null,
   });
 
-  // Convert micro-USD to USD for Langfuse
   const costUsd = totalCostMicroUsd / MICRO_USD_PER_USD;
 
-  // Proportional cost breakdown for input/output
   const inputCostUsd =
     totalTokens > 0 ? (costUsd * inputTokens) / totalTokens : 0;
   const outputCostUsd =
@@ -92,30 +88,40 @@ function computeImageGenerationCostDetails(usageMetadata: {
   };
 }
 
-// Map tool size parameters to Gemini aspect ratios.
-const SIZE_TO_ASPECT_RATIO: Record<string, string> = {
-  "1024x1024": "1:1",
-  "1536x1024": "3:2",
-  "1024x1536": "2:3",
-};
-
-const GeminiInlineDataPartSchema = z.object({
+const GeminiImagePartSchema = z.object({
   inlineData: z.object({
     data: z.string(),
-    mimeType: z.string().optional(),
+    mimeType: z.string(),
   }),
 });
 
-type GeminiInlineDataPart = z.infer<typeof GeminiInlineDataPartSchema>;
+type ValidatedGeminiImagePart = z.infer<typeof GeminiImagePartSchema>;
 
-// Type guard to validate Gemini inline data parts.
-function isValidGeminiInlineDataPart(
+function isValidatedGeminiImagePart(
   part: unknown
-): part is GeminiInlineDataPart {
-  return GeminiInlineDataPartSchema.safeParse(part).success;
+): part is ValidatedGeminiImagePart {
+  return GeminiImagePartSchema.safeParse(part).success;
 }
 
-// Helper functions for image generation tools.
+const GeminiBlockedResponseSchema = z.object({
+  candidates: z.array(z.unknown()).max(0).optional(),
+  promptFeedback: z.object({
+    blockReason: z.string(),
+    safetyRatings: z.unknown().optional(),
+  }),
+});
+
+const GeminiSuccessResponseSchema = z.object({
+  candidates: z
+    .array(
+      z.object({
+        content: z.object({
+          parts: z.array(z.unknown()),
+        }),
+      })
+    )
+    .min(1),
+});
 
 async function sendImageProgressNotification(
   sendNotification: (
@@ -182,47 +188,49 @@ async function checkImageGenerationRateLimit(
 }
 
 function validateGeminiImageResponse(
-  response: any,
+  response: unknown,
   operationType: "generation" | "editing",
   promptText: string
-): Ok<GeminiInlineDataPart[]> | Err<MCPError> {
-  // Check for empty candidates.
-  if (!response.candidates || response.candidates.length === 0) {
-    if (response.promptFeedback?.blockReason) {
-      logger.error(
-        {
-          blockReason: response.promptFeedback.blockReason,
-          safetyRatings: response.promptFeedback.safetyRatings,
-          prompt: promptText,
-        },
-        `Gemini image ${operationType}: Prompt blocked by safety filters`
-      );
-      return new Err(
-        new MCPError(
-          `Image ${operationType} blocked by safety filters: ${response.promptFeedback.blockReason}`
-        )
-      );
-    }
+): Ok<ValidatedGeminiImagePart[]> | Err<MCPError> {
+  const blockedResult = GeminiBlockedResponseSchema.safeParse(response);
+  if (blockedResult.success) {
+    const { blockReason, safetyRatings } = blockedResult.data.promptFeedback;
+    logger.error(
+      {
+        blockReason,
+        safetyRatings,
+        prompt: promptText,
+      },
+      `Gemini image ${operationType}: Prompt blocked by safety filters`
+    );
+    return new Err(
+      new MCPError(
+        `Image ${operationType} blocked by safety filters: ${blockReason}`
+      )
+    );
+  }
+
+  const successResult = GeminiSuccessResponseSchema.safeParse(response);
+  if (!successResult.success) {
     return new Err(new MCPError("No image generated."));
   }
 
-  // Validate content structure.
-  const content = response.candidates[0].content;
-  if (!content || !content.parts) {
-    return new Err(new MCPError("No image data in response"));
-  }
-
-  // Extract valid image parts.
-  const imageParts = content.parts.filter(isValidGeminiInlineDataPart);
-  if (imageParts.length === 0) {
+  const parts = successResult.data.candidates[0].content.parts;
+  const validatedParts = parts.filter(isValidatedGeminiImagePart);
+  if (validatedParts.length === 0) {
     return new Err(new MCPError("No image data in response."));
   }
 
-  return new Ok(imageParts);
+  return new Ok(validatedParts);
 }
 
 function trackGeminiTokenUsage(
-  response: any,
+  response: {
+    usageMetadata?: {
+      promptTokenCount?: number;
+      candidatesTokenCount?: number;
+    };
+  },
   statsDClient: ReturnType<typeof getStatsDClient>
 ): void {
   statsDClient.increment(
@@ -238,7 +246,7 @@ function trackGeminiTokenUsage(
 }
 
 function formatImageResponse(
-  imageParts: GeminiInlineDataPart[],
+  imageParts: ValidatedGeminiImagePart[],
   fileName: string
 ): Ok<
   Array<{
@@ -248,12 +256,14 @@ function formatImageResponse(
     name: string;
   }>
 > {
-  const outputFileName = `${fileName}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`;
+  const outputFileName = fileName.toLowerCase().endsWith(".png")
+    ? fileName
+    : `${fileName}.png`;
 
   return new Ok(
     imageParts.map((part) => ({
       type: "image" as const,
-      mimeType: part.inlineData.mimeType ?? DEFAULT_IMAGE_MIME_TYPE,
+      mimeType: part.inlineData.mimeType,
       data: part.inlineData.data,
       name: outputFileName,
     }))
@@ -267,6 +277,122 @@ function createGeminiClient(): GoogleGenAI {
   });
 }
 
+async function processImageFileIds({
+  auth,
+  imageFileIds,
+  agentLoopContext,
+  workspaceSId,
+  statsDClient,
+}: {
+  auth: Authenticator;
+  imageFileIds: string[];
+  agentLoopContext: AgentLoopContextType | undefined;
+  workspaceSId: string;
+  statsDClient: ReturnType<typeof getStatsDClient>;
+}): Promise<
+  Ok<Array<{ inlineData: { data: string; mimeType: string } }>> | Err<MCPError>
+> {
+  if (!agentLoopContext?.runContext) {
+    return new Err(
+      new MCPError("No conversation context available for file access", {
+        tracked: false,
+      })
+    );
+  }
+
+  const conversationId = agentLoopContext.runContext.conversation.sId;
+  const maxImageSize = MAX_FILE_SIZES.image;
+  const inlineDataParts: Array<{
+    inlineData: { data: string; mimeType: string };
+  }> = [];
+
+  for (const imageFileId of imageFileIds) {
+    const fileResource = await FileResource.fetchById(auth, imageFileId);
+    if (!fileResource) {
+      return new Err(
+        new MCPError(`File not found: ${imageFileId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const belongsResult = fileResource.belongsToConversation(conversationId);
+    if (belongsResult.isErr() || !belongsResult.value) {
+      return new Err(
+        new MCPError(
+          `File ${imageFileId} does not belong to this conversation`,
+          {
+            tracked: false,
+          }
+        )
+      );
+    }
+
+    if (fileResource.fileSize > maxImageSize) {
+      logger.warn(
+        {
+          fileId: fileResource.sId,
+          fileSize: fileResource.fileSize,
+          maxFileSize: maxImageSize,
+          workspaceId: workspaceSId,
+        },
+        "generate_image: File size exceeds maximum allowed size"
+      );
+
+      statsDClient.increment(
+        "tools.image_generation.file_size_limit_exceeded",
+        1,
+        ["provider:gemini"]
+      );
+
+      return new Err(
+        new MCPError(
+          `Image file ${imageFileId} too large. Maximum allowed size is ${fileSizeToHumanReadable(maxImageSize, 0)}, but file is ${fileSizeToHumanReadable(fileResource.fileSize, 0)}.`,
+          {
+            tracked: false,
+          }
+        )
+      );
+    }
+
+    const readStream = fileResource.getReadStream({
+      auth,
+      version: "original",
+    });
+    const bufferResult = await streamToBuffer(readStream);
+    if (bufferResult.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to read file ${imageFileId}: ${bufferResult.error}`,
+          {
+            tracked: false,
+          }
+        )
+      );
+    }
+
+    if (!isSupportedImageContentType(fileResource.contentType)) {
+      return new Err(
+        new MCPError(
+          `File ${imageFileId} is not a supported image type. Got: ${fileResource.contentType}. Supported types: PNG, JPEG, WebP, HEIC, HEIF.`,
+          {
+            tracked: false,
+          }
+        )
+      );
+    }
+
+    inlineDataParts.push({
+      inlineData: {
+        data: bufferResult.value.toString("base64"),
+        mimeType: fileResource.contentType,
+      },
+    });
+  }
+
+  return new Ok(inlineDataParts);
+}
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -275,14 +401,15 @@ function createServer(
 
   server.tool(
     GENERATE_IMAGE_TOOL_NAME,
-    "Generate an image from text descriptions. The more detailed and specific your prompt is, the" +
-      " better the result will be. You can customize the output through various parameters to" +
-      " match your needs.",
+    "Generate or edit images from text descriptions and reference images.",
     GenerateImageInputSchema.shape,
     withToolLogging(
       auth,
       { toolNameForMonitoring: GENERATE_IMAGE_TOOL_NAME, agentLoopContext },
-      async ({ prompt, name, quality, size }, { sendNotification, _meta }) => {
+      async (
+        { prompt, outputName, aspectRatio, referenceImages, quality },
+        { sendNotification, _meta }
+      ) => {
         const workspace = auth.getNonNullableWorkspace();
 
         await sendImageProgressNotification(
@@ -293,8 +420,9 @@ function createServer(
 
         const statsDClient = getStatsDClient();
         statsDClient.increment("tools.image_generation.generated", 1, [
+          `aspect_ratio:${aspectRatio}`,
+          `image_count:${referenceImages?.length ?? 0}`,
           `quality:${quality}`,
-          `size:${size}`,
           "provider:gemini",
         ]);
 
@@ -306,12 +434,38 @@ function createServer(
           return rateLimitResult;
         }
 
+        let inlineDataParts: Array<{
+          inlineData: { data: string; mimeType: string };
+        }> = [];
+
+        if (referenceImages && referenceImages.length > 0) {
+          const processResult = await processImageFileIds({
+            auth,
+            imageFileIds: referenceImages,
+            agentLoopContext,
+            workspaceSId: workspace.sId,
+            statsDClient,
+          });
+          if (processResult.isErr()) {
+            return processResult;
+          }
+          inlineDataParts = processResult.value;
+        }
+
+        const imageSize = QUALITY_TO_IMAGE_SIZE[quality ?? "low"];
+
         const generation = startObservation(
           "image-generation",
           {
-            input: { prompt, size, quality, name },
-            model: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
-            modelParameters: { quality, size, temperature: 0.7 },
+            input: {
+              prompt,
+              aspectRatio,
+              outputName,
+              imageFileIds: referenceImages,
+              quality,
+            },
+            model: GEMINI_3_PRO_IMAGE_MODEL_ID,
+            modelParameters: { aspectRatio, imageSize, temperature: 0.7 },
           },
           { asType: "generation" }
         );
@@ -322,63 +476,36 @@ function createServer(
             `operationType:image_generation`,
             `tool:generate_image`,
           ],
+          metadata: {
+            fileIds: referenceImages,
+          },
           userId: workspace.sId,
         });
 
+        const gemini = createGeminiClient();
+        const contents =
+          inlineDataParts.length > 0
+            ? [
+                {
+                  parts: [...inlineDataParts, { text: prompt }],
+                },
+              ]
+            : prompt;
+        let response;
         try {
-          const gemini = createGeminiClient();
-
-          const aspectRatio =
-            SIZE_TO_ASPECT_RATIO[size] || SIZE_TO_ASPECT_RATIO["1024x1024"];
-
-          const response = await gemini.models.generateContent({
-            model: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
-            contents: prompt,
+          response = await gemini.models.generateContent({
+            model: GEMINI_3_PRO_IMAGE_MODEL_ID,
+            contents,
             config: {
               temperature: 0.7,
               responseModalities: ["IMAGE"],
               candidateCount: 1,
               imageConfig: {
                 aspectRatio,
+                imageSize,
               },
             },
           });
-
-          const validationResult = validateGeminiImageResponse(
-            response,
-            "generation",
-            prompt
-          );
-          if (validationResult.isErr()) {
-            generation.update({
-              level: "ERROR",
-              statusMessage: validationResult.error.message,
-            });
-            generation.end();
-            return validationResult;
-          }
-
-          const imageParts = validationResult.value;
-
-          trackGeminiTokenUsage(response, statsDClient);
-
-          if (response.usageMetadata) {
-            const { inputTokens, outputTokens, totalTokens, costDetails } =
-              computeImageGenerationCostDetails(response.usageMetadata);
-
-            generation.update({
-              usageDetails: {
-                input: inputTokens,
-                output: outputTokens,
-                total: totalTokens,
-              },
-              costDetails,
-            });
-          }
-
-          generation.end();
-
-          return formatImageResponse(imageParts, name);
         } catch (error) {
           logger.error(
             {
@@ -396,253 +523,46 @@ function createServer(
           generation.end();
           return new Err(new MCPError("Error generating image."));
         }
-      }
-    )
-  );
 
-  server.tool(
-    EDIT_IMAGE_TOOL_NAME,
-    "Edit an existing image using text instructions. Provide the file ID of an image from Dust" +
-      " file storage and describe the changes you want to make. The tool preserves the original" +
-      " image's aspect ratio by default, but you can optionally change it.",
-    EditImageInputSchema.shape,
-    withToolLogging(
-      auth,
-      { toolNameForMonitoring: EDIT_IMAGE_TOOL_NAME, agentLoopContext },
-      async (
-        {
-          imageFileId: inputImageFileId,
-          editPrompt: editImageInstructions,
-          outputName: outputImageFileName,
-          quality,
-          aspectRatio,
-        },
-        { sendNotification, _meta }
-      ) => {
-        const workspace = auth.getNonNullableWorkspace();
-        const statsDClient = getStatsDClient();
-
-        await sendImageProgressNotification(
-          sendNotification,
-          _meta?.progressToken,
-          "Editing image..."
+        const validationResult = validateGeminiImageResponse(
+          response,
+          "generation",
+          prompt
         );
-
-        // Check if agentLoopContext is available (required for conversation validation)
-        if (!agentLoopContext?.runContext) {
-          return new Err(
-            new MCPError("No conversation context available for file access", {
-              tracked: false,
-            })
-          );
-        }
-
-        // Fetch the file resource
-        const fileResource = await FileResource.fetchById(
-          auth,
-          inputImageFileId
-        );
-        if (!fileResource) {
-          return new Err(
-            new MCPError(`File not found: ${inputImageFileId}`, {
-              tracked: false,
-            })
-          );
-        }
-
-        // Validate file belongs to the current conversation
-        const conversationId = agentLoopContext.runContext.conversation.sId;
-        const belongsResult =
-          fileResource.belongsToConversation(conversationId);
-        if (belongsResult.isErr() || !belongsResult.value) {
-          return new Err(
-            new MCPError(`File does not belong to this conversation`, {
-              tracked: false,
-            })
-          );
-        }
-
-        const maxImageSize = MAX_FILE_SIZES.image;
-        if (fileResource.fileSize > maxImageSize) {
-          logger.warn(
-            {
-              fileId: fileResource.sId,
-              fileSize: fileResource.fileSize,
-              maxFileSize: maxImageSize,
-              workspaceId: workspace.sId,
-            },
-            "edit_image: File size exceeds maximum allowed size"
-          );
-
-          statsDClient.increment(
-            "tools.image_generation.file_size_limit_exceeded",
-            1,
-            ["provider:gemini"]
-          );
-
-          return new Err(
-            new MCPError(
-              `Image file too large for editing. Maximum allowed size is ${fileSizeToHumanReadable(maxImageSize, 0)}, but file is ${fileSizeToHumanReadable(fileResource.fileSize, 0)}.`,
-              {
-                tracked: false,
-              }
-            )
-          );
-        }
-
-        // Get file content as buffer
-        const readStream = fileResource.getReadStream({
-          auth,
-          version: "original",
-        });
-        const bufferResult = await streamToBuffer(readStream);
-        if (bufferResult.isErr()) {
-          return new Err(
-            new MCPError(`Failed to read file: ${bufferResult.error}`, {
-              tracked: false,
-            })
-          );
-        }
-
-        const buffer = bufferResult.value;
-        const contentType = fileResource.contentType;
-
-        if (!isSupportedImageContentType(fileResource.contentType)) {
-          return new Err(
-            new MCPError(
-              `File is not a supported image type. Got: ${fileResource.contentType}. Supported types: PNG, JPEG, WebP, HEIC, HEIF.`,
-              {
-                tracked: false,
-              }
-            )
-          );
-        }
-
-        statsDClient.increment("tools.image_generation.edited", 1, [
-          `quality:${quality}`,
-          `aspect_ratio:${aspectRatio ?? "original"}`,
-          "provider:gemini",
-        ]);
-
-        const rateLimitResult = await checkImageGenerationRateLimit(
-          auth,
-          workspace
-        );
-        if (rateLimitResult.isErr()) {
-          return rateLimitResult;
-        }
-
-        const imageBase64 = buffer.toString("base64");
-
-        const generation = startObservation(
-          "image-editing",
-          {
-            input: {
-              editPrompt: editImageInstructions,
-              imageFileId: inputImageFileId,
-              outputName: outputImageFileName,
-              quality,
-              aspectRatio,
-            },
-            model: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
-            modelParameters: {
-              quality,
-              aspectRatio: aspectRatio ?? "original",
-              temperature: 0.7,
-            },
-          },
-          { asType: "generation" }
-        );
-
-        generation.updateTrace({
-          tags: [`workspaceId:${workspace.sId}`, `operationType:image_editing`],
-          metadata: {
-            fileId: inputImageFileId,
-          },
-          userId: workspace.sId,
-        });
-
-        try {
-          const gemini = createGeminiClient();
-
-          // Call Gemini API with image inline data and edit prompt.
-          // The contents array includes both the image and the text prompt.
-          const response = await gemini.models.generateContent({
-            model: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
-            contents: [
-              {
-                parts: [
-                  {
-                    inlineData: {
-                      data: imageBase64,
-                      mimeType: contentType,
-                    },
-                  },
-                  {
-                    text: editImageInstructions,
-                  },
-                ],
-              },
-            ],
-            config: {
-              temperature: 0.7,
-              responseModalities: ["IMAGE"],
-              candidateCount: 1,
-              imageConfig: aspectRatio ? { aspectRatio } : undefined,
-            },
-          });
-
-          const validationResult = validateGeminiImageResponse(
-            response,
-            "editing",
-            editImageInstructions
-          );
-          if (validationResult.isErr()) {
-            generation.update({
-              level: "ERROR",
-              statusMessage: validationResult.error.message,
-            });
-            generation.end();
-            return validationResult;
-          }
-
-          const imageParts = validationResult.value;
-
-          trackGeminiTokenUsage(response, statsDClient);
-
-          if (response.usageMetadata) {
-            const { inputTokens, outputTokens, totalTokens, costDetails } =
-              computeImageGenerationCostDetails(response.usageMetadata);
-
-            generation.update({
-              usageDetails: {
-                input: inputTokens,
-                output: outputTokens,
-                total: totalTokens,
-              },
-              costDetails,
-            });
-          }
-          generation.end();
-
-          return formatImageResponse(imageParts, outputImageFileName);
-        } catch (error) {
+        if (validationResult.isErr()) {
           logger.error(
             {
-              error,
+              error: validationResult.error,
             },
-            "Error editing image."
+            "Error generating image."
           );
           generation.update({
             level: "ERROR",
-            statusMessage: "Error editing image",
-            metadata: {
-              error: normalizeError(error),
-            },
+            statusMessage: validationResult.error.message,
           });
           generation.end();
-          return new Err(new MCPError("Error editing image."));
+          return validationResult;
         }
+
+        const imageParts = validationResult.value;
+
+        trackGeminiTokenUsage(response, statsDClient);
+
+        if (response.usageMetadata) {
+          const { inputTokens, outputTokens, totalTokens, costDetails } =
+            computeImageGenerationCostDetails(response.usageMetadata);
+
+          generation.update({
+            usageDetails: {
+              input: inputTokens,
+              output: outputTokens,
+              total: totalTokens,
+            },
+            costDetails,
+          });
+        }
+        generation.end();
+        return formatImageResponse(imageParts, outputName);
       }
     )
   );
