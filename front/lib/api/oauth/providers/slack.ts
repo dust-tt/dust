@@ -160,12 +160,6 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       return undefined;
     }
 
-    // Check if the feature flag is enabled
-    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-    if (!featureFlags.includes("self_created_slack_app_connector_rollout")) {
-      return undefined;
-    }
-
     // Note: we don't store the signing secret as it's not needed for OAuth connections.
     // It is only used for webhook validation
     return {
