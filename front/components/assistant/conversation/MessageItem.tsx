@@ -110,7 +110,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     const handleSave = useCallback(
       async (isEmpty: boolean, markdownAndMentions: MarkdownAndMentions) => {
-        if (isEmpty || !context.conversation) {
+        if (isEmpty) {
           return;
         }
 
@@ -124,7 +124,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
         setShouldShowEditor(false);
       },
-      [data, context.conversation, editMessage]
+      [data, editMessage]
     );
 
     const messageFeedback = context.feedbacksByMessageId[sId];
