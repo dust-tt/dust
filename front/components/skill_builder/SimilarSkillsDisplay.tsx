@@ -1,4 +1,4 @@
-import { ExternalLinkIcon, IconButton, Spinner } from "@dust-tt/sparkle";
+import { ExternalLinkIcon, Icon, Spinner } from "@dust-tt/sparkle";
 import Link from "next/link";
 import React from "react";
 
@@ -53,12 +53,9 @@ export function SimilarSkillsDisplay({
                   <Link
                     href={`/w/${owner.sId}/builder/skills/${skill.sId}`}
                     target="_blank"
+                    className="text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
                   >
-                    <IconButton
-                      icon={ExternalLinkIcon}
-                      size="xmini"
-                      variant="outline"
-                    />
+                    <Icon visual={ExternalLinkIcon} size="xs" />
                   </Link>
                 </div>
                 <span className="line-clamp-1 text-xs text-muted-foreground dark:text-muted-foreground-night">
