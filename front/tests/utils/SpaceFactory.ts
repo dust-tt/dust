@@ -1,12 +1,12 @@
 import { faker } from "@faker-js/faker";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { WorkspaceType } from "@app/types";
 import { removeNulls } from "@app/types";
-import { UserFactory } from "@app/tests/utils/UserFactory";
 
 export class SpaceFactory {
   static async defaults(auth: Authenticator) {
