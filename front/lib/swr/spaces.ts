@@ -49,7 +49,7 @@ import type {
   SpaceKind,
   SpaceType,
 } from "@app/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import { isString, MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 export function useSpaces({
   workspaceId,
@@ -73,7 +73,9 @@ export function useSpaces({
       data?.spaces?.filter((s) => kinds === "all" || kinds.includes(s.kind)) ??
       emptyArray<SpaceType>()
     );
-  }, [data?.spaces, kinds]);
+    // Serialize the kinds array to a string to avoid unnecessary re-renders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.spaces, isString(kinds) ? kinds : kinds.toSorted().join(",")]);
 
   return {
     spaces,
