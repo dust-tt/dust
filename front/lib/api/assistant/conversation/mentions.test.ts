@@ -5,15 +5,9 @@ vi.mock("@app/lib/api/assistant/agent_usage", () => ({
   signalAgentUsage: vi.fn(),
 }));
 
-// Mock runAgentLoopWorkflow before importing the module that uses it
-vi.mock("@app/lib/api/assistant/conversation/agent_loop", () => ({
-  runAgentLoopWorkflow: vi.fn(),
-}));
-
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { createConversation } from "@app/lib/api/assistant/conversation";
-import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   createAgentMessages,
@@ -292,14 +286,8 @@ describe("createAgentMessages", () => {
       workspaceId: workspace.sId,
     });
 
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation,
-      userMessage,
-    });
+    // Note: runAgentLoopWorkflow is no longer called from createAgentMessages.
+    // It's now called from postUserMessage/editUserMessage after the transaction commits.
   });
 
   it("should return empty array when no agent mentions are provided", async () => {
@@ -329,9 +317,6 @@ describe("createAgentMessages", () => {
 
     // Verify signalAgentUsage was not called when no agent mentions are provided
     expect(signalAgentUsage).not.toHaveBeenCalled();
-
-    // Verify runAgentLoopWorkflow was not called when no agent messages are created
-    expect(runAgentLoopWorkflow).not.toHaveBeenCalled();
   });
 
   it("should set skipToolsValidation correctly", async () => {
@@ -375,15 +360,6 @@ describe("createAgentMessages", () => {
     expect(signalAgentUsage).toHaveBeenCalledWith({
       agentConfigurationId: agentConfig1.sId,
       workspaceId: workspace.sId,
-    });
-
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation,
-      userMessage,
     });
   });
 
@@ -434,15 +410,6 @@ describe("createAgentMessages", () => {
       agentConfigurationId: agentConfig1.sId,
       workspaceId: workspace.sId,
     });
-
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation,
-      userMessage,
-    });
   });
 
   it("should set parentAgentMessageId to null when context origin is not agent_handover", async () => {
@@ -487,15 +454,6 @@ describe("createAgentMessages", () => {
     expect(signalAgentUsage).toHaveBeenCalledWith({
       agentConfigurationId: agentConfig1.sId,
       workspaceId: workspace.sId,
-    });
-
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation,
-      userMessage,
     });
   });
 
@@ -557,15 +515,6 @@ describe("createAgentMessages", () => {
     expect(signalAgentUsage).toHaveBeenCalledWith({
       agentConfigurationId: agentConfig2.sId,
       workspaceId: workspace.sId,
-    });
-
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation,
-      userMessage,
     });
   });
 
@@ -666,22 +615,20 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     // Call createAgentMessages
-    const { agentMessages, richMentions } = await withTransaction(
-      async (transaction) => {
-        return createAgentMessages(auth, {
-          conversation: testConversation,
-          metadata: {
-            type: "create",
-            mentions,
-            agentConfigurations: [agentConfigWithSpaces!],
-            skipToolsValidation: false,
-            nextMessageRank: 1,
-            userMessage,
-          },
-          transaction,
-        });
-      }
-    );
+    const { richMentions } = await withTransaction(async (transaction) => {
+      return createAgentMessages(auth, {
+        conversation: testConversation,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations: [agentConfigWithSpaces!],
+          skipToolsValidation: false,
+          nextMessageRank: 1,
+          userMessage,
+        },
+        transaction,
+      });
+    });
 
     // Verify richMentions are returned correctly
     expect(richMentions).toHaveLength(1);
@@ -689,15 +636,6 @@ describe("createAgentMessages", () => {
       expect(richMentions[0].id).toBe(agentConfig.sId);
       expect(richMentions[0].status).toBe("approved");
     }
-
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation: testConversation,
-      userMessage,
-    });
 
     // Fetch conversation after createAgentMessages
     const conversationAfter = await ConversationResource.fetchById(
@@ -804,22 +742,20 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     // Call createAgentMessages
-    const { agentMessages, richMentions } = await withTransaction(
-      async (transaction) => {
-        return createAgentMessages(auth, {
-          conversation: testConversation,
-          metadata: {
-            type: "create",
-            mentions,
-            agentConfigurations: [agentConfigWithSpaces!],
-            skipToolsValidation: false,
-            nextMessageRank: 1,
-            userMessage,
-          },
-          transaction,
-        });
-      }
-    );
+    const { richMentions } = await withTransaction(async (transaction) => {
+      return createAgentMessages(auth, {
+        conversation: testConversation,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations: [agentConfigWithSpaces!],
+          skipToolsValidation: false,
+          nextMessageRank: 1,
+          userMessage,
+        },
+        transaction,
+      });
+    });
 
     // Verify richMentions are returned correctly
     expect(richMentions).toHaveLength(1);
@@ -827,15 +763,6 @@ describe("createAgentMessages", () => {
       expect(richMentions[0].id).toBe(agentConfig.sId);
       expect(richMentions[0].status).toBe("approved");
     }
-
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation: testConversation,
-      userMessage,
-    });
 
     // Fetch conversation after createAgentMessages
     const conversationAfter = await ConversationResource.fetchById(
@@ -942,22 +869,20 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     // Call createAgentMessages
-    const { agentMessages, richMentions } = await withTransaction(
-      async (transaction) => {
-        return createAgentMessages(auth, {
-          conversation: testConversation,
-          metadata: {
-            type: "create",
-            mentions,
-            agentConfigurations: [agentConfigWithSpaces!],
-            skipToolsValidation: false,
-            nextMessageRank: 1,
-            userMessage,
-          },
-          transaction,
-        });
-      }
-    );
+    const { richMentions } = await withTransaction(async (transaction) => {
+      return createAgentMessages(auth, {
+        conversation: testConversation,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations: [agentConfigWithSpaces!],
+          skipToolsValidation: false,
+          nextMessageRank: 1,
+          userMessage,
+        },
+        transaction,
+      });
+    });
 
     // Verify richMentions are returned correctly
     expect(richMentions).toHaveLength(1);
@@ -965,15 +890,6 @@ describe("createAgentMessages", () => {
       expect(richMentions[0].id).toBe(agentConfig.sId);
       expect(richMentions[0].status).toBe("approved");
     }
-
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation: testConversation,
-      userMessage,
-    });
 
     // Fetch conversation after createAgentMessages
     const conversationAfter = await ConversationResource.fetchById(
