@@ -391,50 +391,48 @@ function isContentfulEntryForCourse(
   return entry.sys.contentType?.sys.id === "course";
 }
 
+/**
+ * Type guard to check if a value is a Contentful entry for Course or Lesson.
+ *
+ * This function uses Record<string, unknown> casts to safely access nested properties
+ * on unknown values. These casts are type-safe because:
+ * 1. We verify the value is a non-null object before each cast
+ * 2. Record<string, unknown> is the minimal type needed to access properties
+ * 3. Each property access is followed by type checks before further use
+ *
+ * This pattern is necessary because Contentful's withoutUnresolvableLinks returns
+ * entries where linked references may be undefined, making the types complex to narrow.
+ */
 function isContentfulContentEntry(
   value: unknown
 ): value is Entry<CourseSkeleton | LessonSkeleton> {
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    !("sys" in value) ||
-    !("fields" in value)
-  ) {
+  if (typeof value !== "object" || value === null) {
     return false;
   }
-  // TypeScript narrows value to object with sys and fields after the checks above
-  const entry = value as { sys: unknown; fields: unknown };
+
+  const entry = value as Record<string, unknown>;
   if (
     typeof entry.sys !== "object" ||
     entry.sys === null ||
-    !("contentType" in entry.sys)
+    typeof entry.fields !== "object"
   ) {
     return false;
   }
-  // TypeScript narrows entry.sys to object with contentType after the checks above
-  const sysWithContentType = entry.sys as { contentType: unknown };
-  if (
-    typeof sysWithContentType.contentType !== "object" ||
-    sysWithContentType.contentType === null ||
-    !("sys" in sysWithContentType.contentType)
-  ) {
+
+  const sys = entry.sys as Record<string, unknown>;
+  if (typeof sys.contentType !== "object" || sys.contentType === null) {
     return false;
   }
-  // TypeScript narrows contentType to object with sys after the checks above
-  const contentTypeWithSys = sysWithContentType.contentType as {
-    sys: unknown;
-  };
-  if (
-    typeof contentTypeWithSys.sys !== "object" ||
-    contentTypeWithSys.sys === null ||
-    !("id" in contentTypeWithSys.sys)
-  ) {
+
+  const contentType = sys.contentType as Record<string, unknown>;
+  if (typeof contentType.sys !== "object" || contentType.sys === null) {
     return false;
   }
-  // TypeScript narrows sys to object with id after the checks above
-  const sysWithId = contentTypeWithSys.sys as { id: unknown };
-  const id = sysWithId.id;
-  return typeof id === "string" && (id === "lesson" || id === "course");
+
+  const contentTypeSys = contentType.sys as Record<string, unknown>;
+  const id = contentTypeSys.id;
+
+  return id === "lesson" || id === "course";
 }
 
 function contentfulEntryToAuthor(
