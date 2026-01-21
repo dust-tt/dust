@@ -51,7 +51,7 @@ export function SimilarSkillsDisplay({
                     {skill.name}
                   </span>
                   <Link
-                    href={`/w/${owner.sId}/builder/skills/${skill.sId}`}
+                    href={`/w/${owner.sId}/builder/skills#?skillId=${skill.sId}`}
                     target="_blank"
                     className="text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
                   >
