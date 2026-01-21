@@ -110,7 +110,7 @@ runs:
         elif [[ ${COMPONENT} == *"-canary" ]]; then
           ENV="prod"
           BASE_COMPONENT=${COMPONENT%-canary}
-          COMPONENT=${COMPONENT}-${{ github.actor }}        
+          COMPONENT=${COMPONENT}-${{ github.actor }}
         else
           ENV="prod"
           BASE_COMPONENT=${COMPONENT}
@@ -211,6 +211,10 @@ runs:
       id: current_version
       shell: bash
       run: |
+        COMPONENT="${{ inputs.component }}"
+        if [[ ${COMPONENT} == *"-canary" ]]; then
+          COMPONENT=${COMPONENT}-${{ github.actor }}
+        fi
         echo "🔍 Getting current deployed version for ${COMPONENT} in ${{ inputs.region }}..."
 
         # Get all tags, exclude the current one we're building, get the most recent
