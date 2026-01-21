@@ -853,6 +853,10 @@ export class Authenticator {
     return isDustInternal && isDustSuperUser;
   }
 
+  async loadAllGroups(): Promise<void> {
+    await this.editorGroups();
+  }
+
   /**
    * Lazily loads and caches the user's agent_editors groups.
    * These groups are not loaded by default to optimize performance.

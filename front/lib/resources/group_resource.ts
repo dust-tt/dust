@@ -203,6 +203,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
     });
 
+    // Load all groups for permission check on groups themselves.
+    await auth.loadAllGroups();
+
     const [group] = groups.filter((g) => g.canRead(auth));
     if (!group) {
       return new Err(
@@ -257,6 +260,9 @@ export class GroupResource extends BaseResource<GroupModel> {
         },
       },
     });
+
+    // Load all groups for permission check on groups themselves.
+    await auth.loadAllGroups();
 
     const accessibleGroups = groups.filter((group) => group.canRead(auth));
     const groupMap: Record<ModelId, GroupResource> = {};
@@ -688,6 +694,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     const [group] = groups;
 
+    await group.ensureAuthGroupsLoaded(auth);
     if (!group.canRead(auth)) {
       return null;
     }
@@ -1570,10 +1577,12 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   canRead(auth: Authenticator): boolean {
+    this.checkAuthGroupsLoaded(auth);
     return auth.canRead(this.requestedPermissions());
   }
 
   canWrite(auth: Authenticator): boolean {
+    this.checkAuthGroupsLoaded(auth);
     return auth.canWrite(this.requestedPermissions());
   }
 
@@ -1591,6 +1600,18 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   isProvisioned(): boolean {
     return this.kind === "provisioned";
+  }
+
+  async ensureAuthGroupsLoaded(auth: Authenticator) {
+    if (this.kind === "agent_editors") {
+      await auth.editorGroups();
+    }
+  }
+
+  checkAuthGroupsLoaded(auth: Authenticator) {
+    if (this.kind === "agent_editors" && !auth._editorGroups) {
+      logger.warn("Auth is missing editor groups for agent_editors group");
+    }
   }
 
   /**
