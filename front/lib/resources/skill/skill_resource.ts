@@ -45,7 +45,6 @@ import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/regi
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
