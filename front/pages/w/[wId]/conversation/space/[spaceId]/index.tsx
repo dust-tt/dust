@@ -340,6 +340,7 @@ export default function SpaceConversations({
         <TabsContent value="settings">
           {spaceInfo && (
             <SpaceAboutTab
+              key={spaceId}
               owner={owner}
               space={spaceInfo}
               initialMembers={spaceInfo.members}
