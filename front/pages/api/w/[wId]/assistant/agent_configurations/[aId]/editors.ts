@@ -117,6 +117,9 @@ async function handler(
 
   const editorGroup = editorGroupRes.value;
 
+  // Load editor groups for permission checks below.
+  await auth.editorGroups();
+
   switch (req.method) {
     case "GET": {
       if (!editorGroup.canRead(auth)) {

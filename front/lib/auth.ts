@@ -895,7 +895,12 @@ export class Authenticator {
   }
 
   groups(): GroupType[] {
-    return this._groups.map((g) => g.toJSON());
+    const groups = this._groups.map((g) => g.toJSON());
+    // Include editor groups in permission checks if they've been loaded.
+    if (this._editorGroups !== null) {
+      groups.push(...this._editorGroups.map((g) => g.toJSON()));
+    }
+    return groups;
   }
 
   /**

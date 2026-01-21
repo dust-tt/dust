@@ -1221,6 +1221,9 @@ export async function updateAgentPermissions(
     >
   >
 > {
+  // Load editor groups for permission checks in addMembers/removeMembers.
+  await auth.editorGroups();
+
   const editorGroupRes = await GroupResource.findEditorGroupForAgent(
     auth,
     agent
