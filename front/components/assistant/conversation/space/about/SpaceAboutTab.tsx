@@ -1,4 +1,12 @@
-import { Button, ContentMessage, Input, Label } from "@dust-tt/sparkle";
+import {
+  ActionExternalLinkIcon,
+  ActionTrashIcon,
+  Button,
+  ContentMessage,
+  IconButton,
+  Input,
+  Label,
+} from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
@@ -48,7 +56,9 @@ export function SpaceAboutTab({
 
   // Project metadata state
   const [description, setDescription] = useState("");
-  const [isSavingDescription, setIsSavingDescription] = useState(false);
+  const [urls, setUrls] = useState<string[]>([]);
+  const [newUrl, setNewUrl] = useState("");
+  const [isSavingMetadata, setIsSavingMetadata] = useState(false);
   const { projectMetadata, isProjectMetadataLoading } = useProjectMetadata({
     workspaceId: owner.sId,
     spaceId: space.sId,
@@ -58,12 +68,15 @@ export function SpaceAboutTab({
     spaceId: space.sId,
   });
 
-  // Sync description state with loaded metadata
+  // Sync description and URLs state with loaded metadata
   useEffect(() => {
     if (projectMetadata?.description) {
       setDescription(projectMetadata.description);
     }
-  }, [projectMetadata?.description]);
+    if (projectMetadata?.urls) {
+      setUrls(projectMetadata.urls);
+    }
+  }, [projectMetadata?.description, projectMetadata?.urls]);
 
   const isManual = !planAllowsSCIM || managementType === "manual";
   const doUpdate = useUpdateSpace({ owner });
@@ -113,18 +126,35 @@ export function SpaceAboutTab({
     return true;
   }, [hasChanges, managementType, selectedMembers, selectedGroups]);
 
-  const hasDescriptionChanges = useMemo(() => {
-    return description !== (projectMetadata?.description ?? "");
-  }, [description, projectMetadata?.description]);
+  const onSaveMetadata = useCallback(async () => {
+    setIsSavingMetadata(true);
+    await doUpdateMetadata({
+      description: description || null,
+      urls,
+    });
+    setIsSavingMetadata(false);
+  }, [doUpdateMetadata, description, urls]);
 
-  const onSaveDescription = useCallback(async () => {
-    if (!hasDescriptionChanges) {
-      return;
+  const onAddUrl = useCallback(() => {
+    if (newUrl.trim()) {
+      setUrls([...urls, newUrl.trim()]);
+      setNewUrl("");
     }
-    setIsSavingDescription(true);
-    await doUpdateMetadata({ description: description || null });
-    setIsSavingDescription(false);
-  }, [hasDescriptionChanges, doUpdateMetadata, description]);
+  }, [newUrl, urls]);
+
+  const onUpdateUrl = useCallback(
+    (index: number, value: string) => {
+      setUrls(urls.map((url, i) => (i === index ? value : url)));
+    },
+    [urls]
+  );
+
+  const onRemoveUrl = useCallback(
+    (index: number) => {
+      setUrls(urls.filter((_, i) => i !== index));
+    },
+    [urls]
+  );
 
   const onSave = useCallback(async () => {
     if (!canSave) {
@@ -163,29 +193,91 @@ export function SpaceAboutTab({
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col gap-y-4 overflow-y-scroll p-8">
-      <div className="flex flex-col gap-y-2">
-        <Label>Description</Label>
-        <Input
-          placeholder={
-            isProjectMetadataLoading
-              ? "Loading..."
-              : "Describe what this project is about..."
-          }
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          disabled={isProjectMetadataLoading}
-        />
+      <div className="flex flex-col gap-y-4">
+        <div className="flex flex-col gap-y-2">
+          <Label>Description</Label>
+          <Input
+            placeholder={
+              isProjectMetadataLoading
+                ? "Loading..."
+                : "Describe what this project is about..."
+            }
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            disabled={isProjectMetadataLoading}
+          />
+        </div>
+
+        <div className="flex flex-col gap-y-2">
+          <Label>URLs</Label>
+          {urls.length > 0 && (
+            <div className="flex flex-col gap-y-2">
+              {urls.map((url, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <Input
+                    type="url"
+                    value={url}
+                    onChange={(e) => onUpdateUrl(index, e.target.value)}
+                    disabled={isProjectMetadataLoading}
+                    className="flex-1"
+                  />
+                  <IconButton
+                    icon={ActionExternalLinkIcon}
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      window.open(
+                        url.startsWith("http") ? url : `https://${url}`,
+                        "_blank",
+                        "noopener noreferrer"
+                      )
+                    }
+                    disabled={isProjectMetadataLoading || !url.trim()}
+                    tooltip="Open URL"
+                  />
+                  <IconButton
+                    icon={ActionTrashIcon}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onRemoveUrl(index)}
+                    disabled={isProjectMetadataLoading}
+                    tooltip="Remove URL"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Add a URL..."
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onAddUrl();
+                }
+              }}
+              disabled={isProjectMetadataLoading}
+              className="flex-1"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              label="Add"
+              onClick={onAddUrl}
+              disabled={!newUrl.trim() || isProjectMetadataLoading}
+            />
+          </div>
+        </div>
+
         <div className="flex justify-end">
           <Button
             variant="primary"
             size="sm"
-            label={isSavingDescription ? "Saving..." : "Save description"}
-            onClick={onSaveDescription}
-            disabled={
-              !hasDescriptionChanges ||
-              isSavingDescription ||
-              isProjectMetadataLoading
-            }
+            label={isSavingMetadata ? "Saving..." : "Save changes"}
+            onClick={onSaveMetadata}
+            disabled={isSavingMetadata || isProjectMetadataLoading}
           />
         </div>
       </div>
