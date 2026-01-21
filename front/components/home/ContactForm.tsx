@@ -27,9 +27,10 @@ import {
   HEADQUARTERS_REGION_OPTIONS,
   LANGUAGE_OPTIONS,
 } from "@app/lib/api/hubspot/contactFormSchema";
+import { getAttributionForGTM } from "@app/lib/attribution";
 import { clientFetch } from "@app/lib/egress/client";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
-import { getStoredUTMParams } from "@app/lib/utils/utm";
+import { getFullAttribution, getStoredUTMParams } from "@app/lib/utils/utm";
 import { normalizeError } from "@app/types";
 
 interface ContactFormProps {
@@ -46,7 +47,7 @@ function useContactFormSubmit() {
   const handleSubmit = async (data: ContactFormData): Promise<void> => {
     setSubmitError(null);
 
-    // Get tracking params from sessionStorage
+    // Get tracking params from attribution layer (localStorage with sessionStorage fallback)
     const storedParams = getStoredUTMParams();
     const tracking: TrackingParams = {
       utm_source: storedParams.utm_source,
@@ -54,13 +55,10 @@ function useContactFormSubmit() {
       utm_campaign: storedParams.utm_campaign,
       utm_content: storedParams.utm_content,
       utm_term: storedParams.utm_term,
-      gclid: storedParams.gclid ?? sessionStorage.getItem("gclid") ?? undefined,
+      gclid: storedParams.gclid,
       fbclid: storedParams.fbclid,
       msclkid: storedParams.msclkid,
-      li_fat_id:
-        storedParams.li_fat_id ??
-        sessionStorage.getItem("li_fat_id") ??
-        undefined,
+      li_fat_id: storedParams.li_fat_id,
     };
 
     // Track form submission attempt
@@ -100,12 +98,22 @@ function useContactFormSubmit() {
         action: "submit_success",
       });
 
-      // Push GTM event with actual qualification status
+      // Push GTM event with actual qualification status, form details, and attribution data
       if (typeof window !== "undefined") {
         window.dataLayer = window.dataLayer ?? [];
+        const attributionData = getAttributionForGTM(getFullAttribution());
         window.dataLayer.push({
           event: "contact_form_submitted",
           is_qualified: result.isQualified,
+          user_email: data.email,
+          user_phone: data.mobilephone,
+          user_first_name: data.firstname,
+          user_last_name: data.lastname,
+          user_language: data.language,
+          user_headquarters_region: data.headquarters_region,
+          user_company_headcount: data.company_headcount_form,
+          // Attribution data for conversion tracking
+          ...attributionData,
         });
       }
 
