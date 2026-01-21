@@ -615,7 +615,7 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     // Call createAgentMessages
-    const { agentMessages, richMentions } = await withTransaction(
+    const { richMentions } = await withTransaction(
       async (transaction) => {
         return createAgentMessages(auth, {
           conversation: testConversation,
@@ -744,7 +744,7 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     // Call createAgentMessages
-    const { agentMessages, richMentions } = await withTransaction(
+    const { richMentions } = await withTransaction(
       async (transaction) => {
         return createAgentMessages(auth, {
           conversation: testConversation,
@@ -873,7 +873,7 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     // Call createAgentMessages
-    const { agentMessages, richMentions } = await withTransaction(
+    const { richMentions } = await withTransaction(
       async (transaction) => {
         return createAgentMessages(auth, {
           conversation: testConversation,
