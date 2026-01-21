@@ -867,7 +867,6 @@ export class Authenticator {
         this._editorGroups = [];
         return [];
       }
-
       this._editorGroups = await GroupResource.listUserGroupsInWorkspace({
         user: this._user,
         workspace: renderLightWorkspaceType({ workspace: this._workspace }),

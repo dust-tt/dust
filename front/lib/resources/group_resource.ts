@@ -694,7 +694,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     const [group] = groups;
 
-    await group.ensureAuthGroupsLoaded(auth);
+    await group.ensureAuthGroupsAreLoaded(auth);
     if (!group.canRead(auth)) {
       return null;
     }
@@ -1062,6 +1062,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
+    await this.ensureAuthGroupsAreLoaded(auth);
+
     if (
       !auth.canWrite(
         requestedPermissions
@@ -1229,6 +1231,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
+    await this.ensureAuthGroupsAreLoaded(auth);
+
     if (
       !auth.canWrite(
         requestedPermissions
@@ -1380,6 +1384,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
+    await this.ensureAuthGroupsAreLoaded(auth);
+
     if (
       !auth.canWrite(
         requestedPermissions
@@ -1602,7 +1608,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return this.kind === "provisioned";
   }
 
-  async ensureAuthGroupsLoaded(auth: Authenticator) {
+  async ensureAuthGroupsAreLoaded(auth: Authenticator) {
     if (this.kind === "agent_editors") {
       await auth.editorGroups();
     }
