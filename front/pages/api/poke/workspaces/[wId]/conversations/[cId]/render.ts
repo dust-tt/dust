@@ -259,7 +259,7 @@ async function handler(
         hasAvailableActions: availableActions.length > 0,
         errorContext: mcpToolsListingError,
         agentsList,
-        conversationId: conversation.sId,
+        conversation,
         serverToolsAndInstructions,
         enabledSkills,
         equippedSkills,
