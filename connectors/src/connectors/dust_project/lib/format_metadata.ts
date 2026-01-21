@@ -4,11 +4,35 @@ import type { ProjectMetadataType } from "@dust-tt/client";
  * Formats project metadata as a markdown document.
  */
 export function formatProjectMetadata(metadata: ProjectMetadataType): string {
-  if (!metadata.description) {
-    return "# Description\n\nNo description available for this project.";
+  const sections: string[] = [];
+
+  if (metadata.description) {
+    sections.push("# Description");
+    sections.push("");
+    sections.push(metadata.description);
+    sections.push("");
+  }
+  // URLs section
+  if (metadata.urls && metadata.urls.length > 0) {
+    sections.push("# URLs");
+    sections.push("");
+    for (const url of metadata.urls) {
+      sections.push(`- ${url}`);
+    }
+    sections.push("");
   }
 
-  return `# Description\n\n${metadata.description}`;
+  // Members section
+  if (metadata.members && metadata.members.length > 0) {
+    sections.push("# Members");
+    sections.push("");
+    for (const member of metadata.members) {
+      sections.push(`- ${member}`);
+    }
+    sections.push("");
+  }
+
+  return sections.join("\n");
 }
 
 /**

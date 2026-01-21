@@ -145,6 +145,8 @@ const API_ERROR_TYPES = [
   "elasticsearch_error",
   // Skills
   "skill_not_found",
+  // Projects
+  "project_metadata_not_found",
 ] as const;
 
 export type APIErrorType = (typeof API_ERROR_TYPES)[number];
