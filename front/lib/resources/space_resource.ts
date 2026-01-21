@@ -42,6 +42,7 @@ import {
   Err,
   GLOBAL_SPACE_NAME,
   Ok,
+  PROJECT_EDITOR_GROUP_PREFIX,
   removeNulls,
 } from "@app/types";
 
@@ -563,8 +564,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const { isRestricted } = params;
 
-    let editorGroup = this.getSpaceManualEditorGroup();
-
     const wasRestricted = this.groups.every((g) => !g.isGlobal());
 
     const groupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
@@ -652,70 +651,45 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         }
 
         // Handle editor group - create if needed and update members
-        if (editorIds.length > 0) {
-          const editorUsers = await UserResource.fetchByIds(editorIds);
+        if (this.isProject()) {
+          assert(
+            editorIds.length > 0,
+            "Projects must have at least one editor."
+          );
 
-          let editorGroupSpace: GroupSpaceEditorResource | null = null;
+          let editorGroupSpace = await GroupSpaceEditorResource.fetchBySpace(
+            this.workspaceId,
+            this,
+            t
+          );
 
-          if (!editorGroup) {
+          if (!editorGroupSpace) {
             // Create a new editor group
-            editorGroup = await GroupResource.makeNew(
+            const editorGroup = await GroupResource.makeNew(
               {
-                name: `Editors for ${this.kind === "project" ? "project" : "space"} ${this.name}`,
+                name: `${PROJECT_EDITOR_GROUP_PREFIX} ${this.name}`,
                 kind: "space_editors",
                 workspaceId: this.workspaceId,
               },
               { transaction: t }
             );
 
-            // Link the editor group to the space using GroupSpaceBaseResource.makeNew
+            // Link the editor group to the space
             editorGroupSpace = await GroupSpaceEditorResource.makeNew(auth, {
               group: editorGroup,
               space: this,
               transaction: t,
             });
-          } else {
-            // Fetch existing editor group-space relationship
-            editorGroupSpace = await GroupSpaceEditorResource.fetchBySpace(
-              this.workspaceId,
-              this,
-              t
-            );
-
-            if (!editorGroupSpace) {
-              return new Err(
-                new DustError(
-                  "group_not_found",
-                  "Editor group-space relationship not found."
-                )
-              );
-            }
           }
 
           // Set members of the editor group using the GroupSpaceEditorResource
+          const editorUsers = await UserResource.fetchByIds(editorIds);
           const setEditorsRes = await editorGroupSpace.setMembers(auth, {
             users: editorUsers.map((u) => u.toJSON()),
             transaction: t,
           });
           if (setEditorsRes.isErr()) {
             return setEditorsRes;
-          }
-        } else if (editorGroup) {
-          // No editors specified, clear the editor group
-          const editorGroupSpace = await GroupSpaceEditorResource.fetchBySpace(
-            this.workspaceId,
-            this,
-            t
-          );
-
-          if (editorGroupSpace) {
-            const setEditorsRes = await editorGroupSpace.setMembers(auth, {
-              users: [],
-              transaction: t,
-            });
-            if (setEditorsRes.isErr()) {
-              return setEditorsRes;
-            }
           }
         }
       } else if (managementMode === "group") {

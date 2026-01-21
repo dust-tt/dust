@@ -38,6 +38,7 @@ import type { AgentsUsageType, Result } from "@app/types";
 import {
   Err,
   Ok,
+  PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
   removeNulls,
   SPACE_GROUP_PREFIX,
@@ -344,8 +345,8 @@ export async function createSpaceAndGroup(
     isRestricted: boolean;
     spaceKind: "regular" | "project";
   } & (
-    | { memberIds: string[]; editorIds?: string[]; managementMode: "manual" }
-    | { groupIds: string[]; editorGroupIds?: string[]; managementMode: "group" }
+    | { memberIds: string[]; managementMode: "manual" }
+    | { groupIds: string[]; managementMode: "group" }
   ),
   { ignoreWorkspaceLimit = false }: { ignoreWorkspaceLimit?: boolean } = {}
 ): Promise<
@@ -405,7 +406,7 @@ export async function createSpaceAndGroup(
 
     const membersGroup = await GroupResource.makeNew(
       {
-        name: `${SPACE_GROUP_PREFIX} ${name}`,
+        name: `${spaceKind === "project" ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${name}`,
         workspaceId: owner.id,
         kind: "regular",
       },
@@ -427,7 +428,7 @@ export async function createSpaceAndGroup(
       const creator = auth.getNonNullableUser();
       const editorGroup = await GroupResource.makeNew(
         {
-          name: `${PROJECT_GROUP_PREFIX} ${name}`,
+          name: `${PROJECT_EDITOR_GROUP_PREFIX} ${name}`,
           workspaceId: owner.id,
           kind: "space_editors",
         },
@@ -465,21 +466,16 @@ export async function createSpaceAndGroup(
 
     // Handle member-based space creation
     if (params.managementMode === "manual") {
-      let editorGroup: GroupResource | undefined;
-      // Handle editor group if editorIds are provided (for project spaces only)
-      if (
-        space.isProject() &&
-        params.editorIds &&
-        params.editorIds.length > 0
-      ) {
-        // Create editor group
-        editorGroup = await GroupResource.makeNew(
+      if (space.isProject()) {
+        // Create an editor group, add the project creator, and link it to the project
+        const creator = auth.getNonNullableUser();
+        const editorGroup = await GroupResource.makeNew(
           {
-            name: `Editors for project ${name}`,
+            name: `${PROJECT_EDITOR_GROUP_PREFIX} ${name}`,
             workspaceId: owner.id,
             kind: "space_editors",
           },
-          { transaction: t }
+          { memberIds: [creator.id], transaction: t }
         );
 
         // Add editor group to space with kind="project_editor"
@@ -488,28 +484,6 @@ export async function createSpaceAndGroup(
           space,
           transaction: t,
         });
-        const creator = auth.getNonNullableUser();
-
-        // Add the project creator as editor by default
-        const editorUsers = (
-          await UserResource.fetchByIds([...params.editorIds, creator.sId])
-        ).map((user) => user.toJSON());
-
-        // Add users to the newly created group. For the specific purpose of
-        // space_editors group creation, we don't use addMembers, since only admins
-        // can add/remove members this way. We create the relation directly.
-        for (const editorUser of editorUsers) {
-          await GroupMembershipModel.create(
-            {
-              groupId: editorGroup.id,
-              userId: editorUser.id,
-              workspaceId: owner.id,
-              startAt: new Date(),
-              status: "active" as const,
-            },
-            { transaction: t }
-          );
-        }
       }
 
       // Add members to the member group

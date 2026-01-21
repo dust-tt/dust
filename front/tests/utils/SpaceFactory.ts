@@ -6,7 +6,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { WorkspaceType } from "@app/types";
-import { removeNulls } from "@app/types";
+import { removeNulls, SPACE_GROUP_PREFIX } from "@app/types";
 
 export class SpaceFactory {
   static async defaults(auth: Authenticator) {
@@ -53,7 +53,7 @@ export class SpaceFactory {
   static async regular(workspace: WorkspaceType) {
     const name = "space " + faker.string.alphanumeric(8);
     const group = await GroupResource.makeNew({
-      name: `Group for space ${name}`,
+      name: `${SPACE_GROUP_PREFIX} ${name}`,
       workspaceId: workspace.id,
       kind: "regular",
     });
