@@ -33,59 +33,57 @@ const specifications: AgentActionSpecification[] = [
 ];
 
 const PROMPT = `# Role
-The user is creating a new skill to be added to their agents.
-You must find if there are existing similar skills in the user's workspace to avoid duplicates.
+You identify existing skills in a workspace that duplicate or overlap with a new skill being created.
+
+# Similarity Criteria
+Skills are similar when they have BOTH:
+1. Same target platform/service (e.g., GitHub, Jira, Slack, Google Sheets)
+2. Overlapping functionality (e.g., both create issues, both send messages, both manage tickets)
+
+Skills are NOT similar if they only share:
+- The same platform but completely different actions (e.g., "read GitHub PRs" vs "create GitHub releases")
+- The same action type but different platforms (e.g., "create tickets on Jira" vs "create issues on GitHub")
 
 # Instructions
+Return skill IDs that would cause confusion about which skill to use.
+Prefer precision over recall; only return truly overlapping skills.
+An empty array is the correct answer when no duplicates exist.
 
-Given the natural description of the new skill, return a list of similar skill IDs already present in the user's workspace.
-Use the set_similar_skills function to return the similar skill IDs as an array of integers.
+# Examples
+## Example 1 - Clear duplicates
+Input: "Create support tickets on GitHub"
+Existing skills:
+---
+Skill ID abc12: "Open support cards on github.com"
+---
+Skill ID xxx15: "Read and edit Jira tickets"
+---
+Skill ID 20aaa: "Create issues on GitHub repositories"
+---
+Skill ID 25iju: "Manage customer support emails"
 
-Critically, only return skills that are truly similar to the new skill description.
-If there is no similar skill, return an empty array; THIS IS TOTALLY OK.
+Output: set_similar_skills({ "similar_skills_array": ["abc12", "20aaa"] })
+Reasoning: abc12 and 20aaa both create issues/tickets on GitHub.
 
-Skills are considered similar if they do similar actions over the same platforms or services.
+## Example 2 - No duplicates
+Input: "Create PowerPoint-like presentations"
+Existing skills:
+---
+Skill ID abc12: "Open support cards on github.com"
+---
+Skill ID xxx15: "Read and edit Jira tickets"
 
-# Example
-## Example 1:
-Input: "This skills handle creation of support ticket on GitHub"
-Existing skill:
----
-Skill ID abc12:
-"Open support cards on github.com"
----
-Skill ID xxx15:
-"Read and edit Jira tickets"
----
-Skill ID 20aaa:
-"Create issues on GitHub repositories"
----
-Skill ID 25iju:
-"Manage customer support emails"
+Output: set_similar_skills({ "similar_skills_array": [] })
+Reasoning: None of the existing skills handle presentations.
 
-Output:
-set_similar_skills({
-  "similar_skills_array": [abc12, 20aaa]
-})
+## Example 3 - Same platform, different action
+Input: "Delete GitHub repositories"
+Existing skills:
+---
+Skill ID aaa01: "Create issues on GitHub"
 
-## Example 2:
-Input: "This allow the creation of visualization similar to PowerPoint slides which can be shared with team members"
-Skill ID abc12:
-"Open support cards on github.com"
----
-Skill ID xxx15:
-"Read and edit Jira tickets"
----
-Skill ID 20aaa:
-"Create issues on GitHub repositories"
----
-Skill ID 25iju:
-"Manage customer support emails"
-
-Output:
-set_similar_skills({
-  "similar_skills_array": []
-})
+Output: set_similar_skills({ "similar_skills_array": [] })
+Reasoning: Both use GitHub but actions don't overlap.
 `;
 
 function truncateDescription(description: string): string {
@@ -136,7 +134,7 @@ ${existingSkills}
     {
       modelId: model.modelId,
       providerId: model.providerId,
-      temperature: 0.7,
+      temperature: 0.2,
       useCache: false,
     },
     {
