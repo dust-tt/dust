@@ -42,7 +42,7 @@ export function useDebounce(
     [debouncedUpdate, minLength]
   );
 
-  // Cleanup on unmount
+  // Cleanup on unmount.
   useEffect(() => {
     return () => {
       debouncedUpdate.cancel();
@@ -103,7 +103,7 @@ export function useDebounceWithAbort<T = string>(
 
   const trigger = useCallback(
     (value: T) => {
-      // Clear existing debounce timeout
+      // Clear the existing debounce timeout.
       if (debounceHandle.current) {
         clearTimeout(debounceHandle.current);
         debounceHandle.current = undefined;
@@ -116,18 +116,23 @@ export function useDebounceWithAbort<T = string>(
           abortControllerRef.current.abort();
         }
 
-        // Create new abort controller
+        // Create a new abort controller.
         abortControllerRef.current = new AbortController();
         const signal = abortControllerRef.current.signal;
 
-        // Execute async function
-        void asyncFn(value, signal);
+        // Execute async function, ignoring AbortError since it's expected when requests are cancelled
+        void asyncFn(value, signal).catch((err) => {
+          if (err instanceof DOMException && err.name === "AbortError") {
+            return;
+          }
+          throw err;
+        });
       }, delayMs);
     },
     [asyncFn, delayMs]
   );
 
-  // Cleanup on unmount
+  // Cleanup on unmount.
   useEffect(() => {
     return () => {
       if (debounceHandle.current) {
