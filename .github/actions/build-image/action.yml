@@ -107,6 +107,9 @@ runs:
         elif [[ ${COMPONENT} == *"-edge" ]]; then
           ENV="edge"
           BASE_COMPONENT=${COMPONENT%-edge}
+        elif [[ ${COMPONENT} == *"-canary" ]]; then
+          ENV="prod"
+          BASE_COMPONENT=${COMPONENT%-canary}
         else
           ENV="prod"
           BASE_COMPONENT=${COMPONENT}
