@@ -22,7 +22,6 @@ on:
           - connectors
           - core
           - front
-          - front-edge
           - prodbox
           - oauth
           - viz
@@ -73,7 +72,7 @@ jobs:
         with:
           step: "start"
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
-          component: ${{ inputs.component }}
+          component: ${{ inputs.component }}-canary
           image_tag: ${{ needs.prepare.outputs.short_sha }}
           region: ${{ inputs.regions }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
