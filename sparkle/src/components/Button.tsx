@@ -305,20 +305,12 @@ export type IconOnlyButtonProps = CommonButtonProps & {
   label?: never;
 };
 
-/**
- * Default button props (all non-icon-only sizes).
- */
 export type RegularButtonProps = CommonButtonProps & {
   size?: Exclude<ButtonSizeType, "icon" | "icon-xs">;
   icon?: React.ComponentType;
   label?: string;
 };
 
-/**
- * Main Button props.
- * - If `size` is `"icon"` or `"icon-xs"`, `icon` is required and `label` is not allowed.
- * - Otherwise, `icon` is optional and `label` is allowed.
- */
 export type ButtonProps = IconOnlyButtonProps | RegularButtonProps;
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(

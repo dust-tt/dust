@@ -67,6 +67,12 @@ const sanitizeVariant = (
   return variant as ButtonGroupVariantType;
 };
 
+const isNonIconSize = (
+  size: ButtonSizeType | undefined
+): size is Exclude<ButtonSizeType, "icon" | "icon-xs"> | undefined => {
+  return size === undefined || (size !== "icon" && size !== "icon-xs");
+};
+
 const buttonGroupVariants = cva("s-inline-flex", {
   variants: {
     orientation: {
@@ -169,10 +175,8 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
       if (item.type === "button") {
         const nextVariant = sanitizeVariant(variant ?? item.props.variant);
         const rawSize = size ?? item.props.size;
-        const nextSize: Exclude<ButtonSizeType, "mini" | "icon" | "icon-xs"> | undefined =
-          PER_ITEM_SIZES.includes(rawSize as typeof PER_ITEM_SIZES[number])
-            ? undefined
-            : (rawSize as Exclude<ButtonSizeType, "mini" | "icon" | "icon-xs"> | undefined);
+        const nextSize =
+          isNonIconSize(rawSize) ? rawSize : undefined;
 
         return (
           <Button
@@ -193,10 +197,8 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
 
       const nextVariant = sanitizeVariant(variant ?? item.triggerProps.variant);
       const rawSize = size ?? item.triggerProps.size;
-      const nextSize: Exclude<ButtonSizeType, "icon" | "icon-xs"> | undefined =
-        rawSize === "icon" || rawSize === "icon-xs"
-          ? undefined
-          : (rawSize as Exclude<ButtonSizeType, "icon" | "icon-xs"> | undefined);
+      const nextSize =
+        isNonIconSize(rawSize) ? rawSize : undefined;
 
       return (
         <DropdownMenu key={index}>
