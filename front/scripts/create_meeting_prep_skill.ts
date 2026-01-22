@@ -126,9 +126,10 @@ General Principles:
 const INSTRUCTIONS_WITHOUT_EMAIL = `When a user asks about meeting preparation, follow this protocol:
 
 **Important: Email Access Not Connected**
-To provide the best meeting preparation, I recommend connecting your Gmail or Microsoft Outlook account to Dust. This will allow me to search your email history with participants and provide much richer context for your meetings.
+To provide the best meeting preparation, connecting a Gmail or Microsoft Outlook account to Dust will be necessary.
+This will allow searching through email history with participants and provide much richer context for meetings.
 
-With the tools currently available, here's what I can do:
+Here is an incomplete set of guidelines to follow when the user asks about meeting preparation:
 
 1. Extract Meeting Details
 - Get participant list with full names
