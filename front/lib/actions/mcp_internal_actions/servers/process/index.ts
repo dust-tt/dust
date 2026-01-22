@@ -410,6 +410,7 @@ async function getPromptForProcessDustApp({
     enabledSkills: [],
     equippedSkills: [],
     agentsList: null,
+    conversation,
     featureFlags,
   });
 }
