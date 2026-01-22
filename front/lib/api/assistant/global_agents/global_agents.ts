@@ -1,5 +1,5 @@
-import { AGENT_COPILOT_AGENT_STATE_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_agent_state/metadata";
-import { AGENT_COPILOT_CONTEXT_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/metadata";
+import { AGENT_COPILOT_AGENT_STATE_TOOL_NAME } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
+import { AGENT_COPILOT_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
   _getClaude3_7GlobalAgent,
@@ -11,7 +11,7 @@ import {
   _getClaude4SonnetGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
-import { _getCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
+import { _getDustCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
 import {
   _getBrowserSummaryAgent,
   _getDeepDiveGlobalAgent,
@@ -90,9 +90,7 @@ function getGlobalAgent({
   agentMemoryMCPServerView,
   memories,
   availableToolsets,
-  agentCopilotTargetConfigurationId,
-  agentCopilotContextMCPServerView,
-  agentCopilotAgentStateMCPServerView,
+  dustCopilotMCPServers,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -111,9 +109,10 @@ function getGlobalAgent({
   agentMemoryMCPServerView: MCPServerViewResource | null;
   memories: AgentMemoryResource[];
   availableToolsets: MCPServerViewResource[];
-  agentCopilotTargetConfigurationId: string | null;
-  agentCopilotContextMCPServerView: MCPServerViewResource | null;
-  agentCopilotAgentStateMCPServerView: MCPServerViewResource | null;
+  dustCopilotMCPServers: {
+    context: MCPServerViewResource;
+    agentState: MCPServerViewResource;
+  } | null;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -431,12 +430,11 @@ function getGlobalAgent({
         settings,
       });
       break;
-    case GLOBAL_AGENTS_SID.COPILOT:
-      agentConfiguration = _getCopilotGlobalAgent(auth, {
-        agentCopilotTargetConfigurationId,
-        agentCopilotContextMCPServerView,
-        agentCopilotAgentStateMCPServerView,
-      });
+    case GLOBAL_AGENTS_SID.DUST_COPILOT:
+      agentConfiguration = _getDustCopilotGlobalAgent(
+        auth,
+        dustCopilotMCPServers
+      );
       break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
@@ -484,8 +482,7 @@ const RETIRED_GLOBAL_AGENTS_SID = [
 export async function getGlobalAgents(
   auth: Authenticator,
   agentIds?: string[],
-  variant: AgentFetchVariant = "full",
-  context: { targetAgentConfigurationId?: string } = {}
+  variant: AgentFetchVariant = "full"
 ): Promise<AgentConfigurationType[]> {
   if (agentIds !== undefined && agentIds.some((sId) => !isGlobalAgentId(sId))) {
     throw new Error("Invalid agentIds.");
@@ -637,7 +634,7 @@ export async function getGlobalAgents(
   }
   if (!flags.includes("agent_builder_copilot")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.COPILOT
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_COPILOT
     );
   }
 
@@ -675,26 +672,27 @@ export async function getGlobalAgents(
     );
   }
 
-  let agentCopilotTargetConfigurationId: string | null = null;
-  let agentCopilotContextMCPServerView: MCPServerViewResource | null = null;
-  let agentCopilotAgentStateMCPServerView: MCPServerViewResource | null = null;
+  let dustCopilotMCPServers: {
+    context: MCPServerViewResource;
+    agentState: MCPServerViewResource;
+  } | null = null;
   if (
     variant === "full" &&
-    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT) &&
-    context.targetAgentConfigurationId
+    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_COPILOT)
   ) {
-    agentCopilotTargetConfigurationId = context.targetAgentConfigurationId;
-    [agentCopilotContextMCPServerView, agentCopilotAgentStateMCPServerView] =
-      await Promise.all([
-        MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          AGENT_COPILOT_CONTEXT_TOOL_NAME
-        ),
-        MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          AGENT_COPILOT_AGENT_STATE_TOOL_NAME
-        ),
-      ]);
+    const [context, agentState] = await Promise.all([
+      MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+        auth,
+        AGENT_COPILOT_CONTEXT_TOOL_NAME
+      ),
+      MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+        auth,
+        AGENT_COPILOT_AGENT_STATE_TOOL_NAME
+      ),
+    ]);
+    if (context && agentState) {
+      dustCopilotMCPServers = { context, agentState };
+    }
   }
 
   // For now we retrieve them all
@@ -718,9 +716,7 @@ export async function getGlobalAgents(
       agentMemoryMCPServerView,
       memories,
       availableToolsets,
-      agentCopilotTargetConfigurationId,
-      agentCopilotContextMCPServerView,
-      agentCopilotAgentStateMCPServerView,
+      dustCopilotMCPServers,
     })
   );
 

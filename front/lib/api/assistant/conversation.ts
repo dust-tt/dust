@@ -32,6 +32,7 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { extractFromString } from "@app/lib/mentions/format";
+import type { ConversationMetadata } from "@app/lib/models/agent/conversation";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -110,12 +111,14 @@ export async function createConversation(
     depth = 0,
     triggerId,
     spaceId,
+    metadata,
   }: {
     title: string | null;
     visibility: ConversationVisibility;
     depth?: number;
     triggerId?: ModelId | null;
     spaceId: ModelId | null;
+    metadata?: ConversationMetadata;
   }
 ): Promise<ConversationType> {
   const owner = auth.getNonNullableWorkspace();
@@ -141,6 +144,7 @@ export async function createConversation(
       triggerId,
       spaceId,
       requestedSpaceIds: [],
+      metadata: metadata ?? {},
     },
     space
   );

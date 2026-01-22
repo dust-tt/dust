@@ -116,10 +116,14 @@ export const useCopilotPanelContext = () => {
 
 interface CopilotPanelProviderProps {
   children: ReactNode;
+  targetAgentConfigurationId: string | null;
+  targetAgentConfigurationVersion: number;
 }
 
 export const CopilotPanelProvider = ({
   children,
+  targetAgentConfigurationId,
+  targetAgentConfigurationVersion,
 }: CopilotPanelProviderProps) => {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
@@ -138,7 +142,7 @@ export const CopilotPanelProvider = ({
   });
 
   const startConversation = useCallback(async () => {
-    if (hasStartedRef.current) {
+    if (hasStartedRef.current || !targetAgentConfigurationId) {
       return;
     }
     hasStartedRef.current = true;
@@ -150,11 +154,17 @@ export const CopilotPanelProvider = ({
     const result = await createConversationWithMessage({
       messageData: {
         input: systemPrompt,
-        mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+        mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST_COPILOT }],
         contentFragments: { uploaded: [], contentNodes: [] },
         origin: "agent_copilot",
       },
       visibility: "unlisted",
+      metadata: {
+        agentCopilot: {
+          targetAgentConfigurationId,
+          targetAgentConfigurationVersion,
+        },
+      },
     });
 
     if (result.isOk()) {
@@ -169,7 +179,12 @@ export const CopilotPanelProvider = ({
     }
 
     setIsCreatingConversation(false);
-  }, [createConversationWithMessage, sendNotification]);
+  }, [
+    createConversationWithMessage,
+    sendNotification,
+    targetAgentConfigurationId,
+    targetAgentConfigurationVersion,
+  ]);
 
   const resetConversation = useCallback(() => {
     hasStartedRef.current = false;

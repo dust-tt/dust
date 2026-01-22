@@ -84,7 +84,7 @@ async function handler(
         });
       }
 
-      const { title, visibility, spaceId, message, contentFragments } =
+      const { title, visibility, spaceId, message, contentFragments, metadata } =
         bodyValidation.right;
 
       if (message?.context.clientSideMCPServerIds) {
@@ -129,6 +129,7 @@ async function handler(
         title,
         visibility,
         spaceId: spaceModelId,
+        metadata,
       });
 
       const newContentFragments: ContentFragmentType[] = [];

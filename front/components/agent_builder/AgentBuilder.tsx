@@ -17,6 +17,7 @@ import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilde
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
 import { useCopilotMCPServer } from "@app/components/agent_builder/copilot/useMCPServer";
+import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import {
   PersonalConnectionRequiredDialog,
@@ -482,6 +483,7 @@ export default function AgentBuilder({
       <FormProvider form={form} asForm={false}>
         <AgentBuilderContent
           agentConfiguration={agentConfiguration}
+          pendingAgentSId={pendingAgentSId}
           title={title}
           handleCancel={handleCancel}
           saveLabel={saveLabel}
@@ -503,6 +505,7 @@ export default function AgentBuilder({
  */
 interface AgentBuilderContentProps {
   agentConfiguration?: LightAgentConfigurationType;
+  pendingAgentSId: string | null;
   title: string;
   handleCancel: () => Promise<void>;
   saveLabel: string;
@@ -524,6 +527,7 @@ interface AgentBuilderContentProps {
 
 function AgentBuilderContent({
   agentConfiguration,
+  pendingAgentSId,
   title,
   handleCancel,
   saveLabel,
@@ -583,12 +587,19 @@ function AgentBuilderContent({
           />
         }
         rightPanel={
-          <ConversationSidePanelProvider>
-            <AgentBuilderRightPanel
-              agentConfigurationSId={agentConfiguration?.sId}
-              clientSideMCPServerId={clientSideMCPServerId}
-            />
-          </ConversationSidePanelProvider>
+          <CopilotPanelProvider
+            targetAgentConfigurationId={
+              agentConfiguration?.sId ?? pendingAgentSId ?? null
+            }
+            targetAgentConfigurationVersion={agentConfiguration?.version ?? 0}
+          >
+            <ConversationSidePanelProvider>
+              <AgentBuilderRightPanel
+                agentConfigurationSId={agentConfiguration?.sId}
+                clientSideMCPServerId={clientSideMCPServerId}
+              />
+            </ConversationSidePanelProvider>
+          </CopilotPanelProvider>
         }
       />
     </>

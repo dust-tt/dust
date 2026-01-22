@@ -10,42 +10,27 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 
-export function _getCopilotGlobalAgent(
-  auth: Authenticator,
-  {
-    agentCopilotTargetConfigurationId,
-    agentCopilotContextMCPServerView,
-    agentCopilotAgentStateMCPServerView,
-  }: {
-    agentCopilotTargetConfigurationId: string | null;
-    agentCopilotContextMCPServerView: MCPServerViewResource | null;
-    agentCopilotAgentStateMCPServerView: MCPServerViewResource | null;
-  }
-): AgentConfigurationType | null {
-  if (
-    !agentCopilotTargetConfigurationId ||
-    !agentCopilotContextMCPServerView ||
-    !agentCopilotAgentStateMCPServerView
-  ) {
-    return null;
-  }
+interface DustCopilotMCPServers {
+  context: MCPServerViewResource;
+  agentState: MCPServerViewResource;
+}
 
+export function _getDustCopilotGlobalAgent(
+  auth: Authenticator,
+  dustCopilotMCPServers: DustCopilotMCPServers | null
+): AgentConfigurationType {
   const owner = auth.getNonNullableWorkspace();
 
-  const actions = [
-    buildServerSideMCPServerConfiguration({
-      mcpServerView: agentCopilotContextMCPServerView,
-      additionalConfiguration: {
-        AGENT_CONFIGURATION_ID_KEY: agentCopilotTargetConfigurationId,
-      },
-    }),
-    buildServerSideMCPServerConfiguration({
-      mcpServerView: agentCopilotAgentStateMCPServerView,
-      additionalConfiguration: {
-        AGENT_CONFIGURATION_ID_KEY: agentCopilotTargetConfigurationId,
-      },
-    }),
-  ];
+  const actions = dustCopilotMCPServers
+    ? [
+        buildServerSideMCPServerConfiguration({
+          mcpServerView: dustCopilotMCPServers.context,
+        }),
+        buildServerSideMCPServerConfiguration({
+          mcpServerView: dustCopilotMCPServers.agentState,
+        }),
+      ]
+    : [];
 
   const modelConfiguration = getLargeWhitelistedModel(owner);
   const model = modelConfiguration
@@ -57,7 +42,7 @@ export function _getCopilotGlobalAgent(
       }
     : dummyModelConfiguration;
 
-  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.COPILOT);
+  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.DUST_COPILOT);
 
   return {
     id: -1,

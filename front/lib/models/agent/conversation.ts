@@ -17,6 +17,15 @@ import type {
   UserMessageOrigin,
 } from "@app/types";
 
+export interface AgentCopilotMetadata {
+  targetAgentConfigurationId: string;
+  targetAgentConfigurationVersion: number;
+}
+
+export interface ConversationMetadata {
+  agentCopilot?: AgentCopilotMetadata;
+}
+
 export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -27,6 +36,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare depth: CreationOptional<number>;
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
   declare hasError: CreationOptional<boolean>;
+  declare metadata: CreationOptional<ConversationMetadata>;
 
   declare requestedSpaceIds: number[];
 
@@ -74,6 +84,11 @@ ConversationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    metadata: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: {},
     },
   },
   {
