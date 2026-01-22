@@ -11,11 +11,11 @@ import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type {
   CombinedResourcePermissions,
-  ModelId,
+  GroupPermission,
   Result,
   UserType,
 } from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
+import { assertNever, Err, Ok, removeNulls } from "@app/types";
 
 // Base class for group-space junction resources
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -35,14 +35,16 @@ export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
   }
 
   /**
-   * Helper method to find the editor group for a space.
-   * Returns the group with kind "project_editor" if it exists.
+   * Helper method to find the editor groups for a space.
+   * Returns the group_vaults with kind "project_editor".
    */
-  async getEditorGroupSpace(): Promise<GroupSpaceEditorResource | null> {
-    return GroupSpaceEditorResource.fetchBySpace(
-      this.space.workspaceId,
-      this.space
-    );
+  async getEditorGroupSpaces(
+    filterOnManagementMode: boolean = true
+  ): Promise<GroupSpaceEditorResource[]> {
+    return GroupSpaceEditorResource.fetchBySpace({
+      space: this.space,
+      filterOnManagementMode,
+    });
   }
 
   /**
@@ -231,45 +233,61 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
     );
   }
 
-  static async fetchBySpace(
-    auth: Authenticator,
-    {
-      space,
-      transaction,
-    }: {
-      space: SpaceResource;
-      transaction?: Transaction;
-    }
-  ): Promise<GroupSpaceMemberResource | null> {
-    const groupSpace = await GroupSpaceModel.findOne({
+  static async fetchBySpace({
+    space,
+    filterOnManagementMode = false, // if true, filters groups based on space management mode
+    transaction,
+  }: {
+    space: SpaceResource;
+    filterOnManagementMode?: boolean;
+    transaction?: Transaction;
+  }): Promise<GroupSpaceMemberResource[]> {
+    const groupSpaces = await GroupSpaceModel.findAll({
       where: {
         kind: "member",
         vaultId: space.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: space.workspaceId,
       },
       transaction,
     });
 
-    if (!groupSpace) {
-      return null;
-    }
+    const groupSpacesResources = await Promise.all(
+      groupSpaces.map(async (groupSpace) => {
+        const groupModels = await GroupModel.findAll({
+          where: {
+            id: groupSpace.groupId,
+            workspaceId: space.workspaceId,
+          },
+          transaction,
+        });
+        assert(
+          groupModels.length === 1,
+          "One and only one group must exist for member group space"
+        );
+        const groupModel = groupModels[0];
+        assert(
+          groupModel.kind !== "space_editors",
+          "Editors groups cannot be member groups"
+        );
+        if (filterOnManagementMode) {
+          // Keep only regular groups in manual mode, provisioned groups in provisioned mode
+          const filterOnKind =
+            space.managementMode === "manual" ? "regular" : "provisioned";
+          if (groupModel.kind !== filterOnKind) {
+            return null;
+          }
+        }
+        const group = new GroupResource(GroupModel, groupModel.get());
 
-    const groupModel = await GroupModel.findOne({
-      where: {
-        id: groupSpace.groupId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      transaction,
-    });
-    assert(groupModel, "Group must exist for member group space");
-    const group = new GroupResource(GroupModel, groupModel.get());
-
-    return new GroupSpaceMemberResource(
-      GroupSpaceModel,
-      groupSpace.get(),
-      space,
-      group
+        return new GroupSpaceMemberResource(
+          GroupSpaceModel,
+          groupSpace.get(),
+          space,
+          group
+        );
+      })
     );
+    return removeNulls(groupSpacesResources);
   }
 
   async requestedPermissions(): Promise<CombinedResourcePermissions[]> {
@@ -342,11 +360,12 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
           },
         ];
       case "project": {
-        const editorGroupSpace = await this.getEditorGroupSpace();
-        assert(
-          editorGroupSpace,
-          "Editor group space must exist for project spaces"
-        );
+        const editorGroupSpaces = await this.getEditorGroupSpaces(true);
+        const editorGroupsPermissions: GroupPermission[] =
+          editorGroupSpaces.map((egs) => ({
+            id: egs.groupId,
+            permissions: ["admin", "read", "write"],
+          }));
         return [
           {
             groups: [
@@ -354,10 +373,7 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
                 id: this.group.id,
                 permissions: ["read"],
               },
-              {
-                id: editorGroupSpace.groupId,
-                permissions: ["admin", "read", "write"],
-              },
+              ...editorGroupsPermissions,
             ],
             roles: [
               {
@@ -424,60 +440,88 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
     );
   }
 
-  static async fetchBySpace(
-    workspaceId: ModelId,
-    space: SpaceResource,
-    transaction?: Transaction
-  ): Promise<GroupSpaceEditorResource | null> {
+  static async fetchBySpace({
+    space,
+    filterOnManagementMode = false, // if true, filters groups based on space management mode
+    transaction,
+  }: {
+    space: SpaceResource;
+    filterOnManagementMode?: boolean;
+    transaction?: Transaction;
+  }): Promise<GroupSpaceEditorResource[]> {
     assert(space.isProject(), "Editor groups only apply to project spaces");
-    const groupSpace = await GroupSpaceModel.findOne({
+    const groupSpaces = await GroupSpaceModel.findAll({
       where: {
         kind: "project_editor",
         vaultId: space.id,
-        workspaceId,
+        workspaceId: space.workspaceId,
       },
     });
 
-    if (!groupSpace) {
-      return null;
-    }
+    const groupSpacesResources = await Promise.all(
+      groupSpaces.map(async (groupSpace) => {
+        const groupModels = await GroupModel.findAll({
+          where: {
+            id: groupSpace.groupId,
+            workspaceId: space.workspaceId,
+          },
+          transaction,
+        });
+        assert(
+          groupModels.length === 1,
+          "One and only one group must exist for editor group space"
+        );
+        const groupModel = groupModels[0];
+        assert(
+          groupModel.kind === "space_editors" ||
+            groupModel.kind === "provisioned",
+          "Only space_editors or provisioned groups can be editor groups"
+        );
 
-    const groupModel = await GroupModel.findOne({
-      where: {
-        id: groupSpace.groupId,
-        workspaceId,
-      },
-      transaction,
-    });
-    assert(groupModel, "Group must exist for editor group space");
-    const group = new GroupResource(GroupModel, groupModel.get());
-    assert(
-      group.isSpaceEditor() || group.isProvisioned(),
-      "Only space editors or provisioned groups can be an editor group"
-    );
+        if (filterOnManagementMode) {
+          // Keep only space_editors groups in manual mode, provisioned groups in provisioned mode
+          const filterOnKind =
+            space.managementMode === "manual" ? "space_editors" : "provisioned";
+          if (groupModel.kind !== filterOnKind) {
+            return null;
+          }
+        }
 
-    return new GroupSpaceEditorResource(
-      GroupSpaceModel,
-      groupSpace.get(),
-      space,
-      group
+        const group = new GroupResource(GroupModel, groupModel.get());
+        assert(
+          group.isSpaceEditor() || group.isProvisioned(),
+          "Only space editors or provisioned groups can be an editor group"
+        );
+
+        return new GroupSpaceEditorResource(
+          GroupSpaceModel,
+          groupSpace.get(),
+          space,
+          group
+        );
+      })
     );
+    return removeNulls(groupSpacesResources);
   }
 
   async requestedPermissions(): Promise<CombinedResourcePermissions[]> {
     if (this.space.isProject()) {
-      const editorGroupSpace = await this.getEditorGroupSpace();
+      const editorGroupSpaces = await this.getEditorGroupSpaces(true);
+      const editorGroupsPermissions: GroupPermission[] = editorGroupSpaces.map(
+        (egs) => ({
+          id: egs.groupId,
+          permissions: ["admin", "read", "write"],
+        })
+      );
       return [
         {
-          groups: editorGroupSpace
-            ? [
-                {
-                  id: editorGroupSpace.groupId,
-                  permissions: ["admin", "read", "write"],
-                },
-              ]
-            : [],
-          roles: [],
+          groups: editorGroupsPermissions,
+          roles: [
+            {
+              role: "admin",
+              permissions: ["admin", "read", "write"],
+            },
+          ],
           workspaceId: this.space.workspaceId,
         },
       ];
@@ -532,38 +576,43 @@ export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
     );
   }
 
-  static async fetchBySpace(
-    auth: Authenticator,
-    {
-      space,
-      transaction,
-    }: {
-      space: SpaceResource;
-      transaction?: Transaction;
-    }
-  ): Promise<GroupSpaceViewerResource | null> {
+  static async fetchBySpace({
+    space,
+    transaction,
+  }: {
+    space: SpaceResource;
+    transaction?: Transaction;
+  }): Promise<GroupSpaceViewerResource | null> {
     assert(space.isProject(), "Viewer groups only apply to project spaces");
-    const groupSpace = await GroupSpaceModel.findOne({
+    const groupSpaces = await GroupSpaceModel.findAll({
       where: {
         kind: "project_viewer",
         vaultId: space.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: space.workspaceId,
       },
       transaction,
     });
 
-    if (!groupSpace) {
+    assert(
+      groupSpaces.length <= 1,
+      "There should be at most one viewer group per project"
+    );
+    if (groupSpaces.length === 0) {
       return null;
     }
 
-    const groupModel = await GroupModel.findOne({
+    const groupModels = await GroupModel.findAll({
       where: {
-        id: groupSpace.groupId,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        id: groupSpaces[0].groupId,
+        workspaceId: space.workspaceId,
       },
       transaction,
     });
-    assert(groupModel, "Group must exist for viewer group space");
+    assert(
+      groupModels.length === 1,
+      "One and only one group must exist for viewer group space"
+    );
+    const groupModel = groupModels[0];
     assert(
       groupModel.kind === "global",
       "Only the global group can be a viewer group"
@@ -574,7 +623,7 @@ export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
 
     return new GroupSpaceViewerResource(
       GroupSpaceModel,
-      groupSpace.get(),
+      groupSpaces[0].get(),
       space,
       group
     );
@@ -585,10 +634,12 @@ export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
       this.space.isProject(),
       "Viewer permissions only apply to project spaces"
     );
-    const editorGroupSpace = await this.getEditorGroupSpace();
-    assert(
-      editorGroupSpace,
-      "Editor group space must exist for project spaces"
+    const editorGroupSpaces = await this.getEditorGroupSpaces(true);
+    const editorGroupsPermissions: GroupPermission[] = editorGroupSpaces.map(
+      (egs) => ({
+        id: egs.groupId,
+        permissions: ["admin", "read", "write"],
+      })
     );
     return [
       {
@@ -597,10 +648,7 @@ export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
             id: this.group.id,
             permissions: ["read"],
           },
-          {
-            id: editorGroupSpace.groupId,
-            permissions: ["admin", "read", "write"],
-          },
+          ...editorGroupsPermissions,
         ],
         roles: [
           {

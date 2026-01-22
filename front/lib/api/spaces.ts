@@ -16,9 +16,7 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import {
-  GroupSpaceMemberResource,
-} from "@app/lib/resources/group_space_resource";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";

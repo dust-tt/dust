@@ -59,7 +59,7 @@ describe("GroupSpaceMemberResource", () => {
   });
 
   describe("fetchBySpace", () => {
-    it("should return null when no member GroupSpace exists for the space", async () => {
+    it("should return empty array when no member GroupSpace exists for the space", async () => {
       // Create a space without any member groups
       const emptySpace = await SpaceResource.makeNew(
         {
@@ -70,25 +70,27 @@ describe("GroupSpaceMemberResource", () => {
         { members: [] }
       );
 
-      const result = await GroupSpaceMemberResource.fetchBySpace(auth, {
+      const result = await GroupSpaceMemberResource.fetchBySpace({
         space: emptySpace,
+        filterOnManagementMode: false,
       });
 
-      expect(result).toBeNull();
+      expect(result).toEqual([]);
     });
 
     it("should fetch an existing GroupSpaceMemberResource by space", async () => {
       // regularSpace already has a member group from SpaceFactory.regular
       // Let's fetch it
-      const result = await GroupSpaceMemberResource.fetchBySpace(auth, {
+      const result = await GroupSpaceMemberResource.fetchBySpace({
         space: regularSpace,
       });
 
-      expect(result).toBeInstanceOf(GroupSpaceMemberResource);
-      expect(result?.vaultId).toBe(regularSpace.id);
-      expect(result?.kind).toBe("member");
+      expect(result.length).toBeGreaterThan(0);
+      expect(result[0]).toBeInstanceOf(GroupSpaceMemberResource);
+      expect(result[0]?.vaultId).toBe(regularSpace.id);
+      expect(result[0]?.kind).toBe("member");
       // The group should be the one created by SpaceFactory
-      expect(result?.groupId).toBeDefined();
+      expect(result[0]?.groupId).toBeDefined();
     });
 
     // Note: Testing the assertion "Group must exist for member group space" is not possible
@@ -177,17 +179,17 @@ describe("GroupSpaceEditorResource", () => {
 
   describe("fetchBySpace", () => {
     it("should return the existing editor group space for a project", async () => {
-      const result = await GroupSpaceEditorResource.fetchBySpace(
-        workspace.id,
-        projectSpace
-      );
+      const result = await GroupSpaceEditorResource.fetchBySpace({
+        space: projectSpace,
+      });
 
-      expect(result).toBeInstanceOf(GroupSpaceEditorResource);
-      expect(result?.vaultId).toBe(projectSpace.id);
-      expect(result?.kind).toBe("project_editor");
+      expect(result.length).toBeGreaterThan(0);
+      expect(result[0]).toBeInstanceOf(GroupSpaceEditorResource);
+      expect(result[0]?.vaultId).toBe(projectSpace.id);
+      expect(result[0]?.kind).toBe("project_editor");
     });
 
-    it("should return null when no editor GroupSpace exists for the project", async () => {
+    it("should return empty array when no editor GroupSpace exists for the project", async () => {
       // Delete existing editor group spaces
       await GroupSpaceModel.destroy({
         where: {
@@ -197,19 +199,18 @@ describe("GroupSpaceEditorResource", () => {
         },
       });
 
-      const result = await GroupSpaceEditorResource.fetchBySpace(
-        workspace.id,
-        projectSpace
-      );
+      const result = await GroupSpaceEditorResource.fetchBySpace({
+        space: projectSpace,
+      });
 
-      expect(result).toBeNull();
+      expect(result).toEqual([]);
     });
 
     it("should throw an assertion error when space is not a project space", async () => {
       const regularSpace = await SpaceFactory.regular(workspace);
 
       await expect(
-        GroupSpaceEditorResource.fetchBySpace(workspace.id, regularSpace)
+        GroupSpaceEditorResource.fetchBySpace({ space: regularSpace })
       ).rejects.toThrow("Editor groups only apply to project spaces");
     });
 
@@ -218,7 +219,7 @@ describe("GroupSpaceEditorResource", () => {
     // creating orphaned GroupSpace records. The assertion is still valid in production
     // if data integrity issues occur.
 
-    it("should throw an assertion error when group is not a space editor or provisioned group", async () => {
+    it("should throw an assertion error when group is not matching the management mode", async () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Regular Group",
         workspaceId: workspace.id,
@@ -242,10 +243,13 @@ describe("GroupSpaceEditorResource", () => {
         kind: "project_editor",
       });
 
+      // When filtering on management mode, the group won't be found because it doesn't match the expected kind
       await expect(
-        GroupSpaceEditorResource.fetchBySpace(workspace.id, projectSpace)
+        GroupSpaceEditorResource.fetchBySpace({
+          space: projectSpace,
+        })
       ).rejects.toThrow(
-        "Only space editors or provisioned groups can be an editor group"
+        "Only space_editors or provisioned groups can be editor groups"
       );
     });
   });
@@ -306,7 +310,7 @@ describe("GroupSpaceViewerResource", () => {
 
   describe("fetchBySpace", () => {
     it("should return null when no viewer GroupSpace exists for the project", async () => {
-      const result = await GroupSpaceViewerResource.fetchBySpace(auth, {
+      const result = await GroupSpaceViewerResource.fetchBySpace({
         space: projectSpace,
       });
 
@@ -319,7 +323,7 @@ describe("GroupSpaceViewerResource", () => {
         space: projectSpace,
       });
 
-      const result = await GroupSpaceViewerResource.fetchBySpace(auth, {
+      const result = await GroupSpaceViewerResource.fetchBySpace({
         space: projectSpace,
       });
 
@@ -333,7 +337,7 @@ describe("GroupSpaceViewerResource", () => {
       const regularSpace = await SpaceFactory.regular(workspace);
 
       await expect(
-        GroupSpaceViewerResource.fetchBySpace(auth, {
+        GroupSpaceViewerResource.fetchBySpace({
           space: regularSpace,
         })
       ).rejects.toThrow("Viewer groups only apply to project spaces");
@@ -360,7 +364,7 @@ describe("GroupSpaceViewerResource", () => {
       });
 
       await expect(
-        GroupSpaceViewerResource.fetchBySpace(auth, {
+        GroupSpaceViewerResource.fetchBySpace({
           space: projectSpace,
         })
       ).rejects.toThrow("Only the global group can be a viewer group");

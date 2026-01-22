@@ -625,24 +625,18 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         const users = await UserResource.fetchByIds(memberIds);
 
         // Get the GroupSpaceMemberResource for the member group
-        const memberGroupSpace = await GroupSpaceMemberResource.fetchBySpace(
-          auth,
-          {
-            space: this,
-            transaction: t,
-          }
+        const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
+          space: this,
+          transaction: t,
+          filterOnManagementMode: true,
+        });
+
+        assert(
+          memberGroupSpaces.length === 1,
+          "In manual management mode, there should be exactly one member group space."
         );
 
-        if (!memberGroupSpace) {
-          return new Err(
-            new DustError(
-              "group_not_found",
-              "Member group-space relationship not found."
-            )
-          );
-        }
-
-        const setMembersRes = await memberGroupSpace.setMembers(auth, {
+        const setMembersRes = await memberGroupSpaces[0].setMembers(auth, {
           users: users.map((u) => u.toJSON()),
           transaction: t,
         });
@@ -652,13 +646,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
         // Handle editor group - create if needed and update members
         if (this.isProject()) {
-          let editorGroupSpace = await GroupSpaceEditorResource.fetchBySpace(
-            this.workspaceId,
-            this,
-            t
-          );
+          let editorGroupSpaces = await GroupSpaceEditorResource.fetchBySpace({
+            space: this,
+            transaction: t,
+            filterOnManagementMode: true,
+          });
 
-          if (!editorGroupSpace) {
+          if (!editorGroupSpaces.length) {
             // Create a new editor group
             const editorGroup = await GroupResource.makeNew(
               {
@@ -670,12 +664,20 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             );
 
             // Link the editor group to the space
-            editorGroupSpace = await GroupSpaceEditorResource.makeNew(auth, {
-              group: editorGroup,
-              space: this,
-              transaction: t,
-            });
+            const editorGroupSpace = await GroupSpaceEditorResource.makeNew(
+              auth,
+              {
+                group: editorGroup,
+                space: this,
+                transaction: t,
+              }
+            );
+            editorGroupSpaces = [editorGroupSpace];
           }
+          assert(
+            editorGroupSpaces.length === 1,
+            "In manual management mode, there should be exactly one editor group space."
+          );
 
           // Set members of the editor group using the GroupSpaceEditorResource
           const editorUsers = await UserResource.fetchByIds(editorIds);
@@ -683,7 +685,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             editorUsers.length > 0,
             "Projects must have at least one editor."
           );
-          const setEditorsRes = await editorGroupSpace.setMembers(auth, {
+          const setEditorsRes = await editorGroupSpaces[0].setMembers(auth, {
             users: editorUsers.map((u) => u.toJSON()),
             transaction: t,
           });
@@ -793,27 +795,32 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       );
     }
 
+    assert(
+      this.isRegular() || this.isProject(),
+      "Only regular spaces and projects can have manual members."
+    );
+    assert(
+      this.managementMode === "manual",
+      "Can only add members in manual management mode."
+    );
+
     const users = await UserResource.fetchByIds(userIds);
 
     if (!users) {
       return new Err(new DustError("user_not_found", "User not found."));
     }
 
-    // Get the GroupSpaceMemberResource for the member group
-    const memberGroupSpace = await GroupSpaceMemberResource.fetchBySpace(auth, {
+    const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
       space: this,
+      filterOnManagementMode: true,
     });
 
-    if (!memberGroupSpace) {
-      return new Err(
-        new DustError(
-          "group_not_found",
-          "Member group-space relationship not found."
-        )
-      );
-    }
+    assert(
+      memberGroupSpaces.length === 1,
+      "In manual management mode, there should be exactly one member group space."
+    );
 
-    const addMemberRes = await memberGroupSpace.addMembers(auth, {
+    const addMemberRes = await memberGroupSpaces[0].addMembers(auth, {
       users: users.map((user) => user.toJSON()),
     });
 
@@ -859,20 +866,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     // Get the GroupSpaceMemberResource for the member group
-    const memberGroupSpace = await GroupSpaceMemberResource.fetchBySpace(auth, {
+    const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
       space: this,
+      filterOnManagementMode: true,
     });
 
-    if (!memberGroupSpace) {
-      return new Err(
-        new DustError(
-          "group_not_found",
-          "Member group-space relationship not found."
-        )
-      );
-    }
+    assert(
+      memberGroupSpaces.length === 1,
+      "In manual management mode, there should be exactly one member group space."
+    );
 
-    const removeMemberRes = await memberGroupSpace.removeMembers(auth, {
+    const removeMemberRes = await memberGroupSpaces[0].removeMembers(auth, {
       users: users.map((user) => user.toJSON()),
     });
 
