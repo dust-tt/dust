@@ -92,10 +92,9 @@ async function createSuggestedSkills(
     logger: Logger;
   }
 ): Promise<void> {
-  logger.info(
-    { execute, filePath, workspaceSId },
-    "Starting creation of suggested skills"
-  );
+  const logger = parentLogger.child({ workspaceId: workspace.sId });
+
+  logger.info({ filePath }, "Starting creation of suggested skills");
 
   // Resolve the file path
   const resolvedPath = path.resolve(filePath);
