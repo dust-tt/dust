@@ -23,18 +23,21 @@ const MICROSOFT_SERVERS = [
   "microsoft_teams",
 ] as const;
 
-const SKILL_DEFINITION = {
-  name: "Prep Meeting",
-  icon: "ActionBriefcaseIcon" as const,
-  description_for_humans:
-    "Systematically researches context for upcoming meetings by gathering email history, conversations, and relevant documents about all participants. Creates focused briefings with what you need to know, prepare, and discuss.",
-  description_for_agents: `This skill should be enabled when users need to:
+const SKILL_NAME = "Prep Meeting";
+const SKILL_ICON = "ActionBriefcaseIcon" as const;
+
+const DESCRIPTION_FOR_HUMANS =
+  "Systematically researches context for upcoming meetings by gathering email history, conversations, and relevant documents about all participants. Creates focused briefings with what you need to know, prepare, and discuss.";
+
+const DESCRIPTION_FOR_AGENTS = `This skill should be enabled when users need to:
 Prepare for upcoming meetings by gathering all relevant background
 Understand who they're meeting with and the history of their relationship
 Identify what they need to review or prepare before a meeting
 Get up to speed quickly on meeting participants and context
-Trigger phrases: "prep my meeting", "help me prepare for [meeting]", "what do I need to know about [meeting]", "meeting briefing", "meeting context"`,
-  instructions: `When a user asks about meeting preparation, follow this protocol:
+Trigger phrases: "prep my meeting", "help me prepare for [meeting]", "what do I need to know about [meeting]", "meeting briefing", "meeting context"`;
+
+// Full instructions when email suite (Google or Microsoft) is available
+const INSTRUCTIONS_WITH_EMAIL = `When a user asks about meeting preparation, follow this protocol:
 
 1. Extract Meeting Details
 - Get participant list with full names and email addresses
@@ -69,7 +72,7 @@ DO NOT include:
 - Information you cannot verify
 
 4. Preparation Checklist
-- Specific prep work needed 
+- Specific prep work needed
 - Documents to review
 - Questions to clarify
 - Relevant links to all context sources
@@ -96,15 +99,83 @@ Preparation:
 • [Documents to review]
 \`\`\`
 
-General Principles: 
+General Principles:
 
 - Be systematic: Follow the search protocol completely for every participant
 - Be specific: Use concrete details, never vague summaries
 - Verify everything: Only include what you can confirm with sources
 - Link everything: Provide direct links to emails, Slack threads, documents
 - Accept no context: If genuinely nothing exists after thorough search, say so explicitly
-- Never assume: Ask for clarification rather than make up information`,
-};
+- Never assume: Ask for clarification rather than make up information`;
+
+// Limited instructions when no email suite is available
+const INSTRUCTIONS_WITHOUT_EMAIL = `When a user asks about meeting preparation, follow this protocol:
+
+**Important: Email Access Not Connected**
+To provide the best meeting preparation, I recommend connecting your Gmail or Microsoft Outlook account to Dust. This will allow me to search your email history with participants and provide much richer context for your meetings.
+
+With the tools currently available, here's what I can do:
+
+1. Extract Meeting Details
+- Get participant list with full names
+- Get meeting time, title, and agenda (if available)
+- Extract any meeting links (Google Meet, Zoom, etc.)
+
+2. Context Search for Participants
+- Search Slack for participant names and company names (past month)
+- Look for relevant documents and previous notes
+- Search the web for public information about participants or their companies
+- Gather links to all context sources
+- If No Context Found: Be explicit about what information is not available
+
+3. Create Executive Summary
+- For the meeting, provide 3-5 focused bullet points based on available information
+- What is expected from this meeting
+- What to prepare or review beforehand
+- Key objectives or decisions to be made
+
+DO NOT include:
+- Generic placeholders or vague context
+- Information you cannot verify
+
+4. Preparation Checklist
+- Specific prep work needed
+- Documents to review
+- Questions to clarify
+- Relevant links to all context sources
+
+When asked to generate a summary, here is how you can format it in a readable and clear way:
+
+\`\`\`
+Meeting: [Title] at [Time]
+Participants: [List]
+Meeting Link: [Direct link]
+
+⚠️ Note: Connect Gmail or Outlook for email history with participants
+
+Executive Summary:
+• [Specific expectation/objective]
+• [Key context about participants]
+• [What to prepare]
+
+Context:
+- Slack mentions: [Summary with links]
+- Web search: [Relevant findings]
+- Related documents: [Links]
+
+Preparation:
+• [Specific action items]
+• [Documents to review]
+\`\`\`
+
+General Principles:
+
+- Be specific: Use concrete details, never vague summaries
+- Verify everything: Only include what you can confirm with sources
+- Link everything: Provide direct links to Slack threads, documents
+- Accept no context: If genuinely nothing exists after thorough search, say so explicitly
+- Never assume: Ask for clarification rather than make up information
+- Suggest email connection: Remind the user that connecting Gmail or Outlook would enhance meeting prep`;
 
 interface MCPServerViewInfo {
   id: number;
@@ -171,13 +242,13 @@ async function createMeetingPrepSkill(
   const existingSkill = await SkillConfigurationModel.findOne({
     where: {
       workspaceId: workspace.id,
-      name: SKILL_DEFINITION.name,
+      name: SKILL_NAME,
     },
   });
 
   if (existingSkill) {
     throw new Error(
-      `Skill "${SKILL_DEFINITION.name}" already exists in workspace (status: ${existingSkill.status})`
+      `Skill "${SKILL_NAME}" already exists in workspace (status: ${existingSkill.status})`
     );
   }
 
@@ -224,7 +295,7 @@ async function createMeetingPrepSkill(
   );
 
   // Prefer Google if available, otherwise use Microsoft
-  let suiteName: "Google" | "Microsoft" | "None" = "None";
+  let suiteName: "Google" | "Microsoft" | null = null;
   if (googleAvailable > 0) {
     suiteName = "Google";
     for (const serverName of GOOGLE_SERVERS) {
@@ -260,12 +331,19 @@ async function createMeetingPrepSkill(
     );
   }
 
+  // Select instructions based on email suite availability
+  const hasEmailSuite = suiteName !== null;
+  const instructions = hasEmailSuite
+    ? INSTRUCTIONS_WITH_EMAIL
+    : INSTRUCTIONS_WITHOUT_EMAIL;
+
   if (!execute) {
     logger.info(
       {
-        skillName: SKILL_DEFINITION.name,
+        skillName: SKILL_NAME,
         toolCount: selectedViewIds.length,
         servers: selectedServers,
+        hasEmailSuite,
       },
       "Would create suggested skill (dry run)"
     );
@@ -278,14 +356,14 @@ async function createMeetingPrepSkill(
     const createdSkill = await SkillConfigurationModel.create(
       {
         workspaceId: workspace.id,
-        name: SKILL_DEFINITION.name,
-        agentFacingDescription: SKILL_DEFINITION.description_for_agents,
-        userFacingDescription: SKILL_DEFINITION.description_for_humans,
-        instructions: SKILL_DEFINITION.instructions,
+        name: SKILL_NAME,
+        agentFacingDescription: DESCRIPTION_FOR_AGENTS,
+        userFacingDescription: DESCRIPTION_FOR_HUMANS,
+        instructions,
         status: "suggested",
         editedBy: null,
         requestedSpaceIds: [],
-        icon: SKILL_DEFINITION.icon,
+        icon: SKILL_ICON,
         extendedSkillId: null,
       },
       { transaction }
@@ -295,7 +373,7 @@ async function createMeetingPrepSkill(
     const editorGroup = await GroupResource.makeNew(
       {
         workspaceId: workspace.id,
-        name: `${AGENT_GROUP_PREFIX} ${SKILL_DEFINITION.name} (skill:${createdSkill.id})`,
+        name: `${AGENT_GROUP_PREFIX} ${SKILL_NAME} (skill:${createdSkill.id})`,
         kind: "agent_editors",
       },
       { transaction }
@@ -324,10 +402,11 @@ async function createMeetingPrepSkill(
     logger.info(
       {
         skillId: createdSkill.id,
-        skillName: SKILL_DEFINITION.name,
+        skillName: SKILL_NAME,
         toolsLinked: selectedViewIds.length,
         servers: selectedServers,
         suite: suiteName,
+        hasEmailSuite,
       },
       "Successfully created Meeting Prep skill"
     );
