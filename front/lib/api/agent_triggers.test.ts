@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
 
 import { getWebhookSourcesUsage } from "./agent_triggers";
 
 describe("getWebhookSourcesUsage", () => {
   it("returns webhook source usage for accessible agents", async () => {
-    const { workspace, authenticator, systemSpace, user } =
+    const { workspace, authenticator, systemSpace } =
       await createResourceTest({
         role: "admin",
       });
@@ -27,17 +27,12 @@ describe("getWebhookSourcesUsage", () => {
     const webhookSourceViewId = Number(systemView.id);
     const webhookSourceId = Number(systemView.webhookSourceId);
 
-    await TriggerModel.create({
-      workspaceId: workspace.id,
+    await TriggerFactory.webhook(authenticator, {
       name: "Webhook Usage Trigger",
-      kind: "webhook",
       agentConfigurationId: agent.sId,
-      editor: user.id,
-      customPrompt: null,
       status: "enabled",
       configuration: { includePayload: true },
       webhookSourceViewId,
-      origin: "user",
     });
 
     const usage = await getWebhookSourcesUsage({ auth: authenticator });
@@ -55,7 +50,7 @@ describe("getWebhookSourcesUsage", () => {
   });
 
   it("returns empty usage when trigger references no accessible agent", async () => {
-    const { workspace, authenticator, systemSpace, user } =
+    const { workspace, authenticator, systemSpace } =
       await createResourceTest({
         role: "admin",
       });
@@ -65,17 +60,12 @@ describe("getWebhookSourcesUsage", () => {
 
     const webhookSourceViewId = Number(systemView.id);
 
-    await TriggerModel.create({
-      workspaceId: workspace.id,
+    await TriggerFactory.webhook(authenticator, {
       name: "Orphan Trigger",
-      kind: "webhook",
       agentConfigurationId: "non-existent-agent",
-      editor: user.id,
-      customPrompt: null,
       status: "enabled",
       configuration: { includePayload: true },
       webhookSourceViewId,
-      origin: "user",
     });
 
     const usage = await getWebhookSourcesUsage({ auth: authenticator });
@@ -84,7 +74,7 @@ describe("getWebhookSourcesUsage", () => {
   });
 
   it("aggregates multiple agents linked to the same webhook source", async () => {
-    const { workspace, authenticator, systemSpace, user } =
+    const { workspace, authenticator, systemSpace } =
       await createResourceTest({
         role: "admin",
       });
@@ -108,30 +98,20 @@ describe("getWebhookSourcesUsage", () => {
     const webhookSourceViewId = Number(systemView.id);
     const webhookSourceId = Number(systemView.webhookSourceId);
 
-    await TriggerModel.create({
-      workspaceId: workspace.id,
+    await TriggerFactory.webhook(authenticator, {
       name: "Webhook Usage Trigger Beta",
-      kind: "webhook",
       agentConfigurationId: agentBeta.sId,
-      editor: user.id,
-      customPrompt: null,
       status: "enabled",
       configuration: { includePayload: true },
       webhookSourceViewId,
-      origin: "user",
     });
 
-    await TriggerModel.create({
-      workspaceId: workspace.id,
+    await TriggerFactory.webhook(authenticator, {
       name: "Webhook Usage Trigger Alpha",
-      kind: "webhook",
       agentConfigurationId: agentAlpha.sId,
-      editor: user.id,
-      customPrompt: null,
       status: "enabled",
       configuration: { includePayload: true },
       webhookSourceViewId,
-      origin: "user",
     });
 
     const usage = await getWebhookSourcesUsage({ auth: authenticator });
