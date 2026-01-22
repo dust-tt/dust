@@ -342,6 +342,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
           label="Projects"
+          type="collapse"
           defaultOpen
           action={
             isAdmin(owner) ? (
