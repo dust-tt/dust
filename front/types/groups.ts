@@ -112,8 +112,7 @@ export function getRoleFromHeaders(
 }
 
 /**
- * Pass the user's role to the API - only use for route which have allowUserOutsideCurrentWorkspace set to
- * true (runApp or runAppStreamed). Other API calls will always require builder/admin role.
+ * Pass the user's role to the API via headers for internal system-key calls (e.g., runApp).
  */
 export function getHeaderFromRole(role: RoleType | undefined) {
   if (!role) {
@@ -127,4 +126,5 @@ export function getHeaderFromRole(role: RoleType | undefined) {
 export const AGENT_GROUP_PREFIX = "Group for Agent";
 export const SKILL_GROUP_PREFIX = "Group for Skill";
 export const SPACE_GROUP_PREFIX = "Group for space";
+export const PROJECT_GROUP_PREFIX = "Group for project";
 export const GLOBAL_SPACE_NAME = "Company Data";

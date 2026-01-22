@@ -24,7 +24,6 @@ import {
   TestTubeIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useMemo } from "react";
 
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
@@ -36,6 +35,7 @@ import {
   sendOnboardingConversation,
   showDebugTools,
 } from "@app/lib/development";
+import { useAppRouter } from "@app/lib/platform";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   SubscriptionType,
@@ -51,7 +51,7 @@ interface UserMenuProps {
 }
 
 export function UserMenu({ user, owner, subscription }: UserMenuProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -213,7 +213,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
               <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
-                  {router.route === "/w/[wId]/conversation/[cId]" && (
+                  {router.pathname === "/w/[wId]/conversation/[cId]" && (
                     <DropdownMenuItem
                       label="Debug conversation"
                       onClick={() => {

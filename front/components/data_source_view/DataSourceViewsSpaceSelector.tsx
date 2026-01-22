@@ -39,7 +39,10 @@ export const DataSourceViewsSpaceSelector = ({
   isRootSelectable,
   selectionMode = "checkbox",
 }: DataSourceViewsSpaceSelectorProps) => {
-  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
+  const { spaces, isSpacesLoading } = useSpaces({
+    kinds: "all",
+    workspaceId: owner.sId,
+  });
 
   const defaultSpace = useMemo(() => {
     const firstKey = Object.keys(selectionConfigurations)[0] ?? null;

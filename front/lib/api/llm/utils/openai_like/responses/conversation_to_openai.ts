@@ -25,6 +25,7 @@ import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import type {
   ModelConversationTypeMultiActions,
+  ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types";
 import type {
@@ -213,7 +214,7 @@ export function toToolOption(
 
 export function toResponseFormat(
   responseFormat: string | null,
-  providerId: string
+  providerId: ModelProviderIdType
 ): ResponseFormatTextJSONSchemaConfig | undefined {
   const responseFormatObject = parseResponseFormatSchema(
     responseFormat,

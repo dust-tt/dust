@@ -1,6 +1,7 @@
 import {
   Button,
   DataTable,
+  LinkWrapper,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -8,7 +9,6 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
 import React, { useMemo, useState } from "react";
 
 import {
@@ -89,9 +89,9 @@ export function CreditHistorySheet({
             )}
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               For older credits,{" "}
-              <Link href="mailto:support@dust.tt" className="underline">
+              <LinkWrapper href="mailto:support@dust.tt" className="underline">
                 contact support
-              </Link>
+              </LinkWrapper>
               .
             </p>{" "}
           </SheetContainer>

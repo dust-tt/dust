@@ -11,7 +11,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
-import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -22,6 +21,7 @@ import {
 } from "@app/components/poke/shadcn/ui/form/fields";
 import { clientFetch } from "@app/lib/egress/client";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type {
   EnterpriseUpgradeFormType,
@@ -44,7 +44,7 @@ export default function EnterpriseUpgradeDialog({
   const [open, setOpen] = useState(false);
 
   const { plans } = usePokePlans();
-  const router = useRouter();
+  const router = useAppRouter();
 
   const form = useForm<EnterpriseUpgradeFormType>({
     resolver: ioTsResolver(EnterpriseUpgradeFormSchema),

@@ -14,11 +14,12 @@ export function MCPListToolsActionDetails({
   viewType,
 }: ToolExecutionDetailsProps) {
   const { spaces } = useSpaces({
+    kinds: ["global"],
     workspaceId: owner.sId,
   });
   const { serverViews: mcpServerViews } = useMCPServerViews({
     owner,
-    space: spaces.find((s) => s.kind === "global"),
+    space: spaces[0] ?? undefined,
     availability: "all",
   });
   const results =

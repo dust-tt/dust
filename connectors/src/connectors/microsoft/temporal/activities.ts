@@ -31,7 +31,11 @@ import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
-import { isItemNotFoundError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
+import {
+  isAccessBlockedError,
+  isGeneralExceptionError,
+  isItemNotFoundError,
+} from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
   deleteFile,
   deleteFolder,
@@ -129,6 +133,29 @@ export async function getRootNodesToSyncFromResources(
             if (error instanceof GraphError && error.statusCode === 404) {
               return null;
             }
+            if (isAccessBlockedError(error)) {
+              logger.warn(
+                {
+                  connectorId,
+                  id: resource.internalId,
+                  error: error.message,
+                },
+                "Root resource access blocked by administrator, skipping"
+              );
+              return null;
+            }
+            if (isGeneralExceptionError(error)) {
+              logger.warn(
+                {
+                  connectorId,
+                  internalId: resource.internalId,
+                  errorCode: error.code,
+                  errorMessage: error.message,
+                },
+                "Skipping root resource due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+              );
+              return null;
+            }
             if (error instanceof ExternalOAuthTokenError) {
               // Do not throw immediately, the token may still be valid for other roots
               oauthTokenErrors.push(error);
@@ -159,10 +186,21 @@ export async function getRootNodesToSyncFromResources(
     );
 
   if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
-    const msSites = await getAllPaginatedEntities((nextLink) =>
-      getSites(logger, client, nextLink)
-    );
-    rootSitePaths.push(...msSites.map((site) => getSiteAPIPath(site)));
+    try {
+      const msSites = await getAllPaginatedEntities((nextLink) =>
+        getSites(logger, client, nextLink)
+      );
+      rootSitePaths.push(...msSites.map((site) => getSiteAPIPath(site)));
+    } catch (error) {
+      if (isGeneralExceptionError(error)) {
+        logger.warn(
+          { errorCode: error.code, errorMessage: error.message },
+          "Skipping sites-root due to 401 generalException - possible permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+        );
+      } else {
+        throw error;
+      }
+    }
   }
 
   const siteDriveNodes = (
@@ -183,6 +221,24 @@ export async function getRootNodesToSyncFromResources(
           } catch (error) {
             if (isItemNotFoundError(error)) {
               logger.warn({ sitePath }, "Site not found, skipping drives");
+              return { results: [] };
+            }
+            if (isAccessBlockedError(error)) {
+              logger.warn(
+                { sitePath, error: error.message },
+                "Site access blocked by administrator, skipping drives"
+              );
+              return { results: [] };
+            }
+            if (isGeneralExceptionError(error)) {
+              logger.warn(
+                {
+                  sitePath,
+                  errorCode: error.code,
+                  errorMessage: error.message,
+                },
+                "Skipping site drives due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+              );
               return { results: [] };
             }
             throw error;
@@ -709,7 +765,10 @@ export async function syncDeltaForRootNodesInDrive({
   );
 
   if (containsWholeDrive) {
-    sortedChangedItems.push(...sortForIncrementalUpdate(uniqueChangedItems));
+    // Use for...of instead of push(...) to avoid stack overflow with large arrays
+    for (const item of sortForIncrementalUpdate(uniqueChangedItems)) {
+      sortedChangedItems.push(item);
+    }
   } else {
     const microsoftNodes = await concurrentExecutor(
       rootNodeIds,
@@ -1053,7 +1112,10 @@ export async function fetchDeltaForRootNodesInDrive({
   );
 
   if (containsWholeDrive) {
-    sortedChangedItems.push(...sortForIncrementalUpdate(uniqueChangedItems));
+    // Use for...of instead of push(...) to avoid stack overflow with large arrays
+    for (const item of sortForIncrementalUpdate(uniqueChangedItems)) {
+      sortedChangedItems.push(item);
+    }
   } else {
     const microsoftNodes = await concurrentExecutor(
       rootNodeIds,
@@ -1295,12 +1357,11 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
       return sortedItemList;
     }
 
-    sortedItemList.push(...nextLevel);
-
-    // Mark nodes as seen for the next iterations.
-    nextLevel.forEach((item) => {
+    // Use for...of instead of push(...) to avoid stack overflow with large arrays
+    for (const item of nextLevel) {
+      sortedItemList.push(item);
       sortedItemSet.add(getDriveItemInternalId(item));
-    });
+    }
   }
 }
 

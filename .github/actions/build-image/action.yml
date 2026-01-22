@@ -107,6 +107,10 @@ runs:
         elif [[ ${COMPONENT} == *"-edge" ]]; then
           ENV="edge"
           BASE_COMPONENT=${COMPONENT%-edge}
+        elif [[ ${COMPONENT} == *"-canary" ]]; then
+          ENV="prod"
+          BASE_COMPONENT=${COMPONENT%-canary}
+          COMPONENT=${COMPONENT}-${{ github.actor }}
         else
           ENV="prod"
           BASE_COMPONENT=${COMPONENT}
@@ -162,7 +166,7 @@ runs:
             --cache-to type=gha,mode=max,scope=${{ inputs.component }}-deps \
             --cache-to type=gha,mode=max,scope=${{ inputs.component }}-front \
             -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
-            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}:${{ inputs.commit_sha }} \
+            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}:${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
             ${build_args[@]} \
@@ -180,7 +184,7 @@ runs:
             --cache-to type=gha,mode=max,scope=${{ inputs.component }}-deps \
             --cache-to type=gha,mode=max,scope=${{ inputs.component }}-workers \
             -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
-            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}-workers:${{ inputs.commit_sha }} \
+            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}-workers:${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
             ${build_args[@]} \
@@ -195,7 +199,7 @@ runs:
             --cache-from type=gha,scope=${{ inputs.component }} \
             --cache-to type=gha,mode=max,scope=${{ inputs.component }} \
             -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
-            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}:${{ inputs.commit_sha }} \
+            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}:${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
             ${build_args[@]} \
@@ -207,10 +211,14 @@ runs:
       id: current_version
       shell: bash
       run: |
-        echo "🔍 Getting current deployed version for ${{ inputs.component }} in ${{ inputs.region }}..."
+        COMPONENT="${{ inputs.component }}"
+        if [[ ${COMPONENT} == *"-canary" ]]; then
+          COMPONENT=${COMPONENT}-${{ github.actor }}
+        fi
+        echo "🔍 Getting current deployed version for ${COMPONENT} in ${{ inputs.region }}..."
 
         # Get all tags, exclude the current one we're building, get the most recent
-        ALL_TAGS=$(gcloud container images list-tags "${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}" \
+        ALL_TAGS=$(gcloud container images list-tags "${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}" \
           --limit=10 \
           --sort-by=~timestamp \
           --format="value(tags[0])" 2>/dev/null || echo "")

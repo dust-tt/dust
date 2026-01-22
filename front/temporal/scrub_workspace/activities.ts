@@ -261,7 +261,9 @@ async function deleteDatasources(auth: Authenticator) {
 // Remove all user-created spaces and their associated groups,
 // preserving only the system and global spaces.
 async function deleteSpaces(auth: Authenticator) {
-  const spaces = await SpaceResource.listWorkspaceSpaces(auth);
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
+    includeProjectSpaces: true,
+  });
 
   // Filter out system and global spaces.
   const filteredSpaces = spaces.filter(

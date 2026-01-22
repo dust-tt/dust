@@ -173,7 +173,7 @@ makeScript(
       }
       const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
       const allSpaces = await SpaceResource.listWorkspaceSpaces(auth, {
-        includeDeleted: false,
+        includeProjectSpaces: true,
       });
       const projectSpacesResources = allSpaces.filter(
         (s) => s.kind === "project"

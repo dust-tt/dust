@@ -76,6 +76,7 @@ export default function LabsTranscriptsIndex({
     useState(false);
 
   const { spaces, isSpacesLoading } = useSpaces({
+    kinds: ["global", "regular"],
     workspaceId: owner.sId,
   });
   const { agentConfigurations } = useAgentConfigurations({

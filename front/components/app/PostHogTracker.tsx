@@ -1,10 +1,10 @@
-import { useRouter } from "next/router";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { useEffect, useMemo, useRef } from "react";
 import { useCookies } from "react-cookie";
 
 import { DUST_COOKIES_ACCEPTED, hasCookiesAccepted } from "@app/lib/cookies";
+import { useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { isString } from "@app/types";
@@ -26,7 +26,7 @@ interface PostHogTrackerProps {
 }
 
 export function PostHogTracker({ children }: PostHogTrackerProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [cookies] = useCookies([DUST_COOKIES_ACCEPTED]);
   const { user } = useUser();
 

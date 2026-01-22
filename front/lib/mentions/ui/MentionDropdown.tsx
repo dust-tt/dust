@@ -14,10 +14,10 @@ import {
   DropdownMenuTrigger,
   EyeIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import React from "react";
 
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
 import type { RichMention, WorkspaceType } from "@app/types";
 import { isRichAgentMention, isRichUserMention } from "@app/types";
@@ -38,7 +38,7 @@ export const MentionDropdown = React.forwardRef<
   HTMLDivElement,
   MentionDropdownProps
 >(({ mention, owner, children }, ref) => {
-  const router = useRouter();
+  const router = useAppRouter();
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
   const { onOpenChange: onOpenChangeUserModal } = useURLSheet("userDetails");
 

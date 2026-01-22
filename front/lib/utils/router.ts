@@ -1,7 +1,7 @@
-import type { NextRouter } from "next/router";
+import type { AppRouter } from "@app/lib/platform";
 
 export const setQueryParam = (
-  router: NextRouter,
+  router: AppRouter,
   key: string,
   value: string
 ) => {

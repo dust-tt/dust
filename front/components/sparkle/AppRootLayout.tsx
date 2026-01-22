@@ -1,7 +1,4 @@
 import type { Novu } from "@novu/js";
-import Head from "next/head";
-import { useRouter } from "next/router";
-import Script from "next/script";
 import React, { useEffect } from "react";
 
 import { WelcomeTourGuideProvider } from "@app/components/assistant/WelcomeTourGuideProvider";
@@ -13,6 +10,7 @@ import { useDatadogLogs } from "@app/hooks/useDatadogLogs";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useNovuClient } from "@app/hooks/useNovuClient";
 import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
+import { Head, Script, useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { getFaviconPath } from "@app/lib/utils";
 
@@ -24,7 +22,7 @@ export default function AppRootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { push } = useRouter();
+  const { push } = useAppRouter();
   const { user } = useUser();
   const { novuClient } = useNovuClient();
   useDatadogLogs();

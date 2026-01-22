@@ -91,13 +91,10 @@ export function overwriteLLMParameters(
   llmParameters: LLMParameters & {
     modelId: OpenAIWhitelistedModelId;
   }
-): LLMParameters & { modelId: OpenAIWhitelistedModelId } & {
-  clientId: typeof OPENAI_PROVIDER_ID;
-} {
+): LLMParameters & { modelId: OpenAIWhitelistedModelId } {
   return {
     ...llmParameters,
     ...OPENAI_MODEL_CONFIGS[llmParameters.modelId].overwrites,
-    clientId: OPENAI_PROVIDER_ID,
   };
 }
 

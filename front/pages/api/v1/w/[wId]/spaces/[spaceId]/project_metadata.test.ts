@@ -158,9 +158,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(200);
-    const data = res._getJSONData();
-    expect(data.metadata).toBeNull();
+    expect(res._getStatusCode()).toBe(404);
   });
 
   it("should return project metadata when it exists", async () => {
@@ -182,7 +180,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     // Create project metadata
     await ProjectMetadataResource.makeNew(adminAuth, space, {
       description: "Test project description",
-      urls: ["https://example.com"],
+      urls: [{ name: "Website", url: "https://example.com" }],
     });
 
     req.query.spaceId = space.sId;
@@ -197,7 +195,68 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       sId: expect.anything(),
       spaceId: space.sId,
       updatedAt: expect.anything(),
-      urls: ["https://example.com"],
+      urls: [{ name: "Website", url: "https://example.com" }],
+      members: [],
+    });
+  });
+
+  it("should return project metadata with members", async () => {
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      systemKey: true,
+      method: "GET",
+    });
+
+    const space = await SpaceFactory.project(workspace);
+
+    // Create an admin user to manage the project
+    const adminUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      workspace.sId
+    );
+
+    // Create project members
+    const member1 = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member1, { role: "user" });
+
+    const member2 = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member2, { role: "user" });
+
+    // Add members to the project space's group
+    const projectGroup = space.groups[0];
+    await projectGroup.addMember(adminAuth, { user: member1.toJSON() });
+    await projectGroup.addMember(adminAuth, { user: member2.toJSON() });
+
+    // Create project metadata
+    await ProjectMetadataResource.makeNew(adminAuth, space, {
+      description: "Test project with members",
+      urls: [
+        { name: "Website", url: "https://example.com" },
+        { name: "GitHub", url: "https://github.com/test/repo" },
+      ],
+    });
+
+    req.query.spaceId = space.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.metadata).toEqual({
+      createdAt: expect.anything(),
+      description: "Test project with members",
+      sId: expect.anything(),
+      spaceId: space.sId,
+      updatedAt: expect.anything(),
+      urls: [
+        { name: "Website", url: "https://example.com" },
+        { name: "GitHub", url: "https://github.com/test/repo" },
+      ],
+      members: expect.arrayContaining([
+        expect.stringContaining(member1.sId),
+        expect.stringContaining(member2.sId),
+      ]),
     });
   });
 });

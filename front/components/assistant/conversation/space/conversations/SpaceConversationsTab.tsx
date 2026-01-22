@@ -2,12 +2,12 @@ import {
   Button,
   cn,
   ContentMessage,
+  LinkWrapper,
   ListGroup,
   ListItemSection,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
 import React, { useMemo, useState } from "react";
 
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -120,14 +120,14 @@ export function SpaceConversationsTab({
                   Dust workspace ("projects" feature flag). The goal is to get
                   feedback from internal usage and quickly iterate. Share your
                   feedback in the{" "}
-                  <Link
+                  <LinkWrapper
                     href="https://dust4ai.slack.com/archives/C09T7N4S6GG"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-500 hover:text-blue-600"
                   >
                     initiative slack channel
-                  </Link>
+                  </LinkWrapper>
                   .
                 </p>
               </ContentMessage>

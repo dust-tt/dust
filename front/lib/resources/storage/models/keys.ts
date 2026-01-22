@@ -22,6 +22,7 @@ export class KeyModel extends WorkspaceAwareModel<KeyModel> {
   declare groupId: ForeignKey<GroupModel["id"]>;
 
   declare name: string | null;
+  declare monthlyCapMicroUsd: number | null;
   declare user: NonAttribute<UserModel>;
 }
 KeyModel.init(
@@ -66,6 +67,10 @@ KeyModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "default",
+    },
+    monthlyCapMicroUsd: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
   },
   {

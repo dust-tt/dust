@@ -52,13 +52,10 @@ export function overwriteLLMParameters(
   llmParameters: LLMParameters & {
     modelId: GoogleAIStudioWhitelistedModelId;
   }
-): LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId } & {
-  clientId: typeof GOOGLE_AI_STUDIO_PROVIDER_ID;
-} {
+): LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId } {
   return {
     ...llmParameters,
     ...GOOGLE_AI_STUDIO_MODEL_CONFIGS[llmParameters.modelId].overwrites,
-    clientId: GOOGLE_AI_STUDIO_PROVIDER_ID,
   };
 }
 

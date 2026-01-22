@@ -5,6 +5,7 @@ import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -14,12 +15,14 @@ import type {
   WithAPIErrorResponse,
 } from "@app/types";
 import { isString } from "@app/types";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export type PokeGetAgentDetails = {
   agentConfigurations: AgentConfigurationType[];
   authors: UserType[];
   lastVersionEditors: UserType[];
   spaces: SpaceType[];
+  skills: SkillType[];
 };
 
 async function handler(
@@ -76,11 +79,18 @@ async function handler(
         latestAgentConfiguration.requestedSpaceIds
       );
       const authors = await getAuthors(agentConfigurations);
+
+      const skillResources = await SkillResource.listByAgentConfiguration(
+        auth,
+        latestAgentConfiguration
+      );
+
       return res.status(200).json({
         agentConfigurations,
         authors,
         lastVersionEditors,
         spaces: spaces.map((s) => s.toJSON()),
+        skills: skillResources.map((s) => s.toJSON(auth)),
       });
 
     default:

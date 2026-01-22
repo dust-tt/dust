@@ -1,9 +1,10 @@
 import escapeRegExp from "lodash/escapeRegExp";
-import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
+import { useAppRouter } from "@app/lib/platform";
+
 export function useSpaceSidebarItemFocus({ path }: { path: string }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const currentRouterPath = router.asPath;

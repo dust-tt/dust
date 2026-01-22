@@ -1,5 +1,4 @@
-import { Button, cn } from "@dust-tt/sparkle";
-import Link from "next/link";
+import { Button, cn, LinkWrapper } from "@dust-tt/sparkle";
 import { useMemo, useRef } from "react";
 
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
@@ -86,7 +85,7 @@ export function SubscriptionEndBanner({
         </span>
       </div>
       {isAdmin && (
-        <Link
+        <LinkWrapper
           href={`/w/${owner.sId}/subscription`}
           className="shrink-0 no-underline"
         >
@@ -99,7 +98,7 @@ export function SubscriptionEndBanner({
             )}
             size="sm"
           />
-        </Link>
+        </LinkWrapper>
       )}
     </div>
   );

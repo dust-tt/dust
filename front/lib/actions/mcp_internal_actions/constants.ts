@@ -13,6 +13,7 @@ import {
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
+import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/metadata";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
@@ -94,6 +95,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Names should reflect the purpose of the server but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
+  "agent_copilot_agent_state",
   "agent_copilot_context",
   "agent_management",
   AGENT_MEMORY_SERVER_NAME,
@@ -1818,6 +1820,19 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
   },
+  agent_copilot_agent_state: {
+    id: 1023,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("agent_builder_copilot");
+    },
+    metadata: AGENT_COPILOT_AGENT_STATE_SERVER,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+  },
   databricks: {
     id: 45,
     availability: "manual",
@@ -1921,7 +1936,13 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: {
       get_my_info: "never_ask",
-      get_my_pto_requests: "never_ask",
+      get_pto_requests: "never_ask",
+      get_accrual_balances: "never_ask",
+      get_pto_request_notes: "never_ask",
+      create_pto_request: "low",
+      delete_pto_request: "low",
+      get_schedules: "never_ask",
+      get_employees: "never_ask",
     },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,

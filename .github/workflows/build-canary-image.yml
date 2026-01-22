@@ -1,0 +1,163 @@
+name: Build canary image
+run-name: Build canary image for ${{ inputs.component }} to ${{ inputs.regions }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      regions:
+        description: "Regions to build image for"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - "us-central1"
+          - "europe-west1"
+          - "all"
+      component:
+        description: "Name of the component to build"
+        required: true
+        type: choice
+        default:
+        options:
+          - connectors
+          - core
+          - front
+          - prodbox
+          - oauth
+          - viz
+          - dante
+      depot_region:
+        description: "Depot region to use for building"
+        required: true
+        default: "us"
+        type: choice
+        options:
+          - "us"
+          - "eu"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: "build_${{ inputs.component }}"
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      short_sha: ${{ steps.short_sha.outputs.short_sha }}
+      long_sha: ${{ steps.short_sha.outputs.long_sha }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Get short sha
+        id: short_sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Get long sha
+        id: long_sha
+        run: echo "long_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+  notify-start:
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    outputs:
+      thread_ts: ${{ steps.build_message.outputs.thread_ts }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Notify Build And Deploy Start
+        id: build_message
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "start"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: ${{ inputs.component }}-canary
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          region: ${{ inputs.regions }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+
+  create-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          if [ "${{ inputs.regions }}" = "all" ]; then
+            echo "matrix=[\"us-central1\",\"europe-west1\"]" >> $GITHUB_OUTPUT
+          else
+            echo "matrix=[\"${{ inputs.regions }}\"]" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    permissions:
+      contents: read
+      id-token: write
+    needs: [prepare, notify-start, create-matrix]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        region: ${{ fromJson(needs.create-matrix.outputs.matrix) }}
+      fail-fast: true
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 50 # Fetch last 50 commits for commit diff functionality
+
+      - name: Set project ID
+        id: project
+        run: |
+          if [ "${{ matrix.region }}" = "us-central1" ]; then
+            echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> $GITHUB_OUTPUT
+          else
+            echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Image
+        id: build
+        uses: ./.github/actions/build-image
+        with:
+          commit_sha_long: ${{ needs.prepare.outputs.long_sha }}
+          commit_sha: ${{ needs.prepare.outputs.short_sha }}
+          component: ${{ inputs.component }}-canary
+          dd_api_key: ${{ secrets.DD_API_KEY }}
+          dd_client_token: ${{ secrets.DD_CLIENT_TOKEN }}
+          depot_eu_project_id: ${{ secrets.DEPOT_EU_PROJECT_ID }}
+          depot_eu_token: ${{ secrets.DEPOT_EU_PROJECT_TOKEN }}
+          depot_region: ${{ inputs.depot_region }}
+          depot_us_project_id: ${{ secrets.DEPOT_PROJECT_ID }}
+          depot_us_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          project_id: ${{ steps.project.outputs.PROJECT_ID }}
+          region: ${{ matrix.region }}
+          virtuoso_license_key: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
+          contentful_space_id: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          contentful_access_token: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
+          workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
+
+      - name: Notify build success
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "build_success"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
+          component: ${{ inputs.component }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          region: ${{ matrix.region }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          current_version: ${{ steps.build.outputs.current_version }}
+          commit_diff: ${{ steps.build.outputs.commit_diff }}
+          commit_count: ${{ steps.build.outputs.commit_count }}
+
+      - name: Notify Failure
+        if: failure()
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "failure"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: ${{ inputs.component }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          region: ${{ inputs.regions }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"

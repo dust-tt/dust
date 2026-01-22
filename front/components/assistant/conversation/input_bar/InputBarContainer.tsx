@@ -427,6 +427,7 @@ const InputBarContainer = ({
 
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular", "project"],
     disabled: !nodeOrUrlCandidate,
   });
 
@@ -537,7 +538,12 @@ const InputBarContainer = ({
 
   // Restore draft when switching conversations (including new conversations).
   useEffect(() => {
-    if (!editor) {
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !editor.isInitialized
+    ) {
       return;
     }
 

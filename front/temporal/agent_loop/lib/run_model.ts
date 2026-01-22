@@ -36,8 +36,8 @@ import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import {
+  getUserFacingLLMErrorMessage,
   LLM_ERROR_TYPE_TO_CATEGORY,
-  USER_FACING_LLM_ERROR_MESSAGES,
 } from "@app/lib/api/llm/types/errors";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -370,52 +370,6 @@ export async function runModelActivity(
     seen.add(spec.name);
   }
 
-  // Errors occurring during the multi-actions-agent dust app may be retryable.
-  // Their implicit code should be "multi_actions_error".
-  async function handlePossiblyRetryableError(
-    errorInfo: LLMErrorInfo,
-    dustRunId?: string
-  ) {
-    const { isRetryable, message, type } = errorInfo;
-
-    if (!isRetryable || autoRetryCount >= MAX_AUTO_RETRY) {
-      await publishAgentError(
-        {
-          code: "multi_actions_error",
-          message: USER_FACING_LLM_ERROR_MESSAGES[type],
-          metadata: {
-            category: LLM_ERROR_TYPE_TO_CATEGORY[type],
-            retriesAttempted: autoRetryCount,
-            message: errorInfo.message,
-            retryState: isRetryable ? "max_retries_reached" : "not_retryable",
-          },
-        },
-        dustRunId
-      );
-
-      return null;
-    }
-
-    // Should retry
-    localLogger.warn(
-      {
-        error: message,
-        retryCount: autoRetryCount + 1,
-        maxRetries: MAX_AUTO_RETRY,
-      },
-      "Auto-retrying multi-actions agent due to retryable model error."
-    );
-
-    // Recursively retry with incremented count
-    return runModelActivity(auth, {
-      runAgentData,
-      runIds,
-      step,
-      functionCallStepContentIds,
-      autoRetryCount: autoRetryCount + 1,
-    });
-  }
-
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
@@ -463,6 +417,54 @@ export async function runModelActivity(
 
     return null;
   }
+
+  const metadata = llm.getMetadata();
+
+  // Errors occurring during the multi-actions-agent dust app may be retryable.
+  // Their implicit code should be "multi_actions_error".
+  const handlePossiblyRetryableError = async (
+    errorInfo: LLMErrorInfo,
+    dustRunId?: string
+  ) => {
+    const { isRetryable, message, type } = errorInfo;
+
+    if (!isRetryable || autoRetryCount >= MAX_AUTO_RETRY) {
+      await publishAgentError(
+        {
+          code: "multi_actions_error",
+          message: getUserFacingLLMErrorMessage(type, metadata),
+          metadata: {
+            category: LLM_ERROR_TYPE_TO_CATEGORY[type],
+            retriesAttempted: autoRetryCount,
+            message: errorInfo.message,
+            retryState: isRetryable ? "max_retries_reached" : "not_retryable",
+          },
+        },
+        dustRunId
+      );
+
+      return null;
+    }
+
+    // Should retry
+    localLogger.warn(
+      {
+        error: message,
+        retryCount: autoRetryCount + 1,
+        maxRetries: MAX_AUTO_RETRY,
+      },
+      "Auto-retrying multi-actions agent due to retryable model error."
+    );
+
+    // Recursively retry with incremented count
+    return runModelActivity(auth, {
+      runAgentData,
+      runIds,
+      step,
+      functionCallStepContentIds,
+      autoRetryCount: autoRetryCount + 1,
+    });
+  };
 
   const modelInteractionStartDate = performance.now();
 

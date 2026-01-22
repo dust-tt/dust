@@ -2,6 +2,7 @@ import {
   classNames,
   cn,
   CollapseButton,
+  LinkWrapper,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
@@ -11,8 +12,6 @@ import {
   TabsTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
-import { useRouter } from "next/router";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
@@ -25,6 +24,7 @@ import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
 import type { AppStatus } from "@app/lib/api/status";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -58,13 +58,13 @@ export const NavigationSidebar = React.forwardRef<
   }: NavigationSidebarProps,
   ref
 ) {
-  const router = useRouter();
+  const router = useAppRouter();
   const activePath = useMemo(() => {
-    if (router.isReady && router.route) {
-      return router.route;
+    if (router.isReady && router.pathname) {
+      return router.pathname;
     }
     return "";
-  }, [router.isReady, router.route]);
+  }, [router.isReady, router.pathname]);
 
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -95,7 +95,16 @@ export const NavigationSidebar = React.forwardRef<
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
-      <div className="flex flex-col gap-2 pt-3">
+      <div
+        className={cn(
+          "flex flex-col gap-2",
+          appStatus?.dustStatus ||
+            appStatus?.providersStatus ||
+            subscription.paymentFailingSince
+            ? ""
+            : "pt-3"
+        )}
+      >
         {appStatus && <AppStatusBanner appStatus={appStatus} />}
         {subscription.paymentFailingSince && isAdmin(owner) && (
           <SubscriptionPastDueBanner />
@@ -267,6 +276,7 @@ function StatusBanner({
 interface AppStatusBannerProps {
   appStatus: AppStatus;
 }
+
 function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   const { providersStatus, dustStatus } = appStatus;
 
@@ -278,9 +288,13 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
         footer={
           <>
             Check our{" "}
-            <Link href={dustStatus.link} target="_blank" className="underline">
+            <LinkWrapper
+              href={dustStatus.link}
+              target="_blank"
+              className="underline"
+            >
               status page
-            </Link>{" "}
+            </LinkWrapper>{" "}
             for updates.
           </>
         }
@@ -314,13 +328,13 @@ function SubscriptionPastDueBanner() {
           <br />
           After 3 attempts, your workspace will be downgraded to the free plan.
           Connections will be deleted and members will be revoked. Details{" "}
-          <Link
+          <LinkWrapper
             href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
             target="_blank"
             className="underline"
           >
             here
-          </Link>
+          </LinkWrapper>
           .
         </>
       }
