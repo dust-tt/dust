@@ -1,5 +1,6 @@
 import assert from "assert";
 import uniq from "lodash/uniq";
+import uniqBy from "lodash/uniqBy";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -145,92 +146,94 @@ export const createUserMentions = async (
   }
 ): Promise<RichMentionWithStatus[]> => {
   const usersById = new Map<ModelId, UserType>();
+
+  // Deduplicate mentions before processing
+  const uniqueMentions = uniqBy(
+    mentions.filter(isUserMention),
+    (mention) => mention.userId
+  );
+
   // Store user mentions in the database
   const mentionModels = await Promise.all(
-    mentions.map(async (mention) => {
-      if (isUserMention(mention)) {
-        // check if the user exists in the workspace before creating the mention
-        const user = await getUserForWorkspace(auth, {
-          userId: mention.userId,
-        });
-        if (user) {
-          usersById.set(user.id, user.toJSON());
+    uniqueMentions.map(async (mention) => {
+      // check if the user exists in the workspace before creating the mention
+      const user = await getUserForWorkspace(auth, {
+        userId: mention.userId,
+      });
+      if (user) {
+        usersById.set(user.id, user.toJSON());
 
-          const isParticipant =
-            await ConversationResource.isConversationParticipant(auth, {
-              conversation,
-              user: user.toJSON(),
-            });
-
-          const canAccess = await canUserAccessConversation(auth, {
-            userId: user.sId,
-            conversationId: conversation.sId,
+        const isParticipant =
+          await ConversationResource.isConversationParticipant(auth, {
+            conversation,
+            user: user.toJSON(),
           });
 
-          // Always auto approve mentions for existing participants.
-          let autoApprove = isParticipant;
-          // In case of agent message on triggered conversation, we want to auto approve mentions only if the users are mentioned in the prompt.
-          if (
-            !autoApprove &&
-            conversation.triggerId &&
-            message.type === "agent_message" &&
+        const canAccess = await canUserAccessConversation(auth, {
+          userId: user.sId,
+          conversationId: conversation.sId,
+        });
+
+        // Always auto approve mentions for existing participants.
+        let autoApprove = isParticipant;
+        // In case of agent message on triggered conversation, we want to auto approve mentions only if the users are mentioned in the prompt.
+        if (
+          !autoApprove &&
+          conversation.triggerId &&
+          message.type === "agent_message" &&
+          message.configuration.instructions
+        ) {
+          const isUserMentionedInInstructions = extractFromString(
             message.configuration.instructions
-          ) {
-            const isUserMentionedInInstructions = extractFromString(
-              message.configuration.instructions
-            )
-              .filter(isUserMention)
-              .some((mention) => mention.userId === user.sId);
+          )
+            .filter(isUserMention)
+            .some((mention) => mention.userId === user.sId);
 
-            if (isUserMentionedInInstructions) {
-              autoApprove = true;
-            }
+          if (isUserMentionedInInstructions) {
+            autoApprove = true;
           }
+        }
 
-          // Auto approve mentions for users who are members of the conversation's project space.
-          if (!autoApprove && conversation.spaceId) {
-            autoApprove = await isUserMemberOfSpace(auth, {
-              userId: user.sId,
-              spaceId: conversation.spaceId,
+        // Auto approve mentions for users who are members of the conversation's project space.
+        if (!autoApprove && conversation.spaceId) {
+          autoApprove = await isUserMemberOfSpace(auth, {
+            userId: user.sId,
+            spaceId: conversation.spaceId,
+          });
+        }
+
+        const status: MentionStatusType = !canAccess
+          ? "user_restricted_by_conversation_access"
+          : autoApprove
+            ? "approved"
+            : "pending";
+
+        const mentionModel = await MentionModel.create(
+          {
+            messageId: message.id,
+            userId: user.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+            status,
+          },
+          { transaction }
+        );
+
+        if (!isParticipant && status === "approved") {
+          const status = await ConversationResource.upsertParticipation(auth, {
+            conversation,
+            action: "subscribed",
+            user: user.toJSON(),
+            transaction,
+          });
+
+          if (status === "added") {
+            await triggerConversationAddedAsParticipantNotification(auth, {
+              conversation,
+              addedUserId: user.sId,
             });
           }
-
-          const status: MentionStatusType = !canAccess
-            ? "user_restricted_by_conversation_access"
-            : autoApprove
-              ? "approved"
-              : "pending";
-
-          const mentionModel = await MentionModel.create(
-            {
-              messageId: message.id,
-              userId: user.id,
-              workspaceId: auth.getNonNullableWorkspace().id,
-              status,
-            },
-            { transaction }
-          );
-
-          if (!isParticipant && status === "approved") {
-            const status = await ConversationResource.upsertParticipation(
-              auth,
-              {
-                conversation,
-                action: "subscribed",
-                user: user.toJSON(),
-                transaction,
-              }
-            );
-
-            if (status === "added") {
-              await triggerConversationAddedAsParticipantNotification(auth, {
-                conversation,
-                addedUserId: user.sId,
-              });
-            }
-          }
-          return mentionModel;
         }
+        return mentionModel;
       }
     })
   );
@@ -642,8 +645,14 @@ export const createAgentMessages = async (
 
     case "create":
       {
-        await concurrentExecutor(
+        // Deduplicate agent mentions before processing
+        const uniqueAgentMentions = uniqBy(
           metadata.mentions.filter(isAgentMention),
+          (mention) => mention.configurationId
+        );
+
+        await concurrentExecutor(
+          uniqueAgentMentions,
           async (mention) => {
             const configuration = metadata.agentConfigurations.find(
               (ac) => ac.sId === mention.configurationId
