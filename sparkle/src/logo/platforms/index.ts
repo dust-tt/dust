@@ -56,6 +56,7 @@ export { default as ReplicateLogo } from "./Replicate";
 export { default as SalesforceLogo } from "./Salesforce";
 export { default as SlackLogo } from "./Slack";
 export { default as SnowflakeLogo } from "./Snowflake";
+export { default as StatuspageLogo } from "./Statuspage";
 export { default as StripeLogo } from "./Stripe";
 export { default as SupabaseLogo } from "./Supabase";
 export { default as TogetheraiLogo } from "./Togetherai";
