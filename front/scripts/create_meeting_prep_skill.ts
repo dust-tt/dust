@@ -1,6 +1,7 @@
 import type { Transaction } from "sequelize";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import {
   SkillConfigurationModel,
@@ -8,6 +9,7 @@ import {
 } from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -194,15 +196,18 @@ interface MCPServerViewInfo {
 }
 
 async function findAvailableMCPServerViews(
-  workspace: LightWorkspaceType,
+  auth: Authenticator,
   serverNames: readonly string[],
   logger: Logger
 ): Promise<Map<string, MCPServerViewInfo>> {
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
   const views = await MCPServerViewModel.findAll({
     where: {
-      workspaceId: workspace.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
       serverType: "internal",
       internalMCPServerId: [...serverNames],
+      vaultId: globalSpace.id,
     },
   });
 
@@ -235,6 +240,7 @@ async function createMeetingPrepSkill(
     { workspaceId: workspace.sId },
     "Starting creation of Meeting Prep skill"
   );
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   const existingSkill = await SkillConfigurationModel.findOne({
     where: {
@@ -256,7 +262,7 @@ async function createMeetingPrepSkill(
     ...MICROSOFT_SERVERS,
   ];
   const availableViews = await findAvailableMCPServerViews(
-    workspace,
+    auth,
     allServerNames,
     logger
   );
