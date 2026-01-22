@@ -35,7 +35,6 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   trackEvent,
   TRACKING_ACTIONS,
@@ -148,9 +147,6 @@ export function CapabilitiesPicker({
   const shouldFetchToolsData =
     isOpen || isSettingUpServer || !!pendingServerToAdd;
 
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const hasSkillsFeature = hasFeature("skills");
-
   const { spaces: globalSpaces } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global"],
@@ -228,7 +224,7 @@ export function CapabilitiesPicker({
     owner,
     status: "active",
     globalSpaceOnly: true,
-    disabled: !shouldFetchToolsData || !hasSkillsFeature,
+    disabled: !shouldFetchToolsData,
   });
 
   const isDataReady =

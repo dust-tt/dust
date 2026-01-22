@@ -40,9 +40,6 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - Skills with 
   it("should include skill's requestedSpaceIds when updating agent with skill", async () => {
     const { req, res, workspace, user, authenticator } = await setupTest();
 
-    // Enable skills feature flag
-    await FeatureFlagFactory.basic("skills", workspace);
-
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const restrictedSpace = await SpaceFactory.regular(workspace);

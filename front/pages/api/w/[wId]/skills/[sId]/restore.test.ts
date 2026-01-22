@@ -22,8 +22,6 @@ async function setupTest(
     method,
   });
 
-  await FeatureFlagFactory.basic("skills", workspace);
-
   let skillOwnerAuth: Authenticator;
   if (canWrite) {
     skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -71,24 +69,6 @@ describe("POST /api/w/[wId]/skills/[sId]/restore", () => {
       error: {
         type: "app_auth_error",
         message: "Only editors can restore this skill.",
-      },
-    });
-  });
-
-  it("should return 403 when skills feature flag is not enabled", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      role: "builder",
-      method: "POST",
-    });
-    req.query = { ...req.query, wId: workspace.sId, sId: "some_skill_id" };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "app_auth_error",
-        message: "Skill builder is not enabled for this workspace.",
       },
     });
   });

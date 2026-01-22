@@ -118,7 +118,7 @@ export default function AgentBuilder({
   const { skills, isSkillsLoading } = useAgentConfigurationSkills({
     owner,
     agentConfigurationId: agentConfigurationIdForSkills ?? "",
-    disabled: !hasFeature("skills") || !agentConfigurationIdForSkills,
+    disabled: !agentConfigurationIdForSkills,
   });
 
   const { editors } = useEditors({

@@ -20,8 +20,6 @@ async function setupTest(
     role,
   });
 
-  await FeatureFlagFactory.basic("skills", mockRequest.workspace);
-
   return mockRequest;
 }
 

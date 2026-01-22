@@ -233,9 +233,6 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - Skills with restric
         method: "POST",
       });
 
-    // Enable skills feature flag
-    await FeatureFlagFactory.basic("skills", workspace);
-
     await SpaceFactory.defaults(authenticator);
     const restrictedSpace = await SpaceFactory.regular(workspace);
     await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });

@@ -33,8 +33,6 @@ async function setupTest(
     role,
   });
 
-  await FeatureFlagFactory.basic("skills", mockRequest.workspace);
-
   return mockRequest;
 }
 
@@ -134,25 +132,6 @@ describe("GET /api/w/[wId]/skills", () => {
     expect(skillNames).toContain("Suggested Skill");
     expect(skillNames).not.toContain("Active Skill");
     expect(skillNames).not.toContain("Archived Skill");
-  });
-
-  it("should return 403 when skills feature flag is not enabled", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "builder",
-    });
-
-    req.query = { ...req.query, wId: workspace.sId };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toMatchObject({
-      error: {
-        type: "app_auth_error",
-        message: "Skills are not enabled for this workspace.",
-      },
-    });
   });
 
   it("should work for builder and admin roles", async () => {

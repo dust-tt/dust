@@ -40,7 +40,6 @@ import {
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -263,8 +262,6 @@ export async function runModelActivity(
       })
     : null;
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
@@ -277,7 +274,6 @@ export async function runModelActivity(
     serverToolsAndInstructions: mcpActions,
     enabledSkills,
     equippedSkills,
-    featureFlags,
   });
 
   const specifications: AgentActionSpecification[] = [];

@@ -41,9 +41,6 @@ async function setupTest(
     method: method,
   });
 
-  // Enable skills feature flag for the workspace
-  await FeatureFlagFactory.basic("skills", workspace);
-
   // Create default spaces (including system space required for PATCH operations)
   // We need an admin auth to create spaces, so create a temporary admin if needed
   if (requestUserRole === "admin") {
@@ -502,8 +499,6 @@ describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
       role: "admin",
       method: "PATCH",
     });
-
-    await FeatureFlagFactory.basic("skills", workspace);
 
     const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
       requestUser.sId,
