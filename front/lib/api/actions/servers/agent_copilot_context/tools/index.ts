@@ -3,16 +3,10 @@ import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
-import { getAgentConfigurationIdFromContext } from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/helpers";
-import {
-  getAgentFeedbackMeta,
-  getAgentInsightsMeta,
-  getAvailableModelsMeta,
-  getAvailableSkillsMeta,
-  getAvailableToolsMeta,
-} from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/metadata";
-import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { defineTool } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_copilot_context/helpers";
+import { AGENT_COPILOT_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
@@ -29,9 +23,8 @@ import {
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 
-const getAvailableModelsTool = defineTool({
-  ...getAvailableModelsMeta,
-  handler: async ({ providerId }, extra) => {
+const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
+  get_available_models: async ({ providerId }, extra) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
@@ -82,11 +75,8 @@ const getAvailableModelsTool = defineTool({
       },
     ]);
   },
-});
 
-const getAvailableSkillsTool = defineTool({
-  ...getAvailableSkillsMeta,
-  handler: async (_, extra) => {
+  get_available_skills: async (_, extra) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
@@ -119,11 +109,8 @@ const getAvailableSkillsTool = defineTool({
       },
     ]);
   },
-});
 
-const getAvailableToolsTool = defineTool({
-  ...getAvailableToolsMeta,
-  handler: async (_, extra) => {
+  get_available_tools: async (_, extra) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
@@ -169,11 +156,8 @@ const getAvailableToolsTool = defineTool({
       },
     ]);
   },
-});
 
-const getAgentFeedbackTool = defineTool({
-  ...getAgentFeedbackMeta,
-  handler: async ({ limit, filter }, extra) => {
+  get_agent_feedback: async ({ limit, filter }, extra) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
@@ -251,11 +235,8 @@ const getAgentFeedbackTool = defineTool({
       },
     ]);
   },
-});
 
-const getAgentInsightsTool = defineTool({
-  ...getAgentInsightsMeta,
-  handler: async ({ days }, extra) => {
+  get_agent_insights: async ({ days }, extra) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
@@ -335,12 +316,6 @@ const getAgentInsightsTool = defineTool({
       },
     ]);
   },
-});
+};
 
-export const TOOLS = [
-  getAvailableModelsTool,
-  getAvailableSkillsTool,
-  getAvailableToolsTool,
-  getAgentFeedbackTool,
-  getAgentInsightsTool,
-] as ToolDefinition[];
+export const TOOLS = buildTools(AGENT_COPILOT_CONTEXT_TOOLS_METADATA, handlers);
