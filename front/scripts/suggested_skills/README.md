@@ -19,7 +19,7 @@ npx tsx scripts/suggested_skills/1_get_agents.ts --workspaceId <workspaceId>
 This fetches active visible agents with their tools and datasources, sorted by usage in the last 30 days.
 
 Options:
-- `--limit <n>` - Maximum number of agents to fetch (default: 60)
+- `--limit <n>` - Maximum number of agents to fetch (default: 30)
 
 Output: `<workspaceId>/agents.json`
 
@@ -42,8 +42,7 @@ npx tsx scripts/suggested_skills/3_extract_and_format.ts --workspaceId <workspac
 Filters and extracts the top skills, outputting both JSON and human-readable text files.
 
 Options:
-- `--topN <n>` - Number of top skills to extract (default: 10)
-- `--withDatasources` - Include skills that require datasources (default: false)
+- `--topK <n>` - Number of top skills to extract (default: 10)
 
 Output:
 - `<workspaceId>/top_skills.json`
@@ -58,7 +57,7 @@ npx tsx scripts/suggested_skills/4_grade_skills.ts --workspaceId <workspaceId>
 Uses Google Gemini to grade each skill and select the top N.
 
 Options:
-- `--topN <n>` - Number of top skills to select (default: 3)
+- `--topK <n>` - Number of top skills to select (default: 10)
 
 Output:
 - `<workspaceId>/final_skills.json`
