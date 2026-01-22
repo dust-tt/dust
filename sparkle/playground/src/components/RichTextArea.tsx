@@ -27,6 +27,7 @@ import {
   HoveringBar,
   ItalicIcon,
   LinkIcon,
+  PencilSquareIcon,
   SparklesIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -533,6 +534,12 @@ const richTextAreaVariants = cva(
           "focus-visible:s-ring-0 focus-visible:s-border-0",
           "s-min-h-0"
         ),
+        embedded: cn(
+          "s-px-3 s-py-2",
+          "s-bg-transparent s-border-0 s-rounded-none",
+          "focus-visible:s-ring-0 focus-visible:s-border-0",
+          "s-min-h-0"
+        ),
       },
     },
     defaultVariants: {
@@ -556,7 +563,10 @@ export type RichTextAreaHandle = {
 
 type RichTextAreaProps = {
   className?: string;
+  containerClassName?: string;
+  topBarClassName?: string;
   placeholder?: string;
+  topBar?: React.ReactNode;
   onAskCopilot?: (payload: {
     selectedText: string;
     start: number;
@@ -569,7 +579,7 @@ type RichTextAreaProps = {
   scrollContainer?: HTMLElement | null;
   readOnly?: boolean;
   defaultValue?: string;
-  variant?: "default" | "compact";
+  variant?: "default" | "compact" | "embedded";
   showFormattingMenu?: boolean;
   showAskCopilotMenu?: boolean;
 };
@@ -578,7 +588,10 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
   (
     {
       className,
+      containerClassName,
+      topBarClassName,
       placeholder,
+      topBar,
       onAskCopilot,
       onSuggestionsChange,
       onTextChange,
@@ -593,6 +606,9 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
     },
     ref
   ) => {
+    const hasTopBar = Boolean(topBar);
+    const editorVariant =
+      hasTopBar && variant === "default" ? "embedded" : variant;
     const editor = useEditor({
       extensions: [
         StarterKit.configure({
@@ -621,7 +637,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       editorProps: {
         attributes: {
           class: cn(
-            richTextAreaVariants({ variant }),
+            richTextAreaVariants({ variant: editorVariant }),
             "sparkle-richtextarea",
             className
           ),
@@ -1094,7 +1110,34 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
     return (
       <>
         <style>{`.sparkle-richtextarea ::selection { background-color: #DFE0E2; }`}</style>
-        <EditorContent editor={editor} />
+        {hasTopBar ? (
+          <div
+            className={cn(
+              "s-flex s-w-full s-flex-col",
+              "s-rounded-xl s-border s-bg-muted-background s-transition s-duration-100",
+              "s-border-border dark:s-border-border-night",
+              "focus-within:s-border-border-focus dark:focus-within:s-border-border-focus-night",
+              "focus-within:s-outline-none focus-within:s-ring-2",
+              "focus-within:s-ring-highlight/20 dark:focus-within:s-ring-highlight/50",
+              "s-min-h-40",
+              containerClassName
+            )}
+          >
+            <div
+              className={cn(
+                "s-sticky s-top-0 s-z-10 s-flex s-items-center s-rounded-t-xl",
+                "s-border-b s-border-border dark:s-border-border-night",
+                "s-bg-muted-background/80 s-backdrop-blur-sm dark:s-bg-muted-background-night/80",
+                topBarClassName
+              )}
+            >
+              {topBar}
+            </div>
+            <EditorContent editor={editor} />
+          </div>
+        ) : (
+          <EditorContent editor={editor} />
+        )}
         <>
           {/* Suggestion accept/reject BubbleMenu */}
           <BubbleMenu
@@ -1192,6 +1235,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                 />
                 <Button
                   label="Rephrase"
+                  icon={PencilSquareIcon}
                   size="xs"
                   variant="ghost"
                   onClick={() => {

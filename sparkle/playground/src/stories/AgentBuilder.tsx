@@ -528,129 +528,129 @@ export default function AgentBuilder() {
                         </DropdownMenu>
                       }
                     />
-                    <div className="s-flex s-flex-1 s-items-center s-justify-center s-gap-2">
-                      <Button
-                        icon={HeadingIcon}
-                        size="mini"
-                        variant="ghost-secondary"
-                        tooltip="Heading"
-                      />
-                      <Button
-                        icon={BoldIcon}
-                        size="mini"
-                        variant="ghost-secondary"
-                        tooltip="Bold"
-                        tooltipShortcut="Cmd+B"
-                      />
-                      <Button
-                        icon={ItalicIcon}
-                        size="mini"
-                        variant="ghost-secondary"
-                        tooltip="Italic"
-                        tooltipShortcut="Cmd+I"
-                      />
-                      <Separator orientation="vertical" />
-                      <Button
-                        icon={LinkIcon}
-                        size="mini"
-                        variant="ghost-secondary"
-                        tooltip="Insert a link"
-                      />
-                      <Button
-                        icon={ListCheckIcon}
-                        size="mini"
-                        variant="ghost-secondary"
-                        tooltip="Bulleted list"
-                      />
-                      <Button
-                        icon={ListOrdered2Icon}
-                        size="mini"
-                        variant="ghost-secondary"
-                        tooltip="Ordered list"
-                      />
-                      <Separator orientation="vertical" />
-                      <Button
-                        icon={QuoteTextIcon}
-                        size="mini"
-                        variant="ghost-secondary"
-                        tooltip="Quotation block"
-                      />
-                      <Button
-                        icon={CodeBlockIcon}
-                        size="mini"
-                        variant="ghost-secondary"
-                        tooltip="Code Block"
-                      />
-                      <Separator orientation="vertical" />
-                      <Button
-                        icon={TagBlockIcon}
-                        size="mini"
-                        variant="ghost-secondary"
-                        tooltip="XML tag"
-                      />
-                      <Separator orientation="vertical" />
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="mini"
-                            variant="ghost-secondary"
-                            icon={HistoryIcon}
-                            isSelect
-                          />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuLabel label="Version history" />
-                          {versionHistoryItems.map((item) => (
-                            <DropdownMenuItem
-                              key={item.id}
-                              label={item.date}
-                              description={item.author}
-                              onSelect={() => {
-                                window.setTimeout(() => {
-                                  setSelectedVersion(item);
-                                }, 0);
-                              }}
-                            />
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      <div className="s-flex-1" />
-                      {hasSuggestionsState && (
-                        <>
-                          <div className="s-heading-xs s-text-muted-foreground">
-                            Suggestions:
-                          </div>
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            icon={XMarkIcon}
-                            label="Reject"
-                            onClick={() => {
-                              richTextAreaRef.current?.rejectAllSuggestions();
-                              checkForSuggestions();
-                            }}
-                          />
-                          <Button
-                            size="xs"
-                            icon={CheckIcon}
-                            variant="highlight-secondary"
-                            label="Accept"
-                            onClick={() => {
-                              richTextAreaRef.current?.acceptAllSuggestions();
-                              checkForSuggestions();
-                            }}
-                          />
-                        </>
-                      )}
-                    </div>
                     <RichTextArea
                       ref={richTextAreaRef}
-                      className="s-min-h-[512px]"
                       placeholder="Write instructions for your agent..."
                       onAskCopilot={handleAskCopilot}
                       onSuggestionsChange={setHasSuggestionsState}
                       onTextChange={handleInstructionTextChange}
                       scrollContainer={scrollContainer}
+                      topBar={
+                        <div className="s-flex s-flex-1 s-flex-wrap s-items-center s-gap-2 s-px-3 s-py-2">
+                          <Button
+                            icon={HeadingIcon}
+                            size="mini"
+                            variant="ghost-secondary"
+                            tooltip="Heading"
+                          />
+                          <Button
+                            icon={BoldIcon}
+                            size="mini"
+                            variant="ghost-secondary"
+                            tooltip="Bold"
+                            tooltipShortcut="Cmd+B"
+                          />
+                          <Button
+                            icon={ItalicIcon}
+                            size="mini"
+                            variant="ghost-secondary"
+                            tooltip="Italic"
+                            tooltipShortcut="Cmd+I"
+                          />
+                          <Separator orientation="vertical" />
+                          <Button
+                            icon={LinkIcon}
+                            size="mini"
+                            variant="ghost-secondary"
+                            tooltip="Insert a link"
+                          />
+                          <Button
+                            icon={ListCheckIcon}
+                            size="mini"
+                            variant="ghost-secondary"
+                            tooltip="Bulleted list"
+                          />
+                          <Button
+                            icon={ListOrdered2Icon}
+                            size="mini"
+                            variant="ghost-secondary"
+                            tooltip="Ordered list"
+                          />
+                          <Separator orientation="vertical" />
+                          <Button
+                            icon={QuoteTextIcon}
+                            size="mini"
+                            variant="ghost-secondary"
+                            tooltip="Quotation block"
+                          />
+                          <Button
+                            icon={CodeBlockIcon}
+                            size="mini"
+                            variant="ghost-secondary"
+                            tooltip="Code Block"
+                          />
+                          <Separator orientation="vertical" />
+                          <Button
+                            icon={TagBlockIcon}
+                            size="mini"
+                            variant="ghost-secondary"
+                            tooltip="XML tag"
+                          />
+                          <Separator orientation="vertical" />
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                size="mini"
+                                variant="ghost-secondary"
+                                icon={HistoryIcon}
+                                isSelect
+                              />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuLabel label="Version history" />
+                              {versionHistoryItems.map((item) => (
+                                <DropdownMenuItem
+                                  key={item.id}
+                                  label={item.date}
+                                  description={item.author}
+                                  onSelect={() => {
+                                    window.setTimeout(() => {
+                                      setSelectedVersion(item);
+                                    }, 0);
+                                  }}
+                                />
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <div className="s-flex-1" />
+                          {hasSuggestionsState && (
+                            <div className="s-ml-auto s-flex s-gap-2">
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                icon={XMarkIcon}
+                                label="Reject all"
+                                tooltip="Reject all suggestions"
+                                onClick={() => {
+                                  richTextAreaRef.current?.rejectAllSuggestions();
+                                  checkForSuggestions();
+                                }}
+                              />
+                              <Button
+                                size="xs"
+                                icon={CheckIcon}
+                                variant="highlight-secondary"
+                                label="Accept all"
+                                tooltip="Accept all suggestions"
+                                onClick={() => {
+                                  richTextAreaRef.current?.acceptAllSuggestions();
+                                  checkForSuggestions();
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      }
                     />
                   </div>
                   <div className="s-flex s-flex-col s-gap-2">
