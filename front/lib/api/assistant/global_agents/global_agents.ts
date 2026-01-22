@@ -1,4 +1,3 @@
-import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
   _getClaude3_7GlobalAgent,
@@ -50,14 +49,8 @@ import {
   _getNotionGlobalAgent,
   _getSlackGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/retired_managed";
-import type {
-  MCPServerViewsForGlobalAgentsMap,
-  PrefetchedDataSourcesType,
-} from "@app/lib/api/assistant/global_agents/tools";
-import {
-  getDataSourcesAndWorkspaceIdForGlobalAgents,
-  MCP_SERVERS_FOR_GLOBAL_AGENTS,
-} from "@app/lib/api/assistant/global_agents/tools";
+import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
+import { getDataSourcesAndWorkspaceIdForGlobalAgents } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
@@ -81,7 +74,17 @@ function getGlobalAgent({
   sId,
   preFetchedDataSources,
   globalAgentSettings,
-  mcpServerViews,
+  agentRouterMCPServerView,
+  webSearchBrowseMCPServerView,
+  searchMCPServerView,
+  dataSourcesFileSystemMCPServerView,
+  interactiveContentMCPServerView,
+  runAgentMCPServerView,
+  toolsetsMCPServerView,
+  dataWarehousesMCPServerView,
+  slideshowMCPServerView,
+  deepDiveMCPServerView,
+  agentMemoryMCPServerView,
   memories,
   availableToolsets,
 }: {
@@ -89,25 +92,20 @@ function getGlobalAgent({
   sId: string | number;
   preFetchedDataSources: PrefetchedDataSourcesType | null;
   globalAgentSettings: GlobalAgentSettingsModel[];
-  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+  agentRouterMCPServerView: MCPServerViewResource | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  searchMCPServerView: MCPServerViewResource | null;
+  dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
+  runAgentMCPServerView: MCPServerViewResource | null;
+  toolsetsMCPServerView: MCPServerViewResource | null;
+  dataWarehousesMCPServerView: MCPServerViewResource | null;
+  slideshowMCPServerView: MCPServerViewResource | null;
+  deepDiveMCPServerView: MCPServerViewResource | null;
+  agentMemoryMCPServerView: MCPServerViewResource | null;
   memories: AgentMemoryResource[];
   availableToolsets: MCPServerViewResource[];
 }): AgentConfigurationType | null {
-  const agentRouterMCPServerView = mcpServerViews.get("agent_router") ?? null;
-  const webSearchBrowseMCPServerView =
-    mcpServerViews.get("web_search_&_browse") ?? null;
-  const searchMCPServerView = mcpServerViews.get("search") ?? null;
-  const dataSourcesFileSystemMCPServerView =
-    mcpServerViews.get("data_sources_file_system") ?? null;
-  const interactiveContentMCPServerView =
-    mcpServerViews.get("interactive_content") ?? null;
-  const runAgentMCPServerView = mcpServerViews.get("run_agent") ?? null;
-  const toolsetsMCPServerView = mcpServerViews.get("toolsets") ?? null;
-  const dataWarehousesMCPServerView =
-    mcpServerViews.get("data_warehouses") ?? null;
-  const slideshowMCPServerView = mcpServerViews.get("slideshow") ?? null;
-  const deepDiveMCPServerView = mcpServerViews.get("deep_dive") ?? null;
-  const agentMemoryMCPServerView = mcpServerViews.get("agent_memory") ?? null;
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
 
@@ -487,35 +485,94 @@ export async function getGlobalAgents(
     throw new Error("Unexpected `auth` without `plan`.");
   }
 
-  const [preFetchedDataSources, globalAgentSettings, allMCPServerViews] =
-    await Promise.all([
-      variant === "full"
-        ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
-        : null,
-      GlobalAgentSettingsModel.findAll({
-        where: { workspaceId: owner.id },
-      }),
-      variant === "full"
-        ? MCPServerViewResource.getMCPServerViewsForAutoInternalTools(auth, [
-            ...MCP_SERVERS_FOR_GLOBAL_AGENTS,
-          ])
-        : [],
-    ]);
-
-  const mcpServerViewsByServerId = new Map(
-    allMCPServerViews.map((v) => [v.internalMCPServerId, v])
-  );
-  const mcpServerViews: MCPServerViewsForGlobalAgentsMap = new Map();
-  for (const name of MCP_SERVERS_FOR_GLOBAL_AGENTS) {
-    const mcpServerId = autoInternalMCPServerNameToSId({
-      name,
-      workspaceId: owner.id,
-    });
-    const view = mcpServerViewsByServerId.get(mcpServerId);
-    if (view) {
-      mcpServerViews.set(name, view);
-    }
-  }
+  const [
+    preFetchedDataSources,
+    globalAgentSettings,
+    agentRouterMCPServerView,
+    webSearchBrowseMCPServerView,
+    searchMCPServerView,
+    dataSourcesFileSystemMCPServerView,
+    interactiveContentMCPServerView,
+    runAgentMCPServerView,
+    toolsetsMCPServerView,
+    dataWarehousesMCPServerView,
+    slideshowMCPServerView,
+    deepDiveMCPServerView,
+    agentMemoryMCPServerView,
+  ] = await Promise.all([
+    variant === "full"
+      ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
+      : null,
+    GlobalAgentSettingsModel.findAll({
+      where: { workspaceId: owner.id },
+    }),
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "agent_router"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "web_search_&_browse"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "search"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "data_sources_file_system"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "interactive_content"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "run_agent"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "toolsets"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "data_warehouses"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "slideshow"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "deep_dive"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "agent_memory"
+        )
+      : null,
+  ]);
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
   // one (which will remove these models from the list of default agents in the product + list of
@@ -565,7 +622,7 @@ export async function getGlobalAgents(
   let memories: AgentMemoryResource[] = [];
   if (
     variant === "full" &&
-    mcpServerViews.has("agent_memory") &&
+    agentMemoryMCPServerView &&
     auth.user() &&
     (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE) ||
@@ -583,7 +640,7 @@ export async function getGlobalAgents(
   let availableToolsets: MCPServerViewResource[] = [];
   if (
     variant === "full" &&
-    mcpServerViews.has("toolsets") &&
+    toolsetsMCPServerView &&
     (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE) ||
       agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK) ||
@@ -604,7 +661,17 @@ export async function getGlobalAgents(
       sId,
       preFetchedDataSources,
       globalAgentSettings,
-      mcpServerViews,
+      agentRouterMCPServerView,
+      webSearchBrowseMCPServerView,
+      searchMCPServerView,
+      dataSourcesFileSystemMCPServerView,
+      interactiveContentMCPServerView,
+      runAgentMCPServerView,
+      toolsetsMCPServerView,
+      dataWarehousesMCPServerView,
+      slideshowMCPServerView,
+      deepDiveMCPServerView,
+      agentMemoryMCPServerView,
       memories,
       availableToolsets,
     })
