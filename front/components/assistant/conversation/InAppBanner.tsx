@@ -6,7 +6,7 @@ import { useState } from "react";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
 
-const SKILLS_IMAGE_PATH = "/static/Skills_Banner.png";
+const SKILLS_IMAGE_PATH = "/static/Skills_Banner.jpg";
 const SKILLS_BANNER_LOCAL_STORAGE_KEY = "skills-banner-dismissed";
 const SKILLS_BANNER_URL = "https://docs.dust.tt/docs/skills";
 
