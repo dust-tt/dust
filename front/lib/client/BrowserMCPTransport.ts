@@ -12,7 +12,6 @@ const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.
  *
  * - Uses native EventSource for SSE (receives requests from Dust)
  * - Uses fetch with credentials for HTTP POST (sends results back to Dust)
- * - Supports workspace-scoped MCP registration only
  */
 export class BrowserMCPTransport implements Transport {
   private eventSource: EventSource | null = null;
@@ -34,7 +33,7 @@ export class BrowserMCPTransport implements Transport {
   ) {}
 
   /**
-   * Register the MCP server with the Dust backend.
+   * Register the MCP server.
    */
   private async registerServer(): Promise<boolean> {
     try {

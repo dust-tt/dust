@@ -17,7 +17,6 @@ export function registerGetAgentConfigTool(
     () => {
       const formData = getFormValues();
 
-      // Transform form data to the expected tool output format.
       const config = {
         name: formData.agentSettings.name,
         description: formData.agentSettings.description,
