@@ -269,7 +269,7 @@ function formatAgentAsMarkdown(agent: Agent): string {
 
   const dataSourcesList = agent.dataSources
     .map((ds) => {
-      const lines = [`- **${ds.connector_provider ?? "Unknown provider"}**`];
+      const lines = [`- **${ds.connector_provider}**`];
       if (ds.datasource_description) {
         lines.push(`  - Description: ${ds.datasource_description}`);
       }

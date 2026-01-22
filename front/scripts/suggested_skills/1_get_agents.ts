@@ -172,10 +172,17 @@ async function fetchAgentDataSources(
     include: [{ model: DataSourceModel, as: "dataSource" }],
   });
 
-  return datasourceConfigs.map((dsConfig) => ({
-    datasource_description: dsConfig.dataSource.description,
-    connector_provider: dsConfig.dataSource.connectorProvider,
-  }));
+  const results: AgentDatasource[] = [];
+  for (const dsConfig of datasourceConfigs) {
+    const provider = dsConfig.dataSource.connectorProvider;
+    if (provider !== null) {
+      results.push({
+        datasource_description: dsConfig.dataSource.description,
+        connector_provider: provider,
+      });
+    }
+  }
+  return results;
 }
 
 async function buildAgentData(

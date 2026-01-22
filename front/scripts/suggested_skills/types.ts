@@ -19,7 +19,7 @@ export type AgentTool = {
 
 export type AgentDatasource = {
   datasource_description: string | null;
-  connector_provider: string | null;
+  connector_provider: string;
 };
 
 export type Agent = {
