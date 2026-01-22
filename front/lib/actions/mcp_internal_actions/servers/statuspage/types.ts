@@ -19,7 +19,9 @@ export const RealTimeIncidentStatusSchema = z.enum([
   "resolved",
 ]);
 
-export type RealTimeIncidentStatus = z.infer<typeof RealTimeIncidentStatusSchema>;
+export type RealTimeIncidentStatus = z.infer<
+  typeof RealTimeIncidentStatusSchema
+>;
 
 // All possible incident status values (including scheduled maintenance and postmortem)
 export const IncidentStatusSchema = z.enum([

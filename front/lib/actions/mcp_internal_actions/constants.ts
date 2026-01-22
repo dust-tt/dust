@@ -1944,7 +1944,9 @@ export const INTERNAL_MCP_SERVERS = {
     id: 49,
     availability: "manual",
     allowMultipleInstances: false,
-    isRestricted: undefined,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("statuspage_tool");
+    },
     isPreview: true,
     tools_stakes: {
       list_pages: "never_ask",
