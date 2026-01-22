@@ -1,6 +1,7 @@
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 
+import { blocksToMarkdown } from "@connectors/connectors/slack/lib/blocks_to_markdown";
 import {
   getBotOrUserName,
   getUserName,
@@ -50,8 +51,11 @@ export async function formatMessagesForUpsert({
 }): Promise<CoreAPIDataSourceDocumentSection> {
   const data = await Promise.all(
     messages.map(async (message) => {
+      // Prefer rich text from blocks (preserves formatting), fall back to plain text.
+      const rawText =
+        blocksToMarkdown(message.blocks) ?? (message.text as string);
       const text = await processMessageForMentions(
-        message.text as string,
+        rawText,
         connectorId,
         slackClient
       );
