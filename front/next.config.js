@@ -381,6 +381,12 @@ const config = {
         destination: "/home/solutions/sales",
         permanent: true,
       },
+      // Compare pages: redirect all to homepage
+      {
+        source: "/compare/:slug",
+        destination: "/",
+        permanent: true,
+      },
     ];
   },
   poweredByHeader: false,
