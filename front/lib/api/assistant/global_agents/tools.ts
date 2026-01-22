@@ -5,7 +5,10 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  AutoInternalMCPServerNameType,
+  InternalMCPServerNameType,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -15,6 +18,26 @@ export type PrefetchedDataSourcesType = {
   dataSourceViews: (DataSourceViewType & { isInGlobalSpace: boolean })[];
   workspaceId: string;
 };
+
+export const MCP_SERVERS_FOR_GLOBAL_AGENTS: readonly AutoInternalMCPServerNameType[] =
+  [
+    "agent_router",
+    "web_search_&_browse",
+    "search",
+    "data_sources_file_system",
+    "interactive_content",
+    "run_agent",
+    "toolsets",
+    "data_warehouses",
+    "slideshow",
+    "deep_dive",
+    "agent_memory",
+  ] as const;
+
+export type MCPServerViewsForGlobalAgentsMap = Map<
+  (typeof MCP_SERVERS_FOR_GLOBAL_AGENTS)[number],
+  MCPServerViewResource
+>;
 
 export async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   auth: Authenticator
