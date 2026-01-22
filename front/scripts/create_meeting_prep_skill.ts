@@ -2,6 +2,7 @@ import type { Transaction } from "sequelize";
 
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import {
@@ -198,8 +199,7 @@ interface MCPServerViewInfo {
 
 async function findAvailableMCPServerViews(
   auth: Authenticator,
-  serverNames: readonly InternalMCPServerNameType[],
-  logger: Logger
+  serverNames: readonly InternalMCPServerNameType[]
 ): Promise<Map<string, MCPServerViewInfo>> {
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const workspaceModelId = auth.getNonNullableWorkspace().id;
@@ -222,18 +222,19 @@ async function findAvailableMCPServerViews(
   const result = new Map<string, MCPServerViewInfo>();
   for (const view of views) {
     if (view.internalMCPServerId) {
-      result.set(view.internalMCPServerId, {
+      const res = getInternalMCPServerNameAndWorkspaceId(
+        view.internalMCPServerId
+      );
+      if (res.isErr()) {
+        throw new Error("Invalid server ID");
+      }
+      const { name: serverName } = res.value;
+
+      result.set(serverName, {
         id: view.id,
         internalMCPServerId: view.internalMCPServerId,
         serverType: view.serverType,
       });
-      logger.info(
-        {
-          serverName: view.internalMCPServerId,
-          viewId: view.id,
-        },
-        "Found MCP server view"
-      );
     }
   }
 
@@ -271,8 +272,7 @@ async function createMeetingPrepSkill(
   ];
   const availableViews = await findAvailableMCPServerViews(
     auth,
-    allServerNames,
-    logger
+    allServerNames
   );
 
   // Collect core servers
