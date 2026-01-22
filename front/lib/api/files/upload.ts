@@ -40,6 +40,7 @@ import {
   Ok,
   TextExtraction,
   validateUrl,
+  withRetries,
 } from "@app/types";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
@@ -223,39 +224,53 @@ const resizeAndUploadToFileStorage = async (
     // Upload the original file content directly to ConvertAPI to avoid exposing a signed URL
     // which could be fetched by the third-party service. This still sends the file contents to
     // ConvertAPI for conversion but removes the use of a signed download URL.
-    const uploadResult = await convertapi.upload(
-      file.getReadStream({ auth, version: "original" }),
-      `${file.fileName}.${originalFormat}`
+    const convertWithRetry = withRetries(
+      logger,
+      async () => {
+        const uploadResult = await convertapi.upload(
+          file.getReadStream({ auth, version: "original" }),
+          `${file.fileName}.${originalFormat}`
+        );
+
+        return convertapi.convert(
+          originalFormat,
+          {
+            File: uploadResult,
+            ScaleProportions: true,
+            ImageResolution: "72",
+            ScaleImage: "true",
+            ScaleIfLarger: "true",
+            ...resizeParams,
+          },
+          originalFormat,
+          30
+        );
+      },
+      { retries: 3, delayBetweenRetriesMs: 1000 }
     );
 
-    result = await convertapi.convert(
-      originalFormat,
-      {
-        File: uploadResult,
-        ScaleProportions: true,
-        ImageResolution: "72",
-        ScaleImage: "true",
-        ScaleIfLarger: "true",
-        ...resizeParams,
-      },
-      originalFormat,
-      30
-    );
+    result = await convertWithRetry({});
   } catch (e) {
     return new Err(
       new Error(`Failed resizing image: ${normalizeError(e).message}`)
     );
   }
 
-  const writeStream = file.getWriteStream({
-    auth,
-    version: "processed",
-  });
-
   try {
-    const stream = await createReadableFromUrl(result.file.url);
+    const uploadToGcsWithRetry = withRetries(
+      logger,
+      async () => {
+        const stream = await createReadableFromUrl(result.file.url);
+        const gcsWriteStream = file.getWriteStream({
+          auth,
+          version: "processed",
+        });
+        await pipeline(stream, gcsWriteStream);
+      },
+      { retries: 3, delayBetweenRetriesMs: 1000 }
+    );
 
-    await pipeline(stream, writeStream);
+    await uploadToGcsWithRetry({});
     return new Ok(undefined);
   } catch (err) {
     logger.error(
@@ -871,12 +886,9 @@ export async function uploadBase64DataToFileStorage(
     useCaseMetadata,
   }: UploadBase64DataToFileStorageArgs
 ): Promise<Result<FileResource, ProcessAndStoreFileError>> {
-  // Convert base64 to buffer.
   const buffer = Buffer.from(base64, "base64");
-
   const fileSizeInBytes = buffer.length;
 
-  // Upload the buffer to the file storage.
   const file = await FileResource.makeNew({
     workspaceId: auth.getNonNullableWorkspace().id,
     userId: auth.user()?.id ?? null,

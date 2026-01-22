@@ -7,6 +7,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { FileDataPart } from "@app/lib/api/actions/servers/image_generation/helpers";
 import {
   checkImageGenerationRateLimit,
   computeImageGenerationCostDetails,
@@ -58,21 +59,21 @@ export function createImageGenerationTools(
         return rateLimitResult;
       }
 
-      let inlineDataParts: Array<{
-        inlineData: { data: string; mimeType: string };
-      }> = [];
+      const gemini = createGeminiClient();
+
+      let fileDataParts: FileDataPart[] = [];
 
       if (referenceImages && referenceImages.length > 0) {
-        const processResult = await processImageFileIds({
-          auth,
+        const processResult = await processImageFileIds(auth, {
           imageFileIds: referenceImages,
           agentLoopContext,
           statsDClient,
+          gemini,
         });
         if (processResult.isErr()) {
           return processResult;
         }
-        inlineDataParts = processResult.value;
+        fileDataParts = processResult.value;
       }
 
       const imageSize = QUALITY_TO_IMAGE_SIZE[quality ?? "low"];
@@ -105,12 +106,11 @@ export function createImageGenerationTools(
         userId: workspace.sId,
       });
 
-      const gemini = createGeminiClient();
       const contents =
-        inlineDataParts.length > 0
+        fileDataParts.length > 0
           ? [
               {
-                parts: [...inlineDataParts, { text: prompt }],
+                parts: [...fileDataParts, { text: prompt }],
               },
             ]
           : prompt;
