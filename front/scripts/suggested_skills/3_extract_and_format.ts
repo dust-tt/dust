@@ -39,7 +39,7 @@ type Skill = {
 };
 
 const argumentSpecs: ArgumentSpecs = {
-  workspaceSId: {
+  workspaceId: {
     type: "string",
     required: true,
     description: "The workspace sId to extract skills from",
@@ -133,17 +133,17 @@ function sanitizeFileName(name: string): string {
  * Extracts top skills and formats them into text files for review.
  *
  * Usage:
- *   npx tsx scripts/suggested_skills/3_extract_and_format.ts --workspaceSId <workspaceSId>
+ *   npx tsx scripts/suggested_skills/3_extract_and_format.ts --workspaceId <workspaceId>
  */
 makeScript(argumentSpecs, async (args, scriptLogger) => {
-  const workspaceSId = args.workspaceSId as string;
+  const workspaceId = args.workspaceId as string;
   const topN = (args.topN as number) || 10;
   const withDatasources = args.withDatasources === true;
 
-  // Read suggested skills from <workspaceSId>/suggested_skills.json
+  // Read suggested skills from <workspaceId>/suggested_skills.json
   const suggestedSkillsPath = join(
     __dirname,
-    workspaceSId,
+    workspaceId,
     "suggested_skills.json"
   );
 
@@ -201,7 +201,7 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
     });
 
   // Write JSON output
-  const topSkillsFilePath = join(__dirname, workspaceSId, "top_skills.json");
+  const topSkillsFilePath = join(__dirname, workspaceId, "top_skills.json");
   writeFileSync(
     topSkillsFilePath,
     JSON.stringify(removeNulls(topSkills), null, 2)
@@ -213,7 +213,7 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
   );
 
   // Create formatted_skills directory
-  const formattedSkillsDir = join(__dirname, workspaceSId, "formatted_skills");
+  const formattedSkillsDir = join(__dirname, workspaceId, "formatted_skills");
   if (!existsSync(formattedSkillsDir)) {
     mkdirSync(formattedSkillsDir, { recursive: true });
     scriptLogger.info(
@@ -246,8 +246,8 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
       totalSkills: allSkills.length,
       filteredSkills: filteredSkills.length,
       outputSkills: topSkills.length,
-      jsonFile: `${workspaceSId}/top_skills.json`,
-      textDir: `${workspaceSId}/formatted_skills`,
+      jsonFile: `${workspaceId}/top_skills.json`,
+      textDir: `${workspaceId}/formatted_skills`,
     },
     "Completed extraction and formatting"
   );

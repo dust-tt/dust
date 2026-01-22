@@ -207,7 +207,7 @@ type Agent = {
 };
 
 const argumentSpecs: ArgumentSpecs = {
-  workspaceSId: {
+  workspaceId: {
     type: "string",
     required: true,
     description: "The workspace sId to process agents for",
@@ -359,13 +359,13 @@ const OUTPUT_FORMAT = {
  * Generates skill suggestions for agents using the Anthropic API.
  *
  * Usage:
- *   npx tsx scripts/suggested_skills/2_generate_skills.ts --workspaceSId <workspaceSId>
+ *   npx tsx scripts/suggested_skills/2_generate_skills.ts --workspaceId <workspaceId>
  */
 makeScript(argumentSpecs, async (args, scriptLogger) => {
-  const workspaceSId = args.workspaceSId as string;
+  const workspaceId = args.workspaceId as string;
 
-  // Read agents from <workspaceSId>/agents.json
-  const agentsFilePath = join(__dirname, workspaceSId, "agents.json");
+  // Read agents from <workspaceId>/agents.json
+  const agentsFilePath = join(__dirname, workspaceId, "agents.json");
   const fileContent = readFileSync(agentsFilePath, "utf-8");
   const allAgents = JSON.parse(fileContent) as Agent[];
 
@@ -585,7 +585,7 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
   });
 
   // Write results to file
-  const resultsFilePath = join(__dirname, workspaceSId, "suggested_skills.json");
+  const resultsFilePath = join(__dirname, workspaceId, "suggested_skills.json");
   writeFileSync(
     resultsFilePath,
     JSON.stringify(

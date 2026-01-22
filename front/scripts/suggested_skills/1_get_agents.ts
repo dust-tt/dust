@@ -54,7 +54,7 @@ type Agent = {
 };
 
 const argumentSpecs: ArgumentSpecs = {
-  workspaceSId: {
+  workspaceId: {
     type: "string",
     required: true,
     description: "The workspace sId (e.g., 0Kxxx...)",
@@ -69,18 +69,18 @@ const argumentSpecs: ArgumentSpecs = {
  * Fetches agents from the database using Sequelize.
  *
  * Usage:
- *   npx tsx scripts/suggested_skills/1_get_agents.ts --workspaceSId <workspaceSId>
+ *   npx tsx scripts/suggested_skills/1_get_agents.ts --workspaceId <workspaceId>
  */
 makeScript(argumentSpecs, async (args, scriptLogger) => {
-  const workspaceSId = args.workspaceSId;
+  const workspaceId = args.workspaceId as string;
   const limit = (args.limit as number) || 60;
 
-  scriptLogger.info({ workspaceSId }, "Starting agent data extraction");
+  scriptLogger.info({ workspaceId }, "Starting agent data extraction");
 
   // Find the workspace
-  const workspace = await WorkspaceResource.fetchById(workspaceSId);
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
   if (!workspace) {
-    throw new Error(`Workspace not found with sId: ${workspaceSId}`);
+    throw new Error(`Workspace not found with sId: ${workspaceId}`);
   }
 
   scriptLogger.info(
@@ -249,7 +249,7 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
   const topAgents = agents.slice(0, limit);
 
   // Create output directory
-  const outputDir = join(__dirname, workspaceSId);
+  const outputDir = join(__dirname, workspaceId);
   if (!existsSync(outputDir)) {
     mkdirSync(outputDir, { recursive: true });
     scriptLogger.info({ outputDir }, "Created output directory");

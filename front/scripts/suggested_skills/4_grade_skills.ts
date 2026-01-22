@@ -45,7 +45,7 @@ interface Example {
 const MAX_RETRIES = 3;
 
 const argumentSpecs: ArgumentSpecs = {
-  workspaceSId: {
+  workspaceId: {
     type: "string",
     required: true,
     description: "The workspace sId to grade skills for",
@@ -181,12 +181,12 @@ ${(skill.requiredTools || []).length > 0 ? skill.requiredTools.map((t) => `- ${t
  * Grades skills using Google Gemini and selects the top N.
  *
  * Usage:
- *   npx tsx scripts/suggested_skills/4_grade_skills.ts --workspaceSId <workspaceSId>
+ *   npx tsx scripts/suggested_skills/4_grade_skills.ts --workspaceId <workspaceId>
  *
  * Note: Requires 4_examples.json to be downloaded from Notion and placed in this directory.
  */
 makeScript(argumentSpecs, async (args, scriptLogger) => {
-  const workspaceSId = args.workspaceSId as string;
+  const workspaceId = args.workspaceId as string;
   const topN = (args.topN as number) || 3;
 
   const apiKey = process.env.DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY;
@@ -199,7 +199,7 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
   const client = new GoogleGenAI({ apiKey });
 
   // Read skills from top_skills.json
-  const inputPath = join(__dirname, workspaceSId, "top_skills.json");
+  const inputPath = join(__dirname, workspaceId, "top_skills.json");
   if (!existsSync(inputPath)) {
     throw new Error(`Input file not found: ${inputPath}`);
   }
@@ -267,17 +267,17 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
   );
 
   // Write output
-  const outputPath = join(__dirname, workspaceSId, "final_skills.json");
+  const outputPath = join(__dirname, workspaceId, "final_skills.json");
   writeFileSync(outputPath, JSON.stringify(outputSkills, null, 2));
   scriptLogger.info({ outputPath, count: outputSkills.length }, "Wrote final skills");
 
   // Write grading report
-  const reportPath = join(__dirname, workspaceSId, "grading_report.json");
+  const reportPath = join(__dirname, workspaceId, "grading_report.json");
   writeFileSync(
     reportPath,
     JSON.stringify(
       {
-        workspace_sId: workspaceSId,
+        workspace_id: workspaceId,
         total_skills: skills.length,
         graded_at: new Date().toISOString(),
         all_grades: sortedSkills.map((s) => ({
