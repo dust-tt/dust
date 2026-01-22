@@ -1088,14 +1088,6 @@ export function DataSourcePage({ owner, dsId }: DataSourcePageProps) {
                   configKey="largeFilesEnabled"
                   featureKey="googleDriveLargeFilesEnabled"
                 />
-                <ConfigToggle
-                  title="Parallel syncing enabled?"
-                  owner={owner}
-                  features={features}
-                  dataSource={dataSource}
-                  configKey="useParallelSync"
-                  featureKey="googleDriveParallelSyncEnabled"
-                />
               </>
             )}
             {dataSource.connectorProvider === "microsoft" && (
