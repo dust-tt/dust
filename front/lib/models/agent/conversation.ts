@@ -176,6 +176,10 @@ ConversationParticipantModel.init(
       allowNull: false,
       defaultValue: false,
     },
+    lastReadAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     modelName: "conversation_participant",
