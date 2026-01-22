@@ -6,7 +6,7 @@ import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 export async function hasAcademyAccess(
-  req: IncomingMessage & { cookies?: Partial<{ [key: string]: string }> },
+  req: IncomingMessage & { cookies: Partial<{ [key: string]: string }> },
   res: ServerResponse
 ): Promise<boolean> {
   const session = await getSession(req, res);
