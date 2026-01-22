@@ -221,7 +221,7 @@ async function findAvailableMCPServerViews(
 
   const result = new Map<string, MCPServerViewInfo>();
   for (const view of views) {
-    if (view.internalMCPServerId && view.space.kind === "global") {
+    if (view.internalMCPServerId) {
       result.set(view.internalMCPServerId, {
         id: view.id,
         internalMCPServerId: view.internalMCPServerId,
