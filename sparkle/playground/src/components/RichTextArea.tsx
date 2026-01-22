@@ -440,6 +440,7 @@ const mentionExtension = Mention.extend({
 }).configure({
   HTMLAttributes: {
     class: cn(
+      "sparkle-mention",
       "s-rounded s-px-1 s-transition-colors",
       "s-text-highlight-600 dark:s-text-highlight-600-night",
       "hover:s-bg-highlight-100 dark:hover:s-bg-highlight-100-night",
@@ -448,18 +449,11 @@ const mentionExtension = Mention.extend({
   },
   renderText({ node }) {
     const label = node.attrs.label ?? node.attrs.id ?? "";
-    if (typeof label === "string" && label.startsWith("Instruction (")) {
-      return label;
-    }
     return `@${label}`;
   },
   renderHTML({ node, options }) {
     const label = node.attrs.label ?? node.attrs.id ?? "";
-    const text =
-      typeof label === "string" && label.startsWith("Instruction (")
-        ? label
-        : `@${label}`;
-    return ["span", mergeAttributes(options.HTMLAttributes), text];
+    return ["span", mergeAttributes(options.HTMLAttributes), `@${label}`];
   },
   char: "@",
   suggestion: {
@@ -510,6 +504,33 @@ const mentionExtension = Mention.extend({
   },
 });
 
+const instructionSnippetMark = Mark.create({
+  name: "instructionSnippet",
+  addAttributes() {
+    return {
+      id: { default: null },
+      label: { default: null },
+    };
+  },
+  parseHTML() {
+    return [{ tag: "span[data-instruction-snippet]" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "span",
+      mergeAttributes(HTMLAttributes, {
+        "data-instruction-snippet": "",
+        class: cn(
+          "sparkle-instruction",
+          "s-rounded s-text-golden-900 s-bg-golden-100 s-px-1",
+          "dark:s-text-golden-900-night dark:s-bg-golden-100-night"
+        ),
+      }),
+      0,
+    ];
+  },
+});
+
 const richTextAreaVariants = cva(
   cn(
     "s-w-full s-text-base s-leading-6 s-outline-none s-whitespace-pre-wrap s-break-words",
@@ -554,6 +575,7 @@ export type RichTextAreaHandle = {
     removedText?: string;
   }) => void;
   insertMention: (options: { id: string; label: string }) => void;
+  insertInstructionSnippet: (options: { id: string; label: string }) => void;
   setContent: (text: string) => void;
   applyRandomSuggestions: (changes: string[]) => void;
   hasSuggestions: () => boolean;
@@ -624,6 +646,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
           },
         }),
         mentionExtension,
+        instructionSnippetMark,
         SuggestionAdd,
         SuggestionRemove,
         SuggestionSelectionHighlight,
@@ -732,6 +755,31 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
             {
               type: "mention",
               attrs: { id: options.id, label: options.label },
+            },
+            { type: "text", text: " " },
+          ])
+          .run();
+      };
+    }, [editor]);
+    const insertInstructionSnippet = useMemo(() => {
+      return (options: { id: string; label: string }) => {
+        if (!editor) {
+          return;
+        }
+
+        editor
+          .chain()
+          .focus()
+          .insertContent([
+            {
+              type: "text",
+              text: options.label,
+              marks: [
+                {
+                  type: "instructionSnippet",
+                  attrs: { id: options.id, label: options.label },
+                },
+              ],
             },
             { type: "text", text: " " },
           ])
@@ -987,6 +1035,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       () => ({
         insertSuggestion,
         insertMention,
+        insertInstructionSnippet,
         setContent,
         applyRandomSuggestions,
         hasSuggestions,
@@ -996,6 +1045,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       [
         insertSuggestion,
         insertMention,
+        insertInstructionSnippet,
         setContent,
         applyRandomSuggestions,
         hasSuggestions,

@@ -54,8 +54,8 @@ export function InputBar({
     }
 
     const { start, end } = instructionReference;
-    const label = `Instruction (${start}, ${end})`;
-    richTextAreaRef.current?.insertMention({
+    const label = `Snippet (${start}-${end})`;
+    richTextAreaRef.current?.insertInstructionSnippet({
       id: `instruction-${start}-${end}`,
       label,
     });
