@@ -21,7 +21,6 @@ import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_act
 import { default as frontServer } from "@app/lib/actions/mcp_internal_actions/servers/front";
 import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
 import { default as gongServer } from "@app/lib/actions/mcp_internal_actions/servers/gong";
-import { default as calendarServer } from "@app/lib/actions/mcp_internal_actions/servers/google_calendar";
 import { default as driveServer } from "@app/lib/actions/mcp_internal_actions/servers/google_drive";
 import { default as sheetsServer } from "@app/lib/actions/mcp_internal_actions/servers/google_sheets";
 import { default as httpClientServer } from "@app/lib/actions/mcp_internal_actions/servers/http_client";
