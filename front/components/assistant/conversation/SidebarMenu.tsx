@@ -68,6 +68,7 @@ import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import type { AppRouter } from "@app/lib/platform";
@@ -171,6 +172,9 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const doDelete = useDeleteConversation(owner);
 
   const { hideTriggeredConversations } = useHideTriggeredConversations();
+
+  const { isProjectsSectionCollapsed, setProjectsSectionCollapsed } =
+    useProjectsSectionCollapsed();
 
   const hasSkills = hasFeature("skills");
 
@@ -338,12 +342,16 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     if (!hasSpaceConversations) {
       return null;
     }
+    const projectCount = summary.length;
+    const showCount = isProjectsSectionCollapsed && projectCount > 0;
+
     return (
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
-          label="Projects"
+          label={showCount ? `Projects (${projectCount})` : "Projects"}
           type="collapse"
-          defaultOpen
+          open={!isProjectsSectionCollapsed}
+          onOpenChange={(open) => setProjectsSectionCollapsed(!open)}
           action={
             isAdmin(owner) ? (
               <Button
@@ -372,7 +380,14 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         </NavigationListCollapsibleSection>
       </NavigationList>
     );
-  }, [hasSpaceConversations, owner, summary, setIsCreateProjectModalOpen]);
+  }, [
+    hasSpaceConversations,
+    owner,
+    summary,
+    setIsCreateProjectModalOpen,
+    isProjectsSectionCollapsed,
+    setProjectsSectionCollapsed,
+  ]);
 
   const conversationsList = useMemo(() => {
     return (
