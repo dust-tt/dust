@@ -2,7 +2,6 @@ import { GoogleGenAI } from "@google/genai";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 
-import type { ArgumentSpecs } from "@app/scripts/helpers";
 import { makeScript } from "@app/scripts/helpers";
 import type {
   GradedSkill,
@@ -12,18 +11,6 @@ import type {
 } from "@app/scripts/suggested_skills/types";
 
 const MAX_RETRIES = 3;
-
-const argumentSpecs: ArgumentSpecs = {
-  workspaceId: {
-    type: "string",
-    required: true,
-    description: "The workspace sId to grade skills for",
-  },
-  topN: {
-    type: "number",
-    description: "Number of top skills to select after grading (default: 3)",
-  },
-};
 
 function sanitizeJsonString(text: string): string {
   return text.replace(/\\(?!["\\/bfnrtu])/g, "\\\\");
@@ -36,7 +23,7 @@ function loadExamples(examplesFile: string): GradingExample[] {
 
   try {
     const data = JSON.parse(readFileSync(examplesFile, "utf-8"));
-    return data.examples || [];
+    return data.examples ?? [];
   } catch {
     return [];
   }
@@ -154,126 +141,148 @@ ${skill.requiredTools?.length ? skill.requiredTools.map((t) => `- ${t.tool_name}
  *
  * Note: Requires 4_examples.json to be downloaded from Notion and placed in this directory.
  */
-makeScript(argumentSpecs, async (args, scriptLogger) => {
-  const workspaceId = args.workspaceId as string;
-  const topN = (args.topN as number) || 3;
-
-  const apiKey = process.env.DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      "DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY environment variable is required"
-    );
-  }
-
-  const client = new GoogleGenAI({ apiKey });
-
-  // Read skills from top_skills.json
-  const inputPath = join(__dirname, workspaceId, "top_skills.json");
-  if (!existsSync(inputPath)) {
-    throw new Error(`Input file not found: ${inputPath}`);
-  }
-
-  // Read prompt file
-  const promptPath = join(__dirname, "4_prompt.txt");
-  if (!existsSync(promptPath)) {
-    throw new Error(`Prompt file not found: ${promptPath}`);
-  }
-
-  scriptLogger.info({ inputPath }, "Reading skills");
-  const skills: Skill[] = JSON.parse(readFileSync(inputPath, "utf-8"));
-  scriptLogger.info({ skillCount: skills.length }, "Found skills to grade");
-
-  // Load examples
-  const examplesFile = join(__dirname, "4_examples.json");
-  const examples = loadExamples(examplesFile);
-  scriptLogger.info({ exampleCount: examples.length }, "Loaded grading examples");
-
-  // Read skill definition file
-  const skillDefinitionPath = join(__dirname, "4_skill_definition.md");
-  if (!existsSync(skillDefinitionPath)) {
-    throw new Error(`Skill definition file not found: ${skillDefinitionPath}`);
-  }
-  const skillDefinition = readFileSync(skillDefinitionPath, "utf-8");
-
-  // Read and prepare prompt
-  let prompt = readFileSync(promptPath, "utf-8");
-  prompt = prompt.replace("[SKILL_DEFINITION]", skillDefinition);
-  prompt = prompt.replace("[GRADING_EXAMPLES]", formatExamples(examples));
-
-  // Grade each skill
-  const gradedSkills: GradedSkill[] = [];
-
-  for (let i = 0; i < skills.length; i++) {
-    const skill = skills[i];
-    scriptLogger.info(
-      { index: i + 1, total: skills.length, skillName: skill.name },
-      "Grading skill"
-    );
-
-    const grade = await gradeSkill(client, skill, prompt);
-    gradedSkills.push({ ...skill, grade });
-
-    scriptLogger.info(
-      { skillName: skill.name, score: grade.evaluation, comment: grade.comment },
-      "Graded skill"
-    );
-
-    // Small delay between API calls
-    if (i < skills.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+makeScript(
+  {
+    workspaceId: {
+      type: "string",
+      description: "The workspace ID to grade skills for",
+    },
+    topK: {
+      type: "number",
+      description: "Number of top skills to select after grading (default: 10)",
+      default: 10,
+    },
+  },
+  async ({ workspaceId, topK }, scriptLogger) => {
+    const apiKey = process.env.DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        "DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY environment variable is required"
+      );
     }
-  }
 
-  // Sort by evaluation score and take top N
-  const sortedSkills = gradedSkills.sort(
-    (a, b) => b.grade.evaluation - a.grade.evaluation
-  );
-  const topSkills = sortedSkills.slice(0, topN);
+    const client = new GoogleGenAI({ apiKey });
 
-  // Remove grade wrapper and confidenceScore for output
-  const outputSkills = topSkills.map(
-    ({ grade: _, confidenceScore: __, ...skill }) => skill
-  );
+    // Read skills from top_skills.json
+    const inputPath = join(__dirname, workspaceId, "top_skills.json");
+    if (!existsSync(inputPath)) {
+      throw new Error(`Input file not found: ${inputPath}`);
+    }
 
-  // Write output
-  const outputPath = join(__dirname, workspaceId, "final_skills.json");
-  writeFileSync(outputPath, JSON.stringify(outputSkills, null, 2));
-  scriptLogger.info({ outputPath, count: outputSkills.length }, "Wrote final skills");
+    // Read prompt file
+    const promptPath = join(__dirname, "4_prompt.txt");
+    if (!existsSync(promptPath)) {
+      throw new Error(`Prompt file not found: ${promptPath}`);
+    }
 
-  // Write grading report
-  const reportPath = join(__dirname, workspaceId, "grading_report.json");
-  writeFileSync(
-    reportPath,
-    JSON.stringify(
-      {
-        workspace_id: workspaceId,
-        total_skills: skills.length,
-        graded_at: new Date().toISOString(),
-        all_grades: sortedSkills.map((s) => ({
-          name: s.name,
-          evaluation: s.grade.evaluation,
-          comment: s.grade.comment,
-          improvement: s.grade.improvement,
-        })),
-        top_skills: topSkills.map((s) => s.name),
-      },
-      null,
-      2
-    )
-  );
-  scriptLogger.info({ reportPath }, "Wrote grading report");
+    scriptLogger.info({ inputPath }, "Reading skills");
+    const skills: Skill[] = JSON.parse(readFileSync(inputPath, "utf-8"));
+    scriptLogger.info({ skillCount: skills.length }, "Found skills to grade");
 
-  // Print summary
-  scriptLogger.info("=== Top Skills ===");
-  topSkills.forEach((skill, index) => {
+    // Load examples
+    const examplesFile = join(__dirname, "4_examples.json");
+    const examples = loadExamples(examplesFile);
     scriptLogger.info(
-      {
-        rank: index + 1,
-        name: skill.name,
-        score: skill.grade.evaluation,
-        comment: skill.grade.comment,
-      },
-      "Top skill"
+      { exampleCount: examples.length },
+      "Loaded grading examples"
     );
-  });
-});
+
+    // Read skill definition file
+    const skillDefinitionPath = join(__dirname, "4_skill_definition.md");
+    if (!existsSync(skillDefinitionPath)) {
+      throw new Error(
+        `Skill definition file not found: ${skillDefinitionPath}`
+      );
+    }
+    const skillDefinition = readFileSync(skillDefinitionPath, "utf-8");
+
+    // Read and prepare prompt
+    let prompt = readFileSync(promptPath, "utf-8");
+    prompt = prompt.replace("[SKILL_DEFINITION]", skillDefinition);
+    prompt = prompt.replace("[GRADING_EXAMPLES]", formatExamples(examples));
+
+    // Grade each skill
+    const gradedSkills: GradedSkill[] = [];
+
+    for (let i = 0; i < skills.length; i++) {
+      const skill = skills[i];
+      scriptLogger.info(
+        { index: i + 1, total: skills.length, skillName: skill.name },
+        "Grading skill"
+      );
+
+      const grade = await gradeSkill(client, skill, prompt);
+      gradedSkills.push({ ...skill, grade });
+
+      scriptLogger.info(
+        {
+          skillName: skill.name,
+          score: grade.evaluation,
+          comment: grade.comment,
+        },
+        "Graded skill"
+      );
+
+      // Small delay between API calls
+      if (i < skills.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+
+    // Sort by evaluation score and take top N
+    const sortedSkills = gradedSkills.sort(
+      (a, b) => b.grade.evaluation - a.grade.evaluation
+    );
+    const topSkills = sortedSkills.slice(0, topK);
+
+    // Remove grade wrapper and confidenceScore for output
+    const outputSkills = topSkills.map(
+      ({ grade: _, confidenceScore: __, ...skill }) => skill
+    );
+
+    // Write output
+    const outputPath = join(__dirname, workspaceId, "final_skills.json");
+    writeFileSync(outputPath, JSON.stringify(outputSkills, null, 2));
+    scriptLogger.info(
+      { outputPath, count: outputSkills.length },
+      "Wrote final skills"
+    );
+
+    // Write grading report
+    const reportPath = join(__dirname, workspaceId, "grading_report.json");
+    writeFileSync(
+      reportPath,
+      JSON.stringify(
+        {
+          workspace_id: workspaceId,
+          total_skills: skills.length,
+          graded_at: new Date().toISOString(),
+          all_grades: sortedSkills.map((s) => ({
+            name: s.name,
+            evaluation: s.grade.evaluation,
+            comment: s.grade.comment,
+            improvement: s.grade.improvement,
+          })),
+          top_skills: topSkills.map((s) => s.name),
+        },
+        null,
+        2
+      )
+    );
+    scriptLogger.info({ reportPath }, "Wrote grading report");
+
+    // Print summary
+    scriptLogger.info("=== Top Skills ===");
+    topSkills.forEach((skill, index) => {
+      scriptLogger.info(
+        {
+          rank: index + 1,
+          name: skill.name,
+          score: skill.grade.evaluation,
+          comment: skill.grade.comment,
+        },
+        "Top skill"
+      );
+    });
+  }
+);

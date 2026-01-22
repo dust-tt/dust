@@ -3,7 +3,6 @@ import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { z } from "zod";
 
-import type { ArgumentSpecs } from "@app/scripts/helpers";
 import { makeScript } from "@app/scripts/helpers";
 import type { Agent } from "@app/scripts/suggested_skills/types";
 import { dustManagedCredentials } from "@app/types";
@@ -172,14 +171,6 @@ Output your analysis as JSON with the following structure:
       ]
       }`;
 
-const argumentSpecs: ArgumentSpecs = {
-  workspaceId: {
-    type: "string",
-    required: true,
-    description: "The workspace sId to process agents for",
-  },
-};
-
 const SkillSchema = z.object({
   name: z.string(),
   description_for_agents: z.string(),
@@ -278,27 +269,6 @@ const OUTPUT_FORMAT = {
                 additionalProperties: false,
               },
             },
-            requiredDatasources: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  datasource_id: { type: "string" },
-                  datasource_name: { type: "string" },
-                  connector_provider: { type: "string" },
-                  data_source_view_id: { type: "number" },
-                  datasource_description: { type: "string" },
-                },
-                required: [
-                  "datasource_id",
-                  "datasource_name",
-                  "connector_provider",
-                  "data_source_view_id",
-                  "datasource_description",
-                ],
-                additionalProperties: false,
-              },
-            },
             agent_name: { type: "string" },
             confidenceScore: { type: "number" },
           },
@@ -309,7 +279,6 @@ const OUTPUT_FORMAT = {
             "instructions",
             "icon",
             "requiredTools",
-            "requiredDatasources",
             "confidenceScore",
           ],
           additionalProperties: false,
@@ -327,246 +296,256 @@ const OUTPUT_FORMAT = {
  * Usage:
  *   npx tsx scripts/suggested_skills/2_generate_skills.ts --workspaceId <workspaceId>
  */
-makeScript(argumentSpecs, async (args, scriptLogger) => {
-  const workspaceId = args.workspaceId as string;
+makeScript(
+  {
+    workspaceId: {
+      type: "string",
+      description: "The workspace ID to process agents for",
+    },
+  },
+  async ({ workspaceId }, scriptLogger) => {
+    // Read agents from <workspaceId>/agents.json
+    const agentsFilePath = join(__dirname, workspaceId, "agents.json");
+    const fileContent = readFileSync(agentsFilePath, "utf-8");
+    const allAgents = JSON.parse(fileContent) as Agent[];
 
-  // Read agents from <workspaceId>/agents.json
-  const agentsFilePath = join(__dirname, workspaceId, "agents.json");
-  const fileContent = readFileSync(agentsFilePath, "utf-8");
-  const allAgents = JSON.parse(fileContent) as Agent[];
+    const { ANTHROPIC_API_KEY } = dustManagedCredentials();
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error(
+        "DUST_MANAGED_ANTHROPIC_API_KEY environment variable is required"
+      );
+    }
+    const client = new Anthropic({
+      apiKey: ANTHROPIC_API_KEY,
+    });
 
-  const { ANTHROPIC_API_KEY } = dustManagedCredentials();
-  if (!ANTHROPIC_API_KEY) {
-    throw new Error(
-      "DUST_MANAGED_ANTHROPIC_API_KEY environment variable is required"
-    );
-  }
-  const client = new Anthropic({
-    apiKey: ANTHROPIC_API_KEY,
-  });
-
-  scriptLogger.info(
-    { totalAgents: allAgents.length },
-    "Starting to process agents"
-  );
-
-  const suggestedSkills = [];
-
-  // Process agents in batches
-  const BATCH_SIZE = 15;
-  const batches = [];
-  for (let i = 0; i < allAgents.length; i += BATCH_SIZE) {
-    batches.push(allAgents.slice(i, i + BATCH_SIZE));
-  }
-
-  scriptLogger.info(
-    { totalBatches: batches.length, batchSize: BATCH_SIZE },
-    "Processing agents in batches"
-  );
-
-  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-    const batch = batches[batchIndex];
     scriptLogger.info(
-      {
-        batchIndex: batchIndex + 1,
-        totalBatches: batches.length,
-        agentsInBatch: batch.length,
-      },
-      "Processing batch"
+      { totalAgents: allAgents.length },
+      "Starting to process agents"
     );
 
-    // Process all agents in the batch in parallel
-    const batchPromises = batch.map(async (agent) => {
+    const suggestedSkills = [];
+
+    // Process agents in batches
+    const BATCH_SIZE = 15;
+    const batches = [];
+    for (let i = 0; i < allAgents.length; i += BATCH_SIZE) {
+      batches.push(allAgents.slice(i, i + BATCH_SIZE));
+    }
+
+    scriptLogger.info(
+      { totalBatches: batches.length, batchSize: BATCH_SIZE },
+      "Processing agents in batches"
+    );
+
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
       scriptLogger.info(
         {
-          agentSid: agent.agent_sid,
-          agentName: agent.agent_name,
+          batchIndex: batchIndex + 1,
+          totalBatches: batches.length,
+          agentsInBatch: batch.length,
         },
-        "Processing agent"
+        "Processing batch"
       );
 
-      // Pass full tool and datasource objects to the prompt
-      const formattedTools = agent.tools;
-      const formattedDatasources = agent.datasources || [];
-
-      try {
-        const message = await client.beta.messages.create({
-          max_tokens: 4096,
-          betas: ["structured-outputs-2025-11-13"],
-          system: [
-            {
-              type: "text",
-              text: PROMPT,
-              cache_control: {
-                type: "ephemeral",
-              },
-            },
-          ],
-          messages: [
-            {
-              role: "user",
-              content:
-                "agent_name: " +
-                agent.agent_name +
-                "\n\n" +
-                "agent_description: " +
-                agent.description +
-                "\n\n" +
-                "agent_prompt: " +
-                agent.instructions +
-                "\n\n" +
-                "agent_tools: " +
-                JSON.stringify(formattedTools, null, 2) +
-                "\n\n" +
-                "agent_datasources: " +
-                JSON.stringify(formattedDatasources, null, 2),
-            },
-          ],
-          model: "claude-sonnet-4-5-20250929",
-          output_format: OUTPUT_FORMAT,
-        });
-
-        const content = message.content[0];
-
-        if (content.type !== "text") {
-          scriptLogger.error(
-            {
-              agentSid: agent.agent_sid,
-              agentName: agent.agent_name,
-              contentType: content.type,
-            },
-            "Unexpected content type from API"
-          );
-          return [];
-        }
-
-        let parsedJson;
-        try {
-          parsedJson = JSON.parse(content.text);
-        } catch (jsonError) {
-          scriptLogger.error(
-            {
-              agentSid: agent.agent_sid,
-              agentName: agent.agent_name,
-              jsonError,
-              responseText: content.text.substring(0, 500),
-            },
-            "Failed to parse JSON response"
-          );
-          return [];
-        }
-
-        const parsed = OutputFormatSchema.parse(parsedJson);
-        return parsed.skills.map((skill) => ({
-          ...skill,
-          agent_sid: agent.agent_sid,
-          agent_name: agent.agent_name,
-          agent_description: agent.description,
-          agent_instructions: agent.instructions,
-        }));
-      } catch (error) {
-        scriptLogger.error(
+      // Process all agents in the batch in parallel
+      const batchPromises = batch.map(async (agent) => {
+        scriptLogger.info(
           {
             agentSid: agent.agent_sid,
             agentName: agent.agent_name,
-            error,
           },
-          "Failed to process agent"
+          "Processing agent"
         );
-        return [];
-      }
-    });
 
-    // Wait for all agents in the batch to complete
-    const batchResults = await Promise.all(batchPromises);
-    suggestedSkills.push(...batchResults.flat());
+        // Pass full tool and datasource objects to the prompt
+        const formattedTools = agent.tools;
+        const formattedDataSources = agent.dataSources || [];
 
-    scriptLogger.info(
-      {
-        batchIndex: batchIndex + 1,
-        skillsInBatch: batchResults.flat().length,
-        totalSkillsSoFar: suggestedSkills.length,
-      },
-      "Completed batch"
-    );
-  }
+        try {
+          const message = await client.beta.messages.create({
+            max_tokens: 4096,
+            betas: ["structured-outputs-2025-11-13"],
+            system: [
+              {
+                type: "text",
+                text: PROMPT,
+                cache_control: {
+                  type: "ephemeral",
+                },
+              },
+            ],
+            messages: [
+              {
+                role: "user",
+                content:
+                  "agent_name: " +
+                  agent.agent_name +
+                  "\n\n" +
+                  "agent_description: " +
+                  agent.description +
+                  "\n\n" +
+                  "agent_prompt: " +
+                  agent.instructions +
+                  "\n\n" +
+                  "agent_tools: " +
+                  JSON.stringify(formattedTools, null, 2) +
+                  "\n\n" +
+                  "agent_data_sources: " +
+                  JSON.stringify(formattedDataSources, null, 2),
+              },
+            ],
+            model: "claude-sonnet-4-5-20250929",
+            output_format: OUTPUT_FORMAT,
+          });
 
-  // Augment skills with full tool data from agents
-  scriptLogger.info("Augmenting skills with full tool data");
+          const content = message.content[0];
 
-  const agentsByAgentSid = new Map(
-    allAgents.map((agent) => [agent.agent_sid, agent])
-  );
+          if (content.type !== "text") {
+            scriptLogger.error(
+              {
+                agentSid: agent.agent_sid,
+                agentName: agent.agent_name,
+                contentType: content.type,
+              },
+              "Unexpected content type from API"
+            );
+            return [];
+          }
 
-  const augmentedSkills = suggestedSkills.map((skill) => {
-    const agent = agentsByAgentSid.get(skill.agent_sid);
+          let parsedJson;
+          try {
+            parsedJson = JSON.parse(content.text);
+          } catch (jsonError) {
+            scriptLogger.error(
+              {
+                agentSid: agent.agent_sid,
+                agentName: agent.agent_name,
+                jsonError,
+                responseText: content.text.substring(0, 500),
+              },
+              "Failed to parse JSON response"
+            );
+            return [];
+          }
 
-    if (!agent) {
-      scriptLogger.warn(
-        { skillName: skill.name, agentSid: skill.agent_sid },
-        "Agent not found for skill"
+          const parsed = OutputFormatSchema.parse(parsedJson);
+          return parsed.skills.map((skill) => ({
+            ...skill,
+            agent_sid: agent.agent_sid,
+            agent_name: agent.agent_name,
+            agent_description: agent.description,
+            agent_instructions: agent.instructions,
+          }));
+        } catch (error) {
+          scriptLogger.error(
+            {
+              agentSid: agent.agent_sid,
+              agentName: agent.agent_name,
+              error,
+            },
+            "Failed to process agent"
+          );
+          return [];
+        }
+      });
+
+      // Wait for all agents in the batch to complete
+      const batchResults = await Promise.all(batchPromises);
+      suggestedSkills.push(...batchResults.flat());
+
+      scriptLogger.info(
+        {
+          batchIndex: batchIndex + 1,
+          skillsInBatch: batchResults.flat().length,
+          totalSkillsSoFar: suggestedSkills.length,
+        },
+        "Completed batch"
       );
-      return skill;
     }
 
-    // Create a map of tools by mcp_server_view_id for quick lookup
-    const toolsByMcpViewId = new Map(
-      agent.tools.map((tool) => [tool.mcp_server_view_id, tool])
+    // Augment skills with full tool data from agents
+    scriptLogger.info("Augmenting skills with full tool data");
+
+    const agentsById = new Map(
+      allAgents.map((agent) => [agent.agent_sid, agent])
     );
 
-    // Augment each requiredTool with full data from agents
-    const augmentedRequiredTools = skill.requiredTools.map((skillTool) => {
-      const fullToolData = toolsByMcpViewId.get(skillTool.mcp_server_view_id);
+    const augmentedSkills = suggestedSkills.map((skill) => {
+      const agent = agentsById.get(skill.agent_sid);
 
-      if (!fullToolData) {
+      if (!agent) {
         scriptLogger.warn(
-          {
-            skillName: skill.name,
-            toolName: skillTool.tool_name,
-            mcpServerViewId: skillTool.mcp_server_view_id,
-          },
-          "Tool not found in agent's tools"
+          { skillName: skill.name, agentSid: skill.agent_sid },
+          "Agent not found for skill"
         );
-        return skillTool;
+        return skill;
       }
 
-      // Merge the skill tool data with the full tool data from agents
+      // Create a map of tools by mcp_server_view_id for quick lookup
+      const toolsByMcpViewId = new Map(
+        agent.tools.map((tool) => [tool.mcp_server_view_id, tool])
+      );
+
+      // Augment each requiredTool with full data from agents
+      const augmentedRequiredTools = skill.requiredTools.map((skillTool) => {
+        const fullToolData = toolsByMcpViewId.get(skillTool.mcp_server_view_id);
+
+        if (!fullToolData) {
+          scriptLogger.warn(
+            {
+              skillName: skill.name,
+              toolName: skillTool.tool_name,
+              mcpServerViewId: skillTool.mcp_server_view_id,
+            },
+            "Tool not found in agent's tools"
+          );
+          return skillTool;
+        }
+
+        // Merge the skill tool data with the full tool data from agents
+        return {
+          ...skillTool,
+          remote_mcp_server_id: fullToolData.remote_mcp_server_id,
+          internal_mcp_server_id: fullToolData.internal_mcp_server_id,
+          ...(fullToolData.internal_tool_name && {
+            internal_tool_name: fullToolData.internal_tool_name,
+          }),
+          ...(fullToolData.internal_tool_description && {
+            internal_tool_description: fullToolData.internal_tool_description,
+          }),
+        };
+      });
+
       return {
-        ...skillTool,
-        remote_mcp_server_id: fullToolData.remote_mcp_server_id,
-        internal_mcp_server_id: fullToolData.internal_mcp_server_id,
-        ...(fullToolData.internal_tool_name && {
-          internal_tool_name: fullToolData.internal_tool_name,
-        }),
-        ...(fullToolData.internal_tool_description && {
-          internal_tool_description: fullToolData.internal_tool_description,
-        }),
+        ...skill,
+        requiredTools: augmentedRequiredTools,
       };
     });
 
-    return {
-      ...skill,
-      requiredTools: augmentedRequiredTools,
-    };
-  });
+    // Write results to file
+    const resultsFilePath = join(
+      __dirname,
+      workspaceId,
+      "suggested_skills.json"
+    );
+    writeFileSync(
+      resultsFilePath,
+      JSON.stringify(
+        augmentedSkills.sort((a, b) => b.confidenceScore - a.confidenceScore),
+        null,
+        2
+      )
+    );
 
-  // Write results to file
-  const resultsFilePath = join(__dirname, workspaceId, "suggested_skills.json");
-  writeFileSync(
-    resultsFilePath,
-    JSON.stringify(
-      augmentedSkills.sort((a, b) => b.confidenceScore - a.confidenceScore),
-      null,
-      2
-    )
-  );
-
-  scriptLogger.info(
-    {
-      processedAgents: allAgents.length,
-      totalSkills: suggestedSkills.length,
-      outputFile: resultsFilePath,
-    },
-    "Completed processing"
-  );
-});
+    scriptLogger.info(
+      {
+        processedAgents: allAgents.length,
+        totalSkills: suggestedSkills.length,
+        outputFile: resultsFilePath,
+      },
+      "Completed processing"
+    );
+  }
+);

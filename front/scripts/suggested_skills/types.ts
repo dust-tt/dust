@@ -16,15 +16,8 @@ export type AgentTool = {
 };
 
 export type AgentDatasource = {
-  datasource_id: string;
-  datasource_name: string;
   datasource_description: string | null;
   connector_provider: string | null;
-  data_source_view_id: number;
-  parents_in: string[] | null;
-  tags_in: string[] | null;
-  tags_not_in: string[] | null;
-  tags_mode: string | null;
 };
 
 export type Agent = {
@@ -36,7 +29,7 @@ export type Agent = {
   first_usage: Date | null;
   last_usage: Date | null;
   tools: AgentTool[];
-  datasources: AgentDatasource[];
+  dataSources: AgentDatasource[];
 };
 
 // Types for skill data (used by 3_extract_and_format.ts and 4_grade_skills.ts)
@@ -52,14 +45,6 @@ export type SkillTool = {
   internal_tool_description?: string;
 };
 
-export type SkillDatasource = {
-  datasource_id: string;
-  datasource_name: string;
-  connector_provider: string;
-  data_source_view_id: number;
-  datasource_description: string;
-};
-
 export type Skill = {
   name: string;
   description_for_agents: string;
@@ -68,7 +53,6 @@ export type Skill = {
   agent_name: string;
   icon: string;
   requiredTools?: SkillTool[];
-  requiredDatasources?: SkillDatasource[];
   confidenceScore: number;
   agent_sid?: string;
   agent_description?: string;

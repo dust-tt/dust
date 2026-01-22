@@ -1,41 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 
-import type { ArgumentSpecs } from "@app/scripts/helpers";
 import { makeScript } from "@app/scripts/helpers";
 import type { Skill } from "@app/scripts/suggested_skills/types";
-
-const argumentSpecs: ArgumentSpecs = {
-  workspaceId: {
-    type: "string",
-    required: true,
-    description: "The workspace sId to extract skills from",
-  },
-  topN: {
-    type: "number",
-    description: "Number of top skills to extract (default: 10)",
-  },
-  withDatasources: {
-    type: "boolean",
-    description: "Include skills with datasources (default: false)",
-  },
-};
-
-// Helper function to remove null values from objects
-function removeNulls<T>(obj: T): T {
-  if (Array.isArray(obj)) {
-    return obj.map(removeNulls) as T;
-  } else if (obj !== null && typeof obj === "object") {
-    const cleaned: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(obj)) {
-      if (value !== null) {
-        cleaned[key] = removeNulls(value);
-      }
-    }
-    return cleaned as T;
-  }
-  return obj;
-}
+import { removeNulls } from "@app/types";
 
 function formatSkillToText(skill: Skill): string {
   const sections = [
@@ -81,12 +49,6 @@ function formatSkillToText(skill: Skill): string {
       (tool) => `- ${tool.tool_name} (${tool.mcp_server_view_id})`
     ),
     "",
-    "",
-    "",
-    "DATASOURCES USED",
-    "-".repeat(80),
-    ...(skill.requiredDatasources ?? []).map((ds) => `- ${ds.datasource_name}`),
-    "",
   ];
 
   return sections.join("\n");
@@ -102,120 +64,117 @@ function sanitizeFileName(name: string): string {
  * Usage:
  *   npx tsx scripts/suggested_skills/3_extract_and_format.ts --workspaceId <workspaceId>
  */
-makeScript(argumentSpecs, async (args, scriptLogger) => {
-  const workspaceId = args.workspaceId as string;
-  const topN = (args.topN as number) || 10;
-  const withDatasources = args.withDatasources === true;
-
-  // Read suggested skills from <workspaceId>/suggested_skills.json
-  const suggestedSkillsPath = join(
-    __dirname,
-    workspaceId,
-    "suggested_skills.json"
-  );
-
-  if (!existsSync(suggestedSkillsPath)) {
-    throw new Error(
-      `Suggested skills file not found at ${suggestedSkillsPath}`
+makeScript(
+  {
+    workspaceId: {
+      type: "string",
+      description: "The workspace ID to extract skills from",
+    },
+    topK: {
+      type: "number",
+      description: "Number of top skills to extract (default: 10)",
+      default: 10,
+    },
+  },
+  async ({ workspaceId, topK }, scriptLogger) => {
+    // Read suggested skills from <workspaceId>/suggested_skills.json
+    const suggestedSkillsPath = join(
+      __dirname,
+      workspaceId,
+      "suggested_skills.json"
     );
-  }
 
-  scriptLogger.info({ filePath: suggestedSkillsPath }, "Reading suggested skills");
+    if (!existsSync(suggestedSkillsPath)) {
+      throw new Error(
+        `Suggested skills file not found at ${suggestedSkillsPath}`
+      );
+    }
 
-  const fileContent = readFileSync(suggestedSkillsPath, "utf-8");
-  const allSkills = JSON.parse(fileContent) as Skill[];
-
-  scriptLogger.info({ totalSkills: allSkills.length }, "Loaded suggested skills");
-
-  // Filter skills based on datasource preference
-  let filteredSkills = allSkills;
-  if (!withDatasources) {
-    filteredSkills = allSkills.filter(
-      (skill) =>
-        !skill.requiredDatasources || skill.requiredDatasources.length === 0
-    );
     scriptLogger.info(
-      { filteredCount: filteredSkills.length },
-      "Filtered to skills without datasources"
+      { filePath: suggestedSkillsPath },
+      "Reading suggested skills"
     );
-  }
 
-  // Sort by confidence score and take top N
-  const topSkills = filteredSkills
-    .sort((a, b) => b.confidenceScore - a.confidenceScore)
-    .slice(0, topN)
-    .map((skill) => {
-      // Only keep fields expected by create_hard_coded_suggested_skills.ts, plus confidenceScore
-      const cleanedSkill: Record<string, unknown> = {
-        name: skill.name,
-        description_for_agents: skill.description_for_agents,
-        description_for_humans: skill.description_for_humans,
-        instructions: skill.instructions,
-        agent_name: skill.agent_name,
-        icon: skill.icon,
-        confidenceScore: skill.confidenceScore,
-      };
+    const fileContent = readFileSync(suggestedSkillsPath, "utf-8");
+    const allSkills = JSON.parse(fileContent) as Skill[];
 
-      if (skill.requiredTools && skill.requiredTools.length > 0) {
-        cleanedSkill.requiredTools = skill.requiredTools;
-      }
+    scriptLogger.info(
+      { totalSkills: allSkills.length },
+      "Loaded suggested skills"
+    );
 
-      if (skill.requiredDatasources && skill.requiredDatasources.length > 0) {
-        cleanedSkill.requiredDatasources = skill.requiredDatasources;
-      }
+    // Sort by confidence score and take top N
+    const topSkills = allSkills
+      .sort((a, b) => b.confidenceScore - a.confidenceScore)
+      .slice(0, topK)
+      .map((skill) => {
+        // Only keep fields expected by create_hard_coded_suggested_skills.ts, plus confidenceScore
+        const cleanedSkill: Record<string, unknown> = {
+          name: skill.name,
+          description_for_agents: skill.description_for_agents,
+          description_for_humans: skill.description_for_humans,
+          instructions: skill.instructions,
+          agent_name: skill.agent_name,
+          icon: skill.icon,
+          confidenceScore: skill.confidenceScore,
+        };
 
-      return cleanedSkill;
+        if (skill.requiredTools && skill.requiredTools.length > 0) {
+          cleanedSkill.requiredTools = skill.requiredTools;
+        }
+
+        return cleanedSkill;
+      });
+
+    // Write JSON output
+    const topSkillsFilePath = join(__dirname, workspaceId, "top_skills.json");
+    writeFileSync(
+      topSkillsFilePath,
+      JSON.stringify(removeNulls(topSkills), null, 2)
+    );
+
+    scriptLogger.info(
+      { outputFile: topSkillsFilePath, count: topSkills.length },
+      "Wrote top skills JSON"
+    );
+
+    // Create formatted_skills directory
+    const formattedSkillsDir = join(__dirname, workspaceId, "formatted_skills");
+    if (!existsSync(formattedSkillsDir)) {
+      mkdirSync(formattedSkillsDir, { recursive: true });
+      scriptLogger.info(
+        { directory: formattedSkillsDir },
+        "Created formatted_skills directory"
+      );
+    }
+
+    // Create a text file for each skill
+    topSkills.forEach((skill, index) => {
+      const fileName = sanitizeFileName(skill.name as string) + ".txt";
+      const filePath = join(formattedSkillsDir, fileName);
+      const formattedContent = formatSkillToText(skill as Skill);
+
+      writeFileSync(filePath, formattedContent, "utf-8");
+
+      scriptLogger.info(
+        {
+          rank: index + 1,
+          skillName: skill.name,
+          confidenceScore: skill.confidenceScore,
+          filePath: fileName,
+        },
+        "Created formatted skill file"
+      );
     });
-
-  // Write JSON output
-  const topSkillsFilePath = join(__dirname, workspaceId, "top_skills.json");
-  writeFileSync(
-    topSkillsFilePath,
-    JSON.stringify(removeNulls(topSkills), null, 2)
-  );
-
-  scriptLogger.info(
-    { outputFile: topSkillsFilePath, count: topSkills.length },
-    "Wrote top skills JSON"
-  );
-
-  // Create formatted_skills directory
-  const formattedSkillsDir = join(__dirname, workspaceId, "formatted_skills");
-  if (!existsSync(formattedSkillsDir)) {
-    mkdirSync(formattedSkillsDir, { recursive: true });
-    scriptLogger.info(
-      { directory: formattedSkillsDir },
-      "Created formatted_skills directory"
-    );
-  }
-
-  // Create a text file for each skill
-  topSkills.forEach((skill, index) => {
-    const fileName = sanitizeFileName(skill.name as string) + ".txt";
-    const filePath = join(formattedSkillsDir, fileName);
-    const formattedContent = formatSkillToText(skill as Skill);
-
-    writeFileSync(filePath, formattedContent, "utf-8");
 
     scriptLogger.info(
       {
-        rank: index + 1,
-        skillName: skill.name,
-        confidenceScore: skill.confidenceScore,
-        filePath: fileName,
+        totalSkills: allSkills.length,
+        outputSkills: topSkills.length,
+        jsonFile: `${workspaceId}/top_skills.json`,
+        textDir: `${workspaceId}/formatted_skills`,
       },
-      "Created formatted skill file"
+      "Completed extraction and formatting"
     );
-  });
-
-  scriptLogger.info(
-    {
-      totalSkills: allSkills.length,
-      filteredSkills: filteredSkills.length,
-      outputSkills: topSkills.length,
-      jsonFile: `${workspaceId}/top_skills.json`,
-      textDir: `${workspaceId}/formatted_skills`,
-    },
-    "Completed extraction and formatting"
-  );
-});
+  }
+);

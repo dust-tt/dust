@@ -6,10 +6,10 @@ import {
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
-import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -88,8 +88,14 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
       },
       attributes: [
         [frontSequelize.fn("COUNT", frontSequelize.col("id")), "total"],
-        [frontSequelize.fn("MIN", frontSequelize.col("createdAt")), "firstUsage"],
-        [frontSequelize.fn("MAX", frontSequelize.col("createdAt")), "lastUsage"],
+        [
+          frontSequelize.fn("MIN", frontSequelize.col("createdAt")),
+          "firstUsage",
+        ],
+        [
+          frontSequelize.fn("MAX", frontSequelize.col("createdAt")),
+          "lastUsage",
+        ],
       ],
       raw: true,
     });
@@ -131,14 +137,14 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
       }
 
       const toolName =
-        mcpConfig.name ||
-        mcpServerView.name ||
-        mcpServerView.remoteMCPServer?.cachedName ||
+        (mcpConfig.name ??
+          mcpServerView.name ??
+          mcpServerView.remoteMCPServer?.cachedName) ||
         mcpConfig.internalMCPServerId;
 
       const toolDescription =
-        mcpConfig.singleToolDescriptionOverride ||
-        mcpServerView.description ||
+        mcpConfig.singleToolDescriptionOverride ??
+        mcpServerView.description ??
         mcpServerView.remoteMCPServer?.cachedDescription;
 
       const tool: AgentTool = {
@@ -147,7 +153,8 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
         tool_name: toolName ?? null,
         tool_description: toolDescription ?? null,
         internal_mcp_server_id: mcpServerView.internalMCPServerId,
-        remote_mcp_server_id: mcpServerView.remoteMCPServerId?.toString() ?? null,
+        remote_mcp_server_id:
+          mcpServerView.remoteMCPServerId?.toString() ?? null,
       };
 
       // Enrich internal tools with proper names and descriptions
@@ -189,17 +196,12 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
       ],
     });
 
-    const datasources: AgentDatasource[] = datasourceConfigs.map((dsConfig) => ({
-      datasource_id: dsConfig.dataSource.dustAPIDataSourceId,
-      datasource_name: dsConfig.dataSource.name,
-      datasource_description: dsConfig.dataSource.description,
-      connector_provider: dsConfig.dataSource.connectorProvider,
-      data_source_view_id: dsConfig.dataSourceViewId,
-      parents_in: dsConfig.parentsIn,
-      tags_in: dsConfig.tagsIn,
-      tags_not_in: dsConfig.tagsNotIn,
-      tags_mode: dsConfig.tagsMode,
-    }));
+    const dataSources: AgentDatasource[] = datasourceConfigs.map(
+      (dsConfig) => ({
+        datasource_description: dsConfig.dataSource.description,
+        connector_provider: dsConfig.dataSource.connectorProvider,
+      })
+    );
 
     agents.push({
       agent_sid: agent.sId,
@@ -210,7 +212,7 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
       first_usage: stats.firstUsage,
       last_usage: stats.lastUsage,
       tools,
-      datasources,
+      dataSources,
     });
   }
 
