@@ -69,13 +69,40 @@ import type { ModelId } from "@connectors/types";
 import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 import { isDevelopment } from "@connectors/types";
 
-// Delta data stored in GCS for Microsoft incremental sync batch processing
+// Delta data stored in GCS for Microsoft incremental sync batch processing.
+// Two formats are supported:
+// 1. Single file (legacy): All data in one file for small deltas
+// 2. Chunked files: Meta file + chunk files for large deltas to avoid
+//    hitting JavaScript's string length limit (~512MB) on JSON.stringify
+
+// Single file format (legacy, for small deltas)
 interface DeltaDataInGCS {
   deltaLink: string;
   rootNodeIds: string[];
   sortedChangedItems: DriveItem[];
   totalItems: number;
 }
+
+// Chunked format meta file (for large deltas)
+interface DeltaMetaInGCS {
+  deltaLink: string;
+  rootNodeIds: string[];
+  totalItems: number;
+  chunkCount: number;
+  itemsPerChunk: number;
+}
+
+// Chunked format chunk file
+interface DeltaChunkInGCS {
+  items: DriveItem[];
+}
+
+// Items per chunk - tuned to keep each chunk well under the string limit.
+// With ~10KB average per DriveItem (including listItem.fields), 1000 items ≈ 10MB per chunk.
+const DELTA_ITEMS_PER_CHUNK = 1000;
+
+// Threshold for switching to chunked format (use chunked if more items than this)
+const DELTA_CHUNK_THRESHOLD = DELTA_ITEMS_PER_CHUNK;
 
 const FILES_SYNC_CONCURRENCY = 10;
 const DELETE_CONCURRENCY = 5;
@@ -1144,57 +1171,116 @@ export async function fetchDeltaForRootNodesInDrive({
     return { gcsFilePath: null };
   }
 
+  const totalItems = sortedChangedItems.length;
+  const useChunkedFormat = totalItems > DELTA_CHUNK_THRESHOLD;
+
   logger.info(
     {
       connectorId,
       driveId,
       gcsFilePath,
       resultsCount: results.length,
-      totalItems: sortedChangedItems.length,
+      totalItems,
+      useChunkedFormat,
     },
     "Uploading to GCS delta file."
   );
 
-  const deltaData: DeltaDataInGCS = {
-    deltaLink,
-    rootNodeIds,
-    sortedChangedItems,
-    totalItems: sortedChangedItems.length,
+  const gcsMetadata = {
+    contentType: "application/json",
+    metadata: {
+      connectorId: connectorId.toString(),
+      driveId,
+      timestamp: timestamp.toString(),
+      type: "microsoft-delta-sync",
+    },
   };
 
-  const jsonData = JSON.stringify(deltaData);
+  if (useChunkedFormat) {
+    // Large delta: use chunked format to avoid JSON.stringify string length limit
+    const chunkCount = Math.ceil(totalItems / DELTA_ITEMS_PER_CHUNK);
+    const metaFilePath = `microsoft-delta-sync/${connectorId}/${driveId}/${timestamp}_meta.json`;
 
-  logger.info(
-    {
-      jsonDataSize: jsonData.length,
-    },
-    "Delta file size."
-  );
+    const metaData: DeltaMetaInGCS = {
+      deltaLink,
+      rootNodeIds,
+      totalItems,
+      chunkCount,
+      itemsPerChunk: DELTA_ITEMS_PER_CHUNK,
+    };
 
-  await file.save(jsonData, {
-    metadata: {
-      contentType: "application/json",
-      metadata: {
-        connectorId: connectorId.toString(),
+    await bucket.file(metaFilePath).save(JSON.stringify(metaData), {
+      metadata: gcsMetadata,
+    });
+
+    for (let i = 0; i < chunkCount; i++) {
+      const startIdx = i * DELTA_ITEMS_PER_CHUNK;
+      const endIdx = Math.min(startIdx + DELTA_ITEMS_PER_CHUNK, totalItems);
+      const chunkItems = sortedChangedItems.slice(startIdx, endIdx);
+
+      const chunkFilePath = `microsoft-delta-sync/${connectorId}/${driveId}/${timestamp}_chunk_${i}.json`;
+      const chunkData: DeltaChunkInGCS = { items: chunkItems };
+
+      await bucket.file(chunkFilePath).save(JSON.stringify(chunkData), {
+        metadata: gcsMetadata,
+      });
+
+      logger.info(
+        {
+          chunkIndex: i,
+          chunkCount,
+          chunkItems: chunkItems.length,
+        },
+        "Uploaded delta chunk to GCS"
+      );
+    }
+
+    logger.info(
+      {
+        connectorId,
         driveId,
-        timestamp: timestamp.toString(),
-        type: "microsoft-delta-sync",
+        metaFilePath,
+        resultsCount: results.length,
+        totalItems,
+        chunkCount,
       },
-    },
-  });
+      "Delta data fetched, processed, and uploaded to GCS (chunked format)"
+    );
 
-  logger.info(
-    {
-      connectorId,
-      driveId,
-      gcsFilePath,
-      resultsCount: results.length,
-      totalItems: sortedChangedItems.length,
-    },
-    "Delta data fetched, processed, and uploaded to GCS"
-  );
+    return { gcsFilePath: metaFilePath };
+  } else {
+    // Small delta: use single file format
+    const deltaData: DeltaDataInGCS = {
+      deltaLink,
+      rootNodeIds,
+      sortedChangedItems,
+      totalItems,
+    };
 
-  return { gcsFilePath };
+    const jsonData = JSON.stringify(deltaData);
+
+    logger.info(
+      {
+        jsonDataSize: jsonData.length,
+      },
+      "Delta file size."
+    );
+
+    await file.save(jsonData, { metadata: gcsMetadata });
+
+    logger.info(
+      {
+        connectorId,
+        driveId,
+        gcsFilePath,
+        resultsCount: results.length,
+        totalItems,
+      },
+      "Delta data fetched, processed, and uploaded to GCS"
+    );
+
+    return { gcsFilePath };
+  }
 }
 
 export async function cleanupDeltaGCSFile({
@@ -1220,13 +1306,52 @@ export async function cleanupDeltaGCSFile({
         : undefined,
     });
     const bucket = storage.bucket(connectorsConfig.getDustTmpSyncBucketName());
-    const file = bucket.file(gcsFilePath);
 
-    await file.delete();
-    logger.info(
-      { connectorId, driveId, gcsFilePath },
-      "Successfully cleaned up delta GCS file"
-    );
+    // Check if this is a chunked format (meta file) or single file
+    const isChunkedFormat = gcsFilePath.endsWith("_meta.json");
+
+    if (isChunkedFormat) {
+      // Chunked format: read meta to get chunk count, then delete all files
+      const metaFile = bucket.file(gcsFilePath);
+      const [metaContent] = await metaFile.download();
+      const metaData = JSON.parse(metaContent.toString()) as DeltaMetaInGCS;
+
+      const basePath = gcsFilePath.replace(/_meta\.json$/, "");
+
+      // Delete all chunk files
+      for (let i = 0; i < metaData.chunkCount; i++) {
+        const chunkPath = `${basePath}_chunk_${i}.json`;
+        try {
+          await bucket.file(chunkPath).delete();
+        } catch (chunkError) {
+          logger.warn(
+            {
+              chunkPath,
+              error:
+                chunkError instanceof Error
+                  ? chunkError.message
+                  : String(chunkError),
+            },
+            "Failed to delete chunk file during cleanup"
+          );
+        }
+      }
+
+      // Delete meta file
+      await metaFile.delete();
+
+      logger.info(
+        { connectorId, driveId, gcsFilePath, chunkCount: metaData.chunkCount },
+        "Successfully cleaned up delta GCS files (chunked format)"
+      );
+    } else {
+      // Single file format
+      await bucket.file(gcsFilePath).delete();
+      logger.info(
+        { connectorId, driveId, gcsFilePath },
+        "Successfully cleaned up delta GCS file"
+      );
+    }
   } catch (error) {
     logger.error(
       {
@@ -1900,24 +2025,100 @@ export async function processDeltaChangesFromGCS({
   const file = bucket.file(gcsFilePath);
 
   const [content] = await file.download();
-  const changedItemsData = JSON.parse(content.toString()) as DeltaDataInGCS;
+  const parsedContent = JSON.parse(content.toString());
 
-  const { deltaLink, rootNodeIds, sortedChangedItems, totalItems } =
-    changedItemsData;
+  // Detect format: chunked (has chunkCount) vs single file (has sortedChangedItems)
+  const isChunkedFormat = "chunkCount" in parsedContent;
 
-  logger.info(
-    {
-      totalItems,
-      batchSize,
-      cursor,
-    },
-    "Processing delta changes"
-  );
+  let deltaLink: string;
+  let rootNodeIds: string[];
+  let totalItems: number;
+  let currentBatch: DriveItem[];
+  let startIndex: number;
+  let endIndex: number;
 
-  // Process changes in batches
-  const startIndex = cursor;
-  const endIndex = Math.min(startIndex + batchSize, sortedChangedItems.length);
-  const currentBatch = sortedChangedItems.slice(startIndex, endIndex);
+  if (isChunkedFormat) {
+    // Chunked format: read meta file and load relevant chunks
+    const metaData = parsedContent as DeltaMetaInGCS;
+    deltaLink = metaData.deltaLink;
+    rootNodeIds = metaData.rootNodeIds;
+    totalItems = metaData.totalItems;
+
+    startIndex = cursor;
+    endIndex = Math.min(startIndex + batchSize, totalItems);
+
+    if (startIndex >= totalItems) {
+      currentBatch = [];
+    } else {
+      // Calculate which chunks we need to read
+      const startChunk = Math.floor(startIndex / metaData.itemsPerChunk);
+      const endChunk = Math.floor((endIndex - 1) / metaData.itemsPerChunk);
+
+      // Extract base path from meta file path (remove _meta.json)
+      const basePath = gcsFilePath.replace(/_meta\.json$/, "");
+
+      // Load required chunks and extract items
+      currentBatch = [];
+      for (let chunkIdx = startChunk; chunkIdx <= endChunk; chunkIdx++) {
+        const chunkPath = `${basePath}_chunk_${chunkIdx}.json`;
+        const chunkFile = bucket.file(chunkPath);
+        const [chunkContent] = await chunkFile.download();
+        const chunkData = JSON.parse(
+          chunkContent.toString()
+        ) as DeltaChunkInGCS;
+
+        // Calculate which items from this chunk we need
+        const chunkStartGlobal = chunkIdx * metaData.itemsPerChunk;
+        const chunkEndGlobal = chunkStartGlobal + chunkData.items.length;
+
+        const takeFrom = Math.max(0, startIndex - chunkStartGlobal);
+        const takeTo = Math.min(
+          chunkData.items.length,
+          endIndex - chunkStartGlobal
+        );
+
+        if (takeTo > takeFrom) {
+          currentBatch.push(...chunkData.items.slice(takeFrom, takeTo));
+        }
+      }
+    }
+
+    logger.info(
+      {
+        totalItems,
+        batchSize,
+        cursor,
+        isChunkedFormat: true,
+      },
+      "Processing delta changes (chunked format)"
+    );
+  } else {
+    // Single file format (legacy)
+    const changedItemsData = parsedContent as DeltaDataInGCS;
+    deltaLink = changedItemsData.deltaLink;
+    rootNodeIds = changedItemsData.rootNodeIds;
+    totalItems = changedItemsData.totalItems;
+
+    startIndex = cursor;
+    endIndex = Math.min(
+      startIndex + batchSize,
+      changedItemsData.sortedChangedItems.length
+    );
+    currentBatch = changedItemsData.sortedChangedItems.slice(
+      startIndex,
+      endIndex
+    );
+
+    logger.info(
+      {
+        totalItems,
+        batchSize,
+        cursor,
+        isChunkedFormat: false,
+      },
+      "Processing delta changes"
+    );
+  }
 
   // If no items to process, return early
   if (currentBatch.length === 0) {
