@@ -29,7 +29,6 @@ import {
   hasNullUnicodeCharacter,
   isSupportedFileContentType,
   Ok,
-  withRetries,
 } from "@app/types";
 
 export function hideFileFromActionOutput({
@@ -171,59 +170,41 @@ export async function handleBase64Upload(
     };
   }
 
-  const uploadWithRetry = withRetries(
-    logger,
-    async () => {
-      let uploadResult: Result<FileResource, ProcessAndStoreFileError>;
+  let uploadResult: Result<FileResource, ProcessAndStoreFileError>;
 
-      if (isSupportedImageContentType(mimeType)) {
-        uploadResult = await uploadBase64ImageToFileStorage(auth, {
-          base64: base64Data,
-          contentType: mimeType,
-          fileName,
-          useCase: fileUseCase,
-          useCaseMetadata: fileUseCaseMetadata,
-        });
-      } else if (isSupportedFileContentType(mimeType)) {
-        uploadResult = await uploadBase64DataToFileStorage(auth, {
-          base64: base64Data,
-          contentType: mimeType,
-          fileName,
-          useCase: fileUseCase,
-          useCaseMetadata: fileUseCaseMetadata,
-        });
-      } else {
-        throw new Error(`Unsupported mime type: ${mimeType}`);
-      }
-
-      if (uploadResult.isErr()) {
-        throw new Error(uploadResult.error.message);
-      }
-      return uploadResult;
-    },
-    { retries: 3, delayBetweenRetriesMs: 1000 }
-  );
-
-  try {
-    const uploadResult = await uploadWithRetry({});
+  if (isSupportedImageContentType(mimeType)) {
+    uploadResult = await uploadBase64ImageToFileStorage(auth, {
+      base64: base64Data,
+      contentType: mimeType,
+      fileName,
+      useCase: fileUseCase,
+      useCaseMetadata: fileUseCaseMetadata,
+    });
+  } else if (isSupportedFileContentType(mimeType)) {
+    uploadResult = await uploadBase64DataToFileStorage(auth, {
+      base64: base64Data,
+      contentType: mimeType,
+      fileName,
+      useCase: fileUseCase,
+      useCaseMetadata: fileUseCaseMetadata,
+    });
+  } else {
     return {
       content: {
-        ...block,
-        // Remove the data from the block to avoid storing it in the database.
-        ...(block.type === "image" ? { data: "" } : {}),
-        ...(isBlobResource(block)
-          ? { resource: { ...block.resource, blob: "" } }
-          : {}),
+        type: "text",
+        text: `Unsupported mime type: ${mimeType}`,
       },
-      file: uploadResult.value,
+      file: null,
     };
-  } catch (error) {
+  }
+
+  if (uploadResult.isErr()) {
     logger.error(
       {
         action: "mcp_tool",
         tool: `generate_${resourceType}`,
         workspaceId: auth.getNonNullableWorkspace().sId,
-        error,
+        error: uploadResult.error,
       },
       `Failed to save the generated ${resourceType}.`
     );
@@ -236,4 +217,16 @@ export async function handleBase64Upload(
       file: null,
     };
   }
+
+  return {
+    content: {
+      ...block,
+      // Remove the data from the block to avoid storing it in the database.
+      ...(block.type === "image" ? { data: "" } : {}),
+      ...(isBlobResource(block)
+        ? { resource: { ...block.resource, blob: "" } }
+        : {}),
+    },
+    file: uploadResult.value,
+  };
 }

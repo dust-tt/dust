@@ -1,3 +1,4 @@
+import type { Part } from "@google/genai";
 import { startObservation } from "@langfuse/tracing";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -7,7 +8,6 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { FileDataPart } from "@app/lib/api/actions/servers/image_generation/helpers";
 import {
   checkImageGenerationRateLimit,
   computeImageGenerationCostDetails,
@@ -61,19 +61,17 @@ export function createImageGenerationTools(
 
       const gemini = createGeminiClient();
 
-      let fileDataParts: FileDataPart[] = [];
+      let referenceImageParts: Part[] = [];
 
       if (referenceImages && referenceImages.length > 0) {
         const processResult = await processImageFileIds(auth, {
           imageFileIds: referenceImages,
           agentLoopContext,
-          statsDClient,
-          gemini,
         });
         if (processResult.isErr()) {
           return processResult;
         }
-        fileDataParts = processResult.value;
+        referenceImageParts = processResult.value;
       }
 
       const imageSize = QUALITY_TO_IMAGE_SIZE[quality ?? "low"];
@@ -107,10 +105,10 @@ export function createImageGenerationTools(
       });
 
       const contents =
-        fileDataParts.length > 0
+        referenceImageParts.length > 0
           ? [
               {
-                parts: [...fileDataParts, { text: prompt }],
+                parts: [...referenceImageParts, { text: prompt }],
               },
             ]
           : prompt;
