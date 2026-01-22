@@ -59,7 +59,9 @@ makeScript(
     const triggerResources = await TriggerResource.listAllForScript({
       workspaceId: wid,
     });
-    const activeTriggers = triggerResources.filter((t) => t.status === "enabled");
+    const activeTriggers = triggerResources.filter(
+      (t) => t.status === "enabled"
+    );
 
     if (activeTriggers.length === 0) {
       logger.info("No active triggers found.");
@@ -67,7 +69,10 @@ makeScript(
     }
 
     logger.info(
-      { totalTriggers: triggerResources.length, activeTriggers: activeTriggers.length },
+      {
+        totalTriggers: triggerResources.length,
+        activeTriggers: activeTriggers.length,
+      },
       "Found triggers"
     );
 

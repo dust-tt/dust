@@ -63,7 +63,10 @@ makeScript({}, async ({ execute }, logger) => {
           errorCount++;
         } else {
           logger.info(
-            { triggerId: triggerResource.sId, triggerName: triggerResource.name },
+            {
+              triggerId: triggerResource.sId,
+              triggerName: triggerResource.name,
+            },
             "Temporal workflow removed successfully."
           );
           affectedTriggersCount++;

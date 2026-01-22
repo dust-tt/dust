@@ -225,9 +225,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
    * Returns minimal trigger data for webhook source usage queries.
    * Used by getWebhookSourcesUsage() for performance-optimized queries.
    */
-  static async listWebhookTriggersForUsageQuery(
-    auth: Authenticator
-  ): Promise<
+  static async listWebhookTriggersForUsageQuery(auth: Authenticator): Promise<
     Array<{
       webhookSourceViewId: ModelId | null;
       agentConfigurationId: string;
@@ -662,7 +660,9 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     executionMode: TriggerExecutionMode | null
   ): Promise<Result<undefined, Error>> {
     if (this.kind !== "webhook") {
-      return new Err(new Error("Can only update webhook settings on webhook triggers"));
+      return new Err(
+        new Error("Can only update webhook settings on webhook triggers")
+      );
     }
 
     try {

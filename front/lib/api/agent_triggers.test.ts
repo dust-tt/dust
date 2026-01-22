@@ -9,10 +9,9 @@ import { getWebhookSourcesUsage } from "./agent_triggers";
 
 describe("getWebhookSourcesUsage", () => {
   it("returns webhook source usage for accessible agents", async () => {
-    const { workspace, authenticator, systemSpace } =
-      await createResourceTest({
-        role: "admin",
-      });
+    const { workspace, authenticator, systemSpace } = await createResourceTest({
+      role: "admin",
+    });
 
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
@@ -50,10 +49,9 @@ describe("getWebhookSourcesUsage", () => {
   });
 
   it("returns empty usage when trigger references no accessible agent", async () => {
-    const { workspace, authenticator, systemSpace } =
-      await createResourceTest({
-        role: "admin",
-      });
+    const { workspace, authenticator, systemSpace } = await createResourceTest({
+      role: "admin",
+    });
 
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     const systemView = await webhookSourceViewFactory.create(systemSpace);
@@ -74,10 +72,9 @@ describe("getWebhookSourcesUsage", () => {
   });
 
   it("aggregates multiple agents linked to the same webhook source", async () => {
-    const { workspace, authenticator, systemSpace } =
-      await createResourceTest({
-        role: "admin",
-      });
+    const { workspace, authenticator, systemSpace } = await createResourceTest({
+      role: "admin",
+    });
 
     const agentBeta = await AgentConfigurationFactory.createTestAgent(
       authenticator,
