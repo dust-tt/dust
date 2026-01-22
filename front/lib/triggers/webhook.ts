@@ -833,11 +833,13 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
   }[]
 > {
   const workspace = auth.getNonNullableWorkspace();
-  const webhookRequestTriggers =
-    await WebhookRequestResource.listForTriggerId(auth, {
+  const webhookRequestTriggers = await WebhookRequestResource.listForTriggerId(
+    auth,
+    {
       triggerId: trigger.id,
       limit,
-    });
+    }
+  );
 
   // Fetch payloads from GCS for each request
   const bucket = getWebhookRequestsBucket();
