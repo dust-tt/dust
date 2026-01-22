@@ -1,10 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
+import type { Logger } from "pino";
 import { z } from "zod";
 
 import { makeScript } from "@app/scripts/helpers";
-import type { Agent } from "@app/scripts/suggested_skills/types";
+import type { Agent, AgentTool } from "@app/scripts/suggested_skills/types";
 import { dustManagedCredentials } from "@app/types";
 
 const PROMPT = `You are an advanced AI system designed to analyze an agent capabilities and propose relevant skills.
@@ -195,19 +196,10 @@ const SkillSchema = z.object({
       tool_type: z.enum(["internal", "remote"]),
       tool_description: z.string(),
       mcp_server_view_id: z.number(),
-      internal_mcp_server_id: z.string().optional(),
-      remote_mcp_server_id: z.string().optional(),
+      internal_mcp_server_id: z.string().nullable(),
+      remote_mcp_server_id: z.string().nullable(),
       internal_tool_name: z.string().optional(),
       internal_tool_description: z.string().optional(),
-    })
-  ),
-  requiredDatasources: z.array(
-    z.object({
-      datasource_id: z.string(),
-      datasource_name: z.string(),
-      connector_provider: z.string(),
-      data_source_view_id: z.number(),
-      datasource_description: z.string(),
     })
   ),
   confidenceScore: z.number(),
@@ -290,6 +282,195 @@ const OUTPUT_FORMAT = {
   },
 } as const;
 
+type GeneratedSkill = z.infer<typeof SkillSchema> & {
+  agent_sid: string;
+  agent_description: string;
+  agent_instructions: string | null;
+};
+
+function loadAgents(workspaceId: string): Agent[] {
+  const agentsFilePath = join(__dirname, workspaceId, "agents.json");
+  const fileContent = readFileSync(agentsFilePath, "utf-8");
+  return JSON.parse(fileContent);
+}
+
+function createAnthropicClient(): Anthropic {
+  const { ANTHROPIC_API_KEY } = dustManagedCredentials();
+  if (!ANTHROPIC_API_KEY) {
+    throw new Error(
+      "DUST_MANAGED_ANTHROPIC_API_KEY environment variable is required"
+    );
+  }
+  return new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+}
+
+async function generateSkillsForAgent(
+  client: Anthropic,
+  agent: Agent,
+  logger: Logger
+): Promise<GeneratedSkill[]> {
+  logger.info(
+    { agentSid: agent.agent_sid, agentName: agent.agent_name },
+    "Processing agent"
+  );
+
+  try {
+    const message = await client.beta.messages.create({
+      max_tokens: 4096,
+      betas: ["structured-outputs-2025-11-13"],
+      system: [
+        {
+          type: "text",
+          text: PROMPT,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages: [
+        {
+          role: "user",
+          content:
+            "agent_name: " +
+            agent.agent_name +
+            "\n\n" +
+            "agent_description: " +
+            agent.description +
+            "\n\n" +
+            "agent_prompt: " +
+            agent.instructions +
+            "\n\n" +
+            "agent_tools: " +
+            JSON.stringify(agent.tools, null, 2) +
+            "\n\n" +
+            "agent_data_sources: " +
+            JSON.stringify(agent.dataSources || [], null, 2),
+        },
+      ],
+      model: "claude-sonnet-4-5-20250929",
+      output_format: OUTPUT_FORMAT,
+    });
+
+    const content = message.content[0];
+    if (content.type !== "text") {
+      logger.error(
+        { agentSid: agent.agent_sid, contentType: content.type },
+        "Unexpected content type"
+      );
+      return [];
+    }
+
+    const parsed = OutputFormatSchema.parse(JSON.parse(content.text));
+    return parsed.skills.map((skill) => ({
+      ...skill,
+      agent_sid: agent.agent_sid,
+      agent_name: agent.agent_name,
+      agent_description: agent.description,
+      agent_instructions: agent.instructions,
+    }));
+  } catch (error) {
+    logger.error(
+      { agentSid: agent.agent_sid, agentName: agent.agent_name, error },
+      "Failed to process agent"
+    );
+    return [];
+  }
+}
+
+async function processAgentsInBatches(
+  client: Anthropic,
+  agents: Agent[],
+  batchSize: number,
+  logger: Logger
+): Promise<GeneratedSkill[]> {
+  const batches: Agent[][] = [];
+  for (let i = 0; i < agents.length; i += batchSize) {
+    batches.push(agents.slice(i, i + batchSize));
+  }
+
+  logger.info(
+    { totalBatches: batches.length, batchSize },
+    "Processing agents in batches"
+  );
+
+  const allSkills: GeneratedSkill[] = [];
+
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+    logger.info(
+      { batchIndex: batchIndex + 1, totalBatches: batches.length },
+      "Processing batch"
+    );
+
+    const batchPromises = batch.map((agent) =>
+      generateSkillsForAgent(client, agent, logger)
+    );
+    const batchResults = await Promise.all(batchPromises);
+    allSkills.push(...batchResults.flat());
+
+    logger.info(
+      { batchIndex: batchIndex + 1, totalSkillsSoFar: allSkills.length },
+      "Completed batch"
+    );
+  }
+
+  return allSkills;
+}
+
+function augmentSkillsWithToolData(
+  skills: GeneratedSkill[],
+  agents: Agent[],
+  logger: Logger
+): GeneratedSkill[] {
+  const agentsById = new Map(agents.map((a) => [a.agent_sid, a]));
+
+  return skills.map((skill) => {
+    const agent = agentsById.get(skill.agent_sid);
+    if (!agent) {
+      logger.warn(
+        { skillName: skill.name, agentSid: skill.agent_sid },
+        "Agent not found"
+      );
+      return skill;
+    }
+
+    const toolsByMcpViewId = new Map<number, AgentTool>(
+      agent.tools.map((t) => [t.mcp_server_view_id, t])
+    );
+
+    const augmentedRequiredTools = skill.requiredTools.map((skillTool) => {
+      const fullToolData = toolsByMcpViewId.get(skillTool.mcp_server_view_id);
+      if (!fullToolData) {
+        return skillTool;
+      }
+
+      return {
+        ...skillTool,
+        remote_mcp_server_id: fullToolData.remote_mcp_server_id,
+        internal_mcp_server_id: fullToolData.internal_mcp_server_id,
+        ...(fullToolData.internal_tool_name && {
+          internal_tool_name: fullToolData.internal_tool_name,
+        }),
+        ...(fullToolData.internal_tool_description && {
+          internal_tool_description: fullToolData.internal_tool_description,
+        }),
+      };
+    });
+
+    return { ...skill, requiredTools: augmentedRequiredTools };
+  });
+}
+
+function writeSkillsToFile(
+  skills: GeneratedSkill[],
+  workspaceId: string
+): string {
+  const resultsFilePath = join(__dirname, workspaceId, "suggested_skills.json");
+  const sortedSkills = [...skills].sort(
+    (a, b) => b.confidenceScore - a.confidenceScore
+  );
+  writeFileSync(resultsFilePath, JSON.stringify(sortedSkills, null, 2));
+  return resultsFilePath;
+}
+
 /**
  * Generates skill suggestions for agents using the Anthropic API.
  *
@@ -300,252 +481,25 @@ makeScript(
   {
     workspaceId: {
       type: "string",
-      description: "The workspace ID to process agents for",
     },
   },
-  async ({ workspaceId }, scriptLogger) => {
-    // Read agents from <workspaceId>/agents.json
-    const agentsFilePath = join(__dirname, workspaceId, "agents.json");
-    const fileContent = readFileSync(agentsFilePath, "utf-8");
-    const allAgents = JSON.parse(fileContent) as Agent[];
+  async ({ workspaceId }, logger) => {
+    const agents = loadAgents(workspaceId);
+    const client = createAnthropicClient();
 
-    const { ANTHROPIC_API_KEY } = dustManagedCredentials();
-    if (!ANTHROPIC_API_KEY) {
-      throw new Error(
-        "DUST_MANAGED_ANTHROPIC_API_KEY environment variable is required"
-      );
-    }
-    const client = new Anthropic({
-      apiKey: ANTHROPIC_API_KEY,
-    });
+    logger.info({ totalAgents: agents.length }, "Starting to process agents");
 
-    scriptLogger.info(
-      { totalAgents: allAgents.length },
-      "Starting to process agents"
-    );
+    const skills = await processAgentsInBatches(client, agents, 15, logger);
+    const augmentedSkills = augmentSkillsWithToolData(skills, agents, logger);
+    const outputFilePath = writeSkillsToFile(augmentedSkills, workspaceId);
 
-    const suggestedSkills = [];
-
-    // Process agents in batches
-    const BATCH_SIZE = 15;
-    const batches = [];
-    for (let i = 0; i < allAgents.length; i += BATCH_SIZE) {
-      batches.push(allAgents.slice(i, i + BATCH_SIZE));
-    }
-
-    scriptLogger.info(
-      { totalBatches: batches.length, batchSize: BATCH_SIZE },
-      "Processing agents in batches"
-    );
-
-    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-      const batch = batches[batchIndex];
-      scriptLogger.info(
-        {
-          batchIndex: batchIndex + 1,
-          totalBatches: batches.length,
-          agentsInBatch: batch.length,
-        },
-        "Processing batch"
-      );
-
-      // Process all agents in the batch in parallel
-      const batchPromises = batch.map(async (agent) => {
-        scriptLogger.info(
-          {
-            agentSid: agent.agent_sid,
-            agentName: agent.agent_name,
-          },
-          "Processing agent"
-        );
-
-        // Pass full tool and datasource objects to the prompt
-        const formattedTools = agent.tools;
-        const formattedDataSources = agent.dataSources || [];
-
-        try {
-          const message = await client.beta.messages.create({
-            max_tokens: 4096,
-            betas: ["structured-outputs-2025-11-13"],
-            system: [
-              {
-                type: "text",
-                text: PROMPT,
-                cache_control: {
-                  type: "ephemeral",
-                },
-              },
-            ],
-            messages: [
-              {
-                role: "user",
-                content:
-                  "agent_name: " +
-                  agent.agent_name +
-                  "\n\n" +
-                  "agent_description: " +
-                  agent.description +
-                  "\n\n" +
-                  "agent_prompt: " +
-                  agent.instructions +
-                  "\n\n" +
-                  "agent_tools: " +
-                  JSON.stringify(formattedTools, null, 2) +
-                  "\n\n" +
-                  "agent_data_sources: " +
-                  JSON.stringify(formattedDataSources, null, 2),
-              },
-            ],
-            model: "claude-sonnet-4-5-20250929",
-            output_format: OUTPUT_FORMAT,
-          });
-
-          const content = message.content[0];
-
-          if (content.type !== "text") {
-            scriptLogger.error(
-              {
-                agentSid: agent.agent_sid,
-                agentName: agent.agent_name,
-                contentType: content.type,
-              },
-              "Unexpected content type from API"
-            );
-            return [];
-          }
-
-          let parsedJson;
-          try {
-            parsedJson = JSON.parse(content.text);
-          } catch (jsonError) {
-            scriptLogger.error(
-              {
-                agentSid: agent.agent_sid,
-                agentName: agent.agent_name,
-                jsonError,
-                responseText: content.text.substring(0, 500),
-              },
-              "Failed to parse JSON response"
-            );
-            return [];
-          }
-
-          const parsed = OutputFormatSchema.parse(parsedJson);
-          return parsed.skills.map((skill) => ({
-            ...skill,
-            agent_sid: agent.agent_sid,
-            agent_name: agent.agent_name,
-            agent_description: agent.description,
-            agent_instructions: agent.instructions,
-          }));
-        } catch (error) {
-          scriptLogger.error(
-            {
-              agentSid: agent.agent_sid,
-              agentName: agent.agent_name,
-              error,
-            },
-            "Failed to process agent"
-          );
-          return [];
-        }
-      });
-
-      // Wait for all agents in the batch to complete
-      const batchResults = await Promise.all(batchPromises);
-      suggestedSkills.push(...batchResults.flat());
-
-      scriptLogger.info(
-        {
-          batchIndex: batchIndex + 1,
-          skillsInBatch: batchResults.flat().length,
-          totalSkillsSoFar: suggestedSkills.length,
-        },
-        "Completed batch"
-      );
-    }
-
-    // Augment skills with full tool data from agents
-    scriptLogger.info("Augmenting skills with full tool data");
-
-    const agentsById = new Map(
-      allAgents.map((agent) => [agent.agent_sid, agent])
-    );
-
-    const augmentedSkills = suggestedSkills.map((skill) => {
-      const agent = agentsById.get(skill.agent_sid);
-
-      if (!agent) {
-        scriptLogger.warn(
-          { skillName: skill.name, agentSid: skill.agent_sid },
-          "Agent not found for skill"
-        );
-        return skill;
-      }
-
-      // Create a map of tools by mcp_server_view_id for quick lookup
-      const toolsByMcpViewId = new Map(
-        agent.tools.map((tool) => [tool.mcp_server_view_id, tool])
-      );
-
-      // Augment each requiredTool with full data from agents
-      const augmentedRequiredTools = skill.requiredTools.map((skillTool) => {
-        const fullToolData = toolsByMcpViewId.get(skillTool.mcp_server_view_id);
-
-        if (!fullToolData) {
-          scriptLogger.warn(
-            {
-              skillName: skill.name,
-              toolName: skillTool.tool_name,
-              mcpServerViewId: skillTool.mcp_server_view_id,
-            },
-            "Tool not found in agent's tools"
-          );
-          return skillTool;
-        }
-
-        // Merge the skill tool data with the full tool data from agents
-        return {
-          ...skillTool,
-          remote_mcp_server_id: fullToolData.remote_mcp_server_id,
-          internal_mcp_server_id: fullToolData.internal_mcp_server_id,
-          ...(fullToolData.internal_tool_name && {
-            internal_tool_name: fullToolData.internal_tool_name,
-          }),
-          ...(fullToolData.internal_tool_description && {
-            internal_tool_description: fullToolData.internal_tool_description,
-          }),
-        };
-      });
-
-      return {
-        ...skill,
-        requiredTools: augmentedRequiredTools,
-      };
-    });
-
-    // Write results to file
-    const resultsFilePath = join(
-      __dirname,
-      workspaceId,
-      "suggested_skills.json"
-    );
-    writeFileSync(
-      resultsFilePath,
-      JSON.stringify(
-        augmentedSkills.sort((a, b) => b.confidenceScore - a.confidenceScore),
-        null,
-        2
-      )
-    );
-
-    scriptLogger.info(
+    logger.info(
       {
-        processedAgents: allAgents.length,
-        totalSkills: suggestedSkills.length,
-        outputFile: resultsFilePath,
+        processedAgents: agents.length,
+        totalSkills: skills.length,
+        outputFile: outputFilePath,
       },
-      "Completed processing"
+      "Done"
     );
   }
 );
