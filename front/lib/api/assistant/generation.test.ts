@@ -132,12 +132,13 @@ describe("constructProjectContextSection", () => {
   
 This conversation is associated with a project. The project provides:
 - Persistent file storage shared across all conversations in this project
+- Project metadata (description and URLs) for organizational context
 - Semantic search capabilities over project files
 - Collaborative context that persists beyond individual conversations
 
 ## Using Project Tools
 
-**project_context_management**: Use these tools to manage persistent project files
+**project_context_management**: Use these tools to manage persistent project files and metadata
 **search_project_context**: Use this tool to semantically search across all project files when you need to:
 - Find relevant information within the project
 - Locate specific content across multiple files
