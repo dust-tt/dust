@@ -53,6 +53,7 @@ import {
   SalesforceLogo,
   SlackLogo,
   SnowflakeLogo,
+  StatuspageLogo,
   StripeLogo,
   SupabaseLogo,
   ToolsIcon,
