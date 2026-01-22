@@ -219,18 +219,18 @@ async function findAvailableMCPServerViews(
 
 async function createMeetingPrepSkill(
   logger: Logger,
-  workspaceSId: string,
+  workspaceId: string,
   execute: boolean
 ): Promise<void> {
   logger.info(
-    { execute, workspaceSId },
+    { execute, workspaceId },
     "Starting creation of Meeting Prep skill"
   );
 
   // Find the workspace
-  const workspace = await WorkspaceResource.fetchById(workspaceSId);
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
   if (!workspace) {
-    throw new Error(`Workspace not found with sId: ${workspaceSId}`);
+    throw new Error(`Workspace not found with sId: ${workspaceId}`);
   }
 
   logger.info(
@@ -415,14 +415,13 @@ async function createMeetingPrepSkill(
 
 makeScript(
   {
-    workspaceSId: {
+    workspaceId: {
       alias: "w",
-      describe: "Workspace sId where the skill should be created",
       type: "string" as const,
       demandOption: true,
     },
   },
-  async ({ workspaceSId, execute }, logger) => {
-    await createMeetingPrepSkill(logger, workspaceSId, execute);
+  async ({ workspaceId, execute }, logger) => {
+    await createMeetingPrepSkill(logger, workspaceId, execute);
   }
 );
