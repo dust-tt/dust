@@ -381,10 +381,21 @@ makeScript(
       alias: "w",
       describe: "Workspace sId where skills should be created",
       type: "string" as const,
-      demandOption: false,
+    },
+    runOnAllWorkspaces: {
+      type: "boolean" as const,
+      default: false,
     },
   },
-  async ({ filePath, workspaceId, execute }, logger) => {
+  async (
+    {
+      filePath,
+      workspaceId,
+      runOnAllWorkspaces: runOnAllWorkspacesOption,
+      execute,
+    },
+    logger
+  ) => {
     if (workspaceId) {
       const workspace = await WorkspaceResource.fetchById(workspaceId);
       if (!workspace) {
@@ -396,7 +407,7 @@ makeScript(
         filePath,
         execute,
       });
-    } else {
+    } else if (runOnAllWorkspacesOption) {
       await runOnAllWorkspaces(async (workspace) => {
         await createSuggestedSkills(workspace, {
           logger,
@@ -404,6 +415,10 @@ makeScript(
           execute,
         });
       });
+    } else {
+      logger.info(
+        "No op: `runOnAllWorkspaces` not passed and no workspace ID specified."
+      );
     }
   }
 );
