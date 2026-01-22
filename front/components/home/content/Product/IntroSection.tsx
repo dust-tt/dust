@@ -111,8 +111,8 @@ const HeroContent = () => {
               )}
               className="flex items-center gap-2 rounded-2xl bg-blue-500 px-8 py-4 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-blue-600"
             >
-              Open Dust
               <ArrowRightIcon className="h-5 w-5" />
+              Open Dust
             </button>
             <p className="text-sm text-muted-foreground">
               Welcome back! Continue where you left off.
