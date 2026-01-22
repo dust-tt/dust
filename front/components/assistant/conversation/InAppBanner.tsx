@@ -19,12 +19,16 @@ const BACKGROUND_IMAGE_STYLE_PROPS = {
 
 const MENTION_IMAGE_PATH = "/static/mentions_banner.svg";
 
+const SKILLS_IMAGE_PATH = "/static/Skills_Banner.png";
+
 const YEAR_IN_REVIEW_TITLE = "/static/year-in-review-title.svg";
 
 const LOCAL_STORAGE_KEY_PREFIX = "dust-wrapped-dismissed";
 const MENTION_BANNER_LOCAL_STORAGE_KEY = "mention-banner-dismissed";
+const SKILLS_BANNER_LOCAL_STORAGE_KEY = "skills-banner-dismissed";
 
 const MENTION_BANNER_URL = "https://docs.dust.tt/docs/collaboration";
+const SKILLS_BANNER_URL = "https://docs.dust.tt/docs/collaboration";
 
 interface StackedInAppBannersProps {
   owner: WorkspaceType;
@@ -46,6 +50,14 @@ interface WrappedInAppBannerProps {
   showWrappedInAppBanner: boolean;
   setShowWrappedInAppBanner: (show: boolean) => void;
   wrappedBannerRef: (node: HTMLElement | null) => void;
+}
+
+interface SkillsBannerProps {
+  showSkillsBanner: boolean;
+  setShowSkillsBanner: (show: boolean) => void;
+  isHovering: boolean;
+  showWrappedInAppBanner: boolean;
+  skillsBannerRef: (node: HTMLElement | null) => void;
 }
 
 function getLocalStorageKey(owner: WorkspaceType) {
@@ -72,20 +84,25 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
   const [showMentionBanner, setShowMentionBanner] = useState(() => {
     return localStorage.getItem(MENTION_BANNER_LOCAL_STORAGE_KEY) !== "true";
   });
+  const [showSkillsBanner, setShowSkillsBanner] = useState(() => {
+    return localStorage.getItem(SKILLS_BANNER_LOCAL_STORAGE_KEY) !== "true";
+  });
   const [mentionBannerRef, isMentionBannerHovering] = useHover();
   const [wrappedBannerRef, isWrappedBannerHovering] = useHover();
+  const [skillsBannerRef, isSkillsBannerHovering] = useHover();
   const wrappedUrl = getWrappedUrl(owner);
 
-  const canShowWrappedInAppBanner =
-    Boolean(wrappedUrl) && showWrappedInAppBanner;
+  const canShowWrappedInAppBanner = false;
+  const canShowMentionBanner = false;
+  const canShowSkillsBanner = showSkillsBanner;
 
-  const isHovering = isMentionBannerHovering || isWrappedBannerHovering;
+  const isHovering = isMentionBannerHovering || isWrappedBannerHovering || isSkillsBannerHovering;
 
   return (
     <div className="absolute bottom-0 left-0 z-20 w-full">
       <MentionBanner
         showWrappedInAppBanner={canShowWrappedInAppBanner}
-        showMentionBanner={showMentionBanner}
+        showMentionBanner={canShowMentionBanner}
         setShowMentionBanner={setShowMentionBanner}
         isHovering={isHovering}
         mentionBannerRef={mentionBannerRef}
@@ -95,9 +112,16 @@ export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
         owner={owner}
         showWrappedInAppBanner={canShowWrappedInAppBanner}
         setShowWrappedInAppBanner={setShowWrappedInAppBanner}
-        showMentionBanner={showMentionBanner}
+        showMentionBanner={canShowMentionBanner}
         isHovering={isHovering}
         wrappedBannerRef={wrappedBannerRef}
+      />
+      <SkillsBanner
+        showWrappedInAppBanner={canShowWrappedInAppBanner}
+        showSkillsBanner={canShowSkillsBanner}
+        setShowSkillsBanner={setShowSkillsBanner}
+        isHovering={isHovering}
+        skillsBannerRef={skillsBannerRef}
       />
     </div>
   );
@@ -237,10 +261,74 @@ export function MentionBanner({
           </div>
           <div className="relative px-4 py-3">
             <div className="mb-1 text-sm font-medium text-foreground dark:text-foreground-night">
-              Collaborate with your team on Dust
+              Introducing Skills
             </div>
             <h4 className="text-xs leading-tight text-primary dark:text-primary-night">
-              Tag teammates to notify them and work together on conversations.
+            Extend your agent's capabilities with modular, specialized Skills
+            </h4>
+          </div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+export function SkillsBanner({
+  showSkillsBanner,
+  showWrappedInAppBanner,
+  setShowSkillsBanner,
+  skillsBannerRef,
+}: SkillsBannerProps) {
+  const onDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    localStorage.setItem(SKILLS_BANNER_LOCAL_STORAGE_KEY, "true");
+    setShowSkillsBanner(false);
+  };
+
+  const onLearnMore = () => {
+    window.open(SKILLS_BANNER_URL, "_blank", "noopener,noreferrer");
+  };
+
+  const hasBothBanners = showSkillsBanner && showWrappedInAppBanner;
+
+  return (
+    <AnimatePresence>
+      {showSkillsBanner ? (
+        <motion.div
+          ref={skillsBannerRef}
+          initial={hasBothBanners ? { opacity: 100, translateY: "80%" } : {}}
+          transition={{ duration: 0.1, ease: "easeIn" }}
+          exit={{ opacity: 0, translateY: "120%" }}
+          className="relative z-10 mx-2 mb-2 hidden cursor-pointer flex-col overflow-hidden rounded-2xl border border-border-dark bg-white shadow-md dark:border-border-night dark:bg-background-night sm:flex"
+          onClick={withTracking(
+            TRACKING_AREAS.MENTIONS,
+            "cta_skills_banner",
+            onLearnMore
+          )}
+        >
+          <div className="relative w-full">
+            <Image
+              src={SKILLS_IMAGE_PATH}
+              alt="Introducing Skills"
+              width={300}
+              height={98}
+              className="w-full border-b border-border-dark object-cover dark:border-border-night"
+              priority
+            />
+            <Button
+              variant="outline"
+              icon={XMarkIcon}
+              className="absolute right-1 top-1 opacity-80"
+              onClick={onDismiss}
+            />
+          </div>
+          <div className="relative px-4 py-3">
+            <div className="mb-1 text-sm font-medium text-foreground dark:text-foreground-night">
+              Introducing Skills
+            </div>
+            <h4 className="text-xs leading-tight text-primary dark:text-primary-night">
+            Extend your agent's capabilities with modular, specialized Skills
             </h4>
           </div>
         </motion.div>
