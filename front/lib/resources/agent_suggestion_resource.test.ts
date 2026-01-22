@@ -183,8 +183,7 @@ describe("AgentSuggestionResource", () => {
 
         expect(suggestion.state).toBe("pending");
 
-        const result = await suggestion.updateState(authenticator, newState);
-        expect(result.isOk()).toBe(true);
+        await suggestion.updateState(authenticator, newState);
 
         const fetched = await AgentSuggestionResource.fetchById(
           authenticator,
@@ -211,16 +210,9 @@ describe("AgentSuggestionResource", () => {
         workspace.sId
       );
 
-      const result = await suggestion.updateState(
-        otherAuthenticator,
-        "approved"
-      );
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.message).toBe(
-          "User does not have permission to edit this agent"
-        );
-      }
+      await expect(
+        suggestion.updateState(otherAuthenticator, "approved")
+      ).rejects.toThrow("User does not have permission to edit this agent");
     });
   });
 
@@ -276,22 +268,17 @@ describe("AgentSuggestionResource", () => {
         workspace.sId
       );
 
-      const result = await AgentSuggestionResource.makeNew(otherAuthenticator, {
-        agentConfigurationId: agentConfiguration.sId,
-        agentConfigurationVersion: 1,
-        kind: "instructions",
-        suggestion: { oldString: "old", newString: "new" },
-        analysis: null,
-        state: "pending",
-        source: "copilot",
-      });
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.message).toBe(
-          "User does not have permission to edit this agent"
-        );
-      }
+      await expect(
+        AgentSuggestionResource.makeNew(otherAuthenticator, {
+          agentConfigurationId: agentConfiguration.sId,
+          agentConfigurationVersion: 1,
+          kind: "instructions",
+          suggestion: { oldString: "old", newString: "new" },
+          analysis: null,
+          state: "pending",
+          source: "copilot",
+        })
+      ).rejects.toThrow("User does not have permission to edit this agent");
     });
   });
 

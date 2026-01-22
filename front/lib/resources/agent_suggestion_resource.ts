@@ -5,41 +5,23 @@ import type {
   Transaction,
 } from "sequelize";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  getAgentConfiguration,
+  getAgentConfigurations,
+} from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ModelId, Result } from "@app/types";
-import { Err, normalizeError, Ok, removeNulls } from "@app/types";
+import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 import type {
   AgentSuggestionState,
   AgentSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import { parseAgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
-
-/**
- * Helper to check if a user has permission to manipulate suggestions for an agent.
- * Returns true if the user can edit the agent (is author, member of agent_editors group, or admin).
- */
-async function canEditAgent(
-  auth: Authenticator,
-  agentConfigurationId: string
-): Promise<boolean> {
-  if (auth.isAdmin()) {
-    return true;
-  }
-
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationId,
-    variant: "light",
-  });
-
-  return agentConfiguration?.canEdit ?? false;
-}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentSuggestionResource extends ReadonlyAttributesType<AgentSuggestionModel> {}
@@ -55,22 +37,39 @@ export interface AgentSuggestionResource extends ReadonlyAttributesType<AgentSug
 export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> {
   static model: ModelStatic<AgentSuggestionModel> = AgentSuggestionModel;
 
+  readonly agentConfiguration: LightAgentConfigurationType | null;
+
   constructor(
     model: ModelStatic<AgentSuggestionModel>,
-    blob: Attributes<AgentSuggestionModel>
+    blob: Attributes<AgentSuggestionModel>,
+    agentConfiguration: LightAgentConfigurationType | null
   ) {
     super(AgentSuggestionModel, blob);
+    this.agentConfiguration = agentConfiguration;
+  }
+
+  /**
+   * Check if the user has permission to edit this suggestion's agent.
+   */
+  canEdit(auth: Authenticator): boolean {
+    if (auth.isAdmin()) {
+      return true;
+    }
+    return this.agentConfiguration?.canEdit ?? false;
   }
 
   static async makeNew(
     auth: Authenticator,
     blob: Omit<CreationAttributes<AgentSuggestionModel>, "workspaceId">
-  ): Promise<Result<AgentSuggestionResource, Error>> {
-    const canEdit = await canEditAgent(auth, blob.agentConfigurationId);
+  ): Promise<AgentSuggestionResource> {
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: blob.agentConfigurationId,
+      variant: "light",
+    });
+
+    const canEdit = auth.isAdmin() || (agentConfiguration?.canEdit ?? false);
     if (!canEdit) {
-      return new Err(
-        new Error("User does not have permission to edit this agent")
-      );
+      throw new Error("User does not have permission to edit this agent");
     }
 
     const suggestion = await AgentSuggestionModel.create({
@@ -78,7 +77,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       workspaceId: auth.getNonNullableWorkspace().id,
     });
 
-    return new Ok(new this(AgentSuggestionModel, suggestion.get()));
+    return new this(AgentSuggestionModel, suggestion.get(), agentConfiguration);
   }
 
   private static async baseFetch(
@@ -95,30 +94,34 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       ...otherOptions,
     });
 
-    // Get unique agent IDs to check permissions.
     const agentIds = [
       ...new Set(suggestions.map((s) => s.agentConfigurationId)),
     ];
 
-    // Check permissions for each unique agent ID.
-    const permissionResults = await concurrentExecutor(
+    // Fetch all agent configurations at once.
+    const agentConfigurations = await getAgentConfigurations(auth, {
       agentIds,
-      async (agentId) => ({
-        agentId,
-        canEdit: await canEditAgent(auth, agentId),
-      }),
-      { concurrency: 8 }
-    );
+      variant: "light",
+    });
+    const agentsByIdMap = new Map(agentConfigurations.map((c) => [c.sId, c]));
 
-    // Build a set of agent IDs the user can edit.
-    const editableAgentIds = new Set(
-      permissionResults.filter((r) => r.canEdit).map((r) => r.agentId)
-    );
-
-    // Filter suggestions to only include those for agents the user can edit.
+    // Filter suggestions to only include those for agents the user can edit
     return suggestions
-      .filter((s) => editableAgentIds.has(s.agentConfigurationId))
-      .map((suggestion) => new this(AgentSuggestionModel, suggestion.get()));
+      .filter((s) => {
+        if (auth.isAdmin()) {
+          return true;
+        }
+        const config = agentsByIdMap.get(s.agentConfigurationId);
+        return config?.canEdit ?? false;
+      })
+      .map(
+        (suggestion) =>
+          new this(
+            AgentSuggestionModel,
+            suggestion.get(),
+            agentsByIdMap.get(suggestion.agentConfigurationId) ?? null
+          )
+      );
   }
 
   static async fetchByIds(
@@ -144,27 +147,21 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    // Check if user has permission to edit the agent.
-    const canEdit = await canEditAgent(auth, this.agentConfigurationId);
-    if (!canEdit) {
+    if (!this.canEdit(auth)) {
       return new Err(
         new Error("User does not have permission to edit this agent")
       );
     }
 
-    try {
-      await this.model.destroy({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          id: this.id,
-        },
-        transaction,
-      });
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: this.id,
+      },
+      transaction,
+    });
 
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
+    return new Ok(undefined);
   }
 
   get sId(): string {
@@ -178,26 +175,17 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     auth: Authenticator,
     state: AgentSuggestionState,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, Error>> {
+  ): Promise<void> {
     // Verify workspace match for security.
     if (this.workspaceId !== auth.getNonNullableWorkspace().id) {
-      return new Err(new Error("Workspace mismatch"));
+      throw new Error("Workspace mismatch");
     }
 
-    // Check if user has permission to edit the agent.
-    const canEdit = await canEditAgent(auth, this.agentConfigurationId);
-    if (!canEdit) {
-      return new Err(
-        new Error("User does not have permission to edit this agent")
-      );
+    if (!this.canEdit(auth)) {
+      throw new Error("User does not have permission to edit this agent");
     }
 
-    try {
-      await this.update({ state }, transaction);
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
+    await this.update({ state }, transaction);
   }
 
   static modelIdToSId({
