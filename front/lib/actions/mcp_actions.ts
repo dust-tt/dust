@@ -25,6 +25,7 @@ import {
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
   RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
+  TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type {
   ClientSideMCPServerConfigurationType,
@@ -116,8 +117,6 @@ function isEmptyInputSchema(schema: JSONSchema): boolean {
 }
 
 const MAX_TOOL_NAME_LENGTH = 64;
-
-export const TOOL_NAME_SEPARATOR = "__";
 
 // Define the new type here for now, or move to a dedicated types file later.
 export interface ServerToolsAndInstructions {

@@ -2,11 +2,9 @@ import { heartbeat } from "@temporalio/activity";
 import assert from "assert";
 import tracer from "dd-trace";
 
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
-import {
-  TOOL_NAME_SEPARATOR,
-  tryListMCPTools,
-} from "@app/lib/actions/mcp_actions";
+import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";

@@ -1,6 +1,8 @@
-import { DEFAULT_AGENT_ROUTER_ACTION_NAME } from "@app/lib/actions/constants";
+import {
+  DEFAULT_AGENT_ROUTER_ACTION_NAME,
+  TOOL_NAME_SEPARATOR,
+} from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
