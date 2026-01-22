@@ -16,8 +16,8 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
-import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { useCopilotMCPServer } from "@app/components/agent_builder/copilot/useMCPServer";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import {
   PersonalConnectionRequiredDialog,
   useAwaitableDialog,
