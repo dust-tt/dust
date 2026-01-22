@@ -24,7 +24,6 @@ import {
   MentionModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
-import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -39,6 +38,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
   AgenticMessageData,
@@ -1840,16 +1840,11 @@ describe("createUserMentions", () => {
         });
 
       // Create a trigger
-      const trigger = await TriggerModel.create({
-        workspaceId: workspace.id,
+      const trigger = await TriggerFactory.webhook(auth, {
         name: "Test Trigger",
-        kind: "webhook",
         agentConfigurationId: triggerAgentConfig.sId,
-        editor: auth.getNonNullableUser().id,
-        customPrompt: null,
         status: "enabled",
         configuration: { includePayload: true },
-        origin: "user",
       });
 
       // Create a conversation with triggerId
@@ -1949,16 +1944,11 @@ describe("createUserMentions", () => {
         });
 
       // Create a trigger
-      const trigger = await TriggerModel.create({
-        workspaceId: workspace.id,
+      const trigger = await TriggerFactory.webhook(auth, {
         name: "Test Trigger",
-        kind: "webhook",
         agentConfigurationId: triggerAgentConfig.sId,
-        editor: auth.getNonNullableUser().id,
-        customPrompt: null,
         status: "enabled",
         configuration: { includePayload: true },
-        origin: "user",
       });
 
       // Create a conversation with triggerId
@@ -2057,16 +2047,11 @@ describe("createUserMentions", () => {
         });
 
       // Create a trigger
-      const trigger = await TriggerModel.create({
-        workspaceId: workspace.id,
+      const trigger = await TriggerFactory.webhook(auth, {
         name: "Test Trigger",
-        kind: "webhook",
         agentConfigurationId: triggerAgentConfig.sId,
-        editor: auth.getNonNullableUser().id,
-        customPrompt: null,
         status: "enabled",
         configuration: { includePayload: true },
-        origin: "user",
       });
 
       // Create a conversation with triggerId
