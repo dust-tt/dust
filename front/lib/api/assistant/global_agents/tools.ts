@@ -34,9 +34,9 @@ export const MCP_SERVERS_FOR_GLOBAL_AGENTS: readonly AutoInternalMCPServerNameTy
     "agent_memory",
   ] as const;
 
-export type MCPServerViewsForGlobalAgentsMap = Map<
+export type MCPServerViewsForGlobalAgentsMap = Record<
   (typeof MCP_SERVERS_FOR_GLOBAL_AGENTS)[number],
-  MCPServerViewResource
+  MCPServerViewResource | null
 >;
 
 export async function getDataSourcesAndWorkspaceIdForGlobalAgents(

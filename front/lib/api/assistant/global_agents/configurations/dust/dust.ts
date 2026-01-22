@@ -13,7 +13,10 @@ import {
   getCompanyDataWarehousesAction,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/shared";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
-import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
+import type {
+  MCPServerViewsForGlobalAgentsMap,
+  PrefetchedDataSourcesType,
+} from "@app/lib/api/assistant/global_agents/tools";
 import {
   _getAgentRouterToolsConfiguration,
   _getDefaultWebActionsForGlobalAgent,
@@ -284,28 +287,13 @@ function _getDustLikeGlobalAgent(
   {
     settings,
     preFetchedDataSources,
-    agentRouterMCPServerView,
-    webSearchBrowseMCPServerView,
-    dataSourcesFileSystemMCPServerView,
-    toolsetsMCPServerView,
-    deepDiveMCPServerView,
-    interactiveContentMCPServerView,
-    dataWarehousesMCPServerView,
-
-    agentMemoryMCPServerView,
+    mcpServerViews,
     memories,
     availableToolsets,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    agentRouterMCPServerView: MCPServerViewResource | null;
-    webSearchBrowseMCPServerView: MCPServerViewResource | null;
-    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-    toolsetsMCPServerView: MCPServerViewResource | null;
-    deepDiveMCPServerView: MCPServerViewResource | null;
-    interactiveContentMCPServerView: MCPServerViewResource | null;
-    dataWarehousesMCPServerView: MCPServerViewResource | null;
-    agentMemoryMCPServerView: MCPServerViewResource | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     memories: AgentMemoryResource[];
     availableToolsets: MCPServerViewResource[];
   },
@@ -321,6 +309,12 @@ function _getDustLikeGlobalAgent(
     preferredReasoningEffort?: ReasoningEffort;
   }
 ): AgentConfigurationType | null {
+  const webSearchBrowseMCPServerView = mcpServerViews["web_search_&_browse"];
+  const dataSourcesFileSystemMCPServerView =
+    mcpServerViews.data_sources_file_system;
+  const toolsetsMCPServerView = mcpServerViews.toolsets;
+  const deepDiveMCPServerView = mcpServerViews.deep_dive;
+  const agentMemoryMCPServerView = mcpServerViews.agent_memory;
   const owner = auth.getNonNullableWorkspace();
 
   const description = `Dust is your general purpose agent. It has access to all of your company data and tools available in the Company space. Dust can help you:
@@ -379,7 +373,7 @@ function _getDustLikeGlobalAgent(
 
   const dataWarehousesAction = getCompanyDataWarehousesAction(
     preFetchedDataSources,
-    dataWarehousesMCPServerView
+    mcpServerViews.data_warehouses
   );
 
   const instructions = buildInstructions({
@@ -468,7 +462,7 @@ function _getDustLikeGlobalAgent(
     }),
     ..._getAgentRouterToolsConfiguration(
       agentId,
-      agentRouterMCPServerView,
+      mcpServerViews.agent_router,
       autoInternalMCPServerNameToSId({
         name: "agent_router",
         workspaceId: owner.id,
@@ -519,7 +513,7 @@ function _getDustLikeGlobalAgent(
   actions.push(
     ..._getInteractiveContentToolConfiguration({
       agentId,
-      interactiveContentMCPServerView,
+      interactiveContentMCPServerView: mcpServerViews.interactive_content,
     })
   );
 
@@ -541,14 +535,7 @@ export function _getDustGlobalAgent(
   args: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    agentRouterMCPServerView: MCPServerViewResource | null;
-    webSearchBrowseMCPServerView: MCPServerViewResource | null;
-    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-    toolsetsMCPServerView: MCPServerViewResource | null;
-    deepDiveMCPServerView: MCPServerViewResource | null;
-    interactiveContentMCPServerView: MCPServerViewResource | null;
-    dataWarehousesMCPServerView: MCPServerViewResource | null;
-    agentMemoryMCPServerView: MCPServerViewResource | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     memories: AgentMemoryResource[];
     availableToolsets: MCPServerViewResource[];
   }
@@ -565,14 +552,7 @@ export function _getDustEdgeGlobalAgent(
   args: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    agentRouterMCPServerView: MCPServerViewResource | null;
-    webSearchBrowseMCPServerView: MCPServerViewResource | null;
-    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-    toolsetsMCPServerView: MCPServerViewResource | null;
-    deepDiveMCPServerView: MCPServerViewResource | null;
-    interactiveContentMCPServerView: MCPServerViewResource | null;
-    dataWarehousesMCPServerView: MCPServerViewResource | null;
-    agentMemoryMCPServerView: MCPServerViewResource | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     memories: AgentMemoryResource[];
     availableToolsets: MCPServerViewResource[];
   }
@@ -590,14 +570,7 @@ export function _getDustQuickGlobalAgent(
   args: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    agentRouterMCPServerView: MCPServerViewResource | null;
-    webSearchBrowseMCPServerView: MCPServerViewResource | null;
-    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-    toolsetsMCPServerView: MCPServerViewResource | null;
-    deepDiveMCPServerView: MCPServerViewResource | null;
-    interactiveContentMCPServerView: MCPServerViewResource | null;
-    dataWarehousesMCPServerView: MCPServerViewResource | null;
-    agentMemoryMCPServerView: MCPServerViewResource | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     memories: AgentMemoryResource[];
     availableToolsets: MCPServerViewResource[];
   }
@@ -615,14 +588,7 @@ export function _getDustOaiGlobalAgent(
   args: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    agentRouterMCPServerView: MCPServerViewResource | null;
-    webSearchBrowseMCPServerView: MCPServerViewResource | null;
-    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-    toolsetsMCPServerView: MCPServerViewResource | null;
-    deepDiveMCPServerView: MCPServerViewResource | null;
-    interactiveContentMCPServerView: MCPServerViewResource | null;
-    dataWarehousesMCPServerView: MCPServerViewResource | null;
-    agentMemoryMCPServerView: MCPServerViewResource | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     memories: AgentMemoryResource[];
     availableToolsets: MCPServerViewResource[];
   }

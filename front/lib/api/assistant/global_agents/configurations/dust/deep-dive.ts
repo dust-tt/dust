@@ -10,7 +10,10 @@ import {
   getCompanyDataAction,
   getCompanyDataWarehousesAction,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/shared";
-import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
+import type {
+  MCPServerViewsForGlobalAgentsMap,
+  PrefetchedDataSourcesType,
+} from "@app/lib/api/assistant/global_agents/tools";
 import {
   _getDefaultWebActionsForGlobalAgent,
   _getToolsetsToolsConfiguration,
@@ -18,7 +21,6 @@ import {
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
-import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -424,25 +426,14 @@ export function _getDeepDiveGlobalAgent(
   {
     settings,
     preFetchedDataSources,
-    webSearchBrowseMCPServerView,
-    dataSourcesFileSystemMCPServerView,
-    interactiveContentMCPServerView,
-    runAgentMCPServerView,
-    dataWarehousesMCPServerView,
-    toolsetsMCPServerView,
-    slideshowMCPServerView,
+    mcpServerViews,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    webSearchBrowseMCPServerView: MCPServerViewResource | null;
-    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-    interactiveContentMCPServerView: MCPServerViewResource | null;
-    runAgentMCPServerView: MCPServerViewResource | null;
-    dataWarehousesMCPServerView: MCPServerViewResource | null;
-    toolsetsMCPServerView: MCPServerViewResource | null;
-    slideshowMCPServerView: MCPServerViewResource | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   }
 ): AgentConfigurationType | null {
+  const runAgentMCPServerView = mcpServerViews.run_agent;
   const owner = auth.getNonNullableWorkspace();
   const pictureUrl = DUST_AVATAR_URL;
   const modelConfig = getModelConfig(owner, "anthropic");
@@ -493,7 +484,7 @@ export function _getDeepDiveGlobalAgent(
 
   const companyDataAction = getCompanyDataAction(
     preFetchedDataSources,
-    dataSourcesFileSystemMCPServerView
+    mcpServerViews.data_sources_file_system
   );
   if (companyDataAction) {
     actions.push(companyDataAction);
@@ -502,24 +493,25 @@ export function _getDeepDiveGlobalAgent(
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
       agentId: GLOBAL_AGENTS_SID.DEEP_DIVE,
-      webSearchBrowseMCPServerView,
+      webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
     }),
     ..._getToolsetsToolsConfiguration({
       agentId: GLOBAL_AGENTS_SID.DUST_TASK,
-      toolsetsMcpServerView: toolsetsMCPServerView,
+      toolsetsMcpServerView: mcpServerViews.toolsets,
     })
   );
 
   // Add data warehouses tool with all warehouses in global space (all remote DBs)
   const dataWarehousesAction = getCompanyDataWarehousesAction(
     preFetchedDataSources,
-    dataWarehousesMCPServerView
+    mcpServerViews.data_warehouses
   );
   if (dataWarehousesAction) {
     actions.push(dataWarehousesAction);
   }
 
   // Add Interactive Content tool.
+  const interactiveContentMCPServerView = mcpServerViews.interactive_content;
   if (interactiveContentMCPServerView) {
     actions.push({
       id: -1,
@@ -580,6 +572,7 @@ export function _getDeepDiveGlobalAgent(
   }
 
   // Add Slideshow tool.
+  const slideshowMCPServerView = mcpServerViews.slideshow;
   if (slideshowMCPServerView) {
     actions.push({
       id: -1,
@@ -622,15 +615,11 @@ export function _getDustTaskGlobalAgent(
   {
     settings,
     preFetchedDataSources,
-    webSearchBrowseMCPServerView,
-    dataSourcesFileSystemMCPServerView,
-    dataWarehousesMCPServerView,
+    mcpServerViews,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    webSearchBrowseMCPServerView: MCPServerViewResource | null;
-    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-    dataWarehousesMCPServerView: MCPServerViewResource | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -689,12 +678,13 @@ export function _getDustTaskGlobalAgent(
 
   const companyDataAction = getCompanyDataAction(
     preFetchedDataSources,
-    dataSourcesFileSystemMCPServerView
+    mcpServerViews.data_sources_file_system
   );
   if (companyDataAction) {
     actions.push(companyDataAction);
   }
 
+  const webSearchBrowseMCPServerView = mcpServerViews["web_search_&_browse"];
   if (webSearchBrowseMCPServerView) {
     actions.push({
       id: -1,
@@ -719,7 +709,7 @@ export function _getDustTaskGlobalAgent(
 
   const dataWarehousesAction = getCompanyDataWarehousesAction(
     preFetchedDataSources,
-    dataWarehousesMCPServerView
+    mcpServerViews.data_warehouses
   );
   if (dataWarehousesAction) {
     actions.push(dataWarehousesAction);

@@ -2,6 +2,7 @@ import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
+import type { MCPServerViewsForGlobalAgentsMap } from "@app/lib/api/assistant/global_agents/tools";
 import {
   _getAgentRouterToolsConfiguration,
   _getDefaultWebActionsForGlobalAgent,
@@ -9,7 +10,6 @@ import {
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -23,14 +23,10 @@ import {
 
 export function _getHelperGlobalAgent({
   auth,
-  agentRouterMCPServerView,
-  webSearchBrowseMCPServerView,
-  interactiveContentMCPServerView,
+  mcpServerViews,
 }: {
   auth: Authenticator;
-  agentRouterMCPServerView: MCPServerViewResource | null;
-  webSearchBrowseMCPServerView: MCPServerViewResource | null;
-  interactiveContentMCPServerView: MCPServerViewResource | null;
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let prompt = `<primary_goal>
 You are a customer success AI agent called @help designed by Dust and embedded in the platform. Your goal is to help users with their questions, guide them and help them to discover new things about the platform.
@@ -88,14 +84,14 @@ The user you're interacting with is granted with the role ${role}. Their name is
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
       agentId: GLOBAL_AGENTS_SID.HELPER,
-      webSearchBrowseMCPServerView,
+      webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
     })
   );
 
   actions.push(
     ..._getAgentRouterToolsConfiguration(
       GLOBAL_AGENTS_SID.HELPER,
-      agentRouterMCPServerView,
+      mcpServerViews.agent_router,
       autoInternalMCPServerNameToSId({
         name: "agent_router",
         workspaceId: owner.id,
@@ -109,7 +105,7 @@ The user you're interacting with is granted with the role ${role}. Their name is
   actions.push(
     ..._getInteractiveContentToolConfiguration({
       agentId: sId,
-      interactiveContentMCPServerView,
+      interactiveContentMCPServerView: mcpServerViews.interactive_content,
     })
   );
 
