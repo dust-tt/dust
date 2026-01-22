@@ -16,6 +16,7 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
+import { useCopilotMCPServer } from "@app/components/agent_builder/copilot/useMCPServer";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import {
   PersonalConnectionRequiredDialog,
@@ -479,51 +480,117 @@ export default function AgentBuilder({
   return (
     <AgentBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
-        <PersonalConnectionRequiredDialog
-          owner={owner}
-          mcpServerViewsWithPersonalConnections={
-            dialogProps.mcpServerViewsWithPersonalConnections
-          }
-          isOpen={dialogProps.isOpen}
-          onCancel={dialogProps.onCancel}
-          onClose={dialogProps.onClose}
-        />
-        {agentConfiguration && (
-          <AgentCreatedDialog
-            open={isCreatedDialogOpen}
-            onOpenChange={setIsCreatedDialogOpen}
-            agentName={agentConfiguration.name}
-            agentId={agentConfiguration.sId}
-            owner={owner}
-          />
-        )}
-        <AgentBuilderLayout
-          leftPanel={
-            <AgentBuilderLeftPanel
-              title={title}
-              onCancel={handleCancel}
-              saveButtonProps={{
-                size: "sm",
-                label: saveLabel,
-                variant: "highlight",
-                onClick: handleSave,
-                disabled: isSaveDisabled,
-              }}
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              agentConfigurationId={agentConfiguration?.sId || null}
-              isActionsLoading={isActionsLoading}
-              isTriggersLoading={isTriggersLoading}
-            />
-          }
-          rightPanel={
-            <ConversationSidePanelProvider>
-              <AgentBuilderRightPanel
-                agentConfigurationSId={agentConfiguration?.sId}
-              />
-            </ConversationSidePanelProvider>
-          }
+        <AgentBuilderContent
+          agentConfiguration={agentConfiguration}
+          title={title}
+          handleCancel={handleCancel}
+          saveLabel={saveLabel}
+          handleSave={handleSave}
+          isSaveDisabled={isSaveDisabled}
+          isActionsLoading={isActionsLoading}
+          isTriggersLoading={isTriggersLoading}
+          dialogProps={dialogProps}
+          isCreatedDialogOpen={isCreatedDialogOpen}
+          setIsCreatedDialogOpen={setIsCreatedDialogOpen}
         />
       </FormProvider>
     </AgentBuilderFormContext.Provider>
+  );
+}
+
+/**
+ * Inner component that has access to FormContext and can use the MCP server hook.
+ */
+interface AgentBuilderContentProps {
+  agentConfiguration?: LightAgentConfigurationType;
+  title: string;
+  handleCancel: () => Promise<void>;
+  saveLabel: string;
+  handleSave: () => void;
+  isSaveDisabled: boolean;
+  isActionsLoading: boolean;
+  isTriggersLoading: boolean;
+  dialogProps: {
+    mcpServerViewsWithPersonalConnections: ReturnType<
+      typeof useAwaitableDialog
+    >["mcpServerViewsWithPersonalConnections"];
+    isOpen: boolean;
+    onCancel: () => void;
+    onClose: () => void;
+  };
+  isCreatedDialogOpen: boolean;
+  setIsCreatedDialogOpen: (open: boolean) => void;
+}
+
+function AgentBuilderContent({
+  agentConfiguration,
+  title,
+  handleCancel,
+  saveLabel,
+  handleSave,
+  isSaveDisabled,
+  isActionsLoading,
+  isTriggersLoading,
+  dialogProps,
+  isCreatedDialogOpen,
+  setIsCreatedDialogOpen,
+}: AgentBuilderContentProps) {
+  const { owner } = useAgentBuilderContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+
+  // Initialize the client-side MCP server for the agent builder copilot.
+  // Only enabled when the agent_builder_copilot feature flag is active.
+  const { serverId: clientSideMCPServerId } = useCopilotMCPServer({
+    enabled: hasFeature("agent_builder_copilot"),
+  });
+
+  return (
+    <>
+      <PersonalConnectionRequiredDialog
+        owner={owner}
+        mcpServerViewsWithPersonalConnections={
+          dialogProps.mcpServerViewsWithPersonalConnections
+        }
+        isOpen={dialogProps.isOpen}
+        onCancel={dialogProps.onCancel}
+        onClose={dialogProps.onClose}
+      />
+      {agentConfiguration && (
+        <AgentCreatedDialog
+          open={isCreatedDialogOpen}
+          onOpenChange={setIsCreatedDialogOpen}
+          agentName={agentConfiguration.name}
+          agentId={agentConfiguration.sId}
+          owner={owner}
+        />
+      )}
+      <AgentBuilderLayout
+        leftPanel={
+          <AgentBuilderLeftPanel
+            title={title}
+            onCancel={handleCancel}
+            saveButtonProps={{
+              size: "sm",
+              label: saveLabel,
+              variant: "highlight",
+              onClick: handleSave,
+              disabled: isSaveDisabled,
+            }}
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            agentConfigurationId={agentConfiguration?.sId || null}
+            isActionsLoading={isActionsLoading}
+            isTriggersLoading={isTriggersLoading}
+          />
+        }
+        rightPanel={
+          <ConversationSidePanelProvider>
+            <AgentBuilderRightPanel
+              agentConfigurationSId={agentConfiguration?.sId}
+              clientSideMCPServerId={clientSideMCPServerId}
+            />
+          </ConversationSidePanelProvider>
+        }
+      />
+    </>
   );
 }
