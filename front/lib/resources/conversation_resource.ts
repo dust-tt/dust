@@ -904,6 +904,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         userId: auth.getNonNullableUser().id,
       },
+      include: [
+        {
+          model: ConversationModel,
+          as: "conversation",
+          attributes: ["updatedAt"],
+        },
+      ],
     });
 
     return {
@@ -1485,6 +1492,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: this.id,
       },
+      include: [
+        {
+          model: ConversationModel,
+          as: "conversation",
+          attributes: ["updatedAt"],
+        },
+      ],
     });
 
     const lastReadAtMap = new Map<number, Date | null>();
