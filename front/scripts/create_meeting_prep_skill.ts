@@ -1,6 +1,6 @@
 import type { Transaction } from "sequelize";
 
-import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
@@ -198,7 +198,7 @@ interface MCPServerViewInfo {
 
 async function findAvailableMCPServerViews(
   auth: Authenticator,
-  serverNames: readonly string[],
+  serverNames: readonly InternalMCPServerNameType[],
   logger: Logger
 ): Promise<Map<string, MCPServerViewInfo>> {
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
@@ -208,8 +208,12 @@ async function findAvailableMCPServerViews(
     where: {
       workspaceId: workspaceModelId,
       serverType: "internal",
-      internalMCPServerId: [...serverNames].map((name) =>
-        autoInternalMCPServerNameToSId({ name, workspaceId: workspaceModelId })
+      internalMCPServerId: serverNames.map((name) =>
+        internalMCPServerNameToSId({
+          name,
+          workspaceId: workspaceModelId,
+          prefix: 1,
+        })
       ),
       vaultId: globalSpace.id,
     },
