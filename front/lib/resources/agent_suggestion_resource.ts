@@ -16,7 +16,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
+import type { ModelId, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
 import type {
   AgentSuggestionState,
@@ -38,25 +38,25 @@ export interface AgentSuggestionResource extends ReadonlyAttributesType<AgentSug
 export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> {
   static model: ModelStatic<AgentSuggestionModel> = AgentSuggestionModel;
 
-  readonly agentConfiguration: LightAgentConfigurationType | null;
-
   constructor(
     model: ModelStatic<AgentSuggestionModel>,
-    blob: Attributes<AgentSuggestionModel>,
-    agentConfiguration: LightAgentConfigurationType | null
+    blob: Attributes<AgentSuggestionModel>
   ) {
     super(AgentSuggestionModel, blob);
-    this.agentConfiguration = agentConfiguration;
   }
 
   /**
    * Check if the user has permission to edit this suggestion's agent.
    */
-  canEdit(auth: Authenticator): boolean {
+  private async canEdit(auth: Authenticator): Promise<boolean> {
     if (auth.isAdmin()) {
       return true;
     }
-    return this.agentConfiguration?.canEdit ?? false;
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: this.agentConfigurationId,
+      variant: "light",
+    });
+    return agentConfiguration?.canEdit ?? false;
   }
 
   static async makeNew(
@@ -78,7 +78,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       workspaceId: auth.getNonNullableWorkspace().id,
     });
 
-    return new this(AgentSuggestionModel, suggestion.get(), agentConfiguration);
+    return new this(AgentSuggestionModel, suggestion.get());
   }
 
   private static async baseFetch(
@@ -115,14 +115,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
         const config = agentsByIdMap.get(s.agentConfigurationId);
         return config?.canEdit ?? false;
       })
-      .map(
-        (suggestion) =>
-          new this(
-            AgentSuggestionModel,
-            suggestion.get(),
-            agentsByIdMap.get(suggestion.agentConfigurationId) ?? null
-          )
-      );
+      .map((suggestion) => new this(AgentSuggestionModel, suggestion.get()));
   }
 
   static async fetchByIds(
@@ -148,7 +141,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    if (!this.canEdit(auth)) {
+    if (!(await this.canEdit(auth))) {
       return new Err(
         new Error("User does not have permission to edit this agent")
       );
@@ -182,7 +175,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       "Unexpected: workspace mismatch in suggestion"
     );
 
-    if (!this.canEdit(auth)) {
+    if (!(await this.canEdit(auth))) {
       throw new Error("User does not have permission to edit this agent");
     }
 
