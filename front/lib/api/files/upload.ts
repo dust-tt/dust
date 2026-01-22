@@ -464,6 +464,16 @@ const getProcessingFunction = ({
     return undefined;
   }
 
+  // SVG files are stored as-is without any processing (no resize).
+  if (contentType === "image/svg+xml") {
+    if (
+      ["conversation", "project_context", "tool_output"].includes(useCase)
+    ) {
+      return storeRawText;
+    }
+    return undefined;
+  }
+
   if (isSupportedImageContentType(contentType)) {
     if (useCase === "conversation" || useCase === "project_context") {
       return makeResizeAndUploadImageToFileStorage(

@@ -203,6 +203,7 @@ export const supportedImageFileFormats = {
   "image/png": [".png"],
   "image/gif": [".gif"],
   "image/webp": [".webp"],
+  "image/svg+xml": [".svg"],
 } as const;
 
 export const supportedAudioFileFormats = {
