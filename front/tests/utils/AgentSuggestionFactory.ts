@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { ModelId } from "@app/types";
 import type {
   AgentSuggestionSource,
   AgentSuggestionState,
@@ -12,9 +13,8 @@ import type {
 export class AgentSuggestionFactory {
   static async createInstructions(
     auth: Authenticator,
-    agentConfigurationId: string,
+    agentConfigurationId: ModelId,
     overrides: Partial<{
-      agentConfigurationVersion: number;
       suggestion: InstructionsSuggestionType;
       analysis: string | null;
       state: AgentSuggestionState;
@@ -22,8 +22,7 @@ export class AgentSuggestionFactory {
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.makeNew(auth, {
-      agentConfigurationIdTmp: agentConfigurationId,
-      agentConfigurationVersion: overrides.agentConfigurationVersion ?? 1,
+      agentConfigurationId,
       kind: "instructions",
       suggestion: overrides.suggestion ?? {
         oldString: "You are a helpful assistant.",
@@ -39,9 +38,8 @@ export class AgentSuggestionFactory {
 
   static async createTools(
     auth: Authenticator,
-    agentConfigurationId: string,
+    agentConfigurationId: ModelId,
     overrides: Partial<{
-      agentConfigurationVersion: number;
       suggestion: ToolsSuggestionType;
       analysis: string | null;
       state: AgentSuggestionState;
@@ -49,8 +47,7 @@ export class AgentSuggestionFactory {
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.makeNew(auth, {
-      agentConfigurationIdTmp: agentConfigurationId,
-      agentConfigurationVersion: overrides.agentConfigurationVersion ?? 1,
+      agentConfigurationId,
       kind: "tools",
       suggestion: overrides.suggestion ?? {
         additions: [
@@ -67,9 +64,8 @@ export class AgentSuggestionFactory {
 
   static async createSkills(
     auth: Authenticator,
-    agentConfigurationId: string,
+    agentConfigurationId: ModelId,
     overrides: Partial<{
-      agentConfigurationVersion: number;
       suggestion: SkillsSuggestionType;
       analysis: string | null;
       state: AgentSuggestionState;
@@ -77,8 +73,7 @@ export class AgentSuggestionFactory {
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.makeNew(auth, {
-      agentConfigurationIdTmp: agentConfigurationId,
-      agentConfigurationVersion: overrides.agentConfigurationVersion ?? 1,
+      agentConfigurationId,
       kind: "skills",
       suggestion: overrides.suggestion ?? {
         additions: ["code_review", "summarization"],
@@ -91,9 +86,8 @@ export class AgentSuggestionFactory {
 
   static async createModel(
     auth: Authenticator,
-    agentConfigurationId: string,
+    agentConfigurationId: ModelId,
     overrides: Partial<{
-      agentConfigurationVersion: number;
       suggestion: ModelSuggestionType;
       analysis: string | null;
       state: AgentSuggestionState;
@@ -101,8 +95,7 @@ export class AgentSuggestionFactory {
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.makeNew(auth, {
-      agentConfigurationIdTmp: agentConfigurationId,
-      agentConfigurationVersion: overrides.agentConfigurationVersion ?? 1,
+      agentConfigurationId,
       kind: "model",
       suggestion: overrides.suggestion ?? {
         modelId: "claude-haiku-4-5-20251001",

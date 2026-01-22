@@ -8,6 +8,7 @@ import type {
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -17,6 +18,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
 import type {
+  AgentSuggestionKind,
   AgentSuggestionState,
   AgentSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
@@ -112,19 +114,27 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   ): Promise<AgentSuggestionResource> {
     const owner = auth.getNonNullableWorkspace();
 
+    // Look up the agent configuration to get its sId for permission checking.
+    const agentConfig = await AgentConfigurationModel.findOne({
+      where: {
+        id: blob.agentConfigurationId,
+        workspaceId: owner.id,
+      },
+    });
+    if (!agentConfig) {
+      throw new Error("Agent configuration not found");
+    }
+
     // Look up the agent's editors group.
     const editorsGroupIdMap = await this.getEditorsGroupIdByAgentSId(auth, [
-      blob.agentConfigurationIdTmp,
+      agentConfig.sId,
     ]);
-    const editorsGroupId =
-      editorsGroupIdMap.get(blob.agentConfigurationIdTmp) ?? null;
+    const editorsGroupId = editorsGroupIdMap.get(agentConfig.sId) ?? null;
 
     // Check permission.
     const canWrite =
       auth.isAdmin() ||
-      (editorsGroupId !== null &&
-        editorsGroupId !== null &&
-        auth.hasGroupByModelId(editorsGroupId));
+      (editorsGroupId !== null && auth.hasGroupByModelId(editorsGroupId));
 
     if (!canWrite) {
       throw new Error("User does not have permission to edit this agent");
@@ -150,6 +160,12 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
         ...where,
         workspaceId: owner.id,
       },
+      include: [
+        {
+          model: AgentConfigurationModel,
+          required: true,
+        },
+      ],
       ...otherOptions,
     });
 
@@ -157,16 +173,15 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       return [];
     }
 
+    // Get unique agent sIds from the included AgentConfigurationModel.
     const agentSIds = [
-      ...new Set(suggestions.map((s) => s.agentConfigurationIdTmp)),
-    ];
+      ...new Set(suggestions.map((s) => s.getAgentConfiguration()?.sId ?? "")),
+    ].filter((sId) => sId !== "");
 
     const editorsGroupIdBySId = await this.getEditorsGroupIdByAgentSId(
       auth,
       agentSIds
     );
-
-    const authGroupIds = new Set(auth.groupModelIds());
 
     // Filter suggestions to only include those for agents the user can edit.
     return suggestions
@@ -174,14 +189,22 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
         if (auth.isAdmin()) {
           return true;
         }
-        const groupId = editorsGroupIdBySId.get(s.agentConfigurationIdTmp);
+        const agentConfig = s.getAgentConfiguration();
+        if (!agentConfig) {
+          return false;
+        }
+        const groupId = editorsGroupIdBySId.get(agentConfig.sId);
         return (
-          groupId !== undefined && groupId !== null && authGroupIds.has(groupId)
+          groupId !== undefined &&
+          groupId !== null &&
+          auth.hasGroupByModelId(groupId)
         );
       })
       .map((suggestion) => {
-        const editorsGroupId =
-          editorsGroupIdBySId.get(suggestion.agentConfigurationIdTmp) ?? null;
+        const agentConfig = suggestion.getAgentConfiguration();
+        const editorsGroupId = agentConfig
+          ? (editorsGroupIdBySId.get(agentConfig.sId) ?? null)
+          : null;
         return new this(AgentSuggestionModel, suggestion.get(), editorsGroupId);
       });
   }
@@ -203,6 +226,51 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   ): Promise<AgentSuggestionResource | null> {
     const [suggestion] = await this.fetchByIds(auth, [id]);
     return suggestion ?? null;
+  }
+
+  /**
+   * Lists all suggestions for an agent identified by its sId.
+   * Optionally filter by state and kind.
+   */
+  static async listByAgentConfigurationId(
+    auth: Authenticator,
+    agentSId: string,
+    filters?: {
+      state?: AgentSuggestionState;
+      kind?: AgentSuggestionKind;
+    }
+  ): Promise<AgentSuggestionResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    // First, find all agent configuration IDs for this agent sId (all versions).
+    const agentConfigs = await AgentConfigurationModel.findAll({
+      where: {
+        sId: agentSId,
+        workspaceId: owner.id,
+      },
+      attributes: ["id", "sId"],
+    });
+
+    if (agentConfigs.length === 0) {
+      return [];
+    }
+
+    const agentConfigIds = agentConfigs.map((ac) => ac.id);
+
+    // Build the where clause with optional filters.
+    const whereClause: Record<string, unknown> = {
+      agentConfigurationId: agentConfigIds,
+    };
+    if (filters?.state) {
+      whereClause.state = filters.state;
+    }
+    if (filters?.kind) {
+      whereClause.kind = filters.kind;
+    }
+
+    return this.baseFetch(auth, {
+      where: whereClause,
+    });
   }
 
   async delete(
@@ -274,8 +342,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
-      agentConfigurationId: this.agentConfigurationIdTmp,
-      agentConfigurationVersion: this.agentConfigurationVersion,
+      agentConfigurationId: this.agentConfigurationId,
       analysis: this.analysis,
       state: this.state,
       source: this.source,

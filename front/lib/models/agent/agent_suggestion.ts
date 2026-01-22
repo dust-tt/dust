@@ -1,6 +1,7 @@
-import type { CreationOptional } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -14,9 +15,7 @@ export class AgentSuggestionModel extends WorkspaceAwareModel<AgentSuggestionMod
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  // Reference agent by sId because sId cannot be inferred from id alone
-  declare agentConfigurationIdTmp: string;
-  declare agentConfigurationVersion: number;
+  declare agentConfigurationId: ForeignKey<AgentConfigurationModel["id"]>;
 
   declare kind: AgentSuggestionKind;
   declare suggestion: SuggestionPayload;
@@ -24,6 +23,13 @@ export class AgentSuggestionModel extends WorkspaceAwareModel<AgentSuggestionMod
 
   declare state: AgentSuggestionState;
   declare source: AgentSuggestionSource;
+
+  // The property name uses underscore to match Sequelize's default naming from modelName "agent_configuration"
+  declare agent_configuration: NonAttribute<AgentConfigurationModel>;
+
+  getAgentConfiguration(): AgentConfigurationModel | null {
+    return this.agent_configuration ?? null;
+  }
 }
 
 AgentSuggestionModel.init(
@@ -38,15 +44,9 @@ AgentSuggestionModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    agentConfigurationIdTmp: {
-      type: DataTypes.STRING,
+    agentConfigurationId: {
+      type: DataTypes.BIGINT,
       allowNull: false,
-    },
-    agentConfigurationVersion: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      comment:
-        "Version of the agent configuration when the suggestion was created",
     },
     kind: {
       type: DataTypes.STRING,
@@ -83,9 +83,19 @@ AgentSuggestionModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["workspaceId", "agentConfigurationIdTmp"],
+        fields: ["agentConfigurationId"],
         concurrently: true,
       },
     ],
   }
 );
+
+// Association with AgentConfigurationModel
+AgentSuggestionModel.belongsTo(AgentConfigurationModel, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+AgentConfigurationModel.hasMany(AgentSuggestionModel, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+  as: "suggestions",
+});
