@@ -2,6 +2,7 @@ import {
   DEEP_DIVE_NAME,
   DEEP_DIVE_SERVER_INSTRUCTIONS,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 
 export const goDeepSkill = {
@@ -20,4 +21,5 @@ export const goDeepSkill = {
   internalMCPServerNames: ["deep_dive"],
   version: 1,
   icon: "ActionAtomIcon",
+  isRestricted: isDeepDiveDisabledByAdmin,
 } as const satisfies GlobalSkillDefinition;

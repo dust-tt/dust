@@ -23,6 +23,7 @@ import { CapabilitiesSheet } from "@app/components/agent_builder/capabilities/ca
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import { validateMCPActionConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
+import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
 import { getSheetStateForActionEdit } from "@app/components/agent_builder/skills/sheetRouting";
 import { useSkillsAndActionsState } from "@app/components/agent_builder/skills/skillsAndActionsState";
 import type { SheetState } from "@app/components/agent_builder/skills/types";
@@ -42,6 +43,7 @@ import {
   SKILL_AVATAR_ICON_COLOR,
 } from "@app/lib/skill";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
+import type { TemplateActionPreset } from "@app/types";
 
 interface SkillCardProps {
   skill: AgentBuilderSkillsType;
@@ -159,6 +161,33 @@ export function AgentBuilderSkillsBlock() {
     );
 
   const [sheetState, setSheetState] = useState<SheetState>({ state: "closed" });
+
+  // Handle preset actions from templates.
+  const setKnowledgeActionFromPreset = useCallback(
+    (
+      actionData: {
+        action: BuilderAction;
+        index: number | null;
+        presetData?: TemplateActionPreset;
+      } | null
+    ) => {
+      if (actionData) {
+        setSheetState({
+          state: "knowledge",
+          action: actionData.action,
+          index: actionData.index,
+          presetData: actionData.presetData,
+        });
+      }
+    },
+    []
+  );
+
+  usePresetActionHandler({
+    fields: actionFields,
+    append: appendActions,
+    setKnowledgeAction: setKnowledgeActionFromPreset,
+  });
 
   // Sheets own closing after save; this handler only upserts into the form state.
   const handleToolEditSave = (updatedAction: BuilderAction) => {

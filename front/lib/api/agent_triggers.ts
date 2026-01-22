@@ -2,8 +2,8 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import type { AgentsUsageType, ModelId } from "@app/types";
 
@@ -80,21 +80,7 @@ async function getTriggersWithAgentAccesibleAgent({
     return [];
   }
 
-  const triggers = (await TriggerModel.findAll({
-    raw: true,
-    attributes: ["webhookSourceViewId", "agentConfigurationId"],
-    where: {
-      workspaceId: owner.id,
-      kind: "webhook",
-      status: "enabled",
-      webhookSourceViewId: {
-        [Op.ne]: null,
-      },
-    },
-  })) as Array<{
-    webhookSourceViewId: number | string | null;
-    agentConfigurationId: string;
-  }>;
+  const triggers = await TriggerResource.listWebhookTriggersForUsageQuery(auth);
 
   return triggers.filter(
     (trigger) =>

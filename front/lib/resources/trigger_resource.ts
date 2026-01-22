@@ -36,6 +36,7 @@ import {
 } from "@app/types";
 import type {
   ScheduleConfig,
+  TriggerExecutionMode,
   TriggerStatus,
   TriggerType,
   WebhookConfig,
@@ -215,6 +216,62 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           },
         },
       ],
+    });
+
+    return res.map((c) => new this(this.model, c.get()));
+  }
+
+  /**
+   * Returns minimal trigger data for webhook source usage queries.
+   * Used by getWebhookSourcesUsage() for performance-optimized queries.
+   */
+  static async listWebhookTriggersForUsageQuery(auth: Authenticator): Promise<
+    Array<{
+      webhookSourceViewId: ModelId | null;
+      agentConfigurationId: string;
+    }>
+  > {
+    const workspace = auth.getNonNullableWorkspace();
+
+    return (await this.model.findAll({
+      raw: true,
+      attributes: ["webhookSourceViewId", "agentConfigurationId"],
+      where: {
+        workspaceId: workspace.id,
+        kind: "webhook",
+        status: "enabled",
+        webhookSourceViewId: {
+          [Op.ne]: null,
+        },
+      },
+    })) as Array<{
+      webhookSourceViewId: ModelId | null;
+      agentConfigurationId: string;
+    }>;
+  }
+
+  /**
+   * DANGEROUS: Lists triggers across workspaces for maintenance scripts.
+   * Should only be used in scripts, never in API routes or lib/api.
+   */
+  static async listAllForScript(options?: {
+    workspaceId?: ModelId;
+    status?: TriggerStatus;
+  }): Promise<TriggerResource[]> {
+    const where: {
+      workspaceId?: ModelId;
+      status?: TriggerStatus;
+    } = {};
+
+    if (options?.workspaceId) {
+      where.workspaceId = options.workspaceId;
+    }
+    if (options?.status) {
+      where.status = options.status;
+    }
+
+    const res = await this.model.findAll({
+      where,
     });
 
     return res.map((c) => new this(this.model, c.get()));
@@ -591,6 +648,32 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     return new Ok(undefined);
+  }
+
+  /**
+   * Updates webhook-specific settings (execution limit and mode).
+   * Used by poke plugins for admin-level trigger configuration.
+   * Does not trigger temporal workflow updates.
+   */
+  async updateWebhookSettings(
+    executionPerDayLimitOverride: number | null,
+    executionMode: TriggerExecutionMode | null
+  ): Promise<Result<undefined, Error>> {
+    if (this.kind !== "webhook") {
+      return new Err(
+        new Error("Can only update webhook settings on webhook triggers")
+      );
+    }
+
+    try {
+      await this.update({
+        executionPerDayLimitOverride,
+        executionMode,
+      });
+      return new Ok(undefined);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
   }
 
   async addToSubscribers(

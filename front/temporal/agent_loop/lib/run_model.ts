@@ -275,7 +275,7 @@ export async function runModelActivity(
     hasAvailableActions: availableActions.length > 0,
     errorContext: mcpToolsListingError,
     agentsList,
-    conversationId: conversation.sId,
+    conversation,
     serverToolsAndInstructions: mcpActions,
     enabledSkills,
     equippedSkills,

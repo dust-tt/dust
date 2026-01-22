@@ -762,6 +762,7 @@ function canAccessAgent(
     case "disabled_missing_datasource":
     case "disabled_by_admin":
     case "archived":
+    case "pending":
       return false;
     default:
       assertNever(agentConfiguration.status);

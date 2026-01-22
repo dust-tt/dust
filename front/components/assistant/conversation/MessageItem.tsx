@@ -173,16 +173,18 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             />
           )}
           {data.visibility !== "deleted" &&
-            data.richMentions.map((mention) => {
+            data.richMentions.map((mention, index) => {
               // To please the type checker
               if (!context.conversation) {
                 return null;
               }
 
+              // :warning: make sure to use the index in the key, as the mention.id is the userId
+
               if (mention.status === "pending") {
                 return (
                   <MentionValidationRequired
-                    key={mention.id}
+                    key={index}
                     mention={mention}
                     message={data}
                     owner={context.owner}
@@ -196,7 +198,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               ) {
                 return (
                   <MentionInvalid
-                    key={mention.id}
+                    key={index}
                     mention={mention}
                     message={data}
                     owner={context.owner}
