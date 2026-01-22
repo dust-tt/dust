@@ -65,6 +65,7 @@ import type {
   UserType,
 } from "@app/types";
 import {
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CoreAPI,
   Err,
   isAdmin,
@@ -76,6 +77,49 @@ import {
   removeNulls,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
+
+// Placeholder constants for pending agents
+const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";
+const PENDING_AGENT_PLACEHOLDER_DESCRIPTION = "";
+const PENDING_AGENT_PLACEHOLDER_PICTURE_URL =
+  "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+
+/**
+ * Creates a pending agent configuration.
+ * Pending agents are placeholders created when the agent builder is opened for a new agent,
+ * before it is saved for the first time. This allows capturing the sId early.
+ */
+export async function createPendingAgentConfiguration(
+  auth: Authenticator
+): Promise<{ sId: string }> {
+  const owner = auth.getNonNullableWorkspace();
+  const user = auth.getNonNullableUser();
+
+  const sId = generateRandomModelSId();
+
+  await AgentConfigurationModel.create({
+    sId,
+    version: 0,
+    status: "pending",
+    scope: "hidden",
+    name: PENDING_AGENT_PLACEHOLDER_NAME,
+    description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
+    instructions: null,
+    providerId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+    modelId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+    temperature: 0.7,
+    reasoningEffort:
+      CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    maxStepsPerRun: 8,
+    pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
+    workspaceId: owner.id,
+    authorId: user.id,
+    templateId: null,
+    requestedSpaceIds: [],
+  });
+
+  return { sId };
+}
 
 export async function getAgentConfigurationsWithVersion<
   V extends AgentFetchVariant,
@@ -424,7 +468,15 @@ export async function createAgentConfiguration(
               sId: agentConfigurationId,
               workspaceId: owner.id,
             },
-            attributes: ["scope", "version", "id", "sId"],
+            attributes: [
+              "scope",
+              "version",
+              "id",
+              "sId",
+              "status",
+              "authorId",
+              "workspaceId",
+            ],
             order: [["version", "DESC"]],
             transaction: t,
             limit: 1,
@@ -442,20 +494,41 @@ export async function createAgentConfiguration(
         existingAgent = agentConfiguration;
 
         if (existingAgent) {
-          // Bump the version of the agent.
-          version = existingAgent.version + 1;
+          // Handle pending agent: delete it (don't bump version)
+          // Otherwise: archive old versions and bump version
+          if (existingAgent.status === "pending") {
+            if (existingAgent.authorId === user.id) {
+              // Delete the pending agent - we'll create a fresh one with version 0
+              await AgentConfigurationModel.destroy({
+                where: {
+                  id: existingAgent.id,
+                  workspaceId: owner.id,
+                },
+                transaction: t,
+              });
+              // Treat as new agent for the rest of the flow (no editor group to reuse)
+              existingAgent = null;
+            } else {
+              throw new Error(
+                "Cannot update a pending agent owned by another user."
+              );
+            }
+          } else {
+            // Regular update: bump version and archive old versions
+            version = existingAgent.version + 1;
+            await AgentConfigurationModel.update(
+              { status: "archived" },
+              {
+                where: {
+                  sId: agentConfigurationId,
+                  workspaceId: owner.id,
+                },
+                transaction: t,
+              }
+            );
+          }
         }
 
-        await AgentConfigurationModel.update(
-          { status: "archived" },
-          {
-            where: {
-              sId: agentConfigurationId,
-              workspaceId: owner.id,
-            },
-            transaction: t,
-          }
-        );
         userFavorite = userRelation?.favorite ?? false;
       }
 
