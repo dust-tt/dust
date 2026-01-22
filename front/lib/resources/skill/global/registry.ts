@@ -97,17 +97,9 @@ export class GlobalSkillsRegistry {
     auth: Authenticator,
     sId: string
   ): Promise<GlobalSkillDefinition | null> {
-    const skill = GLOBAL_SKILLS_BY_ID.get(sId);
-    if (!skill) {
-      return null;
-    }
-    if (skill.isRestricted) {
-      const isRestricted = await skill.isRestricted(auth);
-      if (isRestricted) {
-        return null;
-      }
-    }
-    return skill;
+    const skills = await this.findAll(auth, { sId });
+
+    return skills[0] ?? null;
   }
 
   static async findAll(
