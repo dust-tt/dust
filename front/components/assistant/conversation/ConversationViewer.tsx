@@ -346,9 +346,8 @@ export const ConversationViewer = ({
                   },
                   { revalidate: false }
                 );
-
-                void debouncedMarkAsRead(conversationId, false);
               }
+              void debouncedMarkAsRead(conversationId, false);
             }
             break;
           case "agent_message_new":

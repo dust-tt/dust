@@ -895,7 +895,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     const updated = await ConversationParticipantModel.update(
-      { unread: false },
+      { unread: false, lastReadAt: new Date() },
       {
         where: {
           conversationId: conversation.id,
