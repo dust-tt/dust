@@ -3,7 +3,12 @@ import { PostHogProvider } from "posthog-js/react";
 import { useEffect, useMemo, useRef } from "react";
 import { useCookies } from "react-cookie";
 
-import { DUST_COOKIES_ACCEPTED, hasCookiesAccepted } from "@app/lib/cookies";
+import {
+  DUST_COOKIES_ACCEPTED,
+  DUST_HAS_SESSION,
+  hasCookiesAccepted,
+  hasSessionIndicator,
+} from "@app/lib/cookies";
 import { useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
@@ -27,8 +32,11 @@ interface PostHogTrackerProps {
 
 export function PostHogTracker({ children }: PostHogTrackerProps) {
   const router = useAppRouter();
-  const [cookies] = useCookies([DUST_COOKIES_ACCEPTED]);
-  const { user } = useUser();
+  const [cookies] = useCookies([DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION]);
+  const hasSession = hasSessionIndicator(cookies[DUST_HAS_SESSION]);
+
+  // Only fetch user if session indicator is present to avoid 401 errors on public pages.
+  const { user } = useUser({ disabled: !hasSession });
 
   const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
   const hasAcceptedCookies = hasCookiesAccepted(cookieValue, user);
