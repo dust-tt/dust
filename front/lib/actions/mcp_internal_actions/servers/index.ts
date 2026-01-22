@@ -55,6 +55,7 @@ import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as soundStudio } from "@app/lib/actions/mcp_internal_actions/servers/sound_studio";
 import { default as speechGenerator } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator";
+import { default as statuspageServer } from "@app/lib/actions/mcp_internal_actions/servers/statuspage";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
 import { default as ukgReadyServer } from "@app/lib/actions/mcp_internal_actions/servers/ukg_ready";
@@ -238,6 +239,8 @@ export async function getInternalMCPServer(
       return projectContextManagementServer(auth, agentLoopContext);
     case "ukg_ready":
       return ukgReadyServer(auth, agentLoopContext);
+    case "statuspage":
+      return statuspageServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }
