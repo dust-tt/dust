@@ -295,14 +295,6 @@ async function createMeetingPrepSkill(
   const isMicrosoftAvailable =
     MICROSOFT_SERVERS.filter((s) => availableViews.has(s)).length > 0;
 
-  logger.info(
-    {
-      isGoogleAvailable,
-      isMicrosoftAvailable,
-    },
-    "Checking Google vs Microsoft availability"
-  );
-
   // Prefer Google if available, otherwise use Microsoft.
   let suiteName: "Google" | "Microsoft" | null = null;
   if (isGoogleAvailable) {
@@ -325,15 +317,6 @@ async function createMeetingPrepSkill(
     }
   }
 
-  logger.info(
-    {
-      selectedSuite: suiteName,
-      selectedServers,
-      selectedViewIds,
-    },
-    "Selected MCP servers for skill"
-  );
-
   if (selectedViewIds.length === 0) {
     throw new Error(
       "No MCP servers available in workspace. At least one server is required."
@@ -349,10 +332,9 @@ async function createMeetingPrepSkill(
   if (!execute) {
     logger.info(
       {
-        skillName: SKILL_NAME,
-        toolCount: selectedViewIds.length,
         servers: selectedServers,
         suiteName,
+        workspaceId: workspace.sId,
       },
       "Would create suggested skill (dry run)"
     );
@@ -406,10 +388,9 @@ async function createMeetingPrepSkill(
     logger.info(
       {
         skillId: createdSkill.id,
-        skillName: SKILL_NAME,
-        toolsLinked: selectedViewIds.length,
         servers: selectedServers,
         suiteName,
+        workspaceId: workspace.sId,
       },
       "Successfully created Meeting Prep skill"
     );
