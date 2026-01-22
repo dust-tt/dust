@@ -404,11 +404,11 @@ export const menuConfig: DocsConfig = {
           title: "Security",
           href: "/home/security",
         },
+        {
+          title: DevelopersMenuConfig.title,
+        },
+        ...DevelopersMenuConfig.items,
       ],
-    },
-    {
-      title: DevelopersMenuConfig.title,
-      items: DevelopersMenuConfig.items,
     },
     {
       title: "Company",
