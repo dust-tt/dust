@@ -577,20 +577,20 @@ export function AgentMessage({
           className="text-muted-foreground"
         />
       );
-    }
 
-    if (enableExtendedActions) {
-      messageButtons.push(
-        <Button
-          key="copy-msg-link-button"
-          tooltip="Copy message link"
-          variant="ghost-secondary"
-          size="xs"
-          onClick={handleCopyMessageLink}
-          icon={LinkIcon}
-          className="text-muted-foreground"
-        />
-      );
+      if (enableExtendedActions) {
+        messageButtons.push(
+          <Button
+            key="copy-msg-link-button"
+            tooltip="Copy message link"
+            variant="ghost-secondary"
+            size="xs"
+            onClick={handleCopyMessageLink}
+            icon={LinkIcon}
+            className="text-muted-foreground"
+          />
+        );
+      }
     }
 
     if (shouldShowRetry) {
