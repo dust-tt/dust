@@ -610,12 +610,13 @@ export const ConversationViewer = ({
       return new Ok(undefined);
     },
     [
-      submitMessage,
-      user,
+      agentBuilderContext?.clientSideMCPServerIds,
       conversationId,
+      mutateConversations,
       sendNotification,
       setPlanLimitReached,
-      mutateConversations,
+      submitMessage,
+      user,
     ]
   );
 
