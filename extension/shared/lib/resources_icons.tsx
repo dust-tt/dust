@@ -1,4 +1,4 @@
-import type {Avatar, Icon} from "@dust-tt/sparkle";
+import type { Avatar, Icon } from "@dust-tt/sparkle";
 import {
   ActionAtomIcon,
   ActionBrainIcon,

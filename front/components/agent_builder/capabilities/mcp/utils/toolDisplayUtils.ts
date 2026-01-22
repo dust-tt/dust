@@ -11,7 +11,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 export function getSelectedToolIcon(tool: SelectedTool): ComponentType {
   return isCustomResourceIconType(tool.view.server.icon)
     ? ActionIcons[tool.view.server.icon]
-    : InternalActionIcons[tool.view.server.icon] || BookOpenIcon;
+    : InternalActionIcons[tool.view.server.icon] ?? BookOpenIcon;
 }
 
 export function getSelectedToolLabel(tool: SelectedTool): string {
