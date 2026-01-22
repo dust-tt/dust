@@ -16,6 +16,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
@@ -195,12 +196,11 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     }
 
     // Find all webhook sources views for this webhook source
-    const webhookSourceViews = await WebhookSourcesViewModel.findAll({
-      where: {
-        workspaceId: owner.id,
-        webhookSourceId: this.id,
-      },
-    });
+    const webhookSourceViews =
+      await WebhookSourcesViewResource.listByWebhookSourceForInternalProcessing(
+        auth,
+        this.id
+      );
 
     // Delete all triggers for each webhook source view
     for (const webhookSourceView of webhookSourceViews) {

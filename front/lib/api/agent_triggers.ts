@@ -3,8 +3,8 @@ import { Op } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
-import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import type { AgentsUsageType, ModelId } from "@app/types";
 
 // To use in case of heavy db load emergency with these usages queries
@@ -145,16 +145,7 @@ export async function getWebhookSourcesUsage({
     return {};
   }
 
-  const views = (await WebhookSourcesViewModel.findAll({
-    raw: true,
-    attributes: ["id", "webhookSourceId"],
-    where: {
-      workspaceId: owner.id,
-      id: {
-        [Op.in]: viewIds,
-      },
-    },
-  })) as Array<{ id: ModelId; webhookSourceId: ModelId }>;
+  const views = await WebhookSourcesViewResource.fetchByModelIds(auth, viewIds);
 
   const viewToSource = new Map<ModelId, ModelId>();
   views.forEach((view) => {
