@@ -43,15 +43,18 @@ export const InDropdown: Story = {
         <Button label="Open Menu" variant="outline" size="sm" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="s-w-56">
-        <DropdownMenuItem label="Quick Open">
-          <DropdownMenuShortcut shortcut="Cmd+K" />
-        </DropdownMenuItem>
-        <DropdownMenuItem label="Command Palette">
-          <DropdownMenuShortcut shortcut="Shift+Cmd+P" />
-        </DropdownMenuItem>
-        <DropdownMenuItem label="Focus Search">
-          <DropdownMenuShortcut shortcut="Ctrl+Alt+F" />
-        </DropdownMenuItem>
+        <DropdownMenuItem
+          label="Quick Open"
+          endComponent={<DropdownMenuShortcut shortcut="Cmd+K" />}
+        />
+        <DropdownMenuItem
+          label="Command Palette"
+          endComponent={<DropdownMenuShortcut shortcut="Shift+Cmd+P" />}
+        />
+        <DropdownMenuItem
+          label="Focus Search"
+          endComponent={<DropdownMenuShortcut shortcut="Ctrl+Alt+F" />}
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   ),

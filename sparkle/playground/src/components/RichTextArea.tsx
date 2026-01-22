@@ -445,12 +445,20 @@ const mentionExtension = Mention.extend({
       "hover:s-text-highlight-800 dark:hover:s-text-highlight-800-night"
     ),
   },
-  renderLabel({ node }) {
+  renderText({ node }) {
     const label = node.attrs.label ?? node.attrs.id ?? "";
     if (typeof label === "string" && label.startsWith("Instruction (")) {
       return label;
     }
     return `@${label}`;
+  },
+  renderHTML({ node, options }) {
+    const label = node.attrs.label ?? node.attrs.id ?? "";
+    const text =
+      typeof label === "string" && label.startsWith("Instruction (")
+        ? label
+        : `@${label}`;
+    return ["span", mergeAttributes(options.HTMLAttributes), text];
   },
   char: "@",
   suggestion: {
@@ -587,7 +595,9 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
   ) => {
     const editor = useEditor({
       extensions: [
-        StarterKit,
+        StarterKit.configure({
+          link: false,
+        }),
         Link.configure({
           openOnClick: false,
           autolink: true,
