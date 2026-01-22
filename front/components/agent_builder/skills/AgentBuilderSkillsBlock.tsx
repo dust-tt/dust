@@ -21,6 +21,7 @@ import type {
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { CapabilitiesSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSheet";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
+import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
 import { validateMCPActionConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import { getSheetStateForActionEdit } from "@app/components/agent_builder/skills/sheetRouting";
@@ -35,6 +36,7 @@ import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
+import type { TemplateActionPreset } from "@app/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getSkillIcon,
@@ -159,6 +161,33 @@ export function AgentBuilderSkillsBlock() {
     );
 
   const [sheetState, setSheetState] = useState<SheetState>({ state: "closed" });
+
+  // Handle preset actions from templates.
+  const setKnowledgeActionFromPreset = useCallback(
+    (
+      actionData: {
+        action: BuilderAction;
+        index: number | null;
+        presetData?: TemplateActionPreset;
+      } | null
+    ) => {
+      if (actionData) {
+        setSheetState({
+          state: "knowledge",
+          action: actionData.action,
+          index: actionData.index,
+          presetData: actionData.presetData,
+        });
+      }
+    },
+    []
+  );
+
+  usePresetActionHandler({
+    fields: actionFields,
+    append: appendActions,
+    setKnowledgeAction: setKnowledgeActionFromPreset,
+  });
 
   // Sheets own closing after save; this handler only upserts into the form state.
   const handleToolEditSave = (updatedAction: BuilderAction) => {
