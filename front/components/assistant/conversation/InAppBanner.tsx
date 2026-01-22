@@ -14,7 +14,9 @@ interface StackedInAppBannersProps {
   owner: WorkspaceType;
 }
 
-export function StackedInAppBanners({ owner: _owner }: StackedInAppBannersProps) {
+export function StackedInAppBanners({
+  owner: _owner,
+}: StackedInAppBannersProps) {
   const [showSkillsBanner, setShowSkillsBanner] = useState(() => {
     return localStorage.getItem(SKILLS_BANNER_LOCAL_STORAGE_KEY) !== "true";
   });
