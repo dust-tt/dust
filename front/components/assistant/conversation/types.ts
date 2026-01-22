@@ -77,6 +77,7 @@ export type VirtuosoMessageListContext = {
     isSavingDraftAgent: boolean;
     actionsToShow: InputBarContainerProps["actions"];
     resetConversation: () => void;
+    clientSideMCPServerIds?: string[];
   };
   feedbacksByMessageId: Record<string, AgentMessageFeedbackType>;
 };

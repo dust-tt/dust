@@ -80,6 +80,7 @@ interface PreviewContentProps {
   isSavingDraftAgent: boolean;
   isTrialPlan: boolean;
   isAdmin: boolean;
+  clientSideMCPServerId?: string;
 }
 
 function PreviewContent({
@@ -93,6 +94,7 @@ function PreviewContent({
   isSavingDraftAgent,
   isTrialPlan,
   isAdmin,
+  clientSideMCPServerId,
 }: PreviewContentProps) {
   return (
     <>
@@ -113,6 +115,9 @@ function PreviewContent({
                 isSavingDraftAgent,
                 resetConversation,
                 actionsToShow: ["attachment"],
+                clientSideMCPServerIds: clientSideMCPServerId
+                  ? [clientSideMCPServerId]
+                  : undefined,
               }}
               key={conversation.sId}
             />
@@ -157,7 +162,13 @@ function PreviewContent({
   );
 }
 
-export function AgentBuilderPreview() {
+interface AgentBuilderPreviewProps {
+  clientSideMCPServerId?: string;
+}
+
+export function AgentBuilderPreview({
+  clientSideMCPServerId,
+}: AgentBuilderPreviewProps) {
   const { owner, isAdmin } = useAgentBuilderContext();
   const { user } = useUser();
   const { activeSubscription } = useWorkspaceActiveSubscription({ owner });
@@ -192,6 +203,7 @@ export function AgentBuilderPreview() {
     useDraftConversation({
       draftAgent,
       getDraftAgent,
+      clientSideMCPServerId,
     });
 
   const debounceTimerRef = useRef<NodeJS.Timeout>();
@@ -299,6 +311,7 @@ export function AgentBuilderPreview() {
         isSavingDraftAgent={isSavingDraftAgent}
         isTrialPlan={!!isTrialPlan}
         isAdmin={isAdmin}
+        clientSideMCPServerId={clientSideMCPServerId}
       />
     );
   };

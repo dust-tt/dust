@@ -487,6 +487,7 @@ export const ConversationViewer = ({
         input,
         mentions: mentions.map(toMentionType),
         contentFragments,
+        clientSideMCPServerIds: agentBuilderContext?.clientSideMCPServerIds,
       };
 
       const lastMessageRank = Math.max(
