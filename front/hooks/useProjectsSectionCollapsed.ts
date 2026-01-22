@@ -19,11 +19,17 @@ export const useProjectsSectionCollapsed = () => {
 
   const setProjectsSectionCollapsed = useCallback(
     async (collapsed: boolean) => {
+      const newValue = collapsed ? "true" : "false";
+
+      void mutateMetadata(
+        { metadata: { key: PROJECTS_SECTION_COLLAPSED_KEY, value: newValue } },
+        { revalidate: false }
+      );
+
       await setUserMetadataFromClient({
         key: PROJECTS_SECTION_COLLAPSED_KEY,
-        value: collapsed ? "true" : "false",
+        value: newValue,
       });
-      void mutateMetadata();
     },
     [mutateMetadata]
   );
