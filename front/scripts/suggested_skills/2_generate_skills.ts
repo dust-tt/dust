@@ -249,6 +249,49 @@ const OUTPUT_FORMAT = {
   },
 } as const;
 
+function formatAgentAsMarkdown(agent: Agent): string {
+  const toolsList = agent.tools
+    .map((tool) => {
+      const lines = [`- **${tool.tool_name ?? "Unnamed tool"}** (${tool.tool_type})`];
+      if (tool.tool_description) {
+        lines.push(`  - Description: ${tool.tool_description}`);
+      }
+      lines.push(`  - MCP Server View ID: ${tool.mcp_server_view_id}`);
+      if (tool.internal_mcp_server_id) {
+        lines.push(`  - Internal MCP Server ID: ${tool.internal_mcp_server_id}`);
+      }
+      if (tool.remote_mcp_server_id) {
+        lines.push(`  - Remote MCP Server ID: ${tool.remote_mcp_server_id}`);
+      }
+      return lines.join("\n");
+    })
+    .join("\n");
+
+  const dataSourcesList = agent.dataSources
+    .map((ds) => {
+      const lines = [`- **${ds.connector_provider ?? "Unknown provider"}**`];
+      if (ds.datasource_description) {
+        lines.push(`  - Description: ${ds.datasource_description}`);
+      }
+      return lines.join("\n");
+    })
+    .join("\n");
+
+  return `## Agent: ${agent.agent_name}
+
+### Description
+${agent.description}
+
+### Instructions
+${agent.instructions ?? "No instructions provided."}
+
+### Tools
+${toolsList || "No tools configured."}
+
+### Data Sources
+${dataSourcesList || "No data sources configured."}`;
+}
+
 function loadAgents(workspaceId: string): Agent[] {
   const agentsFilePath = join(__dirname, workspaceId, "agents.json");
   const fileContent = readFileSync(agentsFilePath, "utf-8");
@@ -289,21 +332,7 @@ async function generateSkillsForAgent(
       messages: [
         {
           role: "user",
-          content:
-            "agent_name: " +
-            agent.agent_name +
-            "\n\n" +
-            "agent_description: " +
-            agent.description +
-            "\n\n" +
-            "agent_prompt: " +
-            agent.instructions +
-            "\n\n" +
-            "agent_tools: " +
-            JSON.stringify(agent.tools, null, 2) +
-            "\n\n" +
-            "agent_data_sources: " +
-            JSON.stringify(agent.dataSources || [], null, 2),
+          content: formatAgentAsMarkdown(agent),
         },
       ],
       model: "claude-sonnet-4-5-20250929",
