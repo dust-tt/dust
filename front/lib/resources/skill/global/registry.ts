@@ -17,6 +17,7 @@ interface BaseGlobalSkillDefinition {
   readonly internalMCPServerNames?: AutoInternalMCPServerNameType[];
   readonly inheritAgentConfigurationDataSources?: boolean;
   readonly isAutoEnabled?: boolean;
+  readonly isRestricted?: (auth: Authenticator) => Promise<boolean>;
 }
 
 type WithStaticInstructions<T extends BaseGlobalSkillDefinition> = T & {
@@ -84,39 +85,73 @@ function matchesFilter<T>(value: T, filter: T | T[]): boolean {
 }
 
 export class GlobalSkillsRegistry {
-  static getById(sId: string): GlobalSkillDefinition | undefined {
+  // Internal sync lookup that does not check restrictions.
+  // Use for methods that operate on already-fetched skills.
+  private static getByIdInternal(
+    sId: string
+  ): GlobalSkillDefinition | undefined {
     return GLOBAL_SKILLS_BY_ID.get(sId);
   }
 
-  static findAll(
-    where: AllSkillConfigurationFindOptions["where"] = {}
-  ): readonly GlobalSkillDefinition[] {
-    if (!where) {
-      return GLOBAL_SKILLS_ARRAY;
+  static async getById(
+    auth: Authenticator,
+    sId: string
+  ): Promise<GlobalSkillDefinition | null> {
+    const skill = GLOBAL_SKILLS_BY_ID.get(sId);
+    if (!skill) {
+      return null;
     }
-
-    return GLOBAL_SKILLS_ARRAY.filter((skill) => {
-      if (where.sId && !matchesFilter(skill.sId, where.sId)) {
-        return false;
+    if (skill.isRestricted) {
+      const isRestricted = await skill.isRestricted(auth);
+      if (isRestricted) {
+        return null;
       }
+    }
+    return skill;
+  }
 
-      if (where.name && !matchesFilter(skill.name, where.name)) {
-        return false;
+  static async findAll(
+    auth: Authenticator,
+    where: AllSkillConfigurationFindOptions["where"] = {}
+  ): Promise<GlobalSkillDefinition[]> {
+    const skills: GlobalSkillDefinition[] = where
+      ? GLOBAL_SKILLS_ARRAY.filter((skill) => {
+          if (where.sId && !matchesFilter(skill.sId, where.sId)) {
+            return false;
+          }
+
+          if (where.name && !matchesFilter(skill.name, where.name)) {
+            return false;
+          }
+
+          if (where.status && !matchesFilter("active", where.status)) {
+            return false; // Global skills are always active.
+          }
+
+          return true;
+        })
+      : [...GLOBAL_SKILLS_ARRAY];
+
+    const results: GlobalSkillDefinition[] = [];
+    for (const skill of skills) {
+      if (skill.isRestricted) {
+        const isRestricted = await skill.isRestricted(auth);
+        if (isRestricted) {
+          continue;
+        }
       }
-
-      if (where.status && !matchesFilter("active", where.status)) {
-        return false; // Global skills are always active.
-      }
-
-      return true;
-    });
+      results.push(skill);
+    }
+    return results;
   }
 
   static isSkillAutoEnabled(sId: string): boolean {
-    return this.getById(sId)?.isAutoEnabled ?? false;
+    return this.getByIdInternal(sId)?.isAutoEnabled ?? false;
   }
 
   static doesSkillInheritAgentConfigurationDataSources(sId: string): boolean {
-    return this.getById(sId)?.inheritAgentConfigurationDataSources ?? false;
+    return (
+      this.getByIdInternal(sId)?.inheritAgentConfigurationDataSources ?? false
+    );
   }
 }
