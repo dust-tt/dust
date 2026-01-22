@@ -1,8 +1,8 @@
 import { subDays } from "date-fns";
 import { Op } from "sequelize";
 
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
-import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
