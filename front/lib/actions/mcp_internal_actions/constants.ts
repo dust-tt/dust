@@ -152,6 +152,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "freshservice",
   "github",
   "gmail",
+  "gong",
   "google_calendar",
   "google_drive",
   "google_sheets",
