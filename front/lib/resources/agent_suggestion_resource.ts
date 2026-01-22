@@ -57,7 +57,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     if (this.editorsGroupId === null) {
       return false;
     }
-    return auth.groups().some((g) => g.id === this.editorsGroupId);
+    return auth.hasGroupByModelId(this.editorsGroupId);
   }
 
   /**
@@ -123,7 +123,8 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     const canWrite =
       auth.isAdmin() ||
       (editorsGroupId !== null &&
-        auth.groups().some((g) => g.id === editorsGroupId));
+        editorsGroupId !== null &&
+        auth.hasGroupByModelId(editorsGroupId));
 
     if (!canWrite) {
       throw new Error("User does not have permission to edit this agent");
@@ -165,7 +166,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       agentSIds
     );
 
-    const authGroupIds = new Set(auth.groups().map((g) => g.id));
+    const authGroupIds = new Set(auth.groupModelIds());
 
     // Filter suggestions to only include those for agents the user can edit.
     return suggestions
