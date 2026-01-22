@@ -174,7 +174,7 @@ export default function SkillBuilder({
                     size="lg"
                   >
                     This skill was automatically generated based on your
-                    workspace's agent configurations. We recommend reviewing and
+                    workspace's configuration. We recommend reviewing and
                     editing it to match your specific needs before saving.
                   </ContentMessage>
                 )}
