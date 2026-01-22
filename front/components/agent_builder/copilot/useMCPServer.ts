@@ -7,9 +7,9 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { registerGetAgentConfigTool } from "@app/components/agent_builder/copilot/tools/getAgentConfig";
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
 
-// Server name used for MCP registration. This server is exclusively used by the
-// Agent Builder Copilot to access live form state.
-const SERVER_NAME = "agent-builder-copilot";
+// Server name used for MCP registration. This is a client-side MCP server
+// exclusively used by the Agent Builder Copilot to access live form state.
+const SERVER_NAME = "agent-builder-copilot-client";
 
 export interface UseCopilotMCPServerResult {
   serverId: string | undefined;
