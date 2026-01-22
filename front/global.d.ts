@@ -1,11 +1,12 @@
 type ContactFormEventData = {
-  user_email: string;
+  user_email: string | undefined;
   user_phone: string | undefined;
   user_first_name: string | undefined;
   user_last_name: string | undefined;
   user_language: string;
   user_headquarters_region: string | undefined;
   user_company_headcount: string;
+  consent_marketing: boolean;
 };
 
 type DataLayer =

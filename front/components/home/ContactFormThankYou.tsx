@@ -64,6 +64,7 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
   const headquartersRegion = formValues.headquarters_region ?? "";
   const companyHeadcount = formValues.company_headcount_form ?? "";
   const howToUseDust = formValues.landing_use_cases ?? "";
+  const consentMarketing = formValues.consent_marketing ?? false;
 
   const hasTrackedRef = useRef(false);
   const defaultTriggeredRef = useRef(false);
@@ -79,17 +80,19 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
         action: "qualified_lead",
       });
 
+      // Only include PII if user has consented to marketing
       if (typeof window !== "undefined") {
         window.dataLayer = window.dataLayer ?? [];
         window.dataLayer.push({
           event: "contact_form_qualified_lead",
-          user_email: email,
-          user_phone: phone,
-          user_first_name: firstName,
-          user_last_name: lastName,
+          user_email: consentMarketing ? email : undefined,
+          user_phone: consentMarketing ? phone : undefined,
+          user_first_name: consentMarketing ? firstName : undefined,
+          user_last_name: consentMarketing ? lastName : undefined,
           user_language: language,
           user_headquarters_region: headquartersRegion,
           user_company_headcount: companyHeadcount,
+          consent_marketing: consentMarketing,
         });
       }
     }
@@ -102,6 +105,7 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
     language,
     headquartersRegion,
     companyHeadcount,
+    consentMarketing,
   ]);
 
   // Load Default.com SDK and submit form data for all leads
