@@ -4,6 +4,7 @@ import {
   fetchProjectDataSource,
 } from "@app/lib/api/projects";
 import { Authenticator } from "@app/lib/auth";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -126,6 +127,14 @@ async function processProjectSpace(
           "createDataSourceAndConnectorForProject succeeded but no connector found"
         );
       }
+
+      let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+
+      // Create new metadata
+      metadata ??= await ProjectMetadataResource.makeNew(auth, space, {
+        description: null,
+        urls: [],
+      });
     } else {
       if (hadConnectorBefore) {
         localLogger.info("Would ensure dust_project connector sync is running");
