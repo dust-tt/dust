@@ -7,9 +7,9 @@ import {
   ENABLE_SKILL_TOOL_NAME,
   GET_MENTION_MARKDOWN_TOOL_NAME,
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
+  TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
-import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   isMCPConfigurationForInternalNotion,

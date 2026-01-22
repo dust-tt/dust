@@ -246,6 +246,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Gong MCP tool for sales conversation analytics",
     stage: "dust_only",
   },
+  dust_academy: {
+    description: "Access to Dust Academy learning content",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

@@ -53,6 +53,8 @@ export const DEFAULT_MCP_ACTION_VERSION = "1.0.0";
 export const DEFAULT_MCP_ACTION_DESCRIPTION =
   "Call a tool to answer a question.";
 
+export const TOOL_NAME_SEPARATOR = "__";
+
 export const MCP_TOOL_STAKE_LEVELS = [
   "high",
   "medium",

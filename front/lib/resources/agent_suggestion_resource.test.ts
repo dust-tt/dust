@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 
 describe("AgentSuggestionResource", () => {
@@ -163,6 +165,57 @@ describe("AgentSuggestionResource", () => {
     });
   });
 
+  describe("updateState", () => {
+    it.each<"approved" | "declined" | "outdated">([
+      "approved",
+      "declined",
+      "outdated",
+    ])(
+      "should update a suggestion state to %s",
+      async (newState: "approved" | "declined" | "outdated") => {
+        const suggestion = await AgentSuggestionFactory.createInstructions(
+          authenticator,
+          agentConfiguration.sId,
+          {
+            suggestion: { oldString: "old", newString: "new" },
+          }
+        );
+
+        expect(suggestion.state).toBe("pending");
+
+        await suggestion.updateState(authenticator, newState);
+
+        const fetched = await AgentSuggestionResource.fetchById(
+          authenticator,
+          suggestion.sId
+        );
+        expect(fetched?.state).toBe(newState);
+      }
+    );
+
+    it("should fail to update state when user is not an editor of the agent", async () => {
+      const suggestion = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration.sId,
+        {
+          suggestion: { oldString: "old", newString: "new" },
+        }
+      );
+
+      // Create a different user who is not an editor of the agent.
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+      const otherAuthenticator = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      await expect(
+        suggestion.updateState(otherAuthenticator, "approved")
+      ).rejects.toThrow("User does not have permission to edit this agent");
+    });
+  });
+
   describe("delete", () => {
     it("should delete a suggestion", async () => {
       const suggestion = await AgentSuggestionFactory.createTools(
@@ -177,6 +230,76 @@ describe("AgentSuggestionResource", () => {
       const fetched = await AgentSuggestionResource.fetchById(
         authenticator,
         sId
+      );
+      expect(fetched).toBeNull();
+    });
+
+    it("should fail to delete when user is not an editor of the agent", async () => {
+      const suggestion = await AgentSuggestionFactory.createTools(
+        authenticator,
+        agentConfiguration.sId
+      );
+
+      // Create a different user who is not an editor of the agent.
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+      const otherAuthenticator = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      const result = await suggestion.delete(otherAuthenticator);
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe(
+          "User does not have permission to edit this agent"
+        );
+      }
+    });
+  });
+
+  describe("makeNew permission check", () => {
+    it("should fail to create suggestion when user is not an editor of the agent", async () => {
+      // Create a different user who is not an editor of the agent.
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+      const otherAuthenticator = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      await expect(
+        AgentSuggestionResource.makeNew(otherAuthenticator, {
+          agentConfigurationId: agentConfiguration.sId,
+          agentConfigurationVersion: 1,
+          kind: "instructions",
+          suggestion: { oldString: "old", newString: "new" },
+          analysis: null,
+          state: "pending",
+          source: "copilot",
+        })
+      ).rejects.toThrow("User does not have permission to edit this agent");
+    });
+  });
+
+  describe("fetchById permission check", () => {
+    it("should not return suggestion when user is not an editor of the agent", async () => {
+      const suggestion = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration.sId
+      );
+
+      // Create a different user who is not an editor of the agent.
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+      const otherAuthenticator = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      const fetched = await AgentSuggestionResource.fetchById(
+        otherAuthenticator,
+        suggestion.sId
       );
       expect(fetched).toBeNull();
     });

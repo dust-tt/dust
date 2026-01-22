@@ -1,4 +1,4 @@
-import type { GetStaticPaths, GetStaticProps } from "next";
+import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -8,9 +8,9 @@ import { AcademySidebar } from "@app/components/academy/AcademySidebar";
 import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { hasAcademyAccess } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
-  CONTENTFUL_REVALIDATE_SECONDS,
   getAllCourses,
   getCourseBySlug,
 } from "@app/lib/contentful/client";
@@ -22,18 +22,14 @@ import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types";
 
-export const getStaticPaths: GetStaticPaths = async () => {
-  // Don't pre-generate any paths at build time to minimize Contentful API calls.
-  // Pages are generated on-demand via fallback: "blocking" and cached with ISR.
-  return {
-    paths: [],
-    fallback: "blocking",
-  };
-};
-
-export const getStaticProps: GetStaticProps<CoursePageProps> = async (
+export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
   context
 ) => {
+  const hasAccess = await hasAcademyAccess(context.req, context.res);
+  if (!hasAccess) {
+    return { notFound: true };
+  }
+
   const { slug } = context.params ?? {};
 
   if (!isString(slug)) {
@@ -68,7 +64,6 @@ export const getStaticProps: GetStaticProps<CoursePageProps> = async (
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       preview: context.preview ?? false,
     },
-    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
 };
 

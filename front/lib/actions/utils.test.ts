@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import {
   hasUserAlwaysApprovedTool,
   setUserAlwaysApprovedTool,

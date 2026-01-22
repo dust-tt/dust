@@ -1,4 +1,4 @@
-import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
