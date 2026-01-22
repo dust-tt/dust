@@ -4,10 +4,7 @@ import * as React from "react";
 import { cn } from "@sparkle/lib/utils";
 
 import type { ButtonProps, ButtonSizeType, ButtonVariantType } from "./Button";
-import { Button, ICON_ONLY_SIZES } from "./Button";
-
-// Sizes that must be set per-item in ButtonGroup (not at group level)
-const PER_ITEM_SIZES = ["mini", ...ICON_ONLY_SIZES] as const;
+import { Button } from "./Button";
 import type { DropdownMenuItemProps } from "./Dropdown";
 import {
   DropdownMenu,
@@ -95,9 +92,10 @@ export interface ButtonGroupProps
    */
   variant?: ButtonGroupVariantType;
   /**
-   * Size to apply to all buttons in the group. Icon-only buttons and mini must opt-in per item.
+   * Size to apply to all buttons in the group. Icon-only buttons must opt-in per item 
+   * TODO(yuka 2026-01-22): it's because I couldn't type it properly, ideally we should allow to have icon size at group level
    */
-  size?: Exclude<ButtonSizeType, "mini" | "icon" | "icon-xs">;
+  size?: Exclude<ButtonSizeType, "icon" | "icon-xs">;
   /**
    * Whether every button should be disabled.
    */
@@ -195,10 +193,10 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
 
       const nextVariant = sanitizeVariant(variant ?? item.triggerProps.variant);
       const rawSize = size ?? item.triggerProps.size;
-      const nextSize: Exclude<ButtonSizeType, "mini"> | undefined =
-        rawSize === "mini"
+      const nextSize: Exclude<ButtonSizeType, "icon" | "icon-xs"> | undefined =
+        rawSize === "icon" || rawSize === "icon-xs"
           ? undefined
-          : (rawSize as Exclude<ButtonSizeType, "mini"> | undefined);
+          : (rawSize as Exclude<ButtonSizeType, "icon" | "icon-xs"> | undefined);
 
       return (
         <DropdownMenu key={index}>
