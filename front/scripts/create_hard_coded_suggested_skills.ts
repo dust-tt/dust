@@ -12,9 +12,11 @@ import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { ModelId } from "@app/types";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType, ModelId } from "@app/types";
 import { AGENT_GROUP_PREFIX } from "@app/types";
 
 const SkillToolSchema = z.object({
@@ -72,16 +74,22 @@ const SkillsArraySchema = z.array(SkillDataSchema);
  *    kubectl cp <local_path> <pod-name>:/tmp/skills.json -n <namespace>
  *
  * 2. Run the script on the pod from front:
- *    kubectl exec -it <pod-name> -n <namespace> -- npx tsx scripts/create_hard_coded_suggested_skills.ts --file-path /tmp/skills.json --workspaceSId <workspaceSId> --execute
+ *    kubectl exec -it <pod-name> -n <namespace> -- npx tsx scripts/create_hard_coded_suggested_skills.ts --file-path /tmp/skills.json --workspaceId <workspaceId> --execute
  *
  * Or locally for testing:
- *    npx tsx scripts/create_hard_coded_suggested_skills.ts --file-path <local_path> --workspaceSId <workspaceSId> --execute
+ *    npx tsx scripts/create_hard_coded_suggested_skills.ts --file-path <local_path> --workspaceId <workspaceId> --execute
  */
 async function createSuggestedSkills(
-  logger: Logger,
-  filePath: string,
-  workspaceSId: string,
-  execute: boolean
+  workspace: LightWorkspaceType,
+  {
+    filePath,
+    execute,
+    logger: parentLogger,
+  }: {
+    filePath: string;
+    execute: boolean;
+    logger: Logger;
+  }
 ): Promise<void> {
   logger.info(
     { execute, filePath, workspaceSId },
@@ -109,21 +117,9 @@ async function createSuggestedSkills(
     "Parsed and validated skills from file"
   );
 
-  // Find the workspace using the resource layer
-  const workspace = await WorkspaceResource.fetchById(workspaceSId);
-
-  if (!workspace) {
-    throw new Error(`Workspace not found with sId: ${workspaceSId}`);
-  }
-
-  logger.info(
-    { workspaceId: workspace.id, workspaceName: workspace.name },
-    "Found workspace"
-  );
-
   let successCount = 0;
   let errorCount = 0;
-  const errors: Array<{ skillName: string; error: string }> = [];
+  const errors: { skillName: string; error: string }[] = [];
 
   for (const skill of skills) {
     try {
@@ -381,14 +377,33 @@ makeScript(
       type: "string" as const,
       demandOption: true,
     },
-    workspaceSId: {
+    workspaceId: {
       alias: "w",
       describe: "Workspace sId where skills should be created",
       type: "string" as const,
-      demandOption: true,
+      demandOption: false,
     },
   },
-  async ({ filePath, workspaceSId, execute }, logger) => {
-    await createSuggestedSkills(logger, filePath, workspaceSId, execute);
+  async ({ filePath, workspaceId, execute }, logger) => {
+    if (workspaceId) {
+      const workspace = await WorkspaceResource.fetchById(workspaceId);
+      if (!workspace) {
+        throw new Error("Workspace not found");
+      }
+
+      await createSuggestedSkills(renderLightWorkspaceType({ workspace }), {
+        logger,
+        filePath,
+        execute,
+      });
+    } else {
+      await runOnAllWorkspaces(async (workspace) => {
+        await createSuggestedSkills(workspace, {
+          logger,
+          filePath,
+          execute,
+        });
+      });
+    }
   }
 );
