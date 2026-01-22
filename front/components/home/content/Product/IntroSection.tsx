@@ -1,6 +1,7 @@
-import { PlayIcon, Spinner } from "@dust-tt/sparkle";
+import { ArrowRightIcon, PlayIcon, Spinner } from "@dust-tt/sparkle";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
 
 import { ScrollProgressSection } from "@app/components/home/content/Product/ScrollProgressSection";
 import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
@@ -13,6 +14,7 @@ import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { BorderBeam } from "@app/components/magicui/border-beam";
 import UTMButton from "@app/components/UTMButton";
+import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   trackEvent,
@@ -27,6 +29,13 @@ const HeroContent = () => {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Check session cookie only on client to avoid hydration mismatch.
+  const [cookies] = useCookies([DUST_HAS_SESSION], { doNotParse: true });
+  const [hasSession, setHasSession] = useState(false);
+  useEffect(() => {
+    setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
+  }, [cookies]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,31 +97,54 @@ const HeroContent = () => {
         <br />
         knowledge and tools.
       </P>
-      {/* Email input */}
-      <form onSubmit={handleSubmit} className="mt-12 w-full max-w-xl">
-        <div className="flex w-full items-center gap-2 rounded-2xl border border-gray-100 bg-white px-1.5 py-1.5 shadow-sm">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="What's your work email?"
-            className="flex-1 border-none bg-transparent pl-2 text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
-            disabled={isLoading}
-          />
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:opacity-70"
-          >
-            {isLoading && <Spinner size="xs" />}
-            Get started
-          </button>
-        </div>
-        {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
-        <p className="mt-3 text-sm text-muted-foreground">
-          14-day free trial. Cancel anytime.
-        </p>
-      </form>
+      {/* Email input or Open Dust button */}
+      <div className="mt-12 w-full max-w-xl">
+        {hasSession ? (
+          <div className="flex flex-col items-center gap-3">
+            <button
+              onClick={withTracking(
+                TRACKING_AREAS.HOME,
+                "hero_open_dust",
+                () => {
+                  window.location.href = "/api/login";
+                }
+              )}
+              className="flex items-center gap-2 rounded-2xl bg-blue-500 px-8 py-4 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-blue-600"
+            >
+              Open Dust
+              <ArrowRightIcon className="h-5 w-5" />
+            </button>
+            <p className="text-sm text-muted-foreground">
+              Welcome back! Continue where you left off.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div className="flex w-full items-center gap-2 rounded-2xl border border-gray-100 bg-white px-1.5 py-1.5 shadow-sm">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="What's your work email?"
+                className="flex-1 border-none bg-transparent pl-2 text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
+                disabled={isLoading}
+              />
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:opacity-70"
+              >
+                {isLoading && <Spinner size="xs" />}
+                Get started
+              </button>
+            </div>
+            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+            <p className="mt-3 text-sm text-muted-foreground">
+              14-day free trial. Cancel anytime.
+            </p>
+          </form>
+        )}
+      </div>
     </div>
   );
 };

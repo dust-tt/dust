@@ -1,4 +1,4 @@
-import { Button, DustLogo } from "@dust-tt/sparkle";
+import { ArrowRightIcon, Button, DustLogo } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
@@ -55,7 +55,12 @@ export default function LandingLayout({
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(
     hasCookiesAccepted(cookieValue, null)
   );
-  const hasSession = hasSessionIndicator(cookies[DUST_HAS_SESSION]);
+
+  // Check session cookie only on client to avoid hydration mismatch.
+  const [hasSession, setHasSession] = useState(false);
+  useEffect(() => {
+    setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
+  }, [cookies]);
 
   const shouldCheckGeo = shouldCheckGeolocation(cookieValue);
 
@@ -121,9 +126,7 @@ export default function LandingLayout({
           </div>
           <MobileNavigation />
           <div className="block xl:hidden">
-            <Link href="/">
-              <DustLogo className="h-[24px] w-[96px]" />
-            </Link>
+            <PublicWebsiteLogo />
           </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
@@ -131,7 +134,8 @@ export default function LandingLayout({
               <Button
                 variant="highlight"
                 size="sm"
-                label="Go to app"
+                label="Open Dust"
+                icon={ArrowRightIcon}
                 onClick={withTracking(
                   TRACKING_AREAS.NAVIGATION,
                   "go_to_app",
@@ -400,7 +404,7 @@ export const PublicWebsiteLogo = ({
   const className = logoVariants({ size });
 
   return (
-    <Link href={`/${utmParam ? `?${utmParam}` : ""}`}>
+    <Link href={`/home${utmParam ? `?${utmParam}` : ""}`}>
       <DustLogo className={className} />
     </Link>
   );
