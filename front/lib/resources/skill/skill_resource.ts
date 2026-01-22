@@ -475,7 +475,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return allowedCustomSkillsRes;
     }
 
-    const globalSkillDefinitions = GlobalSkillsRegistry.findAll(where);
+    const globalSkillDefinitions = await GlobalSkillsRegistry.findAll(
+      auth,
+      where
+    );
 
     // Fetch global skills with their MCP server configurations.
     const globalSkills = await concurrentExecutor(
