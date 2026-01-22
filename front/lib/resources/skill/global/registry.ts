@@ -6,6 +6,8 @@ import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import { goDeepSkill } from "@app/lib/resources/skill/global/go_deep";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import type { ResourceSId } from "@app/lib/resources/string_ids";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { removeNulls } from "@app/types";
 
 interface BaseGlobalSkillDefinition {
   readonly agentFacingDescription: string;
@@ -124,17 +126,23 @@ export class GlobalSkillsRegistry {
         })
       : [...GLOBAL_SKILLS_ARRAY];
 
-    const results: GlobalSkillDefinition[] = [];
-    for (const skill of skills) {
-      if (skill.isRestricted) {
-        const isRestricted = await skill.isRestricted(auth);
-        if (isRestricted) {
-          continue;
+    const allowedSkills = await concurrentExecutor(
+      skills,
+      async (skill) => {
+        if (skill.isRestricted) {
+          const isRestricted = await skill.isRestricted(auth);
+          if (isRestricted) {
+            return null;
+          }
         }
+        return skill;
+      },
+      {
+        concurrency: 5,
       }
-      results.push(skill);
-    }
-    return results;
+    );
+
+    return removeNulls(allowedSkills);
   }
 
   static isSkillAutoEnabled(sId: string): boolean {
