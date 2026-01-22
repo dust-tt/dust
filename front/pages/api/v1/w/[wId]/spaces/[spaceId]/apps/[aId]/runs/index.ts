@@ -331,7 +331,7 @@ async function handler(
       const runRes = await coreAPI.createRunStream(
         owner,
         keyWorkspaceFlags,
-        auth.groups(),
+        auth.groupIds(),
         {
           projectId: app.dustAPIProjectId,
           runType: "deploy",

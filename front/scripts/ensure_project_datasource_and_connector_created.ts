@@ -190,6 +190,9 @@ makeScript(
           kind: "project",
           deletedAt: null,
         },
+        // WORKSPACE_ISOLATION_BYPASS: This script operates across all workspaces to ensure project connectors are created
+        // @ts-expect-error -- It's a one-off script that operates across all workspaces
+        dangerouslyBypassWorkspaceIsolationSecurity: true,
         attributes: ["id", "workspaceId"],
       });
 

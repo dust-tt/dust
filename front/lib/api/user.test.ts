@@ -29,7 +29,7 @@ describe("getUserForWorkspace", () => {
     const auth = new Authenticator({
       user: user1,
       role: "none",
-      groups: [],
+      groupModelIds: [],
       workspace: null,
       subscription: null,
       authMethod: "internal",
@@ -55,7 +55,7 @@ describe("getUserForWorkspace", () => {
       workspace: workspace1Resource,
       user: user1,
       role: "none",
-      groups: [],
+      groupModelIds: [],
       subscription: null,
       authMethod: "internal",
     });
@@ -81,7 +81,7 @@ describe("getUserForWorkspace", () => {
       workspace: workspace1Resource,
       user: user1,
       role: "user",
-      groups: [],
+      groupModelIds: [],
       subscription: null,
       authMethod: "internal",
     });
@@ -106,7 +106,7 @@ describe("getUserForWorkspace", () => {
       workspace: workspace1Resource,
       user: user1,
       role: "user",
-      groups: [],
+      groupModelIds: [],
       subscription: null,
       authMethod: "internal",
     });
@@ -133,7 +133,7 @@ describe("getUserForWorkspace", () => {
       workspace: workspace1Resource,
       user: user1,
       role: "user",
-      groups: [],
+      groupModelIds: [],
       subscription: null,
       authMethod: "internal",
     });
@@ -157,7 +157,7 @@ describe("getUserForWorkspace", () => {
       workspace: workspace1Resource,
       user: user1,
       role: "user",
-      groups: [],
+      groupModelIds: [],
       subscription: null,
       authMethod: "internal",
     });
@@ -188,7 +188,7 @@ describe("getUserForWorkspace", () => {
       workspace: workspace1Resource,
       user: user1,
       role: "admin",
-      groups: [],
+      groupModelIds: [],
       subscription: null,
       authMethod: "internal",
     });
@@ -200,7 +200,7 @@ describe("getUserForWorkspace", () => {
       workspace: workspace1Resource,
       user: user1,
       role: "user",
-      groups: [],
+      groupModelIds: [],
       subscription: null,
       authMethod: "internal",
     });
@@ -226,7 +226,7 @@ describe("getUserForWorkspace", () => {
       workspace: workspace1Resource,
       user: user1,
       role: "user",
-      groups: [],
+      groupModelIds: [],
       subscription: null,
       authMethod: "internal",
     });
@@ -254,7 +254,7 @@ describe("getUserForWorkspace", () => {
       workspace: workspace1Resource,
       user: user1,
       role: "user",
-      groups: [],
+      groupModelIds: [],
       subscription: null,
       authMethod: "internal",
     });
@@ -281,7 +281,7 @@ describe("getUserForWorkspace", () => {
       workspace: workspace1Resource,
       user: superUser,
       role: "admin",
-      groups: [],
+      groupModelIds: [],
       subscription: null,
     });
 

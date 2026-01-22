@@ -25,14 +25,7 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const workspace = auth.getNonNullableWorkspace();
-
-      // Filter out non-regular groups as we only want to allow conversations in project spaces (that are linked to regular groups)
-      const allGroups = auth
-        .groups()
-        .filter((g) => g.kind === "regular" && g.workspaceId === workspace.id);
-
-      const spaces = await SpaceResource.listForGroups(auth, allGroups);
+      const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
 
       // Fetch all unread conversations for the user in one query
       const unreadConversations =
