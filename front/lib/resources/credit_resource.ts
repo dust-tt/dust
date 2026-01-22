@@ -5,7 +5,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
-import { Op, Sequelize } from "sequelize";
+import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -338,27 +338,38 @@ export class CreditResource extends BaseResource<CreditModel> {
       expirationDate ??
       new Date(Date.now() + CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
 
-    const [, affectedRows] = await CreditModel.update(
-      {
-        startDate: effectiveStartDate,
-        expirationDate: effectiveExpirationDate,
-      },
-      {
-        where: {
-          id: this.id,
-          workspaceId: this.workspaceId,
-          startDate: null,
+    try {
+      const [, affectedRows] = await CreditModel.update(
+        {
+          startDate: effectiveStartDate,
+          expirationDate: effectiveExpirationDate,
         },
-        transaction,
-        returning: true,
+        {
+          where: {
+            id: this.id,
+            workspaceId: this.workspaceId,
+            startDate: null,
+          },
+          transaction,
+          returning: true,
+        }
+      );
+
+      if (affectedRows.length === 0) {
+        return new Err(new Error("Credit already started"));
       }
-    );
 
-    if (affectedRows.length === 0) {
-      return new Err(new Error("Credit already started"));
+      return new Ok(undefined);
+    } catch (error) {
+      if (error instanceof UniqueConstraintError) {
+        return new Err(
+          new Error(
+            "A credit with the same type and dates already exists for this workspace."
+          )
+        );
+      }
+      throw error;
     }
-
-    return new Ok(undefined);
   }
 
   async freeze(
