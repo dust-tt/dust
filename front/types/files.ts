@@ -165,6 +165,7 @@ export const FILE_FORMATS = {
   "image/png": { cat: "image", exts: [".png"], isSafeToDisplay: true },
   "image/gif": { cat: "image", exts: [".gif"], isSafeToDisplay: true },
   "image/webp": { cat: "image", exts: [".webp"], isSafeToDisplay: true },
+  "image/bmp": { cat: "image", exts: [".bmp"], isSafeToDisplay: true },
 
   // Structured.
   "text/csv": { cat: "delimited", exts: [".csv"], isSafeToDisplay: true },

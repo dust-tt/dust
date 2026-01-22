@@ -859,13 +859,33 @@ export async function uploadBase64ImageToFileStorage(
   // Remove data URL prefix for any supported image type.
   const base64Data = base64.replace(/^data:image\/[a-z]+;base64,/, "");
 
-  return uploadBase64DataToFileStorage(auth, {
-    base64: base64Data,
-    contentType,
-    fileName,
-    useCase,
-    useCaseMetadata,
-  });
+  const uploadWithRetry = withRetries(
+    logger,
+    async () => {
+      const result = await uploadBase64DataToFileStorage(auth, {
+        base64: base64Data,
+        contentType,
+        fileName,
+        useCase,
+        useCaseMetadata,
+      });
+      if (result.isErr()) {
+        throw new Error(result.error.message);
+      }
+      return result;
+    },
+    { retries: 3, delayBetweenRetriesMs: 1000 }
+  );
+
+  try {
+    return await uploadWithRetry({});
+  } catch (error) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: `Failed to upload image: ${normalizeError(error).message}`,
+    });
+  }
 }
 
 export async function uploadBase64DataToFileStorage(

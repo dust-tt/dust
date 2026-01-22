@@ -1,4 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
+import type { Part } from "@google/genai";
+import { createPartFromUri, GoogleGenAI } from "@google/genai";
 import { startObservation } from "@langfuse/tracing";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -8,7 +9,6 @@ import { GENERATE_IMAGE_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { GenerateImageInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
@@ -20,11 +20,22 @@ import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { dustManagedCredentials, Err, normalizeError, Ok } from "@app/types";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
-import {
-  fileSizeToHumanReadable,
-  isSupportedImageContentType,
-  MAX_FILE_SIZES,
-} from "@app/types/files";
+import { fileSizeToHumanReadable, MAX_FILE_SIZES } from "@app/types/files";
+
+const GEMINI_SUPPORTED_IMAGE_TYPES = [
+  "image/bmp",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+
+type GeminiSupportedImageType = (typeof GEMINI_SUPPORTED_IMAGE_TYPES)[number];
+
+function isGeminiSupportedImageType(
+  contentType: string
+): contentType is GeminiSupportedImageType {
+  return GEMINI_SUPPORTED_IMAGE_TYPES.some((type) => type === contentType);
+}
 
 const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
 const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 week.
@@ -105,7 +116,7 @@ function isValidatedGeminiImagePart(
 }
 
 const GeminiBlockedResponseSchema = z.object({
-  candidates: z.array(z.unknown()).max(0).optional(),
+  candidates: z.array(z.unknown()).length(0).optional(),
   promptFeedback: z.object({
     blockReason: z.string(),
     safetyRatings: z.unknown().optional(),
@@ -278,25 +289,20 @@ function createGeminiClient(): GoogleGenAI {
   });
 }
 
-type FileDataPart = { fileData: { fileUri: string; mimeType: string } };
-
 async function processSingleImageFile(
   auth: Authenticator,
   {
     imageFileId,
     conversationId,
     maxImageSize,
-    statsDClient,
-    gemini,
   }: {
     imageFileId: string;
     conversationId: string;
     maxImageSize: number;
-    statsDClient: ReturnType<typeof getStatsDClient>;
-    gemini: GoogleGenAI;
   }
-): Promise<Ok<FileDataPart> | Err<MCPError>> {
+): Promise<Ok<Part> | Err<MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
+  const statsDClient = getStatsDClient();
   const fileResource = await FileResource.fetchById(auth, imageFileId);
   if (!fileResource) {
     return new Err(
@@ -342,56 +348,23 @@ async function processSingleImageFile(
     );
   }
 
-  const readStream = fileResource.getReadStream({
+  if (!isGeminiSupportedImageType(fileResource.contentType)) {
+    return new Err(
+      new MCPError(
+        `File ${imageFileId} is not a supported image type for editing. Got: ${fileResource.contentType}. Supported types: ${GEMINI_SUPPORTED_IMAGE_TYPES.map((t) => t.replace("image/", "").toUpperCase()).join(", ")}.`,
+        {
+          tracked: false,
+        }
+      )
+    );
+  }
+
+  const signedUrl = await fileResource.getSignedUrlForDownload(
     auth,
-    // we use orginal on purpose to avoid loosing information during multistep assets creation
-    // pipelines, at the expense of costs
-    version: "original",
-  });
-  const bufferResult = await streamToBuffer(readStream);
-  if (bufferResult.isErr()) {
-    return new Err(
-      new MCPError(
-        `Failed to read file ${imageFileId}: ${bufferResult.error}`,
-        {
-          tracked: false,
-        }
-      )
-    );
-  }
+    "original"
+  );
 
-  if (!isSupportedImageContentType(fileResource.contentType)) {
-    return new Err(
-      new MCPError(
-        `File ${imageFileId} is not a supported image type. Got: ${fileResource.contentType}. Supported types: PNG, JPEG, WebP, HEIC, HEIF.`,
-        {
-          tracked: false,
-        }
-      )
-    );
-  }
-
-  const uploadedFile = await gemini.files.upload({
-    file: new Blob([new Uint8Array(bufferResult.value)], {
-      type: fileResource.contentType,
-    }),
-    config: { mimeType: fileResource.contentType },
-  });
-
-  if (!uploadedFile.uri) {
-    return new Err(
-      new MCPError(`Failed to upload file ${imageFileId} to Google Files API`, {
-        tracked: false,
-      })
-    );
-  }
-
-  return new Ok({
-    fileData: {
-      fileUri: uploadedFile.uri,
-      mimeType: fileResource.contentType,
-    },
-  });
+  return new Ok(createPartFromUri(signedUrl, fileResource.contentType));
 }
 
 async function processImageFileIds(
@@ -399,15 +372,11 @@ async function processImageFileIds(
   {
     imageFileIds,
     agentLoopContext,
-    statsDClient,
-    gemini,
   }: {
     imageFileIds: string[];
     agentLoopContext: AgentLoopContextType | undefined;
-    statsDClient: ReturnType<typeof getStatsDClient>;
-    gemini: GoogleGenAI;
   }
-): Promise<Ok<FileDataPart[]> | Err<MCPError>> {
+): Promise<Ok<Part[]> | Err<MCPError>> {
   if (!agentLoopContext?.runContext) {
     return new Err(
       new MCPError("No conversation context available for file access", {
@@ -426,8 +395,6 @@ async function processImageFileIds(
         imageFileId,
         conversationId,
         maxImageSize,
-        statsDClient,
-        gemini,
       }),
     { concurrency: 8 }
   );
@@ -437,11 +404,11 @@ async function processImageFileIds(
     return firstError;
   }
 
-  const fileDataParts = results
-    .filter((r): r is Ok<FileDataPart> => r.isOk())
+  const parts = results
+    .filter((r): r is Ok<Part> => r.isOk())
     .map((r) => r.value);
 
-  return new Ok(fileDataParts);
+  return new Ok(parts);
 }
 
 function createServer(
@@ -487,19 +454,17 @@ function createServer(
 
         const gemini = createGeminiClient();
 
-        let fileDataParts: FileDataPart[] = [];
+        let referenceImageParts: Part[] = [];
 
         if (referenceImages && referenceImages.length > 0) {
           const processResult = await processImageFileIds(auth, {
             imageFileIds: referenceImages,
             agentLoopContext,
-            statsDClient,
-            gemini,
           });
           if (processResult.isErr()) {
             return processResult;
           }
-          fileDataParts = processResult.value;
+          referenceImageParts = processResult.value;
         }
 
         const imageSize = QUALITY_TO_IMAGE_SIZE[quality ?? "low"];
@@ -533,10 +498,10 @@ function createServer(
         });
 
         const contents =
-          fileDataParts.length > 0
+          referenceImageParts.length > 0
             ? [
                 {
-                  parts: [...fileDataParts, { text: prompt }],
+                  parts: [...referenceImageParts, { text: prompt }],
                 },
               ]
             : prompt;
