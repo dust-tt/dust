@@ -19,9 +19,11 @@ import type {
   ConversationWithoutContentType,
   ToolErrorEvent,
 } from "@app/types";
-import { ConversationError } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
-import { getAgentLoopData } from "@app/types/assistant/agent_run";
+import {
+  getAgentLoopData,
+  isAgentLoopDataSoftDeleteError,
+} from "@app/types/assistant/agent_run";
 
 export async function markAgentMessageAsFailed(
   agentMessageRow: AgentMessageModel,
@@ -304,14 +306,17 @@ export async function finalizeCancellation(
 ): Promise<void> {
   const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
-    // We ignore conversation_not_found errors; the conversation might have been deleted since.
-    if (
-      runAgentDataRes.error instanceof ConversationError &&
-      runAgentDataRes.error.type === "conversation_not_found"
-    ) {
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      logger.info(
+        {
+          conversationId: agentLoopArgs.conversationId,
+          agentMessageId: agentLoopArgs.agentMessageId,
+          errorType: runAgentDataRes.error.type,
+        },
+        "getAgentLoopData returned soft-delete error in finalizeCancellation, skipping"
+      );
       return;
     }
-
     throw new Error(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`
     );

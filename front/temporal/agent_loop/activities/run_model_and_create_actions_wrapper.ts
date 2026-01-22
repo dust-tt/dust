@@ -6,6 +6,7 @@ import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
 import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
@@ -17,7 +18,10 @@ import type {
   AgentLoopArgsWithTiming,
   AgentLoopExecutionData,
 } from "@app/types/assistant/agent_run";
-import { getAgentLoopData } from "@app/types/assistant/agent_run";
+import {
+  getAgentLoopData,
+  isAgentLoopDataSoftDeleteError,
+} from "@app/types/assistant/agent_run";
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
@@ -47,7 +51,18 @@ export async function runModelAndCreateActionsActivity({
 }): Promise<RunModelAndCreateActionsResult | null> {
   const runAgentDataRes = await getAgentLoopData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
-    return null;
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      logger.info(
+        {
+          conversationId: runAgentArgs.conversationId,
+          agentMessageId: runAgentArgs.agentMessageId,
+          errorType: runAgentDataRes.error.type,
+        },
+        "getAgentLoopData returned soft-delete error, stopping execution"
+      );
+      return null;
+    }
+    throw runAgentDataRes.error;
   }
 
   const { auth, ...runAgentData } = runAgentDataRes.value;
