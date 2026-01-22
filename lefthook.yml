@@ -1,0 +1,100 @@
+# Lefthook configuration
+# See https://github.com/evilmartians/lefthook for documentation
+#
+# ===================================================================
+# How to skip hooks:
+# ===================================================================
+#
+# Skip ALL pre-commit hooks:
+#   LEFTHOOK=0 git commit -m "message"
+#
+# Skip specific commands:
+#   LEFTHOOK_EXCLUDE=check-main-branch git commit -m "message"
+#   LEFTHOOK_EXCLUDE=ggshield-scan,package-lock-check git commit -m "message"
+#
+# Skip only linting/type-checking (front and connectors):
+#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-typecheck,front-circular,front-docs-check,connectors-lint-test-filenames,connectors-typecheck,lint-staged git commit -m "message"
+#
+# Interactive mode (choose which commands to run):
+#   lefthook run pre-commit --interactive
+#
+# ===================================================================
+
+pre-commit:
+  # Run tasks in parallel for better performance
+  parallel: true
+
+  commands:
+    # Check if committing to main branch
+    check-main-branch:
+      run: |
+        current_branch=$(git rev-parse --abbrev-ref HEAD)
+        if [ "$current_branch" = "main" ]; then
+          echo "Error: Committing to 'main' is not allowed. Use LEFTHOOK_EXCLUDE=check-main-branch to override."
+          exit 1
+        fi
+      priority: 1
+
+    # Optional: ggshield secret scanning (skip with LEFTHOOK_EXCLUDE=ggshield-scan)
+    ggshield-scan:
+      run: |
+        if command -v ggshield 2>&1 >/dev/null; then
+          ggshield secret scan pre-commit
+        else
+          echo "ggshield is not installed. Skipping secret scan. Install ggshield or use LEFTHOOK_EXCLUDE=ggshield-scan"
+          exit 0
+        fi
+      priority: 1
+
+    # Optional: package-lock.json sync check (skip with LEFTHOOK_EXCLUDE=package-lock-check)
+    package-lock-check:
+      run: |
+        root_path=$(git rev-parse --show-toplevel)
+        if ! "$root_path"/scripts/check-package-lock-sync.sh; then
+          echo "Error: package.json and package-lock.json are out of sync. Please run 'npm install' in the affected directory."
+          exit 1
+        fi
+      priority: 1
+
+    # Front directory checks
+    front-lint-test-filenames:
+      glob: "front/**/*"
+      run: |
+        root_path=$(git rev-parse --show-toplevel)
+        npm run lint:test-filenames --if-present --prefix "$root_path"/front
+
+    front-typecheck:
+      glob: "front/**/*"
+      run: |
+        root_path=$(git rev-parse --show-toplevel)
+        npm run tsgo --if-present --prefix "$root_path"/front
+
+    front-circular:
+      glob: "front/**/*"
+      run: |
+        root_path=$(git rev-parse --show-toplevel)
+        npm run lint:circular --if-present --prefix "$root_path"/front
+
+    front-docs-check:
+      glob: "front/pages/api/v1/**/*"
+      run: |
+        root_path=$(git rev-parse --show-toplevel)
+        npm run docs:check --if-present --prefix "$root_path"/front
+
+    # Connectors directory checks
+    connectors-lint-test-filenames:
+      glob: "connectors/**/*"
+      run: |
+        root_path=$(git rev-parse --show-toplevel)
+        npm run lint:test-filenames --if-present --prefix "$root_path"/connectors
+
+    connectors-typecheck:
+      glob: "connectors/**/*"
+      run: |
+        root_path=$(git rev-parse --show-toplevel)
+        npm run tsgo --if-present --prefix "$root_path"/connectors
+
+    # Lint-staged for formatting checks
+    lint-staged:
+      glob: "**/*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}"
+      run: npx lint-staged
