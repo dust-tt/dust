@@ -94,6 +94,16 @@ export function InputField<T extends FieldValues>({
               type={type}
               {...field}
               value={field.value}
+              onChange={
+                type === "number"
+                  ? (e) => {
+                      const parsed = Number(e.target.value);
+                      if (isFinite(parsed)) {
+                        field.onChange(parsed);
+                      }
+                    }
+                  : field.onChange
+              }
             />
           </PokeFormControl>
           <PokeFormMessage />
