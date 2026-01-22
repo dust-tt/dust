@@ -658,6 +658,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"
+  | "dust_academy"
   | "dust_edge_global_agent"
   | "dust_quick_global_agent"
   | "dust_oai_global_agent"
