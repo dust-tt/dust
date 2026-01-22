@@ -79,7 +79,7 @@ export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
   data: 50 * 1024 * 1024, // 50MB.
   code: 50 * 1024 * 1024, // 50MB.
   delimited: 50 * 1024 * 1024, // 50MB.
-  image: 5 * 1024 * 1024, // 5 MB
+  image: 30 * 1024 * 1024, // 30 MB
   audio: 100 * 1024 * 1024, // 100 MB, audio files can be large, ex transcript of meetings
 };
 

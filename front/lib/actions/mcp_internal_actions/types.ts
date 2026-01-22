@@ -281,7 +281,11 @@ export const GenerateImageInputSchema = z.object({
     .max(14)
     .optional()
     .describe(
-      "Optional file IDs of reference images from conversation attachments. Up to 14 reference images"
+      "Optional file IDs of reference images from conversation attachments.\n" +
+        "- For object inclusion: up to 6 images to reproduce objects with high fidelity\n" +
+        "- For human consistency: up to 5 images to maintain character appearance\n" +
+        "- Maximum 14 total reference images can be combined\n" +
+        "- Supported formats: PNG, JPEG, WebP, HEIC, HEIF\n\n"
     ),
   aspectRatio: z
     .enum(["1:1", "3:2", "2:3"])

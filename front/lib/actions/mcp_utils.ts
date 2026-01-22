@@ -14,6 +14,7 @@ import {
   getAttachmentFromToolOutput,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
+import type { ProcessAndStoreFileError } from "@app/lib/api/files/upload";
 import {
   uploadBase64DataToFileStorage,
   uploadBase64ImageToFileStorage,
@@ -22,18 +23,13 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type {
-  FileUseCase,
-  FileUseCaseMetadata,
-  Result,
-  SupportedFileContentType,
-  SupportedImageContentType,
-} from "@app/types";
+import type { FileUseCase, FileUseCaseMetadata, Result } from "@app/types";
 import {
   Err,
   hasNullUnicodeCharacter,
   isSupportedFileContentType,
   Ok,
+  withRetries,
 } from "@app/types";
 
 export function hideFileFromActionOutput({
@@ -175,40 +171,41 @@ export async function handleBase64Upload(
     };
   }
 
+  const uploadWithRetry = withRetries(
+    logger,
+    async () => {
+      let uploadResult: Result<FileResource, ProcessAndStoreFileError>;
+
+      if (isSupportedImageContentType(mimeType)) {
+        uploadResult = await uploadBase64ImageToFileStorage(auth, {
+          base64: base64Data,
+          contentType: mimeType,
+          fileName,
+          useCase: fileUseCase,
+          useCaseMetadata: fileUseCaseMetadata,
+        });
+      } else if (isSupportedFileContentType(mimeType)) {
+        uploadResult = await uploadBase64DataToFileStorage(auth, {
+          base64: base64Data,
+          contentType: mimeType,
+          fileName,
+          useCase: fileUseCase,
+          useCaseMetadata: fileUseCaseMetadata,
+        });
+      } else {
+        throw new Error(`Unsupported mime type: ${mimeType}`);
+      }
+
+      if (uploadResult.isErr()) {
+        throw new Error(uploadResult.error.message);
+      }
+      return uploadResult;
+    },
+    { retries: 3, delayBetweenRetriesMs: 1000 }
+  );
+
   try {
-    const uploadResult =
-      resourceType === "image"
-        ? await uploadBase64ImageToFileStorage(auth, {
-            base64: base64Data,
-            // Cast is valid because of the previous check.
-            contentType: mimeType as SupportedImageContentType,
-            fileName,
-            useCase: fileUseCase,
-            useCaseMetadata: fileUseCaseMetadata,
-          })
-        : await uploadBase64DataToFileStorage(auth, {
-            base64: base64Data,
-            // Cast is valid because of the previous check.
-            contentType: mimeType as SupportedFileContentType,
-            fileName,
-            useCase: fileUseCase,
-            useCaseMetadata: fileUseCaseMetadata,
-          });
-
-    if (uploadResult.isErr()) {
-      logger.error(
-        { error: uploadResult.error },
-        `Error upserting ${resourceType} from base64`
-      );
-      return {
-        content: {
-          type: "text",
-          text: `Failed to upsert the generated ${resourceType} as a file.`,
-        },
-        file: null,
-      };
-    }
-
+    const uploadResult = await uploadWithRetry({});
     return {
       content: {
         ...block,

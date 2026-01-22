@@ -214,11 +214,6 @@ export const INTERNAL_MCP_SERVERS = {
         "GENERATION FROM TEXT:\n" +
         "- Provide a detailed prompt describing the desired image\n" +
         "- Be specific about style, composition, colors, lighting, and mood\n\n" +
-        "REFERENCE IMAGES:\n" +
-        "- For object inclusion: up to 6 images to reproduce objects with high fidelity\n" +
-        "- For human consistency: up to 5 images to maintain character appearance\n" +
-        "- Maximum 14 total reference images can be combined\n" +
-        "- Supported formats: PNG, JPEG, WebP, HEIC, HEIF\n\n" +
         "IMAGE EDITING:\n" +
         "- Provide the source image as reference and describe the desired changes\n" +
         "- Example: 'Remove the background and replace it with a sunset beach scene'\n\n" +
@@ -227,10 +222,7 @@ export const INTERNAL_MCP_SERVERS = {
         "- Describe how elements should be arranged in the prompt\n\n" +
         "TOOL CHAINING:\n" +
         "- Images from previous tool calls can be used as reference for subsequent generations\n" +
-        "- Example: generate a character portrait, then use it as reference for different poses\n\n" +
-        "OUTPUT OPTIONS:\n" +
-        "- Quality: 'low' (1K), 'medium' (2K), or 'high' (4K)\n" +
-        "- Aspect ratios: 1:1, 3:2, 2:3",
+        "- Example: generate a character portrait, then use it as reference for different poses\n\n",
     },
   },
   file_generation: {

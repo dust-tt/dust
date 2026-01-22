@@ -278,21 +278,24 @@ function createGeminiClient(): GoogleGenAI {
   });
 }
 
-type InlineDataPart = { inlineData: { data: string; mimeType: string } };
+type FileDataPart = { fileData: { fileUri: string; mimeType: string } };
 
-async function processSingleImageFile({
-  auth,
-  imageFileId,
-  conversationId,
-  maxImageSize,
-  statsDClient,
-}: {
-  auth: Authenticator;
-  imageFileId: string;
-  conversationId: string;
-  maxImageSize: number;
-  statsDClient: ReturnType<typeof getStatsDClient>;
-}): Promise<Ok<InlineDataPart> | Err<MCPError>> {
+async function processSingleImageFile(
+  auth: Authenticator,
+  {
+    imageFileId,
+    conversationId,
+    maxImageSize,
+    statsDClient,
+    gemini,
+  }: {
+    imageFileId: string;
+    conversationId: string;
+    maxImageSize: number;
+    statsDClient: ReturnType<typeof getStatsDClient>;
+    gemini: GoogleGenAI;
+  }
+): Promise<Ok<FileDataPart> | Err<MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
   const fileResource = await FileResource.fetchById(auth, imageFileId);
   if (!fileResource) {
@@ -368,25 +371,43 @@ async function processSingleImageFile({
     );
   }
 
+  const uploadedFile = await gemini.files.upload({
+    file: new Blob([new Uint8Array(bufferResult.value)], {
+      type: fileResource.contentType,
+    }),
+    config: { mimeType: fileResource.contentType },
+  });
+
+  if (!uploadedFile.uri) {
+    return new Err(
+      new MCPError(`Failed to upload file ${imageFileId} to Google Files API`, {
+        tracked: false,
+      })
+    );
+  }
+
   return new Ok({
-    inlineData: {
-      data: bufferResult.value.toString("base64"),
+    fileData: {
+      fileUri: uploadedFile.uri,
       mimeType: fileResource.contentType,
     },
   });
 }
 
-async function processImageFileIds({
-  auth,
-  imageFileIds,
-  agentLoopContext,
-  statsDClient,
-}: {
-  auth: Authenticator;
-  imageFileIds: string[];
-  agentLoopContext: AgentLoopContextType | undefined;
-  statsDClient: ReturnType<typeof getStatsDClient>;
-}): Promise<Ok<InlineDataPart[]> | Err<MCPError>> {
+async function processImageFileIds(
+  auth: Authenticator,
+  {
+    imageFileIds,
+    agentLoopContext,
+    statsDClient,
+    gemini,
+  }: {
+    imageFileIds: string[];
+    agentLoopContext: AgentLoopContextType | undefined;
+    statsDClient: ReturnType<typeof getStatsDClient>;
+    gemini: GoogleGenAI;
+  }
+): Promise<Ok<FileDataPart[]> | Err<MCPError>> {
   if (!agentLoopContext?.runContext) {
     return new Err(
       new MCPError("No conversation context available for file access", {
@@ -401,12 +422,12 @@ async function processImageFileIds({
   const results = await concurrentExecutor(
     imageFileIds,
     (imageFileId) =>
-      processSingleImageFile({
-        auth,
+      processSingleImageFile(auth, {
         imageFileId,
         conversationId,
         maxImageSize,
         statsDClient,
+        gemini,
       }),
     { concurrency: 8 }
   );
@@ -416,11 +437,11 @@ async function processImageFileIds({
     return firstError;
   }
 
-  const inlineDataParts = results
-    .filter((r): r is Ok<InlineDataPart> => r.isOk())
+  const fileDataParts = results
+    .filter((r): r is Ok<FileDataPart> => r.isOk())
     .map((r) => r.value);
 
-  return new Ok(inlineDataParts);
+  return new Ok(fileDataParts);
 }
 
 function createServer(
@@ -464,21 +485,21 @@ function createServer(
           return rateLimitResult;
         }
 
-        let inlineDataParts: Array<{
-          inlineData: { data: string; mimeType: string };
-        }> = [];
+        const gemini = createGeminiClient();
+
+        let fileDataParts: FileDataPart[] = [];
 
         if (referenceImages && referenceImages.length > 0) {
-          const processResult = await processImageFileIds({
-            auth,
+          const processResult = await processImageFileIds(auth, {
             imageFileIds: referenceImages,
             agentLoopContext,
             statsDClient,
+            gemini,
           });
           if (processResult.isErr()) {
             return processResult;
           }
-          inlineDataParts = processResult.value;
+          fileDataParts = processResult.value;
         }
 
         const imageSize = QUALITY_TO_IMAGE_SIZE[quality ?? "low"];
@@ -511,12 +532,11 @@ function createServer(
           userId: workspace.sId,
         });
 
-        const gemini = createGeminiClient();
         const contents =
-          inlineDataParts.length > 0
+          fileDataParts.length > 0
             ? [
                 {
-                  parts: [...inlineDataParts, { text: prompt }],
+                  parts: [...fileDataParts, { text: prompt }],
                 },
               ]
             : prompt;
