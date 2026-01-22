@@ -184,13 +184,13 @@ interface MCPServerViewInfo {
 }
 
 async function findAvailableMCPServerViews(
-  workspaceId: number,
+  workspace: WorkspaceResource,
   serverNames: readonly string[],
   logger: Logger
 ): Promise<Map<string, MCPServerViewInfo>> {
   const views = await MCPServerViewModel.findAll({
     where: {
-      workspaceId,
+      workspaceId: workspace.id,
       serverType: "internal",
       internalMCPServerId: [...serverNames],
     },
@@ -259,7 +259,7 @@ async function createMeetingPrepSkill(
     ...MICROSOFT_SERVERS,
   ];
   const availableViews = await findAvailableMCPServerViews(
-    workspace.id,
+    workspace,
     allServerNames,
     logger
   );
