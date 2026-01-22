@@ -25,20 +25,12 @@ import type {
 } from "@app/scripts/suggested_skills/types";
 import type { ModelId } from "@app/types";
 
-async function fetchWorkspace(workspaceId: string): Promise<WorkspaceResource> {
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace) {
-    throw new Error(`Workspace not found: ${workspaceId}`);
-  }
-  return workspace;
-}
-
 async function fetchActiveAgents(
-  workspaceModelId: ModelId
+  workspace: WorkspaceResource
 ): Promise<AgentConfigurationModel[]> {
   return AgentConfigurationModel.findAll({
     where: {
-      workspaceId: workspaceModelId,
+      workspaceId: workspace.id,
       status: "active",
       scope: "visible",
     },
@@ -46,14 +38,14 @@ async function fetchActiveAgents(
 }
 
 async function fetchMessageStats(
-  workspaceModelId: ModelId,
-  agentSId: string,
+  workspace: WorkspaceResource,
+  agentId: string,
   since: Date
 ) {
   const messageStats = await AgentMessageModel.findAll({
     where: {
-      workspaceId: workspaceModelId,
-      agentConfigurationId: agentSId,
+      workspaceId: workspace.id,
+      agentConfigurationId: agentId,
       createdAt: { [Op.gte]: since },
     },
     attributes: [
@@ -78,12 +70,12 @@ async function fetchMessageStats(
 }
 
 async function fetchAgentTools(
-  workspaceModelId: ModelId,
+  workspace: WorkspaceResource,
   agentModelId: ModelId
 ): Promise<AgentTool[]> {
   const mcpConfigs = await AgentMCPServerConfigurationModel.findAll({
     where: {
-      workspaceId: workspaceModelId,
+      workspaceId: workspace.id,
       agentConfigurationId: agentModelId,
     },
     include: [
@@ -157,7 +149,7 @@ function enrichInternalToolMetadata(tool: AgentTool): void {
 }
 
 async function fetchAgentDataSources(
-  workspaceModelId: ModelId,
+  workspace: WorkspaceResource,
   mcpConfigIds: ModelId[]
 ): Promise<AgentDatasource[]> {
   if (mcpConfigIds.length === 0) {
@@ -166,7 +158,7 @@ async function fetchAgentDataSources(
 
   const datasourceConfigs = await AgentDataSourceConfigurationModel.findAll({
     where: {
-      workspaceId: workspaceModelId,
+      workspaceId: workspace.id,
       mcpServerConfigurationId: { [Op.in]: mcpConfigIds },
     },
     include: [{ model: DataSourceModel, as: "dataSource" }],
@@ -186,18 +178,18 @@ async function fetchAgentDataSources(
 }
 
 async function buildAgentData(
-  workspaceModelId: ModelId,
+  workspace: WorkspaceResource,
   agent: AgentConfigurationModel,
   since: Date
 ): Promise<Agent> {
-  const stats = await fetchMessageStats(workspaceModelId, agent.sId, since);
-  const tools = await fetchAgentTools(workspaceModelId, agent.id);
+  const stats = await fetchMessageStats(workspace, agent.sId, since);
+  const tools = await fetchAgentTools(workspace, agent.id);
 
   const mcpConfigs = await AgentMCPServerConfigurationModel.findAll({
-    where: { workspaceId: workspaceModelId, agentConfigurationId: agent.id },
+    where: { workspaceId: workspace.id, agentConfigurationId: agent.id },
   });
   const dataSources = await fetchAgentDataSources(
-    workspaceModelId,
+    workspace,
     mcpConfigs.map((c) => c.id)
   );
 
@@ -248,8 +240,12 @@ makeScript(
     },
   },
   async ({ workspaceId, limit }, logger) => {
-    const workspace = await fetchWorkspace(workspaceId);
-    const agentConfigs = await fetchActiveAgents(workspace.id);
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
+    if (!workspace) {
+      throw new Error(`Workspace not found: ${workspaceId}`);
+    }
+
+    const agentConfigs = await fetchActiveAgents(workspace);
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -258,11 +254,7 @@ makeScript(
 
     const agents: Agent[] = [];
     for (const agent of agentConfigs) {
-      const agentData = await buildAgentData(
-        workspace.id,
-        agent,
-        thirtyDaysAgo
-      );
+      const agentData = await buildAgentData(workspace, agent, thirtyDaysAgo);
       agents.push(agentData);
     }
 
