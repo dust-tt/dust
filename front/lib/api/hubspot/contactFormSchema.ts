@@ -109,6 +109,7 @@ export const ContactFormSchema = z.object({
   headquarters_region: z.string().optional(),
   company_headcount_form: z.string().min(1, "Company headcount is required"),
   landing_use_cases: z.string().optional(),
+  consent_marketing: z.boolean().optional(),
 });
 
 export type ContactFormData = z.infer<typeof ContactFormSchema>;
