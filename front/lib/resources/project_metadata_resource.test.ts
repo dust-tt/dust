@@ -32,7 +32,7 @@ describe("ProjectMetadataResource", () => {
     it("returns metadata when it exists", async () => {
       await ProjectMetadataResource.makeNew(auth, projectSpace, {
         description: "Test",
-        urls: ["https://example.com"],
+        urls: [{ name: "Website", url: "https://example.com" }],
       });
 
       const metadata = await ProjectMetadataResource.fetchBySpace(
@@ -51,12 +51,13 @@ describe("ProjectMetadataResource", () => {
         projectSpace,
         {
           description: "Full metadata",
-          urls: ["https://github.com"],
+          urls: [{ name: "GitHub", url: "https://github.com" }],
         }
       );
 
       expect(metadata.description).toBe("Full metadata");
-      expect(metadata.urls).toContain("https://github.com");
+      expect(metadata.urls[0].name).toBe("GitHub");
+      expect(metadata.urls[0].url).toBe("https://github.com");
       expect(metadata.sId).toMatch(/^pmd_/);
     });
   });
@@ -74,7 +75,7 @@ describe("ProjectMetadataResource", () => {
 
       await metadata.updateMetadata({
         description: "Updated",
-        urls: ["https://updated.com"],
+        urls: [{ name: "Website", url: "https://updated.com" }],
       });
 
       const updated = await ProjectMetadataResource.fetchBySpace(
@@ -82,7 +83,7 @@ describe("ProjectMetadataResource", () => {
         projectSpace
       );
       expect(updated!.description).toBe("Updated");
-      expect(updated!.urls).toContain("https://updated.com");
+      expect(updated!.urls[0].url).toBe("https://updated.com");
     });
   });
 
@@ -114,7 +115,7 @@ describe("ProjectMetadataResource", () => {
         projectSpace,
         {
           description: "JSON test",
-          urls: ["https://test.com"],
+          urls: [{ name: "Website", url: "https://test.com" }],
         }
       );
 

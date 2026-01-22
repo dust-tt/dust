@@ -15,7 +15,10 @@ describe("formatProjectMetadata", () => {
       updatedAt: 0,
       spaceId: "space-123",
       description: "This is a test project",
-      urls: ["https://example.com", "https://docs.example.com"],
+      urls: [
+        { name: "What", url: "https://example.com" },
+        { name: "Is this", url: "https://docs.example.com" },
+      ],
       members: ["alice@example.com", "bob@example.com"],
     };
 
@@ -27,8 +30,8 @@ This is a test project
 
 # URLs
 
-- https://example.com
-- https://docs.example.com
+- [What](https://example.com)
+- [Is this](https://docs.example.com)
 
 # Members
 
@@ -63,7 +66,7 @@ Only a description here
       updatedAt: 0,
       spaceId: "space-123",
       description: null,
-      urls: ["https://example.com"],
+      urls: [{ name: "what", url: "https://example.com" }],
       members: [],
     };
 
@@ -71,7 +74,7 @@ Only a description here
 
     expect(result).toEqual(`# URLs
 
-- https://example.com
+- [what](https://example.com)
 `);
   });
 

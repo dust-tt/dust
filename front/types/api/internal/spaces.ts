@@ -39,7 +39,12 @@ export type GetPostNotionSyncResponseBody = t.TypeOf<
 
 export const PatchProjectMetadataBodySchema = t.partial({
   description: t.union([t.string, t.null]),
-  urls: t.array(t.string),
+  urls: t.array(
+    t.type({
+      name: t.string,
+      url: t.string,
+    })
+  ),
 });
 
 export type PatchProjectMetadataBodyType = t.TypeOf<

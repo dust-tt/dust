@@ -13,7 +13,7 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
   declare spaceId: ForeignKey<SpaceModel["id"]>;
 
   declare description: string | null;
-  declare urls: string[];
+  declare urls: Array<{ name: string; url: string }>;
 }
 
 ProjectMetadataModel.init(
