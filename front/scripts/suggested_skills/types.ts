@@ -2,6 +2,8 @@
  * Types shared across suggested skills scripts.
  */
 
+import { z } from "zod";
+
 // Types for agent data (used by 1_get_agents.ts and 2_generate_skills.ts)
 
 export type AgentTool = {
@@ -32,40 +34,65 @@ export type Agent = {
   dataSources: AgentDatasource[];
 };
 
-// Types for skill data (used by 3_extract_and_format.ts and 4_grade_skills.ts)
+// Schemas and types for skill data (used by 2_generate_skills.ts, 3_extract_and_format.ts, 4_grade_skills.ts)
 
-export type SkillTool = {
-  tool_name: string;
-  tool_type: "internal" | "remote";
-  tool_description: string;
-  mcp_server_view_id: number;
-  internal_mcp_server_id?: string;
-  remote_mcp_server_id?: string;
-  internal_tool_name?: string;
-  internal_tool_description?: string;
+export const SkillToolSchema = z.object({
+  tool_name: z.string(),
+  tool_type: z.enum(["internal", "remote"]),
+  tool_description: z.string(),
+  mcp_server_view_id: z.number(),
+  internal_mcp_server_id: z.string().nullable(),
+  remote_mcp_server_id: z.string().nullable(),
+  internal_tool_name: z.string().optional(),
+  internal_tool_description: z.string().optional(),
+});
+
+export const SkillIconSchema = z.enum([
+  "ActionCommandIcon",
+  "ActionRocketIcon",
+  "ActionSparklesIcon",
+  "ActionBracesIcon",
+  "ActionListCheckIcon",
+  "ActionCubeIcon",
+  "ActionLightbulbIcon",
+  "ActionBriefcaseIcon",
+  "ActionMagicIcon",
+  "ActionBrainIcon",
+]);
+
+export const SkillSchema = z.object({
+  name: z.string(),
+  description_for_agents: z.string(),
+  description_for_humans: z.string(),
+  instructions: z.string(),
+  agent_name: z.string(),
+  icon: SkillIconSchema,
+  requiredTools: z.array(SkillToolSchema),
+  confidenceScore: z.number(),
+});
+
+export type Skill = z.infer<typeof SkillSchema>;
+
+export const GeneratedSkillsOutputSchema = z.object({
+  skills: z.array(SkillSchema),
+});
+
+// Extended skill type with agent metadata (added after generation)
+export type SkillWithAgentMetadata = Skill & {
+  agent_sid: string;
+  agent_description: string;
+  agent_instructions: string | null;
 };
 
-export type Skill = {
-  name: string;
-  description_for_agents: string;
-  description_for_humans: string;
-  instructions: string;
-  agent_name: string;
-  icon: string;
-  requiredTools?: SkillTool[];
-  confidenceScore: number;
-  agent_sid?: string;
-  agent_description?: string;
-  agent_instructions?: string | null;
-};
+// Schemas and types for grading (used by 4_grade_skills.ts)
 
-// Types for grading (used by 4_grade_skills.ts)
+export const GradeResultSchema = z.object({
+  evaluation: z.number(),
+  comment: z.string(),
+  improvement: z.string().nullable(),
+});
 
-export type GradeResult = {
-  evaluation: number;
-  comment: string;
-  improvement: string | null;
-};
+export type GradeResult = z.infer<typeof GradeResultSchema>;
 
 export type GradedSkill = Skill & {
   grade: GradeResult;

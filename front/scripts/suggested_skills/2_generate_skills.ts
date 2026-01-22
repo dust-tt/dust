@@ -2,10 +2,14 @@ import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import type { Logger } from "pino";
-import { z } from "zod";
 
 import { makeScript } from "@app/scripts/helpers";
-import type { Agent, AgentTool } from "@app/scripts/suggested_skills/types";
+import type {
+  Agent,
+  AgentTool,
+  SkillWithAgentMetadata,
+} from "@app/scripts/suggested_skills/types";
+import { GeneratedSkillsOutputSchema } from "@app/scripts/suggested_skills/types";
 import { dustManagedCredentials } from "@app/types";
 
 const PROMPT = `You are an advanced AI system designed to analyze an agent capabilities and propose relevant skills.
@@ -172,43 +176,6 @@ Output your analysis as JSON with the following structure:
       ]
       }`;
 
-const SkillSchema = z.object({
-  name: z.string(),
-  description_for_agents: z.string(),
-  description_for_humans: z.string(),
-  instructions: z.string(),
-  agent_name: z.string(),
-  icon: z.enum([
-    "ActionCommandIcon",
-    "ActionRocketIcon",
-    "ActionSparklesIcon",
-    "ActionBracesIcon",
-    "ActionListCheckIcon",
-    "ActionCubeIcon",
-    "ActionLightbulbIcon",
-    "ActionBriefcaseIcon",
-    "ActionMagicIcon",
-    "ActionBrainIcon",
-  ]),
-  requiredTools: z.array(
-    z.object({
-      tool_name: z.string(),
-      tool_type: z.enum(["internal", "remote"]),
-      tool_description: z.string(),
-      mcp_server_view_id: z.number(),
-      internal_mcp_server_id: z.string().nullable(),
-      remote_mcp_server_id: z.string().nullable(),
-      internal_tool_name: z.string().optional(),
-      internal_tool_description: z.string().optional(),
-    })
-  ),
-  confidenceScore: z.number(),
-});
-
-const OutputFormatSchema = z.object({
-  skills: z.array(SkillSchema),
-});
-
 const OUTPUT_FORMAT = {
   type: "json_schema",
   schema: {
@@ -282,12 +249,6 @@ const OUTPUT_FORMAT = {
   },
 } as const;
 
-type GeneratedSkill = z.infer<typeof SkillSchema> & {
-  agent_sid: string;
-  agent_description: string;
-  agent_instructions: string | null;
-};
-
 function loadAgents(workspaceId: string): Agent[] {
   const agentsFilePath = join(__dirname, workspaceId, "agents.json");
   const fileContent = readFileSync(agentsFilePath, "utf-8");
@@ -308,7 +269,7 @@ async function generateSkillsForAgent(
   client: Anthropic,
   agent: Agent,
   logger: Logger
-): Promise<GeneratedSkill[]> {
+): Promise<SkillWithAgentMetadata[]> {
   logger.info(
     { agentSid: agent.agent_sid, agentName: agent.agent_name },
     "Processing agent"
@@ -358,7 +319,7 @@ async function generateSkillsForAgent(
       return [];
     }
 
-    const parsed = OutputFormatSchema.parse(JSON.parse(content.text));
+    const parsed = GeneratedSkillsOutputSchema.parse(JSON.parse(content.text));
     return parsed.skills.map((skill) => ({
       ...skill,
       agent_sid: agent.agent_sid,
@@ -380,7 +341,7 @@ async function processAgentsInBatches(
   agents: Agent[],
   batchSize: number,
   logger: Logger
-): Promise<GeneratedSkill[]> {
+): Promise<SkillWithAgentMetadata[]> {
   const batches: Agent[][] = [];
   for (let i = 0; i < agents.length; i += batchSize) {
     batches.push(agents.slice(i, i + batchSize));
@@ -391,7 +352,7 @@ async function processAgentsInBatches(
     "Processing agents in batches"
   );
 
-  const allSkills: GeneratedSkill[] = [];
+  const allSkills: SkillWithAgentMetadata[] = [];
 
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex];
@@ -416,10 +377,10 @@ async function processAgentsInBatches(
 }
 
 function augmentSkillsWithToolData(
-  skills: GeneratedSkill[],
+  skills: SkillWithAgentMetadata[],
   agents: Agent[],
   logger: Logger
-): GeneratedSkill[] {
+): SkillWithAgentMetadata[] {
   const agentsById = new Map(agents.map((a) => [a.agent_sid, a]));
 
   return skills.map((skill) => {
@@ -460,7 +421,7 @@ function augmentSkillsWithToolData(
 }
 
 function writeSkillsToFile(
-  skills: GeneratedSkill[],
+  skills: SkillWithAgentMetadata[],
   workspaceId: string
 ): string {
   const resultsFilePath = join(__dirname, workspaceId, "suggested_skills.json");

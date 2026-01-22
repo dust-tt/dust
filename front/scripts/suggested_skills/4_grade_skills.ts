@@ -10,6 +10,7 @@ import type {
   GradingExample,
   Skill,
 } from "@app/scripts/suggested_skills/types";
+import { GradeResultSchema } from "@app/scripts/suggested_skills/types";
 
 const MAX_RETRIES = 3;
 
@@ -129,18 +130,10 @@ ${skill.requiredTools?.length ? skill.requiredTools.map((t) => `- ${t.tool_name}
         throw new Error("Empty response from API");
       }
 
-      const parsed: GradeResult = JSON.parse(sanitizeJsonString(text));
+      const parsed = GradeResultSchema.parse(JSON.parse(sanitizeJsonString(text)));
 
-      if (
-        typeof parsed.evaluation !== "number" ||
-        parsed.evaluation < 0 ||
-        parsed.evaluation > 1
-      ) {
+      if (parsed.evaluation < 0 || parsed.evaluation > 1) {
         throw new Error(`Invalid evaluation score: ${parsed.evaluation}`);
-      }
-
-      if (typeof parsed.comment !== "string") {
-        throw new Error("Missing or invalid comment field");
       }
 
       return parsed;
