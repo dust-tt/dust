@@ -35,19 +35,16 @@ export const BUTTON_VARIANTS = [
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
 export const REGULAR_BUTTON_SIZES = ["xmini", "mini", "xs", "sm", "md"] as const;
-
-// Icon-only button sizes (fixed width, labels hidden)
 export const ICON_ONLY_SIZES = ["icon-xs", "icon"] as const;
-
-// All button sizes (union of regular and icon-only)
-export const BUTTON_SIZES = [...REGULAR_BUTTON_SIZES, ...ICON_ONLY_SIZES] as const;
-export type ButtonSizeType = (typeof REGULAR_BUTTON_SIZES)[number] | (typeof ICON_ONLY_SIZES)[number];
-
-// Small button sizes that use xs spinner size
 export const SMALL_BUTTON_SIZES = ["icon-xs", "icon", "xmini", "mini"] as const;
 
+export type RegularButtonSize = (typeof REGULAR_BUTTON_SIZES)[number];
+export type IconOnlySize = (typeof ICON_ONLY_SIZES)[number];
+export type ButtonSize = RegularButtonSize | IconOnlySize;
+
+
 function isSmallButtonSize(
-  size: ButtonSizeType | undefined
+  size: ButtonSize | undefined
 ): size is typeof SMALL_BUTTON_SIZES[number] {
   return size !== undefined && SMALL_BUTTON_SIZES.includes(size as typeof SMALL_BUTTON_SIZES[number]);
 }
@@ -226,8 +223,8 @@ const chevronVariantMap = {
 
 export interface MetaButtonProps
   extends
-    React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   isRounded?: boolean;
 }
@@ -266,7 +263,7 @@ MetaButton.displayName = "MetaButton";
 type IconSizeType = "xs" | "sm" | "md";
 type CounterSizeType = "xs" | "sm" | "md";
 
-export const ICON_SIZE_MAP: Record<ButtonSizeType, IconSizeType> = {
+export const ICON_SIZE_MAP: Record<ButtonSize, IconSizeType> = {
   "icon-xs": "xs",
   icon: "sm",
   xmini: "xs",
@@ -276,7 +273,7 @@ export const ICON_SIZE_MAP: Record<ButtonSizeType, IconSizeType> = {
   md: "md",
 };
 
-const COUNTER_SIZE_MAP: Record<ButtonSizeType, CounterSizeType> = {
+const COUNTER_SIZE_MAP: Record<ButtonSize, CounterSizeType> = {
   "icon-xs": "xs",
   icon: "xs",
   xmini: "xs",
@@ -303,13 +300,13 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
  * When using these sizes, an icon is required and labels are not allowed.
  */
 export type IconOnlyButtonProps = CommonButtonProps & {
-  size: (typeof ICON_ONLY_SIZES)[number];
+  size: IconOnlySize;
   icon: React.ComponentType;
   label?: never;
 };
 
 export type RegularButtonProps = CommonButtonProps & {
-  size?: (typeof REGULAR_BUTTON_SIZES)[number];
+  size?: RegularButtonSize;
   icon?: React.ComponentType;
   label?: string;
 };
@@ -385,7 +382,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             )}
           >
             <Spinner
-            size={isSmallButtonSize(size) ? "xs" : iconSize}
+              size={isSmallButtonSize(size) ? "xs" : iconSize}
               variant={(variant && spinnerVariantsMap[variant]) || "gray400"}
             />
           </div>

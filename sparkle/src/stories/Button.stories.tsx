@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { BUTTON_SIZES, BUTTON_VARIANTS } from "@sparkle/components/Button";
+import { BUTTON_VARIANTS, ICON_ONLY_SIZES, REGULAR_BUTTON_SIZES, RegularButtonSize } from "@sparkle/components/Button";
 
 import { Button, PlusIcon, RobotIcon, Separator } from "../index_with_tw_base";
 
@@ -23,7 +23,7 @@ const meta = {
     },
     size: {
       description: `The size of the button. Use "icon" or "icon-xs" for icon-only buttons`,
-      options: BUTTON_SIZES,
+      options: [...REGULAR_BUTTON_SIZES, ...ICON_ONLY_SIZES],
       control: { type: "select" },
     },
     icon: {
@@ -116,7 +116,7 @@ export const IconOnlyButtons: Story = {
 const ButtonBySize = ({
   size,
 }: {
-  size: React.ComponentProps<typeof Button>["size"];
+  size: RegularButtonSize;
 }) => (
   <>
     <Separator />

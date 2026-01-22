@@ -22,7 +22,7 @@ interface BaseAssistantCardProps {
   variant?: CardVariantType;
 }
 
-type AssistantCardMore = Omit<IconOnlyButtonProps, "icon">;
+type AssistantCardMore = IconOnlyButtonProps;
 
 export const AssistantCardMore = React.forwardRef<
   HTMLButtonElement,
