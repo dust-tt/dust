@@ -18,6 +18,7 @@ import {
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
+import { untrustedFetch } from "@app/lib/egress/server";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
@@ -82,22 +83,19 @@ export class StatuspageClient {
     schema: T,
     data?: unknown
   ): Promise<Result<z.infer<T>, Error>> {
-    const options: RequestInit = {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `OAuth ${this.apiKey}`,
-      },
-    };
-
-    if (data && (method === "POST" || method === "PATCH")) {
-      options.body = JSON.stringify(data);
-    }
-
-    // eslint-disable-next-line no-restricted-globals
-    const response = await fetch(
+    const response = await untrustedFetch(
       `${STATUSPAGE_API_BASE_URL}/${endpoint}`,
-      options
+      {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `OAuth ${this.apiKey}`,
+        },
+        body:
+          data && (method === "POST" || method === "PATCH")
+            ? JSON.stringify(data)
+            : undefined,
+      }
     );
 
     if (!response.ok) {
