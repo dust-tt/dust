@@ -1,4 +1,4 @@
-import type { GetServerSideProps } from "next";
+import type { GetStaticProps } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -13,20 +13,17 @@ import {
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { Pagination } from "@app/components/shared/Pagination";
-import { hasAcademyAccess } from "@app/lib/api/academy";
-import { getAllCourses } from "@app/lib/contentful/client";
+import {
+  CONTENTFUL_REVALIDATE_SECONDS,
+  getAllCourses,
+} from "@app/lib/contentful/client";
 import type { CourseListingPageProps } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types";
 
-export const getServerSideProps: GetServerSideProps<
+export const getStaticProps: GetStaticProps<
   CourseListingPageProps
-> = async (context) => {
-  const hasAccess = await hasAcademyAccess(context.req, context.res);
-  if (!hasAccess) {
-    return { notFound: true };
-  }
-
+> = async () => {
   const coursesResult = await getAllCourses();
 
   if (coursesResult.isErr()) {
@@ -39,6 +36,7 @@ export const getServerSideProps: GetServerSideProps<
         courses: [],
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       },
+      revalidate: CONTENTFUL_REVALIDATE_SECONDS,
     };
   }
 
@@ -47,6 +45,7 @@ export const getServerSideProps: GetServerSideProps<
       courses: coursesResult.value,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
+    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
 };
 
