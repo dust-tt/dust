@@ -6,13 +6,11 @@ import type {
   Transaction,
 } from "sequelize";
 
-import {
-  getAgentConfiguration,
-  getAgentConfigurations,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
@@ -38,47 +36,105 @@ export interface AgentSuggestionResource extends ReadonlyAttributesType<AgentSug
 export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> {
   static model: ModelStatic<AgentSuggestionModel> = AgentSuggestionModel;
 
+  readonly editorsGroupId: ModelId | null;
+
   constructor(
     model: ModelStatic<AgentSuggestionModel>,
-    blob: Attributes<AgentSuggestionModel>
+    blob: Attributes<AgentSuggestionModel>,
+    editorsGroupId: ModelId | null
   ) {
     super(AgentSuggestionModel, blob);
+    this.editorsGroupId = editorsGroupId;
   }
 
   /**
-   * Check if the user has permission to edit this suggestion's agent.
+   * Check if the user has permission to write (edit/delete) this suggestion's agent.
    */
-  private async canWrite(auth: Authenticator): Promise<boolean> {
+  canWrite(auth: Authenticator): boolean {
     if (auth.isAdmin()) {
       return true;
     }
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: this.agentConfigurationId,
+    if (this.editorsGroupId === null) {
+      return false;
+    }
+    return auth.groups().some((g) => g.id === this.editorsGroupId);
+  }
+
+  /**
+   * Fetches the editors group IDs for a list of agent configuration sIds.
+   * Returns a map from agent sId to group ID (or null if no group found).
+   */
+  private static async getEditorsGroupIdByAgentSId(
+    auth: Authenticator,
+    agentSIds: string[]
+  ): Promise<Map<string, ModelId | null>> {
+    if (agentSIds.length === 0) {
+      return new Map();
+    }
+
+    // Fetch agent configurations.
+    const agentConfigs = await getAgentConfigurations(auth, {
+      agentIds: agentSIds,
       variant: "light",
     });
-    return agentConfiguration?.canEdit ?? false;
+
+    if (agentConfigs.length === 0) {
+      const result = new Map<string, ModelId | null>();
+      for (const sId of agentSIds) {
+        result.set(sId, null);
+      }
+      return result;
+    }
+
+    // Fetch editor groups for these agents.
+    const groupsResult = await GroupResource.findEditorGroupsForAgents(
+      auth,
+      agentConfigs
+    );
+
+    // Build a map from agent sId to editors group ID.
+    const result = new Map<string, ModelId | null>();
+    for (const sId of agentSIds) {
+      if (groupsResult.isOk()) {
+        const group = groupsResult.value[sId];
+        result.set(sId, group?.id ?? null);
+      } else {
+        result.set(sId, null);
+      }
+    }
+
+    return result;
   }
 
   static async makeNew(
     auth: Authenticator,
     blob: Omit<CreationAttributes<AgentSuggestionModel>, "workspaceId">
   ): Promise<AgentSuggestionResource> {
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: blob.agentConfigurationId,
-      variant: "light",
-    });
+    const owner = auth.getNonNullableWorkspace();
 
-    const canEdit = auth.isAdmin() || (agentConfiguration?.canEdit ?? false);
-    if (!canEdit) {
+    // Look up the agent's editors group.
+    const editorsGroupIdMap = await this.getEditorsGroupIdByAgentSId(auth, [
+      blob.agentConfigurationId,
+    ]);
+    const editorsGroupId =
+      editorsGroupIdMap.get(blob.agentConfigurationId) ?? null;
+
+    // Check permission.
+    const canWrite =
+      auth.isAdmin() ||
+      (editorsGroupId !== null &&
+        auth.groups().some((g) => g.id === editorsGroupId));
+
+    if (!canWrite) {
       throw new Error("User does not have permission to edit this agent");
     }
 
     const suggestion = await AgentSuggestionModel.create({
       ...blob,
-      workspaceId: auth.getNonNullableWorkspace().id,
+      workspaceId: owner.id,
     });
 
-    return new this(AgentSuggestionModel, suggestion.get());
+    return new this(AgentSuggestionModel, suggestion.get(), editorsGroupId);
   }
 
   private static async baseFetch(
@@ -86,36 +142,47 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     options?: ResourceFindOptions<AgentSuggestionModel>
   ) {
     const { where, ...otherOptions } = options ?? {};
+    const owner = auth.getNonNullableWorkspace();
 
     const suggestions = await AgentSuggestionModel.findAll({
       where: {
         ...where,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: owner.id,
       },
       ...otherOptions,
     });
 
-    const agentIds = [
+    if (suggestions.length === 0) {
+      return [];
+    }
+
+    const agentSIds = [
       ...new Set(suggestions.map((s) => s.agentConfigurationId)),
     ];
 
-    // Fetch all agent configurations at once.
-    const agentConfigurations = await getAgentConfigurations(auth, {
-      agentIds,
-      variant: "light",
-    });
-    const agentsByIdMap = new Map(agentConfigurations.map((c) => [c.sId, c]));
+    const editorsGroupIdBySId = await this.getEditorsGroupIdByAgentSId(
+      auth,
+      agentSIds
+    );
 
-    // Filter suggestions to only include those for agents the user can edit
+    const authGroupIds = new Set(auth.groups().map((g) => g.id));
+
+    // Filter suggestions to only include those for agents the user can edit.
     return suggestions
       .filter((s) => {
         if (auth.isAdmin()) {
           return true;
         }
-        const config = agentsByIdMap.get(s.agentConfigurationId);
-        return config?.canEdit ?? false;
+        const groupId = editorsGroupIdBySId.get(s.agentConfigurationId);
+        return (
+          groupId !== undefined && groupId !== null && authGroupIds.has(groupId)
+        );
       })
-      .map((suggestion) => new this(AgentSuggestionModel, suggestion.get()));
+      .map((suggestion) => {
+        const editorsGroupId =
+          editorsGroupIdBySId.get(suggestion.agentConfigurationId) ?? null;
+        return new this(AgentSuggestionModel, suggestion.get(), editorsGroupId);
+      });
   }
 
   static async fetchByIds(
@@ -141,7 +208,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    if (!(await this.canWrite(auth))) {
+    if (!this.canWrite(auth)) {
       return new Err(
         new Error("User does not have permission to edit this agent")
       );
@@ -175,7 +242,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       "Unexpected: workspace mismatch in suggestion"
     );
 
-    if (!(await this.canWrite(auth))) {
+    if (!this.canWrite(auth)) {
       throw new Error("User does not have permission to edit this agent");
     }
 
