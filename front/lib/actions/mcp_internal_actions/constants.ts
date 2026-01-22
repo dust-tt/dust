@@ -1985,7 +1985,7 @@ export const INTERNAL_MCP_SERVERS = {
       version: "1.0.0",
       description: "Monitor and manage Atlassian Statuspage incidents.",
       authorization: null,
-      icon: "ActionGlobeAltIcon",
+      icon: "StatuspageLogo",
       documentationUrl: null,
       instructions: null,
       developerSecretSelection: "required",

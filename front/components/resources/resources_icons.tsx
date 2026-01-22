@@ -141,6 +141,7 @@ export const InternalActionIcons = {
   SalesforceLogo,
   SlackLogo,
   SnowflakeLogo,
+  StatuspageLogo,
   StripeLogo,
   SupabaseLogo,
   UkgLogo,

@@ -1,4 +1,4 @@
-import type { Avatar, Icon } from "@dust-tt/sparkle";
+import type {Avatar, Icon} from "@dust-tt/sparkle";
 import {
   ActionAtomIcon,
   ActionBrainIcon,
@@ -51,6 +51,7 @@ import {
   ProductboardLogo,
   SalesforceLogo,
   SlackLogo,
+  StatuspageLogo,
   StripeLogo,
   SupabaseLogo,
   UkgLogo,
@@ -132,6 +133,7 @@ export const InternalActionIcons = {
   OpenaiLogo,
   SalesforceLogo,
   SlackLogo,
+  StatuspageLogo,
   StripeLogo,
   SupabaseLogo,
   ProductboardLogo,
