@@ -48,7 +48,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   /**
    * Check if the user has permission to edit this suggestion's agent.
    */
-  private async canEdit(auth: Authenticator): Promise<boolean> {
+  private async canWrite(auth: Authenticator): Promise<boolean> {
     if (auth.isAdmin()) {
       return true;
     }
@@ -141,7 +141,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    if (!(await this.canEdit(auth))) {
+    if (!(await this.canWrite(auth))) {
       return new Err(
         new Error("User does not have permission to edit this agent")
       );
@@ -175,7 +175,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       "Unexpected: workspace mismatch in suggestion"
     );
 
-    if (!(await this.canEdit(auth))) {
+    if (!(await this.canWrite(auth))) {
       throw new Error("User does not have permission to edit this agent");
     }
 
