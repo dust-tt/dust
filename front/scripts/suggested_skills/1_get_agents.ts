@@ -17,41 +17,11 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { ArgumentSpecs } from "@app/scripts/helpers";
 import { makeScript } from "@app/scripts/helpers";
-
-type AgentTool = {
-  mcp_server_view_id: number;
-  tool_type: "internal" | "remote";
-  tool_name: string | null;
-  tool_description: string | null;
-  internal_mcp_server_id: string | null;
-  remote_mcp_server_id: string | null;
-  internal_tool_name?: string;
-  internal_tool_description?: string;
-};
-
-type Datasource = {
-  datasource_id: string;
-  datasource_name: string;
-  datasource_description: string | null;
-  connector_provider: string | null;
-  data_source_view_id: number;
-  parents_in: string[] | null;
-  tags_in: string[] | null;
-  tags_not_in: string[] | null;
-  tags_mode: string | null;
-};
-
-type Agent = {
-  agent_sid: string;
-  agent_name: string;
-  description: string;
-  instructions: string | null;
-  total_messages: number;
-  first_usage: Date | null;
-  last_usage: Date | null;
-  tools: AgentTool[];
-  datasources: Datasource[];
-};
+import type {
+  Agent,
+  AgentDatasource,
+  AgentTool,
+} from "@app/scripts/suggested_skills/types";
 
 const argumentSpecs: ArgumentSpecs = {
   workspaceId: {
@@ -219,7 +189,7 @@ makeScript(argumentSpecs, async (args, scriptLogger) => {
       ],
     });
 
-    const datasources: Datasource[] = datasourceConfigs.map((dsConfig) => ({
+    const datasources: AgentDatasource[] = datasourceConfigs.map((dsConfig) => ({
       datasource_id: dsConfig.dataSource.dustAPIDataSourceId,
       datasource_name: dsConfig.dataSource.name,
       datasource_description: dsConfig.dataSource.description,

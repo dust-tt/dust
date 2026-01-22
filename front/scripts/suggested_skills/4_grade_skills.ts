@@ -4,43 +4,12 @@ import { join } from "path";
 
 import type { ArgumentSpecs } from "@app/scripts/helpers";
 import { makeScript } from "@app/scripts/helpers";
-
-interface RequiredTool {
-  tool_name: string;
-  tool_type: "internal" | "remote";
-  tool_description: string;
-  mcp_server_view_id?: number;
-  internal_mcp_server_id?: string;
-  internal_tool_name?: string;
-  internal_tool_description?: string;
-  remote_mcp_server_id?: string;
-}
-
-interface Skill {
-  name: string;
-  description_for_agents: string;
-  description_for_humans: string;
-  instructions: string;
-  agent_name: string;
-  icon: string;
-  confidenceScore?: number;
-  requiredTools: RequiredTool[];
-}
-
-interface GradeResult {
-  evaluation: number;
-  comment: string;
-  improvement: string | null;
-}
-
-interface GradedSkill extends Skill {
-  grade: GradeResult;
-}
-
-interface Example {
-  input: Skill;
-  output: GradeResult;
-}
+import type {
+  GradedSkill,
+  GradeResult,
+  GradingExample,
+  Skill,
+} from "@app/scripts/suggested_skills/types";
 
 const MAX_RETRIES = 3;
 
@@ -60,7 +29,7 @@ function sanitizeJsonString(text: string): string {
   return text.replace(/\\(?!["\\/bfnrtu])/g, "\\\\");
 }
 
-function loadExamples(examplesFile: string): Example[] {
+function loadExamples(examplesFile: string): GradingExample[] {
   if (!existsSync(examplesFile)) {
     return [];
   }
@@ -73,7 +42,7 @@ function loadExamples(examplesFile: string): Example[] {
   }
 }
 
-function formatExamples(examples: Example[]): string {
+function formatExamples(examples: GradingExample[]): string {
   if (examples.length === 0) {
     return "";
   }
@@ -121,7 +90,7 @@ async function gradeSkill(
 ${skill.instructions}
 
 **Required Tools**:
-${(skill.requiredTools || []).length > 0 ? skill.requiredTools.map((t) => `- ${t.tool_name} (${t.tool_type}): ${t.tool_description}`).join("\n") : "None"}
+${skill.requiredTools?.length ? skill.requiredTools.map((t) => `- ${t.tool_name} (${t.tool_type}): ${t.tool_description}`).join("\n") : "None"}
 `;
 
   const fullPrompt = prompt.replace("[SKILL_TO_GRADE]", skillContext);

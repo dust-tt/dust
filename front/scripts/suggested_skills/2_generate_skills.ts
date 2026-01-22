@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import type { ArgumentSpecs } from "@app/scripts/helpers";
 import { makeScript } from "@app/scripts/helpers";
+import type { Agent } from "@app/scripts/suggested_skills/types";
 import { dustManagedCredentials } from "@app/types";
 
 const PROMPT = `You are an advanced AI system designed to analyze an agent capabilities and propose relevant skills.
@@ -170,41 +171,6 @@ Output your analysis as JSON with the following structure:
       }
       ]
       }`;
-
-type AgentTool = {
-  mcp_server_view_id: number;
-  tool_type: "internal" | "remote";
-  tool_name: string | null;
-  tool_description: string | null;
-  internal_mcp_server_id: string | null;
-  remote_mcp_server_id: string | null;
-  internal_tool_name?: string;
-  internal_tool_description?: string;
-};
-
-type Datasource = {
-  datasource_id: string;
-  datasource_name: string;
-  datasource_description: string | null;
-  connector_provider: string | null;
-  data_source_view_id: number;
-  parents_in: string[] | null;
-  tags_in: string[] | null;
-  tags_not_in: string[] | null;
-  tags_mode: string | null;
-};
-
-type Agent = {
-  agent_sid: string;
-  agent_name: string;
-  description: string;
-  instructions: string | null;
-  total_messages: number;
-  first_usage: Date | null;
-  last_usage: Date | null;
-  tools: AgentTool[];
-  datasources: Datasource[];
-};
 
 const argumentSpecs: ArgumentSpecs = {
   workspaceId: {

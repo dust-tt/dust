@@ -3,40 +3,7 @@ import { join } from "path";
 
 import type { ArgumentSpecs } from "@app/scripts/helpers";
 import { makeScript } from "@app/scripts/helpers";
-
-type RequiredTool = {
-  tool_name: string;
-  tool_type: "internal" | "remote";
-  tool_description: string;
-  mcp_server_view_id: number;
-  internal_mcp_server_id?: string;
-  remote_mcp_server_id?: string;
-  internal_tool_name?: string;
-  internal_tool_description?: string;
-};
-
-type RequiredDatasource = {
-  datasource_id: string;
-  datasource_name: string;
-  connector_provider: string;
-  data_source_view_id: number;
-  datasource_description: string;
-};
-
-type Skill = {
-  name: string;
-  description_for_agents: string;
-  description_for_humans: string;
-  instructions: string;
-  agent_name: string;
-  icon: string;
-  requiredTools?: RequiredTool[];
-  requiredDatasources?: RequiredDatasource[];
-  confidenceScore: number;
-  agent_sid?: string;
-  agent_description?: string;
-  agent_instructions?: string;
-};
+import type { Skill } from "@app/scripts/suggested_skills/types";
 
 const argumentSpecs: ArgumentSpecs = {
   workspaceId: {
