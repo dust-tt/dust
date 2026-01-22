@@ -42,7 +42,7 @@ function MentionTrigger({
       className={cn(
         "inline-block cursor-pointer rounded px-0.5 text-highlight-600 dark:text-highlight-600-night",
         isCurrentUserMentioned
-          ? "bg-golden-200 dark:bg-golden-200-night"
+          ? "bg-golden-100 dark:bg-golden-100-night"
           : "bg-highlight-100 dark:bg-highlight-100-night"
       )}
     >
