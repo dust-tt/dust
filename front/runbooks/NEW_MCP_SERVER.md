@@ -166,15 +166,10 @@ Create `lib/api/actions/servers/{provider}/tools/index.ts`:
 
 ```typescript
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { YOUR_PROVIDER_TOOLS_METADATA } from "@app/lib/api/actions/servers/your_provider/metadata";
 import { Err, Ok } from "@app/types";
-
-// Type for tool keys - derived from metadata
-type YourProviderToolKey = keyof typeof YOUR_PROVIDER_TOOLS_METADATA;
 
 // Handlers object - TypeScript enforces exhaustivity via ToolHandlers<T>
 // Missing a handler = compile error
@@ -237,21 +232,14 @@ const handlers: ToolHandlers<typeof YOUR_PROVIDER_TOOLS_METADATA> = {
   },
 };
 
-// Export tools array by mapping metadata keys to full tool definitions
-export const TOOLS = (
-  Object.keys(YOUR_PROVIDER_TOOLS_METADATA) as YourProviderToolKey[]
-).map(
-  (key) =>
-    ({
-      ...YOUR_PROVIDER_TOOLS_METADATA[key],
-      handler: handlers[key],
-    }) as unknown as ToolDefinition
-);
+// Export tools array using buildTools helper
+export const TOOLS = buildTools(YOUR_PROVIDER_TOOLS_METADATA, handlers);
 ```
 
 **Key points:**
 
 - `ToolHandlers<T>` generic type enforces exhaustivity - defined in `tool_definition.ts`
+- `buildTools` helper combines metadata and handlers into a `ToolDefinition[]` array
 - If you add a tool to metadata without a handler, you get: `Property 'new_tool' is missing in type '...'`
 - Each handler receives typed params inferred from the tool's schema
 - Access auth token via `extra.authInfo?.token`
@@ -461,15 +449,7 @@ export function createYourProviderTools(auth: Authenticator): ToolDefinition[] {
     },
   };
 
-  return (
-    Object.keys(YOUR_PROVIDER_TOOLS_METADATA) as YourProviderToolKey[]
-  ).map(
-    (key) =>
-      ({
-        ...YOUR_PROVIDER_TOOLS_METADATA[key],
-        handler: handlers[key],
-      }) as unknown as ToolDefinition
-  );
+  return buildTools(YOUR_PROVIDER_TOOLS_METADATA, handlers);
 }
 
 // In index.ts

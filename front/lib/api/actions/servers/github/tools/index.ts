@@ -10,12 +10,11 @@ import type {
   ToolDefinition,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { GITHUB_TOOLS_METADATA } from "@app/lib/api/actions/servers/github/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
-
-type GithubToolKey = keyof typeof GITHUB_TOOLS_METADATA;
 
 const GITHUB_GET_PULL_REQUEST_ACTION_MAX_COMMITS = 32;
 
@@ -1374,11 +1373,5 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
     },
   };
 
-  return (Object.keys(GITHUB_TOOLS_METADATA) as GithubToolKey[]).map(
-    (key) =>
-      ({
-        ...GITHUB_TOOLS_METADATA[key],
-        handler: handlers[key],
-      }) as unknown as ToolDefinition
-  );
+  return buildTools(GITHUB_TOOLS_METADATA, handlers);
 }

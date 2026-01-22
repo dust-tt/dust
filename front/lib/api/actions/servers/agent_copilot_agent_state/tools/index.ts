@@ -1,8 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   getAgentConfigurationIdFromContext,
   getAgentConfigurationVersionFromContext,
@@ -11,9 +9,6 @@ import { AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA } from "@app/lib/api/actions/s
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Err, Ok } from "@app/types";
-
-type AgentCopilotAgentStateToolKey =
-  keyof typeof AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA;
 
 const handlers: ToolHandlers<typeof AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA> =
   {
@@ -103,14 +98,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA> =
     },
   };
 
-export const TOOLS = (
-  Object.keys(
-    AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA
-  ) as AgentCopilotAgentStateToolKey[]
-).map(
-  (key) =>
-    ({
-      ...AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA[key],
-      handler: handlers[key],
-    }) as unknown as ToolDefinition
+export const TOOLS = buildTools(
+  AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA,
+  handlers
 );

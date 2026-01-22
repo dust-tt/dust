@@ -4,10 +4,8 @@ import { google } from "googleapis";
 import { DateTime, Interval } from "luxon";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   buildUnavailableIntervals,
   computeAvailability,
@@ -23,8 +21,6 @@ import {
 import { GOOGLE_CALENDAR_TOOLS_METADATA } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-
-type GoogleCalendarToolKey = keyof typeof GOOGLE_CALENDAR_TOOLS_METADATA;
 
 const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
   list_calendars: async ({ pageToken, maxResults }, extra) => {
@@ -503,12 +499,4 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
   },
 };
 
-export const TOOLS = (
-  Object.keys(GOOGLE_CALENDAR_TOOLS_METADATA) as GoogleCalendarToolKey[]
-).map(
-  (key) =>
-    ({
-      ...GOOGLE_CALENDAR_TOOLS_METADATA[key],
-      handler: handlers[key],
-    }) as unknown as ToolDefinition
-);
+export const TOOLS = buildTools(GOOGLE_CALENDAR_TOOLS_METADATA, handlers);

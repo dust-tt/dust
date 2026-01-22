@@ -3,10 +3,8 @@ import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_copilot_context/helpers";
 import { AGENT_COPILOT_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -24,9 +22,6 @@ import {
   Ok,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-
-type AgentCopilotContextToolKey =
-  keyof typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA;
 
 const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
   get_available_models: async ({ providerId }, extra) => {
@@ -323,14 +318,4 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
   },
 };
 
-export const TOOLS = (
-  Object.keys(
-    AGENT_COPILOT_CONTEXT_TOOLS_METADATA
-  ) as AgentCopilotContextToolKey[]
-).map(
-  (key) =>
-    ({
-      ...AGENT_COPILOT_CONTEXT_TOOLS_METADATA[key],
-      handler: handlers[key],
-    }) as unknown as ToolDefinition
-);
+export const TOOLS = buildTools(AGENT_COPILOT_CONTEXT_TOOLS_METADATA, handlers);

@@ -1,8 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  ToolDefinition,
-  ToolHandlers,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { SnowflakeClient } from "@app/lib/api/actions/servers/snowflake/client";
 import {
   MAX_QUERY_ROWS,
@@ -10,8 +8,6 @@ import {
 } from "@app/lib/api/actions/servers/snowflake/metadata";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-
-type SnowflakeToolKey = keyof typeof SNOWFLAKE_TOOLS_METADATA;
 
 const CONNECTION_ERROR = new MCPError(
   "Snowflake connection not configured. Please connect your Snowflake account."
@@ -187,12 +183,4 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
   },
 };
 
-export const TOOLS = (
-  Object.keys(SNOWFLAKE_TOOLS_METADATA) as SnowflakeToolKey[]
-).map(
-  (key) =>
-    ({
-      ...SNOWFLAKE_TOOLS_METADATA[key],
-      handler: handlers[key],
-    }) as unknown as ToolDefinition
-);
+export const TOOLS = buildTools(SNOWFLAKE_TOOLS_METADATA, handlers);

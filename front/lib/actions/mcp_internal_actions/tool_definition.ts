@@ -61,6 +61,19 @@ export function createToolsRecord<
   ) as { [K in keyof T]: T[K] & { name: K } };
 }
 
+export function buildTools<T extends Record<string, ToolMeta>>(
+  metadata: T,
+  handlers: ToolHandlers<T>
+): ToolDefinition[] {
+  return (Object.keys(metadata) as (keyof T & string)[]).map(
+    (key) =>
+      ({
+        ...metadata[key],
+        handler: handlers[key],
+      }) as unknown as ToolDefinition
+  );
+}
+
 export interface ServerMetadata {
   serverInfo: InternalMCPServerDefinitionType;
   tools: MCPToolType[];
