@@ -34,11 +34,14 @@ export const BUTTON_VARIANTS = [
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
-export const BUTTON_SIZES = ["icon-xs", "icon", "xmini", "mini", "xs", "sm", "md"] as const;
-export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
+export const REGULAR_BUTTON_SIZES = ["xmini", "mini", "xs", "sm", "md"] as const;
 
 // Icon-only button sizes (fixed width, labels hidden)
 export const ICON_ONLY_SIZES = ["icon-xs", "icon"] as const;
+
+// All button sizes (union of regular and icon-only)
+export const BUTTON_SIZES = [...REGULAR_BUTTON_SIZES, ...ICON_ONLY_SIZES] as const;
+export type ButtonSizeType = (typeof REGULAR_BUTTON_SIZES)[number] | (typeof ICON_ONLY_SIZES)[number];
 
 // Small button sizes that use xs spinner size
 export const SMALL_BUTTON_SIZES = ["icon-xs", "icon", "xmini", "mini"] as const;
@@ -300,13 +303,13 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
  * When using these sizes, an icon is required and labels are not allowed.
  */
 export type IconOnlyButtonProps = CommonButtonProps & {
-  size: "icon-xs" | "icon";
+  size: (typeof ICON_ONLY_SIZES)[number];
   icon: React.ComponentType;
   label?: never;
 };
 
 export type RegularButtonProps = CommonButtonProps & {
-  size?: Exclude<ButtonSizeType, "icon" | "icon-xs">;
+  size?: (typeof REGULAR_BUTTON_SIZES)[number];
   icon?: React.ComponentType;
   label?: string;
 };

@@ -3,7 +3,7 @@ import * as React from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
-import type { ButtonProps, ButtonSizeType, ButtonVariantType } from "./Button";
+import type { ButtonProps, ButtonSizeType, ButtonVariantType,REGULAR_BUTTON_SIZES,RegularButtonProps } from "./Button";
 import { Button } from "./Button";
 import type { DropdownMenuItemProps } from "./Dropdown";
 import {
@@ -15,7 +15,7 @@ import {
 
 type ButtonGroupButtonItem = {
   type: "button";
-  props: ButtonProps;
+  props: RegularButtonProps;
 };
 
 type ButtonGroupDropdownItem = {
@@ -98,10 +98,10 @@ export interface ButtonGroupProps
    */
   variant?: ButtonGroupVariantType;
   /**
-   * Size to apply to all buttons in the group. Icon-only buttons must opt-in per item 
-   * TODO(yuka 2026-01-22): it's because I couldn't type it properly, ideally we should allow to have icon size at group level
+   * Size to apply to all buttons in the group.
+   * TODO(yuka 2026-01-22): allow to have icon only button size.
    */
-  size?: Exclude<ButtonSizeType, "icon" | "icon-xs">;
+  size?: (typeof REGULAR_BUTTON_SIZES)[number];
   /**
    * Whether every button should be disabled.
    */
