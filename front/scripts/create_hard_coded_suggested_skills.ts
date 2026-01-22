@@ -53,6 +53,7 @@ const SkillDataSchema = z.object({
     "ActionSparklesIcon",
     "ActionBracesIcon",
     "ActionListCheckIcon",
+    "ActionSpeakIcon",
     "ActionCubeIcon",
     "ActionLightbulbIcon",
     "ActionBriefcaseIcon",
