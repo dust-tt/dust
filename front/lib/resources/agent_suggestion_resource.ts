@@ -291,6 +291,28 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     return new Ok(undefined);
   }
 
+  /**
+   * WARNING: This method deletes ALL suggestions for a workspace.
+   * Only workspace admins can perform this operation.
+   * This is intended for internal use only (e.g., workspace deletion workflows).
+   */
+  static async deleteAllForWorkspace(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (!auth.isAdmin()) {
+      throw new Error("Only workspace admins can delete all suggestions");
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    await AgentSuggestionModel.destroy({
+      where: {
+        workspaceId: owner.id,
+      },
+      transaction,
+    });
+  }
+
   get sId(): string {
     return AgentSuggestionResource.modelIdToSId({
       id: this.id,

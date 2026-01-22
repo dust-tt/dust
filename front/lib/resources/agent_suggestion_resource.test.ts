@@ -535,4 +535,147 @@ describe("AgentSuggestionResource", () => {
       expect(suggestionIds).toContain(suggestion2.sId);
     });
   });
+
+  describe("deleteAllForWorkspace", () => {
+    it("should delete all suggestions for the workspace", async () => {
+      // Create an admin authenticator for this workspace
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      // Create multiple suggestions for different agents
+      const suggestion1 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: { oldString: "old1", newString: "new1" },
+        }
+      );
+
+      const agentConfiguration2 =
+        await AgentConfigurationFactory.createTestAgent(authenticator, {
+          name: "Test Agent 2",
+        });
+      const suggestion2 = await AgentSuggestionFactory.createTools(
+        authenticator,
+        agentConfiguration2
+      );
+
+      // Verify both suggestions exist
+      const fetched1 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion1.sId
+      );
+      const fetched2 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion2.sId
+      );
+      expect(fetched1).toBeDefined();
+      expect(fetched2).toBeDefined();
+      // Delete all suggestions for the workspace using admin auth
+      await AgentSuggestionResource.deleteAllForWorkspace(adminAuth);
+
+      // Verify both suggestions are deleted
+      const deletedSuggestion1 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion1.sId
+      );
+      const deletedSuggestion2 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion2.sId
+      );
+      expect(deletedSuggestion1).toBeNull();
+      expect(deletedSuggestion2).toBeNull();
+    });
+
+    it("should fail when user is not an admin", async () => {
+      const suggestion = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: { oldString: "old", newString: "new" },
+        }
+      );
+
+      // Create a different user who is not an admin
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+      const otherAuthenticator = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      await expect(
+        AgentSuggestionResource.deleteAllForWorkspace(otherAuthenticator)
+      ).rejects.toThrow("Only workspace admins can delete all suggestions");
+
+      // Verify suggestion still exists
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched).toBeDefined();
+    });
+
+    it("should only delete suggestions from the authenticated workspace", async () => {
+      // Create an admin authenticator for workspace1
+      const adminAuth1 = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      // Create a suggestion in workspace1
+      const suggestion1 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: { oldString: "old1", newString: "new1" },
+        }
+      );
+
+      // Create a second workspace with its own suggestion
+      const { authenticator: authenticator2 } = await createResourceTest({
+        role: "builder",
+      });
+
+      const agentConfiguration2 =
+        await AgentConfigurationFactory.createTestAgent(authenticator2);
+      const suggestion2 = await AgentSuggestionFactory.createInstructions(
+        authenticator2,
+        agentConfiguration2,
+        {
+          suggestion: { oldString: "old2", newString: "new2" },
+        }
+      );
+
+      // Verify both suggestions exist
+      const fetched1 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion1.sId
+      );
+      const fetched2 = await AgentSuggestionResource.fetchById(
+        authenticator2,
+        suggestion2.sId
+      );
+      expect(fetched1).toBeDefined();
+      expect(fetched2).toBeDefined();
+
+      // Delete all suggestions for workspace1
+      await AgentSuggestionResource.deleteAllForWorkspace(adminAuth1);
+
+      // Verify workspace1 suggestion is deleted
+      const deletedSuggestion1 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion1.sId
+      );
+      expect(deletedSuggestion1).toBeNull();
+
+      // Verify workspace2 suggestion still exists
+      const stillExistsSuggestion2 = await AgentSuggestionResource.fetchById(
+        authenticator2,
+        suggestion2.sId
+      );
+      expect(stillExistsSuggestion2).toBeDefined();
+      expect(stillExistsSuggestion2?.sId).toBe(suggestion2.sId);
+    });
+  });
 });
