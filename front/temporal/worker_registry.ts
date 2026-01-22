@@ -3,6 +3,7 @@ import { runAgentLoopWorker } from "@app/temporal/agent_loop/worker";
 import { runAnalyticsWorker } from "@app/temporal/analytics_queue/worker";
 import { runCreditAlertsWorker } from "@app/temporal/credit_alerts/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
+import { runDropPendingAgentsWorker } from "@app/temporal/drop_pending_agents/worker";
 import { runESIndexationQueueWorker } from "@app/temporal/es_indexation/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker";
@@ -27,6 +28,7 @@ export type WorkerName =
   | "analytics_queue"
   | "credit_alerts"
   | "data_retention"
+  | "drop_pending_agents"
   | "es_indexation_queue"
   | "hard_delete"
   | "labs"
@@ -50,6 +52,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   analytics_queue: runAnalyticsWorker,
   credit_alerts: runCreditAlertsWorker,
   data_retention: runDataRetentionWorker,
+  drop_pending_agents: runDropPendingAgentsWorker,
   hard_delete: runHardDeleteWorker,
   labs: runLabsTranscriptsWorker,
   mentions_count: runMentionsCountWorker,
