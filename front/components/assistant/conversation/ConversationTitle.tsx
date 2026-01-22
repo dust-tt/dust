@@ -1,4 +1,5 @@
 import { ArrowLeftIcon, Button, IconButton, MoreIcon } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 import { ConversationFilesPopover } from "@app/components/assistant/conversation/ConversationFilesPopover";
 import {
@@ -14,6 +15,8 @@ import { useUser } from "@app/lib/swr/user";
 import { getSpaceConversationsRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
+import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
+
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
   const { user } = useUser();
@@ -27,12 +30,16 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   });
   const router = useAppRouter();
 
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+
   const {
     isMenuOpen,
     menuTriggerPosition,
     handleRightClick,
     handleMenuOpenChange,
   } = useConversationMenu();
+
+  const currentTitle = conversation?.title ?? "";
 
   if (!activeConversationId) {
     return null;
@@ -63,11 +70,25 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             />
           )}
         </div>
-        <div className="flex min-w-0 flex-row items-center gap-4 text-primary dark:text-primary-night">
-          <div className="dd-privacy-mask min-w-0 overflow-hidden truncate text-base font-normal text-muted-foreground">
-            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-            {conversation?.title || ""}
+        <div className="flex min-w-0 flex-row items-center gap-1 text-primary dark:text-primary-night">
+          {!!spaceInfo && (
+            <div className="dd-privacy-mask min-w-0 overflow-hidden truncate text-base font-normal text-muted-foreground">
+              {spaceInfo.name} -
+            </div>
+          )}
+          <div
+            className="dd-privacy-mask min-w-0 cursor-pointer overflow-hidden truncate text-base font-normal text-muted-foreground hover:underline"
+            onClick={() => setShowRenameDialog(true)}
+          >
+            {currentTitle}
           </div>
+          <EditConversationTitleDialog
+            isOpen={showRenameDialog}
+            onClose={() => setShowRenameDialog(false)}
+            owner={owner}
+            conversationId={activeConversationId}
+            currentTitle={currentTitle}
+          />
         </div>
         <div className="flex items-center gap-2">
           <ConversationFilesPopover

@@ -1,14 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { defineTool } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { SnowflakeClient } from "@app/lib/api/actions/servers/snowflake/client";
 import {
-  describeTableMeta,
-  listDatabasesMeta,
-  listSchemasMeta,
-  listTablesMeta,
   MAX_QUERY_ROWS,
-  queryMeta,
+  SNOWFLAKE_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/snowflake/metadata";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -37,9 +33,8 @@ function getClientFromAuthInfo(
   return new Ok(new SnowflakeClient(account, token, warehouse));
 }
 
-const listDatabasesTool = defineTool({
-  ...listDatabasesMeta,
-  handler: async (_params, extra) => {
+const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
+  list_databases: async (_params, extra) => {
     const clientRes = getClientFromAuthInfo(extra.authInfo);
     if (clientRes.isErr()) {
       return clientRes;
@@ -62,11 +57,8 @@ const listDatabasesTool = defineTool({
       },
     ]);
   },
-});
 
-const listSchemasTool = defineTool({
-  ...listSchemasMeta,
-  handler: async ({ database }, extra) => {
+  list_schemas: async ({ database }, extra) => {
     const clientRes = getClientFromAuthInfo(extra.authInfo);
     if (clientRes.isErr()) {
       return clientRes;
@@ -89,11 +81,8 @@ const listSchemasTool = defineTool({
       },
     ]);
   },
-});
 
-const listTablesTool = defineTool({
-  ...listTablesMeta,
-  handler: async ({ database, schema }, extra) => {
+  list_tables: async ({ database, schema }, extra) => {
     const clientRes = getClientFromAuthInfo(extra.authInfo);
     if (clientRes.isErr()) {
       return clientRes;
@@ -116,11 +105,8 @@ const listTablesTool = defineTool({
       },
     ]);
   },
-});
 
-const describeTableTool = defineTool({
-  ...describeTableMeta,
-  handler: async ({ database, schema, table }, extra) => {
+  describe_table: async ({ database, schema, table }, extra) => {
     const clientRes = getClientFromAuthInfo(extra.authInfo);
     if (clientRes.isErr()) {
       return clientRes;
@@ -152,11 +138,8 @@ const describeTableTool = defineTool({
       },
     ]);
   },
-});
 
-const queryTool = defineTool({
-  ...queryMeta,
-  handler: async ({ sql, database, schema, warehouse, max_rows }, extra) => {
+  query: async ({ sql, database, schema, warehouse, max_rows }, extra) => {
     const clientRes = getClientFromAuthInfo(extra.authInfo);
     if (clientRes.isErr()) {
       return clientRes;
@@ -198,12 +181,6 @@ const queryTool = defineTool({
       },
     ]);
   },
-});
+};
 
-export const TOOLS = [
-  listDatabasesTool,
-  listSchemasTool,
-  listTablesTool,
-  describeTableTool,
-  queryTool,
-] as ToolDefinition[];
+export const TOOLS = buildTools(SNOWFLAKE_TOOLS_METADATA, handlers);

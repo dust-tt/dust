@@ -76,6 +76,10 @@ interface MessageDetail {
   error?: string;
 }
 
+const MESSAGES_MAX_RESULTS = 50;
+
+const MESSAGES_WITH_ATTACHMENTS_MAX_RESULTS = 10;
+
 // Typeguard for GmailMessage
 function isGmailMessage(data: unknown): data is GmailMessage {
   if (typeof data !== "object" || data === null) {
@@ -328,12 +332,18 @@ function createServer(
         .number()
         .optional()
         .describe(
-          "Maximum number of messages to return (default: 10, max: 100)"
+          `Maximum number of messages to return (default: 10, max: ${MESSAGES_MAX_RESULTS} without attachments, ${MESSAGES_WITH_ATTACHMENTS_MAX_RESULTS} with attachments)`
         ),
       pageToken: z
         .string()
         .optional()
         .describe("Token for fetching the next page of results."),
+      includeAttachments: z
+        .boolean()
+        .optional()
+        .describe(
+          "Include message attachments in the response (default: false)"
+        ),
     },
     withToolLogging(
       auth,
@@ -341,7 +351,10 @@ function createServer(
         toolNameForMonitoring: "gmail",
         agentLoopContext,
       },
-      async ({ q, maxResults = 10, pageToken }, { authInfo }) => {
+      async (
+        { q, maxResults = 10, pageToken, includeAttachments },
+        { authInfo }
+      ) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
           return new Err(new MCPError("Authentication required"));
@@ -351,7 +364,15 @@ function createServer(
         if (q) {
           params.append("q", q);
         }
-        params.append("maxResults", Math.min(maxResults, 100).toString());
+        params.append(
+          "maxResults",
+          Math.min(
+            maxResults,
+            includeAttachments
+              ? MESSAGES_WITH_ATTACHMENTS_MAX_RESULTS
+              : MESSAGES_MAX_RESULTS
+          ).toString()
+        );
         if (pageToken) {
           params.append("pageToken", pageToken);
         }
@@ -414,7 +435,9 @@ function createServer(
             const body = decodeMessageBody(messageData.payload);
 
             // Extract attachment metadata
-            const attachments = extractAttachments(messageData.payload);
+            const attachments = includeAttachments
+              ? extractAttachments(messageData.payload)
+              : null;
 
             return {
               success: true,

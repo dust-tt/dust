@@ -500,6 +500,7 @@ function UpgradeDowngradeModal({
             <div>
               <EnterpriseUpgradeDialog
                 owner={owner}
+                subscription={subscription}
                 programmaticUsageConfig={programmaticUsageConfig}
               />
             </div>

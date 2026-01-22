@@ -127,7 +127,7 @@ async function prepareAppContext(
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         userId: auth.user()?.sId || "no_user",
         role: auth.role(),
-        groupIds: auth.groups().map((g) => g.sId),
+        groupIds: auth.groupIds(),
         actionConfig,
         dustAppConfiguration: actionConfig.dustAppConfiguration,
         appId: actionConfig.dustAppConfiguration?.appId,
@@ -148,7 +148,7 @@ async function prepareAppContext(
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         userId: auth.user()?.sId || "no_user",
         role: auth.role(),
-        groupIds: auth.groups().map((g) => g.sId),
+        groupIds: auth.groupIds(),
         appId: actionConfig.dustAppConfiguration.appId,
         actionConfig,
       },
@@ -418,7 +418,7 @@ export default async function createServer(
             auth
           );
 
-          const requestedGroupIds = auth.groups().map((g) => g.sId);
+          const requestedGroupIds = auth.groupIds();
 
           const prodCredentials = await prodAPICredentialsForOwner(owner);
           const apiConfig = config.getDustAPIConfig();

@@ -115,7 +115,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       pdfEnabled: false,
       largeFilesEnabled: false,
       csvEnabled: false,
-      useParallelSync: false,
+      useParallelSync: true,
     };
 
     const connector = await ConnectorResource.makeNew(

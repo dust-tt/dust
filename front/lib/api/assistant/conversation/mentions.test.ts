@@ -5,15 +5,9 @@ vi.mock("@app/lib/api/assistant/agent_usage", () => ({
   signalAgentUsage: vi.fn(),
 }));
 
-// Mock runAgentLoopWorkflow before importing the module that uses it
-vi.mock("@app/lib/api/assistant/conversation/agent_loop", () => ({
-  runAgentLoopWorkflow: vi.fn(),
-}));
-
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { createConversation } from "@app/lib/api/assistant/conversation";
-import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   createAgentMessages,
@@ -30,7 +24,6 @@ import {
   MentionModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
-import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -45,6 +38,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
   AgenticMessageData,
@@ -292,14 +286,8 @@ describe("createAgentMessages", () => {
       workspaceId: workspace.sId,
     });
 
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation,
-      userMessage,
-    });
+    // Note: runAgentLoopWorkflow is no longer called from createAgentMessages.
+    // It's now called from postUserMessage/editUserMessage after the transaction commits.
   });
 
   it("should return empty array when no agent mentions are provided", async () => {
@@ -329,9 +317,6 @@ describe("createAgentMessages", () => {
 
     // Verify signalAgentUsage was not called when no agent mentions are provided
     expect(signalAgentUsage).not.toHaveBeenCalled();
-
-    // Verify runAgentLoopWorkflow was not called when no agent messages are created
-    expect(runAgentLoopWorkflow).not.toHaveBeenCalled();
   });
 
   it("should set skipToolsValidation correctly", async () => {
@@ -375,15 +360,6 @@ describe("createAgentMessages", () => {
     expect(signalAgentUsage).toHaveBeenCalledWith({
       agentConfigurationId: agentConfig1.sId,
       workspaceId: workspace.sId,
-    });
-
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation,
-      userMessage,
     });
   });
 
@@ -434,15 +410,6 @@ describe("createAgentMessages", () => {
       agentConfigurationId: agentConfig1.sId,
       workspaceId: workspace.sId,
     });
-
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation,
-      userMessage,
-    });
   });
 
   it("should set parentAgentMessageId to null when context origin is not agent_handover", async () => {
@@ -487,15 +454,6 @@ describe("createAgentMessages", () => {
     expect(signalAgentUsage).toHaveBeenCalledWith({
       agentConfigurationId: agentConfig1.sId,
       workspaceId: workspace.sId,
-    });
-
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation,
-      userMessage,
     });
   });
 
@@ -557,15 +515,6 @@ describe("createAgentMessages", () => {
     expect(signalAgentUsage).toHaveBeenCalledWith({
       agentConfigurationId: agentConfig2.sId,
       workspaceId: workspace.sId,
-    });
-
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation,
-      userMessage,
     });
   });
 
@@ -666,22 +615,20 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     // Call createAgentMessages
-    const { agentMessages, richMentions } = await withTransaction(
-      async (transaction) => {
-        return createAgentMessages(auth, {
-          conversation: testConversation,
-          metadata: {
-            type: "create",
-            mentions,
-            agentConfigurations: [agentConfigWithSpaces!],
-            skipToolsValidation: false,
-            nextMessageRank: 1,
-            userMessage,
-          },
-          transaction,
-        });
-      }
-    );
+    const { richMentions } = await withTransaction(async (transaction) => {
+      return createAgentMessages(auth, {
+        conversation: testConversation,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations: [agentConfigWithSpaces!],
+          skipToolsValidation: false,
+          nextMessageRank: 1,
+          userMessage,
+        },
+        transaction,
+      });
+    });
 
     // Verify richMentions are returned correctly
     expect(richMentions).toHaveLength(1);
@@ -689,15 +636,6 @@ describe("createAgentMessages", () => {
       expect(richMentions[0].id).toBe(agentConfig.sId);
       expect(richMentions[0].status).toBe("approved");
     }
-
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation: testConversation,
-      userMessage,
-    });
 
     // Fetch conversation after createAgentMessages
     const conversationAfter = await ConversationResource.fetchById(
@@ -804,22 +742,20 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     // Call createAgentMessages
-    const { agentMessages, richMentions } = await withTransaction(
-      async (transaction) => {
-        return createAgentMessages(auth, {
-          conversation: testConversation,
-          metadata: {
-            type: "create",
-            mentions,
-            agentConfigurations: [agentConfigWithSpaces!],
-            skipToolsValidation: false,
-            nextMessageRank: 1,
-            userMessage,
-          },
-          transaction,
-        });
-      }
-    );
+    const { richMentions } = await withTransaction(async (transaction) => {
+      return createAgentMessages(auth, {
+        conversation: testConversation,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations: [agentConfigWithSpaces!],
+          skipToolsValidation: false,
+          nextMessageRank: 1,
+          userMessage,
+        },
+        transaction,
+      });
+    });
 
     // Verify richMentions are returned correctly
     expect(richMentions).toHaveLength(1);
@@ -827,15 +763,6 @@ describe("createAgentMessages", () => {
       expect(richMentions[0].id).toBe(agentConfig.sId);
       expect(richMentions[0].status).toBe("approved");
     }
-
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation: testConversation,
-      userMessage,
-    });
 
     // Fetch conversation after createAgentMessages
     const conversationAfter = await ConversationResource.fetchById(
@@ -942,22 +869,20 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     // Call createAgentMessages
-    const { agentMessages, richMentions } = await withTransaction(
-      async (transaction) => {
-        return createAgentMessages(auth, {
-          conversation: testConversation,
-          metadata: {
-            type: "create",
-            mentions,
-            agentConfigurations: [agentConfigWithSpaces!],
-            skipToolsValidation: false,
-            nextMessageRank: 1,
-            userMessage,
-          },
-          transaction,
-        });
-      }
-    );
+    const { richMentions } = await withTransaction(async (transaction) => {
+      return createAgentMessages(auth, {
+        conversation: testConversation,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations: [agentConfigWithSpaces!],
+          skipToolsValidation: false,
+          nextMessageRank: 1,
+          userMessage,
+        },
+        transaction,
+      });
+    });
 
     // Verify richMentions are returned correctly
     expect(richMentions).toHaveLength(1);
@@ -965,15 +890,6 @@ describe("createAgentMessages", () => {
       expect(richMentions[0].id).toBe(agentConfig.sId);
       expect(richMentions[0].status).toBe("approved");
     }
-
-    // Verify runAgentLoopWorkflow was called with correct arguments
-    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
-      auth,
-      agentMessages,
-      conversation: testConversation,
-      userMessage,
-    });
 
     // Fetch conversation after createAgentMessages
     const conversationAfter = await ConversationResource.fetchById(
@@ -988,6 +904,69 @@ describe("createAgentMessages", () => {
     expect(requestedSpaceIdsAfter).toHaveLength(2);
     expect(requestedSpaceIdsAfter).toContain(space1.sId);
     expect(requestedSpaceIdsAfter).toContain(space2.sId);
+  });
+
+  it("should deduplicate agent mentions and create only unique agent messages", async () => {
+    const { messageRow, userMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: `Hello @${agentConfig1.name}`,
+      });
+
+    // Create duplicate mentions for the same agent
+    const mentions: MentionType[] = [
+      {
+        configurationId: agentConfig1.sId,
+      } as AgentMention,
+      {
+        configurationId: agentConfig1.sId,
+      } as AgentMention,
+      {
+        configurationId: agentConfig1.sId,
+      } as AgentMention,
+    ];
+
+    const { agentMessages, richMentions } = await createAgentMessages(auth, {
+      conversation,
+      metadata: {
+        type: "create",
+        mentions,
+        agentConfigurations: [agentConfig1],
+        skipToolsValidation: false,
+        nextMessageRank: 1,
+        userMessage,
+      },
+    });
+
+    // Should only create one agent message despite 3 duplicate mentions
+    expect(agentMessages).toHaveLength(1);
+    expect(agentMessages[0].configuration.sId).toBe(agentConfig1.sId);
+
+    // Should only have one rich mention
+    expect(richMentions).toHaveLength(1);
+    expect(richMentions[0].id).toBe(agentConfig1.sId);
+    if (isRichAgentMention(richMentions[0])) {
+      expect(richMentions[0].status).toBe("approved");
+    }
+
+    // Verify only one mention was created in the database
+    const mentionsInDb = await MentionModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        messageId: messageRow.id,
+      },
+    });
+    expect(mentionsInDb).toHaveLength(1);
+    expect(mentionsInDb[0].agentConfigurationId).toBe(agentConfig1.sId);
+
+    // Verify signalAgentUsage was called only once
+    expect(signalAgentUsage).toHaveBeenCalledTimes(1);
+    expect(signalAgentUsage).toHaveBeenCalledWith({
+      agentConfigurationId: agentConfig1.sId,
+      workspaceId: workspace.sId,
+    });
   });
 
   describe("conversations that belong to a space", () => {
@@ -1653,6 +1632,63 @@ describe("createUserMentions", () => {
     expect(allMentionsInDb[0].agentConfigurationId).toBeNull();
   });
 
+  it("should deduplicate user mentions and create only unique mentions", async () => {
+    const mentionedUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, mentionedUser, {
+      role: "user",
+    });
+
+    const { userMessage } = await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: `Hello @${mentionedUser.username}`,
+    });
+
+    // Create duplicate mentions for the same user
+    const mentions: MentionType[] = [
+      {
+        type: "user",
+        userId: mentionedUser.sId.toString(),
+      },
+      {
+        type: "user",
+        userId: mentionedUser.sId.toString(),
+      },
+      {
+        type: "user",
+        userId: mentionedUser.sId.toString(),
+      },
+    ];
+
+    const result = await createUserMentions(auth, {
+      mentions,
+      message: userMessage,
+      conversation,
+    });
+
+    // Should only return one rich mention despite 3 duplicate mentions
+    expect(result).toBeInstanceOf(Array);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: mentionedUser.sId,
+      type: "user",
+      status: "pending",
+    });
+    expect(isRichUserMention(result[0])).toBe(true);
+
+    // Verify only one mention was stored in the database
+    const allMentionsInDb = await MentionModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        messageId: userMessage.id,
+      },
+    });
+    expect(allMentionsInDb).toHaveLength(1);
+    expect(allMentionsInDb[0].userId).toBe(mentionedUser.id);
+    expect(allMentionsInDb[0].agentConfigurationId).toBeNull();
+  });
+
   describe("auto-approval behavior", () => {
     it("should not auto approve mentions in user messages", async () => {
       const mentionedUser = await UserFactory.basic();
@@ -1804,16 +1840,11 @@ describe("createUserMentions", () => {
         });
 
       // Create a trigger
-      const trigger = await TriggerModel.create({
-        workspaceId: workspace.id,
+      const trigger = await TriggerFactory.webhook(auth, {
         name: "Test Trigger",
-        kind: "webhook",
         agentConfigurationId: triggerAgentConfig.sId,
-        editor: auth.getNonNullableUser().id,
-        customPrompt: null,
         status: "enabled",
         configuration: { includePayload: true },
-        origin: "user",
       });
 
       // Create a conversation with triggerId
@@ -1913,16 +1944,11 @@ describe("createUserMentions", () => {
         });
 
       // Create a trigger
-      const trigger = await TriggerModel.create({
-        workspaceId: workspace.id,
+      const trigger = await TriggerFactory.webhook(auth, {
         name: "Test Trigger",
-        kind: "webhook",
         agentConfigurationId: triggerAgentConfig.sId,
-        editor: auth.getNonNullableUser().id,
-        customPrompt: null,
         status: "enabled",
         configuration: { includePayload: true },
-        origin: "user",
       });
 
       // Create a conversation with triggerId
@@ -2021,16 +2047,11 @@ describe("createUserMentions", () => {
         });
 
       // Create a trigger
-      const trigger = await TriggerModel.create({
-        workspaceId: workspace.id,
+      const trigger = await TriggerFactory.webhook(auth, {
         name: "Test Trigger",
-        kind: "webhook",
         agentConfigurationId: triggerAgentConfig.sId,
-        editor: auth.getNonNullableUser().id,
-        customPrompt: null,
         status: "enabled",
         configuration: { includePayload: true },
-        origin: "user",
       });
 
       // Create a conversation with triggerId

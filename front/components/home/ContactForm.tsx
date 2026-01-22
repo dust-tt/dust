@@ -1,6 +1,5 @@
 import {
   Button,
-  ChevronDownIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -153,7 +152,6 @@ function DropdownField({
               label={selectedOption?.label ?? placeholder}
               variant="outline"
               size="md"
-              icon={ChevronDownIcon}
               isSelect
             />
           </DropdownMenuTrigger>

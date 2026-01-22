@@ -40,6 +40,16 @@ export function isAccessBlockedError(err: unknown): err is GraphError {
   );
 }
 
+// 401 with code "generalException" typically indicates site-level permission changes
+// or revoked access. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when
+export function isGeneralExceptionError(err: unknown): err is GraphError {
+  return (
+    err instanceof GraphError &&
+    err.statusCode === 401 &&
+    err.code === "generalException"
+  );
+}
+
 export class MicrosoftCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,

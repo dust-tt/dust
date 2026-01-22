@@ -176,12 +176,14 @@ interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
   agentConfigurationSId?: string;
   hasCopilot: boolean;
+  clientSideMCPServerId?: string;
 }
 
 function ExpandedContent({
   selectedTab,
   agentConfigurationSId,
   hasCopilot,
+  clientSideMCPServerId,
 }: ExpandedContentProps) {
   const { assistantTemplate, setPresetActionToAdd } = useAgentBuilderContext();
 
@@ -200,7 +202,7 @@ function ExpandedContent({
       )}
       {selectedTab === "preview" && (
         <div className="min-h-0 flex-1">
-          <AgentBuilderPreview />
+          <AgentBuilderPreview clientSideMCPServerId={clientSideMCPServerId} />
         </div>
       )}
       <ObservabilityProvider>
@@ -239,10 +241,12 @@ function ExpandedContent({
 
 interface AgentBuilderRightPanelProps {
   agentConfigurationSId?: string;
+  clientSideMCPServerId?: string;
 }
 
 export function AgentBuilderRightPanel({
   agentConfigurationSId,
+  clientSideMCPServerId,
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
@@ -286,6 +290,7 @@ export function AgentBuilderRightPanel({
           selectedTab={selectedTab}
           agentConfigurationSId={agentConfigurationSId}
           hasCopilot={hasCopilot}
+          clientSideMCPServerId={clientSideMCPServerId}
         />
       ) : (
         <CollapsedTabs

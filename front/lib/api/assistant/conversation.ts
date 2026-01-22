@@ -8,6 +8,7 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
+import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   createAgentMessages,
@@ -713,6 +714,16 @@ export async function postUserMessage(
     agentMessages,
   });
 
+  // Run agent loop workflows after the transaction commits, to ensure messages are persisted.
+  if (agentMessages.length > 0) {
+    await runAgentLoopWorkflow({
+      auth,
+      agentMessages,
+      conversation,
+      userMessage,
+    });
+  }
+
   await Promise.all([
     publishMessageEventsOnMessagePostOrEdit(
       conversation,
@@ -752,6 +763,7 @@ function canAccessAgent(
     case "disabled_missing_datasource":
     case "disabled_by_admin":
     case "archived":
+    case "pending":
       return false;
     default:
       assertNever(agentConfiguration.status);
@@ -1017,6 +1029,16 @@ export async function editUserMessage(
     } else {
       throw e;
     }
+  }
+
+  // Run agent loop workflows after the transaction commits, to ensure messages are persisted.
+  if (agentMessages.length > 0) {
+    await runAgentLoopWorkflow({
+      auth,
+      agentMessages,
+      conversation,
+      userMessage,
+    });
   }
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain

@@ -241,13 +241,8 @@ export function useVoiceTranscriberService({
   const finalizeRecordingAddAsAttachment = useCallback(
     async (file: File) => {
       await fileUploaderService.handleFilesUpload([file]);
-      sendNotification({
-        type: "success",
-        title: "Attachment added.",
-        description: "Your voice message was added to attachments.",
-      });
     },
-    [fileUploaderService, sendNotification]
+    [fileUploaderService]
   );
 
   const stopAndFinalize = useCallback(async () => {

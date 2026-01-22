@@ -1,5 +1,4 @@
 import { Authenticator } from "@app/lib/auth";
-import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -57,10 +56,12 @@ makeScript(
     }
 
     // List all triggers, optionally filtered by workspace.
-    const triggers = await TriggerModel.findAll({
-      where: wid ? { workspaceId: wid } : {},
+    const triggerResources = await TriggerResource.listAllForScript({
+      workspaceId: wid,
     });
-    const activeTriggers = triggers.filter((t) => t.status === "enabled");
+    const activeTriggers = triggerResources.filter(
+      (t) => t.status === "enabled"
+    );
 
     if (activeTriggers.length === 0) {
       logger.info("No active triggers found.");
@@ -68,7 +69,10 @@ makeScript(
     }
 
     logger.info(
-      { totalTriggers: triggers.length, activeTriggers: activeTriggers.length },
+      {
+        totalTriggers: triggerResources.length,
+        activeTriggers: activeTriggers.length,
+      },
       "Found triggers"
     );
 
@@ -81,7 +85,7 @@ makeScript(
         acc[trigger.workspaceId].push(trigger);
         return acc;
       },
-      {} as Record<number, TriggerModel[]>
+      {} as Record<number, TriggerResource[]>
     );
 
     for (const workspaceId of Object.keys(triggersByWorkspace)) {
@@ -93,11 +97,7 @@ makeScript(
 
       await concurrentExecutor(
         triggersByWorkspace[workspace.id],
-        async (trigger) => {
-          const triggerResource = new TriggerResource(
-            TriggerModel,
-            trigger.get()
-          );
+        async (triggerResource) => {
           const user = await UserResource.fetchByModelId(
             triggerResource.editor
           );

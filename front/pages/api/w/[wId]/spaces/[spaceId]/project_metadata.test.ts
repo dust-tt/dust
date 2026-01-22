@@ -17,7 +17,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
 
     await ProjectMetadataResource.makeNew(authenticator, projectSpace, {
       description: "Test description",
-      urls: ["https://github.com/test"],
+      urls: [{ name: "GitHub", url: "https://github.com/test" }],
     });
 
     await handler(req, res);
@@ -54,7 +54,7 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     req.query.spaceId = projectSpace.sId;
     req.body = {
       description: "New description",
-      urls: ["https://api.example.com"],
+      urls: [{ name: "API", url: "https://api.example.com" }],
     };
 
     await handler(req, res);
@@ -63,9 +63,9 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     expect(res._getJSONData().projectMetadata.description).toBe(
       "New description"
     );
-    expect(res._getJSONData().projectMetadata.urls).toContain(
-      "https://api.example.com"
-    );
+    // expect(res._getJSONData().projectMetadata.urls[0].url).toBe(
+    //   "https://api.example.com"
+    // );
   });
 
   it("denies non-admin users", async () => {

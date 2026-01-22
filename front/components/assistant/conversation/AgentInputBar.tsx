@@ -151,7 +151,9 @@ export const AgentInputBar = ({
     );
 
     const canUp = fullyAboveIndices.length > 0;
-    const canDown = belowTopQuarterIndices.length > 0 || bottomOffset > 0;
+    const canDown =
+      (belowTopQuarterIndices.length > 0 || bottomOffset > 0) &&
+      !methods.getScrollLocation().isAtBottom;
 
     return {
       canScrollUp: canUp,

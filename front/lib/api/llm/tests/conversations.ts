@@ -31,7 +31,7 @@ function createMockAuthenticator(): Authenticator {
     workspace: null,
     user: null,
     role: "none",
-    groups: [],
+    groupModelIds: [],
     subscription: null,
     authMethod: "internal",
   });

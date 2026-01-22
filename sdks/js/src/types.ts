@@ -693,6 +693,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_message_splitting"
   | "slideshow"
   | "snowflake_tool"
+  | "statuspage_tool"
   | "ukg_ready_mcp"
   | "usage_data_api"
   | "xai_feature"
@@ -792,7 +793,9 @@ const GlobalAgentStatusSchema = FlexibleEnumSchema<
   | "disabled_free_workspace"
 >();
 
-const AgentStatusSchema = FlexibleEnumSchema<"active" | "archived" | "draft">();
+const AgentStatusSchema = FlexibleEnumSchema<
+  "active" | "archived" | "draft" | "pending"
+>();
 
 const AgentConfigurationStatusSchema = z.union([
   AgentStatusSchema,
@@ -2417,7 +2420,7 @@ export const ProjectMetadataSchema = z.object({
   updatedAt: z.number(),
   spaceId: z.string(),
   description: z.string().nullable(),
-  urls: z.array(z.string()),
+  urls: z.array(z.object({ name: z.string(), url: z.string() })),
   members: z.array(z.string()),
 });
 export type ProjectMetadataType = z.infer<typeof ProjectMetadataSchema>;
@@ -2959,6 +2962,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SalesforceLogo"
   | "SlackLogo"
   | "SnowflakeLogo"
+  | "StatuspageLogo"
   | "StripeLogo"
   | "SupabaseLogo"
   | "UkgLogo"

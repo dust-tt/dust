@@ -13,7 +13,7 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
   declare spaceId: ForeignKey<SpaceModel["id"]>;
 
   declare description: string | null;
-  declare urls: string[];
+  declare urls: Array<{ name: string; url: string }>;
 }
 
 ProjectMetadataModel.init(
@@ -32,11 +32,12 @@ ProjectMetadataModel.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    urls: {
-      type: DataTypes.JSONB,
-      allowNull: false,
-      defaultValue: [],
-    },
+    // remove to ease the change of data type
+    // urls: {
+    //   type: DataTypes.ARRAY(DataTypes.JSONB),
+    //   allowNull: false,
+    //   defaultValue: [],
+    // },
   },
   {
     modelName: "project_metadata",
