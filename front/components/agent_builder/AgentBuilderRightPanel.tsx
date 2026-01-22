@@ -14,7 +14,7 @@ import {
 import React, { useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { AgentBuilderImprove } from "@app/components/agent_builder/AgentBuilderImprove";
+import { AgentBuilderCopilot } from "@app/components/agent_builder/AgentBuilderCopilot";
 import { AgentBuilderObservability } from "@app/components/agent_builder/AgentBuilderObservability";
 import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
@@ -26,7 +26,7 @@ import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPan
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 type AgentBuilderRightPanelTabType =
-  | "improve"
+  | "copilot"
   | "preview"
   | "feedback"
   | "template"
@@ -65,10 +65,10 @@ function PanelHeader({
                 />
                 {hasCopilot && (
                   <TabsTrigger
-                    value="improve"
-                    label="Improve"
+                    value="copilot"
+                    label="Copilot"
                     icon={MagicIcon}
-                    onClick={() => onTabChange("improve")}
+                    onClick={() => onTabChange("copilot")}
                   />
                 )}
                 <TabsTrigger
@@ -134,8 +134,8 @@ function CollapsedTabs({
           icon={MagicIcon}
           variant="ghost"
           size="sm"
-          tooltip="Improve"
-          onClick={() => onTabSelect("improve")}
+          tooltip="Copilot"
+          onClick={() => onTabSelect("copilot")}
         />
       )}
       <Button
@@ -195,9 +195,9 @@ function ExpandedContent({
           onAddPresetAction={setPresetActionToAdd}
         />
       )}
-      {selectedTab === "improve" && hasCopilot && (
+      {selectedTab === "copilot" && hasCopilot && (
         <div className="min-h-0 flex-1">
-          <AgentBuilderImprove />
+          <AgentBuilderCopilot />
         </div>
       )}
       {selectedTab === "preview" && (

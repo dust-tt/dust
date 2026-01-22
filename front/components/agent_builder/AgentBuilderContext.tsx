@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import React, { createContext, useContext, useMemo, useState } from "react";
 
+import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
 import { DataSourceViewsProvider } from "@app/components/agent_builder/DataSourceViewsContext";
-import { ImprovePanelProvider } from "@app/components/agent_builder/ImprovePanelContext";
 import { PreviewPanelProvider } from "@app/components/agent_builder/PreviewPanelContext";
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
 import { SkillsProvider } from "@app/components/shared/skills/SkillsContext";
@@ -56,7 +56,7 @@ export function AgentBuilderProvider({
   return (
     <AgentBuilderContext.Provider value={value}>
       <PreviewPanelProvider>
-        <ImprovePanelProvider>
+        <CopilotPanelProvider>
           <SpacesProvider owner={owner}>
             <MCPServerViewsProvider owner={owner}>
               <SkillsProvider owner={owner}>
@@ -66,7 +66,7 @@ export function AgentBuilderProvider({
               </SkillsProvider>
             </MCPServerViewsProvider>
           </SpacesProvider>
-        </ImprovePanelProvider>
+        </CopilotPanelProvider>
       </PreviewPanelProvider>
     </AgentBuilderContext.Provider>
   );

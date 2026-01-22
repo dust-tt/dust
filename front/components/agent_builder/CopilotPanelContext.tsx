@@ -91,34 +91,34 @@ When analyzing an agent, consider:
 </dust_system>`;
 }
 
-interface ImprovePanelContextType {
+interface CopilotPanelContextType {
   conversation: ConversationType | null;
   isCreatingConversation: boolean;
   startConversation: () => Promise<void>;
   resetConversation: () => void;
 }
 
-const ImprovePanelContext = createContext<ImprovePanelContextType | undefined>(
+const CopilotPanelContext = createContext<CopilotPanelContextType | undefined>(
   undefined
 );
 
-export const useImprovePanelContext = () => {
-  const context = useContext(ImprovePanelContext);
+export const useCopilotPanelContext = () => {
+  const context = useContext(CopilotPanelContext);
   if (!context) {
     throw new Error(
-      "useImprovePanelContext must be used within an ImprovePanelProvider"
+      "useCopilotPanelContext must be used within a CopilotPanelProvider"
     );
   }
   return context;
 };
 
-interface ImprovePanelProviderProps {
+interface CopilotPanelProviderProps {
   children: ReactNode;
 }
 
-export const ImprovePanelProvider = ({
+export const CopilotPanelProvider = ({
   children,
-}: ImprovePanelProviderProps) => {
+}: CopilotPanelProviderProps) => {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
   const sendNotification = useSendNotification();
@@ -174,7 +174,7 @@ export const ImprovePanelProvider = ({
     setConversation(null);
   }, []);
 
-  const value: ImprovePanelContextType = useMemo(
+  const value: CopilotPanelContextType = useMemo(
     () => ({
       conversation,
       isCreatingConversation,
@@ -185,10 +185,10 @@ export const ImprovePanelProvider = ({
   );
 
   return (
-    <ImprovePanelContext.Provider value={value}>
+    <CopilotPanelContext.Provider value={value}>
       {children}
-    </ImprovePanelContext.Provider>
+    </CopilotPanelContext.Provider>
   );
 };
 
-ImprovePanelProvider.displayName = "ImprovePanelProvider";
+CopilotPanelProvider.displayName = "CopilotPanelProvider";

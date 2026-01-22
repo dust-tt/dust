@@ -2,7 +2,7 @@ import { Spinner } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { useImprovePanelContext } from "@app/components/agent_builder/ImprovePanelContext";
+import { useCopilotPanelContext } from "@app/components/agent_builder/CopilotPanelContext";
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
@@ -34,7 +34,7 @@ function LoadingState({ message }: LoadingStateProps) {
   );
 }
 
-interface ImproveContentProps {
+interface CopilotContentProps {
   conversation: ConversationWithoutContentType;
   user: UserType | null;
   owner: WorkspaceType;
@@ -44,7 +44,7 @@ interface ImproveContentProps {
   isAdmin: boolean;
 }
 
-function ImproveContent({
+function CopilotContent({
   conversation,
   user,
   owner,
@@ -52,7 +52,7 @@ function ImproveContent({
   resetConversation,
   isTrialPlan,
   isAdmin,
-}: ImproveContentProps) {
+}: CopilotContentProps) {
   return (
     <>
       <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
@@ -87,7 +87,7 @@ function ImproveContent({
   );
 }
 
-export function AgentBuilderImprove() {
+export function AgentBuilderCopilot() {
   const { owner, isAdmin } = useAgentBuilderContext();
   const { user } = useUser();
   const { activeSubscription } = useWorkspaceActiveSubscription({ owner });
@@ -101,7 +101,7 @@ export function AgentBuilderImprove() {
     isCreatingConversation,
     startConversation,
     resetConversation,
-  } = useImprovePanelContext();
+  } = useCopilotPanelContext();
 
   // Auto-start conversation when component mounts
   useEffect(() => {
@@ -110,11 +110,11 @@ export function AgentBuilderImprove() {
 
   const renderContent = () => {
     if (isCreatingConversation || !conversation) {
-      return <LoadingState message="Starting improvement session..." />;
+      return <LoadingState message="Starting copilot session..." />;
     }
 
     return (
-      <ImproveContent
+      <CopilotContent
         conversation={conversation}
         user={user}
         owner={owner}
@@ -127,7 +127,7 @@ export function AgentBuilderImprove() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col" aria-label="Agent improve">
+    <div className="flex h-full w-full flex-col" aria-label="Agent copilot">
       <BlockedActionsProvider
         owner={owner}
         conversation={conversation ?? undefined}
