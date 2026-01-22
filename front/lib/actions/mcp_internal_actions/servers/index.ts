@@ -5,6 +5,7 @@ import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/co
 import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actions/servers/confluence";
 import { default as databricksServer } from "@app/lib/actions/mcp_internal_actions/servers/databricks";
 import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
+import { default as gongServer } from "@app/lib/actions/mcp_internal_actions/servers/gong";
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
@@ -169,6 +170,8 @@ export async function getInternalMCPServer(
       return snowflakeServer(auth, agentLoopContext);
     case "gmail":
       return gmailServer(auth, agentLoopContext);
+    case "gong":
+      return gongServer(auth, agentLoopContext);
     case "google_calendar":
       return calendarServer(auth, agentLoopContext);
     case "google_drive":

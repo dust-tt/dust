@@ -144,6 +144,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "freshservice",
   "github",
   "gmail",
+  "gong",
   "google_calendar",
   "google_drive",
   "google_sheets",
@@ -1024,6 +1025,37 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: STATUSPAGE_SERVER,
+  },
+  gong: {
+    id: 50,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("gong_tool");
+    },
+    isPreview: false,
+    tools_stakes: {
+      list_calls: "never_ask",
+      get_call: "never_ask",
+      get_call_transcript: "never_ask",
+      list_users: "never_ask",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "gong",
+      version: "1.0.0",
+      description:
+        "Access sales calls, transcripts, and conversation analytics.",
+      authorization: {
+        provider: "gong" as const,
+        supported_use_cases: ["personal_actions"] as const,
+      },
+      icon: "GongLogo",
+      documentationUrl: null,
+      instructions: null,
+    },
   },
   primitive_types_debugger: {
     id: 1004,
