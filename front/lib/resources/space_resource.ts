@@ -737,6 +737,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             return editorGroupsResult;
           }
           const selectedEditorGroups = editorGroupsResult.value;
+          assert(
+            selectedEditorGroups.length > 0,
+            "Projects must have at least one editor group."
+          );
           for (const selectedEditorGroup of selectedEditorGroups) {
             await GroupSpaceEditorResource.makeNew(auth, {
               group: selectedEditorGroup,
