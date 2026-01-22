@@ -1,5 +1,3 @@
-import type { z } from "zod";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   getMcpServerViewDescription,
@@ -7,8 +5,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type {
   ToolDefinition,
-  ToolHandlerExtra,
-  ToolHandlerResult,
+  ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_copilot_context/helpers";
 import { AGENT_COPILOT_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
@@ -31,16 +28,7 @@ import {
 type AgentCopilotContextToolKey =
   keyof typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA;
 
-type AgentCopilotContextToolHandlers = {
-  [K in AgentCopilotContextToolKey]: (
-    params: z.infer<
-      z.ZodObject<(typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA)[K]["schema"]>
-    >,
-    extra: ToolHandlerExtra
-  ) => Promise<ToolHandlerResult>;
-};
-
-const handlers: AgentCopilotContextToolHandlers = {
+const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
   get_available_models: async ({ providerId }, extra) => {
     const auth = extra.auth;
     if (!auth) {

@@ -1,10 +1,7 @@
-import type { z } from "zod";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
-  ToolHandlerExtra,
-  ToolHandlerResult,
+  ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { SnowflakeClient } from "@app/lib/api/actions/servers/snowflake/client";
 import {
@@ -15,15 +12,6 @@ import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 type SnowflakeToolKey = keyof typeof SNOWFLAKE_TOOLS_METADATA;
-
-type SnowflakeToolHandlers = {
-  [K in SnowflakeToolKey]: (
-    params: z.infer<
-      z.ZodObject<(typeof SNOWFLAKE_TOOLS_METADATA)[K]["schema"]>
-    >,
-    extra: ToolHandlerExtra
-  ) => Promise<ToolHandlerResult>;
-};
 
 const CONNECTION_ERROR = new MCPError(
   "Snowflake connection not configured. Please connect your Snowflake account."
@@ -49,7 +37,7 @@ function getClientFromAuthInfo(
   return new Ok(new SnowflakeClient(account, token, warehouse));
 }
 
-const handlers: SnowflakeToolHandlers = {
+const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
   list_databases: async (_params, extra) => {
     const clientRes = getClientFromAuthInfo(extra.authInfo);
     if (clientRes.isErr()) {

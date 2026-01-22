@@ -2,13 +2,11 @@ import assert from "assert";
 import { randomUUID } from "crypto";
 import { google } from "googleapis";
 import { DateTime, Interval } from "luxon";
-import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
-  ToolHandlerExtra,
-  ToolHandlerResult,
+  ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   buildUnavailableIntervals,
@@ -28,16 +26,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 type GoogleCalendarToolKey = keyof typeof GOOGLE_CALENDAR_TOOLS_METADATA;
 
-type GoogleCalendarToolHandlers = {
-  [K in GoogleCalendarToolKey]: (
-    params: z.infer<
-      z.ZodObject<(typeof GOOGLE_CALENDAR_TOOLS_METADATA)[K]["schema"]>
-    >,
-    extra: ToolHandlerExtra
-  ) => Promise<ToolHandlerResult>;
-};
-
-const handlers: GoogleCalendarToolHandlers = {
+const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
   list_calendars: async ({ pageToken, maxResults }, extra) => {
     const accessToken = extra.authInfo?.token;
     assert(accessToken, "No access token provided");
