@@ -301,7 +301,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async makeSuggestion(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<SkillConfigurationModel>, "workspaceId">,
+    blob: Omit<
+      CreationAttributes<SkillConfigurationModel>,
+      "workspaceId" | "status" | "editedBy" | "requestedSpaceIds"
+    >,
     {
       mcpServerNames,
     }: {
@@ -318,10 +321,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return new Err(new Error("Some MCP server views are missing."));
     }
 
-    const createdSuggestedSkill = await this.makeNew(auth, blob, {
-      mcpServerViews,
-      addCurrentUserAsEditor: false,
-    });
+    const createdSuggestedSkill = await this.makeNew(
+      auth,
+      {
+        ...blob,
+        status: "suggested",
+        editedBy: null,
+        requestedSpaceIds: [],
+      },
+      {
+        mcpServerViews,
+        addCurrentUserAsEditor: false,
+      }
+    );
 
     return new Ok(createdSuggestedSkill);
   }
