@@ -21,7 +21,7 @@ export class AgentSuggestionFactory {
       source: AgentSuggestionSource;
     }> = {}
   ): Promise<AgentSuggestionResource> {
-    return AgentSuggestionResource.makeNew(auth, {
+    const result = await AgentSuggestionResource.makeNew(auth, {
       agentConfigurationId,
       agentConfigurationVersion: overrides.agentConfigurationVersion ?? 1,
       kind: "instructions",
@@ -35,6 +35,10 @@ export class AgentSuggestionFactory {
       state: overrides.state ?? "pending",
       source: overrides.source ?? "reinforcement",
     });
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return result.value;
   }
 
   static async createTools(
@@ -48,7 +52,7 @@ export class AgentSuggestionFactory {
       source: AgentSuggestionSource;
     }> = {}
   ): Promise<AgentSuggestionResource> {
-    return AgentSuggestionResource.makeNew(auth, {
+    const result = await AgentSuggestionResource.makeNew(auth, {
       agentConfigurationId,
       agentConfigurationVersion: overrides.agentConfigurationVersion ?? 1,
       kind: "tools",
@@ -63,6 +67,10 @@ export class AgentSuggestionFactory {
       state: overrides.state ?? "pending",
       source: overrides.source ?? "reinforcement",
     });
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return result.value;
   }
 
   static async createSkills(
@@ -76,7 +84,7 @@ export class AgentSuggestionFactory {
       source: AgentSuggestionSource;
     }> = {}
   ): Promise<AgentSuggestionResource> {
-    return AgentSuggestionResource.makeNew(auth, {
+    const result = await AgentSuggestionResource.makeNew(auth, {
       agentConfigurationId,
       agentConfigurationVersion: overrides.agentConfigurationVersion ?? 1,
       kind: "skills",
@@ -87,6 +95,10 @@ export class AgentSuggestionFactory {
       state: overrides.state ?? "pending",
       source: overrides.source ?? "copilot",
     });
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return result.value;
   }
 
   static async createModel(
@@ -100,7 +112,7 @@ export class AgentSuggestionFactory {
       source: AgentSuggestionSource;
     }> = {}
   ): Promise<AgentSuggestionResource> {
-    return AgentSuggestionResource.makeNew(auth, {
+    const result = await AgentSuggestionResource.makeNew(auth, {
       agentConfigurationId,
       agentConfigurationVersion: overrides.agentConfigurationVersion ?? 1,
       kind: "model",
@@ -112,5 +124,9 @@ export class AgentSuggestionFactory {
       state: overrides.state ?? "pending",
       source: overrides.source ?? "reinforcement",
     });
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return result.value;
   }
 }
