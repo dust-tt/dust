@@ -9,8 +9,11 @@ import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType } from "@app/types";
 import { AGENT_GROUP_PREFIX } from "@app/types";
 
 // Internal MCP server names for the tools we want
@@ -184,7 +187,7 @@ interface MCPServerViewInfo {
 }
 
 async function findAvailableMCPServerViews(
-  workspace: WorkspaceResource,
+  workspace: LightWorkspaceType,
   serverNames: readonly string[],
   logger: Logger
 ): Promise<Map<string, MCPServerViewInfo>> {
@@ -218,27 +221,14 @@ async function findAvailableMCPServerViews(
 }
 
 async function createMeetingPrepSkill(
-  logger: Logger,
-  workspaceId: string,
-  execute: boolean
+  workspace: LightWorkspaceType,
+  { execute, logger }: { execute: boolean; logger: Logger }
 ): Promise<void> {
   logger.info(
-    { execute, workspaceId },
+    { workspaceId: workspace.sId },
     "Starting creation of Meeting Prep skill"
   );
 
-  // Find the workspace
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace) {
-    throw new Error(`Workspace not found with sId: ${workspaceId}`);
-  }
-
-  logger.info(
-    { workspaceId: workspace.id, workspaceName: workspace.name },
-    "Found workspace"
-  );
-
-  // Check if skill already exists
   const existingSkill = await SkillConfigurationModel.findOne({
     where: {
       workspaceId: workspace.id,
@@ -418,10 +408,29 @@ makeScript(
     workspaceId: {
       alias: "w",
       type: "string" as const,
-      demandOption: true,
+      required: false,
     },
   },
   async ({ workspaceId, execute }, logger) => {
-    await createMeetingPrepSkill(logger, workspaceId, execute);
+    if (workspaceId) {
+      const workspace = await WorkspaceResource.fetchById(workspaceId);
+      if (!workspace) {
+        throw new Error(`Workspace not found with sId: ${workspaceId}`);
+      }
+
+      await createMeetingPrepSkill(renderLightWorkspaceType({ workspace }), {
+        execute,
+        logger,
+      });
+    } else {
+      await runOnAllWorkspaces(
+        async (workspace) =>
+          createMeetingPrepSkill(workspace, {
+            execute,
+            logger,
+          }),
+        { concurrency: 4 }
+      );
+    }
   }
 );
