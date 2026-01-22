@@ -57,7 +57,7 @@ export type FetchConversationOptions = {
 
 interface UserParticipation {
   actionRequired: boolean;
-  unread: boolean;
+  lastReadAt: Date | null;
   updated: number;
 }
 
@@ -273,7 +273,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       attributes: [
         "actionRequired",
         "conversationId",
-        "unread",
+        "lastReadAt",
         "updatedAt",
         "userId",
       ],
@@ -284,7 +284,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         p.conversationId,
         {
           actionRequired: p.actionRequired,
-          unread: p.unread,
+          lastReadAt: p.lastReadAt,
           updated: p.updatedAt.getTime(),
         },
       ])
@@ -646,13 +646,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       id: { [Op.in]: conversationIds },
     };
 
-    if (onlyUnread) {
-      const unreadConversationIds = Array.from(participationMap.entries())
-        .filter(([_, participation]) => participation.unread)
-        .map(([conversationId]) => conversationId);
-      whereClause.id = { [Op.in]: unreadConversationIds };
-    }
-
     if (kind === "space") {
       whereClause.spaceId = { [Op.not]: null };
     } else if (kind === "private") {
@@ -666,6 +659,23 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         where: {
           ...whereClause,
           visibility: { [Op.eq]: "unlisted" },
+          ...(onlyUnread
+            ? {
+                [Op.or]: Array.from(participationMap.entries()).map(
+                  ([id, participation]) => {
+                    if (participation.lastReadAt === null) {
+                      return { id };
+                    }
+                    return {
+                      [Op.and]: [
+                        { id },
+                        { updatedAt: { [Op.gt]: participation.lastReadAt } },
+                      ],
+                    };
+                  }
+                ),
+              }
+            : {}),
         },
       }
     );
@@ -926,11 +936,21 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         userId: auth.getNonNullableUser().id,
       },
+      include: [
+        {
+          model: ConversationModel,
+          as: "conversation",
+          attributes: ["updatedAt"],
+        },
+      ],
     });
 
     return {
       actionRequired: participant?.actionRequired ?? false,
-      unread: participant?.unread ?? false,
+      unread:
+        participant?.lastReadAt === null ||
+        (!!participant?.conversation?.updatedAt &&
+          participant.conversation?.updatedAt > participant.lastReadAt),
     };
   }
 
@@ -964,13 +984,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       action,
       user,
       transaction,
-      unread = false,
+      lastReadAt = null,
     }: {
       conversation: ConversationWithoutContentType;
       action: ParticipantActionType;
       user: UserType | null;
       transaction?: Transaction;
-      unread?: boolean;
+      lastReadAt?: Date | null;
     }
   ): Promise<"added" | "updated" | "none"> {
     if (!user) {
@@ -1012,7 +1032,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             action,
             userId: user.id,
             workspaceId: auth.getNonNullableWorkspace().id,
-            unread,
+            lastReadAt,
             actionRequired: false,
           },
           { transaction: t }
@@ -1507,13 +1527,36 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: this.id,
-        ...(unreadOnly ? { unread: true } : {}),
+        ...(unreadOnly
+          ? {
+              [Op.or]: [
+                { lastReadAt: null },
+                {
+                  "$conversation.updatedAt$": {
+                    [Op.gt]: col("lastReadAt"),
+                  },
+                },
+              ],
+            }
+          : {}),
       },
+      include: [
+        {
+          model: ConversationModel,
+          as: "conversation",
+          attributes: ["updatedAt"],
+        },
+      ],
     });
 
     const unreadMap = new Map<number, boolean>();
     for (const participant of participants) {
-      unreadMap.set(participant.userId, participant.unread);
+      const unRead =
+        participant.lastReadAt === null ||
+        (!!participant.conversation?.updatedAt &&
+          participant.conversation?.updatedAt > participant.lastReadAt);
+
+      unreadMap.set(participant.userId, unRead);
     }
 
     const userResources = await UserResource.fetchByModelIds(
@@ -1588,7 +1631,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const conversationIds = conversations.map((c) => c.id);
 
     await ConversationParticipantModel.update(
-      { unread: false, actionRequired: false },
+      { unread: false, lastReadAt: new Date(), actionRequired: false },
       {
         where: {
           conversationId: { [Op.in]: conversationIds },
@@ -1605,7 +1648,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // If conversation is fetched for a user, use the participation data.
     const participation = this.userParticipation ?? {
       actionRequired: false,
-      unread: false,
+      lastReadAt: null,
     };
 
     return {
@@ -1621,7 +1664,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       requestedSpaceIds: this.getRequestedSpaceIdsFromModel(),
       sId: this.sId,
       title: this.title,
-      unread: participation.unread,
+      unread:
+        participation.lastReadAt === null ||
+        (!!this.updatedAt && this.updatedAt > participation.lastReadAt),
       depth: this.depth,
       metadata: this.metadata,
     };
