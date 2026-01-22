@@ -20,6 +20,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Basic: Story = {
+  args: {
+    shortcut: "Cmd+K",
+  },
   render: () => (
     <div className="s-flex s-flex-col s-gap-2">
       <KeyboardShortcut shortcut="Shift+Cmd+P" />
@@ -31,6 +34,9 @@ export const Basic: Story = {
 };
 
 export const InDropdown: Story = {
+  args: {
+    shortcut: "Cmd+K",
+  },
   render: () => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
