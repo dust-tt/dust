@@ -1,3 +1,4 @@
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -176,10 +177,10 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     state: AgentSuggestionState,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
-    // Verify workspace match for security.
-    if (this.workspaceId !== auth.getNonNullableWorkspace().id) {
-      throw new Error("Workspace mismatch");
-    }
+    assert(
+      this.workspaceId === auth.getNonNullableWorkspace().id,
+      "Unexpected: workspace mismatch in suggestion"
+    );
 
     if (!this.canEdit(auth)) {
       throw new Error("User does not have permission to edit this agent");
