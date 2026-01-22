@@ -147,11 +147,10 @@ function enrichInternalToolMetadata(tool: AgentTool): void {
 
     if (serverNameResult.isOk()) {
       const serverName = serverNameResult.value.name;
-      const serverDef = INTERNAL_MCP_SERVERS[serverName];
-
-      if (serverDef) {
-        tool.internal_tool_name = serverDef.serverInfo.name;
-        tool.internal_tool_description = serverDef.serverInfo.description;
+      if (isInternalMCPServerName(serverName)) {
+        const serverInfo = getInternalMCPServerInfo(serverName);
+        tool.internal_tool_name = serverInfo.name;
+        tool.internal_tool_description = serverInfo.description ?? undefined;
       }
     }
   }
