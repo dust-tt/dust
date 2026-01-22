@@ -1,5 +1,6 @@
 import type { Transaction } from "sequelize";
 
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import {
   SkillConfigurationModel,
@@ -16,9 +17,16 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
 import { AGENT_GROUP_PREFIX } from "@app/types";
 
-const CORE_SERVERS = ["web_search_&_browse", "slack"] as const;
-const GOOGLE_SERVERS = ["gmail", "google_drive", "google_calendar"] as const;
-const MICROSOFT_SERVERS = [
+const CORE_SERVERS: readonly InternalMCPServerNameType[] = [
+  "web_search_&_browse",
+  "slack",
+] as const;
+const GOOGLE_SERVERS: readonly InternalMCPServerNameType[] = [
+  "gmail",
+  "google_drive",
+  "google_calendar",
+] as const;
+const MICROSOFT_SERVERS: readonly InternalMCPServerNameType[] = [
   "outlook",
   "outlook_calendar",
   "microsoft_drive",
