@@ -304,7 +304,6 @@ export default function AgentBuilder({
       return;
     }
 
-    console.log("[AgentBuilder] Creating pending agent...");
     const createPendingAgent = async () => {
       try {
         const response = await clientFetch(
