@@ -27,7 +27,7 @@ const SKILL_NAME = "Prep Meeting";
 const SKILL_ICON = "ActionBriefcaseIcon" as const;
 
 const DESCRIPTION_FOR_HUMANS =
-  "Systematically researches context for upcoming meetings by gathering email history, conversations, and relevant documents about all participants. Creates focused briefings with what you need to know, prepare, and discuss.";
+  "Research context for upcoming meetings by gathering email history, conversations, and relevant documents about all participants. Creates focused briefings with what you need to know, prepare, and discuss.";
 
 const DESCRIPTION_FOR_AGENTS = `This skill should be enabled when users need to:
 Prepare for upcoming meetings by gathering all relevant background
