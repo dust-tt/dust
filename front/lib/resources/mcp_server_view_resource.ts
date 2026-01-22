@@ -395,9 +395,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     mcpServerIds: string[]
   ): Promise<MCPServerViewResource[]> {
-    const serverTypesAndIds = mcpServerIds.map((mcpServerId) =>
-      getServerTypeAndIdFromSId(mcpServerId)
-    );
+    const serverTypesAndIds = mcpServerIds.map((mcpServerId) => ({
+      ...getServerTypeAndIdFromSId(mcpServerId),
+      mcpServerId,
+    }));
 
     const internalServers = await this.baseFetch(auth, {
       where: {
@@ -405,7 +406,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         internalMCPServerId: {
           [Op.in]: serverTypesAndIds
             .filter(({ serverType }) => serverType === "internal")
-            .map(({ id }) => id),
+            .map(({ mcpServerId }) => mcpServerId),
         },
       },
     });
