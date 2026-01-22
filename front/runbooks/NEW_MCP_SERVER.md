@@ -165,13 +165,10 @@ export const YOUR_PROVIDER_SERVER = {
 Create `lib/api/actions/servers/{provider}/tools/index.ts`:
 
 ```typescript
-import type { z } from "zod";
-
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
-  ToolHandlerExtra,
-  ToolHandlerResult,
+  ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { YOUR_PROVIDER_TOOLS_METADATA } from "@app/lib/api/actions/servers/your_provider/metadata";
 import { Err, Ok } from "@app/types";
@@ -179,19 +176,9 @@ import { Err, Ok } from "@app/types";
 // Type for tool keys - derived from metadata
 type YourProviderToolKey = keyof typeof YOUR_PROVIDER_TOOLS_METADATA;
 
-// Exhaustive handler type - MUST implement handler for every tool in metadata
-type YourProviderToolHandlers = {
-  [K in YourProviderToolKey]: (
-    params: z.infer<
-      z.ZodObject<(typeof YOUR_PROVIDER_TOOLS_METADATA)[K]["schema"]>
-    >,
-    extra: ToolHandlerExtra
-  ) => Promise<ToolHandlerResult>;
-};
-
-// Handlers object - TypeScript enforces exhaustivity here
+// Handlers object - TypeScript enforces exhaustivity via ToolHandlers<T>
 // Missing a handler = compile error
-const handlers: YourProviderToolHandlers = {
+const handlers: ToolHandlers<typeof YOUR_PROVIDER_TOOLS_METADATA> = {
   list_items: async ({ pageToken, maxResults }, { authInfo }) => {
     const token = authInfo?.token;
     if (!token) {
@@ -264,7 +251,7 @@ export const TOOLS = (
 
 **Key points:**
 
-- `YourProviderToolHandlers` mapped type enforces exhaustivity
+- `ToolHandlers<T>` generic type enforces exhaustivity - defined in `tool_definition.ts`
 - If you add a tool to metadata without a handler, you get: `Property 'new_tool' is missing in type '...'`
 - Each handler receives typed params inferred from the tool's schema
 - Access auth token via `extra.authInfo?.token`
@@ -466,7 +453,7 @@ If your handlers need access to `Authenticator` directly (not just the token), u
 ```typescript
 // In tools/index.ts
 export function createYourProviderTools(auth: Authenticator): ToolDefinition[] {
-  const handlers: YourProviderToolHandlers = {
+  const handlers: ToolHandlers<typeof YOUR_PROVIDER_TOOLS_METADATA> = {
     some_tool: async (params, extra) => {
       // Can use `auth` here from closure
       const workspace = auth.getNonNullableWorkspace();
@@ -653,7 +640,7 @@ See `servers/zendesk/types.ts` and `servers/zendesk/client.ts` for a complete ex
 Before marking implementation complete:
 
 - [ ] `metadata.ts` created with `createToolsRecord`
-- [ ] `tools/index.ts` created with exhaustive `Handlers` type
+- [ ] `tools/index.ts` created with `ToolHandlers<typeof METADATA>`
 - [ ] `index.ts` created with `createServer` default export
 - [ ] Server added to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES`
 - [ ] Server config added to `INTERNAL_MCP_SERVERS` with `metadata` field
@@ -704,6 +691,7 @@ Before marking implementation complete:
 - **Snowflake**: `lib/api/actions/servers/snowflake/` - Constant tools with token from authInfo
 - **Google Calendar**: `lib/api/actions/servers/google_calendar/` - Complex tools with helpers
 - **Agent Copilot Context**: `lib/api/actions/servers/agent_copilot_context/` - Internal tools without OAuth
+- **Agent Copilot Agent State**: `lib/api/actions/servers/agent_copilot_agent_state/` - Simple internal server
 
 ---
 
