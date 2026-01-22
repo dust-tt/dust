@@ -13,7 +13,7 @@ export const AGENT_COPILOT_AGENT_STATE_TOOL_NAME =
 export const AGENT_CONFIGURATION_VERSION_KEY = "agentConfigurationVersion";
 
 // Re-export the AGENT_CONFIGURATION_ID_KEY for convenience.
-export { AGENT_CONFIGURATION_ID_KEY } from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_context/metadata";
+export { AGENT_CONFIGURATION_ID_KEY } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 
 export const getAgentInfoMeta = {
   name: "get_agent_info" as const,

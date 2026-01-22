@@ -1,18 +1,34 @@
+import type { z } from "zod";
+
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type {
+  ToolDefinition,
+  ToolHandlerExtra,
+  ToolHandlerResult,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   getAgentConfigurationIdFromContext,
   getAgentConfigurationVersionFromContext,
-} from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_agent_state/helpers";
-import { getAgentInfoMeta } from "@app/lib/actions/mcp_internal_actions/servers/agent_copilot_agent_state/metadata";
-import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { defineTool } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+} from "@app/lib/api/actions/servers/agent_copilot_agent_state/helpers";
+import type { TOOLS_META } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
+import { getAgentInfoMeta } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Err, Ok } from "@app/types";
 
-const getAgentInfoTool = defineTool({
-  ...getAgentInfoMeta,
-  handler: async (_, extra) => {
+type AgentCopilotAgentStateToolKey = (typeof TOOLS_META)[number]["name"];
+
+type AgentCopilotAgentStateToolHandlers = {
+  [K in AgentCopilotAgentStateToolKey]: (
+    params: z.infer<
+      z.ZodObject<Extract<(typeof TOOLS_META)[number], { name: K }>["schema"]>
+    >,
+    extra: ToolHandlerExtra
+  ) => Promise<ToolHandlerResult>;
+};
+
+const handlers: AgentCopilotAgentStateToolHandlers = {
+  get_agent_info: async (_, extra) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
@@ -93,6 +109,11 @@ const getAgentInfoTool = defineTool({
       },
     ]);
   },
-});
+};
 
-export const TOOLS = [getAgentInfoTool] as ToolDefinition[];
+export const TOOLS = [
+  {
+    ...getAgentInfoMeta,
+    handler: handlers[getAgentInfoMeta.name],
+  },
+] as ToolDefinition[];
