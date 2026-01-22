@@ -5,20 +5,22 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_copilot_context/helpers";
 import { AGENT_COPILOT_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
+import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_copilot_helpers";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   Err,
   isModelProviderId,
+  normalizeError,
   Ok,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
@@ -313,6 +315,336 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       {
         type: "text" as const,
         text: JSON.stringify(insights, null, 2),
+      },
+    ]);
+  },
+
+  // Suggestion handlers
+  suggest_prompt_editions: async (params, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const agentConfigurationId = getAgentConfigurationIdFromContext(
+      extra.agentLoopContext
+    );
+
+    if (!agentConfigurationId) {
+      return new Err(
+        new MCPError(
+          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
+          { tracked: false }
+        )
+      );
+    }
+
+    // Fetch the latest version of the agent configuration.
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: agentConfigurationId,
+      variant: "light",
+    });
+
+    if (!agentConfiguration) {
+      return new Err(
+        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const createdSuggestions: { sId: string }[] = [];
+
+    for (const suggestion of params.suggestions) {
+      try {
+        const created = await AgentSuggestionResource.createSuggestionForAgent(
+          auth,
+          agentConfiguration,
+          {
+            kind: "instructions",
+            suggestion,
+            analysis: params.analysis ?? null,
+            state: "pending",
+            source: "copilot",
+          }
+        );
+
+        createdSuggestions.push({ sId: created.sId });
+      } catch (error) {
+        return new Err(
+          new MCPError(
+            `Failed to create suggestion: ${normalizeError(error).message}`,
+            { tracked: false }
+          )
+        );
+      }
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            success: true,
+            suggestions: createdSuggestions,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
+  suggest_tools: async (params, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const agentConfigurationId = getAgentConfigurationIdFromContext(
+      extra.agentLoopContext
+    );
+
+    if (!agentConfigurationId) {
+      return new Err(
+        new MCPError(
+          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
+          { tracked: false }
+        )
+      );
+    }
+
+    // Fetch the latest version of the agent configuration.
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: agentConfigurationId,
+      variant: "light",
+    });
+
+    if (!agentConfiguration) {
+      return new Err(
+        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    try {
+      const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
+        auth,
+        agentConfiguration,
+        {
+          kind: "tools",
+          suggestion: params.suggestion,
+          analysis: params.analysis ?? null,
+          state: "pending",
+          source: "copilot",
+        }
+      );
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              success: true,
+              sId: suggestion.sId,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (error) {
+      return new Err(
+        new MCPError(
+          `Failed to create suggestion: ${normalizeError(error).message}`,
+          { tracked: false }
+        )
+      );
+    }
+  },
+
+  suggest_skills: async (params, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const agentConfigurationId = getAgentConfigurationIdFromContext(
+      extra.agentLoopContext
+    );
+
+    if (!agentConfigurationId) {
+      return new Err(
+        new MCPError(
+          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
+          { tracked: false }
+        )
+      );
+    }
+
+    // Fetch the latest version of the agent configuration.
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: agentConfigurationId,
+      variant: "light",
+    });
+
+    if (!agentConfiguration) {
+      return new Err(
+        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    try {
+      const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
+        auth,
+        agentConfiguration,
+        {
+          kind: "skills",
+          suggestion: params.suggestion,
+          analysis: params.analysis ?? null,
+          state: "pending",
+          source: "copilot",
+        }
+      );
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              success: true,
+              sId: suggestion.sId,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (error) {
+      return new Err(
+        new MCPError(
+          `Failed to create suggestion: ${normalizeError(error).message}`,
+          { tracked: false }
+        )
+      );
+    }
+  },
+
+  suggest_model: async (params, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const agentConfigurationId = getAgentConfigurationIdFromContext(
+      extra.agentLoopContext
+    );
+
+    if (!agentConfigurationId) {
+      return new Err(
+        new MCPError(
+          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
+          { tracked: false }
+        )
+      );
+    }
+
+    // Fetch the latest version of the agent configuration.
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: agentConfigurationId,
+      variant: "light",
+    });
+
+    if (!agentConfiguration) {
+      return new Err(
+        new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    try {
+      const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
+        auth,
+        agentConfiguration,
+        {
+          kind: "model",
+          suggestion: params.suggestion,
+          analysis: params.analysis ?? null,
+          state: "pending",
+          source: "copilot",
+        }
+      );
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              success: true,
+              sId: suggestion.sId,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (error) {
+      return new Err(
+        new MCPError(
+          `Failed to create suggestion: ${normalizeError(error).message}`,
+          { tracked: false }
+        )
+      );
+    }
+  },
+
+  list_suggestions: async (params, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const agentConfigurationId = getAgentConfigurationIdFromContext(
+      extra.agentLoopContext
+    );
+
+    if (!agentConfigurationId) {
+      return new Err(
+        new MCPError(
+          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
+          { tracked: false }
+        )
+      );
+    }
+
+    // Lists suggestions across all versions of this agent.
+    const suggestions =
+      await AgentSuggestionResource.listByAgentConfigurationId(
+        auth,
+        agentConfigurationId,
+        {
+          state: params.status,
+          kind: params.kind,
+        }
+      );
+
+    const suggestionList = suggestions.map((s) => s.toJSON());
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            count: suggestionList.length,
+            suggestions: suggestionList,
+          },
+          null,
+          2
+        ),
       },
     ]);
   },
