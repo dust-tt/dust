@@ -16,7 +16,6 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
 import { AGENT_GROUP_PREFIX } from "@app/types";
 
-// Internal MCP server names for the tools we want
 const CORE_SERVERS = ["web_search_&_browse", "slack"] as const;
 const GOOGLE_SERVERS = ["gmail", "google_drive", "google_calendar"] as const;
 const MICROSOFT_SERVERS = [
@@ -39,7 +38,7 @@ Identify what they need to review or prepare before a meeting
 Get up to speed quickly on meeting participants and context
 Trigger phrases: "prep my meeting", "help me prepare for [meeting]", "what do I need to know about [meeting]", "meeting briefing", "meeting context"`;
 
-// Full instructions when email suite (Google or Microsoft) is available
+// Full instructions when an email suite (Google or Microsoft) is available.
 const INSTRUCTIONS_WITH_EMAIL = `When a user asks about meeting preparation, follow this protocol:
 
 1. Extract Meeting Details
@@ -111,7 +110,7 @@ General Principles:
 - Accept no context: If genuinely nothing exists after thorough search, say so explicitly
 - Never assume: Ask for clarification rather than make up information`;
 
-// Limited instructions when no email suite is available
+// Limited instructions when no email suite is available. Does not make the most sense, but is meant to be edited.
 const INSTRUCTIONS_WITHOUT_EMAIL = `When a user asks about meeting preparation, follow this protocol:
 
 **Important: Email Access Not Connected**
@@ -268,25 +267,23 @@ async function createMeetingPrepSkill(
     }
   }
 
-  // Determine Google vs Microsoft availability
-  const googleAvailable = GOOGLE_SERVERS.filter((s) =>
-    availableViews.has(s)
-  ).length;
-  const microsoftAvailable = MICROSOFT_SERVERS.filter((s) =>
-    availableViews.has(s)
-  ).length;
+  // Determine Google vs. Microsoft availability
+  const isGoogleAvailable =
+    GOOGLE_SERVERS.filter((s) => availableViews.has(s)).length > 0;
+  const isMicrosoftAvailable =
+    MICROSOFT_SERVERS.filter((s) => availableViews.has(s)).length > 0;
 
   logger.info(
     {
-      googleServersAvailable: googleAvailable,
-      microsoftServersAvailable: microsoftAvailable,
+      isGoogleAvailable,
+      isMicrosoftAvailable,
     },
     "Checking Google vs Microsoft availability"
   );
 
-  // Prefer Google if available, otherwise use Microsoft
+  // Prefer Google if available, otherwise use Microsoft.
   let suiteName: "Google" | "Microsoft" | null = null;
-  if (googleAvailable > 0) {
+  if (isGoogleAvailable) {
     suiteName = "Google";
     for (const serverName of GOOGLE_SERVERS) {
       const view = availableViews.get(serverName);
@@ -295,7 +292,7 @@ async function createMeetingPrepSkill(
         selectedServers.push(serverName);
       }
     }
-  } else if (microsoftAvailable > 0) {
+  } else if (isMicrosoftAvailable) {
     suiteName = "Microsoft";
     for (const serverName of MICROSOFT_SERVERS) {
       const view = availableViews.get(serverName);
@@ -321,7 +318,7 @@ async function createMeetingPrepSkill(
     );
   }
 
-  // Select instructions based on email suite availability
+  // Select instructions based on email suite availability.
   const hasEmailSuite = suiteName !== null;
   const instructions = hasEmailSuite
     ? INSTRUCTIONS_WITH_EMAIL
@@ -333,16 +330,14 @@ async function createMeetingPrepSkill(
         skillName: SKILL_NAME,
         toolCount: selectedViewIds.length,
         servers: selectedServers,
-        hasEmailSuite,
+        suiteName,
       },
       "Would create suggested skill (dry run)"
     );
     return;
   }
 
-  // Create the skill in a transaction
   await frontSequelize.transaction(async (transaction: Transaction) => {
-    // Create the skill configuration
     const createdSkill = await SkillConfigurationModel.create(
       {
         workspaceId: workspace.id,
@@ -359,7 +354,6 @@ async function createMeetingPrepSkill(
       { transaction }
     );
 
-    // Create the skill editors group
     const editorGroup = await GroupResource.makeNew(
       {
         workspaceId: workspace.id,
@@ -369,7 +363,6 @@ async function createMeetingPrepSkill(
       { transaction }
     );
 
-    // Link the group to the skill
     await GroupSkillModel.create(
       {
         groupId: editorGroup.id,
@@ -379,7 +372,6 @@ async function createMeetingPrepSkill(
       { transaction }
     );
 
-    // Link MCP server views to the skill
     await SkillMCPServerConfigurationModel.bulkCreate(
       selectedViewIds.map((mcpServerViewId) => ({
         workspaceId: workspace.id,
@@ -395,8 +387,7 @@ async function createMeetingPrepSkill(
         skillName: SKILL_NAME,
         toolsLinked: selectedViewIds.length,
         servers: selectedServers,
-        suite: suiteName,
-        hasEmailSuite,
+        suiteName,
       },
       "Successfully created Meeting Prep skill"
     );
