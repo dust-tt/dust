@@ -80,6 +80,7 @@ export {
   DialogTitle,
   DialogTrigger,
 } from "./Dialog";
+export { DiffBlock } from "./DiffBlock";
 export type {
   DropdownMenuFilterOption,
   DropdownMenuItemProps,
@@ -108,7 +109,6 @@ export {
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
 } from "./Dropdown";
-export { DiffBlock } from "./DiffBlock";
 export { default as DropzoneOverlay } from "./DropzoneOverlay";
 export type { EmojiMartData } from "./EmojiPicker";
 export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
