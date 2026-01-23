@@ -4,9 +4,7 @@ import type { ReactMarkdownProps } from "react-markdown/lib/ast-to-react";
 
 import { ScrollArea, ScrollBar } from "@sparkle/components";
 import { ContentBlockWrapper } from "@sparkle/components/markdown/ContentBlockWrapper";
-import {
-  sameNodePosition,
-} from "@sparkle/components/markdownWithStreamingAnimation/utils";
+import { sameNodePosition } from "@sparkle/components/markdownWithStreamingAnimation/utils";
 
 const getNodeText = (node: ReactNode): string => {
   if (["string", "number"].includes(typeof node)) {
@@ -22,75 +20,84 @@ const getNodeText = (node: ReactNode): string => {
   return "";
 };
 
-interface TableBlockProps extends Omit<ReactMarkdownProps, "children" | "node"> {
+interface TableBlockProps extends Omit<
+  ReactMarkdownProps,
+  "children" | "node"
+> {
   children: React.ReactNode;
   node?: ReactMarkdownProps["node"];
 }
 
-export const MemoTableBlock = memo<TableBlockProps>(({ children, node: _node }) => {
-  const tableData = useMemo(() => {
-    const [headNode, bodyNode] = Array.from(children as [any, any]);
-    if (
-      !headNode ||
-      !bodyNode ||
-      !("props" in headNode) ||
-      !("props" in bodyNode)
-    ) {
-      return;
-    }
+export const MemoTableBlock = memo<TableBlockProps>(
+  ({ children, node: _node }) => {
+    const tableData = useMemo(() => {
+      const [headNode, bodyNode] = Array.from(children as [any, any]);
+      if (
+        !headNode ||
+        !bodyNode ||
+        !("props" in headNode) ||
+        !("props" in bodyNode)
+      ) {
+        return;
+      }
 
-    const headCells = headNode.props.children[0].props.children.map((c: any) =>
-      getNodeText(c.props.children)
+      const headCells = headNode.props.children[0].props.children.map(
+        (c: any) => getNodeText(c.props.children)
+      );
+
+      const headHtml = `<thead><tr>${headCells
+        .map((c: any) => `<th><b>${c}</b></th>`)
+        .join("")}</tr></thead>`;
+      const headPlain = headCells.join("\t");
+
+      const bodyRows = bodyNode.props.children.map((row: any) =>
+        row.props.children.map((cell: any) => {
+          const children = cell.props.children;
+          return (Array.isArray(children) ? children : [children])
+            .map((child: any) =>
+              child?.type?.name === "CiteBlock" ? "" : getNodeText(child)
+            )
+            .join("");
+        })
+      );
+      const bodyHtml = `<tbody>${bodyRows
+        .map((row: any) => {
+          return `<tr>${row
+            .map((cell: any) => `<td>${cell}</td>`)
+            .join("")}</tr>`;
+        })
+        .join("")}</tbody>`;
+      const bodyPlain = bodyRows.map((row: any) => row.join("\t")).join("\n");
+
+      return {
+        "text/html": `<table>${headHtml}${bodyHtml}</table>`,
+        "text/plain": headPlain + "\n" + bodyPlain,
+      };
+    }, [children]);
+
+    return (
+      <ContentBlockWrapper
+        innerClassName="s-relative s-my-2 s-w-full s-border s-border-border dark:s-border-border-night s-rounded-2xl"
+        content={tableData}
+      >
+        <ScrollArea className="s-w-full s-rounded-2xl">
+          <table className="s-w-full">{children}</table>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+      </ContentBlockWrapper>
     );
-
-    const headHtml = `<thead><tr>${headCells
-      .map((c: any) => `<th><b>${c}</b></th>`)
-      .join("")}</tr></thead>`;
-    const headPlain = headCells.join("\t");
-
-    const bodyRows = bodyNode.props.children.map((row: any) =>
-      row.props.children.map((cell: any) => {
-        const children = cell.props.children;
-        return (Array.isArray(children) ? children : [children])
-          .map((child: any) =>
-            child?.type?.name === "CiteBlock" ? "" : getNodeText(child)
-          )
-          .join("");
-      })
-    );
-    const bodyHtml = `<tbody>${bodyRows
-      .map((row: any) => {
-        return `<tr>${row
-          .map((cell: any) => `<td>${cell}</td>`)
-          .join("")}</tr>`;
-      })
-      .join("")}</tbody>`;
-    const bodyPlain = bodyRows.map((row: any) => row.join("\t")).join("\n");
-
-    return {
-      "text/html": `<table>${headHtml}${bodyHtml}</table>`,
-      "text/plain": headPlain + "\n" + bodyPlain,
-    };
-  }, [children]);
-
-  return (
-    <ContentBlockWrapper
-      innerClassName="s-relative s-my-2 s-w-full s-border s-border-border dark:s-border-border-night s-rounded-2xl"
-      content={tableData}
-    >
-      <ScrollArea className="s-w-full s-rounded-2xl">
-        <table className="s-w-full">{children}</table>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
-    </ContentBlockWrapper>
-  );
-}, (prev, next) => {
-  return sameNodePosition(prev.node, next.node);
-});
+  },
+  (prev, next) => {
+    return sameNodePosition(prev.node, next.node);
+  }
+);
 
 MemoTableBlock.displayName = "MemoTableBlock";
 
-interface TableHeadBlockProps extends Omit<ReactMarkdownProps, "children" | "node"> {
+interface TableHeadBlockProps extends Omit<
+  ReactMarkdownProps,
+  "children" | "node"
+> {
   children: React.ReactNode;
   node?: ReactMarkdownProps["node"];
 }
@@ -110,7 +117,10 @@ export const MemoTableHeadBlock = memo<TableHeadBlockProps>(
 
 MemoTableHeadBlock.displayName = "MemoTableHeadBlock";
 
-interface TableBodyBlockProps extends Omit<ReactMarkdownProps, "children" | "node"> {
+interface TableBodyBlockProps extends Omit<
+  ReactMarkdownProps,
+  "children" | "node"
+> {
   children: React.ReactNode;
   node?: ReactMarkdownProps["node"];
 }
@@ -118,7 +128,9 @@ interface TableBodyBlockProps extends Omit<ReactMarkdownProps, "children" | "nod
 export const MemoTableBodyBlock = memo<TableBodyBlockProps>(
   ({ children, node: _node }) => {
     return (
-      <tbody className="s-bg-white dark:s-bg-background-night">{children}</tbody>
+      <tbody className="s-bg-white dark:s-bg-background-night">
+        {children}
+      </tbody>
     );
   },
   (prev, next) => {
@@ -128,7 +140,10 @@ export const MemoTableBodyBlock = memo<TableBodyBlockProps>(
 
 MemoTableBodyBlock.displayName = "MemoTableBodyBlock";
 
-interface TableHeaderBlockProps extends Omit<ReactMarkdownProps, "children" | "node"> {
+interface TableHeaderBlockProps extends Omit<
+  ReactMarkdownProps,
+  "children" | "node"
+> {
   children: React.ReactNode;
   node?: ReactMarkdownProps["node"];
 }
@@ -148,7 +163,10 @@ export const MemoTableHeaderBlock = memo<TableHeaderBlockProps>(
 
 MemoTableHeaderBlock.displayName = "MemoTableHeaderBlock";
 
-interface TableDataBlockProps extends Omit<ReactMarkdownProps, "children" | "node"> {
+interface TableDataBlockProps extends Omit<
+  ReactMarkdownProps,
+  "children" | "node"
+> {
   children: React.ReactNode;
   node?: ReactMarkdownProps["node"];
 }

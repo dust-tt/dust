@@ -2,9 +2,7 @@ import { cva } from "class-variance-authority";
 import React, { memo } from "react";
 import type { ReactMarkdownProps } from "react-markdown/lib/ast-to-react";
 
-import {
-  sameNodePosition,
-} from "@sparkle/components/markdownWithStreamingAnimation/utils";
+import { sameNodePosition } from "@sparkle/components/markdownWithStreamingAnimation/utils";
 
 export const preBlockVariants = cva(
   [
@@ -49,8 +47,7 @@ export const MemoPreBlock = memo<PreBlockProps>(
   },
   (prev, next) => {
     return (
-      sameNodePosition(prev.node, next.node) &&
-      prev.variant === next.variant
+      sameNodePosition(prev.node, next.node) && prev.variant === next.variant
     );
   }
 );

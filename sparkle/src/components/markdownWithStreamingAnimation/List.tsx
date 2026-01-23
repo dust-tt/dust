@@ -20,9 +20,7 @@ interface UlBlockProps extends Omit<ReactMarkdownProps, "children" | "node"> {
 export const MemoUlBlock = memo<UlBlockProps>(
   ({ children, textColor, textSize, node: _node }) => {
     return (
-      <ul className={cn(ulBlockVariants(), textColor, textSize)}>
-        {children}
-      </ul>
+      <ul className={cn(ulBlockVariants(), textColor, textSize)}>{children}</ul>
     );
   },
   (prev, next) => {

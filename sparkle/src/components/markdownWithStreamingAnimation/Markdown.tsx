@@ -18,7 +18,11 @@ import {
   sanitizeContent,
 } from "@sparkle/components/markdown/utils";
 import { MemoBlockquoteBlock } from "@sparkle/components/markdownWithStreamingAnimation/BlockquoteBlock";
-import { MemoLiBlock, MemoOlBlock, MemoUlBlock } from "@sparkle/components/markdownWithStreamingAnimation/List";
+import {
+  MemoLiBlock,
+  MemoOlBlock,
+  MemoUlBlock,
+} from "@sparkle/components/markdownWithStreamingAnimation/List";
 import { MemoParagraphBlock } from "@sparkle/components/markdownWithStreamingAnimation/ParagraphBlock";
 import { MemoPreBlock } from "@sparkle/components/markdownWithStreamingAnimation/PreBlock";
 import {
@@ -48,7 +52,10 @@ const sizes = {
   ...markdownHeaderClasses,
 };
 
-interface HeaderBlockProps extends Omit<ReactMarkdownProps, "children" | "node"> {
+interface HeaderBlockProps extends Omit<
+  ReactMarkdownProps,
+  "children" | "node"
+> {
   children: React.ReactNode;
   textColor: string;
   forcedTextSize?: string;
@@ -71,8 +78,7 @@ const MemoH1Block = memo(
   },
   (prev, next) => {
     return (
-      sameNodePosition(prev.node, next.node) &&
-      sameTextStyling(prev, next)
+      sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
     );
   }
 );
@@ -95,8 +101,7 @@ const MemoH2Block = memo(
   },
   (prev, next) => {
     return (
-      sameNodePosition(prev.node, next.node) &&
-      sameTextStyling(prev, next)
+      sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
     );
   }
 );
@@ -119,8 +124,7 @@ const MemoH3Block = memo(
   },
   (prev, next) => {
     return (
-      sameNodePosition(prev.node, next.node) &&
-      sameTextStyling(prev, next)
+      sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
     );
   }
 );
@@ -143,8 +147,7 @@ const MemoH4Block = memo(
   },
   (prev, next) => {
     return (
-      sameNodePosition(prev.node, next.node) &&
-      sameTextStyling(prev, next)
+      sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
     );
   }
 );
@@ -167,8 +170,7 @@ const MemoH5Block = memo(
   },
   (prev, next) => {
     return (
-      sameNodePosition(prev.node, next.node) &&
-      sameTextStyling(prev, next)
+      sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
     );
   }
 );
@@ -191,15 +193,17 @@ const MemoH6Block = memo(
   },
   (prev, next) => {
     return (
-      sameNodePosition(prev.node, next.node) &&
-      sameTextStyling(prev, next)
+      sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
     );
   }
 );
 
 MemoH6Block.displayName = "MemoH6Block";
 
-interface StrongBlockProps extends Omit<ReactMarkdownProps, "children" | "node"> {
+interface StrongBlockProps extends Omit<
+  ReactMarkdownProps,
+  "children" | "node"
+> {
   children: React.ReactNode;
   node?: ReactMarkdownProps["node"];
 }
@@ -412,7 +416,13 @@ export function Markdown({
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
-  }, [textColor, forcedTextSize, compactSpacing, canCopyQuotes, additionalMarkdownComponents]);
+  }, [
+    textColor,
+    forcedTextSize,
+    compactSpacing,
+    canCopyQuotes,
+    additionalMarkdownComponents,
+  ]);
 
   const markdownPlugins: PluggableList = useMemo(
     () => [
@@ -488,9 +498,7 @@ const MemoLinkBlock = memo(
     );
   },
   (prev, next) => {
-    return (
-      sameNodePosition(prev.node, next.node) && prev.href === next.href
-    );
+    return sameNodePosition(prev.node, next.node) && prev.href === next.href;
   }
 );
 
@@ -502,14 +510,7 @@ type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "ref"> &
   };
 
 const MemoInput = memo(
-  ({
-    type,
-    checked,
-    className,
-    onChange,
-    ref,
-    ...props
-  }: InputProps) => {
+  ({ type, checked, className, onChange, ref, ...props }: InputProps) => {
     const inputRef = React.useRef<HTMLInputElement>(null);
     React.useImperativeHandle(ref, () => inputRef.current!);
 
