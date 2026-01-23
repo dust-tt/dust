@@ -54,7 +54,7 @@ interface SkillsDataTableProps {
 export function SkillsDataTable({ owner, loadOnInit }: SkillsDataTableProps) {
   const [showCreateSuggestionSheet, setShowCreateSuggestionSheet] =
     useState(false);
-  const { mutate } = usePokeSkills({ owner, disabled: false });
+  const { mutate } = usePokeSkills({ owner, disabled: true });
 
   const skillButtons = (
     <div className="flex flex-row gap-2">
