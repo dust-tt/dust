@@ -793,19 +793,34 @@ export function useConversationMarkAsRead({
     },
   });
 
+  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    workspaceId,
+    options: {
+      disabled: true,
+    },
+  });
+
   const markAsRead = useCallback(
     /**
      * @param conversationId - The ID of the conversation to mark as read.
      * @param mutateList - Whether to mutate the list of conversations in the sidebar.
+     * @param mutateSpaceConversationsSummary - Whether to mutate the space conversations summary.
      *
      * If mutateList is true, the list of conversations in the sidebar will be mutated to update the unread status of the conversation.
      * If mutateList is false, the list of conversations in the sidebar will not be mutated to update the unread status of the conversation.
+     *
+     * If mutateSpaceConversationsSummary is true, the space conversations summary will be mutated to update the unread counts.
+     * If mutateSpaceConversationsSummary is false, the space conversations summary will not be mutated to update the unread counts.
      *
      * This is useful to avoid any network request when marking a conversation as read.
      * @param conversationId
      * @param mutateList
      */
-    async (conversationId: string, mutateList: boolean): Promise<void> => {
+    async (
+      conversationId: string,
+      mutateList: boolean,
+      mutateSpaceConversationsSummary: boolean
+    ): Promise<void> => {
       try {
         const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}`,
@@ -835,18 +850,60 @@ export function useConversationMarkAsRead({
             { revalidate: false }
           );
         }
+        if (mutateSpaceConversationsSummary) {
+          void mutateSpaceSummary((prevState) => {
+            if (!prevState) {
+              return prevState;
+            }
+            return {
+              ...prevState,
+              summary: prevState.summary.map((spaceSummary) => {
+                if (spaceSummary.space.sId === conversation?.spaceId) {
+                  return {
+                    ...spaceSummary,
+                    unreadConversations: spaceSummary.unreadConversations.map(
+                      (convSummary) => {
+                        if (convSummary.sId === conversationId) {
+                          return {
+                            ...convSummary,
+                            unread: false,
+                            lastRead: Date.now(),
+                          };
+                        }
+                        return convSummary;
+                      }
+                    ),
+                  };
+                }
+                return spaceSummary;
+              }),
+            };
+          });
+        }
       } catch (error) {
         console.error("Error marking conversation as read:", error);
       }
     },
-    [workspaceId, mutateConversations]
+    [
+      workspaceId,
+      mutateConversations,
+      mutateSpaceSummary,
+      conversation?.spaceId,
+    ]
   );
 
   useEffect(() => {
     let timeout: NodeJS.Timeout | null = null;
     if (conversation?.sId) {
+      const isProjectConversation = !!conversation.spaceId;
+
       timeout = setTimeout(
-        () => markAsRead(conversation.sId, true),
+        () =>
+          markAsRead(
+            conversation.sId,
+            !isProjectConversation,
+            isProjectConversation
+          ),
         DELAY_BEFORE_MARKING_AS_READ
       );
     }
@@ -856,7 +913,7 @@ export function useConversationMarkAsRead({
         clearTimeout(timeout);
       }
     };
-  }, [conversation?.sId, markAsRead]);
+  }, [conversation?.sId, markAsRead, conversation?.spaceId]);
 
   return {
     markAsRead,
