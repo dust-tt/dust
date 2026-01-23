@@ -114,16 +114,39 @@ export default function ConnectorSyncingChip({
       default:
         assertNever(connector.errorType);
     }
-  } else if (!connector.lastSyncSuccessfulTime) {
+  } else if (connector.pausedAt) {
     return (
-      <Chip color="info" isBusy>
-        Synchronizing
-        {connector.firstSyncProgress
-          ? ` (${connector.firstSyncProgress})`
-          : null}
-      </Chip>
+      <Tooltip
+        label="Synchronization is paused. New content won't be synced until resumed."
+        trigger={<Chip>Paused</Chip>}
+      />
     );
   } else {
-    return <Chip>{timeAgoFrom(connector.lastSyncSuccessfulTime)} ago</Chip>;
+    // Check if a sync is currently in progress
+    const isSyncInProgress =
+      connector.lastSyncStartTime !== undefined &&
+      (connector.lastSyncFinishTime === undefined ||
+        connector.lastSyncStartTime > connector.lastSyncFinishTime);
+
+    // Show progress during sync if available (full syncs update firstSyncProgress,
+    // incremental syncs don't, so this effectively shows progress for full syncs)
+    if (isSyncInProgress && connector.firstSyncProgress) {
+      return (
+        <Chip color="info" isBusy>
+          Synchronizing ({connector.firstSyncProgress})
+        </Chip>
+      );
+    } else if (isSyncInProgress && !connector.firstSuccessfulSyncTime) {
+      // First sync in progress but no progress info yet
+      return (
+        <Chip color="info" isBusy>
+          Synchronizing
+        </Chip>
+      );
+    } else if (connector.lastSyncSuccessfulTime) {
+      return <Chip>{timeAgoFrom(connector.lastSyncSuccessfulTime)} ago</Chip>;
+    } else {
+      return <Chip color="info">Pending</Chip>;
+    }
   }
 }
