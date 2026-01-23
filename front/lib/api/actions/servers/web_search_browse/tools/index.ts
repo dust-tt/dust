@@ -74,7 +74,7 @@ async function handleWebsearch(
       title: result.title,
       text: result.snippet,
       uri: result.link,
-      reference: refs.shift() as string,
+      reference: refs.shift() ?? "",
     });
   }
 
