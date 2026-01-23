@@ -21,7 +21,6 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -33,11 +32,11 @@ import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { AgentsUsageType, Result } from "@app/types";
 import {
+  assertNever,
   Err,
   Ok,
   PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
-  removeNulls,
   SPACE_GROUP_PREFIX,
 } from "@app/types";
 
@@ -385,8 +384,14 @@ export async function createSpaceAndGroup(
       );
     }
 
-    const { name, isRestricted, spaceKind } = params;
-    const managementMode = isRestricted ? params.managementMode : "manual";
+    const { name, isRestricted, spaceKind, managementMode } = params;
+    if (spaceKind === "regular" && !isRestricted) {
+      assert(
+        managementMode === "manual",
+        "Unrestricted regular spaces must use manual management mode."
+      );
+    }
+
     const nameAvailable = await SpaceResource.isNameAvailable(auth, name, t);
     if (!nameAvailable) {
       return new Err(
@@ -418,8 +423,6 @@ export async function createSpaceAndGroup(
       );
     }
 
-    const memberGroups = removeNulls([membersGroup, globalGroup]);
-
     // Create the editor group for projects and add the creator
     const editorGroups: GroupResource[] = [];
     if (spaceKind === "project") {
@@ -442,76 +445,89 @@ export async function createSpaceAndGroup(
         managementMode,
         workspaceId: owner.id,
       },
-      { members: memberGroups, editors: editorGroups },
+      { members: [membersGroup], editors: editorGroups },
       t
     );
 
-    if (space.isProject() && !isRestricted) {
+    if (!isRestricted) {
       // Set the global group as viewer for non-restricted project spaces
-      assert(globalGroup, "Global group mus exist");
-      await GroupSpaceModel.update(
+      assert(globalGroup, "Global group must exist");
+      await GroupSpaceModel.create(
         {
-          kind: "project_viewer",
+          kind: space.isProject() ? "project_viewer" : "member",
+          groupId: globalGroup.id,
+          vaultId: space.id,
+          workspaceId: owner.id,
         },
         {
-          where: {
-            groupId: globalGroup.id,
-            vaultId: space.id,
-          },
           transaction: t,
         }
       );
     }
 
     // Handle member-based space creation
-    if (params.managementMode === "manual") {
-      // Add members to the member group
-      const users = (await UserResource.fetchByIds(params.memberIds)).map(
-        (user) => user.toJSON()
-      );
-      for (const user of users) {
-        await GroupMembershipModel.create(
-          {
-            groupId: membersGroup.id,
-            userId: user.id,
-            workspaceId: owner.id,
-            startAt: new Date(),
-            status: "active" as const,
-          },
-          { transaction: t }
+    switch (managementMode) {
+      case "manual":
+        if (spaceKind === "project") {
+          assert(
+            params.memberIds.length === 0,
+            "Cannot add members to projects on creation."
+          );
+          break;
+        }
+        // Add members to the member group in regular spaces
+        const users = (await UserResource.fetchByIds(params.memberIds)).map(
+          (user) => user.toJSON()
         );
-      }
-    }
-
-    // Handle group-based space creation
-    if (params.managementMode === "group") {
-      // For group-based spaces, we need to associate the selected groups with the space
-      if (params.groupIds.length > 0) {
-        const selectedGroupsResult = await GroupResource.fetchByIds(
-          auth,
-          params.groupIds
-        );
-        if (selectedGroupsResult.isErr()) {
+        const groupsResult = await membersGroup.addMembers(auth, {
+          users,
+          transaction: t,
+        });
+        if (groupsResult.isErr()) {
           logger.error(
             {
-              error: selectedGroupsResult.error,
+              error: groupsResult.error,
             },
-            "The space cannot be created - failed to fetch groups"
+            "Failed to add members to the member group"
           );
           return new Err(
             new DustError("internal_error", "The space cannot be created.")
           );
         }
+        break;
 
-        const selectedGroups = selectedGroupsResult.value;
-        for (const selectedGroup of selectedGroups) {
-          await GroupSpaceMemberResource.makeNew(auth, {
-            group: selectedGroup,
-            space,
-            transaction: t,
-          });
+      // Handle group-based space creation
+      case "group":
+        // For group-based spaces, we need to associate the selected groups with the space
+        if (params.groupIds.length > 0) {
+          const selectedGroupsResult = await GroupResource.fetchByIds(
+            auth,
+            params.groupIds
+          );
+          if (selectedGroupsResult.isErr()) {
+            logger.error(
+              {
+                error: selectedGroupsResult.error,
+              },
+              "The space cannot be created - failed to fetch groups"
+            );
+            return new Err(
+              new DustError("internal_error", "The space cannot be created.")
+            );
+          }
+
+          const selectedGroups = selectedGroupsResult.value;
+          for (const selectedGroup of selectedGroups) {
+            await GroupSpaceMemberResource.makeNew(auth, {
+              group: selectedGroup,
+              space,
+              transaction: t,
+            });
+          }
         }
-      }
+        break;
+      default:
+        assertNever(managementMode);
     }
 
     // Create empty project metadata for project spaces

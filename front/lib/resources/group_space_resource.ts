@@ -22,7 +22,7 @@ import { assertNever, Err, Ok, removeNulls } from "@app/types";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface GroupSpaceBaseResource extends ReadonlyAttributesType<GroupSpaceModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
+export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
   static model: ModelStatic<GroupSpaceModel> = GroupSpaceModel;
 
   constructor(
@@ -47,13 +47,7 @@ export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
     });
   }
 
-  /**
-   * Placeholder for requestedPermissions to be defined in subclasses.
-   * Each subclass will implement its own permission logic.
-   */
-  async requestedPermissions(): Promise<CombinedResourcePermissions[]> {
-    throw new Error("requestedPermissions must be implemented in subclass");
-  }
+  abstract requestedPermissions(): Promise<CombinedResourcePermissions[]>;
 
   /**
    * Add multiple members to the group with permissions from this group-space relationship.
@@ -182,6 +176,16 @@ export class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
         transaction,
       });
 
+      await GroupModel.destroy({
+        where: {
+          id: this.groupId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          // Delete the corresponding group if it's regular or space_editors (system, global, provisioned groups should not be deleted)
+          kind: ["regular", "space_editors"],
+        },
+        transaction,
+      });
+
       return new Ok(undefined);
     } catch (error) {
       return new Err(error instanceof Error ? error : new Error(String(error)));
@@ -295,20 +299,25 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
       case "system":
         return [
           {
-            workspaceId: this.workspaceId,
-            roles: [{ role: "admin", permissions: ["admin", "write"] }],
             groups: [
               {
                 id: this.groupId,
                 permissions: ["read", "write"],
               },
             ],
+            roles: [{ role: "admin", permissions: ["admin", "write"] }],
+            workspaceId: this.workspaceId,
           },
         ];
       case "public":
         return [
           {
-            workspaceId: this.workspaceId,
+            groups: [
+              {
+                id: this.groupId,
+                permissions: ["read", "write"],
+              },
+            ],
             roles: [
               { role: "admin", permissions: ["admin", "read", "write"] },
               { role: "builder", permissions: ["read", "write"] },
@@ -316,29 +325,24 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
               // Everyone can read.
               { role: "none", permissions: ["read"] },
             ],
-            groups: [
-              {
-                id: this.groupId,
-                permissions: ["read", "write"],
-              },
-            ],
+            workspaceId: this.workspaceId,
           },
         ];
       case "global":
       case "conversations":
         return [
           {
-            workspaceId: this.workspaceId,
-            roles: [
-              { role: "admin", permissions: ["admin", "read", "write"] },
-              { role: "builder", permissions: ["read", "write"] },
-            ],
             groups: [
               {
                 id: this.groupId,
                 permissions: ["read"],
               },
             ],
+            roles: [
+              { role: "admin", permissions: ["admin", "read", "write"] },
+              { role: "builder", permissions: ["read", "write"] },
+            ],
+            workspaceId: this.workspaceId,
           },
         ];
       case "regular":
@@ -360,6 +364,7 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
           },
         ];
       case "project": {
+        // Only gets the editor groups correponding to the space management mode
         const editorGroupSpaces = await this.getEditorGroupSpaces(true);
         const editorGroupsPermissions: GroupPermission[] =
           editorGroupSpaces.map((egs) => ({
@@ -506,6 +511,7 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
 
   async requestedPermissions(): Promise<CombinedResourcePermissions[]> {
     if (this.space.isProject()) {
+      // Only gets the editor groups correponding to the space management mode
       const editorGroupSpaces = await this.getEditorGroupSpaces(true);
       const editorGroupsPermissions: GroupPermission[] = editorGroupSpaces.map(
         (egs) => ({
@@ -634,6 +640,7 @@ export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
       this.space.isProject(),
       "Viewer permissions only apply to project spaces"
     );
+    // Only gets the editor groups correponding to the space management mode
     const editorGroupSpaces = await this.getEditorGroupSpaces(true);
     const editorGroupsPermissions: GroupPermission[] = editorGroupSpaces.map(
       (egs) => ({

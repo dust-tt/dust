@@ -1097,7 +1097,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
                 // Members get read permissions in restricted projects (the unrestricted case is handled by the roles above)
                 acc.push({
                   id: group.id,
-                  permissions: ["read"],
+                  permissions: ["read", "write"],
                 });
               }
             }
