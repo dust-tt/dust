@@ -507,7 +507,11 @@ export default function Subscription({
                 <ButtonsSwitchList
                   defaultValue={billingPeriod}
                   size="xs"
-                  onValueChange={(v) => setBillingPeriod(v as BillingPeriod)}
+                  onValueChange={(v) => {
+                    if (v === "monthly" || v === "yearly") {
+                      setBillingPeriod(v);
+                    }
+                  }}
                 >
                   <ButtonsSwitch value="monthly" label="Monthly billing" />
                   <ButtonsSwitch value="yearly" label="Yearly billing" />
