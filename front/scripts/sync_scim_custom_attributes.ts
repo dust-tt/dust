@@ -85,14 +85,14 @@ async function getDirectoryUsers(
 
 makeScript(
   {
-    workspaceSId: {
+    workspaceId: {
       alias: "w",
       type: "string",
       description:
         "Optional: Specific workspace sID to process. If not provided, processes all SCIM-enabled workspaces.",
     },
   },
-  async ({ execute, workspaceSId }, logger) => {
+  async ({ execute, workspaceId }, logger) => {
     // Fetch all directories from WorkOS (much more efficient than querying all workspaces).
     const allDirectories = await getAllDirectories();
 
@@ -131,7 +131,7 @@ makeScript(
       }
 
       // If a specific workspace was requested, skip others.
-      if (workspaceSId && workspace.sId !== workspaceSId) {
+      if (workspaceId && workspace.sId !== workspaceId) {
         continue;
       }
 
@@ -209,6 +209,13 @@ makeScript(
               lightWorkspace,
               customAttributes
             );
+          } else {
+            logger.info({
+              workspaceId: workspace.sId,
+              userId: user.sId,
+              email: directoryUser.email,
+              customAttributes,
+            });
           }
 
           return {
@@ -248,9 +255,9 @@ makeScript(
       );
     }
 
-    if (workspaceSId && totalWorkspacesProcessed === 0) {
+    if (workspaceId && totalWorkspacesProcessed === 0) {
       logger.error(
-        { workspaceSId },
+        { workspaceId },
         "Workspace not found or does not have a SCIM directory"
       );
       return;
