@@ -12,6 +12,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   getAgentConfiguration,
   updateAgentRequirements,
@@ -241,9 +242,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     blob: Omit<CreationAttributes<SkillConfigurationModel>, "workspaceId">,
     {
       mcpServerViews,
+      addCurrentUserAsEditor = true,
       attachedKnowledge = [],
     }: {
       mcpServerViews: MCPServerViewResource[];
+      addCurrentUserAsEditor?: boolean;
       attachedKnowledge?: SkillAttachedKnowledge[];
     }
   ): Promise<SkillResource> {
@@ -262,6 +265,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
 
       const editorGroup = await this.makeNewSkillEditorsGroup(auth, skill, {
+        addCurrentUserAsEditor,
         transaction,
       });
 
@@ -295,6 +299,45 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
+  static async makeSuggestion(
+    auth: Authenticator,
+    blob: Omit<
+      CreationAttributes<SkillConfigurationModel>,
+      "workspaceId" | "status" | "editedBy" | "requestedSpaceIds"
+    >,
+    {
+      mcpServerNames,
+    }: {
+      mcpServerNames: AutoInternalMCPServerNameType[];
+    }
+  ): Promise<Result<SkillResource, Error>> {
+    const mcpServerViews =
+      await MCPServerViewResource.getMCPServerViewsForAutoInternalTools(
+        auth,
+        mcpServerNames
+      );
+
+    if (mcpServerViews.length !== mcpServerNames.length) {
+      return new Err(new Error("Some MCP server views are missing."));
+    }
+
+    const createdSuggestedSkill = await this.makeNew(
+      auth,
+      {
+        ...blob,
+        status: "suggested",
+        editedBy: null,
+        requestedSpaceIds: [],
+      },
+      {
+        mcpServerViews,
+        addCurrentUserAsEditor: false,
+      }
+    );
+
+    return new Ok(createdSuggestedSkill);
+  }
+
   /**
    * Creates a new skill editors group for the given skill and adds the creating
    * user to it.
@@ -302,7 +345,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   private static async makeNewSkillEditorsGroup(
     auth: Authenticator,
     skill: SkillConfigurationModel,
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      addCurrentUserAsEditor = true,
+      transaction,
+    }: {
+      addCurrentUserAsEditor?: boolean;
+      transaction?: Transaction;
+    } = {}
   ): Promise<GroupResource> {
     const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
@@ -318,7 +367,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         name: `${SKILL_GROUP_PREFIX} ${skill.name} (skill:${skill.id})`,
         kind: "skill_editors",
       },
-      { transaction, memberIds: [user.id] }
+      {
+        memberIds: addCurrentUserAsEditor ? [user.id] : [],
+        transaction,
+      }
     );
 
     await GroupSkillModel.create(
