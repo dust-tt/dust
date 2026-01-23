@@ -120,6 +120,35 @@ When querying Snowflake:
 - "Find all users who haven't logged in for 30 days."
 - "Summarize the distribution of order statuses in the ORDERS table."
 
+## Snowflake Tool vs. Snowflake Connection
+
+Dust offers two ways to connect agents to Snowflake: the **Snowflake Tool** (this page) and the [Snowflake Connection](/docs/snowflake). They serve different needs.
+
+|  | Snowflake Tool | Snowflake Connection |
+|--|----------------|---------------------|
+| **What agents can access** | Everything the Snowflake role allows | Only the tables an admin explicitly selects in Dust |
+| **Views support** | Yes (tables and views) | No (tables only) |
+| **Query flexibility** | Free-form SQL — JOINs, CTEs, subqueries, aggregations | Structured table queries on individual tables |
+| **Schema exploration** | Agents can browse databases, schemas, and tables on the fly | Agents only see the pre-selected tables |
+| **Per-user permissions** | Yes (with personal credentials, each user's Snowflake role applies) | No — a single service account is shared |
+| **Max rows per query** | 1,000 | 25,000 |
+| **Authentication** | OAuth (personal or workspace) | Service account (password or key pair) |
+
+### When to use the Snowflake Tool
+
+- You want agents to **explore your warehouse freely** — discovering schemas, browsing tables, and writing flexible SQL.
+- You need to query **views** (standard or materialized).
+- You want **per-user access control** via personal credentials, so each user's Snowflake role determines what they can see.
+- Your use case involves **complex queries** — JOINs across tables, CTEs, window functions, etc.
+
+### When to use the Snowflake Connection
+
+- You want **strict admin control** over which specific tables agents can access, independent of Snowflake roles.
+- You need to retrieve **larger result sets** (up to 25,000 rows).
+- You prefer a **simpler agent experience** — agents query known, pre-configured tables without needing to explore the schema first.
+
+Both can coexist in the same workspace. For example, you might use a Connection for a well-defined reporting agent that queries specific tables, and the Tool for a data exploration agent that helps users investigate the warehouse ad hoc.
+
 ## Constraints
 
 - Only **read-only** (SELECT) queries are supported. Write operations (INSERT, UPDATE, DELETE, MERGE, COPY) are blocked.
