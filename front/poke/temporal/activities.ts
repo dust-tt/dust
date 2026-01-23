@@ -27,6 +27,7 @@ import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
@@ -258,6 +259,8 @@ export async function deleteAgentsActivity({
       workspaceId: workspace.id,
     },
   });
+
+  await AgentSuggestionResource.deleteAllForWorkspace(auth);
 
   await GlobalAgentSettingsModel.destroy({
     where: {
