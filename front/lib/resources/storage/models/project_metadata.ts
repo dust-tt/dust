@@ -32,12 +32,11 @@ ProjectMetadataModel.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    // remove to ease the change of data type
-    // urls: {
-    //   type: DataTypes.ARRAY(DataTypes.JSONB),
-    //   allowNull: false,
-    //   defaultValue: [],
-    // },
+    urls: {
+      type: DataTypes.ARRAY(DataTypes.JSONB),
+      allowNull: false,
+      defaultValue: [],
+    },
   },
   {
     modelName: "project_metadata",

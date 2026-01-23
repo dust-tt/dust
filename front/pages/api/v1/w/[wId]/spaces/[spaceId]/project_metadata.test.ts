@@ -195,7 +195,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       sId: expect.anything(),
       spaceId: space.sId,
       updatedAt: expect.anything(),
-      //urls: [{ name: "Website", url: "https://example.com" }],
+      urls: [{ name: "Website", url: "https://example.com" }],
       members: [],
     });
   });
@@ -249,10 +249,10 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       sId: expect.anything(),
       spaceId: space.sId,
       updatedAt: expect.anything(),
-      // urls: [
-      //   { name: "Website", url: "https://example.com" },
-      //   { name: "GitHub", url: "https://github.com/test/repo" },
-      // ],
+      urls: [
+        { name: "Website", url: "https://example.com" },
+        { name: "GitHub", url: "https://github.com/test/repo" },
+      ],
       members: expect.arrayContaining([
         expect.stringContaining(member1.sId),
         expect.stringContaining(member2.sId),
