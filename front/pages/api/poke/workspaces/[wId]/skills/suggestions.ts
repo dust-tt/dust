@@ -24,21 +24,18 @@ const PostSkillSuggestionBodySchema = z.object({
     .string()
     .min(1, "What will this skill be used for is required."),
   instructions: z.string().min(1, "Instructions are required."),
-  icon: z.string().nullable().optional(),
-  mcpServerNames: z
-    .array(
-      z
-        .string()
-        .refine(
-          (name): name is AutoInternalMCPServerNameType =>
-            AUTO_INTERNAL_MCP_SERVER_NAMES.includes(
-              name as AutoInternalMCPServerNameType
-            ),
-          { message: "Invalid MCP server name." }
-        )
-    )
-    .optional()
-    .default([]),
+  icon: z.string().nullable(),
+  mcpServerNames: z.array(
+    z
+      .string()
+      .refine(
+        (name): name is AutoInternalMCPServerNameType =>
+          AUTO_INTERNAL_MCP_SERVER_NAMES.includes(
+            name as AutoInternalMCPServerNameType
+          ),
+        { message: "Invalid MCP server name." }
+      )
+  ),
 });
 
 export type PostSkillSuggestionBodyType = z.infer<
@@ -101,7 +98,7 @@ async function handler(
         mcpServerNames,
       } = bodyResult.data;
 
-      let skillIcon: string | null = icon?.trim() || null;
+      let skillIcon = icon;
 
       if (!skillIcon) {
         const iconSuggestionResult = await getSkillIconSuggestion(auth, {

@@ -251,7 +251,7 @@ function CreateSkillSuggestionSheet({
                 <DropdownMenu
                   modal={false}
                   onOpenChange={(open) => {
-                    if (!open) {
+                    if (open) {
                       setMcpSearchText("");
                     }
                   }}
