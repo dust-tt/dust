@@ -481,6 +481,7 @@ export function isUserMessageContextValid(
     case "triggered":
     case "triggered_programmatic":
     case "onboarding_conversation":
+    case "agent_copilot":
     case "web":
       return false;
     default:

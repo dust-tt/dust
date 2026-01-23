@@ -93,9 +93,10 @@ export type UserMessageOrigin =
   | "web"
   | "zapier"
   | "zendesk"
-  // TODO onboarding_conversation isn't a message origin. It has been used so as a hack
-  // but should be removed and most likely handled as message metadata (to be created).
-  | "onboarding_conversation";
+  // TODO onboarding_conversation and agent_copilot aren't message origins. They have been used
+  // as a hack but should be removed and most likely handled as message metadata (to be created).
+  | "onboarding_conversation"
+  | "agent_copilot";
 
 export type UserMessageContext = {
   username: string;

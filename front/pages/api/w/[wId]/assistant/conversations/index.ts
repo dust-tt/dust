@@ -250,7 +250,7 @@ async function handler(
             fullName: user.fullName(),
             email: user.email,
             profilePictureUrl: message.context.profilePictureUrl,
-            origin: "web",
+            origin: message.context.origin ?? "web",
             clientSideMCPServerIds:
               message.context.clientSideMCPServerIds ?? [],
           },

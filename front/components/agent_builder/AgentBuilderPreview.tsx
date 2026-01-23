@@ -112,7 +112,7 @@ function PreviewContent({
               conversationId={conversation.sId}
               agentBuilderContext={{
                 draftAgent: draftAgent ?? undefined,
-                isSavingDraftAgent,
+                isSubmitting: isSavingDraftAgent,
                 resetConversation,
                 actionsToShow: ["attachment"],
                 clientSideMCPServerIds: clientSideMCPServerId
