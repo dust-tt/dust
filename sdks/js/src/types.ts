@@ -203,12 +203,8 @@ export const supportedImageFileFormats = {
   "image/png": [".png"],
   "image/gif": [".gif"],
   "image/webp": [".webp"],
-<<<<<<< HEAD
   "image/svg+xml": [".svg"],
-||||||| parent of 2b3d866339 (use signed url instead of gemini file upload)
-=======
   "image/bmp": [".bmp"],
->>>>>>> 2b3d866339 (use signed url instead of gemini file upload)
 } as const;
 
 export const supportedAudioFileFormats = {
