@@ -22,6 +22,7 @@ import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/m
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
+import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { MISSING_ACTION_CATCHER_SERVER } from "@app/lib/api/actions/servers/missing_action_catcher/metadata";
@@ -243,61 +244,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      // Get operations.
-      get_object_properties: "never_ask",
-      get_object_by_email: "never_ask",
-      get_latest_objects: "never_ask",
-      get_contact: "never_ask",
-      get_company: "never_ask",
-      get_deal: "never_ask",
-      get_meeting: "never_ask",
-      get_file_public_url: "never_ask",
-      get_associated_meetings: "never_ask",
-      get_hubspot_link: "never_ask",
-      get_hubspot_portal_id: "never_ask",
-      list_owners: "never_ask",
-      search_owners: "never_ask",
-      get_current_user_id: "never_ask",
-      get_user_activity: "never_ask",
-      list_associations: "never_ask",
-
-      count_objects_by_properties: "never_ask",
-      search_crm_objects: "never_ask",
-      export_crm_objects_csv: "never_ask",
-
-      // Create operations.
-      create_contact: "high",
-      create_company: "high",
-      create_deal: "high",
-      create_lead: "high",
-      create_task: "high",
-      create_note: "high",
-      create_communication: "high",
-      create_meeting: "high",
-      create_association: "high",
-
-      // Update operations.
-      update_contact: "high",
-      update_company: "high",
-      update_deal: "high",
-      remove_association: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "hubspot",
-      version: "1.0.0",
-      description: "Access CRM contacts, deals and customer activities.",
-      authorization: {
-        provider: "hubspot" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "HubspotLogo",
-      documentationUrl: "https://docs.dust.tt/docs/hubspot",
-      instructions: null,
-    },
+    metadata: HUBSPOT_SERVER,
   },
   [DEFAULT_AGENT_ROUTER_ACTION_NAME]: {
     id: 8,

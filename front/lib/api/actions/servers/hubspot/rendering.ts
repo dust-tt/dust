@@ -1,5 +1,4 @@
 import type { SimplePublicObject } from "@hubspot/api-client/lib/codegen/crm/objects/models/SimplePublicObject";
-import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/models/Property";
 
 export interface HubSpotObjectSummary {
   id: string;
@@ -66,7 +65,7 @@ export function formatHubSpotObject(
     }
   };
 
-  const allowlist = IMPORTANT_DATE_FIELDS[objectType] || [];
+  const allowlist = IMPORTANT_DATE_FIELDS[objectType] ?? [];
 
   const cleanProperties = Object.entries(object.properties)
     .filter(
@@ -103,23 +102,6 @@ export function formatHubSpotObject(
   };
 }
 
-export function formatHubSpotProperty(
-  property: Property
-): HubSpotPropertySummary {
-  return {
-    name: property.name,
-    label: property.label || property.name,
-    type: property.type,
-    description: property.description || undefined,
-    required: false,
-    options:
-      property.options?.slice(0, 20).map((option) => ({
-        label: option.label,
-        value: option.value,
-      })) || undefined,
-  };
-}
-
 export function formatHubSpotSearchResults(
   objects: SimplePublicObject[],
   objectType: string,
@@ -151,37 +133,6 @@ export function formatHubSpotObjectsAsText(
     .join("\n\n");
 
   return `Found ${objects.length} ${objectType}:\n\n${formatted}`;
-}
-
-export function formatHubSpotPropertiesAsText(
-  properties: Property[],
-  objectType: string,
-  creatableOnly: boolean = false
-): string {
-  if (properties.length === 0) {
-    return `No properties found for ${objectType}.`;
-  }
-
-  const formatted = properties
-    .map((property, index) => {
-      const summary = formatHubSpotProperty(property);
-      let text = `${index + 1}. ${summary.name} (${summary.label})`;
-      text += `\n   Type: ${summary.type}`;
-      if (summary.description) {
-        text += `\n   Description: ${summary.description}`;
-      }
-      if (summary.required) {
-        text += `\n   Required: Yes`;
-      }
-      if (summary.options && summary.options.length > 0) {
-        text += `\n   Options: ${summary.options.map((o) => `${o.label} (${o.value})`).join(", ")}`;
-      }
-      return text;
-    })
-    .join("\n\n");
-
-  const typeText = creatableOnly ? "creatable properties" : "properties";
-  return `Found ${properties.length} ${typeText} for ${objectType}:\n\n${formatted}`;
 }
 
 export function formatTransformedPropertiesAsText(
