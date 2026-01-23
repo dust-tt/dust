@@ -10,21 +10,17 @@ import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 
 import { Checkbox, Chip } from "@sparkle/components";
-import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
-import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
-import { safeRehypeKatex } from "@sparkle/components/markdown/safeRehypeKatex";
-import {
-  preserveLineBreaks,
-  sanitizeContent,
-} from "@sparkle/components/markdown/utils";
 import { MemoBlockquoteBlock } from "@sparkle/components/markdownWithStreamingAnimation/BlockquoteBlock";
+import { MemoCodeBlockWithExtendedSupport } from "@sparkle/components/markdownWithStreamingAnimation/CodeBlockWithExtendedSupport";
 import {
   MemoLiBlock,
   MemoOlBlock,
   MemoUlBlock,
 } from "@sparkle/components/markdownWithStreamingAnimation/List";
+import { MarkdownContentContext } from "@sparkle/components/markdownWithStreamingAnimation/MarkdownContentContext";
 import { MemoParagraphBlock } from "@sparkle/components/markdownWithStreamingAnimation/ParagraphBlock";
 import { MemoPreBlock } from "@sparkle/components/markdownWithStreamingAnimation/PreBlock";
+import { safeRehypeKatex } from "@sparkle/components/markdownWithStreamingAnimation/safeRehypeKatex";
 import {
   MemoTableBlock,
   MemoTableBodyBlock,
@@ -32,6 +28,10 @@ import {
   MemoTableHeadBlock,
   MemoTableHeaderBlock,
 } from "@sparkle/components/markdownWithStreamingAnimation/TableBlock";
+import {
+  preserveLineBreaks,
+  sanitizeContent,
+} from "@sparkle/components/markdownWithStreamingAnimation/utils";
 import {
   sameNodePosition,
   sameTextStyling,
@@ -413,7 +413,7 @@ export function Markdown({
         </MemoBlockquoteBlock>
       ),
       hr: ({ node }) => <MemoHrBlock node={node} />,
-      code: CodeBlockWithExtendedSupport,
+      code: MemoCodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
   }, [
