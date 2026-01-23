@@ -24,6 +24,7 @@ import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_cale
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
+import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
 import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
@@ -323,19 +324,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("legacy_dust_apps");
     },
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "run_dust_app",
-      version: "1.0.0",
-      description: "Run Dust Apps with specified parameters.",
-      icon: "CommandLineIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: RUN_DUST_APP_SERVER,
   },
   notion: {
     id: 11,

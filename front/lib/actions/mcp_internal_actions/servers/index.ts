@@ -38,7 +38,6 @@ import { default as extractDataServer } from "@app/lib/actions/mcp_internal_acti
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
 import { default as projectContextManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/project_context_management";
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
-import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
 import { default as salesloftServer } from "@app/lib/actions/mcp_internal_actions/servers/salesloft";
 import { default as schedulesManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/schedules_management";
@@ -68,6 +67,7 @@ import { default as calendarServer } from "@app/lib/api/actions/servers/google_c
 import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/api/actions/servers/include_data";
 import { default as notionServer } from "@app/lib/api/actions/servers/notion";
+import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
 import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
 import { default as soundStudio } from "@app/lib/api/actions/servers/sound_studio";
 import { default as speechGenerator } from "@app/lib/api/actions/servers/speech_generator";
