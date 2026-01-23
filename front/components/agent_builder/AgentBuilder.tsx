@@ -592,11 +592,13 @@ function AgentBuilderContent({
               agentConfiguration?.sId ?? pendingAgentId ?? null
             }
             targetAgentConfigurationVersion={agentConfiguration?.version ?? 0}
+            clientSideMCPServerIds={
+              clientSideMCPServerId ? [clientSideMCPServerId] : []
+            }
           >
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel
                 agentConfigurationSId={agentConfiguration?.sId}
-                clientSideMCPServerId={clientSideMCPServerId}
               />
             </ConversationSidePanelProvider>
           </CopilotPanelProvider>

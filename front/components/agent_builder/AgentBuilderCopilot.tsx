@@ -60,6 +60,7 @@ interface CopilotContentProps {
   resetConversation: () => void;
   isTrialPlan: boolean;
   isAdmin: boolean;
+  clientSideMCPServerIds: string[];
 }
 
 function CopilotContent({
@@ -70,6 +71,7 @@ function CopilotContent({
   resetConversation,
   isTrialPlan,
   isAdmin,
+  clientSideMCPServerIds,
 }: CopilotContentProps) {
   return (
     <>
@@ -89,6 +91,7 @@ function CopilotContent({
                 isSubmitting: false,
                 resetConversation,
                 actionsToShow: [],
+                clientSideMCPServerIds,
               }}
               key={conversation.sId}
             />
@@ -120,6 +123,7 @@ export function AgentBuilderCopilot() {
     creationFailed,
     startConversation,
     resetConversation,
+    clientSideMCPServerIds,
   } = useCopilotPanelContext();
 
   // Auto-start conversation when component mounts
@@ -150,6 +154,7 @@ export function AgentBuilderCopilot() {
         resetConversation={resetConversation}
         isTrialPlan={!!isTrialPlan}
         isAdmin={isAdmin}
+        clientSideMCPServerIds={clientSideMCPServerIds}
       />
     );
   };
