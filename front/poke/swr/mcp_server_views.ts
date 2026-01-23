@@ -18,10 +18,13 @@ export function usePokeMCPServerViews({
 }: UsePokeMCPServerViewsProps) {
   const mcpServerViewsFetcher: Fetcher<PokeListMCPServerViews> = fetcher;
 
-  const queryParams = globalSpaceOnly ? "?globalSpaceOnly=true" : "";
+  const params = new URLSearchParams();
+  if (globalSpaceOnly) {
+    params.set("globalSpaceOnly", "true");
+  }
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/mcp/views${queryParams}`,
+    `/api/poke/workspaces/${owner.sId}/mcp/views?${params.toString()}`,
     mcpServerViewsFetcher,
     { disabled }
   );
