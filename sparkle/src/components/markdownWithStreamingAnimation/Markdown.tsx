@@ -28,6 +28,7 @@ import {
   MemoTableHeadBlock,
   MemoTableHeaderBlock,
 } from "@sparkle/components/markdownWithStreamingAnimation/TableBlock";
+import { useAnimatedText } from "@sparkle/components/markdownWithStreamingAnimation/useAnimatedText";
 import {
   preserveLineBreaks,
   sanitizeContent,
@@ -282,6 +283,11 @@ export function StreamingAnimationMarkdown({
     return sanitized;
   }, [content, compactSpacing]);
 
+  const markdownContent = useAnimatedText(
+    processedContent,
+    isStreaming
+  );
+
   // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
   // AST parsing rounds (happening at each token being streamed).
   //
@@ -455,7 +461,7 @@ export function StreamingAnimationMarkdown({
             remarkPlugins={markdownPlugins}
             rehypePlugins={rehypePlugins}
           >
-            {processedContent}
+            {markdownContent}
           </ReactMarkdown>
         </MarkdownContentContext.Provider>
       </div>
