@@ -1854,6 +1854,7 @@ export const INTERNAL_MCP_SERVERS = {
       add_project_file: "high",
       update_project_file: "high",
       delete_project_file: "high",
+      read_project_journal_entry: "never_ask",
     },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,

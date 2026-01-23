@@ -14,6 +14,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { SpaceConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceConversationListItem";
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
+import { SpaceJournalEntry } from "@app/components/assistant/conversation/space/conversations/SpaceJournalEntry";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
@@ -165,6 +166,8 @@ export function SpaceConversationsTab({
               disableAutoFocus={false}
             />
           </div>
+
+          <SpaceJournalEntry owner={owner} space={spaceInfo} />
 
           {/* Suggestions for empty rooms */}
           {!hasHistory && <SpaceConversationsActions />}

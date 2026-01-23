@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
+  getProjectSpace,
   getWritableProjectContext,
   makeSuccessResponse,
   withErrorHandling,
@@ -10,6 +11,7 @@ import {
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import { ProjectJournalEntryResource } from "@app/lib/resources/project_journal_entry_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { Err, Ok } from "@app/types";
@@ -17,6 +19,8 @@ import { Err, Ok } from "@app/types";
 export const EDIT_PROJECT_DESCRIPTION_TOOL_NAME = "edit_project_description";
 export const ADD_PROJECT_URL_TOOL_NAME = "add_project_url";
 export const EDIT_PROJECT_URL_TOOL_NAME = "edit_project_url";
+export const READ_PROJECT_JOURNAL_ENTRY_TOOL_NAME =
+  "read_project_journal_entry";
 
 /**
  * Gets or creates project metadata for a space.
@@ -302,6 +306,74 @@ export function registerEditProjectUrlTool(
 }
 
 /**
+ * Registers the read_project_journal_entry tool.
+ */
+export function registerReadProjectJournalEntryTool(
+  server: McpServer,
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): void {
+  server.tool(
+    READ_PROJECT_JOURNAL_ENTRY_TOOL_NAME,
+    "Reads all journal entries for this project. Returns the journal entries with their content, and timestamps.",
+    {
+      limit: z
+        .number()
+        .optional()
+        .describe("Maximum number of journal entries to return (default: 1)"),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: READ_PROJECT_JOURNAL_ENTRY_TOOL_NAME,
+        agentLoopContext,
+      },
+      async (params) => {
+        return withErrorHandling(async () => {
+          const contextRes = await getProjectSpace(auth, agentLoopContext);
+          if (contextRes.isErr()) {
+            return contextRes;
+          }
+
+          const { space } = contextRes.value;
+          const { limit = 10 } = params;
+
+          const entries = await ProjectJournalEntryResource.fetchBySpace(
+            auth,
+            space.id,
+            { limit }
+          );
+
+          if (entries.length === 0) {
+            return new Ok(
+              makeSuccessResponse({
+                success: true,
+                entries: [],
+                count: 0,
+                message: "No journal entries exist for this project",
+              })
+            );
+          }
+
+          return new Ok(
+            makeSuccessResponse({
+              success: true,
+              entries: entries.map((entry) => ({
+                journalEntry: entry.journalEntry,
+                createdAt: entry.createdAt.toISOString(),
+                updatedAt: entry.updatedAt.toISOString(),
+              })),
+              count: entries.length,
+              message: `Successfully retrieved ${entries.length} journal ${entries.length === 1 ? "entry" : "entries"}`,
+            })
+          );
+        }, "Failed to read project journal entries");
+      }
+    )
+  );
+}
+
+/**
  * Registers all metadata-related tools on the server.
  */
 export function registerMetadataTools(
@@ -312,4 +384,5 @@ export function registerMetadataTools(
   registerEditProjectDescriptionTool(server, auth, agentLoopContext);
   registerAddProjectUrlTool(server, auth, agentLoopContext);
   registerEditProjectUrlTool(server, auth, agentLoopContext);
+  registerReadProjectJournalEntryTool(server, auth, agentLoopContext);
 }

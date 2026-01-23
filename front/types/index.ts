@@ -68,6 +68,7 @@ export * from "./poke/plugins";
 export * from "./production_checks";
 export * from "./programmatic_usage";
 export * from "./project";
+export * from "./project_journal_entry";
 export * from "./project_metadata";
 export * from "./provider";
 export * from "./resource_permissions";
