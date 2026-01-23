@@ -25,11 +25,6 @@ export function useAuth(): AuthContextValue {
   return ctx;
 }
 
-export interface AuthContextValueWithWorkspace extends AuthContextValue {
-  workspace: LightWorkspaceType;
-  subscription: SubscriptionType;
-}
-
 export function useWorkspace(): LightWorkspaceType {
   const ctx = useAuth();
   if (!ctx.workspace) {
