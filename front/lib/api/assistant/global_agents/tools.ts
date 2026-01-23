@@ -5,14 +5,19 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type {
   AutoInternalMCPServerNameType,
   InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { DataSourceViewType, GLOBAL_AGENTS_SID } from "@app/types";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type {
+  AgentFetchVariant,
+  DataSourceViewType,
+  GLOBAL_AGENTS_SID,
+} from "@app/types";
 
 export type PrefetchedDataSourcesType = {
   dataSourceViews: (DataSourceViewType & { isInGlobalSpace: boolean })[];
@@ -38,6 +43,35 @@ export type MCPServerViewsForGlobalAgentsMap = Record<
   (typeof MCP_SERVERS_FOR_GLOBAL_AGENTS)[number],
   MCPServerViewResource | null
 >;
+
+export async function getMCPServerViewsForGlobalAgents(
+  auth: Authenticator,
+  variant: AgentFetchVariant
+): Promise<MCPServerViewsForGlobalAgentsMap> {
+  let allMCPServerViews: MCPServerViewResource[] = [];
+  if (variant === "full") {
+    allMCPServerViews =
+      await MCPServerViewResource.getMCPServerViewsForAutoInternalTools(auth, [
+        ...MCP_SERVERS_FOR_GLOBAL_AGENTS,
+      ]);
+  }
+
+  const mcpServerViewsByServerId = new Map(
+    allMCPServerViews.map((v) => [v.internalMCPServerId, v])
+  );
+
+  return Object.fromEntries(
+    MCP_SERVERS_FOR_GLOBAL_AGENTS.map((name) => [
+      name,
+      mcpServerViewsByServerId.get(
+        autoInternalMCPServerNameToSId({
+          name,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        })
+      ) ?? null,
+    ])
+  ) as MCPServerViewsForGlobalAgentsMap;
+}
 
 export async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   auth: Authenticator
