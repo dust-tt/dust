@@ -27,6 +27,10 @@ export const makeProgrammaticUsageRateLimitKeyForWorkspace = (
   return `workspace:${owner.id}:programmatic_usage_rate_limit`;
 };
 
+export const makeKeyCapRateLimitKey = (keyId: number) => {
+  return `api_key:${keyId}:cap_rate_limit`;
+};
+
 export async function resetMessageRateLimitForWorkspace(auth: Authenticator) {
   const workspace = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();

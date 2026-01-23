@@ -140,6 +140,34 @@ export async function hasReachedProgrammaticUsageLimits(
   return (await CreditResource.listActive(auth)).length === 0;
 }
 
+export type UsageLimitType = "none" | "workspace_credits" | "key_cap";
+
+/**
+ * Check if programmatic usage limits have been reached.
+ * Checks both workspace credits and per-key caps.
+ * Returns the type of limit that was reached, if any.
+ */
+export async function checkProgrammaticUsageLimits(
+  auth: Authenticator
+): Promise<{ hasReachedLimit: boolean; limitType: UsageLimitType }> {
+  // Lazy import to avoid circular dependency.
+  const { hasKeyReachedUsageCap } = await import("@app/lib/api/key_cap_tracking");
+
+  // First check workspace credits.
+  const hasNoCredits = await hasReachedProgrammaticUsageLimits(auth);
+  if (hasNoCredits) {
+    return { hasReachedLimit: true, limitType: "workspace_credits" };
+  }
+
+  // Then check per-key cap.
+  const keyCapReached = await hasKeyReachedUsageCap(auth);
+  if (keyCapReached) {
+    return { hasReachedLimit: true, limitType: "key_cap" };
+  }
+
+  return { hasReachedLimit: false, limitType: "none" };
+}
+
 // TODO(PPUL): remove this method once we switch to new credits tracking system.
 const TEMP_FAKE_LIMITS: PublicAPILimitsType & { enabled: true } = {
   monthlyLimit: 10_000, // 10_000 USD
