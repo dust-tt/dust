@@ -24,27 +24,26 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-import { useSendNotification } from "@app/hooks/useNotification";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { makeColumnsForSkills } from "@app/components/poke/skills/columns";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  INTERNAL_MCP_SERVERS,
-  isAutoInternalMCPServerName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
+import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
 import { usePokeSkills } from "@app/poke/swr/skills";
 import type { LightWorkspaceType } from "@app/types";
 
-const AUTO_MCP_SERVER_NAMES: AutoInternalMCPServerNameType[] = Object.keys(
-  INTERNAL_MCP_SERVERS
-)
-  .filter((name) =>
-    isAutoInternalMCPServerName(name as keyof typeof INTERNAL_MCP_SERVERS)
-  )
-  .sort() as AutoInternalMCPServerNameType[];
+const AUTO_INTERNAL_MCP_SERVER_NAMES = new Set(
+  Object.entries(INTERNAL_MCP_SERVERS)
+    .filter(([, server]) => server.availability === "auto")
+    .map(([name]) => name)
+);
 
 interface SkillsDataTableProps {
   owner: LightWorkspaceType;
@@ -113,16 +112,30 @@ function CreateSkillSuggestionSheet({
   const [agentFacingDescription, setAgentFacingDescription] = useState("");
   const [instructions, setInstructions] = useState("");
   const [icon, setIcon] = useState<string | null>(null);
-  const [mcpServers, setMcpServers] = useState<AutoInternalMCPServerNameType[]>(
-    []
-  );
+  const [selectedMcpServerViews, setSelectedMcpServerViews] = useState<
+    MCPServerViewType[]
+  >([]);
   const [mcpSearchText, setMcpSearchText] = useState("");
 
-  const filteredMcpServers = useMemo(() => {
-    return AUTO_MCP_SERVER_NAMES.filter((name) =>
-      name.toLowerCase().includes(mcpSearchText.toLowerCase())
+  const { data: mcpServerViews, isLoading: isMcpServerViewsLoading } =
+    usePokeMCPServerViews({ owner, disabled: false });
+
+  // Filter to auto internal MCP servers that don't require configuration
+  const availableMcpServerViews = useMemo(() => {
+    return mcpServerViews.filter(
+      (view) =>
+        AUTO_INTERNAL_MCP_SERVER_NAMES.has(view.server.name) &&
+        getMCPServerRequirements(view).noRequirement
     );
-  }, [mcpSearchText]);
+  }, [mcpServerViews]);
+
+  const filteredMcpServerViews = useMemo(() => {
+    return availableMcpServerViews.filter((view) =>
+      getMcpServerViewDisplayName(view)
+        .toLowerCase()
+        .includes(mcpSearchText.toLowerCase())
+    );
+  }, [availableMcpServerViews, mcpSearchText]);
 
   const resetForm = () => {
     setName("");
@@ -130,7 +143,7 @@ function CreateSkillSuggestionSheet({
     setAgentFacingDescription("");
     setInstructions("");
     setIcon(null);
-    setMcpServers([]);
+    setSelectedMcpServerViews([]);
     setMcpSearchText("");
   };
 
@@ -168,7 +181,9 @@ function CreateSkillSuggestionSheet({
           agentFacingDescription: agentFacingDescription.trim(),
           instructions: instructions.trim(),
           icon: icon ?? null,
-          mcpServerNames: mcpServers,
+          mcpServerNames: selectedMcpServerViews.map(
+            (view) => view.server.name as AutoInternalMCPServerNameType
+          ),
         }),
       }
     );
@@ -308,6 +323,7 @@ function CreateSkillSuggestionSheet({
                       label="Add"
                       isSelect
                       size="xs"
+                      disabled={isMcpServerViewsLoading}
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-80">
@@ -320,37 +336,46 @@ function CreateSkillSuggestionSheet({
                     />
                     <DropdownMenuSeparator />
                     <div className="max-h-60 overflow-auto">
-                      {filteredMcpServers.map((serverName) => (
-                        <DropdownMenuCheckboxItem
-                          key={serverName}
-                          label={serverName}
-                          checked={mcpServers.includes(serverName)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setMcpServers((prev) => [...prev, serverName]);
-                            } else {
-                              setMcpServers((prev) =>
-                                prev.filter((s) => s !== serverName)
-                              );
-                            }
-                          }}
-                          onSelect={(e) => e.preventDefault()}
-                        />
-                      ))}
+                      {filteredMcpServerViews.map((view) => {
+                        const displayName = getMcpServerViewDisplayName(view);
+                        const isSelected = selectedMcpServerViews.some(
+                          (v) => v.sId === view.sId
+                        );
+                        return (
+                          <DropdownMenuCheckboxItem
+                            key={view.sId}
+                            label={displayName}
+                            checked={isSelected}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedMcpServerViews((prev) => [
+                                  ...prev,
+                                  view,
+                                ]);
+                              } else {
+                                setSelectedMcpServerViews((prev) =>
+                                  prev.filter((v) => v.sId !== view.sId)
+                                );
+                              }
+                            }}
+                            onSelect={(e) => e.preventDefault()}
+                          />
+                        );
+                      })}
                     </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              {mcpServers.length > 0 && (
+              {selectedMcpServerViews.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {mcpServers.map((serverName) => (
+                  {selectedMcpServerViews.map((view) => (
                     <Chip
-                      key={serverName}
-                      label={serverName}
+                      key={view.sId}
+                      label={getMcpServerViewDisplayName(view)}
                       size="xs"
                       onRemove={() =>
-                        setMcpServers((prev) =>
-                          prev.filter((s) => s !== serverName)
+                        setSelectedMcpServerViews((prev) =>
+                          prev.filter((v) => v.sId !== view.sId)
                         )
                       }
                     />
