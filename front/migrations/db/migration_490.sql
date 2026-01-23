@@ -31,7 +31,7 @@ ON DELETE RESTRICT ON UPDATE CASCADE;
 CREATE INDEX CONCURRENTLY "agent_suggestions_agentConfigurationId"
 ON "agent_suggestions" ("agentConfigurationId");
 
-CREATE INDEX CONCURRENTLY "agent_suggestions_list_by_agent_configuration"
+CREATE INDEX CONCURRENTLY "agent_suggestions_list_by_agent_configuration_idx"
 ON "agent_suggestions" ("workspaceId", "agentConfigurationId", "state", "kind");
 
 CREATE INDEX CONCURRENTLY "agent_suggestions_workspace_agent_config_kind"

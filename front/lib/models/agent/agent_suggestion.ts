@@ -78,7 +78,7 @@ AgentSuggestionModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        name: "agent_suggestions_list_by_agent_configuration",
+        name: "agent_suggestions_list_by_agent_configuration_idx",
         fields: ["workspaceId", "agentConfigurationId", "state", "kind"],
         concurrently: true,
       },
