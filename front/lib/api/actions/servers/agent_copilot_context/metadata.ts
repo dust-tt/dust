@@ -7,9 +7,6 @@ import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_de
 
 export const AGENT_COPILOT_CONTEXT_TOOL_NAME = "agent_copilot_context" as const;
 
-// Key used to store the agent configuration ID in additionalConfiguration.
-export const AGENT_CONFIGURATION_ID_KEY = "agentConfigurationId";
-
 export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   get_available_models: {
     description:

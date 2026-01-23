@@ -3,6 +3,7 @@ import {
   Button,
   ListCheckIcon,
   MagicIcon,
+  RobotIcon,
   ScrollArea,
   SidebarRightCloseIcon,
   SidebarRightOpenIcon,
@@ -67,7 +68,7 @@ function PanelHeader({
                   <TabsTrigger
                     value="copilot"
                     label="Copilot"
-                    icon={MagicIcon}
+                    icon={RobotIcon}
                     onClick={() => onTabChange("copilot")}
                   />
                 )}
@@ -131,7 +132,7 @@ function CollapsedTabs({
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
       {hasCopilot && (
         <Button
-          icon={MagicIcon}
+          icon={RobotIcon}
           variant="ghost"
           size="sm"
           tooltip="Copilot"

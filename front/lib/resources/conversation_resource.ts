@@ -602,6 +602,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
       spaceId: conversation.space?.sId ?? null,
       depth: conversation.depth,
+      metadata: conversation.metadata,
     });
   }
 
@@ -765,6 +766,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
           spaceId: c.space?.sId ?? null,
           depth: c.depth,
+          metadata: c.metadata,
         };
       })
     );
@@ -1621,6 +1623,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       title: this.title,
       unread: participation.unread,
       depth: this.depth,
+      metadata: this.metadata,
     };
   }
 }

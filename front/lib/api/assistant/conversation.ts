@@ -67,6 +67,7 @@ import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
   ContentFragmentType,
+  ConversationMetadata,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -110,12 +111,14 @@ export async function createConversation(
     depth = 0,
     triggerId,
     spaceId,
+    metadata,
   }: {
     title: string | null;
     visibility: ConversationVisibility;
     depth?: number;
     triggerId?: ModelId | null;
     spaceId: ModelId | null;
+    metadata?: ConversationMetadata;
   }
 ): Promise<ConversationType> {
   const owner = auth.getNonNullableWorkspace();
@@ -141,6 +144,7 @@ export async function createConversation(
       triggerId,
       spaceId,
       requestedSpaceIds: [],
+      metadata: metadata ?? {},
     },
     space
   );
@@ -161,6 +165,7 @@ export async function createConversation(
     requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
     spaceId: space?.sId ?? null,
     triggerId: conversation.triggerSId,
+    metadata: conversation.metadata,
   };
 }
 
