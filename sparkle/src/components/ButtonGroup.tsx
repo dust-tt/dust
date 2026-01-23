@@ -81,8 +81,8 @@ const buttonGroupVariants = cva("s-inline-flex", {
 
 export interface ButtonGroupProps
   extends
-  Omit<React.HTMLAttributes<HTMLDivElement>, "children">,
-  VariantProps<typeof buttonGroupVariants> {
+    Omit<React.HTMLAttributes<HTMLDivElement>, "children">,
+    VariantProps<typeof buttonGroupVariants> {
   /**
    * Array of button or dropdown items to render in the group.
    */
@@ -93,7 +93,6 @@ export interface ButtonGroupProps
   variant?: ButtonGroupVariantType;
   /**
    * Size to apply to all buttons in the group.
-   * TODO(yuka 2026-01-22): allow to have icon only button size.
    */
   size?: ButtonSize;
   /**
@@ -172,9 +171,7 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
 
         if (buttonSize === "icon" || buttonSize === "icon-xs") {
           if (!item.props.icon) {
-            throw new Error(
-              "Icon is required for icon-only buttons"
-            );
+            throw new Error("Icon is required for icon-only buttons");
           }
 
           return (
@@ -220,9 +217,7 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
 
       if (buttonSize === "icon" || buttonSize === "icon-xs") {
         if (!item.triggerProps.icon) {
-          throw new Error(
-            "Icon is required for icon-only buttons"
-          );
+          throw new Error("Icon is required for icon-only buttons");
         }
 
         return (

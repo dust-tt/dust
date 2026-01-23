@@ -18,13 +18,13 @@ interface BaseAssistantCardProps {
   variant?: CardVariantType;
 }
 
-type AssistantCardMore = IconOnlyButtonProps;
+type AssistantCardMore = Omit<IconOnlyButtonProps, "icon">;
 
 export const AssistantCardMore = React.forwardRef<
   HTMLButtonElement,
   AssistantCardMore
->(({ ...props }, ref) => {
-  return <CardActionButton ref={ref} icon={MoreIcon} {...props} />;
+>(({ size = "icon", ...props }, ref) => {
+  return <CardActionButton ref={ref} icon={MoreIcon} size={size} {...props} />;
 });
 AssistantCardMore.displayName = "AssistantCardMore";
 
