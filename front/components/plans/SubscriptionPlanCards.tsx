@@ -9,7 +9,7 @@ import type { BillingPeriod } from "@app/types";
 
 const PRO_FEATURES = [
   "From 1 user",
-  "Advanced AI models: GPT-5, Claude 4.5, Gemini, Mistral...",
+  "Advanced AI models: GPT-5, Claude 4.5, Gemini, Mistral, and more",
   "Data connections: Slack, Notion, Google Drive, GitHub, and more",
   "Native integrations (Zendesk, Slack, Chrome Extension)",
   "Email support: Get help when you need it",
