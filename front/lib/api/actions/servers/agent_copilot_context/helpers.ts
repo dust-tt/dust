@@ -1,11 +1,11 @@
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { getCopilotMetadataFromContext } from "@app/lib/api/actions/servers/helpers";
 
 export function getAgentConfigurationIdFromContext(
   agentLoopContext?: AgentLoopContextType
 ): string | null {
-  const metadata =
-    agentLoopContext?.runContext?.conversation.metadata ??
-    agentLoopContext?.listToolsContext?.conversation.metadata;
-
-  return metadata?.agentCopilot?.targetAgentConfigurationId ?? null;
+  return (
+    getCopilotMetadataFromContext(agentLoopContext)
+      ?.targetAgentConfigurationId ?? null
+  );
 }
