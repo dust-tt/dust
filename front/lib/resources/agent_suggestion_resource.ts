@@ -70,7 +70,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   private static async getEditorsGroupIdByAgentSId(
     auth: Authenticator,
     agentSIds: string[]
-  ): Promise<Map<string, ModelId | null>> {
+  ): Promise<Map<string, ModelId>> {
     if (agentSIds.length === 0) {
       return new Map();
     }
@@ -82,11 +82,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     });
 
     if (agentConfigs.length === 0) {
-      const result = new Map<string, ModelId | null>();
-      for (const sId of agentSIds) {
-        result.set(sId, null);
-      }
-      return result;
+      return new Map();
     }
 
     // Fetch editor groups for these agents.
@@ -96,13 +92,13 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     );
 
     // Build a map from agent sId to editors group ID.
-    const result = new Map<string, ModelId | null>();
-    for (const sId of agentSIds) {
-      if (groupsResult.isOk()) {
+    const result = new Map<string, ModelId>();
+    if (groupsResult.isOk()) {
+      for (const sId of agentSIds) {
         const group = groupsResult.value[sId];
-        result.set(sId, group?.id ?? null);
-      } else {
-        result.set(sId, null);
+        if (group !== undefined) {
+          result.set(sId, group.id);
+        }
       }
     }
 
@@ -130,12 +126,12 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     const editorsGroupIdMap = await this.getEditorsGroupIdByAgentSId(auth, [
       agentConfig.sId,
     ]);
-    const editorsGroupId = editorsGroupIdMap.get(agentConfig.sId) ?? null;
+    const editorsGroupId = editorsGroupIdMap.get(agentConfig.sId);
 
     // Check permission.
     const canWrite =
       auth.isAdmin() ||
-      (editorsGroupId !== null && auth.hasGroupByModelId(editorsGroupId));
+      (editorsGroupId !== undefined && auth.hasGroupByModelId(editorsGroupId));
 
     if (!canWrite) {
       throw new Error("User does not have permission to edit this agent");
@@ -146,7 +142,11 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       workspaceId: owner.id,
     });
 
-    return new this(AgentSuggestionModel, suggestion.get(), editorsGroupId);
+    return new this(
+      AgentSuggestionModel,
+      suggestion.get(),
+      editorsGroupId ?? null
+    );
   }
 
   private static async baseFetch(
@@ -186,29 +186,34 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     );
 
     // Filter suggestions to only include those for agents the user can edit.
-    return suggestions
-      .filter((s) => {
-        if (auth.isAdmin()) {
-          return true;
+    return removeNulls(
+      suggestions.map((suggestion) => {
+        if (!this.canWrite(auth, suggestion, editorsGroupIdBySId)) {
+          return null;
         }
-        const agentConfig = s.agentConfiguration;
-        if (!agentConfig) {
-          return false;
-        }
-        const groupId = editorsGroupIdBySId.get(agentConfig.sId);
-        return (
-          groupId !== undefined &&
-          groupId !== null &&
-          auth.hasGroupByModelId(groupId)
-        );
-      })
-      .map((suggestion) => {
         const agentConfig = suggestion.agentConfiguration;
         const editorsGroupId = agentConfig
           ? (editorsGroupIdBySId.get(agentConfig.sId) ?? null)
           : null;
         return new this(AgentSuggestionModel, suggestion.get(), editorsGroupId);
-      });
+      })
+    );
+  }
+
+  static canWrite(
+    auth: Authenticator,
+    suggestion: AgentSuggestionModel,
+    editorsGroupIdBySId: Map<string, ModelId>
+  ): boolean {
+    if (auth.isAdmin()) {
+      return true;
+    }
+    const agentConfig = suggestion.agentConfiguration;
+    if (!agentConfig) {
+      return false;
+    }
+    const groupId = editorsGroupIdBySId.get(agentConfig.sId);
+    return groupId !== undefined && auth.hasGroupByModelId(groupId);
   }
 
   static async fetchByIds(
