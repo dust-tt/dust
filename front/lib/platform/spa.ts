@@ -14,7 +14,8 @@ import {
   useLocation,
   useNavigate,
   useOutletContext,
-  useSearchParams,
+  useParams as useRouterParams,
+  useSearchParams as useRouterSearchParams,
 } from "react-router-dom";
 
 import type {
@@ -51,12 +52,12 @@ function useSafeLocation() {
 }
 
 /**
- * Safe wrapper around useSearchParams that handles the case where
+ * Safe wrapper around useSearchParam that handles the case where
  * we're not inside a Router context
  */
 function useSafeSearchParams() {
   try {
-    return useSearchParams();
+    return useRouterSearchParams();
   } catch {
     return [new URLSearchParams(window.location.search), () => {}] as const;
   }
@@ -293,6 +294,40 @@ export function usePageContext<T>(): T | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Hook to get route params in SPA
+ * Returns route parameters from the URL (e.g., :wId, :aId)
+ */
+export function usePathParams(): Record<string, string | undefined> {
+  try {
+    return useRouterParams();
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Hook to get a required route param
+ * Throws an error if the param is missing
+ */
+export function useRequiredPathParam(name: string): string {
+  const params = usePathParams();
+  const value = params[name];
+  if (!value) {
+    throw new Error(`Required route parameter "${name}" is missing`);
+  }
+  return value;
+}
+
+/**
+ * Hook to get a search/query param in SPA
+ * Returns the value of the specified query parameter or null
+ */
+export function useSearchParam(name: string): string | null {
+  const [searchParams] = useSafeSearchParams();
+  return searchParams.get(name);
 }
 
 export type { AppRouter, HeadProps, ScriptProps };

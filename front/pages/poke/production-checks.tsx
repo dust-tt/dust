@@ -2,20 +2,20 @@ import type { ReactElement } from "react";
 
 import { ProductionChecksPage } from "@app/components/poke/pages/ProductionChecksPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayout } from "@app/lib/poke/common";
+import { pokeGetServerSidePropsNoWorkspace } from "@app/lib/poke/common";
 
-export const getServerSideProps = withSuperUserAuthRequirements<object>(
-  async () => {
-    return {
-      props: {},
-    };
-  }
-);
+export const getServerSideProps = pokeGetServerSidePropsNoWorkspace;
 
-export default function ProductionChecksPageNextJS() {
-  return <ProductionChecksPage />;
-}
+const Page = ProductionChecksPage as PageWithLayout;
 
-ProductionChecksPageNextJS.getLayout = (page: ReactElement) => {
-  return <PokeLayout title="Production Checks">{page}</PokeLayout>;
+Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+  return (
+    <PokeLayout title="Production Checks" authContext={pageProps}>
+      {page}
+    </PokeLayout>
+  );
 };
+
+export default Page;

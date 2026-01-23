@@ -1,7 +1,7 @@
 import { SparkleContext, Spinner } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { Outlet, useParams } from "react-router-dom";
+import { Outlet, useMatches } from "react-router-dom";
 
 import { ReactRouterLinkWrapper } from "@app/app/src/components/ReactRouterLinkWrapper";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
@@ -9,7 +9,7 @@ import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import type { RegionType } from "@app/lib/api/regions/config";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
-import { Head } from "@app/lib/platform";
+import { Head, usePathParams } from "@app/lib/platform";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   LightWorkspaceType,
@@ -34,14 +34,28 @@ type GetRegionResponseType = {
   regionUrls: Record<RegionType, string>;
 };
 
-interface PokeLayoutProps {
-  children?: ReactNode;
+interface RouteHandle {
   title?: string;
 }
 
-export function PokeLayout({ children, title = "Poke" }: PokeLayoutProps) {
-  const { wId } = useParams<{ wId?: string }>();
+interface PokeLayoutProps {
+  children?: ReactNode;
+}
+
+export function PokeLayout({ children }: PokeLayoutProps) {
+  const params = usePathParams();
+  const wId = params.wId;
   const [redirecting, setRedirecting] = useState(false);
+
+  // Get title from the deepest matched route's handle
+  const matches = useMatches();
+  const title = matches
+    .slice()
+    .reverse()
+    .find((match) => (match.handle as RouteHandle)?.title)?.handle as
+    | RouteHandle
+    | undefined;
+  const pageTitle = title?.title ?? "Poke";
 
   // Fetch global poke auth (superuser check)
   const { data: authData, isLoading: isAuthLoading } = useSWRWithDefaults<
@@ -52,8 +66,9 @@ export function PokeLayout({ children, title = "Poke" }: PokeLayoutProps) {
   // Fetch workspace-specific auth when wId is present
   const { data: workspaceAuthData, isLoading: isWorkspaceLoading } =
     useSWRWithDefaults<string, GetPokeWorkspaceAuthContextResponseType>(
-      `/api/poke/workspaces/${wId ?? "-"}/auth-context`,
-      fetcher
+      `/api/poke/workspaces/${wId}/auth-context`,
+      fetcher,
+      { disabled: !wId }
     );
 
   const { data: regionData } = useSWRWithDefaults<
@@ -108,14 +123,14 @@ export function PokeLayout({ children, title = "Poke" }: PokeLayoutProps) {
     >
       <ThemeProvider>
         <Head>
-          <title>{"Poke - " + title}</title>
+          <title>{"Poke - " + pageTitle}</title>
         </Head>
         <AuthContext.Provider value={authContextValue}>
           <div className="min-h-dvh bg-muted-background dark:bg-muted-background-night dark:text-white">
             <PokeNavbar
               currentRegion={regionData?.region}
               regionUrls={regionData?.regionUrls}
-              title={title}
+              title={pageTitle}
             />
             <div className="flex flex-col p-6">{children ?? <Outlet />}</div>
           </div>
@@ -123,9 +138,4 @@ export function PokeLayout({ children, title = "Poke" }: PokeLayoutProps) {
       </ThemeProvider>
     </SparkleContext.Provider>
   );
-}
-
-// Wrapper component that extracts title from route data
-export function PokeLayoutWrapper() {
-  return <PokeLayout />;
 }

@@ -20,20 +20,15 @@ import { ConversationAgentDataTable } from "@app/components/poke/conversation/ag
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { decodeSqids } from "@app/lib/utils";
 import { usePokeAgentDetails } from "@app/poke/swr/agent_details";
-import type { WorkspaceType } from "@app/types";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
-interface AssistantDetailsPageProps {
-  owner: WorkspaceType;
-  aId: string;
-}
-
-export function AssistantDetailsPage({
-  owner,
-  aId,
-}: AssistantDetailsPageProps) {
+export function AssistantDetailsPage() {
+  const owner = useWorkspace();
+  const aId = useRequiredPathParam("aId");
   const { isDark } = useTheme();
 
   const {

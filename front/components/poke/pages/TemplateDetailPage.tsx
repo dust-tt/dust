@@ -43,6 +43,7 @@ import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
 import type { CreateTemplateFormType, TemplateTagCodeType } from "@app/types";
@@ -55,10 +56,6 @@ import {
   TEMPLATE_VISIBILITIES,
   TEMPLATES_TAGS_CONFIG,
 } from "@app/types";
-
-interface TemplateDetailPageProps {
-  templateId: string;
-}
 
 function InputField({
   control,
@@ -425,7 +422,8 @@ function PreviewDialog({ form }: { form: any }) {
   );
 }
 
-export function TemplateDetailPage({ templateId }: TemplateDetailPageProps) {
+export function TemplateDetailPage() {
+  const templateId = useRequiredPathParam("tId");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useAppRouter();
 

@@ -5,15 +5,13 @@ import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/t
 import { MembersDataTable } from "@app/components/poke/members/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeSpaceDetails } from "@app/poke/swr/space_details";
-import type { LightWorkspaceType } from "@app/types";
 
-interface SpacePageProps {
-  owner: LightWorkspaceType;
-  spaceId: string;
-}
-
-export function SpacePage({ owner, spaceId }: SpacePageProps) {
+export function SpacePage() {
+  const owner = useWorkspace();
+  const spaceId = useRequiredPathParam("spaceId");
   const {
     data: spaceDetails,
     isLoading,

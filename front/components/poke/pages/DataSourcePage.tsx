@@ -26,9 +26,11 @@ import {
   PokeAlertDescription,
 } from "@app/components/poke/shadcn/ui/alert";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import { decodeSqids, timeAgoFrom } from "@app/lib/utils";
 import type { FeaturesType } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/details";
@@ -882,12 +884,9 @@ const ConfigToggle = ({
   );
 };
 
-interface DataSourcePageProps {
-  owner: WorkspaceType;
-  dsId: string;
-}
-
-export function DataSourcePage({ owner, dsId }: DataSourcePageProps) {
+export function DataSourcePage() {
+  const owner = useWorkspace();
+  const dsId = useRequiredPathParam("dsId");
   const router = useAppRouter();
 
   const {

@@ -1,43 +1,24 @@
-import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import { GroupPage } from "@app/components/poke/pages/GroupPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import type { LightWorkspaceType } from "@app/types";
-import { isString } from "@app/types";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayout } from "@app/lib/poke/common";
+import { pokeGetServerSideProps } from "@app/lib/poke/common";
 
-export const getServerSideProps = withSuperUserAuthRequirements<{
-  owner: LightWorkspaceType;
-  groupId: string;
-}>(async (context, auth) => {
-  const owner = auth.getNonNullableWorkspace();
+export const getServerSideProps = pokeGetServerSideProps;
 
-  const { wId, groupId } = context.params ?? {};
-  if (!isString(wId) || !isString(groupId)) {
-    return {
-      notFound: true,
-    };
-  }
+const Page = GroupPage as PageWithLayout;
 
-  return {
-    props: {
-      owner,
-      groupId,
-    },
-  };
-});
-
-export default function GroupPageNextJS({
-  owner,
-  groupId,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  return <GroupPage owner={owner} groupId={groupId} />;
-}
-
-GroupPageNextJS.getLayout = (
-  page: ReactElement,
-  { owner }: { owner: LightWorkspaceType }
-) => {
-  return <PokeLayout title={`Group ${owner.name}`}>{page}</PokeLayout>;
+Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+  return (
+    <PokeLayout
+      title={`${pageProps.workspace?.name ?? "Workspace"} - Group`}
+      authContext={pageProps}
+    >
+      {page}
+    </PokeLayout>
+  );
 };
+
+export default Page;

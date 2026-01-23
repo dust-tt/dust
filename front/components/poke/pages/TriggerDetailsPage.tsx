@@ -4,18 +4,13 @@ import { ConversationDataTable } from "@app/components/poke/conversation/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { PokeRecentWebhookRequests } from "@app/components/poke/triggers/RecentWebhookRequests";
 import { ViewTriggerTable } from "@app/components/poke/triggers/view";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeTriggerDetails } from "@app/poke/swr/trigger_details";
-import type { LightWorkspaceType } from "@app/types";
 
-interface TriggerDetailsPageProps {
-  owner: LightWorkspaceType;
-  triggerId: string;
-}
-
-export function TriggerDetailsPage({
-  owner,
-  triggerId,
-}: TriggerDetailsPageProps) {
+export function TriggerDetailsPage() {
+  const owner = useWorkspace();
+  const triggerId = useRequiredPathParam("triggerId");
   const {
     data: triggerDetails,
     isLoading,
