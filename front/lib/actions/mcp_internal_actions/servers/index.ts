@@ -58,7 +58,6 @@ import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions
 import { default as ukgReadyServer } from "@app/lib/actions/mcp_internal_actions/servers/ukg_ready";
 import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
 import { default as vantaServer } from "@app/lib/actions/mcp_internal_actions/servers/vanta";
-import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import { default as zendeskServer } from "@app/lib/actions/mcp_internal_actions/servers/zendesk";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
@@ -73,6 +72,7 @@ import { default as calendarServer } from "@app/lib/api/actions/servers/google_c
 import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
 import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
 import { default as statuspageServer } from "@app/lib/api/actions/servers/statuspage";
+import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
@@ -136,7 +136,7 @@ export async function getInternalMCPServer(
     case "common_utilities":
       return commonUtilitiesServer(auth, agentLoopContext);
     case "web_search_&_browse":
-      return webtoolsServer(auth, agentLoopContext);
+      return webSearchBrowseServer(auth, agentLoopContext);
     case "search":
       // If we are in advanced search mode, we use the data_sources_file_system server instead.
       if (isAdvancedSearchMode(agentLoopContext)) {

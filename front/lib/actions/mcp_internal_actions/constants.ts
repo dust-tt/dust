@@ -3,7 +3,6 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
-  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
@@ -24,6 +23,7 @@ import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
+import { WEB_SEARCH_BROWSE_SERVER } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import {
   DEEP_DIVE_NAME,
   DEEP_DIVE_SERVER_INSTRUCTIONS,
@@ -222,19 +222,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: DEFAULT_WEBSEARCH_ACTION_NAME,
-      version: "1.0.0",
-      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-      icon: "ActionGlobeAltIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: WEB_SEARCH_BROWSE_SERVER,
   },
   hubspot: {
     id: 7,
