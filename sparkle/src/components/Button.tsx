@@ -34,7 +34,13 @@ export const BUTTON_VARIANTS = [
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
-export const REGULAR_BUTTON_SIZES = ["xmini", "mini", "xs", "sm", "md"] as const;
+export const REGULAR_BUTTON_SIZES = [
+  "xmini",
+  "mini",
+  "xs",
+  "sm",
+  "md",
+] as const;
 export const ICON_ONLY_SIZES = ["icon-xs", "icon"] as const;
 export const SMALL_BUTTON_SIZES = ["icon-xs", "icon", "xmini", "mini"] as const;
 
@@ -42,11 +48,13 @@ export type RegularButtonSize = (typeof REGULAR_BUTTON_SIZES)[number];
 export type IconOnlySize = (typeof ICON_ONLY_SIZES)[number];
 export type ButtonSize = RegularButtonSize | IconOnlySize;
 
-
 function isSmallButtonSize(
   size: ButtonSize | undefined
-): size is typeof SMALL_BUTTON_SIZES[number] {
-  return size !== undefined && SMALL_BUTTON_SIZES.includes(size as typeof SMALL_BUTTON_SIZES[number]);
+): size is (typeof SMALL_BUTTON_SIZES)[number] {
+  return (
+    size !== undefined &&
+    SMALL_BUTTON_SIZES.includes(size as (typeof SMALL_BUTTON_SIZES)[number])
+  );
 }
 
 // Define button styling with cva
@@ -223,8 +231,8 @@ const chevronVariantMap = {
 
 export interface MetaButtonProps
   extends
-  React.ButtonHTMLAttributes<HTMLButtonElement>,
-  VariantProps<typeof buttonVariants> {
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   isRounded?: boolean;
 }

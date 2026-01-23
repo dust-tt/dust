@@ -3,7 +3,7 @@ import * as React from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
-import type { ButtonProps, ButtonSizeType, ButtonVariantType,REGULAR_BUTTON_SIZES,RegularButtonProps } from "./Button";
+import type { ButtonProps, ButtonSize, ButtonVariantType } from "./Button";
 import { Button } from "./Button";
 import type { DropdownMenuItemProps } from "./Dropdown";
 import {
@@ -15,7 +15,7 @@ import {
 
 type ButtonGroupButtonItem = {
   type: "button";
-  props: RegularButtonProps;
+  props: ButtonProps;
 };
 
 type ButtonGroupDropdownItem = {
@@ -67,12 +67,6 @@ const sanitizeVariant = (
   return variant as ButtonGroupVariantType;
 };
 
-const isNonIconSize = (
-  size: ButtonSizeType | undefined
-): size is Exclude<ButtonSizeType, "icon" | "icon-xs"> | undefined => {
-  return size === undefined || (size !== "icon" && size !== "icon-xs");
-};
-
 const buttonGroupVariants = cva("s-inline-flex", {
   variants: {
     orientation: {
@@ -87,8 +81,8 @@ const buttonGroupVariants = cva("s-inline-flex", {
 
 export interface ButtonGroupProps
   extends
-    Omit<React.HTMLAttributes<HTMLDivElement>, "children">,
-    VariantProps<typeof buttonGroupVariants> {
+  Omit<React.HTMLAttributes<HTMLDivElement>, "children">,
+  VariantProps<typeof buttonGroupVariants> {
   /**
    * Array of button or dropdown items to render in the group.
    */
@@ -101,7 +95,7 @@ export interface ButtonGroupProps
    * Size to apply to all buttons in the group.
    * TODO(yuka 2026-01-22): allow to have icon only button size.
    */
-  size?: (typeof REGULAR_BUTTON_SIZES)[number];
+  size?: ButtonSize;
   /**
    * Whether every button should be disabled.
    */
@@ -173,17 +167,41 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
       })();
 
       if (item.type === "button") {
-        const nextVariant = sanitizeVariant(variant ?? item.props.variant);
-        const rawSize = size ?? item.props.size;
-        const nextSize =
-          isNonIconSize(rawSize) ? rawSize : undefined;
+        const buttonVariant = sanitizeVariant(variant ?? item.props.variant);
+        const buttonSize = size ?? item.props.size;
+
+        if (buttonSize === "icon" || buttonSize === "icon-xs") {
+          if (!item.props.icon) {
+            throw new Error(
+              "Icon is required for icon-only buttons"
+            );
+          }
+
+          return (
+            <Button
+              key={index}
+              {...item.props}
+              icon={item.props.icon}
+              label={undefined}
+              variant={buttonVariant}
+              size={buttonSize}
+              disabled={disabled ?? item.props.disabled}
+              isRounded={false}
+              className={cn(
+                item.props.className,
+                borderRadiusClasses,
+                borderClasses
+              )}
+            />
+          );
+        }
 
         return (
           <Button
             key={index}
             {...item.props}
-            variant={nextVariant}
-            size={nextSize}
+            variant={buttonVariant}
+            size={buttonSize}
             disabled={disabled ?? item.props.disabled}
             isRounded={false}
             className={cn(
@@ -195,18 +213,52 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
         );
       }
 
-      const nextVariant = sanitizeVariant(variant ?? item.triggerProps.variant);
-      const rawSize = size ?? item.triggerProps.size;
-      const nextSize =
-        isNonIconSize(rawSize) ? rawSize : undefined;
+      const buttonVariant = sanitizeVariant(
+        variant ?? item.triggerProps.variant
+      );
+      const buttonSize = size ?? item.triggerProps.size;
+
+      if (buttonSize === "icon" || buttonSize === "icon-xs") {
+        if (!item.triggerProps.icon) {
+          throw new Error(
+            "Icon is required for icon-only buttons"
+          );
+        }
+
+        return (
+          <DropdownMenu key={index}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                {...item.triggerProps}
+                label={undefined}
+                icon={item.triggerProps.icon}
+                variant={buttonVariant}
+                size={buttonSize}
+                disabled={disabled ?? item.triggerProps.disabled}
+                isRounded={false}
+                className={cn(
+                  item.triggerProps.className,
+                  borderRadiusClasses,
+                  borderClasses
+                )}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align={item.dropdownProps.align ?? "center"}>
+              {item.dropdownProps.items.map((dropdownItem, dropdownIndex) => (
+                <DropdownMenuItem key={dropdownIndex} {...dropdownItem} />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      }
 
       return (
         <DropdownMenu key={index}>
           <DropdownMenuTrigger asChild>
             <Button
               {...item.triggerProps}
-              variant={nextVariant}
-              size={nextSize}
+              variant={buttonVariant}
+              size={buttonSize}
               disabled={disabled ?? item.triggerProps.disabled}
               isRounded={false}
               className={cn(

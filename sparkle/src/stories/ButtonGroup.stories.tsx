@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  BUTTON_SIZES,
+  REGULAR_BUTTON_SIZES,
   BUTTON_VARIANTS,
   type ButtonVariantType,
 } from "@sparkle/components/Button";
@@ -52,7 +52,7 @@ const meta = {
     size: {
       description: "Size applied to every button",
       control: { type: "select" },
-      options: BUTTON_SIZES.filter((size) => size !== "icon" && size !== "icon-xs"),
+      options: REGULAR_BUTTON_SIZES,
     },
     orientation: {
       description: "Stack buttons horizontally or vertically",
@@ -94,6 +94,17 @@ export const WithIcons: Story = {
       { type: "button", props: { icon: PlusIcon, label: "Add" } },
       { type: "button", props: { icon: RobotIcon, label: "Agent" } },
       { type: "button", props: { label: "More" } },
+    ],
+  },
+};
+
+export const IconOnly: Story = {
+  args: {
+    size: "icon",
+    items: [
+      { type: "button", props: { icon: PlusIcon, tooltip: "Add" } },
+      { type: "button", props: { icon: RobotIcon, tooltip: "Agent" } },
+      { type: "button", props: { icon: ClipboardIcon, tooltip: "Copy" } },
     ],
   },
 };
