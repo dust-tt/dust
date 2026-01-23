@@ -9,6 +9,7 @@ import { cn } from "@sparkle/lib/utils";
 
 const Tabs = TabsPrimitive.Root;
 
+<<<<<<< HEAD
 const tabsTriggerVariants = cva(
   [
     "s-relative",
@@ -35,16 +36,15 @@ const tabsTriggerVariants = cva(
 );
 
 const tabsListVariants = cva("s-inline-flex s-h-11 s-gap-2", {
+=======
+const tabsListVariants = cva("s-flex s-h-[45px] s-gap-2 s-w-full", {
+>>>>>>> fee2ea77d6 (Search all project)
   variants: {
-    size: {
-      full: "s-w-full",
-    },
     border: {
       true: "s-border-b s-border-border dark:s-border-border-night",
     },
   },
   defaultVariants: {
-    size: "full",
     border: true,
   },
 });
@@ -55,11 +55,11 @@ type TabsListProps = React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> &
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   TabsListProps
->(({ className, size, border, ...props }, ref) => (
+>(({ className, border, ...props }, ref) => (
   <ScrollArea>
     <TabsPrimitive.List
       ref={ref}
-      className={cn(tabsListVariants({ size, border }), className)}
+      className={cn(tabsListVariants({ border }), className)}
       {...props}
     />
     <ScrollBar orientation="horizontal" className="s-hidden" />
@@ -101,7 +101,7 @@ const TabsTrigger = React.forwardRef<
     return (
       <TabsPrimitive.Trigger
         ref={ref}
-        className={cn("s-h-11", "disabled:s-pointer-events-none", className)}
+        className={cn("disabled:s-pointer-events-none", className)}
         disabled={disabled}
         asChild
         {...props}
@@ -121,8 +121,14 @@ const TabsTrigger = React.forwardRef<
           isCounter={isCounter}
           counterValue={counterValue}
           className={cn(
+<<<<<<< HEAD
             tabsTriggerVariants({ variant: variant ?? undefined }),
             className
+=======
+            "s-relative",
+            "after:s-absolute after:s-bottom-[-10px] after:s-left-1/2 after:s-h-[2px] after:s-w-full after:s--translate-x-1/2",
+            "after:s-bg-foreground after:s-opacity-0 data-[state=active]:after:s-opacity-100 dark:after:s-bg-foreground-night"
+>>>>>>> fee2ea77d6 (Search all project)
           )}
         />
       </TabsPrimitive.Trigger>

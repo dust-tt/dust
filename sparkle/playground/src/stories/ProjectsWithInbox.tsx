@@ -192,8 +192,8 @@ function DustMain() {
 
     setCollaborators(mixedCollaborators);
 
-    // Generate random number of spaces between 3 and 9
-    const spaceCount = Math.floor(Math.random() * (9 - 3 + 1)) + 3;
+    // Generate random number of joined projects between 2 and 12
+    const spaceCount = Math.floor(Math.random() * (12 - 2 + 1)) + 2;
     const randomSpaces = getRandomSpaces(spaceCount);
     setSpaces(randomSpaces);
 
@@ -201,6 +201,30 @@ function DustMain() {
     const convsWithMessages = createConversationsWithMessages(randomUser.id);
     setConversationsWithMessages(convsWithMessages);
   }, []);
+
+  const isProjectJoined = (spaceId: string) => {
+    return spaces.some((space) => space.id === spaceId);
+  };
+
+  const joinProject = (space: Space) => {
+    setSpaces((prev) => {
+      if (prev.some((item) => item.id === space.id)) {
+        return prev;
+      }
+      return [...prev, space];
+    });
+  };
+
+  const leaveProject = (spaceId: string) => {
+    setSpaces((prev) => prev.filter((space) => space.id !== spaceId));
+    if (selectedSpaceId === spaceId) {
+      setSelectedSpaceId(null);
+      setSelectedConversationId(null);
+      setSelectedView("inbox");
+      setPreviousSpaceId(null);
+      setCameFromInbox(false);
+    }
+  };
 
   // Auto-select newly created space when it's added to the spaces array
   useEffect(() => {
@@ -328,7 +352,8 @@ function DustMain() {
   }, [searchText, sortedCollaborators]);
 
   const sortedSpaces = useMemo(() => {
-    return [...spaces].sort((a, b) => {
+    const sourceSpaces = searchText.trim() ? mockSpaces : spaces;
+    return [...sourceSpaces].sort((a, b) => {
       // Determine if restricted based on space ID
       const isRestrictedA = a.id.charCodeAt(a.id.length - 1) % 2 === 0;
       const isRestrictedB = b.id.charCodeAt(b.id.length - 1) % 2 === 0;
@@ -341,7 +366,7 @@ function DustMain() {
       // Then sort alphabetically by name
       return a.name.localeCompare(b.name);
     });
-  }, [spaces]);
+  }, [searchText, spaces]);
 
   const filteredSpaces = useMemo(() => {
     if (!searchText.trim()) {
@@ -379,10 +404,10 @@ function DustMain() {
   }, [selectedConversationId, allConversations]);
 
   // Find selected space
-  const selectedSpace = useMemo(() => {
+  const selectedProject = useMemo(() => {
     if (!selectedSpaceId) return null;
-    return spaces.find((s) => s.id === selectedSpaceId) || null;
-  }, [selectedSpaceId, spaces]);
+    return mockSpaces.find((space) => space.id === selectedSpaceId) || null;
+  }, [selectedSpaceId]);
 
   // Get conversations for selected space
   const spaceConversations = useMemo(() => {
@@ -499,15 +524,17 @@ function DustMain() {
         }
         className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
-        <TabsList className="s-mt-3 s-px-2">
-          <TabsTrigger
-            value="chat"
-            label="Chat"
-            icon={ChatBubbleLeftRightIcon}
-          />
-          <TabsTrigger value="spaces" label="Spaces" icon={SpaceOpenIcon} />
-          <TabsTrigger value="admin" icon={Cog6ToothIcon} />
-        </TabsList>
+        <div className="s-flex s-h-14 s-items-end s-border-b s-border-border s-px-2 dark:s-border-border-night">
+          <TabsList border={false}>
+            <TabsTrigger
+              value="chat"
+              label="Chat"
+              icon={ChatBubbleLeftRightIcon}
+            />
+            <TabsTrigger value="spaces" label="Spaces" icon={SpaceOpenIcon} />
+            <TabsTrigger value="admin" icon={Cog6ToothIcon} />
+          </TabsList>
+        </div>
         <TabsContent
           value="chat"
           className="s-flex s-min-h-0 s-flex-1 s-flex-col"
@@ -580,55 +607,36 @@ function DustMain() {
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger
-                              icon={PencilSquareIcon}
-                              label="Browse"
-                            />
-                            <DropdownMenuPortal>
-                              <DropdownMenuSubContent>
-                                <DropdownMenuSearchbar
-                                  value={projectSearchText}
-                                  onChange={setProjectSearchText}
-                                  name="project-search"
-                                />
-                                {filteredProjects.length > 0 ? (
-                                  [...filteredProjects]
-                                    .sort((a, b) =>
-                                      a.name.localeCompare(b.name)
-                                    )
-                                    .map((space) => (
-                                      <DropdownMenuItem
-                                        key={space.id}
-                                        label={space.name}
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          setSelectedSpaceId(space.id);
-                                          setSelectedView("space");
-                                          setSelectedConversationId(null);
-                                          setPreviousSpaceId(null);
-                                          setCameFromInbox(false);
-                                        }}
-                                      />
-                                    ))
-                                ) : (
-                                  <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
-                                    No projects found
-                                  </div>
-                                )}
-                              </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                          </DropdownMenuSub>
-                          <DropdownMenuItem
-                            icon={PlusIcon}
-                            label="Create"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setIsCreateRoomDialogOpen(true);
-                            }}
+                          <DropdownMenuSearchbar
+                            name="project-search"
+                            value={projectSearchText}
+                            onChange={setProjectSearchText}
+                            placeholder="Search projects"
                           />
+                          <DropdownMenuSeparator />
+                          {filteredProjects.length > 0 ? (
+                            [...filteredProjects]
+                              .sort((a, b) => a.name.localeCompare(b.name))
+                              .map((space) => (
+                                <DropdownMenuItem
+                                  key={space.id}
+                                  label={space.name}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setSelectedSpaceId(space.id);
+                                    setSelectedView("space");
+                                    setSelectedConversationId(null);
+                                    setPreviousSpaceId(null);
+                                    setCameFromInbox(false);
+                                  }}
+                                />
+                              ))
+                          ) : (
+                            <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+                              No projects found
+                            </div>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </>
@@ -1127,12 +1135,15 @@ function DustMain() {
         }}
       />
     ) : // Priority 3: Show space view if a space is selected
-    selectedSpace && selectedSpaceId ? (
+    selectedProject && selectedSpaceId ? (
       <GroupConversationView
-        space={selectedSpace}
+        space={selectedProject}
         conversations={spaceConversations}
         users={mockUsers}
         agents={mockAgents}
+        isProjectJoined={isProjectJoined(selectedSpaceId)}
+        onJoinProject={() => joinProject(selectedProject)}
+        onLeaveProject={() => leaveProject(selectedSpaceId)}
         spaceMemberIds={
           spaceMembers.has(selectedSpaceId)
             ? spaceMembers.get(selectedSpaceId)!
