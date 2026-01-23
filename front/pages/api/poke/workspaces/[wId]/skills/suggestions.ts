@@ -41,6 +41,10 @@ const PostSkillSuggestionBodySchema = z.object({
     .default([]),
 });
 
+export type PostSkillSuggestionBodyType = z.infer<
+  typeof PostSkillSuggestionBodySchema
+>;
+
 export type PostPokeSkillSuggestionResponseBody = {
   skill: SkillType;
 };

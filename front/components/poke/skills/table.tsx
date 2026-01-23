@@ -35,6 +35,7 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
+import type { PostSkillSuggestionBodyType } from "@app/pages/api/poke/workspaces/[wId]/skills/suggestions";
 import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
 import { usePokeSkills } from "@app/poke/swr/skills";
 import type { LightWorkspaceType } from "@app/types";
@@ -184,7 +185,7 @@ function CreateSkillSuggestionSheet({
           mcpServerNames: selectedMcpServerViews.map(
             (view) => view.server.name as AutoInternalMCPServerNameType
           ),
-        }),
+        } satisfies PostSkillSuggestionBodyType),
       }
     );
     setIsSubmitting(false);
