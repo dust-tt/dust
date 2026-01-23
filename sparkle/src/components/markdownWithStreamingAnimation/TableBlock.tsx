@@ -1,8 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { ReactNode, useMemo } from "react";
+import React, { memo, ReactNode, useMemo } from "react";
+import type { ReactMarkdownProps } from "react-markdown/lib/ast-to-react";
 
 import { ScrollArea, ScrollBar } from "@sparkle/components";
 import { ContentBlockWrapper } from "@sparkle/components/markdown/ContentBlockWrapper";
+import {
+  sameNodePosition,
+} from "@sparkle/components/markdownWithStreamingAnimation/utils";
 
 const getNodeText = (node: ReactNode): string => {
   if (["string", "number"].includes(typeof node)) {
@@ -18,7 +22,12 @@ const getNodeText = (node: ReactNode): string => {
   return "";
 };
 
-export function TableBlock({ children }: { children: React.ReactNode }) {
+interface TableBlockProps extends Omit<ReactMarkdownProps, "children" | "node"> {
+  children: React.ReactNode;
+  node?: ReactMarkdownProps["node"];
+}
+
+export const MemoTableBlock = memo<TableBlockProps>(({ children, node: _node }) => {
   const tableData = useMemo(() => {
     const [headNode, bodyNode] = Array.from(children as [any, any]);
     if (
@@ -75,43 +84,95 @@ export function TableBlock({ children }: { children: React.ReactNode }) {
       </ScrollArea>
     </ContentBlockWrapper>
   );
+}, (prev, next) => {
+  return sameNodePosition(prev.node, next.node);
+});
+
+MemoTableBlock.displayName = "MemoTableBlock";
+
+interface TableHeadBlockProps extends Omit<ReactMarkdownProps, "children" | "node"> {
+  children: React.ReactNode;
+  node?: ReactMarkdownProps["node"];
 }
 
-export function TableHeadBlock({ children }: { children: React.ReactNode }) {
-  return (
-    <thead className="s-bg-muted-background s-px-2 s-py-2 dark:s-bg-muted-background-night">
-      {children}
-    </thead>
-  );
+export const MemoTableHeadBlock = memo<TableHeadBlockProps>(
+  ({ children, node: _node }) => {
+    return (
+      <thead className="s-bg-muted-background s-px-2 s-py-2 dark:s-bg-muted-background-night">
+        {children}
+      </thead>
+    );
+  },
+  (prev, next) => {
+    return sameNodePosition(prev.node, next.node);
+  }
+);
+
+MemoTableHeadBlock.displayName = "MemoTableHeadBlock";
+
+interface TableBodyBlockProps extends Omit<ReactMarkdownProps, "children" | "node"> {
+  children: React.ReactNode;
+  node?: ReactMarkdownProps["node"];
 }
 
-export function TableBodyBlock({ children }: { children: React.ReactNode }) {
-  return (
-    <tbody className="s-bg-white dark:s-bg-background-night">{children}</tbody>
-  );
+export const MemoTableBodyBlock = memo<TableBodyBlockProps>(
+  ({ children, node: _node }) => {
+    return (
+      <tbody className="s-bg-white dark:s-bg-background-night">{children}</tbody>
+    );
+  },
+  (prev, next) => {
+    return sameNodePosition(prev.node, next.node);
+  }
+);
+
+MemoTableBodyBlock.displayName = "MemoTableBodyBlock";
+
+interface TableHeaderBlockProps extends Omit<ReactMarkdownProps, "children" | "node"> {
+  children: React.ReactNode;
+  node?: ReactMarkdownProps["node"];
 }
 
-export function TableHeaderBlock({ children }: { children: React.ReactNode }) {
-  return (
-    <th className="s-truncate s-whitespace-nowrap s-break-words s-py-3.5 s-pl-4 s-text-left s-text-xs s-font-semibold s-text-muted-foreground dark:s-text-muted-foreground-night">
-      {children}
-    </th>
-  );
+export const MemoTableHeaderBlock = memo<TableHeaderBlockProps>(
+  ({ children, node: _node }) => {
+    return (
+      <th className="s-truncate s-whitespace-nowrap s-break-words s-py-3.5 s-pl-4 s-text-left s-text-xs s-font-semibold s-text-muted-foreground dark:s-text-muted-foreground-night">
+        {children}
+      </th>
+    );
+  },
+  (prev, next) => {
+    return sameNodePosition(prev.node, next.node);
+  }
+);
+
+MemoTableHeaderBlock.displayName = "MemoTableHeaderBlock";
+
+interface TableDataBlockProps extends Omit<ReactMarkdownProps, "children" | "node"> {
+  children: React.ReactNode;
+  node?: ReactMarkdownProps["node"];
 }
 
-export function TableDataBlock({ children }: { children: React.ReactNode }) {
-  return (
-    <td className="s-px-4 s-py-3 s-text-sm s-text-foreground dark:s-text-foreground-night">
-      {Array.isArray(children) ? (
-        children.map((child: any, i) => {
-          if (child === "<br>") {
-            return <br key={i} />;
-          }
-          return <React.Fragment key={i}>{child}</React.Fragment>;
-        })
-      ) : (
-        <>{children}</>
-      )}
-    </td>
-  );
-}
+export const MemoTableDataBlock = memo<TableDataBlockProps>(
+  ({ children, node: _node }) => {
+    return (
+      <td className="s-px-4 s-py-3 s-text-sm s-text-foreground dark:s-text-foreground-night">
+        {Array.isArray(children) ? (
+          children.map((child: any, i) => {
+            if (child === "<br>") {
+              return <br key={i} />;
+            }
+            return <React.Fragment key={i}>{child}</React.Fragment>;
+          })
+        ) : (
+          <>{children}</>
+        )}
+      </td>
+    );
+  },
+  (prev, next) => {
+    return sameNodePosition(prev.node, next.node);
+  }
+);
+
+MemoTableDataBlock.displayName = "MemoTableDataBlock";
