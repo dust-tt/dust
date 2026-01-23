@@ -4,6 +4,7 @@ import type {
   CreationAttributes,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
@@ -175,13 +176,13 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     }
 
     // Get unique agent sIds from the included AgentConfigurationModel.
-    const agentSIds = [
+    const agentIds = [
       ...new Set(suggestions.map((s) => s.agentConfiguration?.sId ?? "")),
     ].filter((sId) => sId !== "");
 
     const editorsGroupIdBySId = await this.getEditorsGroupIdByAgentSId(
       auth,
-      agentSIds
+      agentIds
     );
 
     // Filter suggestions to only include those for agents the user can edit.
@@ -235,7 +236,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
    */
   static async listByAgentConfigurationId(
     auth: Authenticator,
-    agentSId: string,
+    agentId: string,
     filters?: {
       state?: AgentSuggestionState;
       kind?: AgentSuggestionKind;
@@ -246,7 +247,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     // First, find all agent configuration IDs for this agent sId (all versions).
     const agentConfigs = await AgentConfigurationModel.findAll({
       where: {
-        sId: agentSId,
+        sId: agentId,
         workspaceId: owner.id,
       },
       attributes: ["id", "sId"],
@@ -259,15 +260,11 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     const agentConfigIds = agentConfigs.map((ac) => ac.id);
 
     // Build the where clause with optional filters.
-    const whereClause: Record<string, unknown> = {
+    const whereClause: WhereOptions<AgentSuggestionModel> = {
       agentConfigurationId: agentConfigIds,
+      ...(filters?.state && { state: filters.state }),
+      ...(filters?.kind && { kind: filters.kind }),
     };
-    if (filters?.state) {
-      whereClause.state = filters.state;
-    }
-    if (filters?.kind) {
-      whereClause.kind = filters.kind;
-    }
 
     return this.baseFetch(auth, {
       where: whereClause,
