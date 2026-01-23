@@ -453,6 +453,16 @@ export function VisualizationWrapper({
           onRendered={(error) => {
             if (error) {
               setErrorMessage(error);
+            } else {
+              // Signal to Gotenberg/Puppeteer that rendering is complete.
+              // In PDF mode, we delay the signal to let Recharts finish its JS-based
+              // animations. Recharts uses react-smooth which has no global disable option,
+              // so we wait for the default animation duration (1500ms) plus buffer.
+              // TODO: Consider wrapping Recharts components to inject isAnimationActive={false}.
+              const delayMs = isPdfMode ? 2000 : 0;
+              setTimeout(() => {
+                (window as unknown as { vizReady: boolean }).vizReady = true;
+              }, delayMs);
             }
           }}
         />
