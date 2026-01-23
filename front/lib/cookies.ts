@@ -11,7 +11,7 @@ export const DUST_HAS_SESSION = "dust-has-session";
 export function hasSessionIndicator(
   cookieValue: string | boolean | undefined
 ): boolean {
-  return cookieValue === "1" || cookieValue === true;
+  return cookieValue === "1" || cookieValue === 1 || cookieValue === true;
 }
 
 /**
