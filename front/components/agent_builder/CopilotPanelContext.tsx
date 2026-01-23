@@ -4,6 +4,7 @@ import React, {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -94,6 +95,7 @@ When analyzing an agent, consider:
 interface CopilotPanelContextType {
   conversation: ConversationType | null;
   isCreatingConversation: boolean;
+  creationFailed: boolean;
   startConversation: () => Promise<void>;
   resetConversation: () => void;
 }
@@ -127,6 +129,8 @@ export const CopilotPanelProvider = ({
     null
   );
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+  const [creationFailed, setCreationFailed] = useState(false);
+  const hasStartedRef = useRef(false);
 
   const createConversationWithMessage = useCreateConversationWithMessage({
     owner,
@@ -134,9 +138,10 @@ export const CopilotPanelProvider = ({
   });
 
   const startConversation = useCallback(async () => {
-    if (conversation || isCreatingConversation) {
+    if (hasStartedRef.current) {
       return;
     }
+    hasStartedRef.current = true;
 
     setIsCreatingConversation(true);
 
@@ -155,6 +160,7 @@ export const CopilotPanelProvider = ({
     if (result.isOk()) {
       setConversation(result.value);
     } else {
+      setCreationFailed(true);
       sendNotification({
         title: result.error.title,
         description: result.error.message,
@@ -163,25 +169,29 @@ export const CopilotPanelProvider = ({
     }
 
     setIsCreatingConversation(false);
-  }, [
-    conversation,
-    isCreatingConversation,
-    createConversationWithMessage,
-    sendNotification,
-  ]);
+  }, [createConversationWithMessage, sendNotification]);
 
   const resetConversation = useCallback(() => {
+    hasStartedRef.current = false;
     setConversation(null);
+    setCreationFailed(false);
   }, []);
 
   const value: CopilotPanelContextType = useMemo(
     () => ({
       conversation,
       isCreatingConversation,
+      creationFailed,
       startConversation,
       resetConversation,
     }),
-    [conversation, isCreatingConversation, startConversation, resetConversation]
+    [
+      conversation,
+      isCreatingConversation,
+      creationFailed,
+      startConversation,
+      resetConversation,
+    ]
   );
 
   return (

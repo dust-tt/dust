@@ -19,6 +19,24 @@ import type {
 } from "@app/types";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 
+interface EmptyStateProps {
+  message: string;
+  description: string;
+}
+
+function EmptyState({ message, description }: EmptyStateProps) {
+  return (
+    <div className="flex h-full min-h-0 items-center justify-center">
+      <div className="px-4 text-center">
+        <div className="mb-2 text-lg font-medium text-foreground">
+          {message}
+        </div>
+        <div className="max-w-sm text-muted-foreground">{description}</div>
+      </div>
+    </div>
+  );
+}
+
 interface LoadingStateProps {
   message: string;
 }
@@ -99,6 +117,7 @@ export function AgentBuilderCopilot() {
   const {
     conversation,
     isCreatingConversation,
+    creationFailed,
     startConversation,
     resetConversation,
   } = useCopilotPanelContext();
@@ -109,6 +128,15 @@ export function AgentBuilderCopilot() {
   }, [startConversation]);
 
   const renderContent = () => {
+    if (creationFailed) {
+      return (
+        <EmptyState
+          message="Unable to start copilot"
+          description="There was an issue starting the copilot session. Please try again later."
+        />
+      );
+    }
+
     if (isCreatingConversation || !conversation) {
       return <LoadingState message="Starting copilot session..." />;
     }
