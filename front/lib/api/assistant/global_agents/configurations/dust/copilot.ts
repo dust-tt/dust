@@ -10,24 +10,24 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 
-interface DustCopilotMCPServers {
+interface CopilotMCPServers {
   context: MCPServerViewResource;
   agentState: MCPServerViewResource;
 }
 
-export function _getDustCopilotGlobalAgent(
+export function _getCopilotGlobalAgent(
   auth: Authenticator,
-  dustCopilotMCPServers: DustCopilotMCPServers | null
+  copilotMCPServers: CopilotMCPServers | null
 ): AgentConfigurationType {
   const owner = auth.getNonNullableWorkspace();
 
-  const actions = dustCopilotMCPServers
+  const actions = copilotMCPServers
     ? [
         buildServerSideMCPServerConfiguration({
-          mcpServerView: dustCopilotMCPServers.context,
+          mcpServerView: copilotMCPServers.context,
         }),
         buildServerSideMCPServerConfiguration({
-          mcpServerView: dustCopilotMCPServers.agentState,
+          mcpServerView: copilotMCPServers.agentState,
         }),
       ]
     : [];
@@ -42,7 +42,7 @@ export function _getDustCopilotGlobalAgent(
       }
     : dummyModelConfiguration;
 
-  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.DUST_COPILOT);
+  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.COPILOT);
 
   return {
     id: -1,

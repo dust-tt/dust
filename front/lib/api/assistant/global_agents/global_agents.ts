@@ -11,7 +11,7 @@ import {
   _getClaude4SonnetGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
-import { _getDustCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
+import { _getCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
 import {
   _getBrowserSummaryAgent,
   _getDeepDiveGlobalAgent,
@@ -90,7 +90,7 @@ function getGlobalAgent({
   agentMemoryMCPServerView,
   memories,
   availableToolsets,
-  dustCopilotMCPServers,
+  copilotMCPServers,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -109,7 +109,7 @@ function getGlobalAgent({
   agentMemoryMCPServerView: MCPServerViewResource | null;
   memories: AgentMemoryResource[];
   availableToolsets: MCPServerViewResource[];
-  dustCopilotMCPServers: {
+  copilotMCPServers: {
     context: MCPServerViewResource;
     agentState: MCPServerViewResource;
   } | null;
@@ -430,10 +430,10 @@ function getGlobalAgent({
         settings,
       });
       break;
-    case GLOBAL_AGENTS_SID.DUST_COPILOT:
-      agentConfiguration = _getDustCopilotGlobalAgent(
+    case GLOBAL_AGENTS_SID.COPILOT:
+      agentConfiguration = _getCopilotGlobalAgent(
         auth,
-        dustCopilotMCPServers
+        copilotMCPServers
       );
       break;
     case GLOBAL_AGENTS_SID.NOOP:
@@ -634,7 +634,7 @@ export async function getGlobalAgents(
   }
   if (!flags.includes("agent_builder_copilot")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_COPILOT
+      (sId) => sId !== GLOBAL_AGENTS_SID.COPILOT
     );
   }
 
@@ -672,13 +672,13 @@ export async function getGlobalAgents(
     );
   }
 
-  let dustCopilotMCPServers: {
+  let copilotMCPServers: {
     context: MCPServerViewResource;
     agentState: MCPServerViewResource;
   } | null = null;
   if (
     variant === "full" &&
-    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_COPILOT)
+    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT)
   ) {
     const [context, agentState] = await Promise.all([
       MCPServerViewResource.getMCPServerViewForAutoInternalTool(
@@ -691,7 +691,7 @@ export async function getGlobalAgents(
       ),
     ]);
     if (context && agentState) {
-      dustCopilotMCPServers = { context, agentState };
+      copilotMCPServers = { context, agentState };
     }
   }
 
@@ -716,7 +716,7 @@ export async function getGlobalAgents(
       agentMemoryMCPServerView,
       memories,
       availableToolsets,
-      dustCopilotMCPServers,
+      copilotMCPServers,
     })
   );
 

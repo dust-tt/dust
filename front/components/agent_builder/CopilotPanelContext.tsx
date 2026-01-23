@@ -154,7 +154,7 @@ export const CopilotPanelProvider = ({
     const result = await createConversationWithMessage({
       messageData: {
         input: systemPrompt,
-        mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST_COPILOT }],
+        mentions: [{ configurationId: GLOBAL_AGENTS_SID.COPILOT }],
         contentFragments: { uploaded: [], contentNodes: [] },
         origin: "agent_copilot",
       },
