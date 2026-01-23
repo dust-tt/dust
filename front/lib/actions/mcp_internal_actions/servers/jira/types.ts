@@ -276,7 +276,7 @@ export const ADFDateNodeSchema = z.object({
 });
 
 export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
-  z.discriminatedUnion("type", [
+  z.union([
     // Text and basic inline nodes
     ADFTextNodeSchema,
     ADFHardBreakNodeSchema,
