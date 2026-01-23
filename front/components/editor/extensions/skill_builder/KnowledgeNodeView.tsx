@@ -180,7 +180,7 @@ function KnowledgeSearchComponent({
       // Tables can't be attached to a skill.
       viewType: "document",
       includeDataSources: false,
-      searchSourceUrls: false,
+      searchSourceUrls: true,
       includeTools: false,
       prioritizeSpaceAccess: true,
     }
