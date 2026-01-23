@@ -182,6 +182,7 @@ function KnowledgeSearchComponent({
       includeDataSources: false,
       searchSourceUrls: false,
       includeTools: false,
+      prioritizeSpaceAccess: true,
     }
   );
 
