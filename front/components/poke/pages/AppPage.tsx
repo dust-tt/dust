@@ -17,7 +17,11 @@ import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import { decodeSqids } from "@app/lib/utils";
 import { usePokeAppDetails } from "@app/poke/swr/app_details";
-import type { AppType, LightWorkspaceType, SpecificationType } from "@app/types";
+import type {
+  AppType,
+  LightWorkspaceType,
+  SpecificationType,
+} from "@app/types";
 
 export function AppPage() {
   const owner = useWorkspace();
