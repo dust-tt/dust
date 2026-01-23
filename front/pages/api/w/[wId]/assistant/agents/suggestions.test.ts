@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
@@ -24,10 +25,30 @@ async function setupTest(
 
   req.query = { wId: workspace.sId };
 
+  await FeatureFlagFactory.basic("agent_builder_copilot", workspace);
+
   return { req, res, workspace, authenticator };
 }
 
 describe("PATCH /api/w/[wId]/assistant/agents/suggestions", () => {
+  it("returns 403 when agent_builder_copilot feature flag is not enabled", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      role: "builder",
+      method: "PATCH",
+    });
+
+    req.query = { wId: workspace.sId };
+    req.body = {
+      suggestionId: "test-id",
+      state: "approved",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData().error.type).toBe("app_auth_error");
+  });
+
   it("returns 400 for missing suggestionId", async () => {
     const { req, res } = await setupTest();
 

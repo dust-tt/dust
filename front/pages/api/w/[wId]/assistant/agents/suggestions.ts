@@ -5,6 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -32,6 +33,18 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PatchSuggestionResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
+  const owner = auth.getNonNullableWorkspace();
+  const featureFlags = await getFeatureFlags(owner);
+  if (!featureFlags.includes("agent_builder_copilot")) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Agent builder copilot is not enabled for this workspace.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "PATCH": {
       const bodyValidation = PatchSuggestionRequestBodySchema.decode(req.body);
