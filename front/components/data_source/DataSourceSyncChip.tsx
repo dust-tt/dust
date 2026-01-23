@@ -128,19 +128,13 @@ export default function ConnectorSyncingChip({
       (connector.lastSyncFinishTime === undefined ||
         connector.lastSyncStartTime > connector.lastSyncFinishTime);
 
-    // Show progress during sync if available (full syncs update firstSyncProgress,
-    // incremental syncs don't, so this effectively shows progress for full syncs)
-    if (isSyncInProgress && connector.firstSyncProgress) {
-      return (
-        <Chip color="info" isBusy>
-          Synchronizing ({connector.firstSyncProgress})
-        </Chip>
-      );
-    } else if (isSyncInProgress && !connector.firstSuccessfulSyncTime) {
-      // First sync in progress but no progress info yet
+    if (isSyncInProgress) {
       return (
         <Chip color="info" isBusy>
           Synchronizing
+          {connector.firstSyncProgress
+            ? ` (${connector.firstSyncProgress})`
+            : null}
         </Chip>
       );
     } else if (connector.lastSyncSuccessfulTime) {
